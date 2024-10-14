@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from django.core import signing
 from sqlalchemy import select
@@ -17,7 +17,7 @@ class UserService(Service):
             .select_from(SessionTable)
             .filter(
                 SessionTable.c.session_key == session_id,
-                SessionTable.c.expire_date > datetime.utcnow(),
+                SessionTable.c.expire_date > datetime.now(timezone.utc),
             )
         )
         row = (await self.conn.execute(stmt)).one_or_none()

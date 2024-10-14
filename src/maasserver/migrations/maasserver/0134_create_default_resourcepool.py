@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from django.db import migrations
+from django.utils import timezone
 
 from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_DESCRIPTION,
@@ -10,7 +9,7 @@ from maasserver.models.resourcepool import (
 
 def forwards(apps, schema_editor):
     ResourcePool = apps.get_model("maasserver", "ResourcePool")
-    now = datetime.now()
+    now = timezone.now()
     ResourcePool.objects.get_or_create(
         id=0,
         defaults={

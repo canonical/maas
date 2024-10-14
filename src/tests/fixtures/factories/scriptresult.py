@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from maasservicelayer.db.tables import ScriptResultTable
@@ -34,8 +34,8 @@ async def create_test_scriptresult_entry(
     validated against the ScriptSetTable. It is up to the user to decide how to
     proceed.
     """
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
 
     scriptresult = {
         "created": created_at,

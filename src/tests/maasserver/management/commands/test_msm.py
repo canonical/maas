@@ -1,6 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-from datetime import datetime
+from datetime import datetime, timezone
 import io
 
 from django.core.management.base import CommandError
@@ -159,7 +159,7 @@ class TestMSM:
         assert "No enrolment is in progress" in out
 
     def test_status_not_enroled(self, mocker, capfd):
-        expected_started = datetime.now()
+        expected_started = datetime.now(timezone.utc)
         expected_url = "http://test-maas.dev"
         secret = {
             "url": expected_url,
@@ -182,7 +182,7 @@ class TestMSM:
         )
 
     def test_status_enroled(self, mocker, capfd):
-        expected_started = datetime.now()
+        expected_started = datetime.now(timezone.utc)
         expected_url = "http://test-maas.dev"
         secret = {
             "url": expected_url,

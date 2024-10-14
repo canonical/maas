@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from django.db import migrations, models
+from django.utils import timezone
 
 from metadataserver.enum import SCRIPT_TYPE
 
@@ -12,7 +11,7 @@ def commissioningscript_to_script(apps, schema_editor):
     Script = apps.get_model("metadataserver", "Script")
     VersionedTextFile = apps.get_model("maasserver", "VersionedTextFile")
 
-    now = datetime.now()
+    now = timezone.now()
     for commissioning_script in CommissioningScript.objects.all():
         vtf = VersionedTextFile.objects.create(
             created=now,

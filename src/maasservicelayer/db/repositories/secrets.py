@@ -18,7 +18,7 @@ class SecretsRepository:
         self.connection = connection
 
     async def create_or_update(self, path: str, value: dict[str, Any]) -> None:
-        created_at = updated_at = datetime.datetime.utcnow()
+        created_at = updated_at = datetime.datetime.now(datetime.timezone.utc)
         insert_stmt = insert(SecretTable).values(
             path=path, created=created_at, updated=updated_at, value=value
         )

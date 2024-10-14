@@ -176,6 +176,10 @@ except Exception:
 # Default set to the same timezone as the system.
 TIME_ZONE = _get_local_timezone()
 
+# Offset-aware datetime objects are going to be the default in future Django
+# versions.
+USE_TZ = True
+
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = "en-us"

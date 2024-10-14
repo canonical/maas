@@ -1,7 +1,7 @@
 # Copyright 2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -41,7 +41,7 @@ def check_tls_certificate():
         return
 
     interval = config["tls_cert_expiration_notification_interval"]
-    expire_in = (cert.expiration() - datetime.utcnow()).days
+    expire_in = (cert.expiration() - datetime.now(timezone.utc)).days
 
     if expire_in <= 0:
         # cert already expired. remove previous notification about

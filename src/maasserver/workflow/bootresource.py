@@ -4,7 +4,7 @@
 import asyncio
 from asyncio import gather
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import shutil
 from typing import Coroutine, Sequence
 
@@ -203,10 +203,10 @@ class BootResourcesActivity(MAASAPIClient):
                 proxy=param.http_proxy,
             ) as response, lfile.astore(autocommit=False) as store:
                 response.raise_for_status()
-                last_update = datetime.now()
+                last_update = datetime.now(timezone.utc)
                 async for data, _ in response.content.iter_chunks():
                     activity.heartbeat()
-                    dt_now = datetime.now()
+                    dt_now = datetime.now(timezone.utc)
                     if dt_now > (last_update + REPORT_INTERVAL):
                         await self.report_progress(param.rfile_ids, lfile.size)
                         last_update = dt_now

@@ -11,7 +11,6 @@ __all__ = [
 ]
 
 from collections import OrderedDict
-from datetime import datetime
 import threading
 from zlib import crc32
 
@@ -34,6 +33,7 @@ from django.db.models import (
     UniqueConstraint,
 )
 from django.db.models.query import QuerySet
+from django.utils import timezone
 from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
 
 from maasserver.enum import (
@@ -1358,7 +1358,7 @@ class Interface(CleanSave, TimestampedModel):
         # IP assignment is only temporary until the IP address can be
         # validated as free.
         if temp_expires_after is not None:
-            auto_ip.temp_expires_on = datetime.utcnow() + temp_expires_after
+            auto_ip.temp_expires_on = timezone.now() + temp_expires_after
         auto_ip.save()
 
         # Only log the allocation when the assignment is not temporary. Its

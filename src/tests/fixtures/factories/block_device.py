@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from maastesting.factory import factory
@@ -8,8 +8,8 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_blockdevice_entry(
     fixture: Fixture, node: dict[str, Any], **extra_details: Any
 ) -> dict[str, Any]:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     blockdevice = {
         "created": created_at,
         "updated": updated_at,

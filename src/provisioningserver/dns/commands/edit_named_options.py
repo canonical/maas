@@ -8,7 +8,7 @@ setting.
 
 
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import shutil
 import sys
@@ -103,7 +103,7 @@ def set_up_include_statement(options_block, config_path):
 
 
 def back_up_existing_file(config_path):
-    now = datetime.now().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     backup_destination = config_path + "." + now
     try:
         shutil.copyfile(config_path, backup_destination)

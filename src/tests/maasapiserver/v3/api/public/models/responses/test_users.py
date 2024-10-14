@@ -41,6 +41,6 @@ class TestUserResponse:
             last_name="last",
             is_staff=False,
             is_active=False,
-            date_joined=datetime.datetime.utcnow(),
+            date_joined=datetime.datetime.now(datetime.timezone.utc),
         )
         assert expected_result == user.check_password(plaintext_password)

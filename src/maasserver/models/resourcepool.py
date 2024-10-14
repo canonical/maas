@@ -9,10 +9,9 @@ __all__ = [
     "ResourcePool",
 ]
 
-from datetime import datetime
-
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import AutoField, CharField, Manager, TextField
+from django.utils import timezone
 
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
@@ -43,7 +42,7 @@ class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
 
     def get_default_resource_pool(self):
         """Return the default resource pool."""
-        now = datetime.now()
+        now = timezone.now()
         pool, _ = self.get_or_create(
             id=0,
             defaults={

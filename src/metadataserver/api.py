@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 import http.client
 from io import BytesIO
@@ -566,7 +566,7 @@ class VersionIndexHandler(MetadataViewHandler):
                 **args, timedout=(status == SIGNAL_STATUS.TIMEDOUT)
             )
 
-        script_set.last_ping = datetime.now()
+        script_set.last_ping = datetime.now(timezone.utc)
         script_set.save()
 
         if status == SIGNAL_STATUS.APPLYING_NETCONF:
@@ -619,7 +619,7 @@ class VersionIndexHandler(MetadataViewHandler):
                     script_result.save(update_fields=["status"])
         if node.enable_hw_sync:
             node.refresh_from_db()
-            node.last_sync = datetime.now()
+            node.last_sync = datetime.now(timezone.utc)
             node.save()
 
     def _process_new(self, node, request, status):

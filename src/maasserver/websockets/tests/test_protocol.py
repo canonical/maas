@@ -3,13 +3,14 @@
 
 
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import timedelta
 import json
 import random
 from unittest.mock import MagicMock, sentinel
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+from django.utils import timezone
 from twisted.internet import defer
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.server import NOT_DONE_YET
@@ -959,7 +960,7 @@ class TestWebSocketFactoryTransactional(
         key2 = maas_factory.make_string()
 
         def make_sessions():
-            now = datetime.utcnow()
+            now = timezone.now()
             delta = timedelta(hours=1)
             # first session is expired, second one is valid
             return (

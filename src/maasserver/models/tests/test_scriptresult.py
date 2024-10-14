@@ -2,11 +2,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
 from unittest.mock import MagicMock
 
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 import yaml
 
 from maasserver.enum import NODE_STATUS
@@ -589,7 +590,7 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_get_runtime(self):
         runtime_seconds = random.randint(1, 59)
-        now = datetime.now()
+        now = timezone.now()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED,
             started=now - timedelta(seconds=runtime_seconds),
@@ -606,7 +607,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEqual("", script_result.runtime)
 
     def test_get_starttime(self):
-        now = datetime.now()
+        now = timezone.now()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, started=now, ended=now
         )
@@ -617,7 +618,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEqual("", script_result.starttime)
 
     def test_get_endtime(self):
-        now = datetime.now()
+        now = timezone.now()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, started=now, ended=now
         )
@@ -628,7 +629,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEqual("", script_result.endtime)
 
     def test_estimated_runtime_returns_set_runtime(self):
-        now = datetime.now()
+        now = timezone.now()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PENDING,
             started=now,
@@ -656,7 +657,7 @@ class TestScriptResult(MAASServerTestCase):
         for result in reversed(old_results[:-1]):
             average_runtime += result.ended - result.started
             average_runtime = average_runtime / 2
-        now = datetime.now()
+        now = timezone.now()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.RUNNING,
             started=now,
@@ -681,14 +682,14 @@ class TestScriptResult(MAASServerTestCase):
         no_started_result.save()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.RUNNING,
-            started=datetime.now(),
+            started=timezone.now(),
             script=script,
             script_set=script_set,
         )
         self.assertEqual("0:00:00", script_result.estimated_runtime)
 
     def test_estimated_runtime_uses_timeout(self):
-        now = datetime.now()
+        now = timezone.now()
         script = factory.make_Script(timeout=timedelta(10))
         script_result = factory.make_ScriptResult(
             script=script, status=SCRIPT_STATUS.RUNNING, started=now
@@ -700,7 +701,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEqual(expected, script_result.estimated_runtime)
 
     def test_estimated_runtime_returns_Unknown(self):
-        now = datetime.now()
+        now = timezone.now()
         script = factory.make_Script(timeout=timedelta(0))
         script_result = factory.make_ScriptResult(
             script=script, status=SCRIPT_STATUS.RUNNING, started=now

@@ -4,8 +4,9 @@
 """Tests for `maasserver.websockets.handlers.timestampedmodel`"""
 
 
-from datetime import datetime
+from django.utils import timezone
 
+from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -33,17 +34,17 @@ class TestTimeStampedModelHandler(MAASTestCase):
         )
 
     def test_dehydrate_created_converts_datetime_to_string(self):
-        now = datetime.now()
+        now = timezone.now()
         handler = TimestampedModelHandler(None, {}, None)
         self.assertEqual(
-            now.strftime("%a, %d %b. %Y %H:%M:%S"),
+            now.strftime(DATETIME_FORMAT),
             handler.dehydrate_created(now),
         )
 
     def test_dehydrate_updated_converts_datetime_to_string(self):
-        now = datetime.now()
+        now = timezone.now()
         handler = TimestampedModelHandler(None, {}, None)
         self.assertEqual(
-            now.strftime("%a, %d %b. %Y %H:%M:%S"),
+            now.strftime(DATETIME_FORMAT),
             handler.dehydrate_updated(now),
         )

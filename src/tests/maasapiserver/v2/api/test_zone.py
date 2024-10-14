@@ -11,8 +11,8 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 def bmc_details(**extra_details: Any) -> dict[str, Any]:
     details = {
-        "created": datetime.datetime.utcnow(),
-        "updated": datetime.datetime.utcnow(),
+        "created": datetime.datetime.now(datetime.timezone.utc),
+        "updated": datetime.datetime.now(datetime.timezone.utc),
         "power_type": "manual",
         "ip_address_id": None,
         "architectures": [],
@@ -44,8 +44,8 @@ def bmc_details(**extra_details: Any) -> dict[str, Any]:
 
 def zone_details(**extra_details: Any) -> dict[str, Any]:
     details = {
-        "created": datetime.datetime.utcnow(),
-        "updated": datetime.datetime.utcnow(),
+        "created": datetime.datetime.now(datetime.timezone.utc),
+        "updated": datetime.datetime.now(datetime.timezone.utc),
         "name": "default",
         "description": "",
     }
@@ -56,8 +56,8 @@ def zone_details(**extra_details: Any) -> dict[str, Any]:
 def node_details(**extra_details: Any) -> dict[str, Any]:
     """Return sample details for creating a site."""
     details = {
-        "created": datetime.datetime.utcnow(),
-        "updated": datetime.datetime.utcnow(),
+        "created": datetime.datetime.now(datetime.timezone.utc),
+        "updated": datetime.datetime.now(datetime.timezone.utc),
         "system_id": factory.make_string(),
         "hostname": "test",
         "status": 1,
@@ -93,7 +93,7 @@ def node_details(**extra_details: Any) -> dict[str, Any]:
         "dns_process_id": None,
         "bmc_id": 1,
         "address_ttl": None,
-        "status_expires": datetime.datetime.utcnow(),
+        "status_expires": datetime.datetime.now(datetime.timezone.utc),
         "power_state_queried": None,
         "url": "",
         "managing_process_id": None,

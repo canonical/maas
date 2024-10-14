@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from netaddr import IPAddress, IPNetwork
@@ -13,8 +13,8 @@ async def create_test_ip_range_entry(
     size: int = 5,
     **extra_details: Any
 ) -> dict[str, Any]:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     ip_range = {
         "created": created_at,
         "updated": updated_at,

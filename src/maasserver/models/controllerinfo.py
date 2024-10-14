@@ -18,6 +18,7 @@ from django.db.models import (
     OneToOneField,
     Q,
 )
+from django.utils import timezone
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
@@ -90,7 +91,7 @@ class ControllerInfoManager(Manager):
                     "update_version": str(
                         MAASVersion.from_string(versions.update.version)
                     ),
-                    "update_first_reported": datetime.now(),
+                    "update_first_reported": timezone.now(),
                 }
             )
             if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:

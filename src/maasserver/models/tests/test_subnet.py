@@ -1,10 +1,12 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
+import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.utils import timezone
 from fixtures import FakeLogger
 from hypothesis import given, settings
 from hypothesis.strategies import integers
@@ -1276,7 +1278,7 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None
         )
         rackif = factory.make_Interface(vlan=subnet.vlan)
-        now = datetime.now()
+        now = timezone.now()
         yesterday = now - timedelta(days=1)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif, updated=now)
         factory.make_Discovery(
@@ -1291,7 +1293,7 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None
         )
         rackif = factory.make_Interface(vlan=subnet.vlan)
-        now = datetime.now()
+        now = timezone.now()
         yesterday = now - timedelta(days=1)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif, updated=now)
         factory.make_Discovery(
@@ -1315,7 +1317,7 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
             managed=False,
         )
         rackif = factory.make_Interface(vlan=subnet.vlan)
-        now = datetime.now()
+        now = timezone.now()
         yesterday = now - timedelta(days=1)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif, updated=now)
         factory.make_Discovery(
@@ -1455,7 +1457,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         self.assertEqual("10.0.0.2", ip)
         self.assertRegex(
             logger.output,
-            f"Next IP address to allocate from '.*' has been observed previously: 10.0.0.2 was last claimed by .* via .* on .* at {yesterday}.\n",
+            f"Next IP address to allocate from '.*' has been observed previously: 10.0.0.2 was last claimed by .* via .* on .* at {re.escape(str(yesterday))}.\n",
         )
 
     def test_uses_smallest_free_range_when_not_considering_neighbours(self):

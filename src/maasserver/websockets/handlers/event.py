@@ -6,6 +6,8 @@
 
 import datetime
 
+from django.utils import timezone
+
 from maasserver.models.event import Event
 from maasserver.models.eventtype import LOGGING_LEVELS
 from maasserver.models.node import Node
@@ -74,7 +76,7 @@ class EventHandler(TimestampedModelHandler):
 
         # List events that where created in the past maximum number of days.
         max_days = params.get("max_days", 30)
-        created_after = datetime.datetime.now() - datetime.timedelta(max_days)
+        created_after = timezone.now() - datetime.timedelta(max_days)
         queryset = queryset.filter(created__gte=created_after)
 
         if "start" in params:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv6Address
 from typing import Any
 
@@ -14,8 +14,8 @@ async def create_test_reserved_ip_entry(
     subnet: dict[str, Any] | None = None,
     **extra_details: Any
 ) -> dict[str, Any]:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     reserved_ip = {
         "created": created_at,
         "updated": updated_at,

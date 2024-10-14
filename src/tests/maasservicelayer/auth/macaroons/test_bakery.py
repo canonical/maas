@@ -43,7 +43,7 @@ from maasservicelayer.auth.macaroons.bakery import (
 )
 from maasservicelayer.auth.macaroons.models.exceptions import BakeryException
 
-ONE_DAY = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+ONE_DAY = datetime.datetime.now() + datetime.timedelta(days=1)
 TEST_OP = bakery.Op(entity="test", action="test")
 
 PUBLIC_KEY = "YAhRSsth3a36mRYqQGQaLiS4QJax0p356nd+B8x7UQE="
@@ -504,7 +504,9 @@ class TestHttpBakeryAsyncClient:
 
         client = HttpBakeryAsyncClient()
 
-        YESTERDAY = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+        YESTERDAY = datetime.datetime.now(
+            datetime.timezone.utc
+        ) - datetime.timedelta(days=1)
 
         third_party_server = await FakeThirdPartyServer(
             d, third_party_url

@@ -118,10 +118,12 @@ def maasapiserver(maasdb, tmpdir):
     server_process = Process(target=lambda: run(config), args=(), daemon=True)
     server_process.start()
 
-    timeout = datetime.datetime.utcnow() + datetime.timedelta(seconds=5)
+    timeout = datetime.datetime.now(
+        datetime.timezone.utc
+    ) + datetime.timedelta(seconds=5)
     ready = False
 
-    while not ready and datetime.datetime.utcnow() < timeout:
+    while not ready and datetime.datetime.now(datetime.timezone.utc) < timeout:
         try:
             api_client = APIServerClient("")
             root = api_client.get("/")

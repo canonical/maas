@@ -4,13 +4,13 @@
 """Tests for `maasserver.import_images.download_resources`."""
 
 
-from datetime import datetime
 import hashlib
 import os
 import random
 import tarfile
 from unittest import mock
 
+from django.utils import timezone
 from simplestreams.contentsource import ChecksummingContentSource
 from simplestreams.objectstores import FileStore
 
@@ -25,10 +25,10 @@ from provisioningserver.utils.fs import tempdir
 class MockDateTime(mock.MagicMock):
     """A class for faking datetimes."""
 
-    _utcnow = datetime.utcnow()
+    _utcnow = timezone.now()
 
     @classmethod
-    def utcnow(cls):
+    def now(cls):
         return cls._utcnow
 
 
@@ -36,7 +36,7 @@ class TestDownloadAllBootResources(MAASTestCase):
     """Tests for `download_all_boot_resources`()."""
 
     def test_returns_snapshot_path(self):
-        self.patch(download_resources, "datetime", MockDateTime)
+        self.patch(download_resources, "timezone", MockDateTime)
         storage_path = self.make_dir()
         expected_path = os.path.join(
             storage_path,
@@ -50,7 +50,7 @@ class TestDownloadAllBootResources(MAASTestCase):
         )
 
     def test_calls_download_boot_resources(self):
-        self.patch(download_resources, "datetime", MockDateTime)
+        self.patch(download_resources, "timezone", MockDateTime)
         storage_path = self.make_dir()
         snapshot_path = download_resources.compose_snapshot_path(storage_path)
         cache_path = os.path.join(storage_path, "cache")
@@ -97,7 +97,7 @@ class TestComposeSnapshotPath(MAASTestCase):
     """Tests for `compose_snapshot_path`()."""
 
     def test_returns_path_under_storage_path(self):
-        self.patch(download_resources, "datetime", MockDateTime)
+        self.patch(download_resources, "timezone", MockDateTime)
         storage_path = self.make_dir()
         expected_path = os.path.join(
             storage_path,
@@ -204,7 +204,7 @@ class TestRepoWriter(MAASTestCase):
         return {
             "content_id": "maas:v2:download",
             "product_name": factory.make_string(),
-            "version_name": datetime.utcnow().strftime("%Y%m%d"),
+            "version_name": timezone.now().strftime("%Y%m%d"),
             "sha256": factory.make_name("sha256"),
             "size": random.randint(2, 2**16),
             "ftype": factory.make_name("ftype"),

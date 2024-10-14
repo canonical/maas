@@ -2,13 +2,14 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime
+from datetime import datetime, timezone
 import http.client
 import json
 import random
 from unittest.mock import ANY
 
 from django.conf import settings
+from django.core.serializers import json as django_json
 from django.urls import reverse
 from netaddr import IPNetwork
 from twisted.python.failure import Failure
@@ -32,12 +33,8 @@ from provisioningserver.rpc import cluster
 
 def timestamp_format(time):
     """Convert the specified `time` to the string we expect Piston to output."""
-    if time.microsecond == 0:
-        return time.strftime("%Y-%m-%dT%H:%M:%S")
-    else:
-        return time.strftime(
-            "%%Y-%%m-%%dT%%H:%%M:%%S.%03d" % int(time.microsecond / 1000)
-        )
+    decoder = django_json.DjangoJSONEncoder()
+    return decoder.default(time)
 
 
 def get_discoveries_uri():
@@ -60,7 +57,7 @@ def make_discoveries(count=3, interface=None):
         factory.make_Discovery(
             interface=interface,
             time=time,
-            updated=datetime.fromtimestamp(time),
+            updated=datetime.fromtimestamp(time, tz=timezone.utc),
         )
         for time in range(count)
     ]

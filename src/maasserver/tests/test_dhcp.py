@@ -1,11 +1,11 @@
 # Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import base64
-from datetime import datetime
 from operator import itemgetter
 import random
 from unittest.mock import ANY
 
+from django.utils import timezone
 from netaddr import IPAddress, IPNetwork
 import pytest
 from twisted.internet.defer import inlineCallbacks
@@ -1866,7 +1866,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.AUTO,
             subnet=subnet,
             interface=auto_no_temp_ip_interface,
-            temp_expires_on=datetime.utcnow(),
+            temp_expires_on=timezone.now(),
         )
 
         # Make STICKY IP. Should be in the output.

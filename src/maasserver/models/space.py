@@ -4,12 +4,12 @@
 """Space objects."""
 
 
-import datetime
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import CharField, Manager, TextField
 from django.db.models.query import QuerySet
+from django.utils import timezone
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -67,7 +67,7 @@ class SpaceManager(Manager, SpaceQueriesMixin):
 
     def get_default_space(self):
         """Return the default space."""
-        now = datetime.datetime.now()
+        now = timezone.now()
         space, _ = self.get_or_create(
             id=0,
             defaults={"id": 0, "name": None, "created": now, "updated": now},

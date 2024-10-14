@@ -4,9 +4,9 @@
 """Tests for `maasserver.dns.publication`."""
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from pytz import UTC
+from django.utils import timezone
 from twisted.internet.defer import fail, inlineCallbacks
 from twisted.internet.task import Clock
 
@@ -26,8 +26,8 @@ def _is_expected_interval(interval):
 
 
 def patch_utcnow(test):
-    utcnow = test.patch(publication, "datetime").utcnow
-    ref = utcnow.return_value = datetime.utcnow()
+    utcnow = test.patch(publication, "timezone").now
+    ref = utcnow.return_value = timezone.now()
     return ref
 
 
@@ -40,7 +40,7 @@ class TestDNSPublicationGarbageService(MAASTestCase):
         deferToDatabase = self.patch(publication, "deferToDatabase")
 
         utcnow = patch_utcnow(self)
-        cutoff = utcnow.replace(tzinfo=UTC) - timedelta(days=7)
+        cutoff = utcnow - timedelta(days=7)
 
         dnsgc = publication.DNSPublicationGarbageService()
         dnsgc.clock = clock = Clock()
@@ -95,7 +95,7 @@ class TestDNSPublicationGarbageServiceWithDatabase(
         dnsgc = publication.DNSPublicationGarbageService()
 
         utcnow = patch_utcnow(self)
-        cutoff = utcnow.replace(tzinfo=UTC) - timedelta(days=7)
+        cutoff = utcnow - timedelta(days=7)
 
         self.patch(dnsgc, "_getInterval").side_effect = [0, 999]
         self.patch(DNSPublication.objects, "collect_garbage")

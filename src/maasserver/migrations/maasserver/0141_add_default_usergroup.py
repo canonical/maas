@@ -1,7 +1,6 @@
-from datetime import datetime
-
 from django.conf import settings
 from django.db import migrations
+from django.utils import timezone
 
 from maasserver.worker_user import user_name as worker_username
 from metadataserver.nodeinituser import user_name as node_init_username
@@ -14,7 +13,7 @@ def forwards(apps, schema_editor):
     User = apps.get_model(settings.AUTH_USER_MODEL)
     UserGroup = apps.get_model("maasserver", "UserGroup")
     UserGroupMembership = apps.get_model("maasserver", "UserGroupMembership")
-    now = datetime.now()
+    now = timezone.now()
     default_group, _ = UserGroup.objects.get_or_create(
         id=0,
         defaults={

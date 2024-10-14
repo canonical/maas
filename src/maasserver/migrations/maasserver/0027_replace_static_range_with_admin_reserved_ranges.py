@@ -1,7 +1,6 @@
-from datetime import datetime
-
 # Need a copy of this enum as it existed pre-migration.
 from django.db import migrations, models
+from django.utils import timezone
 from netaddr import IPAddress
 
 from provisioningserver.utils.network import MAASIPSet, make_iprange
@@ -38,7 +37,7 @@ def convert_static_ipranges_to_reserved(
         end_ip = str(IPAddress(iprange.last))
         IPRange.objects.get_or_create(
             created=created_time,
-            updated=datetime.now(),
+            updated=timezone.now(),
             subnet=subnet,
             start_ip=start_ip,
             end_ip=end_ip,

@@ -3,7 +3,7 @@
 
 """X509 certificates."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 import random
@@ -235,7 +235,9 @@ class Certificate(NamedTuple):
     def _parse_datetime(self, date) -> Optional[datetime]:
         if date is None:
             return None
-        return datetime.strptime(date.decode("ascii"), "%Y%m%d%H%M%SZ")
+        return datetime.strptime(
+            date.decode("ascii"), "%Y%m%d%H%M%SZ"
+        ).replace(tzinfo=timezone.utc)
 
     def expiration(self) -> Optional[datetime]:
         """Return the certificate expiration."""

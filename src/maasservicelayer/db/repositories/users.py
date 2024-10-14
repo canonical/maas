@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from django.core import signing
@@ -106,7 +106,7 @@ class UsersRepository(BaseRepository[User]):
             .filter(
                 and_(
                     eq(SessionTable.c.session_key, sessionid),
-                    gt(SessionTable.c.expire_date, datetime.utcnow()),
+                    gt(SessionTable.c.expire_date, datetime.now(timezone.utc)),
                 )
             )
         )

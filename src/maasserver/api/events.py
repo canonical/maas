@@ -20,6 +20,7 @@ from provisioningserver.events import AUDIT
 
 MAX_EVENT_LOG_COUNT = 1000
 DEFAULT_EVENT_LOG_LIMIT = 100
+DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
 
 
 def event_to_dict(event):
@@ -30,7 +31,7 @@ def event_to_dict(event):
         hostname=(event.hostname),
         id=event.id,
         level=event.type.level_str,
-        created=event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
+        created=event.created.strftime(DATETIME_FORMAT),
         type=event.type.description,
         description=(
             event.render_audit_description

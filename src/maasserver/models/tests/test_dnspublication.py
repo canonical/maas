@@ -3,11 +3,11 @@
 
 """Tests for general DNS models."""
 
-
 from datetime import datetime, timedelta
 from random import randint
 
 from django.db import connection
+from django.utils import timezone
 
 from maasserver.models.dnspublication import DNSPublication, zone_serial
 from maasserver.testing.factory import factory
@@ -50,7 +50,7 @@ class TestDNSPublication(MAASServerTestCase):
 
     def test_create_with_values(self):
         serial = randint(1, 5000)
-        created = datetime.now() - timedelta(minutes=1098)
+        created = timezone.now() - timedelta(minutes=1098)
         source = factory.make_name("source")
         pub = DNSPublication(serial=serial, created=created, source=source)
         pub.save()

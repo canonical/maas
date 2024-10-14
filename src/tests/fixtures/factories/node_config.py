@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import update
@@ -17,8 +17,8 @@ async def create_test_node_config_entry(
     node: dict[str, Any] | None = None,
     **extra_details: Any,
 ) -> dict[str, Any]:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     config = {
         "created": created_at,
         "updated": updated_at,

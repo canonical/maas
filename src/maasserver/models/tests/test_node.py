@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import base64
-from datetime import datetime, timedelta
+from datetime import timedelta
 import email
 import json
 import logging
@@ -18,6 +18,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models.deletion import Collector
 from django.db.models.query import QuerySet
+from django.utils import timezone
 from fixtures import LoggerFixture
 from netaddr import IPAddress, IPNetwork
 from temporalio.client import WorkflowFailureError
@@ -2849,7 +2850,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, enable_hw_sync=True
         )
-        node.last_sync = datetime.now()
+        node.last_sync = timezone.now()
         expected_interval = timedelta(minutes=15)
         self.assertEqual(node.next_sync, node.last_sync + expected_interval)
 
@@ -4628,7 +4629,7 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON,
             status=NODE_STATUS.RELEASING,
             owner=None,
-            status_expires=datetime.now(),
+            status_expires=timezone.now(),
         )
         node.update_power_state(POWER_STATE.OFF)
         self.assertIsNone(node.status_expires)
@@ -4701,7 +4702,7 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.READY,
         )
-        after_timeout = datetime.utcnow() + timedelta(
+        after_timeout = timezone.now() + timedelta(
             seconds=EXIT_RESCUE_MODE_TIMEOUT
         )
         node.update_power_state(POWER_STATE.ON, when=after_timeout)
@@ -4725,7 +4726,7 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.BROKEN,
         )
-        after_timeout = datetime.utcnow() + timedelta(
+        after_timeout = timezone.now() + timedelta(
             seconds=EXIT_RESCUE_MODE_TIMEOUT
         )
         node.update_power_state(POWER_STATE.ON, when=after_timeout)
@@ -4749,7 +4750,7 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.DEPLOYED,
         )
-        after_timeout = datetime.utcnow() + timedelta(
+        after_timeout = timezone.now() + timedelta(
             seconds=EXIT_RESCUE_MODE_TIMEOUT
         )
         node.update_power_state(POWER_STATE.OFF, when=after_timeout)
@@ -4771,7 +4772,7 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.DEPLOYED,
         )
-        after_timeout = datetime.utcnow() + timedelta(
+        after_timeout = timezone.now() + timedelta(
             seconds=EXIT_RESCUE_MODE_TIMEOUT
         )
         node.update_power_state(POWER_STATE.OFF, when=after_timeout)
@@ -6396,7 +6397,7 @@ class TestNodePowerParameters(MAASServerTestCase):
 
     def test_is_sync_healthy_returns_true_when_last_sync_within_window(self):
         node = factory.make_Node(enable_hw_sync=True)
-        now = datetime.now()
+        now = timezone.now()
         node.last_sync = now - timedelta(seconds=node.sync_interval)
         node.save()
         self.assertTrue(node.is_sync_healthy)
@@ -6405,7 +6406,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         self,
     ):
         node = factory.make_Node(enable_hw_sync=True)
-        now = datetime.now()
+        now = timezone.now()
         node.last_sync = now - (2 * timedelta(seconds=node.sync_interval))
         node.save()
         self.assertFalse(node.is_sync_healthy)
@@ -9599,7 +9600,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             first_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO
             )
-            first_ip.temp_expires_on = datetime.utcnow() - timedelta(minutes=5)
+            first_ip.temp_expires_on = timezone.now() - timedelta(minutes=5)
             first_ip.save()
             second_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet,
@@ -9755,7 +9756,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             first_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO
             )
-            first_ip.temp_expires_on = datetime.utcnow() - timedelta(minutes=5)
+            first_ip.temp_expires_on = timezone.now() - timedelta(minutes=5)
             first_ip.save()
         last_ip = str(first_ip.get_ipaddress())
 
@@ -9806,7 +9807,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             first_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO
             )
-            first_ip.temp_expires_on = datetime.utcnow() - timedelta(minutes=5)
+            first_ip.temp_expires_on = timezone.now() - timedelta(minutes=5)
             first_ip.save()
 
         client.side_effect = [
@@ -9860,7 +9861,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             first_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO
             )
-            first_ip.temp_expires_on = datetime.utcnow() - timedelta(minutes=5)
+            first_ip.temp_expires_on = timezone.now() - timedelta(minutes=5)
             first_ip.save()
             second_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet,
@@ -10964,7 +10965,7 @@ class TestReportNeighbours(MAASServerTestCase):
                 "interface": "eth0",
                 "mac": factory.make_mac_address(),
                 "ip": factory.make_ipv4_address(),
-                "time": datetime.now(),
+                "time": timezone.now(),
             },
         ]
         rack.report_neighbours(neighbours)
@@ -10986,13 +10987,13 @@ class TestReportNeighbours(MAASServerTestCase):
                 "interface": "eth0",
                 "mac": factory.make_mac_address(),
                 "ip": factory.make_ipv4_address(),
-                "time": datetime.now(),
+                "time": timezone.now(),
             },
             {
                 "interface": "eth1",
                 "mac": factory.make_mac_address(),
                 "ip": factory.make_ipv4_address(),
-                "time": datetime.now(),
+                "time": timezone.now(),
             },
         ]
         rack.report_neighbours(neighbours)
@@ -11011,14 +11012,14 @@ class TestReportNeighbours(MAASServerTestCase):
             {
                 "interface": "eth0",
                 "ip": factory.make_ipv4_address(),
-                "time": datetime.now(),
+                "time": timezone.now(),
                 "mac": factory.make_mac_address(),
                 "vid": 3,
             },
             {
                 "interface": "eth1",
                 "ip": factory.make_ipv4_address(),
-                "time": datetime.now(),
+                "time": timezone.now(),
                 "mac": factory.make_mac_address(),
                 "vid": 7,
             },
@@ -11042,7 +11043,7 @@ class TestReportNeighbours(MAASServerTestCase):
             {
                 "interface": "eth0",
                 "ip": subnet2.get_next_ip_for_allocation()[0],
-                "time": datetime.now(),
+                "time": timezone.now(),
                 "mac": iface2.mac_address,
                 "vid": observed_vlan.vid,
             }

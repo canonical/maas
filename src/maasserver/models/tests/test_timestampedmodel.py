@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from random import randint
 
 from django.db import transaction
+from django.utils import timezone
 
 from maasserver.models.timestampedmodel import now
 from maasserver.testing.testcase import (
@@ -20,7 +21,7 @@ from maasserver.tests.models import (
 
 def make_time_in_the_recent_past():
     many_seconds_ago = timedelta(seconds=randint(1, 999999))
-    return datetime.now() - many_seconds_ago
+    return timezone.now() - many_seconds_ago
 
 
 class TestTimestampedModel(MAASLegacyTransactionServerTestCase):
@@ -87,7 +88,7 @@ class TestTimestampedModel(MAASLegacyTransactionServerTestCase):
         self.assertLessEqual(old_updated, obj.updated)
 
     def test_updated_allows_override(self):
-        last_year = datetime.now() - timedelta(days=365)
+        last_year = timezone.now() - timedelta(days=365)
         # Perform a write database operation.
         created = make_time_in_the_recent_past()
         updated = make_time_in_the_recent_past()
@@ -99,7 +100,7 @@ class TestTimestampedModel(MAASLegacyTransactionServerTestCase):
         self.assertEqual(last_year, obj.updated)
 
     def test_created_allows_override(self):
-        last_year = datetime.now() - timedelta(days=365)
+        last_year = timezone.now() - timedelta(days=365)
         # Perform a write database operation.
         created = make_time_in_the_recent_past()
         updated = make_time_in_the_recent_past()

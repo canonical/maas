@@ -13,7 +13,6 @@ __all__ = [
 ]
 
 from collections import defaultdict, OrderedDict
-import datetime
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -26,6 +25,7 @@ from django.db.models import (
     Q,
 )
 from django.db.models.query import QuerySet
+from django.utils import timezone
 from netaddr import IPAddress
 
 from maasserver.fields import DomainNameField
@@ -131,7 +131,7 @@ class DomainManager(Manager, DomainQueriesMixin):
 
     def get_or_create_default_domain(self):
         """Return the default domain."""
-        now = datetime.datetime.now()
+        now = timezone.now()
         domain, _ = self.get_or_create(
             id=0,
             defaults={

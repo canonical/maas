@@ -5,10 +5,11 @@
 `maasserver.triggers.system`"""
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
 
 from django.db import connection as db_connection
+from django.utils import timezone
 from netaddr import IPAddress
 from twisted.internet.defer import (
     CancelledError,
@@ -216,7 +217,7 @@ class TestCoreRegionRackRPCConnectionInsertListener(
             self.create_region_controller_process,
             {
                 "region": region,
-                "updated": datetime.now() - timedelta(seconds=90),
+                "updated": timezone.now() - timedelta(seconds=90),
             },
         )
         dead_region_process_endpoint = yield deferToDatabase(
@@ -1254,7 +1255,7 @@ class TestDHCPVLANListener(
         )
         sip = yield deferToDatabase(
             self.create_staticipaddress,
-            {"temp_expires_on": datetime.utcnow()},
+            {"temp_expires_on": timezone.now()},
             vlan=relay_vlan,
         )
         yield listener.startService()
@@ -1306,7 +1307,7 @@ class TestDHCPVLANListener(
             yield deferToDatabase(
                 self.update_staticipaddress,
                 sip.id,
-                params={"temp_expires_on": datetime.utcnow()},
+                params={"temp_expires_on": timezone.now()},
             )
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)
@@ -3912,7 +3913,7 @@ class TestDNSStaticIPAddressListener(
             lambda sip: factory.pick_ip_in_Subnet(sip.subnet), sip
         )
         sip.ip = new_ip
-        sip.temp_expires_on = datetime.utcnow()
+        sip.temp_expires_on = timezone.now()
         yield deferToDatabase(sip.save)
         yield self.capturePublication()
         dv = DeferredValue()
@@ -3953,7 +3954,7 @@ class TestDNSStaticIPAddressListener(
             yield deferToDatabase(
                 self.update_staticipaddress,
                 sip.id,
-                {"temp_expires_on": datetime.utcnow()},
+                {"temp_expires_on": timezone.now()},
             )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()

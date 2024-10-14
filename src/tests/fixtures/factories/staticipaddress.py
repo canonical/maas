@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv6Address
 from typing import Any
 
@@ -16,8 +16,8 @@ async def create_test_staticipaddress_entry(
     **extra_details: Any,
 ) -> list[dict[str, Any]]:
     """We return a list, as DHCP ips need to create discovered ips also."""
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     staticipaddress = {
         "created": created_at,
         "updated": updated_at,

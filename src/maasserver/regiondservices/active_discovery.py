@@ -3,9 +3,9 @@
 
 """Service that periodically runs neighbour discovery scans on each rack."""
 
+from datetime import timedelta
 
-from datetime import datetime, timedelta
-
+from django.utils import timezone
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, maybeDeferred
@@ -259,7 +259,7 @@ class ActiveDiscoveryService(TimerService):
 
     def getCurrentTimestamp(self):
         """Returns the absolute current timestamp (in seconds) as an `int`."""
-        return int(datetime.now().timestamp())
+        return int(timezone.now().timestamp())
 
     def activeScanComplete(self, result):
         """Called when the active scan completes successfully."""

@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -16,6 +16,7 @@ from django.db.models import (
     Q,
     SET_NULL,
 )
+from django.utils import timezone
 import yaml
 
 from maasserver.models.cleansave import CleanSave
@@ -424,13 +425,13 @@ class ScriptResult(CleanSave, TimestampedModel):
 
     def save(self, *args, runtime=None, **kwargs):
         if self.started is None and self.status == SCRIPT_STATUS.RUNNING:
-            self.started = datetime.now()
+            self.started = timezone.now()
             if "update_fields" in kwargs:
                 kwargs["update_fields"].append("started")
         elif self.ended is None and self.status not in (
             SCRIPT_STATUS_RUNNING_OR_PENDING
         ):
-            self.ended = datetime.now()
+            self.ended = timezone.now()
             if "update_fields" in kwargs:
                 kwargs["update_fields"].append("ended")
             # LP: #1730799 - If a script is run quickly the POST telling MAAS

@@ -5,10 +5,10 @@
 
 
 from collections.abc import Iterable
-from datetime import datetime
 import random
 
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -777,7 +777,7 @@ class TestBootResource(MAASServerTestCase):
         self.assertEqual(latest_complete, resource.get_latest_complete_set())
 
     def configure_now(self):
-        now = datetime.now()
+        now = timezone.now()
         self.patch(bootresource, "now").return_value = now
         return now.strftime("%Y%m%d")
 

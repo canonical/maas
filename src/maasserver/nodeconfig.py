@@ -1,7 +1,7 @@
-from datetime import datetime
 from typing import Callable, Dict, Optional
 
 from django.db.models import Model, Q
+from django.utils import timezone
 
 from maasserver.models import (
     CacheSet,
@@ -34,7 +34,7 @@ def duplicate_nodeconfig(src_config: NodeConfig, dest_type: str) -> NodeConfig:
     )
     orig_interface_ids = list(interface_map)
     # create parent-child relationships
-    now = datetime.utcnow()
+    now = timezone.now()
     InterfaceRelationship.objects.bulk_create(
         InterfaceRelationship(
             parent_id=interface_map[parent_id],

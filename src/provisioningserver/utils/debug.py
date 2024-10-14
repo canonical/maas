@@ -4,7 +4,7 @@
 """Utilities for debugging."""
 
 import cProfile
-from datetime import datetime
+from datetime import datetime, timezone
 import functools
 import io
 import os
@@ -34,7 +34,9 @@ def toggle_cprofile(process_name, signum=None, stack=None):
         _profile.enable()
         print("Profiling enabled")
     else:
-        current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+        current_time = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%S.%f"
+        )
         profiling_dir = get_maas_data_path("profiling")
         os.makedirs(profiling_dir, exist_ok=True)
         output_filename = f"{process_name}-{os.getpid()}-{current_time}.pyprof"

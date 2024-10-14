@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from django.db import migrations
+from django.utils import timezone
 
 
 def migrate_default_zone(apps, schema_editor):
@@ -8,7 +7,7 @@ def migrate_default_zone(apps, schema_editor):
     DefaultResource = apps.get_model("maasserver", "DefaultResource")
     default_zone_qs = Zone.objects.filter(name="default")
 
-    now = datetime.now()
+    now = timezone.now()
     if default_zone_qs.exists():
         DefaultResource.objects.create(
             zone=default_zone_qs.first(), created=now, updated=now

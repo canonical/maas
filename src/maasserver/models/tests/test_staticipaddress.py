@@ -1,7 +1,6 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
 from random import randint, shuffle
 import threading
 from unittest import TestCase
@@ -9,6 +8,7 @@ from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
 from netaddr import IPAddress
 from psycopg2.errorcodes import FOREIGN_KEY_VIOLATION
 from twisted.python.failure import Failure
@@ -830,7 +830,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.AUTO,
             interface=iface,
             subnet=subnet,
-            temp_expires_on=datetime.utcnow(),
+            temp_expires_on=timezone.now(),
         )
         otherip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED,

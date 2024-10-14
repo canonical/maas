@@ -11,6 +11,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.utils import IntegrityError
 from django.http import Http404
+from django.utils import timezone
 from fixtures import FakeLogger
 from netaddr import EUI, IPAddress, IPNetwork
 
@@ -1125,7 +1126,7 @@ class TestInterface(MAASServerTestCase):
             ip=temp_ip,
             subnet=static_subnet,
             interface=interface,
-            temp_expires_on=datetime.datetime.utcnow(),
+            temp_expires_on=timezone.now(),
         )
         expected_links.append(
             {
@@ -1401,7 +1402,7 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
         iface.update_neighbour(**json)
         neighbour = get_one(Neighbour.objects.all())
         # Pretend this was updated one day ago.
-        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        yesterday = timezone.now() - datetime.timedelta(days=1)
         neighbour.save(_updated=yesterday, update_fields=["updated"])
         neighbour = reload_object(neighbour)
         self.assertEqual(
@@ -1483,7 +1484,7 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
         iface.mdns_discovery_state = True
         json = self.make_mdns_entry_json()
         iface.update_mdns_entry(json)
-        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        yesterday = timezone.now() - datetime.timedelta(days=1)
         mdns_entry = get_one(MDNS.objects.all())
         mdns_entry.save(_updated=yesterday, update_fields=["updated"])
         mdns_entry = reload_object(mdns_entry)

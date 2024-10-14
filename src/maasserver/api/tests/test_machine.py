@@ -2,15 +2,16 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
-from datetime import datetime
 import http.client
 import logging
 from random import choice
 from unittest.mock import ANY
 
 from django.conf import settings
+from django.core.serializers import json
 from django.db import transaction
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import urlencode
 from netaddr import IPAddress, IPNetwork
 from twisted.internet import defer
@@ -244,17 +245,18 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_GET_returns_hardware_sync_values(self):
         machine = factory.make_Node(enable_hw_sync=True)
-        machine.last_sync = datetime.now()
+        machine.last_sync = timezone.now()
         machine.save()
         response = self.client.get(self.get_machine_uri(machine))
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
+        encoder = json.DjangoJSONEncoder()
         self.assertEqual(
-            machine.last_sync.isoformat()[:-3], parsed_result["last_sync"]
+            encoder.default(machine.last_sync), parsed_result["last_sync"]
         )
         self.assertEqual(machine.sync_interval, parsed_result["sync_interval"])
         self.assertEqual(
-            machine.next_sync.isoformat()[:-3], parsed_result["next_sync"]
+            encoder.default(machine.next_sync), parsed_result["next_sync"]
         )
 
     def test_GET_refuses_to_access_nonexistent_machine(self):

@@ -1,13 +1,14 @@
 # Copyright 2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import json
 import os
 from unittest import mock
 
 from django.contrib.auth.models import User
 from django.http import HttpResponse
+from django.utils import timezone
 from macaroonbakery._utils import visit_page_with_browser
 from macaroonbakery.bakery import SimpleIdentity, VerificationError
 from macaroonbakery.httpbakery import WebBrowserInteractor
@@ -109,7 +110,7 @@ class TestValidateUserExternalAuthWithCandid(MAASServerTestCase):
             email=f"{self.user.username}@example.com",
             fullname=f"User {self.user.username}",
         )
-        self.now = datetime.utcnow()
+        self.now = timezone.now()
         # by default, the user has to be checked again
         self.default_last_check = (
             self.now - EXTERNAL_USER_CHECK_INTERVAL - timedelta(minutes=10)
@@ -250,7 +251,7 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
             email=f"{self.user.username}@example.com",
             fullname=f"User {self.user.username}",
         )
-        self.now = datetime.utcnow()
+        self.now = timezone.now()
         # by default, the user has to be checked again
         self.default_last_check = (
             self.now - EXTERNAL_USER_CHECK_INTERVAL - timedelta(minutes=10)
@@ -675,7 +676,7 @@ class TestKeyStore(MAASServerTestCase):
         super().setUp()
         self.expiry_duration = timedelta(hours=4)
         self.generate_interval = timedelta(hours=1)
-        self.now = datetime.now()
+        self.now = timezone.now()
         self.store = KeyStore(
             self.expiry_duration,
             generate_interval=self.generate_interval,

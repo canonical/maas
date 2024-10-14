@@ -6,7 +6,7 @@
 import base64
 import bz2
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 from django.db.utils import DatabaseError
@@ -610,11 +610,11 @@ class StatusWorkerService(TimerService):
         # datetime object. This is used for the time for the event message.
         timestamp = message.get("timestamp", None)
         if timestamp is not None:
-            message["timestamp"] = datetime.utcfromtimestamp(
-                message["timestamp"]
+            message["timestamp"] = datetime.fromtimestamp(
+                message["timestamp"], timezone.utc
             )
         else:
-            message["timestamp"] = datetime.utcnow()
+            message["timestamp"] = datetime.now(timezone.utc)
 
         # Determine if this messsage needs to be processed immediately.
         is_starting_event = (

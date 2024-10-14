@@ -13,7 +13,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.api import events as events_module
-from maasserver.api.events import event_to_dict
+from maasserver.api.events import DATETIME_FORMAT, event_to_dict
 from maasserver.api.tests.test_nodes import RequestFixture
 from maasserver.enum import NODE_TYPE
 from maasserver.testing.api import APITestCase
@@ -57,7 +57,7 @@ class TestEventToDict(APITestCase.ForUser):
         self.assertEqual(event_dict["level"], event.type.level_str)
         self.assertEqual(
             event_dict["created"],
-            event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
+            event.created.strftime(DATETIME_FORMAT),
         )
         self.assertEqual(event_dict["type"], event.type.description)
         self.assertEqual(event_dict["description"], event.description)
@@ -77,7 +77,7 @@ class TestEventToDict(APITestCase.ForUser):
         self.assertEqual(event_dict["level"], event.type.level_str)
         self.assertEqual(
             event_dict["created"],
-            event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
+            event.created.strftime(DATETIME_FORMAT),
         )
         self.assertEqual(event_dict["type"], event.type.description)
         self.assertEqual(event_dict["description"], event.description)
@@ -92,7 +92,7 @@ class TestEventToDict(APITestCase.ForUser):
         self.assertEqual(event_dict["level"], event.type.level_str)
         self.assertEqual(
             event_dict["created"],
-            event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
+            event.created.strftime(DATETIME_FORMAT),
         )
         self.assertEqual(event_dict["type"], event.type.description)
         self.assertEqual(

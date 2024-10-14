@@ -4,7 +4,7 @@
 
 import base64
 import bz2
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 import json
 import random
@@ -169,7 +169,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
             "origin": factory.make_name("origin"),
             "name": factory.make_name("name"),
             "description": factory.make_name("description"),
-            "timestamp": datetime.utcnow().timestamp(),
+            "timestamp": datetime.now(timezone.utc).timestamp(),
         }
 
     def test_init__(self):
@@ -354,7 +354,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Installation has started.",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         event = Event.objects.last()
@@ -372,7 +372,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.assertFalse(self.processMessage(node1, payload))
 
@@ -393,7 +393,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node1, payload)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node2).status)
@@ -423,7 +423,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
@@ -443,7 +443,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(
@@ -470,7 +470,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.assertEqual(user, node.owner)  # Node has an owner
         self.processMessage(node, payload)
@@ -494,7 +494,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.assertEqual(user, node.owner)  # Node has an owner
         self.processMessage(node, payload)
@@ -524,7 +524,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.assertEqual(user, node.owner)  # Node has an owner
         self.processMessage(node, payload)
@@ -542,7 +542,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             with_empty_script_sets=True,
         )
         script = factory.make_Script(may_reboot=True)
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         script_result = factory.make_ScriptResult(
             script=script,
             script_set=node.current_commissioning_script_set,
@@ -556,7 +556,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
@@ -572,7 +572,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(
@@ -598,7 +598,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "cloud-init",
             "name": "modules-final",
             "description": "America for Make Benefit Glorious Nation",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         mock_create_vmhost = self.patch(
             api_twisted_module, "_create_vmhost_for_deployment"
@@ -619,7 +619,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "cloud-init",
             "name": "modules-final",
             "description": "America for Make Benefit Glorious Nation",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         mock_create_vmhost = self.patch(
             api_twisted_module, "_create_vmhost_for_deployment"
@@ -635,7 +635,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(
@@ -659,7 +659,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.assertEqual(user, node.owner)  # Node has an owner
         self.processMessage(node, payload)
@@ -690,7 +690,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "files": [
                 {
                     "path": CURTIN_INSTALL_LOG,
@@ -719,7 +719,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Command Install",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "files": [
                 {
                     "path": CURTIN_INSTALL_LOG,
@@ -744,7 +744,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(
@@ -762,7 +762,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-erase",
             "description": "Erasing disk",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(
@@ -787,7 +787,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-erase",
             "description": "Erasing disk",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(
@@ -806,7 +806,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-erase",
             "description": "Erasing disk",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         self.assertEqual(
@@ -826,7 +826,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "files": [
                 {
                     "path": "sample.txt",
@@ -850,7 +850,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "files": [
                 {
                     "path": "sample.txt",
@@ -881,7 +881,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "files": [
                 {
                     "path": script_result.name,
@@ -919,7 +919,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                 "origin": "curtin",
                 "name": "commissioning",
                 "description": "Commissioning",
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(timezone.utc),
                 "files": [
                     {
                         "path": "sample.txt",
@@ -956,7 +956,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                 "origin": "curtin",
                 "name": "commissioning",
                 "description": "Commissioning",
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(timezone.utc),
                 "files": [
                     {
                         "path": script_result.name,
@@ -991,7 +991,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "files": [
                 {
                     "path": script_result.name,
@@ -1028,7 +1028,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "commissioning",
             "description": "Commissioning",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "files": [
                 {
                     "path": script_result.name,
@@ -1050,7 +1050,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             "origin": "curtin",
             "name": "cmd-install",
             "description": "Installation has started.",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         script_set = node.current_installation_script_set
@@ -1076,7 +1076,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                 ]
             ),
             "description": "Installing",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
         self.processMessage(node, payload)
         node = reload_object(node)

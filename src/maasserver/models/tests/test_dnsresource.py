@@ -2,10 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.utils import timezone
 
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress
@@ -323,9 +324,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         DNSResource.objects.update_dynamic_hostname(sip2, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
         # Create a date object for one week ago.
-        before = datetime.fromtimestamp(
-            datetime.now().timestamp() - timedelta(days=7).total_seconds()
-        )
+        before = timezone.now() - timedelta(days=7)
         dnsrr.save(_created=before, _updated=before, force_update=True)
         dnsrr = DNSResource.objects.get(name=hostname)
         self.assertEqual(before, dnsrr.updated)
@@ -385,9 +384,7 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
         )
         hostname = factory.make_name().lower()
         DNSResource.objects.update_dynamic_hostname(sip1, hostname)
-        before = datetime.fromtimestamp(
-            datetime.now().timestamp() - timedelta(days=7).total_seconds()
-        )
+        before = timezone.now() - timedelta(days=7)
         dns_resource = DNSResource.objects.get(name=hostname)
         dns_resource.save(_created=before, _updated=before, force_update=True)
         DNSResource.objects.release_dynamic_hostname(sip2)

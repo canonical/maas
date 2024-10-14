@@ -7,7 +7,7 @@ from maasservicelayer.models.zones import Zone
 
 class TestZonesResponse:
     def test_from_model(self) -> None:
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         zone = Zone(
             id=1,
             name="my zone",

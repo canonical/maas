@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from django.conf import settings
 import django.core.validators
 from django.db import migrations, models
 import django.db.models.deletion
+from django.utils import timezone
 
 import maasserver.fields
 import maasserver.migrations.fields
@@ -24,7 +23,7 @@ import metadataserver.fields
 
 def get_default_zone():
     default_zone_name = "default"
-    now = datetime.now()
+    now = timezone.now()
 
     zone, _ = Zone.objects.get_or_create(
         name=default_zone_name,

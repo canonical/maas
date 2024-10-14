@@ -85,7 +85,7 @@ class TestUsersRepository:
             fixture,
             user.id,
             "test_session",
-            expire_date=datetime.datetime.utcnow()
+            expire_date=datetime.datetime.now(datetime.timezone.utc)
             - datetime.timedelta(seconds=1),
         )
 

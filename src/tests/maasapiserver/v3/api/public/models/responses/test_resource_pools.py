@@ -9,7 +9,7 @@ from maasservicelayer.models.resource_pools import ResourcePool
 
 class TestResourcePoolsResponse:
     def test_from_model(self) -> None:
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         resource_pool = ResourcePool(
             id=1,
             name="my resource_pools",

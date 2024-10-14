@@ -17,8 +17,9 @@ do it, to ensure that the migrations meet validation requirements.)
 """
 
 
-import datetime
 from textwrap import dedent
+
+from django.utils import timezone
 
 from maasserver.enum import INTERFACE_TYPE
 
@@ -50,7 +51,7 @@ def update_interface_with_subnet_vlan(iface, subnet):
 
 def get_or_create_default_fabric(Fabric):
     """Return the default Fabric or create it."""
-    now = datetime.datetime.now()
+    now = timezone.now()
     return Fabric.objects.get_or_create(
         id=0,
         defaults={"id": 0, "name": "fabric-0", "created": now, "updated": now},
@@ -83,7 +84,7 @@ def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
         else:
             index += 1
         # Create a "dummy" interface. (this is a 'legacy' MACAddress)
-        now = datetime.datetime.now()
+        now = timezone.now()
         iface = Interface.objects.create(
             mac=mac,
             type=INTERFACE_TYPE.PHYSICAL,

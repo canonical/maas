@@ -4,7 +4,7 @@
 """Test the configauth command."""
 
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import timedelta
 import json
 import tempfile
 import unittest
@@ -12,6 +12,7 @@ import unittest
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.utils import timezone
 
 from maasserver.management.commands import configauth
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
@@ -91,7 +92,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
     def test_configauth_delete_sessions(self):
         session = Session(
             session_key="session_key",
-            expire_date=datetime.utcnow() + timedelta(days=1),
+            expire_date=timezone.now() + timedelta(days=1),
         )
         session.save()
         call_command("configauth", rbac_url="")

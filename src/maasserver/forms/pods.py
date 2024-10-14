@@ -10,7 +10,7 @@ __all__ = [
     "PodForm",
 ]
 
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 
 import crochet
@@ -327,7 +327,7 @@ class PodForm(MAASModelForm):
             self.instance.created_with_maas_generated_cert = (
                 certificate_generated_by_this_maas(cert)
             )
-            expiration = cert.expiration() - datetime.utcnow()
+            expiration = cert.expiration() - datetime.now(timezone.utc)
             self.instance.created_with_cert_expiration_days = expiration.days
 
         self.instance.save()

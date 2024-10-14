@@ -46,6 +46,7 @@ from maasserver.utils.osystems import (
 )
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
+    DATETIME_FORMAT,
     Handler,
     HandlerError,
     HandlerValidationError,
@@ -649,11 +650,9 @@ class BootResourceHandler(Handler):
                 "canDeployToMemory": resource.can_deploy_to_memory,
                 "numberOfNodes": resource.number_of_nodes,
                 "machineCount": resource.machine_count,
-                "lastUpdate": resource.last_update.strftime(
-                    "%a, %d %b. %Y %H:%M:%S"
-                ),
+                "lastUpdate": resource.last_update.strftime(DATETIME_FORMAT),
                 "lastDeployed": (
-                    resource.last_deployed.strftime("%a, %d %b. %Y %H:%M:%S")
+                    resource.last_deployed.strftime(DATETIME_FORMAT)
                     if resource.last_deployed
                     else None
                 ),

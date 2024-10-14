@@ -3,10 +3,10 @@
 
 """Tests for the RDNS model."""
 
-
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from maasserver.models import RDNS
 from maasserver.testing.factory import factory
@@ -102,7 +102,7 @@ class TestRDNSManager(MAASServerTestCase):
         region = factory.make_RegionController()
         hostname = factory.make_hostname()
         ip = factory.make_ip_address()
-        yesterday = datetime.now() - timedelta(days=1)
+        yesterday = timezone.now() - timedelta(days=1)
         factory.make_RDNS(ip, hostname, region, updated=yesterday)
         # Nothing changed, so expect that only the last updated time changed.
         RDNS.objects.set_current_entry(ip, [hostname], region)

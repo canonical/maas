@@ -1,5 +1,5 @@
 # Factories for the ResourcePool
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from maasservicelayer.models.resource_pools import ResourcePool
@@ -9,8 +9,8 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_resource_pool(
     fixture: Fixture, **extra_details: Any
 ) -> ResourcePool:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     resource_pools = {
         "name": "my_resource_pool",
         "description": "my_description",
@@ -28,7 +28,7 @@ async def create_test_resource_pool(
 async def create_n_test_resource_pools(
     fixture: Fixture, size: int
 ) -> list[ResourcePool]:
-    now = datetime.utcnow().astimezone()
+    now = datetime.now(timezone.utc).astimezone()
     resource_pools = {
         "name": "my_resource_pool",
         "description": "my_description",

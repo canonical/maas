@@ -4,10 +4,10 @@
 """Simplestreams code to download boot resources."""
 
 
-from datetime import datetime
 import os.path
 import tarfile
 
+from django.utils import timezone
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import FileStore
 from simplestreams.util import (
@@ -316,7 +316,7 @@ def compose_snapshot_path(storage_path):
         usually `/var/lib/maas/boot-resources`.
     :return: Path to the snapshot directory.
     """
-    now = datetime.utcnow()
+    now = timezone.now()
     snapshot_name = "snapshot-%s" % now.strftime("%Y%m%d-%H%M%S")
     return os.path.join(storage_path, snapshot_name)
 

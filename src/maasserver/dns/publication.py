@@ -4,10 +4,10 @@
 """Services related to DNS publication."""
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
 
-from pytz import UTC
+from django.utils import timezone
 from twisted.application.service import Service
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
@@ -44,8 +44,8 @@ class DNSPublicationGarbageService(Service):
         :return: The number of seconds.
         """
         return random.randrange(
-            timedelta(hours=3).total_seconds(),
-            timedelta(hours=6).total_seconds(),
+            int(timedelta(hours=3).total_seconds()),
+            int(timedelta(hours=6).total_seconds()),
         )
 
     def _updateInterval(self):
@@ -58,7 +58,7 @@ class DNSPublicationGarbageService(Service):
         self._loop.interval = self._getInterval()
 
     def _tryCollectGarbage(self):
-        cutoff = datetime.utcnow().replace(tzinfo=UTC) - timedelta(days=7)
+        cutoff = timezone.now() - timedelta(days=7)
         d = deferToDatabase(self._collectGarbage, cutoff)  # In a transaction.
         d.addBoth(callOut, self._updateInterval)  # Always adjust the schedule.
         d.addErrback(log.err, "Failure when removing old DNS publications.")

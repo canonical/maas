@@ -1,5 +1,7 @@
 import datetime
 
+from django.utils import timezone
+
 from maasserver import release_notifications
 from maasserver.models import ControllerInfo, Notification
 from maasserver.testing.factory import factory
@@ -89,7 +91,7 @@ class TestReleaseNotification(MAASTransactionServerTestCase):
         self.assertEqual(notification.notificationdismissal_set.count(), 2)
 
         # Manually update the notification to appear in the past.
-        three_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=3)
+        three_weeks_ago = timezone.now() - datetime.timedelta(weeks=3)
         notification.notificationdismissal_set.filter(user=user2).update(
             updated=three_weeks_ago, created=three_weeks_ago
         )

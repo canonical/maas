@@ -1,7 +1,6 @@
-import datetime
-
 from django.db import migrations, models
 import django.db.models.deletion
+from django.utils import timezone
 
 import maasserver.models.dnsresource
 from maasserver.models.domain import DEFAULT_DOMAIN_NAME
@@ -27,7 +26,7 @@ def migrate_nodegroup_name(apps, schema_editor):
     Domain = apps.get_model("maasserver", "Domain")
 
     # First, create the default domain.
-    now = datetime.datetime.now()
+    now = timezone.now()
     domain, _ = Domain.objects.get_or_create(
         id=0,
         defaults={
@@ -42,7 +41,7 @@ def migrate_nodegroup_name(apps, schema_editor):
     # Then, create all of the domains for which we are authoritative
     for nodegroup in NodeGroup.objects.filter(name__isnull=False):
         # Create a Domain if needed, for this name.
-        now = datetime.datetime.now()
+        now = timezone.now()
         domain, _ = Domain.objects.get_or_create(
             name=nodegroup.name,
             authoritative=True,
@@ -67,7 +66,7 @@ def migrate_nodegroup_name(apps, schema_editor):
                 managed_ngi = node.interface_set.filter(
                     ip_addresses__subnet__nodegroupinterface__in=ngi
                 ).distinct()
-                now = datetime.datetime.now()
+                now = timezone.now()
                 this_domain, _ = Domain.objects.get_or_create(
                     name=domainname,
                     defaults={
@@ -104,7 +103,7 @@ def migrate_staticipaddress_hostname(apps, schema_editor):
             domain_id = domains.pop().id
         else:
             domain_id = maasserver.models.dnsresource.get_default_domain()
-        now = datetime.datetime.now()
+        now = timezone.now()
         dnsrr, _ = DNSResource.objects.get_or_create(
             name=hostname,
             domain_id=domain_id,

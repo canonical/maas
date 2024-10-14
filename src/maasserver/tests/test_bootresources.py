@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime
 from email.utils import format_datetime
 from io import BytesIO
 import logging
@@ -16,6 +15,7 @@ from unittest.mock import ANY, MagicMock, Mock, sentinel
 from urllib.parse import urljoin
 
 from django.db import transaction
+from django.utils import timezone
 from fixtures import FakeLogger, Fixture
 from twisted.application.internet import TimerService
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
@@ -1746,7 +1746,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
             arch,
             subarch,
         )
-        version = datetime.now().date().strftime("%Y%m%d.0")
+        version = timezone.now().date().strftime("%Y%m%d.0")
         versions = {
             version: {
                 "items": {
@@ -1776,7 +1776,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         src = {
             "datatype": "image-downloads",
             "format": "products:1.0",
-            "updated": format_datetime(datetime.now()),
+            "updated": format_datetime(timezone.now()),
             "products": products,
             "content_id": "com.ubuntu.maas:daily:v2:download",
         }

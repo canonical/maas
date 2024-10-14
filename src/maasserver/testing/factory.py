@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import hashlib
 from io import BytesIO
 from itertools import chain, repeat
@@ -982,7 +982,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_ScriptSet(self, last_ping=None, node=None, result_type=None):
         if last_ping is None:
-            last_ping = datetime.now()
+            last_ping = timezone.now()
         if node is None:
             node = self.make_Node()
         if result_type is None:
@@ -1059,11 +1059,11 @@ class Factory(maastesting.factory.Factory):
             if script_version is None and script_name is None:
                 script_version = script.script
             if started is None:
-                started = datetime.now() - timedelta(
+                started = timezone.now() - timedelta(
                     seconds=random.randint(1, 500)
                 )
             if ended is None and status not in SCRIPT_STATUS_RUNNING:
-                ended = datetime.now()
+                ended = timezone.now()
         return ScriptResult.objects.create(
             script_set=script_set,
             script=script,
@@ -2398,7 +2398,7 @@ class Factory(maastesting.factory.Factory):
         if description is None:
             description = self.make_name("desc")
         if created is None:
-            created = datetime.now()
+            created = timezone.now()
         return Event.objects.create(
             type=type,
             node=node,
@@ -3479,7 +3479,7 @@ class Factory(maastesting.factory.Factory):
         if material is None:
             material = os.urandom(24)
         if expiration is None:
-            expiration = datetime.now() + timedelta(days=1)
+            expiration = timezone.now() + timedelta(days=1)
         key = RootKey.objects.create(expiration=expiration)
         SecretManager().set_simple_secret(
             "material", to_hex(material), obj=key

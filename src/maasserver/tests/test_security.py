@@ -19,7 +19,7 @@ class TestGetSerial(MAASTestCase):
         security_datetime = self.patch(security, "datetime")
         # Make security.datetime() work like regular datetime.
         security_datetime.side_effect = datetime
-        # Make security.datetime.now() return a fixed value.
+        # Make security.timezone.now() return a fixed value.
         security_datetime.now.return_value = nowish
         self.assertEqual(69005220, security.get_serial())
 

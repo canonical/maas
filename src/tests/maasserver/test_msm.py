@@ -146,7 +146,7 @@ class TestMSMStatus:
 
     def test_enroled_not_connected(self, mocker, msm_access):
         mocked_query = mocker.patch("maasserver.msm._query_workflow")
-        start = datetime.now()
+        start = datetime.now(timezone.utc)
         mocked_query.return_value = False, start
         mocked_pending = mocker.patch("maasserver.msm._query_pending")
         mocked_pending.return_value = False, None
@@ -158,7 +158,7 @@ class TestMSMStatus:
 
     def test_enroled_connected(self, mocker, msm_access):
         mocked_query = mocker.patch("maasserver.msm._query_workflow")
-        start = datetime.now()
+        start = datetime.now(timezone.utc)
         mocked_query.return_value = True, start
         mocked_pending = mocker.patch("maasserver.msm._query_pending")
         mocked_pending.return_value = False, None

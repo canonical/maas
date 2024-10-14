@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from hashlib import sha256
 from hmac import HMAC
 from json import dumps
@@ -10,6 +10,7 @@ import random
 from random import randint
 import time
 
+from django.utils import timezone
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.python.failure import Failure
 
@@ -574,8 +575,8 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
     def test_send_event_stores_event_with_timestamp_received(self):
         # Use a random time in the recent past and coerce the responder to use
         # it as the time-stamp for the event. We'll check this later on.
-        timestamp = datetime.now() - timedelta(seconds=randint(99, 99999))
-        self.patch(regionservice, "datetime").now.return_value = timestamp
+        timestamp = timezone.now() - timedelta(seconds=randint(99, 99999))
+        self.patch(regionservice, "timezone").now.return_value = timestamp
 
         event_type = factory.make_name("type_name")
         yield deferToDatabase(self.create_event_type, event_type, "", 0)
@@ -741,8 +742,8 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
     def test_send_event_mac_address_stores_event_with_timestamp_received(self):
         # Use a random time in the recent past and coerce the responder to use
         # it as the time-stamp for the event. We'll check this later on.
-        timestamp = datetime.now() - timedelta(seconds=randint(99, 99999))
-        self.patch(regionservice, "datetime").now.return_value = timestamp
+        timestamp = timezone.now() - timedelta(seconds=randint(99, 99999))
+        self.patch(regionservice, "timezone").now.return_value = timestamp
 
         event_type = factory.make_name("type_name")
         yield deferToDatabase(self.create_event_type, event_type, "", 0)

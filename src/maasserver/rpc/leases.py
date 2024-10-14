@@ -4,7 +4,7 @@
 """RPC helpers relating to DHCP leases."""
 
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from netaddr import IPAddress
 
@@ -93,7 +93,7 @@ def update_lease(
         )
 
     mac = normalise_macaddress(mac)
-    created = datetime.fromtimestamp(timestamp)
+    created = datetime.fromtimestamp(timestamp, tz=timezone.utc)
     log.msg(
         "Lease update: %s for %s on %s at %s%s%s"
         % (

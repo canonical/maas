@@ -4,13 +4,13 @@
 """RPC implementation for regions."""
 from collections import defaultdict
 import copy
-from datetime import datetime
 import json
 from os import urandom
 import random
 from socket import AF_INET, AF_INET6
 import uuid
 
+from django.utils import timezone
 from netaddr import AddrConversionError, IPAddress
 from twisted.application import service
 from twisted.internet import defer, reactor
@@ -262,7 +262,7 @@ class Region(SecuredRPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEvent`.
         """
-        timestamp = datetime.now()
+        timestamp = timezone.now()
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         dbtasks.addTask(
             events.send_event, system_id, type_name, description, timestamp
@@ -277,7 +277,7 @@ class Region(SecuredRPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEventMACAddress`.
         """
-        timestamp = datetime.now()
+        timestamp = timezone.now()
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         dbtasks.addTask(
             events.send_event_mac_address,
@@ -296,7 +296,7 @@ class Region(SecuredRPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEventIPAddress`.
         """
-        timestamp = datetime.now()
+        timestamp = timezone.now()
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         dbtasks.addTask(
             events.send_event_ip_address,

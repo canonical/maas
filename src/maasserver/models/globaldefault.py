@@ -4,9 +4,8 @@
 """Global default objects."""
 
 
-from datetime import datetime
-
 from django.db.models import AutoField, ForeignKey, Manager, PROTECT
+from django.utils import timezone
 
 from maasserver.enum import ALLOCATED_NODE_STATUSES, NODE_STATUS
 from maasserver.models.cleansave import CleanSave
@@ -19,7 +18,7 @@ maaslog = get_maas_logger("default")
 
 class GlobalDefaultManager(Manager):
     def instance(self):
-        now = datetime.now()
+        now = timezone.now()
         instance, _ = self.get_or_create(
             id=0,
             defaults=dict(

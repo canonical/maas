@@ -2,13 +2,14 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
 from unittest import mock
 from unittest.mock import PropertyMock
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.utils import timezone
 
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.exceptions import NoScriptsFound
@@ -1200,7 +1201,7 @@ class TestScriptSet(MAASServerTestCase):
 
     def test_started(self):
         script_set = factory.make_ScriptSet()
-        now = datetime.now()
+        now = timezone.now()
         started = now - timedelta(seconds=random.randint(1, 500))
         factory.make_ScriptResult(script_set=script_set, started=now)
         factory.make_ScriptResult(script_set=script_set, started=started)
@@ -1208,7 +1209,7 @@ class TestScriptSet(MAASServerTestCase):
 
     def test_ended(self):
         script_set = factory.make_ScriptSet()
-        ended = datetime.now() + timedelta(seconds=random.randint(1, 500))
+        ended = timezone.now() + timedelta(seconds=random.randint(1, 500))
         factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.PASSED
         )
@@ -1230,7 +1231,7 @@ class TestScriptSet(MAASServerTestCase):
     def test_get_runtime(self):
         script_set = factory.make_ScriptSet()
         runtime_seconds = random.randint(1, 59)
-        now = datetime.now()
+        now = timezone.now()
         factory.make_ScriptResult(
             script_set=script_set,
             status=SCRIPT_STATUS.PASSED,

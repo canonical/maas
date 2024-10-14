@@ -4,9 +4,8 @@
 """Tests for `maasserver.websockets.handlers.user`"""
 
 
-import datetime
-
 from django.contrib.auth.models import User
+from django.utils import timezone
 from testtools.testcase import TestCase
 
 from maasserver.enum import NODE_STATUS
@@ -363,7 +362,7 @@ class TestUserHandler(MAASServerTestCase):
 
     def test_last_login(self):
         user = factory.make_User()
-        now = datetime.datetime.utcnow()
+        now = timezone.now()
         user.last_login = now
         user.save()
         handler = UserHandler(user, {}, None)

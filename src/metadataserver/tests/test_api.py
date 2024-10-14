@@ -3,7 +3,7 @@
 
 import base64
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import http.client
 from io import BytesIO
 import json
@@ -1483,7 +1483,7 @@ class TestInstallingAPI(MAASServerTestCase):
             enable_hw_sync=True,
             with_empty_script_sets=True,
         )
-        old_last_sync = node.last_sync = datetime.now()
+        old_last_sync = node.last_sync = datetime.now(timezone.utc)
         node.save()
 
         script_result = (
@@ -2947,7 +2947,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signaling_commissioning_clears_status_expires(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING,
-            status_expires=datetime.now(),
+            status_expires=datetime.now(timezone.utc),
             with_empty_script_sets=True,
         )
         client = make_node_client(node=node)
@@ -3691,7 +3691,7 @@ class TestTestingAPI(MAASServerTestCase):
             owner=factory.make_User(),
             with_empty_script_sets=True,
         )
-        node.status_expires = datetime.now()
+        node.status_expires = datetime.now(timezone.utc)
         node.save()
         script_result = (
             node.current_testing_script_set.scriptresult_set.first()

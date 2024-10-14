@@ -4,11 +4,11 @@
 """Tests for `rpc.leases`."""
 
 
-from datetime import datetime
+from datetime import datetime, timezone
 import random
 import time
 
-from django.utils import timezone
+from django.utils.timezone import now
 from netaddr import IPAddress
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_FAMILY, IPADDRESS_TYPE
@@ -146,7 +146,7 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(sip.subnet, subnet)
         self.assertEqual(sip.lease_time, kwargs["lease_time"])
 
-        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        t0 = datetime.fromtimestamp(kwargs["timestamp"], tz=timezone.utc)
         self.assertEqual(sip.created, t0)
         self.assertEqual(sip.updated, t0)
 
@@ -171,7 +171,7 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(sip.subnet, subnet)
         self.assertEqual(sip.lease_time, kwargs["lease_time"])
 
-        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        t0 = datetime.fromtimestamp(kwargs["timestamp"], tz=timezone.utc)
         self.assertEqual(sip.created, t0)
         self.assertEqual(sip.updated, t0)
         # No DNS record should have been crated.
@@ -275,7 +275,7 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(sip.subnet, subnet)
         self.assertEqual(sip.lease_time, kwargs["lease_time"])
 
-        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        t0 = datetime.fromtimestamp(kwargs["timestamp"], tz=timezone.utc)
         self.assertEqual(sip.created, t0)
         self.assertEqual(sip.updated, t0)
         self.assertCountEqual(
@@ -355,7 +355,7 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(sip.subnet, subnet)
         self.assertEqual(sip.lease_time, kwargs["lease_time"])
 
-        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        t0 = datetime.fromtimestamp(kwargs["timestamp"], tz=timezone.utc)
         self.assertEqual(sip.created, t0)
         self.assertEqual(sip.updated, t0)
         self.assertCountEqual(
@@ -426,8 +426,8 @@ class TestUpdateLease(MAASServerTestCase):
         # Create a bunch of null IPs to show the effects of bug 1817056.
         null_ips = [
             StaticIPAddress(
-                created=timezone.now(),
-                updated=timezone.now(),
+                created=now(),
+                updated=now(),
                 ip=None,
                 alloc_type=IPADDRESS_TYPE.DISCOVERED,
                 subnet=subnet,

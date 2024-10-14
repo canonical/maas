@@ -10,7 +10,7 @@ from maasservicelayer.models.fabrics import Fabric
 
 class TestFabricsResponse:
     def test_from_model(self) -> None:
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         fabric = Fabric(
             id=1,
             name="my fabric",

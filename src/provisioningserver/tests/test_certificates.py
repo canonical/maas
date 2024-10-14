@@ -1,6 +1,6 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fixtures import EnvironmentVariable, TempDir
@@ -47,7 +47,7 @@ class TestCertificate(MAASTestCase):
     def test_certificate(self):
         self.assertEqual(self.sample_cert.cn(), "maas")
         self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=3650),
+            datetime.now(timezone.utc) + timedelta(days=3650),
             self.sample_cert.expiration(),
         )
         self.assertTrue(
@@ -184,7 +184,7 @@ class TestCertificate(MAASTestCase):
         self.assertEqual(cert.key.bits(), 4096)
         self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
         self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=3650),
+            datetime.now(timezone.utc) + timedelta(days=3650),
             cert.expiration(),
         )
 
@@ -195,7 +195,7 @@ class TestCertificate(MAASTestCase):
     def test_generate_certificate_validity(self):
         cert = Certificate.generate("maas", validity=timedelta(days=100))
         self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=100),
+            datetime.now(timezone.utc) + timedelta(days=100),
             cert.expiration(),
         )
 
@@ -225,7 +225,7 @@ class TestCertificate(MAASTestCase):
     def test_generate_certificate_not_before(self):
         cert = Certificate.generate("maas", validity=timedelta(days=100))
         self.assertLessEqual(
-            datetime.utcnow() + timedelta(days=-1),
+            datetime.now(timezone.utc) + timedelta(days=-1),
             cert.not_before(),
         )
         self.assertGreater(
@@ -251,7 +251,7 @@ class TestCertificate(MAASTestCase):
         self.assertEqual(cert.key.bits(), 4096)
         self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
         self.assertLessEqual(
-            datetime.utcnow() + timedelta(days=-1),
+            datetime.now(timezone.utc) + timedelta(days=-1),
             cert.not_before(),
         )
         self.assertGreater(
@@ -294,7 +294,7 @@ class TestCertificate(MAASTestCase):
         self.assertEqual(signed_certificate.cert.get_subject().CN, "maas")
         self.assertEqual(signed_certificate.key, certificate_request.key)
         self.assertLessEqual(
-            datetime.utcnow() + timedelta(days=-1),
+            datetime.now(timezone.utc) + timedelta(days=-1),
             signed_certificate.not_before(),
         )
         self.assertGreater(

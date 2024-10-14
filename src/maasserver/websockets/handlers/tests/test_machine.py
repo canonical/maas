@@ -1,8 +1,7 @@
 # Copyright 2016-2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-
-from datetime import datetime, timedelta
+from datetime import timedelta
 import json
 import logging
 from operator import itemgetter
@@ -13,6 +12,7 @@ from unittest.mock import ANY
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+from django.utils import timezone
 from lxml import etree
 from testtools.content import text_content
 from twisted.internet.defer import inlineCallbacks
@@ -2054,7 +2054,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         Config.objects.set_config(name="hardware_sync_interval", value="10m")
         node = factory.make_Node_with_Interface_on_Subnet(enable_hw_sync=True)
-        node.last_sync = datetime.now()
+        node.last_sync = timezone.now()
         node.save()
         observed = handler.get({"system_id": node.system_id})
         self.assertEqual(

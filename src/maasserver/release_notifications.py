@@ -8,8 +8,9 @@ notifications for the user.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+from django.utils import timezone
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.models import Config, Notification
@@ -74,7 +75,7 @@ def ensure_notification_exists(message, resurface_after=RESURFACE_AFTER):
         return
 
     notification.notificationdismissal_set.filter(
-        updated__lt=datetime.now() - resurface_after
+        updated__lt=timezone.now() - resurface_after
     ).delete()
 
 

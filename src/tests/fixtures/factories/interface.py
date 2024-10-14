@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from maasservicelayer.models.interfaces import Interface, Link
@@ -58,8 +58,8 @@ async def create_test_interface_dict(
     boot_iface: bool | None = None,
     **extra_details: Any,
 ) -> dict[str, Any]:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     interface = {
         "created": created_at,
         "updated": updated_at,

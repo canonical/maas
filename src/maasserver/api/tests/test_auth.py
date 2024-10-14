@@ -4,7 +4,7 @@
 """Test `api.auth` module."""
 
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
@@ -70,9 +70,9 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
 
         auth = MAASAPIAuthentication()
         user = factory.make_User()
-        user.userprofile.auth_last_check = datetime.utcnow() - timedelta(
-            days=1
-        )
+        user.userprofile.auth_last_check = datetime.now(
+            timezone.utc
+        ) - timedelta(days=1)
         mock_token = mock.Mock(user=user)
         request = self.make_request()
 
@@ -92,9 +92,9 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
 
         auth = MAASAPIAuthentication()
         user = factory.make_User()
-        user.userprofile.auth_last_check = datetime.utcnow() - timedelta(
-            days=1
-        )
+        user.userprofile.auth_last_check = datetime.now(
+            timezone.utc
+        ) - timedelta(days=1)
         mock_token = mock.Mock(user=user)
         request = self.make_request()
         auth.is_valid_request = lambda request: True

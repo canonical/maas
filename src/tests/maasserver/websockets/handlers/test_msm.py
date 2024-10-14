@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.msm`"""
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -27,7 +27,9 @@ class TestMSMHandler:
 
     def test_status_waiting_for_approval(self, mocker):
         owner, session = factory.make_User_with_session()
-        expected_started = datetime.now().strftime("%a %d %b %Y, %I:%M%p")
+        expected_started = datetime.now(timezone.utc).strftime(
+            "%a %d %b %Y, %I:%M%p"
+        )
         expected_url = "http://test-maas"
         mocker.patch.object(
             msm,
@@ -48,7 +50,9 @@ class TestMSMHandler:
 
     def test_status_approved(self, mocker):
         owner, session = factory.make_User_with_session()
-        expected_started = datetime.now().strftime("%a %d %b %Y, %I:%M%p")
+        expected_started = datetime.now(timezone.utc).strftime(
+            "%a %d %b %Y, %I:%M%p"
+        )
         expected_url = "http://test-maas"
         mocker.patch.object(
             msm,

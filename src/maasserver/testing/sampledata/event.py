@@ -1,6 +1,7 @@
-from datetime import datetime
 from itertools import cycle
 from typing import Iterable
+
+from django.utils import timezone
 
 from maasserver.models import Event, EventType, Machine
 from maasserver.models.eventtype import LOGGING_LEVELS
@@ -27,7 +28,7 @@ def make_events(
     events = []
     for machine in machines:
         for _ in range(next(counts)):
-            now = datetime.utcnow()
+            now = timezone.now()
             events.append(
                 Event(
                     type=next(event_types),

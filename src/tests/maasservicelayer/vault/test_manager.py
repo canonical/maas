@@ -78,7 +78,7 @@ def async_vault_client_default_mock() -> AsyncVaultApiClient:
         return_value=KvV2WriteResponse(
             **get_base_response_dict(),
             data=KvV2WriteDetailResponse(
-                created_time=datetime.utcnow(), version=1
+                created_time=datetime.now(timezone.utc), version=1
             )
         )
     )

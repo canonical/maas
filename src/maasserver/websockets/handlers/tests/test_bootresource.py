@@ -5,6 +5,7 @@ import datetime
 import random
 from unittest.mock import ANY
 
+from django.utils import timezone
 from twisted.internet import reactor
 from twisted.internet.defer import succeed
 
@@ -35,7 +36,11 @@ from maasserver.testing.testcase import (
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import get_one, reload_object
-from maasserver.websockets.base import HandlerError, HandlerValidationError
+from maasserver.websockets.base import (
+    DATETIME_FORMAT,
+    HandlerError,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers import bootresource
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
@@ -312,12 +317,18 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         resource = factory.make_usable_boot_resource()
-        resource_updated = handler.get_last_update_for_resources([resource])
+        resource_updated = handler.get_last_update_for_resources(
+            [resource]
+        ).replace(microsecond=0)
         response = handler.poll({})
-        updated = datetime.datetime.strptime(
-            response["resources"][0]["lastUpdate"], "%a, %d %b. %Y %H:%M:%S"
+        updated = (
+            datetime.datetime.strptime(
+                response["resources"][0]["lastUpdate"], DATETIME_FORMAT
+            )
+            .astimezone()
+            .replace(microsecond=0)
         )
-        self.assertEqual(resource_updated.timetuple(), updated.timetuple())
+        self.assertEqual(resource_updated, updated)
 
     def test_returns_resource_attributes(self):
         owner = factory.make_admin()
@@ -402,7 +413,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         )
         os_name, series = resource.name.split("/")
         # The polled datetime only has granularity of order seconds
-        start_time = datetime.datetime.now().replace(microsecond=0)
+        start_time = timezone.now().replace(microsecond=0)
         architecture = BootResource.objects.get_usable_architectures()[0]
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
@@ -416,8 +427,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.assertIn("lastDeployed", resource)
         self.assertGreaterEqual(
             datetime.datetime.strptime(
-                resource["lastDeployed"], "%a, %d %b. %Y %H:%M:%S"
-            ),
+                resource["lastDeployed"], DATETIME_FORMAT
+            ).astimezone(),
             start_time,
         )
 
@@ -435,7 +446,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             architecture=resource.architecture,
         )
         node.end_deployment()
-        start_time = datetime.datetime.now().replace(microsecond=0)
+        start_time = timezone.now().replace(microsecond=0)
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
             osystem=os_name,
@@ -447,8 +458,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         resource = response["resources"][0]
         self.assertGreaterEqual(
             datetime.datetime.strptime(
-                resource["lastDeployed"], "%a, %d %b. %Y %H:%M:%S"
-            ),
+                resource["lastDeployed"], DATETIME_FORMAT
+            ).astimezone(),
             start_time,
         )
 

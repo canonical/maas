@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 from collections import defaultdict, namedtuple, OrderedDict
-from datetime import datetime, timedelta
+from datetime import timedelta
 from functools import partial
 from itertools import chain, count
 import json
@@ -58,6 +58,7 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from netaddr import IPAddress, IPNetwork
 import petname
 from temporalio.client import WorkflowFailureError
@@ -1438,7 +1439,7 @@ class Node(CleanSave, TimestampedModel):
     def is_sync_healthy(self):
         if self.enable_hw_sync and self.last_sync and self.sync_interval:
             return (
-                datetime.now()
+                timezone.now()
                 <= 1.5 * timedelta(seconds=self.sync_interval) + self.last_sync
             )
         return False
@@ -1838,7 +1839,7 @@ class Node(CleanSave, TimestampedModel):
 
         self.update_status(NODE_STATUS.DEPLOYED)
         if self.enable_hw_sync:
-            self.last_sync = datetime.now()
+            self.last_sync = timezone.now()
         self.update_deployment_time()
         self.save()
 
@@ -4697,7 +4698,7 @@ class Node(CleanSave, TimestampedModel):
         def clean_expired():
             """Clean the expired AUTO IP addresses."""
             StaticIPAddress.objects.filter(
-                temp_expires_on__lte=datetime.utcnow()
+                temp_expires_on__lte=timezone.now()
             ).update(ip=None, temp_expires_on=None)
 
         # track which IPs have been already attempted for allocation

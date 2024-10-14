@@ -88,7 +88,9 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
             cluster.pool.id if cluster.pool is not None else "",
         )
         self.assertEqual(
-            datetime.strptime(result["created_at"], DATETIME_FORMAT),
+            datetime.strptime(
+                result["created_at"], DATETIME_FORMAT
+            ).astimezone(),
             cluster.created.replace(microsecond=0),
         )
 

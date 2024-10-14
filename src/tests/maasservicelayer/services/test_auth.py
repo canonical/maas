@@ -36,7 +36,7 @@ class TestAuthService:
             "last_name": "last",
             "is_staff": False,
             "is_active": True,
-            "date_joined": datetime.datetime.utcnow(),
+            "date_joined": datetime.datetime.now(datetime.timezone.utc),
         }
         data.update(extra_details)
         return User(**data)

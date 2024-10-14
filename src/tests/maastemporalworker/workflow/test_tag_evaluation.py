@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, NamedTuple
 import uuid
 
@@ -349,7 +349,7 @@ class TestTagEvaluationActivities:
             update(TagTable)
             .returning(TagTable.c.id, TagTable.c.definition)
             .values(
-                updated=datetime.utcnow().astimezone(),
+                updated=datetime.now(timezone.utc).astimezone(),
                 definition='//vendor[text()="Vendor X"]',
             )
             .where(TagTable.c.id == tag_02["id"])
@@ -378,7 +378,7 @@ class TestTagEvaluationActivities:
             update(TagTable)
             .returning(TagTable.c.id, TagTable.c.definition)
             .values(
-                updated=datetime.utcnow().astimezone(),
+                updated=datetime.now(timezone.utc).astimezone(),
                 definition='//vendor[text()="Vendor Z"]',
             )
             .where(TagTable.c.id == tag_01["id"])

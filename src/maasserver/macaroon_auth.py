@@ -5,7 +5,7 @@
 
 
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from typing import Optional
 from urllib.parse import quote
@@ -193,7 +193,10 @@ class KeyStore:
     KEY_LENGTH = 24
 
     def __init__(
-        self, expiry_duration, generate_interval=None, now=datetime.utcnow
+        self,
+        expiry_duration,
+        generate_interval=None,
+        now=lambda: datetime.now(timezone.utc),
     ):
         self.expiry_duration = expiry_duration
         self.generate_interval = generate_interval
@@ -364,7 +367,7 @@ class UserValidationFailed(Exception):
 def validate_user_external_auth(
     user,
     auth_info,
-    now=datetime.utcnow,
+    now=datetime.now(timezone.utc),
     candid_client=None,
     rbac_client=None,
     *,
@@ -534,7 +537,7 @@ def _authorization_request(
         caveats, ops = derr.cavs(), derr.ops()
     else:
         caveats, ops = _get_macaroon_caveats_ops(auth_endpoint, auth_domain)
-    expiration = datetime.utcnow() + MACAROON_LIFESPAN
+    expiration = datetime.now(timezone.utc) + MACAROON_LIFESPAN
     macaroon = bakery.oven.macaroon(bakery_version, expiration, caveats, ops)
     content, headers = httpbakery.discharge_required_response(
         macaroon, "/", "maas"

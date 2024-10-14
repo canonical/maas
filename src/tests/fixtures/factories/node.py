@@ -1,5 +1,5 @@
 # Factories for Node type sqlalchemy objects
-from datetime import datetime
+from datetime import datetime, timezone
 import random
 from typing import Any
 
@@ -38,8 +38,8 @@ async def _create_test_node_entry(
     node_type: NodeTypeEnum,
     **extra_details: Any,
 ) -> dict[str, Any]:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     system_id = await generate_node_system_id(fixture.conn)
     node = {
         "created": created_at,

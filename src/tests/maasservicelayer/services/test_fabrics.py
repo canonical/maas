@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -34,7 +34,7 @@ class TestFabricsService:
 
     async def test_get_by_id(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expected_fabric = Fabric(
             id=0, name="test", description="descr", created=now, updated=now
         )

@@ -3,9 +3,10 @@
 
 """Tests for `maasserver.websockets.handlers.discovery`"""
 
-
-from datetime import datetime, timedelta
+from datetime import timedelta
 import time
+
+from django.utils import timezone
 
 from maasserver.models import MDNS
 from maasserver.models.discovery import Discovery
@@ -72,7 +73,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
     def test_list_orders_by_creation_date(self):
         user = factory.make_User()
         handler = DiscoveryHandler(user, {}, None)
-        now = datetime.now()
+        now = timezone.now()
         d0 = factory.make_Discovery(created=now)
         d4 = factory.make_Discovery(created=(now + timedelta(days=4)))
         d3 = factory.make_Discovery(created=(now + timedelta(days=3)))
@@ -89,7 +90,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
     def test_list_starts_after_first_seen(self):
         user = factory.make_User()
         handler = DiscoveryHandler(user, {}, None)
-        now = datetime.now()
+        now = timezone.now()
         factory.make_Discovery(created=now)
         d4 = factory.make_Discovery(created=(now + timedelta(days=4)))
         d3 = factory.make_Discovery(created=(now + timedelta(days=3)))

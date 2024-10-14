@@ -4,12 +4,12 @@
 """Storage layouts."""
 
 
-from datetime import datetime
 from operator import attrgetter
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import Form
+from django.utils import timezone
 
 from maasserver.enum import (
     CACHE_MODE_TYPE,
@@ -843,7 +843,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
             block_device=self.get_root_device(),
             table_type=PARTITION_TABLE_TYPE.GPT,
         )
-        now = datetime.now()
+        now = timezone.now()
         # The model rounds partition sizes for performance and has a min size
         # of 4MB. VMware ESXi does not conform to these constraints so add each
         # partition directly to get around the model. VMware ESXi always uses

@@ -2,8 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-import datetime
 import logging
+
+from django.utils import timezone
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.event import Event
@@ -35,7 +36,7 @@ class TestSendEvent(MAASServerTestCase):
             node.system_id,
             name,
             description,
-            datetime.datetime.utcnow(),
+            timezone.now(),
         )
 
     def test_silent_when_no_node(self):
@@ -46,14 +47,14 @@ class TestSendEvent(MAASServerTestCase):
             factory.make_name("system_id"),
             event_type.name,
             description,
-            datetime.datetime.utcnow(),
+            timezone.now(),
         )
 
     def test_creates_event_for_node(self):
         event_type = factory.make_EventType()
         node = factory.make_Node()
         description = factory.make_name("description")
-        timestamp = datetime.datetime.utcnow()
+        timestamp = timezone.now()
         events.send_event(
             node.system_id, event_type.name, description, timestamp
         )
@@ -77,7 +78,7 @@ class TestSendEventMACAddress(MAASServerTestCase):
             node.system_id,
             name,
             description,
-            datetime.datetime.utcnow(),
+            timezone.now(),
         )
 
     def test_silent_when_no_node(self):
@@ -88,14 +89,14 @@ class TestSendEventMACAddress(MAASServerTestCase):
             factory.make_mac_address(),
             event_type.name,
             description,
-            datetime.datetime.utcnow(),
+            timezone.now(),
         )
 
     def test_creates_event_for_node(self):
         event_type = factory.make_EventType()
         node = factory.make_Node(interface=True)
         description = factory.make_name("description")
-        timestamp = datetime.datetime.utcnow()
+        timestamp = timezone.now()
         mac_address = node.current_config.interface_set.first().mac_address
         events.send_event_mac_address(
             mac_address, event_type.name, description, timestamp
@@ -119,7 +120,7 @@ class TestSendEventIPAddress(MAASServerTestCase):
             factory.make_ip_address(),
             name,
             description,
-            datetime.datetime.utcnow(),
+            timezone.now(),
         )
 
     def test_silent_when_no_node(self):
@@ -130,14 +131,14 @@ class TestSendEventIPAddress(MAASServerTestCase):
             factory.make_ip_address(),
             event_type.name,
             description,
-            datetime.datetime.utcnow(),
+            timezone.now(),
         )
 
     def test_creates_event_for_node(self):
         event_type = factory.make_EventType()
         node = factory.make_Node(interface=True)
         description = factory.make_name("description")
-        timestamp = datetime.datetime.utcnow()
+        timestamp = timezone.now()
         ip = factory.make_StaticIPAddress(
             interface=node.current_config.interface_set.first()
         )
@@ -164,7 +165,7 @@ class TestSendEventIPAddress(MAASServerTestCase):
             parents=[node.get_boot_interface()],
         )
         description = factory.make_name("description")
-        timestamp = datetime.datetime.utcnow()
+        timestamp = timezone.now()
         ip = factory.make_StaticIPAddress()
         for interface in node.current_config.interface_set.all():
             ip.interface_set.add(interface)
