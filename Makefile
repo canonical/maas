@@ -137,10 +137,16 @@ swagger-css: $(swagger-dist)
 	wget -O $(file) $(url)
 .PHONY: swagger-css
 
-go-bins:
-	$(MAKE) --no-print-directory -j -C src/host-info build
-	$(MAKE) --no-print-directory -j -C src/maasagent build
+go-bins: build-host-info build-agent
 .PHONY: go-bins
+
+build-host-info:
+	$(MAKE) --no-print-directory -j -C src/host-info build
+.PHONY: build-host-info
+
+build-agent:
+	$(MAKE) --no-print-directory -j -C src/maasagent build
+.PHONY: build-agent
 
 test: test-missing-migrations test-py lint-oapi test-go
 .PHONY: test
@@ -276,10 +282,17 @@ clean-ui-build:
 	$(MAKE) --no-print-directory -C src/maasui clean-build
 .PHONY: clean-build
 
-clean-go-bins:
-	$(MAKE) --no-print-directory -C src/host-info clean
-	$(MAKE) --no-print-directory -C src/maasagent clean
+clean-go-bins: clean-host-info clean-agent
 .PHONY: clean-go-bins
+
+clean-host-info:
+	$(MAKE) --no-print-directory -C src/host-info clean
+.PHONY: clean-host-info
+
+clean-agent:
+	$(MAKE) --no-print-directory -C src/maasagent clean
+.PHONY: clean-agent
+
 
 clean: clean-ui clean-go-bins
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
@@ -431,7 +444,7 @@ $(SNAP_FILE):
 	$(snapcraft) -o $(SNAP_FILE)
 
 snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
-snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
+snap-tree-sync: $(UI_BUILD) clean-agent go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'maasagent' --exclude 'machine-resources' \
 		--exclude 'host-info' --exclude 'maas-offline-docs' \
