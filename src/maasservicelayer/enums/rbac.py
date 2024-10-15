@@ -8,6 +8,9 @@ class RbacResourceType(str, Enum):
     MAAS = "maas"
     RESOURCE_POOL = "resource-pool"
 
+    def __str__(self):
+        return str(self.value)
+
 
 class RbacPermission(str, Enum):
     VIEW = "view"
@@ -16,3 +19,6 @@ class RbacPermission(str, Enum):
     ADMIN_MACHINES = "admin-machines"
     EDIT = "edit"
     MAAS_ADMIN = "admin"
+
+    def __str__(self):
+        return str(self.value)
