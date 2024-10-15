@@ -265,7 +265,7 @@ async def _create_user_session(
     key = "<UNUSED>"
     salt = "django.contrib.sessions.SessionStore"
     algorithm = "sha256"
-    signer = signing.TimestampSigner(key, salt=salt, algorithm=algorithm)
+    signer = signing.TimestampSigner(key=key, salt=salt, algorithm=algorithm)
     session_data = signer.sign_object(
         {"_auth_user_id": str(user.id)}, serializer=signing.JSONSerializer
     )

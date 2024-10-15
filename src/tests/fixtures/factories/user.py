@@ -37,7 +37,7 @@ async def create_test_session(
     expire_date: datetime = utcnow() + timedelta(days=1),
 ) -> None:
     signer = signing.TimestampSigner(
-        "<UNUSED>",
+        key="<UNUSED>",
         salt="django.contrib.sessions.SessionStore",
         algorithm="sha256",
     )
