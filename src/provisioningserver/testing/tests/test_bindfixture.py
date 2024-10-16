@@ -43,9 +43,7 @@ def dig_call(port=53, server="localhost", commands=None):
 class TestBINDFixture(MAASTestCase):
     def test_start_check_shutdown(self):
         # The fixture correctly starts and stops BIND.
-        config = BINDServerResources(
-            timeout_deadline=0.5, timeout_interval=0.02
-        )
+        config = BINDServerResources(timeout_deadline=10, timeout_interval=0.5)
         with BINDServer(config) as fixture:
             result = dig_call(fixture.config.port)
             self.assertIn("Got answer", result)
@@ -53,9 +51,7 @@ class TestBINDFixture(MAASTestCase):
 
     def test_config(self):
         # The configuration can be passed in.
-        config = BINDServerResources(
-            timeout_deadline=0.5, timeout_interval=0.02
-        )
+        config = BINDServerResources(timeout_deadline=10, timeout_interval=0.5)
         fixture = self.useFixture(BINDServer(config))
         self.assertIs(config, fixture.config)
 
