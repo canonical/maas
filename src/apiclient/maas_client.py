@@ -168,10 +168,7 @@ class MAASDispatcher:
             and res.info().get("Content-Encoding") == "gzip"
         )
         if is_gzip:
-            # Workaround python's gzip failure, gzip.GzipFile wants to be able
-            # to seek the file object.
-            res_content_io = BytesIO(res.read())
-            ungz = gzip.GzipFile(mode="rb", fileobj=res_content_io)
+            ungz = BytesIO(gzip.decompress(res.read()))
             res = urllib.request.addinfourl(
                 ungz, res.headers, res.url, res.code
             )

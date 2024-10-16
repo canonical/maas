@@ -25,7 +25,7 @@ def gzip_compress(f):
     gz_out = BytesIO()
     gz = gzip.GzipFile(mode="wb", fileobj=gz_out)
     copyfileobj(f, gz)
-    gz.flush()
+    gz.close()
     return gz_out
 
 
