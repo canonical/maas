@@ -4,7 +4,7 @@ import os
 import pathlib
 import time
 
-from django.db import transaction
+from django.db import reset_queries, transaction
 import pytest
 from requests.exceptions import ConnectionError
 
@@ -68,6 +68,8 @@ def ensuremaasdjangodb(request, ensuremaasdb, pytestconfig, worker_id):
 @pytest.fixture
 def maasdb(ensuremaasdjangodb, request, pytestconfig):
     enable_all_database_connections()
+    # reset counters
+    reset_queries()
     # Start a transaction.
     transaction.set_autocommit(False)
     allow_transactions = (
