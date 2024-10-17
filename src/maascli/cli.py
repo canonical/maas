@@ -5,9 +5,9 @@
 
 import argparse
 from functools import partial
+from importlib.util import find_spec
 import os
 from pathlib import Path
-import pkgutil
 import sys
 from textwrap import fill
 
@@ -337,7 +337,7 @@ def get_django_management():
 
 def is_maasserver_available():
     """Ensure that 'maasserver' module is available."""
-    return pkgutil.find_loader("maasserver") is not None
+    return find_spec("maasserver") is not None
 
 
 def run_regiond_command(management, parser):
