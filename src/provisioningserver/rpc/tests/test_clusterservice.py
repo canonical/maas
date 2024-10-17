@@ -308,7 +308,7 @@ class TestClusterClientService(MAASTestCase):
     def test_doUpdate_makes_parallel_requests(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
-            web.error.Error("boom!")
+            web.error.Error(500)
         )
         self.patch(clusterservice, "Agent").return_value = mock_agent
 
@@ -371,7 +371,7 @@ class TestClusterClientService(MAASTestCase):
     def test_doUpdate_makes_parallel_with_serial_requests(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
-            web.error.Error("boom!")
+            web.error.Error(500)
         )
         self.patch(clusterservice, "Agent").return_value = mock_agent
 
@@ -470,7 +470,7 @@ class TestClusterClientService(MAASTestCase):
     def test_doUpdate_falls_back_to_rpc_info_state(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
-            web.error.Error("boom!")
+            web.error.Error(500)
         )
         self.patch(clusterservice, "Agent").return_value = mock_agent
 

@@ -4,7 +4,6 @@
 from unittest.mock import Mock, PropertyMock
 
 from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.internet.endpoints import TCP6ClientEndpoint
 from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
@@ -302,14 +301,13 @@ class TestConnectionPool(MAASTestCase):
         connectProtocol.return_value = connection
         result = yield cp.connect("an-event-loop", ("a.example.com", 1111))
         self.assertEqual(len(connectProtocol.call_args_list), 1)
-        connectProtocol.called_once_with(
-            TCP6ClientEndpoint(reactor=clock, host="a.example.com", port=1111),
-            ClusterClient(
-                address=("a.example.com", 1111),
-                eventloop="an-event-loop",
-                service=service,
-            ),
-        )
+        connectProtocol.assert_called_once()
+        args = connectProtocol.call_args.args
+        self.assertEqual(args[0]._host, "a.example.com")
+        self.assertEqual(args[0]._port, 1111)
+        self.assertEqual(args[1].address, ("a.example.com", 1111))
+        self.assertEqual(args[1].eventloop, "an-event-loop")
+        self.assertEqual(args[1].service, service)
         self.assertEqual(result, connection)
 
     def test_drop_connection(self):

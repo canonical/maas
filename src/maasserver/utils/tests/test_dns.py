@@ -4,7 +4,6 @@
 from math import pow
 
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
 
 from maasserver.utils.dns import (
     get_iface_name_based_hostname,
@@ -54,11 +53,6 @@ class TestURLValidator(MAASTestCase):
         )
 
     def test_accepts_single_digit_port(self):
-        # newer versions of django fixed the regexp to accept single-digit
-        # port. If this failes on the next assertion, we could drop this test
-        self.assertRaises(
-            ValidationError, URLValidator(), "http://example.com:5"
-        )
         self.assertAccepts("http://example.com:5")
 
     def test_fails_hostname_starting_with_hyphen(self):

@@ -106,7 +106,7 @@ class TestCallClusters(MAASServerTestCase):
         )
         self.assertEqual([], result)
         available_callback.assert_not_called()
-        unavailable_callback.called_once_with(rack)
+        unavailable_callback.assert_called_once_with(rack)
         success_callback.assert_not_called()
         failed_callback.assert_not_called()
         timeout_callback.assert_not_called()
@@ -139,10 +139,10 @@ class TestCallClusters(MAASServerTestCase):
             )
         )
         self.assertEqual([], result)
-        available_callback.called_once_with(rack)
+        available_callback.assert_called_once_with(rack)
         unavailable_callback.assert_not_called()
         success_callback.assert_not_called()
-        failed_callback.called_once_with(rack)
+        failed_callback.assert_called_once_with(rack)
         timeout_callback.assert_not_called()
 
         self.assertRegex(
@@ -175,11 +175,11 @@ class TestCallClusters(MAASServerTestCase):
             )
         )
         self.assertEqual([], result)
-        available_callback.called_once_with(rack)
+        available_callback.assert_called_once_with(rack)
         unavailable_callback.assert_not_called()
         success_callback.assert_not_called()
         failed_callback.assert_not_called()
-        timeout_callback.called_once_with(rack)
+        timeout_callback.assert_called_once_with(rack)
 
         self.assertIn("RPC connection timed out", logger.output)
 
