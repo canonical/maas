@@ -5,8 +5,10 @@
 
 from django.db.models.query import QuerySet
 
+from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.models.reservedip import ReservedIP
+from maasserver.utils.orm import post_commit_do
 from maasserver.websockets.base import HandlerValidationError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -26,6 +28,13 @@ class ReservedIPHandler(TimestampedModelHandler):
             "get",
             "list",
         ]
+
+    def create(self, params: dict) -> dict:
+        reserved_ip = super().create(params)
+        post_commit_do(
+            configure_dhcp_on_agents, reserved_ip_ids=[reserved_ip["id"]]
+        )
+        return reserved_ip
 
     def update(self, params: dict):
         entry_id = params.get("id", None)
@@ -57,4 +66,19 @@ class ReservedIPHandler(TimestampedModelHandler):
             # VLAN, as subnet, is linked to the IP, i.e. it cannot be changed.
             raise HandlerValidationError({"vlan": "Field cannot be changed."})
 
-        return super().update(params)
+        updated_reserved_ip = super().update(params)
+
+        # Trigger the update on the agents after the transaction is committed.
+        post_commit_do(
+            configure_dhcp_on_agents,
+            subnet_ids=[updated_reserved_ip["subnet"]],
+        )
+
+        return updated_reserved_ip
+
+    def delete(self, params: dict) -> None:
+        reserved_ip = self.get_object(params)
+        post_commit_do(
+            configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
+        )
+        reserved_ip.delete()

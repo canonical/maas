@@ -9,6 +9,7 @@ from typing import Optional
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity, workflow
+from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -31,12 +32,12 @@ APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT = timedelta(minutes=5)
 
 @dataclass
 class ConfigureDHCPParam:
-    system_ids: Optional[list[str]]
-    vlan_ids: Optional[list[int]]
-    subnet_ids: Optional[list[int]]
-    static_ip_addr_ids: Optional[list[int]]
-    ip_range_ids: Optional[list[int]]
-    reserved_ip_ids: Optional[list[int]]
+    system_ids: Optional[list[str]] = None
+    vlan_ids: Optional[list[int]] = None
+    subnet_ids: Optional[list[int]] = None
+    static_ip_addr_ids: Optional[list[int]] = None
+    ip_range_ids: Optional[list[int]] = None
+    reserved_ip_ids: Optional[list[int]] = None
 
 
 @dataclass
@@ -48,8 +49,8 @@ class AgentsForUpdateResult:
 class ConfigureDHCPForAgentParam:
     system_id: str
     full_reload: bool
-    static_ip_addr_ids: list[int]
-    reserved_ip_ids: list[int]
+    static_ip_addr_ids: list[int] | None = None
+    reserved_ip_ids: list[int] | None = None
 
 
 @dataclass
@@ -61,8 +62,8 @@ class DHCPDConfigResult:
 @dataclass
 class FetchHostsForUpdateParam:
     system_id: str
-    static_ip_addr_ids: list[int]
-    reserved_ip_ids: list[int]
+    static_ip_addr_ids: list[int] | None = None
+    reserved_ip_ids: list[int] | None = None
 
 
 @dataclass
@@ -436,16 +437,35 @@ class ConfigureDHCPWorkflow:
         children = []
 
         for system_id in agent_system_ids_for_update["agent_system_ids"]:
-            cfg_child = await workflow.start_child_workflow(
-                "configure-dhcp-for-agent",
-                ConfigureDHCPForAgentParam(
-                    system_id=system_id,
-                    full_reload=full_reload,
-                    static_ip_addr_ids=param.static_ip_addr_ids,
-                    reserved_ip_ids=param.reserved_ip_ids,
-                ),
-                id=f"configure-dhcp:{system_id}",
-            )
-            children.append(cfg_child)
+            try:
+                cfg_child = await workflow.start_child_workflow(
+                    "configure-dhcp-for-agent",
+                    ConfigureDHCPForAgentParam(
+                        system_id=system_id,
+                        full_reload=full_reload,
+                        static_ip_addr_ids=param.static_ip_addr_ids,
+                        reserved_ip_ids=param.reserved_ip_ids,
+                    ),
+                    id=f"configure-dhcp:{system_id}",
+                )
+                children.append(cfg_child)
+            # If there is already something running, we have to fallback and turn the request into a full reload and terminate
+            # the running workflow.
+            # This is because only temporal signals are guaranteed to be processed in sequence as they arrive.
+            except WorkflowAlreadyStartedError:
+                pass
+                # TODO BEFORE THE 3.6 RELEASE: uncomment this when we bump to the temporal sdk 1.7.0 and we can use the
+                #  workflow_id_conflict_policy.
+                #  Until that day, we just skip this workflow but we know this might lead to inconsistent statuses in DHCPD.
+                # cfg_child = await workflow.start_child_workflow(
+                #     "configure-dhcp-for-agent",
+                #     ConfigureDHCPForAgentParam(
+                #         system_id=system_id,
+                #         full_reload=True,
+                #     ),
+                #     id=f"configure-dhcp:{system_id}",
+                #     workflow_id_conflict_policy=WorkflowIdConflictPolicy.WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING
+                # )
+            # children.append(cfg_child)
 
-        asyncio.gather(*children)
+        await asyncio.gather(*children)

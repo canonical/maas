@@ -8,11 +8,13 @@ from unittest.mock import ANY
 from django.utils import timezone
 from netaddr import IPAddress, IPNetwork
 import pytest
+from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from maasserver import dhcp
 from maasserver import server_address as server_address_module
+import maasserver.dhcp as dhcp_module
 from maasserver.dhcp import _get_dhcp_rackcontrollers, get_default_dns_servers
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, SERVICE_STATUS
 from maasserver.models import Config, DHCPSnippet, Domain, Service
@@ -30,6 +32,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.twisted import always_fail_with, always_succeed_with
@@ -3079,4 +3082,34 @@ class TestGetDHCPRackcontroller(MAASTransactionServerTestCase):
         snippet = factory.make_DHCPSnippet(node=node, enabled=True)
         self.assertCountEqual(
             [dhcp_subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
+        )
+
+
+class TestConfigureDhcpOnAgents(MAASServerTestCase):
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_configure_dhcp_on_agents(self):
+        d = defer.succeed(None)
+        self.patch(dhcp_module, "start_workflow").return_value = d
+
+        yield dhcp.configure_dhcp_on_agents(
+            system_ids=["test"],
+            vlan_ids=[0],
+            subnet_ids=[1],
+            static_ip_addr_ids=[2],
+            ip_range_ids=[3],
+            reserved_ip_ids=[4],
+        )
+
+        dhcp_module.start_workflow.assert_called_once_with(
+            workflow_name="configure-dhcp",
+            param=ConfigureDHCPParam(
+                system_ids=["test"],
+                vlan_ids=[0],
+                subnet_ids=[1],
+                static_ip_addr_ids=[2],
+                ip_range_ids=[3],
+                reserved_ip_ids=[4],
+            ),
+            task_queue="region",
         )

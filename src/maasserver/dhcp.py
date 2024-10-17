@@ -40,6 +40,8 @@ from maasserver.rpc import getClientFor
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maasserver.workflow import start_workflow
+from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 from provisioningserver.dhcp.config import get_config_v4, get_config_v6
 from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
@@ -1025,3 +1027,25 @@ def _get_dhcp_rackcontrollers(dhcp_snippet):
         return get_racks_by_subnet(dhcp_snippet.subnet)
     elif dhcp_snippet.node is not None:
         return dhcp_snippet.node.get_boot_rack_controllers()
+
+
+def configure_dhcp_on_agents(
+    system_ids: list[str] | None = None,
+    vlan_ids: list[int] | None = None,
+    subnet_ids: list[int] | None = None,
+    static_ip_addr_ids: list[int] | None = None,
+    ip_range_ids: list[int] | None = None,
+    reserved_ip_ids: list[int] | None = None,
+):
+    return start_workflow(
+        workflow_name="configure-dhcp",
+        param=ConfigureDHCPParam(
+            system_ids=system_ids,
+            vlan_ids=vlan_ids,
+            subnet_ids=subnet_ids,
+            static_ip_addr_ids=static_ip_addr_ids,
+            ip_range_ids=ip_range_ids,
+            reserved_ip_ids=reserved_ip_ids,
+        ),
+        task_queue="region",
+    )

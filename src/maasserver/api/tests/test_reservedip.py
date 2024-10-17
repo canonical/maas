@@ -6,7 +6,10 @@
 import http.client
 
 from django.urls import reverse
+from twisted.internet import defer
 
+import maasserver.api.reservedip as reservedip_module
+from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.models import ReservedIP
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -14,6 +17,11 @@ from maasserver.utils.converters import json_load_bytes
 
 
 class TestReservedIPsAPI(APITestCase.ForUserAndAdmin):
+    def setUp(self):
+        super().setUp()
+        d = defer.succeed(None)
+        self.patch(reservedip_module, "post_commit_do").return_value = d
+
     def test_handler_path(self):
         self.assertEqual(
             "/MAAS/api/2.0/reservedips/", reverse("reservedips_handler")
@@ -71,6 +79,10 @@ class TestReservedIPsAPI(APITestCase.ForUserAndAdmin):
         self.assertEqual(content["mac_address"], "00:11:22:33:44:55")
         self.assertEqual(content["comment"], "this is a comment")
 
+        reservedip_module.post_commit_do.assert_called_once_with(
+            configure_dhcp_on_agents, reserved_ip_ids=[content["id"]]
+        )
+
     def test_create_requires_a_valid_ip_address(self):
         uri = reverse("reservedips_handler")
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -93,6 +105,7 @@ class TestReservedIPsAPI(APITestCase.ForUserAndAdmin):
             content,
             {"ip": ["This field is required.", "This field cannot be null."]},
         )
+        reservedip_module.post_commit_do.assert_not_called()
 
     def test_create_requires_ip_address_that_has_not_been_reserved(self):
         uri = reverse("reservedips_handler")
@@ -331,6 +344,12 @@ class TestReservedIPsAPI(APITestCase.ForUserAndAdmin):
 
 
 class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
+
+    def setUp(self):
+        super().setUp()
+        d = defer.succeed(None)
+        self.patch(reservedip_module, "post_commit_do").return_value = d
+
     def test_handler_path(self):
         reserved_ip = factory.make_ReservedIP()
 
@@ -384,6 +403,10 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
         self.assertEqual(content["mac_address"], "00:11:22:33:44:55")
         self.assertEqual(content["comment"], "updated comment")
 
+        reservedip_module.post_commit_do.assert_called_once_with(
+            configure_dhcp_on_agents, subnet_ids=[content["subnet"]["id"]]
+        )
+
     def test_update_return_400_with_ip_in_different_subnet(self):
         factory.make_Subnet(cidr="192.168.0.0/24")
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -399,6 +422,7 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
 
         status_code = response.status_code
         self.assertEqual(status_code, http.client.BAD_REQUEST)
+        reservedip_module.post_commit_do.assert_not_called()
 
     def test_update_returns_404_with_invalid_id(self):
         uri = reverse("reservedip_handler", args=[101])
@@ -449,6 +473,9 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
 
         status_code = response.status_code
         self.assertEqual(status_code, http.client.NO_CONTENT)
+        reservedip_module.post_commit_do.assert_called_once_with(
+            configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
+        )
 
     def test_delete_return_404_when_no_id_matches_the_request(self):
         uri = reverse("reservedip_handler", args=[101])
@@ -456,3 +483,4 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
 
         status_code = response.status_code
         self.assertEqual(status_code, http.client.NOT_FOUND)
+        reservedip_module.post_commit_do.assert_not_called()

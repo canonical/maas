@@ -5,9 +5,11 @@ from django.core.handlers.wsgi import WSGIRequest
 from piston3.utils import rc
 
 from maasserver.api.support import OperationsHandler
+from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.models import ReservedIP
+from maasserver.utils.orm import post_commit_do
 
 DISPLAYED_RESERVEDIP_FIELDS = (
     "id",
@@ -71,7 +73,13 @@ class ReservedIpsHandler(OperationsHandler):
         """
         form = ReservedIPForm(data=request.data, request=request)
         if form.is_valid():
-            return form.save()
+            reserved_ip = form.save()
+
+            # Trigger the update on the agents after the transaction is committed.
+            post_commit_do(
+                configure_dhcp_on_agents, reserved_ip_ids=[reserved_ip.id]
+            )
+            return reserved_ip
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -135,7 +143,13 @@ class ReservedIpHandler(OperationsHandler):
         reserved_ip = ReservedIP.objects.get_reserved_ip_or_404(id)
         form = ReservedIPForm(instance=reserved_ip, data=request.data)
         if form.is_valid():
-            return form.save()
+            updated_reserved_ip = form.save()
+
+            # Trigger the update on the agents after the transaction is committed.
+            post_commit_do(
+                configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
+            )
+            return updated_reserved_ip
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -153,4 +167,10 @@ class ReservedIpHandler(OperationsHandler):
         """
         reserved_ip = ReservedIP.objects.get_reserved_ip_or_404(id)
         reserved_ip.delete()
+
+        # Trigger the update on the agents after the transaction is committed.
+        post_commit_do(
+            configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
+        )
+
         return rc.DELETED
