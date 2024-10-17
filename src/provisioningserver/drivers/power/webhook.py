@@ -161,8 +161,7 @@ class WebhookPowerDriver(PowerDriver):
                     )
                 else:
                     raise PowerActionError(
-                        "Request failed with response status code: "
-                        "%s." % response.code
+                        f"Request failed with response status code: {response.code}."
                     )
 
             d = readBody(response)

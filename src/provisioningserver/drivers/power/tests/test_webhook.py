@@ -239,7 +239,7 @@ class TestWebhookPowerDriver(MAASTestCase):
 
         with self.assertRaisesRegex(
             PowerActionError,
-            "with response status code: HTTPStatus.BAD_REQUEST",
+            f"with response status code: {HTTPStatus.BAD_REQUEST}",
         ):
             yield self.webhook._webhook_request(
                 method, b"https://10.0.0.42", {}

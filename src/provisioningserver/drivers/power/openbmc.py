@@ -89,8 +89,7 @@ class OpenBMCPowerDriver(PowerDriver):
             # Error out if the response has a status code of 400 or above.
             if response.code >= int(HTTPStatus.BAD_REQUEST):
                 raise PowerActionError(
-                    "OpenBMC request failed with response status code:"
-                    " %s." % response.code
+                    f"OpenBMC request failed with response status code: {response.code}."
                 )
 
             f = readBody(response)

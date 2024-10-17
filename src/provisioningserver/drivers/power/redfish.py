@@ -154,8 +154,7 @@ class RedfishPowerDriverBase(PowerDriver):
                         )
                     else:
                         raise PowerActionError(
-                            "Redfish request failed with response status code:"
-                            " %s." % response.code
+                            f"Redfish request failed with response status code: {response.code}."
                         )
                 elif response.code == int(HTTPStatus.PERMANENT_REDIRECT):
                     uri = response.headers.getRawHeaders(b"location")[0]
@@ -168,8 +167,7 @@ class RedfishPowerDriverBase(PowerDriver):
                         )
                     else:
                         raise PowerActionError(
-                            "Redfish request failed with response status code:"
-                            " %s." % response.code
+                            f"Redfish request failed with response status code: {response.code}."
                         )
                 d.addCallback(readBody)
             else:

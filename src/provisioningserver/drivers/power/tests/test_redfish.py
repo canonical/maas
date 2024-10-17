@@ -497,7 +497,7 @@ class TestRedfishPowerDriver(MAASTestCase):
 
         with self.assertRaisesRegex(
             PowerActionError,
-            r"^Redfish request failed with response status code: HTTPStatus.BAD_REQUEST\.$",
+            rf"^Redfish request failed with response status code: {HTTPStatus.BAD_REQUEST}\.$",
         ):
             yield driver.redfish_request(b"GET", uri, headers)
         mock_readBody.assert_not_called()
