@@ -1922,6 +1922,17 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             for _ in range(3)
         ]
 
+        # Make an IP reservation
+        reserved_ip = factory.make_ReservedIP(
+            factory.pick_ip_in_network(
+                IPNetwork(subnet.cidr),
+                but_not=factory._get_exclude_list(subnet),
+            ),
+            subnet,
+            vlan,
+            factory.make_mac_address(),
+        )
+
         expected_hosts = [
             {
                 "host": f"{node.hostname}-{auto_with_ip_interface.name}",
@@ -1967,6 +1978,12 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 % (unknown_interface.id, unknown_interface.name),
                 "mac": str(unknown_interface.mac_address),
                 "ip": str(unknown_reserved_ip.ip),
+                "dhcp_snippets": [],
+            },
+            {
+                "host": "",
+                "mac": str(reserved_ip.mac_address),
+                "ip": str(reserved_ip.ip),
                 "dhcp_snippets": [],
             },
         ]
@@ -2306,6 +2323,15 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             factory.make_DHCPSnippet(subnet=other_subnet, enabled=True)
             for _ in range(3)
         ]
+        factory.make_ReservedIP(
+            factory.pick_ip_in_network(
+                IPNetwork(ha_subnet.cidr),
+                but_not=factory._get_exclude_list(ha_subnet),
+            ),
+            ha_subnet,
+            ha_vlan,
+            factory.make_mac_address(),
+        )
 
         ntp_servers = [factory.make_name("ntp")]
         default_domain = Domain.objects.get_default_domain()
@@ -2467,6 +2493,15 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             factory.make_DHCPSnippet(subnet=other_subnet, enabled=True)
             for _ in range(3)
         ]
+        factory.make_ReservedIP(
+            factory.pick_ip_in_network(
+                IPNetwork(ha_subnet.cidr),
+                but_not=factory._get_exclude_list(ha_subnet),
+            ),
+            ha_subnet,
+            ha_vlan,
+            factory.make_mac_address(),
+        )
 
         ntp_servers = [factory.make_name("ntp")]
         default_domain = Domain.objects.get_default_domain()

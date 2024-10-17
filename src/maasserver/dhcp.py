@@ -30,6 +30,7 @@ from maasserver.models import (
     DHCPSnippet,
     Domain,
     RackController,
+    ReservedIP,
     Service,
     StaticIPAddress,
     Subnet,
@@ -299,7 +300,7 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
 
 
 def make_interface_hostname(interface):
-    """Return the host decleration name for DHCPD for this `interface`."""
+    """Return the host declaration name for DHCPD for this `interface`."""
     interface_name = interface.name.replace(".", "-")
     if (
         interface.type == INTERFACE_TYPE.UNKNOWN
@@ -319,7 +320,9 @@ def make_dhcp_snippet(dhcp_snippet):
     }
 
 
-def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list = None):
+def make_hosts_for_subnets(
+    subnets: list[Subnet], nodes_dhcp_snippets: list | None = None
+) -> list[dict]:
     """Return list of host entries to create in the DHCP configuration for the
     given `subnets`.
     """
@@ -403,6 +406,17 @@ def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list = None):
                         ),
                     }
                 )
+
+    for reserved_ip in ReservedIP.objects.filter(subnet__in=subnets):
+        hosts.append(
+            {
+                "host": "",
+                "mac": reserved_ip.mac_address,
+                "ip": reserved_ip.ip,
+                "dhcp_snippets": [],
+            }
+        )
+
     return hosts
 
 
