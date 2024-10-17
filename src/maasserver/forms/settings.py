@@ -269,6 +269,32 @@ def make_maas_internal_domain_field(*args, **kwargs):
     )
 
 
+def validate_ipmi_k_g(value):
+    """
+    Ensure that the provided IPMI k_g value is valid. This validator is used to
+    test both for valid encoding (regular or hexadecimal) and to ensure input
+    is 20 characters long (or 40 in hexadecimal plus '0x' prefix).
+    """
+    valid_k_g_match = re.search(r"^(0x[a-fA-F0-9]{40}|[\w\W]{20})$", value)
+    if not valid_k_g_match:
+        raise ValidationError(
+            (
+                "Error: K_g must either be 20 characters in length, or "
+                '40 hexadecimal characters prefixed with "0x" (current '
+                "length is %d)."
+            )
+            % len(value)
+        )
+
+
+def make_ipmi_k_g_field(*args, **kwargs):
+    field = forms.CharField(
+        validators=[validate_ipmi_k_g],
+        **kwargs,
+    )
+    return field
+
+
 class RemoteSyslogField(forms.CharField):
     """
     A `CharField` that formats the input into the expected value for syslog.
@@ -946,11 +972,10 @@ CONFIG_ITEMS = {
     },
     "maas_auto_ipmi_k_g_bmc_key": {
         "default": "",
-        "form": forms.CharField,
+        "form": make_ipmi_k_g_field,
         "form_kwargs": {
             "label": "The IPMI K_g key to set during BMC configuration.",
             "required": False,
-            "max_length": 20,
             "help_text": (
                 "This IPMI K_g BMC key is used to encrypt all IPMI traffic to "
                 "a BMC. Once set, all clients will REQUIRE this key upon being "
