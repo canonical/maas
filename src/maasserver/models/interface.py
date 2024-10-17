@@ -47,10 +47,12 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
+    StaticIPAddressReservedIPConflict,
     StaticIPAddressUnavailable,
 )
 from maasserver.fields import MAC_VALIDATOR
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.reservedip import ReservedIP
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
@@ -1063,6 +1065,28 @@ class Interface(CleanSave, TimestampedModel):
                         "IP address is inside a dynamic range %s-%s."
                         % (ip_range.start_ip, ip_range.end_ip)
                     )
+                reserved_ips = ReservedIP.objects.filter(
+                    Q(mac_address=self.mac_address) | Q(ip=str(ip_address))
+                ).all()
+                if reserved_ips:
+                    # The user might have a reserved IP for the interface and the static IP might be associated to another mac
+                    # address.
+                    if len(reserved_ips) > 1:
+                        raise StaticIPAddressReservedIPConflict(
+                            "The MAC address %s or the static IP %s are associated to reserved IP and can't be used."
+                            % (self.mac_address, ip_address)
+                        )
+                    reserved_ip = reserved_ips[0]
+                    if IPAddress(reserved_ip.ip) != ip_address:
+                        raise StaticIPAddressReservedIPConflict(
+                            "The static IP %s does not match the reserved IP %s for the MAC address %s."
+                            % (ip_address, reserved_ip.ip, self.mac_address)
+                        )
+                    if reserved_ip.mac_address != self.mac_address:
+                        raise StaticIPAddressReservedIPConflict(
+                            "The static IP %s is already reserved for the mac address %s."
+                            % (ip_address, reserved_ip.mac_address)
+                        )
 
             # Try to get the requested IP address.
             static_ip, created = StaticIPAddress.objects.get_or_create(

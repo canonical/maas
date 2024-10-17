@@ -25,6 +25,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
+    StaticIPAddressReservedIPConflict,
     StaticIPAddressUnavailable,
 )
 from maasserver.models import (
@@ -2817,6 +2818,117 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         )
         self.assertEqual(
             "IP address is not in the given subnet '%s'." % subnet, str(error)
+        )
+
+    def test_STATIC_not_allowed_if_reserved_ip_does_not_match_the_same_reserved_ip(
+        self,
+    ):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=interface.vlan
+        )
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(
+            cidr=str(network.cidr), vlan=interface.vlan
+        )
+        factory.make_ReservedIP(
+            ip=factory.pick_ip_in_Subnet(subnet=subnet),
+            subnet=subnet,
+            mac_address=interface.mac_address,
+        )
+        reserved_ip2 = factory.make_ReservedIP(
+            ip=factory.pick_ip_in_Subnet(subnet=subnet),
+            subnet=subnet,
+            mac_address=interface2.mac_address,
+        )
+        error = self.assertRaises(
+            StaticIPAddressReservedIPConflict,
+            interface.link_subnet,
+            INTERFACE_LINK_TYPE.STATIC,
+            subnet,
+            ip_address=reserved_ip2.ip,
+        )
+        self.assertEqual(
+            "The MAC address %s or the static IP %s are associated to reserved IP and can't be used."
+            % (interface.mac_address, reserved_ip2.ip),
+            str(error),
+        )
+
+    def test_STATIC_not_allowed_if_reserved_ip_does_not_match_the_mac(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=interface.vlan
+        )
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(
+            cidr=str(network.cidr), vlan=interface.vlan
+        )
+        reserved_ip = factory.make_ReservedIP(
+            ip=factory.pick_ip_in_Subnet(subnet=subnet),
+            subnet=subnet,
+            mac_address=interface.mac_address,
+        )
+        error = self.assertRaises(
+            StaticIPAddressReservedIPConflict,
+            interface2.link_subnet,
+            INTERFACE_LINK_TYPE.STATIC,
+            subnet,
+            ip_address=reserved_ip.ip,
+        )
+        self.assertEqual(
+            "The static IP %s is already reserved for the mac address %s."
+            % (reserved_ip.ip, interface.mac_address),
+            str(error),
+        )
+
+    def test_STATIC_not_allowed_if_reserved_ip_does_not_match(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(
+            cidr=str(network.cidr), vlan=interface.vlan
+        )
+        reserved_ip = factory.make_ReservedIP(
+            ip=factory.pick_ip_in_Subnet(subnet=subnet),
+            subnet=subnet,
+            mac_address=interface.mac_address,
+        )
+        static_ip = factory.pick_ip_in_Subnet(
+            subnet=subnet, but_not=[reserved_ip.ip]
+        )
+        error = self.assertRaises(
+            StaticIPAddressReservedIPConflict,
+            interface.link_subnet,
+            INTERFACE_LINK_TYPE.STATIC,
+            subnet,
+            ip_address=static_ip,
+        )
+        self.assertEqual(
+            "The static IP %s does not match the reserved IP %s for the MAC address %s."
+            % (static_ip, reserved_ip.ip, interface.mac_address),
+            str(error),
+        )
+
+    def test_STATIC_allowed_if_reserved_ip_matches(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(
+            cidr=str(network.cidr), vlan=interface.vlan
+        )
+        reserved_ip = factory.make_ReservedIP(
+            ip=factory.pick_ip_in_Subnet(subnet=subnet),
+            subnet=subnet,
+            mac_address=interface.mac_address,
+        )
+        interface.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=reserved_ip.ip
+        )
+        interface = reload_object(interface)
+        self.assertIsNotNone(
+            get_one(
+                interface.ip_addresses.filter(
+                    alloc_type=IPADDRESS_TYPE.STICKY, ip=reserved_ip.ip
+                )
+            )
         )
 
     def test_AUTO_link_sets_vlan_if_vlan_undefined(self):

@@ -187,6 +187,12 @@ class StaticIPAddressForbidden(MAASAPIException):
     api_error = int(http.client.CONFLICT)
 
 
+class StaticIPAddressReservedIPConflict(MAASAPIException):
+    """Raised when there is already a reserved IP for a specific MAC address and the static IP does not match it."""
+
+    api_error = int(http.client.CONFLICT)
+
+
 class NodeActionError(MAASException):
     """Raised when there is an error performing a NodeAction."""
 
