@@ -370,12 +370,19 @@ def get_vm_host_used_resources(vmhost) -> VMHostUsedResources:
     def C(field):
         return Coalesce(field, Value(0))
 
-    counts = VirtualMachine.objects.filter(
-        bmc=vmhost, project=vmhost.tracked_project
-    ).aggregate(
-        cores=C(Sum(F("unpinned_cores") + ArrayLength("pinned_cores"))),
-        memory=C(Sum("memory", filter=Q(hugepages_backed=False))),
-        hugepages_memory=C(Sum("memory", filter=Q(hugepages_backed=True))),
+    counts = (
+        VirtualMachine.objects.filter(
+            bmc=vmhost, project=vmhost.tracked_project
+        )
+        .annotate(
+            mem=Sum("memory", filter=Q(hugepages_backed=False)),
+            hp_mem=Sum("memory", filter=Q(hugepages_backed=True)),
+        )
+        .aggregate(
+            cores=C(Sum(F("unpinned_cores") + ArrayLength("pinned_cores"))),
+            memory=C(Sum(F("mem"))),
+            hugepages_memory=C(Sum(F("hp_mem"))),
+        )
     )
     counts.update(
         VirtualMachineDisk.objects_current_config.filter(
