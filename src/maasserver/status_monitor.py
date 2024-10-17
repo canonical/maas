@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Status monitoring service."""
@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from django.db.models import Prefetch
 from twisted.application.internet import TimerService
+from twisted.logger import LogLevel
 
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
 from maasserver.models import Script, ScriptResult, ScriptSet
@@ -18,11 +19,13 @@ from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("node")
+
+log = LegacyLogger()
 
 
 def mark_nodes_failed_after_expiring(now, node_timeout):
@@ -219,4 +222,14 @@ class StatusMonitorService(TimerService):
     """
 
     def __init__(self, interval=60):
-        super().__init__(interval, deferToDatabase, check_status)
+        super().__init__(interval, self._check_status)
+
+    def _check_status(self):
+        d = deferToDatabase(check_status)
+        d.addErrback(
+            log.err,
+            "A periodic check of the status monitor service crashed. If this is recurrent the nodes might be "
+            "stuck in a pending status and you must inspect the error.",
+            level=LogLevel.warn,
+        )
+        return d
