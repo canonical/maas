@@ -95,3 +95,13 @@ class DNSPublication(Model):
         blank=True,
         help_text="A brief explanation why DNS was published.",
     )
+
+    # This field is used to contain the Dynamic DNS update
+    # corresponding to the associated change
+    update = CharField(
+        editable=False,
+        max_length=255,
+        null=False,
+        unique=False,
+        blank=True,  # for legacy entries
+    )

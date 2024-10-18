@@ -1185,10 +1185,10 @@ DNS_PUBLISH_UPDATE = dedent(
     RETURNS void as $$
     BEGIN
       INSERT INTO maasserver_dnspublication
-        (serial, created, source)
+        (serial, created, source, update)
       VALUES
         (nextval('maasserver_zone_serial_seq'), now(),
-         substring(reason FOR 255));
+         substring(reason FOR 255), '');
     END;
     $$ LANGUAGE plpgsql;
     """

@@ -115,6 +115,16 @@ DefaultResourceTable = Table(
     ),
 )
 
+DNSPublicationTable = Table(
+    "maasserver_dnspublication",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("serial", BigInteger, nullable=False, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("source", String(255), nullable=False),
+    Column("update", String(255), nullable=False),
+)
+
 DomainTable = Table(
     "maasserver_domain",
     METADATA,
