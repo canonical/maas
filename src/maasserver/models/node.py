@@ -4664,7 +4664,9 @@ class Node(CleanSave, TimestampedModel):
                     bridge_fd=bridge_fd,
                 )
 
-    def claim_auto_ips(self, exclude_addresses=None, temp_expires_after=None):
+    def claim_auto_ips(
+        self, exclude_addresses=None, temp_expires_after=None
+    ) -> set[StaticIPAddress]:
         """Assign IP addresses to all interface links set to AUTO."""
         exclude_addresses = (
             exclude_addresses.copy() if exclude_addresses else set()

@@ -21,9 +21,11 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
     NODE_STATUS,
 )
 from maasserver.exceptions import (
+    StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressReservedIPConflict,
     StaticIPAddressUnavailable,
@@ -3903,6 +3905,147 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             "and temp_expires_on set.",
         )
         self.assertCountEqual(assigned_addresses, observed)
+
+    def test_claims_with_reserved_ip(self):
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                vlan=interface.vlan
+            )
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO,
+                ip="",
+                subnet=subnet,
+                interface=interface,
+            )
+            reserved_ip = factory.make_ReservedIP(
+                subnet=subnet,
+                ip=factory.pick_ip_in_Subnet(subnet=subnet),
+                mac_address=interface.mac_address,
+            )
+
+        with transaction.atomic():
+            observed = interface.claim_auto_ips(
+                temp_expires_after=datetime.timedelta(minutes=5)
+            )
+        interface = reload_object(interface)
+        assigned_addresses = interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO
+        )
+        self.assertEqual(
+            1,
+            len(assigned_addresses),
+            "Should have 3 AUTO IP addresses with an IP address assigned",
+        )
+        self.assertEqual(reserved_ip.ip, observed[0].ip)
+
+    def test_claims_with_reserved_ip_already_in_use(self):
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                vlan=interface.vlan
+            )
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO,
+                ip="",
+                subnet=subnet,
+                interface=interface,
+            )
+            reserved_ip = factory.make_ReservedIP(
+                subnet=subnet,
+                ip=factory.pick_ip_in_Subnet(subnet=subnet),
+                mac_address=interface.mac_address,
+            )
+        with transaction.atomic():
+            self.assertRaises(
+                StaticIPAddressUnavailable,
+                interface.claim_auto_ips,
+                temp_expires_after=datetime.timedelta(minutes=5),
+                exclude_addresses=[reserved_ip.ip],
+            )
+
+    def test_claims_excludes_reserved_ips(self):
+        with transaction.atomic():
+            subnet = factory.make_Subnet(cidr="192.0.0.0/28")
+            interface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, subnet=subnet
+            )
+            interface2 = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, subnet=subnet
+            )
+            # From 192.0.0.1 to 192.0.0.14
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO,
+                ip="",
+                subnet=subnet,
+                interface=interface,
+            )
+            # Reserve 192.0.0.14 for another interface
+            factory.make_ReservedIP(
+                subnet=subnet,
+                ip="192.0.0.14",
+                mac_address=interface2.mac_address,
+            )
+            # Disallow the usage of all the other ips in the subnet
+            factory.make_IPRange(
+                subnet=subnet,
+                alloc_type=IPRANGE_TYPE.RESERVED,
+                start_ip="192.0.0.1",
+                end_ip="192.0.0.13",
+            )
+        # claim_auto_ip is not picking 192.0.0.14
+        with transaction.atomic():
+            self.assertRaises(
+                StaticIPAddressExhaustion,
+                interface.claim_auto_ips,
+                temp_expires_after=datetime.timedelta(minutes=5),
+            )
+
+    def test_claims_all_auto_ip_addresses_with_reserved_ips(self):
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            for _ in range(2):
+                subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                    vlan=interface.vlan
+                )
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO,
+                    ip="",
+                    subnet=subnet,
+                    interface=interface,
+                )
+            # reserve an ip on the last subnet
+            reserved_ip = factory.make_ReservedIP(
+                subnet=subnet,
+                ip=factory.pick_ip_in_Subnet(subnet=subnet),
+                mac_address=interface.mac_address,
+            )
+
+        with transaction.atomic():
+            observed = interface.claim_auto_ips(
+                temp_expires_after=datetime.timedelta(minutes=5)
+            )
+        # Should now have 2 AUTO with IP addresses assigned. One of them must be the reserved ip.
+        interface = reload_object(interface)
+        assigned_addresses = interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO
+        )
+        assigned_addresses = [
+            ip for ip in assigned_addresses if ip.ip and ip.temp_expires_on
+        ]
+        self.assertEqual(
+            2,
+            len(assigned_addresses),
+            "Should have 3 AUTO IP addresses with an IP address assigned "
+            "and temp_expires_on set.",
+        )
+        self.assertCountEqual(assigned_addresses, observed)
+        self.assertTrue(
+            any(
+                assigned_address.ip == reserved_ip.ip
+                for assigned_address in assigned_addresses
+            )
+        )
 
 
 class TestCreateAcquiredBridge(MAASServerTestCase):

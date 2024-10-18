@@ -1320,8 +1320,14 @@ class Interface(CleanSave, TimestampedModel):
             )
             self.unlink_ip_address(ip_address, clearing_config=clearing_config)
 
-    def claim_auto_ips(self, temp_expires_after=None, exclude_addresses=None):
+    def claim_auto_ips(
+        self,
+        temp_expires_after=None,
+        exclude_addresses: list[str] | None = None,
+    ) -> list[StaticIPAddress]:
         """Claim IP addresses for this interfaces AUTO IP addresses.
+
+        If there is a reserved IP for the mac address of the interface, then it is picked.
 
         :param temp_expires_after: Mark the IP address assignments as temporary
             until a period of time. It is up to the caller to handle the
@@ -1337,22 +1343,67 @@ class Interface(CleanSave, TimestampedModel):
         else:
             exclude_addresses = set(exclude_addresses)
         assigned_addresses = []
+        reservedip = (
+            ReservedIP.objects.filter(mac_address=self.mac_address)
+            .select_related("subnet")
+            .first()
+        )
+        if not reservedip:
+            # We have to exclude all the reserved IPs in the vlan so that they are not going to be allocated to other interfaces.
+            exclude_addresses = exclude_addresses.union(
+                ReservedIP.objects.filter(vlan=self.vlan).values_list(
+                    "ip", flat=True
+                )
+            )
+            reserved_ip_assigned = None
+        else:
+            # If the reserved ip is inside the excluded_addresses it means that another host is using it. We have to raise an
+            # error and avoid allocating another ip to the interface.
+            if reservedip.ip in exclude_addresses:
+                raise StaticIPAddressUnavailable(
+                    f"The reserved ip {reservedip.ip} seems to be in use by another host in the network. The process to find an ip for the machine is stopped."
+                )
+            reserved_ip_assigned = False
+
         for auto_ip in self.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO
         ):
             if not auto_ip.ip:
-                assigned_ip = self._claim_auto_ip(
-                    auto_ip,
-                    temp_expires_after=temp_expires_after,
-                    exclude_addresses=exclude_addresses,
-                )
+                if (
+                    reserved_ip_assigned is False
+                    and auto_ip.subnet == reservedip.subnet
+                ):
+                    maaslog.info(
+                        f"Using the reserved ip {reservedip.ip} as AUTOIP for the mac {self.mac_address}"
+                    )
+                    assigned_ip = self._claim_auto_ip(
+                        auto_ip,
+                        temp_expires_after=temp_expires_after,
+                        requested_address=reservedip.ip,
+                    )
+                    reserved_ip_assigned = True
+                else:
+                    assigned_ip = self._claim_auto_ip(
+                        auto_ip,
+                        temp_expires_after=temp_expires_after,
+                        exclude_addresses=exclude_addresses,
+                    )
                 if assigned_ip is not None:
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
+
+        if reserved_ip_assigned is False:
+            raise StaticIPAddressUnavailable(
+                f"This interface {self.mac_address} has a reserved ip {reservedip.ip} but it does not have a link to that subnet"
+            )
         return assigned_addresses
 
     def _claim_auto_ip(
-        self, auto_ip, temp_expires_after=None, exclude_addresses=None
+        self,
+        auto_ip,
+        requested_address: str | None = None,
+        temp_expires_after=None,
+        exclude_addresses=None,
     ):
         """Claim an IP address for the `auto_ip`."""
         subnet = auto_ip.subnet
@@ -1371,6 +1422,7 @@ class Interface(CleanSave, TimestampedModel):
         new_ip = StaticIPAddress.objects.allocate_new(
             subnet=subnet,
             alloc_type=IPADDRESS_TYPE.AUTO,
+            requested_address=requested_address,
             exclude_addresses=exclude_addresses,
         )
         auto_ip.ip = new_ip.ip
