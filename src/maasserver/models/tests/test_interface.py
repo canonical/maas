@@ -2833,13 +2833,15 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(network.cidr), vlan=interface.vlan
         )
-        factory.make_ReservedIP(
+        reserved_ip = factory.make_ReservedIP(
             ip=factory.pick_ip_in_Subnet(subnet=subnet),
             subnet=subnet,
             mac_address=interface.mac_address,
         )
         reserved_ip2 = factory.make_ReservedIP(
-            ip=factory.pick_ip_in_Subnet(subnet=subnet),
+            ip=factory.pick_ip_in_Subnet(
+                subnet=subnet, but_not=[reserved_ip.ip]
+            ),
             subnet=subnet,
             mac_address=interface2.mac_address,
         )
