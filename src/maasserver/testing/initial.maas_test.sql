@@ -7147,7 +7147,8 @@ CREATE TABLE public.maasserver_dnspublication (
     id bigint NOT NULL,
     serial bigint NOT NULL,
     created timestamp with time zone NOT NULL,
-    source character varying(255) NOT NULL
+    source character varying(255) NOT NULL,
+    update character varying(255) NOT NULL
 );
 
 
@@ -12056,6 +12057,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 387	maasserver	0331_merge_322_330	2024-09-06 03:29:42.183811+00
 388	maasserver	0332_node_enable_kernel_crash_dump	2024-10-01 03:29:32.748129+00
 389	maasserver	0333_migrate_20_maas_03_machine_resources	2024-10-08 03:29:47.744096+00
+390	maasserver	0334_dnspublication_update	2024-10-19 03:30:09.373532+00
 \.
 
 
@@ -12209,8 +12211,8 @@ COPY public.maasserver_dnsdata (id, created, updated, rrtype, rrdata, dnsresourc
 -- Data for Name: maasserver_dnspublication; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_dnspublication (id, serial, created, source) FROM stdin;
-1	1	2021-11-19 12:40:49.607453+00	Initial publication
+COPY public.maasserver_dnspublication (id, serial, created, source, update) FROM stdin;
+1	1	2021-11-19 12:40:49.607453+00	Initial publication	
 \.
 
 
@@ -13197,7 +13199,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 389, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 390, true);
 
 
 --
