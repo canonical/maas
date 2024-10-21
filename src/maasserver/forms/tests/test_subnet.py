@@ -272,6 +272,26 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertEqual(subnet.cidr, new_cidr)
         self.assertEqual(subnet.gateway_ip, new_gateway_ip)
 
+    def test_updates_subnet_cidr_with_reserved_ips(self):
+        interface = factory.make_Interface()
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        factory.make_ReservedIP(
+            ip="10.0.0.200", mac_address=interface.mac_address, subnet=subnet
+        )
+        form = SubnetForm(
+            instance=subnet,
+            data={"cidr": "10.0.0.0/28"},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {
+                "cidr": [
+                    "The new subnet CIDR would exclude the reserved ip 10.0.0.200. Please remove it first."
+                ]
+            },
+            form.errors,
+        )
+
     def test_updates_subnet_name_doesnt_remove_dns_server(self):
         # Regression test for lp:1521833
         dns_servers = [

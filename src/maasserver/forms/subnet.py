@@ -6,7 +6,7 @@
 
 from django import forms
 from django.core.exceptions import ValidationError
-from netaddr import AddrFormatError, IPNetwork
+from netaddr import AddrFormatError, IPAddress, IPNetwork
 
 from maasserver.enum import RDNS_MODE_CHOICES
 from maasserver.fields import IPListFormField
@@ -111,6 +111,13 @@ class SubnetForm(MAASModelForm):
                 raise ValidationError("Prefix length must be greater than 0.")
         except AddrFormatError:
             raise ValidationError("Required format: <network>/<prefixlen>.")
+        if self.instance and self.instance.id and self.instance.cidr != data:
+            network = IPNetwork(data)
+            for reservedip in self.instance.reservedip_set.all():
+                if IPAddress(reservedip.ip) not in network:
+                    raise ValidationError(
+                        f"The new subnet CIDR would exclude the reserved ip {reservedip.ip}. Please remove it first."
+                    )
         return data
 
     def _clean_name(self, cleaned_data: dict) -> dict:
