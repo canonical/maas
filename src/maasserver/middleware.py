@@ -388,6 +388,26 @@ class CSRFHelperMiddleware:
         return self.get_response(request)
 
 
+class SuppressCSRFCookieMiddleware:
+    """A middleware to remove CSRF cookies on a response.
+
+    Requests with a session cookie will have the cookie removed in the response.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if (
+            request.META.get("SUPPRESS_CSRF_COOKIE")
+            and settings.CSRF_COOKIE_NAME in response.cookies
+        ):
+            del response.cookies[settings.CSRF_COOKIE_NAME]
+
+        return response
+
+
 @dataclass
 class ExternalAuthInfo:
     """Hold information about external authentication."""

@@ -260,6 +260,8 @@ MIDDLEWARE = (
     # Used for to determine if a request requires protection against
     # CSRF attacks.
     "maasserver.middleware.CSRFHelperMiddleware",
+    # Used to remove csrf cookies from responses,
+    "maasserver.middleware.SuppressCSRFCookieMiddleware",
     # Used to add external auth info to the request, to avoid getting the
     # information in multiple places.
     "maasserver.middleware.ExternalAuthInfoMiddleware",
