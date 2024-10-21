@@ -16,6 +16,7 @@ from maasserver.websockets.base import (
 )
 import maasserver.websockets.handlers.reservedip as reservedip_module
 from maasserver.websockets.handlers.reservedip import ReservedIPHandler
+from maastesting.djangotestcase import count_queries
 
 
 class TestReservedIPHandler(MAASServerTestCase):
@@ -172,6 +173,7 @@ class TestReservedIPHandler(MAASServerTestCase):
         self.assertEqual(reserved_ip["ip"], "10.0.0.16")
         self.assertEqual(reserved_ip["mac_address"], None)
         self.assertEqual(reserved_ip["comment"], "")
+        self.assertTrue("node_summary" not in reserved_ip)
 
     def test_get_with_invalid_params(self):
         """Getting a reserved IP fails if:"""
@@ -326,4 +328,52 @@ class TestReservedIPHandler(MAASServerTestCase):
         self.assertEqual(len(reserved_ips), 2)
         self.assertEqual(
             sorted(r["ip"] for r in reserved_ips), ["10.0.0.16", "10.0.0.25"]
+        )
+        for rip in reserved_ips:
+            self.assertEqual(None, rip["node_summary"])
+
+    def test_list_with_node_summary(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        reservedip = factory.make_ReservedIP(
+            ip="10.0.0.1",
+            mac_address=node.boot_interface.mac_address,
+            subnet=subnet,
+        )
+        user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+        num_queries, reserved_ips = count_queries(handler.list, {})
+        self.assertEqual(len(reserved_ips), 1)
+        # 1 - get the list of reserved ips
+        # 2 - get list of interfaces for all the mac addresses
+        # 3 - get list of node configs
+        # 4 - get list of nodes
+        # 5 - get list of domains
+        # 6 - get the vlan - to be removed soon
+        self.assertEqual(num_queries, 6)
+        self.assertEqual(
+            [
+                {
+                    "id": reservedip.id,
+                    "created": reservedip.created.strftime(
+                        "%a, %d %b. %Y %H:%M:%S"
+                    ),
+                    "updated": reservedip.updated.strftime(
+                        "%a, %d %b. %Y %H:%M:%S"
+                    ),
+                    "subnet": subnet.id,
+                    "vlan": subnet.vlan.id,
+                    "ip": reservedip.ip,
+                    "mac_address": node.boot_interface.mac_address,
+                    "comment": None,
+                    "node_summary": {
+                        "fqdn": node.fqdn,
+                        "hostname": node.hostname,
+                        "node_type": node.node_type,
+                        "system_id": node.system_id,
+                        "via": node.boot_interface.name,
+                    },
+                }
+            ],
+            reserved_ips,
         )
