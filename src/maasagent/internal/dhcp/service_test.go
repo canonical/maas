@@ -99,7 +99,7 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 	apiClient := apiclient.NewAPIClient(configBaseURL, s.configHTTPServer.Client())
 	dataPath := s.T().TempDir()
 
-	s.svc = NewDHCPService(
+	s.svc, err = NewDHCPService(
 		s.T().Name(),
 		WithOMAPIConnFactory(func(_ string, _ string) (net.Conn, error) {
 			return client, nil
@@ -117,6 +117,9 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 			return filepath.Join(dataPath, path)
 		}),
 	)
+	if err != nil {
+		s.T().Fatal(err)
+	}
 
 	s.workflowEnv.RegisterWorkflowWithOptions(MockConfigureDHCPForAgent,
 		tworkflow.RegisterOptions{

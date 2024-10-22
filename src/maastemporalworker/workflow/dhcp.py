@@ -28,6 +28,7 @@ APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT = timedelta(minutes=5)
 FETCH_HOSTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
 GET_OMAPI_KEY_TIMEOUT = timedelta(minutes=5)
 APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT = timedelta(minutes=5)
+RESTART_DHCP_SERVICE_TIMEOUT = timedelta(minutes=5)
 
 
 @dataclass
@@ -396,6 +397,12 @@ class ConfigureDHCPForAgentWorkflow:
                 "apply-dhcp-config-via-file",
                 task_queue=f"{param.system_id}@agent:main",
                 start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
+            )
+
+            await workflow.execute_activity(
+                "restart-dhcp-service",
+                task_queue=f"{param.system_id}@agent:main",
+                start_to_close_timeout=RESTART_DHCP_SERVICE_TIMEOUT,
             )
         else:
             hosts = await workflow.execute_activity(

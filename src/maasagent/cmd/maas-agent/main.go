@@ -467,7 +467,12 @@ func Run() int {
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
-	dhcpService := dhcp.NewDHCPService(cfg.SystemID, dhcp.WithAPIClient(apiClient))
+	dhcpService, err := dhcp.NewDHCPService(cfg.SystemID, dhcp.WithAPIClient(apiClient))
+
+	if err != nil {
+		log.Error().Err(err).Msg("DHCP Service initialisation error")
+		return 1
+	}
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
