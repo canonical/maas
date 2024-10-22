@@ -48,6 +48,7 @@ python3-pexpect
 python3-psycopg2
 python3-pyinotify
 python3-pylxd
+python3-packaging
 python3-pyparsing
 python3-pypureomapi
 python3-pyvmomi

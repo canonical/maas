@@ -137,8 +137,8 @@ parts:
       - python3-formencode
       - python3-httplib2
       - python3-hvac
-      - python3-jose
       - python3-idna # for macaroonbakery
+      - python3-jose
       - python3-jsonschema
       - python3-lxml
       - python3-macaroonbakery
@@ -149,6 +149,7 @@ parts:
       - python3-netaddr
       - python3-netifaces
       - python3-oauthlib
+      - python3-packaging
       - python3-paramiko
       - python3-petname
       - python3-pexpect
