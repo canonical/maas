@@ -303,6 +303,21 @@ class TestStaticIPAddressManager(MAASServerTestCase):
             # There is no pending retry context.
             self.assertEqual(len(orm.retry_context.stack._cm_pending), 0)
 
+    def test_allocate_new_returns_requested_IP_without_validation(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        factory.make_IPRange(
+            subnet,
+            "10.0.0.101",
+            "10.0.0.254",
+            alloc_type=IPRANGE_TYPE.RESERVED,
+        )
+        ipaddress = StaticIPAddress.objects.allocate_new(
+            subnet,
+            requested_address="10.0.0.101",
+            restrict_ip_to_unreserved_ranges=False,
+        )
+        self.assertEqual("10.0.0.101", ipaddress.ip)
+
 
 class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
     """Transactional tests for `StaticIPAddressManager."""

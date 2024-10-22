@@ -1383,6 +1383,8 @@ class Interface(CleanSave, TimestampedModel):
                         auto_ip,
                         temp_expires_after=temp_expires_after,
                         requested_address=reservedip.ip,
+                        # Allow the static IP to be within the reserved range.
+                        restrict_ip_to_unreserved_ranges=False,
                     )
                     reserved_ip_assigned = True
                 else:
@@ -1407,6 +1409,7 @@ class Interface(CleanSave, TimestampedModel):
         requested_address: str | None = None,
         temp_expires_after=None,
         exclude_addresses=None,
+        restrict_ip_to_unreserved_ranges: bool = True,
     ):
         """Claim an IP address for the `auto_ip`."""
         subnet = auto_ip.subnet
@@ -1427,6 +1430,7 @@ class Interface(CleanSave, TimestampedModel):
             alloc_type=IPADDRESS_TYPE.AUTO,
             requested_address=requested_address,
             exclude_addresses=exclude_addresses,
+            restrict_ip_to_unreserved_ranges=restrict_ip_to_unreserved_ranges,
         )
         auto_ip.ip = new_ip.ip
         # Throw away the newly-allocated address and assign it to the old AUTO

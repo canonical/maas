@@ -3773,6 +3773,39 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
         self.assertIsNone(subnet.get_dynamic_range_for_ip(observed[0].ip))
         self.assertTrue(subnet.is_valid_static_ip(observed[0].ip))
 
+    def test_claims_ip_address_in_dynamic_ip_range_if_reserved(self):
+        with transaction.atomic():
+            subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+            factory.make_IPRange(
+                subnet=subnet,
+                start_ip="10.0.0.100",
+                end_ip="10.0.0.200",
+                alloc_type=IPRANGE_TYPE.RESERVED,
+            )
+            interface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, vlan=subnet.vlan
+            )
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO,
+                ip="",
+                subnet=subnet,
+                interface=interface,
+            )
+            reserved_ip = factory.make_ReservedIP(
+                subnet=subnet,
+                ip="10.0.0.100",
+                mac_address=interface.mac_address,
+            )
+        with transaction.atomic():
+            observed = interface.claim_auto_ips()
+        self.assertEqual(
+            1,
+            len(observed),
+            "Should have 1 AUTO IP addresses with an IP address assigned.",
+        )
+        self.assertEqual(subnet, observed[0].subnet)
+        self.assertEqual(reserved_ip.ip, observed[0].ip)
+
     def test_claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

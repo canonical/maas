@@ -345,6 +345,7 @@ class StaticIPAddressManager(Manager):
         user=None,
         requested_address=None,
         exclude_addresses=None,
+        restrict_ip_to_unreserved_ranges: bool = True,
     ) -> StaticIPAddress:
         """Return a new StaticIPAddress.
 
@@ -358,6 +359,9 @@ class StaticIPAddressManager(Manager):
         :param requested_address: Optional IP address that the caller wishes
             to use instead of being allocated one at random.
         :param exclude_addresses: A list of addresses which MUST NOT be used.
+        :param restrict_ip_to_unreserved_ranges: True if the IP has to be outside
+            the reserved range. In the case of reserved ips, we allow the
+            ip to be within the reserved range.
 
         All IP parameters can be strings or netaddr.IPAddress.
         """
@@ -398,7 +402,10 @@ class StaticIPAddressManager(Manager):
                     f"The IP address {requested_address} is already in use."
                 )
 
-            subnet.validate_static_ip(requested_address)
+            subnet.validate_static_ip(
+                requested_address,
+                restrict_ip_to_unreserved_ranges=restrict_ip_to_unreserved_ranges,
+            )
             return self._attempt_allocation(
                 requested_address, alloc_type, user=user, subnet=subnet
             )

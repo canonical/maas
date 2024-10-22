@@ -893,7 +893,9 @@ class Subnet(CleanSave, TimestampedModel):
             return False
         return True
 
-    def validate_static_ip(self, ip):
+    def validate_static_ip(
+        self, ip, restrict_ip_to_unreserved_ranges: bool = True
+    ):
         """Validates that the requested IP address is acceptable for allocation
         in this `Subnet` (assuming it has not already been allocated).
 
@@ -909,18 +911,23 @@ class Subnet(CleanSave, TimestampedModel):
             raise StaticIPAddressOutOfRange(
                 f"{ip} is not within subnet CIDR: {self.cidr}"
             )
-        for iprange in self.get_reserved_maasipset():
-            if ip in iprange:
-                raise StaticIPAddressUnavailable(
-                    "%s is within the reserved range from %s to %s"
-                    % (ip, IPAddress(iprange.first), IPAddress(iprange.last))
-                )
         for iprange in self.get_dynamic_maasipset():
             if ip in iprange:
                 raise StaticIPAddressUnavailable(
                     "%s is within the dynamic range from %s to %s"
                     % (ip, IPAddress(iprange.first), IPAddress(iprange.last))
                 )
+        if restrict_ip_to_unreserved_ranges:
+            for iprange in self.get_reserved_maasipset():
+                if ip in iprange:
+                    raise StaticIPAddressUnavailable(
+                        "%s is within the reserved range from %s to %s"
+                        % (
+                            ip,
+                            IPAddress(iprange.first),
+                            IPAddress(iprange.last),
+                        )
+                    )
 
     def get_reserved_maasipset(self, exclude_ip_ranges: list = None):
         if exclude_ip_ranges is None:
