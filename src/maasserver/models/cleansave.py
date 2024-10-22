@@ -20,6 +20,9 @@ class CleanSave:
 
     def save(self, *args, **kwargs):
         """Perform `full_clean` before save ."""
+        # FIXME Remove this once Django3 support is dropped
+        HAS_VALIDATE_CONSTRAINTS = hasattr(self, "validate_constraints")
+
         exclude_clean_fields = (
             {self._meta.pk.name}
             | {field.name for field in self._meta.fields if field.is_relation}
@@ -43,6 +46,14 @@ class CleanSave:
             # validate uniqueness only for fields that have changed
             exclude_unique_fields |= unchanged_fields
 
-        self.full_clean(exclude=exclude_clean_fields, validate_unique=False)
+        self.full_clean(
+            exclude=exclude_clean_fields,
+            validate_unique=False,
+            **(
+                {"validate_constraints": False}
+                if HAS_VALIDATE_CONSTRAINTS
+                else {}
+            )
+        )
         self.validate_unique(exclude=exclude_unique_fields)
         return super().save(*args, **kwargs)

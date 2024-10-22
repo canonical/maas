@@ -11,10 +11,15 @@ import unittest
 from unittest.mock import ANY, call, Mock, sentinel
 
 from django.core.exceptions import MultipleObjectsReturned
-from django.db import connection, connections, transaction
+from django.db import (
+    connection,
+    connections,
+    IntegrityError,
+    OperationalError,
+    transaction,
+)
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
-from django.db.utils import IntegrityError, OperationalError
 import psycopg2
 from psycopg2.errorcodes import (
     DEADLOCK_DETECTED,

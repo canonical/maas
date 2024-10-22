@@ -12,9 +12,17 @@ class TestCleanSave(MAASLegacyServerTestCase):
         obj = CleanSaveTestModel()
         mock_full_clean = self.patch(obj, "full_clean")
         obj.save()
-        mock_full_clean.assert_called_once_with(
-            exclude={"id", "related"}, validate_unique=False
-        )
+        if hasattr(obj, "validate_constraints"):
+            mock_full_clean.assert_called_once_with(
+                exclude={"id", "related"},
+                validate_unique=False,
+                validate_constraints=False,
+            )
+        else:
+            # FIXME Remove this once Django3 support is dropped
+            mock_full_clean.assert_called_once_with(
+                exclude={"id", "related"}, validate_unique=False
+            )
 
     def test_save_validates_unique_except_for_pk_when_new(self):
         obj = CleanSaveTestModel()

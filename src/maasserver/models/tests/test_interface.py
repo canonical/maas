@@ -8,8 +8,7 @@ import threading
 from unittest.mock import call
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
-from django.db.utils import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.utils import timezone
 from fixtures import FakeLogger
