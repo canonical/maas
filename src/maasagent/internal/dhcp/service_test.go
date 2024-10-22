@@ -16,6 +16,7 @@
 package dhcp
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -36,6 +37,7 @@ import (
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
+	"maas.io/core/src/maasagent/internal/servicecontroller"
 	"maas.io/core/src/maasagent/internal/workflow/log"
 )
 
@@ -54,6 +56,31 @@ func (m *mockOMAPIClient) Close() error {
 
 func (m *mockOMAPIClient) AddHost(ip net.IP, mac net.HardwareAddr) error {
 	return m.assertAddHost(ip, mac)
+}
+
+type MockDHCPController struct {
+	restarted bool
+}
+
+func NewMockDHCPController(service string) *MockDHCPController {
+	return &MockDHCPController{}
+}
+
+func (m *MockDHCPController) Start(ctx context.Context) error {
+	return nil
+}
+
+func (m *MockDHCPController) Stop(ctx context.Context) error {
+	return nil
+}
+
+func (m *MockDHCPController) Restart(ctx context.Context) error {
+	m.restarted = true
+	return nil
+}
+
+func (m *MockDHCPController) Status(ctx context.Context) (servicecontroller.ServiceStatus, error) {
+	return 0, nil
 }
 
 type DHCPServiceTestSuite struct {
@@ -99,8 +126,15 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 	apiClient := apiclient.NewAPIClient(configBaseURL, s.configHTTPServer.Client())
 	dataPath := s.T().TempDir()
 
-	s.svc, err = NewDHCPService(
+	serviceV4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
+	mockControllerV4 := NewMockDHCPController(serviceV4)
+	serviceV6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
+	mockControllerV6 := NewMockDHCPController(serviceV6)
+
+	s.svc = NewDHCPService(
 		s.T().Name(),
+		mockControllerV4,
+		mockControllerV6,
 		WithOMAPIConnFactory(func(_ string, _ string) (net.Conn, error) {
 			return client, nil
 		}),
@@ -134,6 +168,11 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 	s.activityEnv.RegisterActivityWithOptions(s.svc.configureViaFile,
 		activity.RegisterOptions{
 			Name: "configure-dhcp-via-file",
+		})
+
+	s.activityEnv.RegisterActivityWithOptions(s.svc.restartService,
+		activity.RegisterOptions{
+			Name: "restart-dhcp-service",
 		})
 }
 
@@ -359,4 +398,50 @@ func TestHostUnmarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected, h)
+}
+
+func (s *DHCPServiceTestSuite) TestRestartDHCPServiceV4() {
+	controllerV4 := s.svc.controllerV4.(*MockDHCPController)
+
+	// DHCP V4 controller expected to restart
+	s.svc.runningV4.Store(true)
+
+	_, err := s.activityEnv.ExecuteActivity(
+		"restart-dhcp-service",
+	)
+	s.NoError(err)
+	s.True(controllerV4.restarted)
+
+	// DHCP V4 controller not expected to restart
+	controllerV4.restarted = false
+	s.svc.runningV4.Store(false)
+
+	_, err = s.activityEnv.ExecuteActivity(
+		"restart-dhcp-service",
+	)
+	s.NoError(err)
+	s.False(controllerV4.restarted)
+}
+
+func (s *DHCPServiceTestSuite) TestRestartDHCPServiceV6() {
+	controllerV6 := s.svc.controllerV6.(*MockDHCPController)
+
+	// DHCP V6 controller expected to restart
+	s.svc.runningV6.Store(true)
+
+	_, err := s.activityEnv.ExecuteActivity(
+		"restart-dhcp-service",
+	)
+	s.NoError(err)
+	s.True(controllerV6.restarted)
+
+	// DHCP V4 controller not expected to restart
+	controllerV6.restarted = false
+	s.svc.runningV6.Store(false)
+
+	_, err = s.activityEnv.ExecuteActivity(
+		"restart-dhcp-service",
+	)
+	s.NoError(err)
+	s.False(controllerV6.restarted)
 }

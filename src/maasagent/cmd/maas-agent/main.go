@@ -59,6 +59,7 @@ import (
 	"maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/power"
+	"maas.io/core/src/maasagent/internal/servicecontroller"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
 	"maas.io/core/src/maasagent/pkg/workflow/codec"
@@ -465,14 +466,25 @@ func Run() int {
 		return 1
 	}
 
-	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
-	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
-	dhcpService, err := dhcp.NewDHCPService(cfg.SystemID, dhcp.WithAPIClient(apiClient))
+	serviceV4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
 
+	controllerV4, err := servicecontroller.NewController(serviceV4)
 	if err != nil {
-		log.Error().Err(err).Msg("DHCP Service initialisation error")
+		log.Error().Err(err).Msg("DHCP V4 controller initialisation error")
 		return 1
 	}
+
+	serviceV6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
+
+	controllerV6, err := servicecontroller.NewController(serviceV6)
+	if err != nil {
+		log.Error().Err(err).Msg("DHCP V6 controller initialisation error")
+		return 1
+	}
+
+	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
+	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
+	dhcpService := dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, dhcp.WithAPIClient(apiClient))
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),

@@ -20,6 +20,26 @@ import (
 	"os"
 )
 
+type DHCPVersion int
+
+const (
+	DHCPv4 DHCPVersion = iota
+	DHCPv6
+)
+
+var (
+	systemdServiceName = map[DHCPVersion]string{DHCPv4: "maas-dhcpd", DHCPv6: "maas-dhcpd6"}
+	pebbleServiceName  = map[DHCPVersion]string{DHCPv4: "dhcpd", DHCPv6: "dhcpd6"}
+)
+
+func GetServiceName(v DHCPVersion) string {
+	if _, ok := os.LookupEnv("SNAP"); ok {
+		return pebbleServiceName[v]
+	}
+
+	return systemdServiceName[v]
+}
+
 type Controller interface {
 	Start(context.Context) error
 	Stop(context.Context) error
