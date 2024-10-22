@@ -471,13 +471,6 @@ ReservedIPTable = Table(
     METADATA,
     Column("id", BigInteger, primary_key=True, unique=True),
     Column(
-        "vlan_id",
-        BigInteger,
-        ForeignKey("maasserver_vlan.id"),
-        nullable=False,
-        unique=False,
-    ),
-    Column(
         "subnet_id",
         BigInteger,
         ForeignKey("maasserver_subnet.id"),

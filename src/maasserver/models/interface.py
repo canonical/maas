@@ -1351,9 +1351,12 @@ class Interface(CleanSave, TimestampedModel):
         if not reservedip:
             # We have to exclude all the reserved IPs in the vlan so that they are not going to be allocated to other interfaces.
             exclude_addresses = exclude_addresses.union(
-                ReservedIP.objects.filter(vlan=self.vlan).values_list(
-                    "ip", flat=True
-                )
+                ReservedIP.objects.filter(
+                    subnet__in=[
+                        ip_address.subnet
+                        for ip_address in self.ip_addresses.all()
+                    ]
+                ).values_list("ip", flat=True)
             )
             reserved_ip_assigned = None
         else:

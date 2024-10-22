@@ -208,10 +208,14 @@ class DHCPConfigActivity(ActivityBase):
     ) -> set[int]:
         stmt = (
             select(VlanTable.c.id)
-            .select_from(ReservedIPTable)
+            .select_from(SubnetTable)
+            .join(
+                ReservedIPTable,
+                ReservedIPTable.c.subnet_id == SubnetTable.c.id,
+            )
             .join(
                 VlanTable,
-                VlanTable.c.id == ReservedIPTable.c.vlan_id,
+                VlanTable.c.id == SubnetTable.c.vlan_id,
             )
             .filter(
                 and_(
@@ -334,8 +338,12 @@ class DHCPConfigActivity(ActivityBase):
             )
             .select_from(ReservedIPTable)
             .join(
+                SubnetTable,
+                SubnetTable.c.id == ReservedIPTable.c.subnet_id,
+            )
+            .join(
                 VlanTable,
-                VlanTable.c.id == ReservedIPTable.c.vlan_id,
+                VlanTable.c.id == SubnetTable.c.vlan_id,
             )
             .filter(
                 and_(

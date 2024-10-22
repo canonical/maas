@@ -19,12 +19,11 @@ async def create_test_reserved_ip_entry(
     reserved_ip = {
         "created": created_at,
         "updated": updated_at,
-        "mac": "01:02:03:04:05:06",
+        "mac_address": "01:02:03:04:05:06",
     }
 
     if subnet:
         reserved_ip["subnet_id"] = subnet["id"]
-        reserved_ip["vlan_id"] = subnet["vlan_id"]
         network = IPNetwork(str(subnet["cidr"]))
         ip = IPAddress(network.first)
         while ip != IPAddress(network.last):

@@ -15,7 +15,6 @@ DISPLAYED_RESERVEDIP_FIELDS = (
     "id",
     "ip",
     "subnet",
-    "vlan",
     "mac_address",
     "comment",
 )
@@ -52,9 +51,6 @@ class ReservedIpsHandler(OperationsHandler):
         @param (int) "subnet" [required=false] ID of the subnet associated with
         the IP to be reserved.
 
-        @param (int) "vlan" [required=false] ID of the vlan associated with the
-        IP to be reserved.
-
         @param (string) "mac_address" [required=false] The MAC address that
         should be linked to the reserved IP.
 
@@ -71,7 +67,7 @@ class ReservedIpsHandler(OperationsHandler):
         needs to be within the subnet range. Subnet and VLAN for the reserved
         IP needs to be defined in MAAS.
         """
-        form = ReservedIPForm(data=request.data, request=request)
+        form = ReservedIPForm(data=request.data)
         if form.is_valid():
             reserved_ip = form.save()
 
@@ -121,11 +117,6 @@ class ReservedIpHandler(OperationsHandler):
         @param (int) "{id}" [required=true] The ID of the Reserved IP to be
         updated.
 
-        @param (string) "ip" [required=false] The IP to be reserved.
-
-        @param (string) "mac_address" [required=false] The MAC address that
-        should be linked to the reserved IP.
-
         @param (string) "comment" [required=false] A description of this
         reserved IP.
 
@@ -143,13 +134,8 @@ class ReservedIpHandler(OperationsHandler):
         reserved_ip = ReservedIP.objects.get_reserved_ip_or_404(id)
         form = ReservedIPForm(instance=reserved_ip, data=request.data)
         if form.is_valid():
-            updated_reserved_ip = form.save()
-
-            # Trigger the update on the agents after the transaction is committed.
-            post_commit_do(
-                configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
-            )
-            return updated_reserved_ip
+            # No need to trigger the dhcp workflow because it's not possible to update the mac or the ip of a reserved ip.
+            return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 

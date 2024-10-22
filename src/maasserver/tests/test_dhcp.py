@@ -1929,7 +1929,6 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 but_not=factory._get_exclude_list(subnet),
             ),
             subnet,
-            vlan,
             factory.make_mac_address(),
         )
 
@@ -2329,7 +2328,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 but_not=factory._get_exclude_list(ha_subnet),
             ),
             ha_subnet,
-            ha_vlan,
             factory.make_mac_address(),
         )
 
@@ -2499,7 +2497,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 but_not=factory._get_exclude_list(ha_subnet),
             ),
             ha_subnet,
-            ha_vlan,
             factory.make_mac_address(),
         )
 

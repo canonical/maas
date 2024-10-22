@@ -2,43 +2,94 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Reserved IP form."""
+from ipaddress import ip_address, ip_network
 
-from django.core.handlers.wsgi import WSGIRequest
+from django import forms
+from django.core.exceptions import ValidationError
 
+from maasserver.fields import MACAddressFormField, SpecifierOrModelChoiceField
 from maasserver.forms import MAASModelForm
-from maasserver.models import ReservedIP
+from maasserver.models import ReservedIP, StaticIPAddress
 from maasserver.models.subnet import Subnet
+from maasserver.utils.forms import set_form_error
 
 
 class ReservedIPForm(MAASModelForm):
     """ReservedIp creation/edition form."""
 
+    ip = forms.GenericIPAddressField(required=True)
+
+    mac_address = MACAddressFormField(required=True)
+
+    subnet = SpecifierOrModelChoiceField(
+        queryset=Subnet.objects.all(), required=False, empty_label=""
+    )
+
+    comment = forms.CharField(required=False)
+
     class Meta:
         model = ReservedIP
-        fields = ("ip", "subnet", "vlan", "mac_address", "comment")
+        fields = ("ip", "subnet", "mac_address", "comment")
 
-    def __init__(
-        self,
-        data: dict | None = None,
-        instance: ReservedIP | None = None,
-        request: WSGIRequest | None = None,
-        *args,
-        **kwargs,
-    ):
-        data = {} if data is None else data.copy()
+    def __init__(self, request=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        if instance is None:
-            ip = data.get("ip")
-            subnet_id = data.get("subnet")
-            vlan_id = data.get("vlan")
+    def clean(self):
+        if self.instance and self.instance.id:
+            if (
+                self.data["ip"] != self.instance.ip
+                or self.data["mac_address"] != self.instance.mac_address
+                or self.data["subnet"] != self.instance.subnet.id
+            ):
+                raise ValidationError(
+                    "The ip, mac_address and the subnet of a reserved ip are immutable. Please delete the entry and recreate it."
+                )
+        return super().clean()
 
-            if subnet_id is None and ip is not None:
-                subnet = Subnet.objects.get_best_subnet_for_ip(ip)
-                subnet_id = subnet.id if subnet else None
-                data["subnet"] = subnet_id
+    def clean_subnet(self):
+        subnet = self.cleaned_data.get("subnet", None)
+        ip = self.cleaned_data.get("ip", None)
+        if ip is None:
+            # ip is required, django will do the job for us and return an error.
+            return
+        if subnet is None:
+            subnet = Subnet.objects.get_best_subnet_for_ip(ip)
+            if not subnet:
+                raise ValidationError(
+                    f"Could not find a sutable subnet for {ip}. Please create the subnet first."
+                )
 
-            if vlan_id is None and subnet_id is not None:
-                if subnet := Subnet.objects.filter(id=subnet_id):
-                    data["vlan"] = subnet[0].vlan.id
+        subnet_network = ip_network(subnet.cidr)
+        if ip_address(ip) not in subnet_network:
+            set_form_error(
+                self,
+                "ip",
+                "The provided IP is not part of the subnet.",
+            )
+        if ip_address(ip) == subnet_network.network_address:
+            set_form_error(
+                self,
+                "ip",
+                "The network address cannot be a reserved IP.",
+            )
 
-        super().__init__(data=data, instance=instance, *args, **kwargs)
+        if ip_address(ip) == subnet_network.broadcast_address:
+            set_form_error(
+                self,
+                "ip",
+                "The broadcast address cannot be a reserved IP.",
+            )
+
+        return subnet
+
+    def clean_ip(self):
+        ip = self.data.get("ip")
+        mac_address = self.data.get("mac_address")
+        existing_ip = StaticIPAddress.objects.filter(ip=ip).first()
+        if existing_ip and mac_address not in existing_ip.get_mac_addresses():
+            set_form_error(
+                self,
+                "ip",
+                f"The ip {ip} is already in use by another machine.",
+            )
+        return ip

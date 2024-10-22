@@ -2023,7 +2023,6 @@ class Factory(maastesting.factory.Factory):
         self,
         ip: str | None = None,
         subnet: Subnet | None = None,
-        vlan: VLAN | None = None,
         mac_address: str | None = None,
         comment: str | None = None,
     ) -> ReservedIP:
@@ -2033,40 +2032,26 @@ class Factory(maastesting.factory.Factory):
         When using this method provide either IP with its subnet or none of
         them.
         """
-        if ip is None and subnet is None and vlan is None:
-            network = self.make_ipv4_network(slash="24")
-            router_address = IPAddress(network.first + 1)
-            subnet = self.make_Subnet(
-                cidr=str(network), gateway_ip=str(router_address)
-            )
-            vlan = subnet.vlan
+        if mac_address is None:
+            mac_address = self.make_mac_address()
+
+        if subnet is None:
+            if ip:
+                subnet = Subnet.objects.get_best_subnet_for_ip(ip)
+            else:
+                subnet = self.make_Subnet()
+
+        network = IPNetwork(subnet.cidr)
+        if ip is None:
             ip = IPAddress(network.first + 2)
-
-            reserved_ip = ReservedIP(
-                ip=ip,
-                subnet=subnet,
-                vlan=vlan,
-                mac_address=mac_address,
-                comment=comment,
-            )
-            reserved_ip.save()
-
-            return reserved_ip
-
-        assert ip is not None
-        assert subnet is not None
-        if vlan is None:
-            vlan = subnet.vlan
 
         reserved_ip = ReservedIP(
             ip=ip,
             subnet=subnet,
-            vlan=vlan,
             mac_address=mac_address,
             comment=comment,
         )
         reserved_ip.save()
-
         return reserved_ip
 
     def make_Tag(

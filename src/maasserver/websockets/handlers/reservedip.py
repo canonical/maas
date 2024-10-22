@@ -69,41 +69,12 @@ class ReservedIPHandler(TimestampedModelHandler):
 
     def update(self, params: dict):
         entry_id = params.get("id", None)
-        ip = params.get("ip", None)
-        subnet_id = params.get("subnet", None)
-        vlan_id = params.get("vlan", None)
 
         if entry_id is None:
             raise HandlerValidationError({"id": "Missing value."})
 
-        if ip and (ip != self.get({"id": entry_id})["ip"]):
-            # IP is associated to the Reserved IP entry, and it cannot be changed.
-            raise HandlerValidationError({"ip": "Field cannot be changed."})
-
-        if (
-            subnet_id
-            and subnet_id
-            != ReservedIP.objects.filter(id=entry_id)[0].subnet.id
-        ):
-            # Subnet is linked to the IP, i.e. it cannot be changed.
-            raise HandlerValidationError(
-                {"subnet": "Field cannot be changed."}
-            )
-
-        if (
-            vlan_id
-            and vlan_id != ReservedIP.objects.filter(id=entry_id)[0].vlan.id
-        ):
-            # VLAN, as subnet, is linked to the IP, i.e. it cannot be changed.
-            raise HandlerValidationError({"vlan": "Field cannot be changed."})
-
         updated_reserved_ip = super().update(params)
-
-        # Trigger the update on the agents after the transaction is committed.
-        post_commit_do(
-            configure_dhcp_on_agents,
-            subnet_ids=[updated_reserved_ip["subnet"]],
-        )
+        # No need to trigger an update because it's not possible to change the ip or the mac address of a reserved ip.
 
         return updated_reserved_ip
 
