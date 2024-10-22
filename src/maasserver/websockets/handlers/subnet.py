@@ -61,9 +61,6 @@ class SubnetHandler(TimestampedModelHandler):
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_summary=True
             )
-            data["reserved_ip_addresses"] = (
-                subnet.render_json_for_related_reserved_ips()
-            )
 
         return data
 

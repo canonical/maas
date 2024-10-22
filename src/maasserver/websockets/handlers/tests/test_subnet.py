@@ -53,9 +53,6 @@ class TestSubnetHandler(MAASServerTestCase):
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_summary=True
             )
-            data["reserved_ip_addresses"] = (
-                subnet.render_json_for_related_reserved_ips()
-            )
         return data
 
     def test_get(self):
@@ -82,7 +79,7 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         self.assertIsNone(handler.cache.get("staticroutes"))
         queries, _ = count_queries(handler.get, {"id": subnet.id})
-        self.assertEqual(6, queries)
+        self.assertEqual(5, queries)
         self.assertIsNotNone(handler.cache["staticroutes"])
 
     def test_list(self):

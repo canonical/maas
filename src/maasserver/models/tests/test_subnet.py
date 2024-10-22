@@ -20,7 +20,7 @@ from maasserver.enum import (
     RDNS_MODE_CHOICES,
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
-from maasserver.models import Config, Notification, ReservedIP, Space
+from maasserver.models import Config, Notification, Space
 from maasserver.models.subnet import (
     create_cidr,
     get_allocated_ips,
@@ -1143,62 +1143,6 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
             )
         count, _ = count_queries(subnet.render_json_for_related_ips)
         self.assertEqual(9, count)
-
-
-class TestRenderJSONForReservedIPs(MAASServerTestCase):
-    def test_sorts_by_ip_address(self):
-        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        ReservedIP(
-            ip="10.0.0.55",
-            subnet=subnet,
-            mac_address="00:11:22:33:44:55",
-            comment="Test: creating a reserved IP",
-        ).save()
-        ReservedIP(
-            ip="10.0.0.12",
-            subnet=subnet,
-            mac_address="00:11:22:33:44:66",
-            comment="Test: creating a reserved IP",
-        ).save()
-
-        rendered_json = subnet.render_json_for_related_reserved_ips()
-
-        for rendered_reserved_ip, values in zip(
-            rendered_json,
-            [
-                ("10.0.0.12", "00:11:22:33:44:66", {}),
-                ("10.0.0.55", "00:11:22:33:44:55", {}),
-            ],
-        ):
-            self.assertTrue(
-                all(
-                    rendered_reserved_ip[key] == value
-                    for key, value in zip(
-                        ("ip", "mac_address", "node_summary"), values
-                    )
-                )
-            )
-
-    def test_render_reserved_ips(self):
-        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        ReservedIP(
-            ip="10.0.0.53",
-            subnet=subnet,
-        ).save()
-        ReservedIP(
-            ip="10.0.0.67",
-            mac_address="00:11:22:33:44:55",
-            subnet=subnet,
-        ).save()
-
-        result = subnet.render_json_for_related_reserved_ips()
-
-        self.assertEqual(result[0]["ip"], "10.0.0.53")
-        self.assertEqual(result[0]["mac_address"], None)
-        self.assertEqual(result[0]["node_summary"], {})
-        self.assertEqual(result[1]["ip"], "10.0.0.67")
-        self.assertEqual(result[1]["mac_address"], "00:11:22:33:44:55")
-        self.assertEqual(result[1]["node_summary"], {})
 
 
 class TestSubnetGetRelatedRanges(MAASServerTestCase):
