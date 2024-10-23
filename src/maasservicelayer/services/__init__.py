@@ -6,10 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.dnsresources import DNSResourcesService
+from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.interfaces import InterfacesService
+from maasservicelayer.services.ipranges import IPRangesService
+from maasservicelayer.services.leases import LeasesService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
@@ -18,6 +22,7 @@ from maasservicelayer.services.secrets import (
     SecretsServiceFactory,
 )
 from maasservicelayer.services.spaces import SpacesService
+from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
@@ -45,6 +50,11 @@ class ServiceCollectionV3:
     users: UsersService
     subnets: SubnetsService
     agents: AgentsService
+    leases: LeasesService
+    domains: DomainsService
+    dnsresources: DNSResourcesService
+    staticipaddress: StaticIPAddressService
+    ipranges: IPRangesService
 
     @classmethod
     async def produce(
@@ -86,4 +96,21 @@ class ServiceCollectionV3:
         services.vlans = VlansService(connection=connection)
         services.subnets = SubnetsService(connection=connection)
         services.agents = AgentsService(connection=connection)
+        services.domains = DomainsService(connection=connection)
+        services.dnsresources = DNSResourcesService(
+            connection=connection, domains_service=services.domains
+        )
+        services.staticipaddress = StaticIPAddressService(
+            connection=connection
+        )
+        services.ipranges = IPRangesService(connection=connection)
+        services.leases = LeasesService(
+            connection=connection,
+            dnsresource_service=services.dnsresources,
+            node_service=services.nodes,
+            staticipaddress_service=services.staticipaddress,
+            subnet_service=services.subnets,
+            interface_service=services.interfaces,
+            iprange_service=services.ipranges,
+        )
         return services

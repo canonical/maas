@@ -61,3 +61,6 @@ class NodesService(Service):
             )
             bmc.power_parameters.update(secret_power_params)
         return bmc
+
+    async def hostname_exists(self, hostname: str) -> bool:
+        return await self.nodes_repository.hostname_exists(hostname)

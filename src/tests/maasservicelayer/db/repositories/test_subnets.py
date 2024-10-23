@@ -6,6 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.models.subnets import Subnet
+from tests.fixtures.factories.staticipaddress import (
+    create_test_staticipaddress_entry,
+)
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
@@ -43,3 +46,21 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
                 )
             )
         )
+
+
+@pytest.mark.usefixtures("ensuremaasdb")
+@pytest.mark.asyncio
+class TestSubnetsRepositoryMethods:
+    async def test_find_best_subnet_for_ip(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        await create_test_subnet_entry(fixture, cidr="10.0.0.0/16")
+        subnet2 = await create_test_subnet_entry(fixture, cidr="10.0.1.0/24")
+
+        ip = await create_test_staticipaddress_entry(fixture, ip="10.0.1.2")
+
+        subnets = SubnetsRepository(db_connection)
+
+        result = await subnets.find_best_subnet_for_ip(str(ip[0]["ip"]))
+
+        assert result.id == subnet2["id"]

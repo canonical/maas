@@ -136,6 +136,42 @@ DomainTable = Table(
     Column("ttl", Integer, nullable=True),
 )
 
+DNSResourceTable = Table(
+    "maasserver_dnsresource",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(191), nullable=True, unique=False),
+    Column(
+        "domain_id",
+        BigInteger,
+        ForeignKey("maasserver_domain.id"),
+        nullable=False,
+    ),
+    Column("address_ttl", Integer, nullable=True, unique=False),
+)
+
+DNSResourceIPAddressTable = Table(
+    "maasserver_dnsresource_ip_addresses",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "dnsresource_id",
+        BigInteger,
+        ForeignKey("maasserver_dnsresource.id"),
+        nullable=False,
+    ),
+    Column(
+        "staticipaddress_id",
+        BigInteger,
+        ForeignKey("maasserver_staticipaddress.id"),
+        nullable=False,
+    ),
+)
+
 EventTable = Table(
     "maasserver_event",
     METADATA,
@@ -182,6 +218,20 @@ FabricTable = Table(
     Column("name", String(256), nullable=True),
     Column("class_type", String(256), nullable=True),
     Column("description", Text, nullable=False),
+)
+
+GlobalDefaultTable = Table(
+    "maasserver_globaldefault",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "domain_id",
+        BigInteger,
+        ForeignKey("maasserver_domain.id"),
+        nullable=False,
+    ),
 )
 
 InterfaceIPAddressTable = Table(

@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 
 class IpAddressType(IntEnum):
@@ -37,3 +37,14 @@ class IpAddressType(IntEnum):
     # lease parsing. Only commissioning or lease parsing creates these IP
     # addresses.
     DISCOVERED = 6
+
+
+class IpAddressFamily(IntEnum):
+    IPV4 = 4
+    IPV6 = 6
+
+
+class LeaseAction(Enum):
+    COMMIT = "commit"
+    EXPIRY = "expiry"
+    RELEASE = "release"

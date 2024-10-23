@@ -1,9 +1,9 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
+from typing import Any, List
 
-from sqlalchemy import desc, select, Select
+from sqlalchemy import desc, insert, select, Select
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
@@ -18,6 +18,7 @@ from maasservicelayer.db.tables import (  # TODO; VlanTable,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 
 
 def build_interface_links(
@@ -64,6 +65,27 @@ class InterfaceRepository:
             items=[Interface(**iface) for iface in interfaces],
             next_token=next_token,
         )
+
+    async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
+        stmt = self._select_all_statement().filter(
+            InterfaceTable.c.mac_address == mac
+        )
+
+        result = (await self.connection.execute(stmt)).all()
+        return [
+            Interface(**data)
+            for data in [
+                build_interface_links(row._asdict()) for row in result
+            ]
+        ]
+
+    async def add_ip(self, interface: Interface, ip: StaticIPAddress) -> None:
+        stmt = insert(InterfaceIPAddressTable).values(
+            interface_id=interface.id,
+            staticipaddress_id=ip.id,
+        )
+
+        await self.connection.execute(stmt)
 
     async def _find_discovered_ip_for_dhcp_links(
         self, interfaces, node_id

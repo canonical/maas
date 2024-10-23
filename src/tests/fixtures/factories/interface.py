@@ -16,7 +16,7 @@ async def create_test_interface_ip_addresses_entry(
     fixture: Fixture,
     interface_id: int,
     ip_id: int,
-):
+) -> dict[str, Any]:
     record = {
         "interface_id": interface_id,
         "staticipaddress_id": ip_id,

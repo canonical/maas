@@ -3,7 +3,9 @@
 
 from typing import Any
 
-from sqlalchemy import desc, select, Select
+from netaddr import IPAddress
+from pydantic import IPvAnyAddress
+from sqlalchemy import desc, func, select, Select
 from sqlalchemy.sql.operators import eq, le
 
 from maasservicelayer.db.filters import QuerySpec
@@ -11,7 +13,7 @@ from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
 )
-from maasservicelayer.db.tables import SubnetTable
+from maasservicelayer.db.tables import SubnetTable, VlanTable
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
 
@@ -28,6 +30,39 @@ class SubnetsRepository(BaseRepository[Subnet]):
         if not subnet:
             return None
         return Subnet(**subnet._asdict())
+
+    async def find_best_subnet_for_ip(
+        self, ip: IPvAnyAddress
+    ) -> Subnet | None:
+        ip_addr = IPAddress(str(ip))
+        if ip_addr.is_ipv4_mapped():
+            ip_addr = ip_addr.ipv4()
+
+        stmt = (
+            select(
+                SubnetTable,
+                func.masklen(SubnetTable.c.cidr).label("prefixlen"),
+                VlanTable.c.dhcp_on,
+            )
+            .select_from(SubnetTable)
+            .join(
+                VlanTable,
+                VlanTable.c.id == SubnetTable.c.vlan_id,
+            )
+            .order_by(
+                desc(VlanTable.c.dhcp_on),
+                desc("prefixlen"),
+            )
+        )
+
+        result = (await self.connection.execute(stmt)).first()
+        if not result:
+            return None
+
+        res = result._asdict()
+        del res["prefixlen"]
+        del res["dhcp_on"]
+        return Subnet(**res)
 
     async def find_by_name(self, name: str) -> Subnet | None:
         raise NotImplementedError()

@@ -96,6 +96,17 @@ class NodesRepository(BaseRepository[Node]):
         )
         await self.connection.execute(stmt)
 
+    async def hostname_exists(self, hostname: str) -> bool:
+        stmt = (
+            select(NodeTable.c.id)
+            .select_from(NodeTable)
+            .filter(NodeTable.c.hostname == hostname)
+        )
+
+        exists = (await self.connection.execute(stmt)).one_or_none()
+
+        return exists is not None
+
     def _bmc_select_all_statement(self) -> Select[Any]:
         # TODO: add other fields
         return (

@@ -27,3 +27,6 @@ class SubnetsService(Service):
 
     async def get_by_id(self, id: int) -> Subnet | None:
         return await self.subnets_repository.find_by_id(id=id)
+
+    async def find_best_subnet_for_ip(self, ip: str) -> Subnet | None:
+        return await self.subnets_repository.find_best_subnet_for_ip(ip)
