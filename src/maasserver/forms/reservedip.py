@@ -44,7 +44,21 @@ class ReservedIPForm(MAASModelForm):
                 raise ValidationError(
                     "The ip, mac_address and the subnet of a reserved ip are immutable. Please delete the entry and recreate it."
                 )
-        return super().clean()
+
+        cleaned_data = super().clean()
+        ip = cleaned_data.get("ip", None)
+        subnet = cleaned_data.get("subnet", None)
+        if (
+            ip
+            and subnet
+            and (dynamic_range := subnet.get_dynamic_range_for_ip(ip))
+        ):
+            set_form_error(
+                self,
+                "ip",
+                f"The ip {ip} must be outside the dynamic range {dynamic_range.start_ip} - {dynamic_range.end_ip}.",
+            )
+        return cleaned_data
 
     def clean_subnet(self):
         subnet = self.cleaned_data.get("subnet", None)

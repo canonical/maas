@@ -6,9 +6,12 @@
 
 from django import forms
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from netaddr import IPRange as netaddrIPRange
 
+from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms import MAASModelForm
-from maasserver.models import Subnet
+from maasserver.models import ReservedIP, Subnet
 from maasserver.models.iprange import IPRange
 
 
@@ -44,3 +47,21 @@ class IPRangeForm(MAASModelForm):
         elif instance.user and "user" not in data:
             data["user"] = instance.user.username
         super().__init__(data=data, instance=instance, *args, **kwargs)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("type", None) == IPRANGE_TYPE.DYNAMIC:
+            subnet = cleaned_data["subnet"]
+            start_ip = cleaned_data["start_ip"]
+            end_ip = cleaned_data["end_ip"]
+            iprange = netaddrIPRange(start_ip, end_ip)
+
+            # Check if any reserved IP would be included in the dynamic IP range
+            if any(
+                reserved_ip.ip in iprange
+                for reserved_ip in ReservedIP.objects.filter(subnet=subnet)
+            ):
+                raise ValidationError(
+                    "The dynamic IP range can't include reserved IPs"
+                )
+        return cleaned_data

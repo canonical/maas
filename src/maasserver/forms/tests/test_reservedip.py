@@ -1,6 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
+from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -139,6 +139,30 @@ class TestReservedIPForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual(
             {"ip": ["Reserved IP with this IP address already exists."]},
+            form.errors,
+        )
+
+    def test_ip_within_dynamic_range(self):
+        subnet = factory.make_Subnet(cidr="192.168.0.0/24")
+        factory.make_IPRange(
+            subnet=subnet,
+            start_ip="192.168.0.100",
+            end_ip="192.168.0.200",
+            alloc_type=IPRANGE_TYPE.DYNAMIC,
+        )
+        form = ReservedIPForm(
+            data={
+                "ip": "192.168.0.100",
+                "mac_address": "00:11:22:33:44:56",
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {
+                "ip": [
+                    "The ip 192.168.0.100 must be outside the dynamic range 192.168.0.100 - 192.168.0.200."
+                ]
+            },
             form.errors,
         )
 

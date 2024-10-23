@@ -146,6 +146,27 @@ class TestIPRangeForm(MAASServerTestCase):
         self.assertEqual(iprange.comment, comment)
         self.assertEqual(iprange.user, request.user)
 
+    def test_creates_iprange_with_reserved_ips(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        factory.make_ReservedIP(
+            ip="10.0.0.100", mac_address="00:11:22:33:44:55", subnet=subnet
+        )
+        comment = factory.make_name("comment")
+        form = IPRangeForm(
+            {
+                "type": IPRANGE_TYPE.DYNAMIC,
+                "subnet": subnet.id,
+                "start_ip": "10.0.0.100",
+                "end_ip": "10.0.0.150",
+                "comment": comment,
+            }
+        )
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertEqual(
+            {"__all__": ["The dynamic IP range can't include reserved IPs"]},
+            form.errors,
+        )
+
     def test_updates_iprange(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         iprange = subnet.get_dynamic_ranges().first()
