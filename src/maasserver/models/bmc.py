@@ -3,7 +3,6 @@
 
 """BMC objects."""
 
-
 from collections import defaultdict
 from functools import partial
 import re
@@ -26,11 +25,9 @@ from django.db.models import (
     Manager,
     ManyToManyField,
     PROTECT,
-    Q,
     SET_DEFAULT,
     SET_NULL,
     TextField,
-    UniqueConstraint,
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
@@ -198,13 +195,6 @@ class BMC(CleanSave, TimestampedModel):
         # use a HASH index to get around the size limitation on the content of
         # the indexed object
         indexes = [HashIndex(fields=["power_parameters"])]
-        constraints = [
-            UniqueConstraint(
-                name="name-unique",
-                fields=["name"],
-                condition=Q(power_parameters__project__exists=False),
-            ),
-        ]
 
     objects = Manager()
 
