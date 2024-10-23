@@ -392,13 +392,14 @@ class ConfigureDHCPForAgentWorkflow:
 
     @workflow.run
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
+        # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
+        # scenario we want to update the dhcpd config.
+        await workflow.execute_activity(
+            "apply-dhcp-config-via-file",
+            task_queue=f"{param.system_id}@agent:main",
+            start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
+        )
         if param.full_reload:
-            await workflow.execute_activity(
-                "apply-dhcp-config-via-file",
-                task_queue=f"{param.system_id}@agent:main",
-                start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
-            )
-
             await workflow.execute_activity(
                 "restart-dhcp-service",
                 task_queue=f"{param.system_id}@agent:main",
