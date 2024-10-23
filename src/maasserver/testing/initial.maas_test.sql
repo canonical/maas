@@ -8712,10 +8712,9 @@ CREATE TABLE public.maasserver_reservedip (
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
     ip inet NOT NULL,
-    mac_address text,
+    mac_address text NOT NULL,
     comment character varying(255),
-    subnet_id bigint NOT NULL,
-    vlan_id bigint NOT NULL
+    subnet_id bigint NOT NULL
 );
 
 
@@ -12058,6 +12057,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 388	maasserver	0332_node_enable_kernel_crash_dump	2024-10-01 03:29:32.748129+00
 389	maasserver	0333_migrate_20_maas_03_machine_resources	2024-10-08 03:29:47.744096+00
 390	maasserver	0334_dnspublication_update	2024-10-19 03:30:09.373532+00
+391	maasserver	0335_reservedip_remove_vlan_update_mac	2024-10-23 03:29:40.217669+00
 \.
 
 
@@ -12608,7 +12608,7 @@ COPY public.maasserver_regionrackrpcconnection (id, created, updated, endpoint_i
 -- Data for Name: maasserver_reservedip; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_reservedip (id, created, updated, ip, mac_address, comment, subnet_id, vlan_id) FROM stdin;
+COPY public.maasserver_reservedip (id, created, updated, ip, mac_address, comment, subnet_id) FROM stdin;
 \.
 
 
@@ -13199,7 +13199,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 390, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 391, true);
 
 
 --
@@ -14929,11 +14929,11 @@ ALTER TABLE ONLY public.maasserver_reservedip
 
 
 --
--- Name: maasserver_reservedip maasserver_reservedip_mac_address_vlan_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_reservedip maasserver_reservedip_mac_address_subnet_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_reservedip
-    ADD CONSTRAINT maasserver_reservedip_mac_address_vlan_uniq UNIQUE (mac_address, vlan_id);
+    ADD CONSTRAINT maasserver_reservedip_mac_address_subnet_uniq UNIQUE (mac_address, subnet_id);
 
 
 --
@@ -16562,13 +16562,6 @@ CREATE INDEX maasserver_reservedip_subnet_id_548dd59f ON public.maasserver_reser
 
 
 --
--- Name: maasserver_reservedip_vlan_id_e7f9f1cb; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_reservedip_vlan_id_e7f9f1cb ON public.maasserver_reservedip USING btree (vlan_id);
-
-
---
 -- Name: maasserver_resourcepool_name_dc5d41eb_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -18148,14 +18141,6 @@ ALTER TABLE ONLY public.maasserver_regionrackrpcconnection
 
 ALTER TABLE ONLY public.maasserver_reservedip
     ADD CONSTRAINT maasserver_reservedi_subnet_id_548dd59f_fk_maasserve FOREIGN KEY (subnet_id) REFERENCES public.maasserver_subnet(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_reservedip maasserver_reservedip_vlan_id_e7f9f1cb_fk_maasserver_vlan_id; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_reservedip
-    ADD CONSTRAINT maasserver_reservedip_vlan_id_e7f9f1cb_fk_maasserver_vlan_id FOREIGN KEY (vlan_id) REFERENCES public.maasserver_vlan(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
