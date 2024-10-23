@@ -27,29 +27,36 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"go.temporal.io/sdk/activity"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/atomicfile"
+	"maas.io/core/src/maasagent/internal/dhcpd"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
 	"maas.io/core/src/maasagent/internal/pathutil"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
 )
 
 const (
-	dhcpdOMAPIV4Endpoint = "localhost:7911"
-	dhcpdOMAPIV6Endpoint = "localhost:7912"
+	dhcpdOMAPIV4Endpoint        = "localhost:7911"
+	dhcpdOMAPIV6Endpoint        = "localhost:7912"
+	dhcpdNotificationSocketName = "dhcpd.sock"
+	flushInterval               = 5 * time.Second
 )
 
 var (
-	ErrV4NotActive = errors.New("dhcpd4 is not active and cannot configure IPv4 hosts")
-	ErrV6NotActive = errors.New("dhcpd6 is not active and cannot configure IPv6 hosts")
+	ErrV4NotActive               = errors.New("dhcpd4 is not active and cannot configure IPv4 hosts")
+	ErrV6NotActive               = errors.New("dhcpd6 is not active and cannot configure IPv6 hosts")
+	ErrFailedToPostNotifications = errors.New("error processing lease notifications")
 )
 
 // DHCPService is a service that is responsible for setting up DHCP on MAAS Agent.
 type DHCPService struct {
 	fatal              chan error
 	client             *apiclient.APIClient
+	notificationSock   net.Conn
+	notificationCancel context.CancelFunc
 	omapiConnFactory   omapiConnFactory
 	omapiClientFactory omapiClientFactory
 	dataPathFactory    dataPathFactory
@@ -121,6 +128,31 @@ func WithDataPathFactory(factory dataPathFactory) DHCPServiceOption {
 	}
 }
 
+func queueFlush(c *apiclient.APIClient, interval time.Duration) func(context.Context, []*dhcpd.Notification) error {
+	retry := backoff.NewExponentialBackOff()
+	retry.MaxElapsedTime = interval
+
+	return func(ctx context.Context, n []*dhcpd.Notification) error {
+		body, err := json.Marshal(n)
+		if err != nil {
+			return err
+		}
+
+		return backoff.Retry(func() error {
+			resp, err := c.Request(ctx, http.MethodPost, "/v3internal/leases", body)
+			if err != nil {
+				return err
+			}
+
+			if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+				return ErrFailedToPostNotifications
+			}
+
+			return nil
+		}, retry)
+	}
+}
+
 func (s *DHCPService) ConfigurationWorkflows() map[string]interface{} {
 	return map[string]interface{}{"configure-dhcp-service": s.configure}
 }
@@ -186,14 +218,44 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 }
 
 func (s *DHCPService) start(ctx context.Context) error {
-	// TODO: start processing loop
+	var err error
+
+	sockPath := s.dataPathFactory(dhcpdNotificationSocketName)
+
+	addr, err := net.ResolveUnixAddr("unixgram", sockPath)
+	if err != nil {
+		return err
+	}
+
+	s.notificationSock, err = net.ListenUnixgram("unixgram", addr)
+	if err != nil {
+		return err
+	}
+
+	notificationListener := dhcpd.NewNotificationListener(s.notificationSock,
+		queueFlush(s.client, flushInterval), dhcpd.WithInterval(flushInterval))
+
+	ctx, s.notificationCancel = context.WithCancel(ctx)
+
+	go notificationListener.Listen(ctx)
+
 	s.running.Store(true)
 
 	return nil
 }
 
 func (s *DHCPService) stop(ctx context.Context) error {
-	// TODO: stop processing loop & clean up resources
+	if s.notificationCancel != nil {
+		s.notificationCancel()
+	}
+
+	if s.notificationSock != nil {
+		err := s.notificationSock.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	s.running.Store(false)
 
 	return nil

@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +37,7 @@ import (
 	"go.temporal.io/sdk/testsuite"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
+	"maas.io/core/src/maasagent/internal/dhcpd"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
 	"maas.io/core/src/maasagent/internal/workflow/log"
@@ -444,4 +446,139 @@ func (s *DHCPServiceTestSuite) TestRestartDHCPServiceV6() {
 	)
 	s.NoError(err)
 	s.False(controllerV6.restarted)
+}
+
+type mockRoundTripper struct {
+	calledOnce bool
+	Error      error
+	Responses  []*http.Response
+}
+
+func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	defer func() {
+		if !m.calledOnce {
+			m.calledOnce = true
+		}
+	}()
+
+	if m.Error != nil && (len(m.Responses) == 0 || !m.calledOnce) {
+		return nil, m.Error
+	}
+
+	if m.Error == nil && len(m.Responses) == 0 {
+		//nolint:nilnil // this is fine for this fixture
+		return nil, nil
+	}
+
+	resp := m.Responses[0]
+
+	if len(m.Responses) > 1 {
+		m.Responses = m.Responses[:len(m.Responses)-1]
+	}
+
+	return resp, nil
+}
+
+func TestQueueFlush(t *testing.T) {
+	dummyURL := &url.URL{
+		Scheme: "http",
+		Host:   "localhost:8888",
+	}
+
+	testcases := map[string]struct {
+		notifications []*dhcpd.Notification
+		apiClient     *apiclient.APIClient
+		interval      time.Duration
+		err           error
+	}{
+		"successful request": {
+			notifications: []*dhcpd.Notification{
+				//nolint:gofmt // linter is expecting {} but we need a pointer
+				&dhcpd.Notification{
+					IP:  net.ParseIP("10.0.0.1"),
+					MAC: net.HardwareAddr{0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+				},
+			},
+			apiClient: apiclient.NewAPIClient(
+				dummyURL,
+				&http.Client{
+					Transport: &mockRoundTripper{
+						Responses: []*http.Response{
+							{
+								StatusCode: http.StatusNoContent,
+							},
+						},
+					},
+				},
+			),
+			interval: time.Second,
+		},
+		"retry once": {
+			notifications: []*dhcpd.Notification{
+				//nolint:gofmt // linter is expecting {} but we need a pointer
+				&dhcpd.Notification{
+					IP:  net.ParseIP("10.0.0.1"),
+					MAC: net.HardwareAddr{0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+				},
+			},
+			apiClient: apiclient.NewAPIClient(
+				dummyURL,
+				&http.Client{
+					Transport: &mockRoundTripper{
+						Error: http.ErrServerClosed,
+						Responses: []*http.Response{
+							{
+								StatusCode: http.StatusNoContent,
+							},
+						},
+					},
+				},
+			),
+			interval: time.Second,
+		},
+		"max retries": {
+			err: http.ErrServerClosed,
+			apiClient: apiclient.NewAPIClient(
+				dummyURL,
+				&http.Client{
+					Transport: &mockRoundTripper{
+						Error: http.ErrServerClosed,
+					},
+				},
+			),
+			interval: time.Second,
+		},
+		"bad status": {
+			err: ErrFailedToPostNotifications,
+			apiClient: apiclient.NewAPIClient(
+				dummyURL,
+				&http.Client{
+					Transport: &mockRoundTripper{
+						Responses: []*http.Response{
+							{
+								StatusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+				},
+			),
+			interval: time.Second,
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			flush := queueFlush(tc.apiClient, tc.interval)
+
+			err := flush(context.Background(), tc.notifications)
+			if err != nil {
+				assert.ErrorIs(t, err, tc.err)
+				return
+			}
+
+			if tc.err != nil {
+				t.Error("expected an error to be returned")
+			}
+		})
+	}
 }

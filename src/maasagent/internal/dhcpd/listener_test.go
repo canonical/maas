@@ -206,7 +206,7 @@ func TestNotificationListener(t *testing.T) {
 			// Collect result from the Listener into res []*Notification
 			// for further inspection
 			listener := NewNotificationListener(r, func(
-				notifications []*Notification) {
+				_ context.Context, notifications []*Notification) error {
 				res = append(res, notifications...)
 
 				// Listen() has internal buffer that is flushed by timer. The data is then
@@ -216,6 +216,8 @@ func TestNotificationListener(t *testing.T) {
 				if len(res) == len(tc.out.notifications) {
 					done <- struct{}{}
 				}
+
+				return nil
 			}, WithInterval(1*time.Millisecond))
 
 			go listener.Listen(ctx)

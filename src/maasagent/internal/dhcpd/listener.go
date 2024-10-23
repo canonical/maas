@@ -41,13 +41,13 @@ type NotificationListener struct {
 	queue    *NotificationQueue
 	buf      chan *Notification
 	pool     *sync.Pool
-	fn       func([]*Notification)
+	fn       func(context.Context, []*Notification) error
 	interval time.Duration
 }
 
 type NotificationListenerOption func(*NotificationListener)
 
-func NewNotificationListener(conn net.Conn, fn func([]*Notification),
+func NewNotificationListener(conn net.Conn, fn func(context.Context, []*Notification) error,
 	options ...NotificationListenerOption) *NotificationListener {
 	pool := &sync.Pool{
 		New: func() interface{} {
@@ -122,10 +122,21 @@ func (l *NotificationListener) Listen(ctx context.Context) {
 				break
 			}
 
+			if len(batch) == 0 {
+				l.pool.Put(&batch)
+				continue
+			}
+
 			copied := make([]*Notification, len(batch))
 			copy(copied, batch)
 			l.pool.Put(&batch)
-			l.fn(copied)
+
+			err := l.fn(ctx, copied)
+			if err != nil { // failed to send, push leases back
+				for _, n := range copied {
+					heap.Push(l.queue, n)
+				}
+			}
 		}
 	}
 }
