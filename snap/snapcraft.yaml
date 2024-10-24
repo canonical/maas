@@ -161,6 +161,7 @@ parts:
       - python3-pyparsing
       - python3-pypureomapi
       - python3-pyrsistent # for jsonschema
+      - python3-pyvmomi
       - python3-requests
       - python3-requests-toolbelt  # for pylxd
       - python3-requests-unixsocket
