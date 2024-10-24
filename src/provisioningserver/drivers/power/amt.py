@@ -38,6 +38,10 @@ AMT_ERRORS = {
     },
 }
 
+HTTP_OR_HTTPS = [
+    ["http", "16692"],
+    ["https", "16693"],
+]
 
 REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
 
@@ -57,6 +61,13 @@ class AMTPowerDriver(PowerDriver):
             "Power address",
             field_type="ip_address",
             required=True,
+        ),
+        make_setting_field(
+            "port",
+            "HTTP or HTTPS",
+            field_type="choice",
+            choices=HTTP_OR_HTTPS,
+            default="http",
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")
@@ -115,7 +126,7 @@ class AMTPowerDriver(PowerDriver):
         )
         return state
 
-    def _set_pxe_boot(self, ip_address, power_pass):
+    def _set_pxe_boot(self, ip_address, power_pass, port):
         """Set to PXE for next boot."""
         wsman_pxe_options = {
             "ChangeBootOrder": (
@@ -139,7 +150,7 @@ class AMTPowerDriver(PowerDriver):
         }
         wsman_opts = (
             "--port",
-            "16992",
+            port,
             "--hostname",
             ip_address,
             "--username",
@@ -183,6 +194,7 @@ class AMTPowerDriver(PowerDriver):
         cmd: str,
         ip_address: str,
         power_pass: str,
+        port: str,
         stdin=None,
     ) -> bytes:
         """Perform a command using amttool."""
@@ -192,7 +204,7 @@ class AMTPowerDriver(PowerDriver):
         return self._run(command, power_pass, stdin=stdin)
 
     def _issue_wsman_command(
-        self, power_change: str, ip_address: str, power_pass: str
+        self, power_change: str, ip_address: str, power_pass: str, port: str
     ) -> bytes:
         """Perform a command using wsman."""
         wsman_power_schema_uri = (
@@ -208,7 +220,7 @@ class AMTPowerDriver(PowerDriver):
         )
         command_args = (
             "--port",
-            "16992",
+            port,
             "--hostname",
             ip_address,
             "--username",
@@ -240,12 +252,12 @@ class AMTPowerDriver(PowerDriver):
         command = self._get_wsman_command(*command_args)
         return self._run(command, power_pass, stdin=stdin)
 
-    def amttool_query_state(self, ip_address, power_pass):
+    def amttool_query_state(self, ip_address, power_pass, port):
         """Ask for node's power state: 'on' or 'off', via amttool."""
         # Retry the state if it fails because it often fails the first time
         for _ in range(10):
             output = self._issue_amttool_command(
-                "info", ip_address, power_pass
+                "info", ip_address, power_pass, port
             )
             if output:
                 break
@@ -269,11 +281,13 @@ class AMTPowerDriver(PowerDriver):
                 return "on"
         raise PowerActionError("Got unknown power state from node: %s" % state)
 
-    def wsman_query_state(self, ip_address, power_pass):
+    def wsman_query_state(self, ip_address, power_pass, port):
         """Ask for node's power state: 'on' or 'off', via wsman."""
         # Retry the state if it fails because it often fails the first time.
         for _ in range(10):
-            output = self._issue_wsman_command("query", ip_address, power_pass)
+            output = self._issue_wsman_command(
+                "query", ip_address, power_pass, port
+            )
             if output:
                 break
             # Wait 1 second between retries.  AMT controllers are generally
@@ -308,16 +322,17 @@ class AMTPowerDriver(PowerDriver):
                     "Got unknown power state from node: %s" % state
                 )
 
-    def amttool_restart(self, ip_address, power_pass):
+    def amttool_restart(self, ip_address, power_pass, port):
         """Restart the node via amttool."""
         self._issue_amttool_command(
             "power_cycle",
             ip_address,
             power_pass,
+            port,
             stdin=b"yes",
         )
 
-    def amttool_power_on(self, ip_address, power_pass):
+    def amttool_power_on(self, ip_address, power_pass, port):
         """Power on the node via amttool."""
         # Try several times.  Power commands often fail the first time.
         for _ in range(10):
@@ -326,31 +341,32 @@ class AMTPowerDriver(PowerDriver):
                 "powerup",
                 ip_address,
                 power_pass,
+                port,
                 stdin=b"yes",
             )
-            if self.amttool_query_state(ip_address, power_pass) == "on":
+            if self.amttool_query_state(ip_address, power_pass, port) == "on":
                 return
             sleep(1)
         raise PowerActionError("Machine is not powering on.  Giving up.")
 
-    def wsman_power_on(self, ip_address, power_pass, restart=False):
+    def wsman_power_on(self, ip_address, power_pass, port, restart=False):
         """Power on the node via wsman."""
         power_command = "restart" if restart else "on"
-        self._set_pxe_boot(ip_address, power_pass)
-        self._issue_wsman_command(power_command, ip_address, power_pass)
+        self._set_pxe_boot(ip_address, power_pass, port)
+        self._issue_wsman_command(power_command, ip_address, power_pass, port)
         # Check power state several times.  It usually takes a second or
         # two to get the correct state.
         for _ in range(10):
-            if self.wsman_query_state(ip_address, power_pass) == "on":
+            if self.wsman_query_state(ip_address, power_pass, port) == "on":
                 return  # Success.  Machine is on.
             sleep(1)
         raise PowerActionError("Machine is not powering on.  Giving up.")
 
-    def amttool_power_off(self, ip_address, power_pass):
+    def amttool_power_off(self, ip_address, power_pass, port):
         """Power off the node via amttool."""
         # Try several times.  Power commands often fail the first time.
         for _ in range(10):
-            if self.amttool_query_state(ip_address, power_pass) == "off":
+            if self.amttool_query_state(ip_address, power_pass, port) == "off":
                 # Success.  Machine is off.
                 return
                 # Issue the AMT command; amttool will prompt for confirmation.
@@ -360,20 +376,20 @@ class AMTPowerDriver(PowerDriver):
             sleep(1)
         raise PowerActionError("Machine is not powering off.  Giving up.")
 
-    def wsman_power_off(self, ip_address, power_pass):
+    def wsman_power_off(self, ip_address, power_pass, port):
         """Power off the node via wsman."""
         # Issue the wsman command to change power state.
-        self._issue_wsman_command("off", ip_address, power_pass)
+        self._issue_wsman_command("off", ip_address, power_pass, port)
         # Check power state several times.  It usually takes a second or
         # two to get the correct state.
         for _ in range(10):
-            if self.wsman_query_state(ip_address, power_pass) == "off":
+            if self.wsman_query_state(ip_address, power_pass, port) == "off":
                 return  # Success.  Machine is off.
             else:
                 sleep(1)
         raise PowerActionError("Machine is not powering off.  Giving up.")
 
-    def _get_amt_command(self, ip_address, power_pass):
+    def _get_amt_command(self, ip_address, power_pass, port):
         """Retrieve AMT command to use, either amttool or wsman
         (if AMT version > 8), for the given system.
         """
@@ -383,7 +399,7 @@ class AMTPowerDriver(PowerDriver):
         command = self._get_wsman_command(
             "identify",
             "--port",
-            "16992",
+            port,
             "--hostname",
             ip_address,
             "--username",
@@ -445,17 +461,18 @@ class AMTPowerDriver(PowerDriver):
             context.get("power_address"), context.get("ip_address")
         )
         power_pass = context.get("power_pass")
-        amt_command = self._get_amt_command(ip_address, power_pass)
+        port = context.get("port")
+        amt_command = self._get_amt_command(ip_address, power_pass, port)
         if amt_command == "amttool":
-            if self.amttool_query_state(ip_address, power_pass) == "on":
-                self.amttool_restart(ip_address, power_pass)
+            if self.amttool_query_state(ip_address, power_pass, port) == "on":
+                self.amttool_restart(ip_address, power_pass, port)
             else:
-                self.amttool_power_on(ip_address, power_pass)
+                self.amttool_power_on(ip_address, power_pass, port)
         elif amt_command == "wsman":
-            if self.wsman_query_state(ip_address, power_pass) == "on":
-                self.wsman_power_on(ip_address, power_pass, restart=True)
+            if self.wsman_query_state(ip_address, power_pass, port) == "on":
+                self.wsman_power_on(ip_address, power_pass, port, restart=True)
             else:
-                self.wsman_power_on(ip_address, power_pass)
+                self.wsman_power_on(ip_address, power_pass, port)
 
     def power_off(self, system_id, context):
         """Power off AMT node."""
@@ -463,13 +480,14 @@ class AMTPowerDriver(PowerDriver):
             context.get("power_address"), context.get("ip_address")
         )
         power_pass = context.get("power_pass")
-        amt_command = self._get_amt_command(ip_address, power_pass)
+        port = context.get("port")
+        amt_command = self._get_amt_command(ip_address, power_pass, port)
         if amt_command == "amttool":
-            if self.amttool_query_state(ip_address, power_pass) != "off":
-                self.amttool_power_off(ip_address, power_pass)
+            if self.amttool_query_state(ip_address, power_pass, port) != "off":
+                self.amttool_power_off(ip_address, power_pass, port)
         elif amt_command == "wsman":
-            if self.wsman_query_state(ip_address, power_pass) != "off":
-                self.wsman_power_off(ip_address, power_pass)
+            if self.wsman_query_state(ip_address, power_pass, port) != "off":
+                self.wsman_power_off(ip_address, power_pass, port)
 
     def power_query(self, system_id, context):
         """Power query AMT node."""
@@ -477,8 +495,9 @@ class AMTPowerDriver(PowerDriver):
             context.get("power_address"), context.get("ip_address")
         )
         power_pass = context.get("power_pass")
-        amt_command = self._get_amt_command(ip_address, power_pass)
+        port = context.get("port")
+        amt_command = self._get_amt_command(ip_address, power_pass, port)
         if amt_command == "amttool":
-            return self.amttool_query_state(ip_address, power_pass)
+            return self.amttool_query_state(ip_address, power_pass, port)
         elif amt_command == "wsman":
-            return self.wsman_query_state(ip_address, power_pass)
+            return self.wsman_query_state(ip_address, power_pass, port)
