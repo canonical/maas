@@ -12058,6 +12058,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 389	maasserver	0333_migrate_20_maas_03_machine_resources	2024-10-08 03:29:47.744096+00
 390	maasserver	0334_dnspublication_update	2024-10-19 03:30:09.373532+00
 391	maasserver	0335_reservedip_remove_vlan_update_mac	2024-10-23 03:29:40.217669+00
+392	maasserver	0336_remove_bmc_name_unique	2024-10-24 03:30:13.161462+00
 \.
 
 
@@ -13199,7 +13200,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 391, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 392, true);
 
 
 --
@@ -16895,13 +16896,6 @@ CREATE INDEX metadataserver_scriptresult_script_version_id_932ffdd1 ON public.ma
 --
 
 CREATE INDEX metadataserver_scriptset_node_id_72b6537b ON public.maasserver_scriptset USING btree (node_id);
-
-
---
--- Name: name-unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "name-unique" ON public.maasserver_bmc USING btree (name) WHERE ((power_parameters #> ARRAY['project'::text, 'exists'::text]) = 'false'::jsonb);
 
 
 --
