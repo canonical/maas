@@ -1,3 +1,5 @@
+from ipaddress import IPv4Address
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -17,7 +19,7 @@ class TestIPRangesRepository:
             fixture, cidr="10.0.0.0/24"
         )
         subnet = Subnet(**subnet_data)
-        ip = "10.0.0.2"
+        ip = IPv4Address("10.0.0.2")
         dynamic_range = await create_test_ip_range_entry(
             fixture, subnet=subnet_data, offset=1, size=5, type="dynamic"
         )

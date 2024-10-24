@@ -2,138 +2,64 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
+from ipaddress import IPv4Address, IPv6Address
 import time
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.interface import InterfaceType
-from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
-from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
-from maasservicelayer.db.repositories.domains import DomainsRepository
-from maasservicelayer.db.repositories.interfaces import InterfaceRepository
-from maasservicelayer.db.repositories.ipranges import IPRangesRepository
-from maasservicelayer.db.repositories.nodes import NodesRepository
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressRepository,
+from maascommon.enums.ipaddress import (
+    IpAddressFamily,
+    IpAddressType,
+    LeaseAction,
 )
-from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.models.interfaces import Interface
+from maasservicelayer.models.leases import Lease
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
-from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService, LeaseUpdateError
 from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.secrets import SecretsServiceFactory
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.subnets import SubnetsService
 
 
 @pytest.mark.asyncio
 class TestLeasesService:
-    async def create_service(
-        self,
-        connection: AsyncConnection,
-        dnsresource_repo: DNSResourceRepository | None = None,
-        domains_repo: DomainsRepository | None = None,
-        nodes_repo: NodesRepository | None = None,
-        staticipaddress_repo: StaticIPAddressRepository | None = None,
-        subnets_repo: SubnetsRepository | None = None,
-        interfaces_repo: InterfaceRepository | None = None,
-        ipranges_repo: IPRangesRepository | None = None,
-    ) -> LeasesService:
-        configurations = ConfigurationsService(connection)
-        secrets = await SecretsServiceFactory.produce(
-            connection=connection, config_service=configurations
+    async def test_store_lease_info_no_subnet(self):
+        mock_dns_resources_service = Mock(DNSResourcesService)
+        mock_nodes_service = Mock(NodesService)
+        mock_static_ip_address_service = Mock(StaticIPAddressService)
+        mock_subnets_service = Mock(SubnetsService)
+        mock_interfaces_service = Mock(InterfacesService)
+        mock_ip_ranges_service = Mock(IPRangesService)
+        leases_service = LeasesService(
+            Mock(AsyncConnection),
+            dnsresource_service=mock_dns_resources_service,
+            node_service=mock_nodes_service,
+            staticipaddress_service=mock_static_ip_address_service,
+            subnet_service=mock_subnets_service,
+            interface_service=mock_interfaces_service,
+            iprange_service=mock_ip_ranges_service,
         )
-        return LeasesService(
-            connection,
-            DNSResourcesService(
-                connection,
-                DomainsService(
-                    connection,
-                    domains_repo,
-                ),
-                dnsresource_repo,
-            ),
-            NodesService(connection, secrets, nodes_repo),
-            StaticIPAddressService(connection, staticipaddress_repo),
-            SubnetsService(connection, subnets_repo),
-            InterfacesService(connection, interfaces_repo),
-            IPRangesService(connection, ipranges_repo),
+        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
+            return_value=None
         )
-
-    async def test_store_lease_info_invalid_action(
-        self, db_connection: AsyncConnection
-    ):
-        mock_dnsresource_repo = Mock(DNSResourceRepository)
-        mock_domains_repo = Mock(DomainsRepository)
-        mock_nodes_repo = Mock(NodesRepository)
-        mock_staticipaddress_repo = Mock(StaticIPAddressRepository)
-        mock_subnets_repo = Mock(SubnetsRepository)
-        mock_interfaces_repo = Mock(InterfaceRepository)
-        mock_ipranges_repo = Mock(IPRangesRepository)
-        service = await self.create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repo,
-            domains_repo=mock_domains_repo,
-            nodes_repo=mock_nodes_repo,
-            staticipaddress_repo=mock_staticipaddress_repo,
-            subnets_repo=mock_subnets_repo,
-            interfaces_repo=mock_interfaces_repo,
-            ipranges_repo=mock_ipranges_repo,
-        )
-
         try:
-            await service.store_lease_info(
-                "notvalid",
-                "ipv4",
-                "10.0.0.2",
-                "00:11:22:33:44:55",
-                "hostname",
-                int(time.time()),
-                30,
-            )
-        except Exception as e:
-            assert isinstance(e, LeaseUpdateError)
-
-    async def test_store_lease_info_no_subnet(
-        self, db_connection: AsyncConnection
-    ):
-        mock_dnsresource_repo = Mock(DNSResourceRepository)
-        mock_domains_repo = Mock(DomainsRepository)
-        mock_nodes_repo = Mock(NodesRepository)
-        mock_staticipaddress_repo = Mock(StaticIPAddressRepository)
-        mock_subnets_repo = Mock(SubnetsRepository)
-        mock_subnets_repo.find_best_subnet_for_ip.return_value = None
-
-        mock_interfaces_repo = Mock(InterfaceRepository)
-        mock_ipranges_repo = Mock(IPRangesRepository)
-        service = await self.create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repo,
-            domains_repo=mock_domains_repo,
-            nodes_repo=mock_nodes_repo,
-            staticipaddress_repo=mock_staticipaddress_repo,
-            subnets_repo=mock_subnets_repo,
-            interfaces_repo=mock_interfaces_repo,
-            ipranges_repo=mock_ipranges_repo,
-        )
-
-        try:
-            await service.store_lease_info(
-                "commit",
-                "ipv4",
-                "10.0.0.2",
-                "00:11:22:33:44:55",
-                "hostname",
-                int(time.time()),
-                30,
+            await leases_service.store_lease_info(
+                Lease(
+                    action=LeaseAction.COMMIT,
+                    ip_family=IpAddressFamily.IPV4,
+                    hostname="hostname",
+                    mac="00:11:22:33:44:55",
+                    ip=IPv4Address("10.0.0.2"),
+                    timestamp_epoch=int(time.time()),
+                    lease_time_seconds=30,
+                )
             )
         except Exception as e:
             assert isinstance(e, LeaseUpdateError)
@@ -171,54 +97,57 @@ class TestLeasesService:
             updated=datetime.utcnow(),
         )
 
-        mock_dnsresource_repo = Mock(DNSResourceRepository)
-        mock_domains_repo = Mock(DomainsRepository)
-        mock_nodes_repo = Mock(NodesRepository)
-
-        mock_staticipaddress_repo = Mock(StaticIPAddressRepository)
-        mock_staticipaddress_repo.create.return_value = sip
-
-        mock_subnets_repo = Mock(SubnetsRepository)
-        mock_subnets_repo.find_best_subnet_for_ip.return_value = subnet
-
-        mock_interfaces_repo = Mock(InterfaceRepository)
-        mock_interfaces_repo.get_interfaces_for_mac.return_value = [interface]
-
-        mock_ipranges_repo = Mock(IPRangesRepository)
-
-        service = await self.create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repo,
-            domains_repo=mock_domains_repo,
-            nodes_repo=mock_nodes_repo,
-            staticipaddress_repo=mock_staticipaddress_repo,
-            subnets_repo=mock_subnets_repo,
-            interfaces_repo=mock_interfaces_repo,
-            ipranges_repo=mock_ipranges_repo,
+        mock_dns_resources_service = Mock(DNSResourcesService)
+        mock_nodes_service = Mock(NodesService)
+        mock_static_ip_address_service = Mock(StaticIPAddressService)
+        mock_subnets_service = Mock(SubnetsService)
+        mock_interfaces_service = Mock(InterfacesService)
+        mock_ip_ranges_service = Mock(IPRangesService)
+        leases_service = LeasesService(
+            Mock(AsyncConnection),
+            dnsresource_service=mock_dns_resources_service,
+            node_service=mock_nodes_service,
+            staticipaddress_service=mock_static_ip_address_service,
+            subnet_service=mock_subnets_service,
+            interface_service=mock_interfaces_service,
+            iprange_service=mock_ip_ranges_service,
         )
-        await service.store_lease_info(
-            "commit",
-            "ipv4",
-            "10.0.0.2",
-            interface.mac_address,
-            "hostname",
-            int(time.time()),
-            30,
+        mock_static_ip_address_service.create_or_update = AsyncMock(
+            return_value=sip
+        )
+        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
+            return_value=subnet
+        )
+        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
+            return_value=[interface]
         )
 
-        mock_subnets_repo.find_best_subnet_for_ip.assert_called_once_with(
-            "10.0.0.2"
+        ip = IPv4Address("10.0.0.2")
+        await leases_service.store_lease_info(
+            Lease(
+                action=LeaseAction.COMMIT,
+                ip_family=IpAddressFamily.IPV4,
+                hostname="hostname",
+                mac="00:11:22:33:44:55",
+                ip=ip,
+                timestamp_epoch=int(time.time()),
+                lease_time_seconds=30,
+            )
         )
-        mock_ipranges_repo.get_dynamic_range_for_ip.assert_called_once_with(
-            subnet, "10.0.0.2"
+
+        mock_subnets_service.find_best_subnet_for_ip.assert_called_once_with(
+            ip
         )
-        mock_interfaces_repo.get_interfaces_for_mac.assert_called_once_with(
+        mock_ip_ranges_service.get_dynamic_range_for_ip.assert_called_once_with(
+            subnet, ip
+        )
+        mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_staticipaddress_repo.get_discovered_ips_in_family_for_interfaces(
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
             [interface], IpAddressFamily.IPV4
         )
-        mock_interfaces_repo.add_ip.assert_called_once_with(interface, sip)
+        mock_interfaces_service.add_ip.assert_called_once_with(interface, sip)
 
     async def test_store_lease_info_commit_v6(
         self, db_connection: AsyncConnection
@@ -253,54 +182,57 @@ class TestLeasesService:
             updated=datetime.utcnow(),
         )
 
-        mock_dnsresource_repo = Mock(DNSResourceRepository)
-        mock_domains_repo = Mock(DomainsRepository)
-        mock_nodes_repo = Mock(NodesRepository)
-
-        mock_staticipaddress_repo = Mock(StaticIPAddressRepository)
-        mock_staticipaddress_repo.create.return_value = sip
-
-        mock_subnets_repo = Mock(SubnetsRepository)
-        mock_subnets_repo.find_best_subnet_for_ip.return_value = subnet
-
-        mock_interfaces_repo = Mock(InterfaceRepository)
-        mock_interfaces_repo.get_interfaces_for_mac.return_value = [interface]
-
-        mock_ipranges_repo = Mock(IPRangesRepository)
-
-        service = await self.create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repo,
-            domains_repo=mock_domains_repo,
-            nodes_repo=mock_nodes_repo,
-            staticipaddress_repo=mock_staticipaddress_repo,
-            subnets_repo=mock_subnets_repo,
-            interfaces_repo=mock_interfaces_repo,
-            ipranges_repo=mock_ipranges_repo,
+        mock_dns_resources_service = Mock(DNSResourcesService)
+        mock_nodes_service = Mock(NodesService)
+        mock_static_ip_address_service = Mock(StaticIPAddressService)
+        mock_subnets_service = Mock(SubnetsService)
+        mock_interfaces_service = Mock(InterfacesService)
+        mock_ip_ranges_service = Mock(IPRangesService)
+        leases_service = LeasesService(
+            Mock(AsyncConnection),
+            dnsresource_service=mock_dns_resources_service,
+            node_service=mock_nodes_service,
+            staticipaddress_service=mock_static_ip_address_service,
+            subnet_service=mock_subnets_service,
+            interface_service=mock_interfaces_service,
+            iprange_service=mock_ip_ranges_service,
         )
-        await service.store_lease_info(
-            "commit",
-            "ipv6",
-            "fd42:be3f:b08a:3d6c::2",
-            interface.mac_address,
-            "hostname",
-            int(time.time()),
-            30,
+        mock_static_ip_address_service.create_or_update = AsyncMock(
+            return_value=sip
+        )
+        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
+            return_value=subnet
+        )
+        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
+            return_value=[interface]
         )
 
-        mock_subnets_repo.find_best_subnet_for_ip.assert_called_once_with(
-            "fd42:be3f:b08a:3d6c::2"
+        ip = IPv6Address("fd42:be3f:b08a:3d6c::2")
+        await leases_service.store_lease_info(
+            Lease(
+                action=LeaseAction.COMMIT,
+                ip_family=IpAddressFamily.IPV6,
+                hostname="hostname",
+                mac=interface.mac_address,
+                ip=IPv6Address("fd42:be3f:b08a:3d6c::2"),
+                timestamp_epoch=int(time.time()),
+                lease_time_seconds=30,
+            )
         )
-        mock_ipranges_repo.get_dynamic_range_for_ip.assert_called_once_with(
-            subnet, "fd42:be3f:b08a:3d6c::2"
+
+        mock_subnets_service.find_best_subnet_for_ip.assert_called_once_with(
+            ip
         )
-        mock_interfaces_repo.get_interfaces_for_mac.assert_called_once_with(
+        mock_ip_ranges_service.get_dynamic_range_for_ip.assert_called_once_with(
+            subnet, ip
+        )
+        mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_staticipaddress_repo.get_discovered_ips_in_family_for_interfaces(
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
             [interface], IpAddressFamily.IPV6
         )
-        mock_interfaces_repo.add_ip.assert_called_once_with(interface, sip)
+        mock_interfaces_service.add_ip.assert_called_once_with(interface, sip)
 
     async def test_store_lease_info_expiry(
         self, db_connection: AsyncConnection
@@ -335,58 +267,64 @@ class TestLeasesService:
             updated=datetime.utcnow(),
         )
 
-        mock_dnsresource_repo = Mock(DNSResourceRepository)
-        mock_domains_repo = Mock(DomainsRepository)
-        mock_nodes_repo = Mock(NodesRepository)
-
-        mock_staticipaddress_repo = Mock(StaticIPAddressRepository)
-        mock_staticipaddress_repo.get_discovered_ips_in_family_for_interfaces.return_value = [
-            sip
-        ]
-        mock_staticipaddress_repo.get_for_interfaces.return_value = sip
-
-        mock_subnets_repo = Mock(SubnetsRepository)
-        mock_subnets_repo.find_best_subnet_for_ip.return_value = subnet
-
-        mock_interfaces_repo = Mock(InterfaceRepository)
-        mock_interfaces_repo.get_interfaces_for_mac.return_value = [interface]
-
-        mock_ipranges_repo = Mock(IPRangesRepository)
-
-        service = await self.create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repo,
-            domains_repo=mock_domains_repo,
-            nodes_repo=mock_nodes_repo,
-            staticipaddress_repo=mock_staticipaddress_repo,
-            subnets_repo=mock_subnets_repo,
-            interfaces_repo=mock_interfaces_repo,
-            ipranges_repo=mock_ipranges_repo,
+        mock_dns_resources_service = Mock(DNSResourcesService)
+        mock_nodes_service = Mock(NodesService)
+        mock_static_ip_address_service = Mock(StaticIPAddressService)
+        mock_subnets_service = Mock(SubnetsService)
+        mock_interfaces_service = Mock(InterfacesService)
+        mock_ip_ranges_service = Mock(IPRangesService)
+        leases_service = LeasesService(
+            Mock(AsyncConnection),
+            dnsresource_service=mock_dns_resources_service,
+            node_service=mock_nodes_service,
+            staticipaddress_service=mock_static_ip_address_service,
+            subnet_service=mock_subnets_service,
+            interface_service=mock_interfaces_service,
+            iprange_service=mock_ip_ranges_service,
         )
-        await service.store_lease_info(
-            "expiry",
-            "ipv4",
-            "10.0.0.2",
-            interface.mac_address,
-            "hostname",
-            int(time.time()),
-            30,
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces = AsyncMock(
+            return_value=[sip]
+        )
+        mock_static_ip_address_service.get_for_interfaces = AsyncMock(
+            return_value=sip
+        )
+        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
+            return_value=subnet
+        )
+        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
+            return_value=[interface]
+        )
+        mock_interfaces_service.bulk_link_ip = AsyncMock(return_value=None)
+
+        ip = IPv4Address("10.0.0.2")
+        await leases_service.store_lease_info(
+            Lease(
+                action=LeaseAction.EXPIRY,
+                ip_family=IpAddressFamily.IPV4,
+                hostname="hostname",
+                mac=interface.mac_address,
+                ip=ip,
+                timestamp_epoch=int(time.time()),
+                lease_time_seconds=30,
+            )
         )
 
-        mock_subnets_repo.find_best_subnet_for_ip.assert_called_once_with(
-            "10.0.0.2"
+        mock_subnets_service.find_best_subnet_for_ip.assert_called_once_with(
+            ip
         )
-        mock_ipranges_repo.get_dynamic_range_for_ip.assert_called_once_with(
-            subnet, "10.0.0.2"
+        mock_ip_ranges_service.get_dynamic_range_for_ip.assert_called_once_with(
+            subnet, ip
         )
-        mock_interfaces_repo.get_interfaces_for_mac.assert_called_once_with(
+        mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_staticipaddress_repo.get_discovered_ips_in_family_for_interfaces(
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
             [interface], family=IpAddressFamily.IPV4
         )
         sip.ip = None
-        mock_interfaces_repo.add_ip.assert_called_once_with(interface, sip)
+        mock_interfaces_service.bulk_link_ip.assert_called_once_with(
+            sip, [interface]
+        )
 
     async def test_store_lease_info_release(
         self, db_connection: AsyncConnection
@@ -421,55 +359,61 @@ class TestLeasesService:
             updated=datetime.utcnow(),
         )
 
-        mock_dnsresource_repo = Mock(DNSResourceRepository)
-        mock_domains_repo = Mock(DomainsRepository)
-        mock_nodes_repo = Mock(NodesRepository)
-
-        mock_staticipaddress_repo = Mock(StaticIPAddressRepository)
-        mock_staticipaddress_repo.get_discovered_ips_in_family_for_interfaces.return_value = [
-            sip
-        ]
-        mock_staticipaddress_repo.get_for_interfaces.return_value = sip
-
-        mock_subnets_repo = Mock(SubnetsRepository)
-        mock_subnets_repo.find_best_subnet_for_ip.return_value = subnet
-
-        mock_interfaces_repo = Mock(InterfaceRepository)
-        mock_interfaces_repo.get_interfaces_for_mac.return_value = [interface]
-
-        mock_ipranges_repo = Mock(IPRangesRepository)
-
-        service = await self.create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repo,
-            domains_repo=mock_domains_repo,
-            nodes_repo=mock_nodes_repo,
-            staticipaddress_repo=mock_staticipaddress_repo,
-            subnets_repo=mock_subnets_repo,
-            interfaces_repo=mock_interfaces_repo,
-            ipranges_repo=mock_ipranges_repo,
+        mock_dns_resources_service = Mock(DNSResourcesService)
+        mock_nodes_service = Mock(NodesService)
+        mock_static_ip_address_service = Mock(StaticIPAddressService)
+        mock_subnets_service = Mock(SubnetsService)
+        mock_interfaces_service = Mock(InterfacesService)
+        mock_ip_ranges_service = Mock(IPRangesService)
+        leases_service = LeasesService(
+            Mock(AsyncConnection),
+            dnsresource_service=mock_dns_resources_service,
+            node_service=mock_nodes_service,
+            staticipaddress_service=mock_static_ip_address_service,
+            subnet_service=mock_subnets_service,
+            interface_service=mock_interfaces_service,
+            iprange_service=mock_ip_ranges_service,
         )
-        await service.store_lease_info(
-            "release",
-            "ipv4",
-            "10.0.0.2",
-            interface.mac_address,
-            "hostname",
-            int(time.time()),
-            30,
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces = AsyncMock(
+            return_value=[sip]
+        )
+        mock_static_ip_address_service.get_for_interfaces = AsyncMock(
+            return_value=sip
+        )
+        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
+            return_value=subnet
+        )
+        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
+            return_value=[interface]
+        )
+        mock_interfaces_service.bulk_link_ip = AsyncMock(return_value=None)
+
+        ip = IPv4Address("10.0.0.2")
+        await leases_service.store_lease_info(
+            Lease(
+                action=LeaseAction.RELEASE,
+                ip_family=IpAddressFamily.IPV4,
+                hostname="hostname",
+                mac=interface.mac_address,
+                ip=IPv4Address("10.0.0.2"),
+                timestamp_epoch=int(time.time()),
+                lease_time_seconds=30,
+            )
         )
 
-        mock_subnets_repo.find_best_subnet_for_ip.assert_called_once_with(
-            "10.0.0.2"
+        mock_subnets_service.find_best_subnet_for_ip.assert_called_once_with(
+            ip
         )
-        mock_ipranges_repo.get_dynamic_range_for_ip.assert_called_once_with(
-            subnet, "10.0.0.2"
+        mock_ip_ranges_service.get_dynamic_range_for_ip.assert_called_once_with(
+            subnet, ip
         )
-        mock_interfaces_repo.get_interfaces_for_mac.assert_called_once_with(
+        mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_staticipaddress_repo.get_discovered_ips_in_family_for_interfaces(
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
             [interface], family=IpAddressFamily.IPV4
         )
         sip.ip = None
-        mock_interfaces_repo.add_ip.assert_called_once_with(interface, sip)
+        mock_interfaces_service.bulk_link_ip.assert_called_once_with(
+            sip, [interface]
+        )

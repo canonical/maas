@@ -44,7 +44,7 @@ class IpAddressFamily(IntEnum):
     IPV6 = 6
 
 
-class LeaseAction(Enum):
+class LeaseAction(str, Enum):
     COMMIT = "commit"
     EXPIRY = "expiry"
     RELEASE = "release"

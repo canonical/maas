@@ -3,11 +3,11 @@
 
 from typing import Optional
 
+from pydantic import IPvAnyAddress
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.models.ipranges import IPRange
-from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services._base import Service
 
@@ -26,8 +26,8 @@ class IPRangesService(Service):
         )
 
     async def get_dynamic_range_for_ip(
-        self, subnet: Subnet, ip: StaticIPAddress | str
+        self, subnet: Subnet, ip: IPvAnyAddress
     ) -> IPRange | None:
         return await self.ipranges_repository.get_dynamic_range_for_ip(
-            subnet, str(ip.ip) if isinstance(ip, StaticIPAddress) else ip
+            subnet, ip
         )

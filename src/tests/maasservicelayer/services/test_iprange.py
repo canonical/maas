@@ -1,4 +1,5 @@
 from datetime import datetime
+from ipaddress import IPv4Address
 from unittest.mock import Mock
 
 import pytest
@@ -13,9 +14,7 @@ from maasservicelayer.services.ipranges import IPRangesService
 
 @pytest.mark.asyncio
 class TestIPRangesService:
-    async def test_get_dynamic_range_for_ip(
-        self, db_connection: AsyncConnection
-    ) -> None:
+    async def test_get_dynamic_range_for_ip(self) -> None:
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
@@ -41,11 +40,11 @@ class TestIPRangesService:
         mock_ipranges_repository = Mock(IPRangesRepository)
 
         ipranges_service = IPRangesService(
-            db_connection, ipranges_repository=mock_ipranges_repository
+            Mock(AsyncConnection), ipranges_repository=mock_ipranges_repository
         )
 
-        await ipranges_service.get_dynamic_range_for_ip(subnet, sip)
+        await ipranges_service.get_dynamic_range_for_ip(subnet, sip.ip)
 
         mock_ipranges_repository.get_dynamic_range_for_ip.assert_called_once_with(
-            subnet, "10.0.0.1"
+            subnet, IPv4Address("10.0.0.1")
         )

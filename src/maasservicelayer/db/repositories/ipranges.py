@@ -1,4 +1,5 @@
 import netaddr
+from pydantic import IPvAnyAddress
 from sqlalchemy import select
 
 from maasservicelayer.db.filters import QuerySpec
@@ -33,7 +34,7 @@ class IPRangesRepository(BaseRepository):
         raise NotImplementedError("Not implemented yet.")
 
     async def get_dynamic_range_for_ip(
-        self, subnet: Subnet, ip: str
+        self, subnet: Subnet, ip: IPvAnyAddress
     ) -> IPRange | None:
         stmt = (
             select(IPRangeTable)
@@ -49,7 +50,7 @@ class IPRangesRepository(BaseRepository):
 
         ipranges = [IPRange(**row._asdict()) for row in result]
 
-        netaddr_ip = netaddr.IPAddress(ip)
+        netaddr_ip = netaddr.IPAddress(str(ip))
 
         for iprange in ipranges:
             if netaddr_ip in netaddr.IPRange(

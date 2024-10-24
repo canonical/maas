@@ -1,8 +1,9 @@
 import datetime
 from typing import List, Optional
 
-from netaddr import IPAddress
-from sqlalchemy import and_, delete, func, insert, select, update
+from pydantic import IPvAnyAddress
+from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
@@ -22,20 +23,11 @@ from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 
-STATICIPADDRESS_FIELDS = [
-    StaticIPAddressTable.c.id,
-    StaticIPAddressTable.c.ip,
-    StaticIPAddressTable.c.alloc_type,
-    StaticIPAddressTable.c.lease_time,
-    StaticIPAddressTable.c.temp_expires_on,
-    StaticIPAddressTable.c.subnet_id,
-    StaticIPAddressTable.c.created,
-    StaticIPAddressTable.c.updated,
-]
-
 
 class StaticIPAddressResourceBuilder(CreateOrUpdateResourceBuilder):
-    def with_ip(self, ip: str | None) -> "StaticIPAddressResourceBuilder":
+    def with_ip(
+        self, ip: IPvAnyAddress | None
+    ) -> "StaticIPAddressResourceBuilder":
         self._request.set_value(StaticIPAddressTable.c.ip.name, ip)
         return self
 
@@ -92,7 +84,7 @@ class StaticIPAddressRepository(BaseRepository):
     ) -> StaticIPAddress:
         stmt = (
             insert(StaticIPAddressTable)
-            .returning(*STATICIPADDRESS_FIELDS)
+            .returning(StaticIPAddressTable)
             .values(**resource.get_values())
         )
 
@@ -100,33 +92,30 @@ class StaticIPAddressRepository(BaseRepository):
         return StaticIPAddress(**result._asdict())
 
     async def update(
-        self, id: int | None, resource: CreateOrUpdateResource
+        self, id: int, resource: CreateOrUpdateResource
     ) -> StaticIPAddress:
-        stmt = None
-
-        if id:
-            stmt = (
-                update(StaticIPAddressTable)
-                .where(StaticIPAddressTable.c.id == id)
-                .returning(*STATICIPADDRESS_FIELDS)
-                .values(**resource.get_values())
-            )
-        else:
-            stmt = (
-                update(StaticIPAddressTable)
-                .where(
-                    StaticIPAddressTable.c.ip
-                    == IPAddress(resource.get_values()["ip"]),
-                    StaticIPAddressTable.c.alloc_type
-                    == resource.get_values()["alloc_type"],
-                    StaticIPAddressTable.c.subnet_id
-                    == resource.get_values()["subnet_id"],
-                )
-                .returning(*STATICIPADDRESS_FIELDS)
-                .values(**resource.get_values())
-            )
-
+        stmt = (
+            update(StaticIPAddressTable)
+            .where(StaticIPAddressTable.c.id == id)
+            .returning(StaticIPAddressTable)
+            .values(**resource.get_values())
+        )
         result = (await self.connection.execute(stmt)).one()
+        return StaticIPAddress(**result._asdict())
+
+    async def create_or_update(
+        self, resource: CreateOrUpdateResource
+    ) -> StaticIPAddress:
+        stmt = insert(StaticIPAddressTable).values(**resource.get_values())
+        upsert_stmt = stmt.on_conflict_do_update(
+            index_elements=[
+                StaticIPAddressTable.c.ip,
+                StaticIPAddressTable.c.alloc_type,
+            ],
+            set_=resource.get_values(),
+        ).returning(StaticIPAddressTable)
+
+        result = (await self.connection.execute(upsert_stmt)).one()
         return StaticIPAddress(**result._asdict())
 
     async def get_discovered_ips_in_family_for_interfaces(

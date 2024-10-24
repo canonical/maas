@@ -2,10 +2,9 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from itertools import chain
-import re
 
 from netaddr import IPNetwork
+from pydantic import IPvAnyAddress
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import (
@@ -13,7 +12,11 @@ from maascommon.enums.ipaddress import (
     IpAddressType,
     LeaseAction,
 )
+from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressResourceBuilder,
+)
 from maasservicelayer.models.interfaces import Interface
+from maasservicelayer.models.leases import Lease
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services._base import Service
@@ -38,23 +41,6 @@ def _is_valid_hostname(hostname):
     )
 
 
-MAC_SPLIT_RE = re.compile(r"[-:.]")
-
-
-def normalise_macaddress(mac: str) -> str:
-    tokens = MAC_SPLIT_RE.split(mac.lower())
-    match len(tokens):
-        case 1:  # no separator
-            tokens = re.findall("..", tokens[0])
-        case 3:  # each token is two bytes
-            tokens = chain(
-                *(re.findall("..", token.zfill(4)) for token in tokens)
-            )
-        case _:  # single-byte tokens
-            tokens = (token.zfill(2) for token in tokens)
-    return ":".join(tokens)
-
-
 class LeasesService(Service):
     def __init__(
         self,
@@ -74,54 +60,33 @@ class LeasesService(Service):
         self.interface_service = interface_service
         self.iprange_service = iprange_service
 
-    async def store_lease_info(
-        self,
-        action: str,
-        ip_family: str,
-        ip: str,
-        mac: str,
-        hostname: str,
-        timestamp: int,
-        lease_time: int,
-    ) -> None:
-        if action not in (
-            LeaseAction.COMMIT.value,
-            LeaseAction.EXPIRY.value,
-            LeaseAction.RELEASE.value,
-        ):
-            raise LeaseUpdateError(f"Unknown lease action: {action}")
-
-        subnet = await self.subnet_service.find_best_subnet_for_ip(ip)
+    async def store_lease_info(self, lease: Lease) -> None:
+        subnet = await self.subnet_service.find_best_subnet_for_ip(lease.ip)
 
         if subnet is None:
-            raise LeaseUpdateError(f"No subnet exists for: {ip}")
+            raise LeaseUpdateError(f"No subnet exists for: {lease.ip}")
 
         subnet_network = IPNetwork(str(subnet.cidr))
-        if (
-            ip_family == IpAddressFamily.IPV4.name.lower()
-            and subnet_network.version != IpAddressFamily.IPV4.value
-        ) or (
-            ip_family == IpAddressFamily.IPV6.name.lower()
-            and subnet_network.version != IpAddressFamily.IPV6.value
-        ):
+        if lease.ip_family != subnet_network.version:
             raise LeaseUpdateError(
-                f"Family for the subnet does not match. Expected: {ip_family}"
+                f"Family for the subnet does not match. Expected: {lease.ip_family}"
             )
 
-        mac = normalise_macaddress(mac)
-        created = datetime.fromtimestamp(timestamp)
+        created = datetime.fromtimestamp(lease.timestamp_epoch)
 
         # We will receive actions on all addresses in the subnet. We only want
         # to update the addresses in the dynamic range.
         dynamic_range = await self.iprange_service.get_dynamic_range_for_ip(
-            subnet, ip
+            subnet, lease.ip
         )
         if dynamic_range is None:
             return
 
-        interfaces = await self.interface_service.get_interfaces_for_mac(mac)
+        interfaces = await self.interface_service.get_interfaces_for_mac(
+            lease.mac
+        )
         if len(interfaces) == 0:
-            if action != LeaseAction.COMMIT:
+            if lease.action != LeaseAction.COMMIT:
                 return
 
         sip = None
@@ -134,19 +99,24 @@ class LeasesService(Service):
             ),
         )
         for address in old_family_addresses:
-            if address.ip != ip:
+            if address.ip != lease.ip:
                 if address.ip is not None:
                     await self.dnsresource_service.release_dynamic_hostname(
                         address
                     )
-                    await self.staticipaddress_service.delete(address)
+                    await self.staticipaddress_service.delete(address.id)
                 else:
                     sip = address
 
-        match action:
+        match lease.action:
             case LeaseAction.COMMIT.value:
                 await self._commit_lease_info(
-                    hostname, subnet, ip, lease_time, created, interfaces
+                    lease.hostname,
+                    subnet,
+                    lease.ip,
+                    lease.lease_time_seconds,
+                    created,
+                    interfaces,
                 )
             case LeaseAction.EXPIRY.value:
                 await self._release_lease_info(sip, interfaces, subnet)
@@ -157,7 +127,7 @@ class LeasesService(Service):
         self,
         hostname: str,
         subnet: Subnet,
-        ip: str,
+        ip: IPvAnyAddress,
         lease_time: int,
         created: datetime,
         interfaces: list[Interface],
@@ -167,12 +137,14 @@ class LeasesService(Service):
             sip_hostname = hostname
 
         sip = await self.staticipaddress_service.create_or_update(
-            ip,
-            lease_time,
-            IpAddressType.DISCOVERED,
-            subnet.id,
-            created,
-            created,
+            StaticIPAddressResourceBuilder()
+            .with_ip(ip)
+            .with_lease_time(lease_time)
+            .with_alloc_type(IpAddressType.DISCOVERED)
+            .with_subnet_id(subnet.id)
+            .with_created(created)
+            .with_updated(created)
+            .build(),
         )
 
         for interface in interfaces:
@@ -202,17 +174,26 @@ class LeasesService(Service):
 
             if sip is None:
                 sip = await self.staticipaddress_service.create(
-                    None, 0, IpAddressType.DISCOVERED, subnet.id, now, now
+                    StaticIPAddressResourceBuilder()
+                    .with_ip(None)
+                    .with_lease_time(0)
+                    .with_alloc_type(IpAddressType.DISCOVERED)
+                    .with_subnet_id(subnet.id)
+                    .with_created(now)
+                    .with_updated(now)
+                    .build()
                 )
         else:
             await self.staticipaddress_service.update(
                 sip.id,
-                sip.ip,
-                sip.lease_time,
-                sip.alloc_type,
-                sip.subnet_id,
-                sip.created,
-                now,
+                StaticIPAddressResourceBuilder()
+                .with_ip(sip.ip)
+                .with_lease_time(sip.lease_time)
+                .with_alloc_type(sip.alloc_type)
+                .with_subnet_id(sip.subnet_id)
+                .with_created(sip.created)
+                .with_updated(now)
+                .build(),
             )
 
         await self.interface_service.bulk_link_ip(sip, interfaces)

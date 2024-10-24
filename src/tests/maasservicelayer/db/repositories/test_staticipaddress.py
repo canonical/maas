@@ -11,6 +11,7 @@ from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressResourceBuilder,
 )
 from maasservicelayer.db.tables import StaticIPAddressTable
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
@@ -82,6 +83,45 @@ class TestStaticIPAddressRepository:
         staticipaddress_repository = StaticIPAddressRepository(db_connection)
 
         await staticipaddress_repository.update(sip["id"], resource)
+
+        result_stmt = (
+            select(StaticIPAddressTable)
+            .select_from(StaticIPAddressTable)
+            .where(StaticIPAddressTable.c.id == sip["id"])
+        )
+
+        result = (await db_connection.execute(result_stmt)).one()
+
+        assert result._asdict()["lease_time"] == 30
+
+    async def test_create_or_update(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        sip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED.value,
+            )
+        )[0]
+
+        assert sip["lease_time"] == 600  # default value
+
+        resource = (
+            StaticIPAddressResourceBuilder()
+            .with_ip(sip["ip"])
+            .with_subnet_id(subnet["id"])
+            .with_alloc_type(IpAddressType(sip["alloc_type"]))
+            .with_lease_time(30)
+            .with_created(utcnow())
+            .with_updated(utcnow())
+            .build()
+        )
+
+        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+
+        await staticipaddress_repository.create_or_update(resource)
 
         result_stmt = (
             select(StaticIPAddressTable)
