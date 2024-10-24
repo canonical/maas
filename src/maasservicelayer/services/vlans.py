@@ -1,8 +1,10 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
@@ -27,3 +29,6 @@ class VlansService(Service):
 
     async def get_by_id(self, id: int) -> Vlan | None:
         return await self.vlans_repository.find_by_id(id=id)
+
+    async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
+        return await self.vlans_repository.get_node_vlans(query=query)

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
@@ -53,4 +54,33 @@ class TestVlansService:
         )
         vlan = await vlans_service.get_by_id(id=1)
         vlans_repository_mock.find_by_id.assert_called_once_with(id=1)
+        assert expected_vlan == vlan
+
+    async def test_get_node_vlans(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        now = datetime.now(timezone.utc)
+        expected_vlan = Vlan(
+            id=0,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=0,
+            dhcp_on=True,
+            fabric_id=0,
+            created=now,
+            updated=now,
+        )
+        vlans_repository_mock = Mock(VlansRepository)
+        vlans_repository_mock.get_node_vlans = AsyncMock(
+            return_value=expected_vlan
+        )
+        vlans_service = VlansService(
+            connection=db_connection,
+            vlans_repository=vlans_repository_mock,
+        )
+        query = QuerySpec()
+        vlan = await vlans_service.get_node_vlans(query=query)
+        vlans_repository_mock.get_node_vlans.assert_called_once_with(
+            query=query
+        )
         assert expected_vlan == vlan

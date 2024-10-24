@@ -1,12 +1,19 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db import Database
-from maasservicelayer.db.tables import VlanTable
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
+from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.services import ServiceCollectionV3, VlansService
+from maasservicelayer.utils.date import utcnow
+import maastemporalworker.workflow.activity as activity_module
 from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
     GetRackControllerVLANsInput,
@@ -14,121 +21,67 @@ from maastemporalworker.workflow.configure import (
     GetRegionControllerEndpointsResult,
 )
 from tests.fixtures.factories.interface import create_test_interface_entry
-from tests.fixtures.factories.node import (
-    create_test_rack_and_region_controller_entry,
-    create_test_rack_controller_entry,
-    create_test_region_controller_entry,
-)
+from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.fixtures.factories.node_config import create_test_node_config_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
-from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("maasdb")
 class TestConfigureAgentActivity:
-    async def test_get_rack_controller_vlans_no_rack_controller(
-        self, db: Database, db_connection: AsyncConnection
-    ):
+    async def test_get_rack_controller(self, monkeypatch):
+        mock_services = Mock(ServiceCollectionV3)
+        mock_services.vlans = Mock(VlansService)
+        mock_services.vlans.get_node_vlans = AsyncMock(
+            return_value=[
+                Vlan(
+                    id=1,
+                    vid=0,
+                    description="",
+                    mtu=1500,
+                    dhcp_on=False,
+                    fabric_id=0,
+                    created=utcnow(),
+                    updated=utcnow(),
+                )
+            ]
+        )
+        mock_services.produce = AsyncMock(return_value=mock_services)
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", mock_services
+        )
+
         configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
+            Mock(Database), connection=Mock(AsyncConnection)
         )
 
         result = await configure_activities.get_rack_controller_vlans(
             GetRackControllerVLANsInput(system_id="abc")
         )
-        assert result == GetRackControllerVLANsResult([])
-
-    async def test_get_rack_controller_vlans_valid_system_id(
-        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
-    ):
-        subnet = await create_test_subnet_entry(fixture)
-        rack_controller = await create_test_rack_controller_entry(fixture)
-        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
-        await create_test_interface_entry(
-            fixture, node=rack_controller, ips=[ip]
-        )
-        configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
-        )
-
-        result = await configure_activities.get_rack_controller_vlans(
-            GetRackControllerVLANsInput(system_id=rack_controller["system_id"])
-        )
-        vlan_stmt = (
-            select(
-                VlanTable.c.id,
+        assert result == GetRackControllerVLANsResult([1])
+        mock_services.vlans.get_node_vlans.assert_called_once_with(
+            query=QuerySpec(
+                where=VlansClauseFactory.and_clauses(
+                    [
+                        VlansClauseFactory.with_system_id("abc"),
+                        VlansClauseFactory.or_clauses(
+                            [
+                                VlansClauseFactory.with_node_type(
+                                    NodeTypeEnum.RACK_CONTROLLER
+                                ),
+                                VlansClauseFactory.with_node_type(
+                                    NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                                ),
+                            ]
+                        ),
+                    ]
+                )
             )
-            .select_from(VlanTable)
-            .filter(VlanTable.c.id == subnet["vlan_id"])
         )
-        [vlan] = (await db_connection.execute(vlan_stmt)).one_or_none()
-        assert result == GetRackControllerVLANsResult([vlan])
-
-    async def test_get_rack_controller_vlans_region_and_rack_controller(
-        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
-    ):
-        subnet = await create_test_subnet_entry(fixture)
-        rack_controller = await create_test_rack_and_region_controller_entry(
-            fixture
-        )
-        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
-        await create_test_interface_entry(
-            fixture, node=rack_controller, ips=[ip]
-        )
-        configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
-        )
-
-        result = await configure_activities.get_rack_controller_vlans(
-            GetRackControllerVLANsInput(system_id=rack_controller["system_id"])
-        )
-        vlan_stmt = (
-            select(
-                VlanTable.c.id,
-            )
-            .select_from(VlanTable)
-            .filter(VlanTable.c.id == subnet["vlan_id"])
-        )
-        [vlan] = (await db_connection.execute(vlan_stmt)).one_or_none()
-        assert result == GetRackControllerVLANsResult([vlan])
-
-    async def test_get_rack_controller_vlans_multiple_vlans(
-        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
-    ):
-        vlan1 = await create_test_vlan_entry(fixture)
-        vlan2 = await create_test_vlan_entry(fixture)
-        subnet1 = await create_test_subnet_entry(fixture, vlan_id=vlan1["id"])
-        subnet2 = await create_test_subnet_entry(fixture, vlan_id=vlan2["id"])
-        rack_controller = await create_test_rack_controller_entry(fixture)
-        current_node_config = await create_test_node_config_entry(
-            fixture, node=rack_controller
-        )
-        rack_controller["current_config_id"] = current_node_config["id"]
-        [ip1] = await create_test_staticipaddress_entry(
-            fixture, subnet=subnet1
-        )
-        [ip2] = await create_test_staticipaddress_entry(
-            fixture, subnet=subnet2
-        )
-        await create_test_interface_entry(
-            fixture, node=rack_controller, ips=[ip1]
-        )
-        await create_test_interface_entry(
-            fixture, node=rack_controller, ips=[ip2]
-        )
-        configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
-        )
-        result = await configure_activities.get_rack_controller_vlans(
-            GetRackControllerVLANsInput(system_id=rack_controller["system_id"])
-        )
-        assert isinstance(result, GetRackControllerVLANsResult)
-        assert set(result.vlans) == set([vlan1["id"], vlan2["id"]])
 
     async def test_get_region_controller_endpoints_no_region_controller(
         self, db: Database, db_connection: AsyncConnection

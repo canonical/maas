@@ -11,6 +11,8 @@ from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
 from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -18,7 +20,6 @@ from maasservicelayer.db.tables import (
     NodeTable,
     StaticIPAddressTable,
     SubnetTable,
-    VlanTable,
 )
 from maastemporalworker.workflow.activity import ActivityBase
 
@@ -51,58 +52,29 @@ class ConfigureAgentActivity(ActivityBase):
     async def get_rack_controller_vlans(
         self, input: GetRackControllerVLANsInput
     ):
-        async with self._start_transaction() as tx:
-            stmt = (
-                select(
-                    VlanTable.c.id,
-                )
-                .select_from(NodeTable)
-                .join(
-                    NodeConfigTable,
-                    NodeTable.c.current_config_id == NodeConfigTable.c.id,
-                )
-                .join(
-                    InterfaceTable,
-                    NodeConfigTable.c.id == InterfaceTable.c.node_config_id,
-                    isouter=True,
-                )
-                .join(
-                    InterfaceIPAddressTable,
-                    InterfaceTable.c.id
-                    == InterfaceIPAddressTable.c.interface_id,
-                    isouter=True,
-                )
-                .join(
-                    StaticIPAddressTable,
-                    InterfaceIPAddressTable.c.staticipaddress_id
-                    == StaticIPAddressTable.c.id,
-                    isouter=True,
-                )
-                .join(
-                    SubnetTable,
-                    SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
-                    isouter=True,
-                )
-                .join(
-                    VlanTable,
-                    or_(
-                        VlanTable.c.id == SubnetTable.c.vlan_id,
-                        VlanTable.c.id == InterfaceTable.c.vlan_id,
-                    ),
-                )
-                .filter(
-                    NodeTable.c.system_id == input.system_id,
-                    or_(
-                        NodeTable.c.node_type == NodeTypeEnum.RACK_CONTROLLER,
-                        NodeTable.c.node_type
-                        == NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
-                    ),
+        async with self.start_transaction() as services:
+            result = await services.vlans.get_node_vlans(
+                query=QuerySpec(
+                    where=VlansClauseFactory.and_clauses(
+                        [
+                            VlansClauseFactory.with_system_id(input.system_id),
+                            VlansClauseFactory.or_clauses(
+                                [
+                                    VlansClauseFactory.with_node_type(
+                                        NodeTypeEnum.RACK_CONTROLLER
+                                    ),
+                                    VlansClauseFactory.with_node_type(
+                                        NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                                    ),
+                                ]
+                            ),
+                        ]
+                    )
                 )
             )
-            result = (await tx.execute(stmt)).all()
             if result:
                 return GetRackControllerVLANsResult(
-                    [vlan_id[0] for vlan_id in result]
+                    [vlan.id for vlan in result]
                 )
             return GetRackControllerVLANsResult([])
 
