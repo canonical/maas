@@ -1,12 +1,12 @@
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, call, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
-from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -16,96 +16,35 @@ from maasservicelayer.services.domains import DomainsService
 
 @pytest.mark.asyncio
 class TestDNSResourcesService:
-    def _create_service(
-        self,
-        db_connection: AsyncConnection,
-        dnsresource_repo: DNSResourceRepository | None = None,
-        domains_repo: DomainsRepository | None = None,
-    ) -> DNSResourcesService:
-        return DNSResourcesService(
-            db_connection,
-            DomainsService(
-                db_connection,
-                domains_repository=domains_repo,
-            ),
-            dnsresource_repository=dnsresource_repo,
-        )
-
-    async def test_get_or_create_create(
-        self, db_connection: AsyncConnection
-    ) -> None:
-        mock_domains_repository = Mock(DomainsRepository)
-
-        async def mock_get_default_domain():
-            return Domain(
+    async def test_get(self) -> None:
+        mock_domains_service = Mock(DomainsService)
+        mock_domains_service.get_default_domain = AsyncMock(
+            return_value=Domain(
                 id=0,
                 name="test_domain",
                 authoritative=True,
                 created=datetime.utcnow(),
                 updated=datetime.utcnow(),
             )
-
-        mock_domains_repository.get_default_domain = mock_get_default_domain
+        )
 
         mock_dnsresource_repository = Mock(DNSResourceRepository)
+        mock_dnsresource_repository.get = AsyncMock(return_value=None)
 
-        async def mock_get(_):
-            return None
-
-        mock_dnsresource_repository.get = mock_get
-
-        dnsresources_service = self._create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repository,
-            domains_repo=mock_domains_repository,
+        dnsresources_service = DNSResourcesService(
+            Mock(AsyncConnection),
+            domains_service=mock_domains_service,
+            dnsresource_repository=mock_dnsresource_repository,
         )
 
-        await dnsresources_service.get_or_create(
-            name="test_name",
+        await dnsresources_service.get(query=QuerySpec(where=None))
+
+        mock_dnsresource_repository.get.assert_called_once_with(
+            query=QuerySpec(where=None)
         )
 
-        assert (
-            mock_dnsresource_repository.create.call_args[0][0]["name"]
-            == "test_name"
-        )
-        assert (
-            mock_dnsresource_repository.create.call_args[0][0]["domain_id"]
-            == 0
-        )
-
-    async def test_get_or_create_get(
-        self, db_connection: AsyncConnection
-    ) -> None:
-        mock_dnsresource_repository = Mock(DNSResourceRepository)
-
-        async def mock_get(_):
-            return DNSResource(
-                id=1,
-                name="test_name",
-                domain_id=0,
-                created=datetime.utcnow(),
-                updated=datetime.utcnow(),
-            )
-
-        mock_dnsresource_repository.get = mock_get
-
-        dnsresources_service = self._create_service(
-            db_connection, mock_dnsresource_repository
-        )
-
-        result, created = await dnsresources_service.get_or_create(
-            name="test_name", domain_id=0
-        )
-
-        assert result is not None
-        assert 1 == result.id
-        assert created is False
-
-    async def test_release_dynamic_hostname_no_remaining_ips(
-        self, db_connection: AsyncConnection
-    ) -> None:
-        mock_domains_repository = Mock(DomainsRepository)
-
+    async def test_release_dynamic_hostname_no_remaining_ips(self) -> None:
+        mock_domains_service = Mock(DomainsService)
         domain = Domain(
             id=0,
             name="test_domain",
@@ -113,9 +52,9 @@ class TestDNSResourcesService:
             created=datetime.utcnow(),
             updated=datetime.utcnow(),
         )
-
-        async def mock_get_default_domain():
-            return domain
+        mock_domains_service.get_default_domain = AsyncMock(
+            return_value=domain
+        )
 
         dnsresource = DNSResource(
             id=1,
@@ -135,8 +74,6 @@ class TestDNSResourcesService:
             updated=datetime.utcnow(),
         )
 
-        mock_domains_repository.get_default_domain = mock_get_default_domain
-
         mock_dnsresource_repository = Mock(DNSResourceRepository)
         mock_dnsresource_repository.get_dnsresources_in_domain_for_ip.return_value = [
             dnsresource
@@ -145,10 +82,10 @@ class TestDNSResourcesService:
             sip
         ]
 
-        dnsresources_service = self._create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repository,
-            domains_repo=mock_domains_repository,
+        dnsresources_service = DNSResourcesService(
+            Mock(AsyncConnection),
+            domains_service=mock_domains_service,
+            dnsresource_repository=mock_dnsresource_repository,
         )
 
         await dnsresources_service.release_dynamic_hostname(sip)
@@ -174,9 +111,20 @@ class TestDNSResourcesService:
             dnsresource, sip
         )
 
-    async def test_update_dynamic_hostname(
-        self, db_connection: AsyncConnection
-    ) -> None:
+    async def test_update_dynamic_hostname(self) -> None:
+
+        mock_domains_service = Mock(DomainsService)
+        domain = Domain(
+            id=0,
+            name="test_domain",
+            authoritative=True,
+            created=datetime.utcnow(),
+            updated=datetime.utcnow(),
+        )
+        mock_domains_service.get_default_domain = AsyncMock(
+            return_value=domain
+        )
+
         sip = StaticIPAddress(
             id=1,
             ip="10.0.0.1",
@@ -194,46 +142,43 @@ class TestDNSResourcesService:
             updated=datetime.utcnow(),
         )
 
-        mock_domains_repository = Mock(DomainsRepository)
-
-        async def mock_get_default_domain():
-            return Domain(
-                id=0,
-                name="test_domain",
-                authoritative=True,
-                created=datetime.utcnow(),
-                updated=datetime.utcnow(),
-            )
-
-        mock_domains_repository.get_default_domain = mock_get_default_domain
-
         mock_dnsresource_repository = Mock(DNSResourceRepository)
-
-        async def mock_get(_):
-            return dnsresource
-
-        mock_dnsresource_repository.get = mock_get
+        mock_dnsresource_repository.get = AsyncMock(return_value=dnsresource)
+        mock_dnsresource_repository.get_dnsresources_in_domain_for_ip.return_value = [
+            dnsresource
+        ]
         mock_dnsresource_repository.get_ips_for_dnsresource.return_value = []
 
-        dnsresources_service = self._create_service(
-            db_connection,
-            dnsresource_repo=mock_dnsresource_repository,
-            domains_repo=mock_domains_repository,
+        dnsresources_service = DNSResourcesService(
+            Mock(AsyncConnection),
+            domains_service=mock_domains_service,
+            dnsresource_repository=mock_dnsresource_repository,
         )
 
         await dnsresources_service.update_dynamic_hostname(sip, "test_name")
-
         assert (
             mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
                 0
             ]
-            == ((dnsresource,), {})
+            == call(dnsresource, discovered_only=True, matching=sip)
         )
         assert (
             mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
                 1
             ]
-            == ((dnsresource,), {"dynamic_only": True})
+            == call(dnsresource)
+        )
+        assert (
+            mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
+                2
+            ]
+            == call(dnsresource)
+        )
+        assert (
+            mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
+                3
+            ]
+            == call(dnsresource, discovered_only=True)
         )
         mock_dnsresource_repository.link_ip.assert_called_once_with(
             dnsresource, sip

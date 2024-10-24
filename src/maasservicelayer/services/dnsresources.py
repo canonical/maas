@@ -1,13 +1,13 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceClauseFactory,
     DNSResourceRepository,
@@ -17,6 +17,7 @@ from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services._base import Service
 from maasservicelayer.services.domains import DomainsService
+from maasservicelayer.utils.date import utcnow
 from provisioningserver.utils.network import coerce_to_valid_hostname
 
 
@@ -35,53 +36,11 @@ class DNSResourcesService(Service):
             else DNSResourceRepository(connection)
         )
 
-    async def get_or_create(
-        self, **values: dict[str, Any]
-    ) -> (DNSResource, bool):
-        if "domain_id" not in values:
-            default_domain = await self.domains_service.get_default_domain()
-            values["domain_id"] = default_domain.id
+    async def get(self, query: QuerySpec) -> DNSResource | None:
+        return await self.dnsresource_repository.get(query=query)
 
-        clause = None
-        for k, v in values.items():
-            match k:
-                case "name":
-                    name_clause = DNSResourceClauseFactory.with_name(v)
-                    clause = (
-                        name_clause
-                        if not clause
-                        else DNSResourceClauseFactory.and_clauses(
-                            [clause, name_clause]
-                        )
-                    )
-                case "domain_id":
-                    domain_clause = DNSResourceClauseFactory.with_domain_id(v)
-                    clause = (
-                        domain_clause
-                        if not clause
-                        else DNSResourceClauseFactory.and_clauses(
-                            [clause, domain_clause]
-                        )
-                    )
-
-        dnsrr = await self.dnsresource_repository.get(QuerySpec(where=clause))
-        if dnsrr is None:
-            now = datetime.utcnow()
-            resource = (
-                DNSResourceResourceBuilder()
-                .with_created(now)
-                .with_updated(now)
-            )
-            for k, v in values.items():
-                match k:
-                    case "name":
-                        resource = resource.with_name(v)
-                    case "domain_id":
-                        resource = resource.with_domain_id(v)
-
-            dnsrr = await self.dnsresource_repository.create(resource.build())
-            return (dnsrr, True)
-        return (dnsrr, False)
+    async def create(self, resource: CreateOrUpdateResource) -> DNSResource:
+        return await self.dnsresource_repository.create(resource=resource)
 
     async def release_dynamic_hostname(
         self, ip: StaticIPAddress, but_not_for: Optional[DNSResource] = None
@@ -120,16 +79,30 @@ class DNSResourcesService(Service):
 
         await self.release_dynamic_hostname(ip)
 
-        dnsrr, created = await self.get_or_create(name=hostname)
-        if created:
+        dnsrr = await self.get(
+            query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
+        )
+        if not dnsrr:
+            now = utcnow()
+            resource = (
+                DNSResourceResourceBuilder()
+                .with_name(hostname)
+                .with_domain_id(
+                    (await self.domains_service.get_default_domain()).id
+                )
+                .with_created(now)
+                .with_updated(now)
+                .build()
+            )
+            dnsrr = await self.create(resource=resource)
             await self.dnsresource_repository.link_ip(dnsrr, ip)
         else:
             ips = await self.dnsresource_repository.get_ips_for_dnsresource(
-                dnsrr,
+                dnsrr
             )
             dynamic_ips = (
                 await self.dnsresource_repository.get_ips_for_dnsresource(
-                    dnsrr, dynamic_only=True
+                    dnsrr, discovered_only=True
                 )
             )
 
