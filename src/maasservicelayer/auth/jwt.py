@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from enum import Enum
 from functools import cached_property
 from typing import Any, cast, Sequence
@@ -10,6 +10,7 @@ from typing import Any, cast, Sequence
 from jose import jwt, JWTError
 
 from maasservicelayer.auth.time import utc_from_timestamp
+from maasservicelayer.utils.date import utcnow
 
 
 class InvalidToken(Exception):
@@ -66,7 +67,7 @@ class JWT:
     def create(
         cls, key: str, subject: str, roles: Sequence[UserRole]
     ) -> "JWT":
-        issued = datetime.now(timezone.utc)
+        issued = utcnow()
         expiration = issued + cls.TOKEN_DURATION
 
         payload = {

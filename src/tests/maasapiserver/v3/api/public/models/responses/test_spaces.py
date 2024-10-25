@@ -1,16 +1,15 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
-
 from maasapiserver.v3.api.public.models.responses.spaces import SpaceResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.models.spaces import Space
+from maasservicelayer.utils.date import utcnow
 
 
 class TestSpaceResponse:
     def test_from_model(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         space = Space(
             id=1,
             name="my space",

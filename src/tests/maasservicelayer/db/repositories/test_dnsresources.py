@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -12,6 +10,7 @@ from maasservicelayer.db.repositories.dnsresources import (
 )
 from maasservicelayer.db.tables import DNSResourceTable
 from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
 from tests.fixtures.factories.staticipaddress import (
@@ -55,7 +54,7 @@ class TestDNSResourceRepository:
 
         dnsresource_repository = DNSResourceRepository(db_connection)
 
-        now = datetime.utcnow()
+        now = utcnow()
 
         resource = (
             DNSResourceResourceBuilder()

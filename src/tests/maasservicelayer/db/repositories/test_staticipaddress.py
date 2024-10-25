@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from netaddr import IPAddress
 import pytest
 from sqlalchemy import select
@@ -29,7 +27,7 @@ class TestStaticIPAddressRepository:
 
         staticipaddress_repository = StaticIPAddressRepository(db_connection)
 
-        now = datetime.utcnow()
+        now = utcnow()
 
         resource = (
             StaticIPAddressResourceBuilder()

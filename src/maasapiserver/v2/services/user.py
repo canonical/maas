@@ -1,11 +1,10 @@
-from datetime import datetime, timezone
-
 from django.core import signing
 from sqlalchemy import select
 
 from maasapiserver.v2.models.entities.user import User
 from maasservicelayer.db.tables import SessionTable, UserTable
 from maasservicelayer.services._base import Service
+from maasservicelayer.utils.date import utcnow
 
 
 class UserService(Service):
@@ -17,7 +16,7 @@ class UserService(Service):
             .select_from(SessionTable)
             .filter(
                 SessionTable.c.session_key == session_id,
-                SessionTable.c.expire_date > datetime.now(timezone.utc),
+                SessionTable.c.expire_date > utcnow(),
             )
         )
         row = (await self.conn.execute(stmt)).one_or_none()

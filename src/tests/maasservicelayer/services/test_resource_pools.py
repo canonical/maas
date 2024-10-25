@@ -1,7 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -15,13 +14,14 @@ from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
 from maasservicelayer.services import ResourcePoolsService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
 class TestResourcePoolsService:
     async def test_create(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         resource_pool = ResourcePool(
             id=1,
             name="test",
@@ -95,7 +95,7 @@ class TestResourcePoolsService:
 
     async def test_get_by_id(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         resource_pool = ResourcePool(
             id=1,
             name="test",
@@ -141,7 +141,7 @@ class TestResourcePoolsService:
 
     async def test_update(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         resource_pool = ResourcePool(
             id=1,
             name="test",

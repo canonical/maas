@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -12,6 +11,7 @@ from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services.vlans import VlansService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ class TestVlansService:
 
     async def test_get_by_id(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         expected_vlan = Vlan(
             id=0,
             vid=0,
@@ -58,7 +58,7 @@ class TestVlansService:
 
     async def test_get_node_vlans(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         expected_vlan = Vlan(
             id=0,
             vid=0,

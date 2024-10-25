@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Type
 
 from django.core import signing
@@ -29,6 +29,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.users import User, UserProfile
+from maasservicelayer.utils.date import utcnow
 
 
 class UserCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
@@ -105,7 +106,7 @@ class UsersRepository(BaseRepository[User]):
             .filter(
                 and_(
                     eq(SessionTable.c.session_key, sessionid),
-                    gt(SessionTable.c.expire_date, datetime.now(timezone.utc)),
+                    gt(SessionTable.c.expire_date, utcnow()),
                 )
             )
         )

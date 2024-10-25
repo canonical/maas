@@ -1,4 +1,3 @@
-from datetime import datetime
 from ipaddress import IPv4Address
 from unittest.mock import Mock
 
@@ -10,6 +9,7 @@ from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.ipranges import IPRangesService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
@@ -18,8 +18,8 @@ class TestIPRangesService:
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
             rdns_mode=1,
             allow_dns=True,
             allow_proxy=True,
@@ -32,8 +32,8 @@ class TestIPRangesService:
             ip="10.0.0.1",
             subnet_id=subnet.id,
             lease_time=600,
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
             alloc_type=IpAddressType.DISCOVERED,
         )
 

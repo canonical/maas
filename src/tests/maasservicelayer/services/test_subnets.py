@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv4Network
 from unittest.mock import AsyncMock, Mock
 
@@ -13,6 +12,7 @@ from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.subnets import SubnetsService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ class TestSubnetsService:
 
     async def test_get_by_id(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         expected_subnet = Subnet(
             id=0,
             name="my subnet",

@@ -1,12 +1,13 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Sequence
 
 import pytest
 
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.utils.date import utcnow
 
 
 class TestJWT:
@@ -34,7 +35,7 @@ class TestJWT:
     def test_create_and_decode(
         self, key: str, subject: str, roles: Sequence[UserRole]
     ) -> None:
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         token = JWT.create(key, subject, roles)
         assert token.subject == subject
         assert token.roles == roles

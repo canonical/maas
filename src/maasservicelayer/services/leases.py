@@ -26,6 +26,7 @@ from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.subnets import SubnetsService
+from maasservicelayer.utils.date import utcnow
 
 
 class LeaseUpdateError(Exception):
@@ -163,7 +164,7 @@ class LeasesService(Service):
     async def _release_lease_info(
         self, sip: StaticIPAddress, interfaces: list[Interface], subnet: Subnet
     ) -> None:
-        now = datetime.utcnow()
+        now = utcnow()
         if sip is None:
             sip = await self.staticipaddress_service.get_for_interfaces(
                 interfaces,

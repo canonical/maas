@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
 from ipaddress import IPv4Address, IPv6Address
 import time
 from unittest.mock import AsyncMock, Mock
@@ -26,6 +25,7 @@ from maasservicelayer.services.leases import LeasesService, LeaseUpdateError
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.subnets import SubnetsService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
@@ -70,8 +70,8 @@ class TestLeasesService:
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
             rdns_mode=1,
             allow_dns=True,
             allow_proxy=True,
@@ -84,8 +84,8 @@ class TestLeasesService:
             mac_address="00:11:22:33:44:55",
             type=InterfaceType.PHYSICAL,
             name="eth0",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
         sip = StaticIPAddress(
             id=3,
@@ -93,8 +93,8 @@ class TestLeasesService:
             alloc_type=IpAddressType.DISCOVERED,
             lease_time=600,
             subnet_id=subnet.id,
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
 
         mock_dns_resources_service = Mock(DNSResourcesService)
@@ -151,8 +151,8 @@ class TestLeasesService:
         subnet = Subnet(
             id=1,
             cidr="fd42:be3f:b08a:3d6c::/64",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
             rdns_mode=1,
             allow_dns=True,
             allow_proxy=True,
@@ -165,8 +165,8 @@ class TestLeasesService:
             mac_address="00:11:22:33:44:55",
             type=InterfaceType.PHYSICAL,
             name="eth0",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
         sip = StaticIPAddress(
             id=3,
@@ -174,8 +174,8 @@ class TestLeasesService:
             alloc_type=IpAddressType.DISCOVERED,
             lease_time=600,
             subnet_id=subnet.id,
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
 
         mock_dns_resources_service = Mock(DNSResourcesService)
@@ -232,8 +232,8 @@ class TestLeasesService:
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
             rdns_mode=1,
             allow_dns=True,
             allow_proxy=True,
@@ -246,8 +246,8 @@ class TestLeasesService:
             mac_address="00:11:22:33:44:55",
             type=InterfaceType.PHYSICAL,
             name="eth0",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
         sip = StaticIPAddress(
             id=3,
@@ -255,8 +255,8 @@ class TestLeasesService:
             alloc_type=IpAddressType.DISCOVERED,
             lease_time=600,
             subnet_id=subnet.id,
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
 
         mock_dns_resources_service = Mock(DNSResourcesService)
@@ -320,8 +320,8 @@ class TestLeasesService:
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
             rdns_mode=1,
             allow_dns=True,
             allow_proxy=True,
@@ -334,8 +334,8 @@ class TestLeasesService:
             mac_address="00:11:22:33:44:55",
             type=InterfaceType.PHYSICAL,
             name="eth0",
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
         sip = StaticIPAddress(
             id=3,
@@ -343,8 +343,8 @@ class TestLeasesService:
             alloc_type=IpAddressType.DISCOVERED,
             lease_time=600,
             subnet_id=subnet.id,
-            created=datetime.utcnow(),
-            updated=datetime.utcnow(),
+            created=utcnow(),
+            updated=utcnow(),
         )
 
         mock_dns_resources_service = Mock(DNSResourcesService)

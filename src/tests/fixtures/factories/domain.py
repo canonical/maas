@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from maasservicelayer.models.domains import Domain
@@ -9,8 +9,8 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_domain_entry(
     fixture: Fixture, **extra_details: dict[str, Any]
 ) -> Domain:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+    created_at = datetime.now(timezone.utc).astimezone()
+    updated_at = datetime.now(timezone.utc).astimezone()
     domain = {
         "created": created_at,
         "updated": updated_at,

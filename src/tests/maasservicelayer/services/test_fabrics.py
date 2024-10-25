@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -11,6 +10,7 @@ from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.services.fabrics import FabricsService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
@@ -34,7 +34,7 @@ class TestFabricsService:
 
     async def test_get_by_id(self) -> None:
         db_connection = Mock(AsyncConnection)
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         expected_fabric = Fabric(
             id=0, name="test", description="descr", created=now, updated=now
         )

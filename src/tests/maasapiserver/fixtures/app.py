@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import AsyncIterator, Awaitable, Callable, Iterator
 from unittest.mock import AsyncMock, Mock
 
@@ -251,7 +251,7 @@ async def authenticated_user(
         "is_superuser": False,
         "is_staff": False,
         "is_active": True,
-        "date_joined": datetime.now(timezone.utc),
+        "date_joined": utcnow(),
     }
     [user_details] = await fixture.create("auth_user", user_details)
     user = User(**user_details)
@@ -274,7 +274,7 @@ async def _create_user_session(
         {
             "session_key": session_id,
             "session_data": session_data,
-            "expire_date": datetime.now(timezone.utc) + timedelta(days=20),
+            "expire_date": utcnow() + timedelta(days=20),
         },
     )
 

@@ -1,12 +1,13 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from maasservicelayer.utils.date import utcnow
 from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
 from maasservicelayer.vault.api.models.exceptions import (
     VaultAuthenticationException,
@@ -50,13 +51,12 @@ def build_valid_login_response_stub(
 
 
 def build_valid_self_token_response_stub(
-    expire_time: datetime | None = datetime.now(timezone.utc)
-    + timedelta(minutes=30),
+    expire_time: datetime | None = utcnow() + timedelta(minutes=30),
 ) -> TokenLookupSelfResponse:
     return TokenLookupSelfResponse(
         **get_base_response_dict(),
         data=TokenLookupSelfDetailResponse(
-            issue_time=datetime.now(timezone.utc),
+            issue_time=utcnow(),
             expire_time=expire_time,
         )
     )
@@ -77,9 +77,7 @@ def async_vault_client_default_mock() -> AsyncVaultApiClient:
     apiclient.kv_v2_create_or_update = AsyncMock(
         return_value=KvV2WriteResponse(
             **get_base_response_dict(),
-            data=KvV2WriteDetailResponse(
-                created_time=datetime.now(timezone.utc), version=1
-            )
+            data=KvV2WriteDetailResponse(created_time=utcnow(), version=1)
         )
     )
 
@@ -144,7 +142,7 @@ class TestAsyncVaultManager:
         )
         async_vault_client_default_mock.token_lookup_self = AsyncMock(
             return_value=build_valid_self_token_response_stub(
-                expire_time=datetime.now(timezone.utc) - timedelta(hours=1)
+                expire_time=utcnow() - timedelta(hours=1)
             )
         )
         new_token = await manager.get_valid_token(force=True)

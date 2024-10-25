@@ -1,12 +1,13 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from functools import lru_cache
 import logging
 from typing import Any
 
 from maasserver.config import RegionConfiguration
+from maasservicelayer.utils.date import utcnow
 from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
 from maasservicelayer.vault.api.models.requests import (
     AppRoleLoginRequest,
@@ -158,7 +159,7 @@ class AsyncVaultManager:
         has_expired = (
             not self._cached_token
             or self._cached_token_expire_time
-            <= (datetime.now(timezone.utc) - TOKEN_BEFORE_EXPIRY_LIMIT)
+            <= (utcnow() - TOKEN_BEFORE_EXPIRY_LIMIT)
         )
         logger.debug("Vault access token was not set or has expired.")
         return has_expired

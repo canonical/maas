@@ -1,4 +1,3 @@
-from datetime import datetime
 from ipaddress import IPv4Address
 from unittest.mock import AsyncMock, Mock
 
@@ -15,12 +14,13 @@ from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
 class TestStaticIPAddressService:
     async def test_create_or_update(self) -> None:
-        now = datetime.utcnow()
+        now = utcnow()
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
@@ -71,7 +71,7 @@ class TestStaticIPAddressService:
         repository_mock.create_or_update.assert_called_once_with(resource)
 
     async def test_get_discovered_ips_in_family_for_interfaces(self) -> None:
-        now = datetime.utcnow()
+        now = utcnow()
         interface = Interface(
             id=1,
             name="eth0",

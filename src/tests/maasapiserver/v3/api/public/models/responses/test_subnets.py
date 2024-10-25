@@ -1,18 +1,18 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv4Network
 
 from maasapiserver.v3.api.public.models.responses.subnets import SubnetResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.utils.date import utcnow
 
 
 class TestSubnetResponse:
     def test_from_model(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         subnet = Subnet(
             id=1,
             name="my subnet",

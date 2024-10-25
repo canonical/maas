@@ -1,7 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 from ipaddress import IPv4Address
 
 from maasapiserver.v3.api.public.models.responses.events import (
@@ -15,11 +14,12 @@ from maasservicelayer.models.events import (
     EventType,
     LoggingLevelEnum,
 )
+from maasservicelayer.utils.date import utcnow
 
 
 class TestEventResponse:
     def test_from_model(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = utcnow()
         event = Event(
             id=1,
             created=now,
