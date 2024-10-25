@@ -1,19 +1,15 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
+from typing import Any, Type
 
-from sqlalchemy import case, desc, select, Select
+from sqlalchemy import case, select, Select, Table
 from sqlalchemy.sql.expression import func
-from sqlalchemy.sql.operators import eq, le, ne, or_
+from sqlalchemy.sql.operators import eq, ne, or_
 
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    CreateOrUpdateResource,
-)
+from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import EventTable, EventTypeTable, NodeTable
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.events import Event
 
 
@@ -29,43 +25,13 @@ class EventsClauseFactory(ClauseFactory):
 
 
 class EventsRepository(BaseRepository[Event]):
-    async def create(self, resource: CreateOrUpdateResource) -> Event:
-        raise NotImplementedError("Not implemented yet.")
+    def get_repository_table(self) -> Table:
+        return EventTable
 
-    async def find_by_id(self, id: int) -> Event | None:
-        raise NotImplementedError("Not implemented yet.")
+    def get_model_factory(self) -> Type[Event]:
+        return Event
 
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[Event]:
-        stmt = (
-            self._select_all_statement()
-            .order_by(desc(EventTable.c.id))
-            .limit(size + 1)
-        )
-        if query and query.where:
-            stmt = stmt.where(query.where.condition)
-
-        if token is not None:
-            stmt = stmt.where(le(EventTable.c.id, int(token)))
-
-        result = (await self.connection.execute(stmt)).all()
-        next_token = None
-        if len(result) > size:  # There is another page
-            next_token = result.pop().id
-
-        return ListResult[Event](
-            items=[Event(**row._asdict()) for row in result],
-            next_token=next_token,
-        )
-
-    async def update(self, id: int, resource: CreateOrUpdateResource) -> Event:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def delete(self, id: int) -> None:
-        raise NotImplementedError("Not implemented yet.")
-
-    def _select_all_statement(self) -> Select[Any]:
+    def select_all_statement(self) -> Select[Any]:
         return (
             select(
                 EventTable.c.id.label("id"),

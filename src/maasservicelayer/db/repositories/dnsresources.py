@@ -1,13 +1,12 @@
-from typing import List, Optional
+from typing import List, Optional, Type
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, insert, select, Table
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressType
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResource,
     CreateOrUpdateResourceBuilder,
 )
 from maasservicelayer.db.tables import (
@@ -15,7 +14,6 @@ from maasservicelayer.db.tables import (
     DNSResourceTable,
     StaticIPAddressTable,
 )
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -41,42 +39,12 @@ class DNSResourceResourceBuilder(CreateOrUpdateResourceBuilder):
         return self
 
 
-class DNSResourceRepository(BaseRepository):
-    async def find_by_id(self, id: int) -> DNSResource | None:
-        raise NotImplementedError("Not implemented yet.")
+class DNSResourceRepository(BaseRepository[DNSResource]):
+    def get_repository_table(self) -> Table:
+        return DNSResourceTable
 
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[DNSResource]:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def update(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> DNSResource:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def get(self, query: QuerySpec) -> DNSResource | None:
-        stmt = (
-            select(DNSResourceTable)
-            .select_from(DNSResourceTable)
-            .where(query.where.condition)
-        )
-
-        result = (await self.connection.execute(stmt)).one_or_none()
-        if result:
-            return DNSResource(**result._asdict())
-        return None
-
-    async def create(self, resource: CreateOrUpdateResource) -> DNSResource:
-        stmt = (
-            insert(DNSResourceTable)
-            .returning(DNSResourceTable)
-            .values(**resource.get_values())
-        )
-
-        result = (await self.connection.execute(stmt)).one()
-
-        return DNSResource(**result._asdict())
+    def get_model_factory(self) -> Type[DNSResource]:
+        return DNSResource
 
     async def get_dnsresources_in_domain_for_ip(
         self,
@@ -148,10 +116,6 @@ class DNSResourceRepository(BaseRepository):
             DNSResourceIPAddressTable.c.dnsresource_id == dnsrr.id,
         )
         await self.connection.execute(remove_relation_stmt)
-
-    async def delete(self, id: int) -> None:
-        stmt = delete(DNSResourceTable).where(DNSResourceTable.c.id == id)
-        await self.connection.execute(stmt)
 
     async def link_ip(self, dnsrr: DNSResource, ip: StaticIPAddress) -> None:
         stmt = insert(DNSResourceIPAddressTable).values(

@@ -1,21 +1,19 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
+from typing import Any, Type
 
-from sqlalchemy import ColumnElement, Select, select, update
+from sqlalchemy import ColumnElement, Select, select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeStatus
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
     CreateOrUpdateResourceBuilder,
 )
 from maasservicelayer.db.tables import BMCTable, NodeTable
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 
@@ -29,16 +27,12 @@ class NodeCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
 
 
 class NodesRepository(BaseRepository[Node]):
-    async def create(self, resource: CreateOrUpdateResource) -> Node:
-        raise NotImplementedError("Not implemented yet.")
 
-    async def find_by_id(self, id: int) -> Node | None:
-        raise NotImplementedError("Not implemented yet.")
+    def get_repository_table(self) -> Table:
+        return NodeTable
 
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[Node]:
-        raise NotImplementedError("Not implemented yet.")
+    def get_model_factory(self) -> Type[Node]:
+        return Node
 
     async def update(self, id: int, resource: CreateOrUpdateResource) -> Node:
         return await self._update(eq(NodeTable.c.id, id), resource)
@@ -66,9 +60,6 @@ class NodesRepository(BaseRepository[Node]):
         except NoResultFound:
             self._raise_not_found_exception()
         return Node(**new_node._asdict())
-
-    async def delete(self, id: int) -> None:
-        raise NotImplementedError("Not implemented yet.")
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         stmt = (

@@ -36,8 +36,8 @@ class DNSResourcesService(Service):
             else DNSResourceRepository(connection)
         )
 
-    async def get(self, query: QuerySpec) -> DNSResource | None:
-        return await self.dnsresource_repository.get(query=query)
+    async def get_one(self, query: QuerySpec) -> DNSResource | None:
+        return await self.dnsresource_repository.get_one(query=query)
 
     async def create(self, resource: CreateOrUpdateResource) -> DNSResource:
         return await self.dnsresource_repository.create(resource=resource)
@@ -79,7 +79,7 @@ class DNSResourcesService(Service):
 
         await self.release_dynamic_hostname(ip)
 
-        dnsrr = await self.get(
+        dnsrr = await self.get_one(
             query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
         )
         if not dnsrr:

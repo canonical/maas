@@ -2,14 +2,13 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Type
 
 from django.core import signing
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -29,7 +28,6 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.users import User, UserProfile
 
 
@@ -68,11 +66,12 @@ class UserProfileCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
 
 
 class UsersRepository(BaseRepository[User]):
-    async def create(self, resource: CreateOrUpdateResource) -> User:
-        raise NotImplementedError("Not implemented yet.")
 
-    async def find_by_id(self, id: int) -> User | None:
-        raise NotImplementedError("Not implemented yet.")
+    def get_repository_table(self) -> Table:
+        return UserTable
+
+    def get_model_factory(self) -> Type[User]:
+        return User
 
     async def find_by_username(self, username: str) -> User | None:
         stmt = (
@@ -128,12 +127,6 @@ class UsersRepository(BaseRepository[User]):
             return None
         return User(**row._asdict())
 
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[User]:
-        # TODO: use the query for the filters
-        pass
-
     async def get_user_profile(self, username: str) -> UserProfile | None:
         stmt = (
             select(UserProfileTable.columns)
@@ -146,28 +139,6 @@ class UsersRepository(BaseRepository[User]):
         if not row:
             return None
         return UserProfile(**row._asdict())
-
-    async def update(self, id: int, resource: CreateOrUpdateResource) -> User:
-        stmt = (
-            update(UserTable)
-            .where(eq(UserTable.c.id, id))
-            .returning(UserTable.columns)
-            .values(**resource.get_values())
-        )
-        try:
-            updated_user = (await self.connection.execute(stmt)).one()
-        except IntegrityError:
-            self._raise_already_existing_exception()
-        except NoResultFound:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message=f"User with id '{id}' does not exist.",
-                    )
-                ]
-            )
-        return User(**updated_user._asdict())
 
     async def update_profile(
         self, user_id: int, resource: CreateOrUpdateResource
@@ -192,9 +163,6 @@ class UsersRepository(BaseRepository[User]):
                 ]
             )
         return UserProfile(**updated_profile._asdict())
-
-    async def delete(self, id: int) -> None:
-        raise NotImplementedError("Not implemented yet.")
 
     async def get_user_apikeys(self, username: str) -> List[str]:
         stmt = (

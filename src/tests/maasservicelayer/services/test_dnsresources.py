@@ -16,7 +16,7 @@ from maasservicelayer.services.domains import DomainsService
 
 @pytest.mark.asyncio
 class TestDNSResourcesService:
-    async def test_get(self) -> None:
+    async def test_get_one(self) -> None:
         mock_domains_service = Mock(DomainsService)
         mock_domains_service.get_default_domain = AsyncMock(
             return_value=Domain(
@@ -37,9 +37,9 @@ class TestDNSResourcesService:
             dnsresource_repository=mock_dnsresource_repository,
         )
 
-        await dnsresources_service.get(query=QuerySpec(where=None))
+        await dnsresources_service.get_one(query=QuerySpec(where=None))
 
-        mock_dnsresource_repository.get.assert_called_once_with(
+        mock_dnsresource_repository.get_one.assert_called_once_with(
             query=QuerySpec(where=None)
         )
 
@@ -143,7 +143,9 @@ class TestDNSResourcesService:
         )
 
         mock_dnsresource_repository = Mock(DNSResourceRepository)
-        mock_dnsresource_repository.get = AsyncMock(return_value=dnsresource)
+        mock_dnsresource_repository.get_one = AsyncMock(
+            return_value=dnsresource
+        )
         mock_dnsresource_repository.get_dnsresources_in_domain_for_ip.return_value = [
             dnsresource
         ]

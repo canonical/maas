@@ -1,37 +1,20 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+from typing import Type
 
-from sqlalchemy import select
+from sqlalchemy import select, Table
 
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    CreateOrUpdateResource,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import DomainTable, GlobalDefaultTable
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.domains import Domain
 
 
-class DomainsRepository(BaseRepository):
-    async def find_by_id(self, id: int) -> Domain | None:
-        raise NotImplementedError("Not implemented yet.")
+class DomainsRepository(BaseRepository[Domain]):
+    def get_repository_table(self) -> Table:
+        return DomainTable
 
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[Domain]:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def update(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> Domain:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def create(self, resource: CreateOrUpdateResource) -> Domain:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def delete(self, id: int) -> None:
-        raise NotImplementedError("Not implemented yet.")
+    def get_model_factory(self) -> Type[Domain]:
+        return Domain
 
     async def get_default_domain(self) -> Domain:
         stmt = (

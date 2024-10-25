@@ -23,7 +23,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 @pytest.mark.asyncio
 class TestDNSResourceRepository:
-    async def test_get(
+    async def test_get_one(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         subnet = await create_test_subnet_entry(fixture)
@@ -44,7 +44,7 @@ class TestDNSResourceRepository:
             ),
         )
 
-        result = await dnsresource_repository.get(query)
+        result = await dnsresource_repository.get_one(query)
 
         assert result.id == dnsresource.id
 

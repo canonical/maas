@@ -1,20 +1,16 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, Optional
+from typing import Optional, Type
 
-from sqlalchemy import desc, insert, select, Select, update
-from sqlalchemy.exc import IntegrityError, NoResultFound
-from sqlalchemy.sql.operators import eq, le
+from sqlalchemy import select, Table
 
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResource,
     CreateOrUpdateResourceBuilder,
 )
 from maasservicelayer.db.tables import ResourcePoolTable
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
 
 
@@ -39,75 +35,13 @@ class ResourcePoolClauseFactory(ClauseFactory):
 
 
 class ResourcePoolRepository(BaseRepository[ResourcePool]):
-    async def find_by_id(self, id: int) -> Optional[ResourcePool]:
-        stmt = self._select_all_statement().where(
-            eq(ResourcePoolTable.c.id, id)
-        )
-        if result := await self.connection.execute(stmt):
-            if resource_pools := result.one_or_none():
-                return ResourcePool(**resource_pools._asdict())
-        return None
+    def get_repository_table(self) -> Table:
+        return ResourcePoolTable
 
-    async def create(self, resource: CreateOrUpdateResource) -> ResourcePool:
-        stmt = (
-            insert(ResourcePoolTable)
-            .returning(ResourcePoolTable)
-            .values(**resource.get_values())
-        )
-        try:
-            result = await self.connection.execute(stmt)
-        except IntegrityError:
-            self._raise_already_existing_exception()
-        resource_pools = result.one()
-        return ResourcePool(**resource_pools._asdict())
-
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[ResourcePool]:
-        stmt = (
-            self._select_all_statement()
-            .order_by(desc(ResourcePoolTable.c.id))
-            .limit(size + 1)
-        )
-        if query and query.where:
-            stmt = stmt.where(query.where.condition)
-
-        if token is not None:
-            stmt = stmt.where(le(ResourcePoolTable.c.id, int(token)))
-
-        result = (await self.connection.execute(stmt)).all()
-        next_token = None
-        if len(result) > size:
-            next_token = result.pop().id
-        return ListResult[ResourcePool](
-            items=[ResourcePool(**row._asdict()) for row in result],
-            next_token=next_token,
-        )
-
-    async def delete(self, id: int) -> None:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def update(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> ResourcePool:
-        stmt = (
-            update(ResourcePoolTable)
-            .where(eq(ResourcePoolTable.c.id, id))
-            .returning(ResourcePoolTable)
-            .values(**resource.get_values())
-        )
-        try:
-            new_resource_pool = (await self.connection.execute(stmt)).one()
-        except IntegrityError:
-            self._raise_already_existing_exception()
-        except NoResultFound:
-            self._raise_not_found_exception()
-        return ResourcePool(**new_resource_pool._asdict())
+    def get_model_factory(self) -> Type[ResourcePool]:
+        return ResourcePool
 
     async def list_ids(self) -> set[int]:
         stmt = select(ResourcePoolTable.c.id).select_from(ResourcePoolTable)
         result = (await self.connection.execute(stmt)).all()
         return {row.id for row in result}
-
-    def _select_all_statement(self) -> Select[Any]:
-        return select(ResourcePoolTable).select_from(ResourcePoolTable)

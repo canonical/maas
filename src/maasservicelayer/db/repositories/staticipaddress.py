@@ -1,8 +1,8 @@
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from pydantic import IPvAnyAddress
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import and_, func, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
@@ -11,14 +11,12 @@ from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
     CreateOrUpdateResourceBuilder,
-    QuerySpec,
 )
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
     StaticIPAddressTable,
 )
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
@@ -65,43 +63,12 @@ class StaticIPAddressResourceBuilder(CreateOrUpdateResourceBuilder):
 
 
 class StaticIPAddressRepository(BaseRepository):
-    async def find_by_id(self, id: int) -> StaticIPAddress | None:
-        raise NotImplementedError("Not implemented yet.")
 
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[StaticIPAddress]:
-        raise NotImplementedError("Not implemented yet.")
+    def get_repository_table(self) -> Table:
+        return StaticIPAddressTable
 
-    async def delete(self, id: int) -> None:
-        stmt = delete(StaticIPAddressTable).where(
-            StaticIPAddressTable.c.id == id
-        )
-        await self.connection.execute(stmt)
-
-    async def create(
-        self, resource: CreateOrUpdateResource
-    ) -> StaticIPAddress:
-        stmt = (
-            insert(StaticIPAddressTable)
-            .returning(StaticIPAddressTable)
-            .values(**resource.get_values())
-        )
-
-        result = (await self.connection.execute(stmt)).one()
-        return StaticIPAddress(**result._asdict())
-
-    async def update(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> StaticIPAddress:
-        stmt = (
-            update(StaticIPAddressTable)
-            .where(StaticIPAddressTable.c.id == id)
-            .returning(StaticIPAddressTable)
-            .values(**resource.get_values())
-        )
-        result = (await self.connection.execute(stmt)).one()
-        return StaticIPAddress(**result._asdict())
+    def get_model_factory(self) -> Type[StaticIPAddress]:
+        return StaticIPAddress
 
     async def create_or_update(
         self, resource: CreateOrUpdateResource

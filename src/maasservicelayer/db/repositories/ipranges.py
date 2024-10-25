@@ -1,37 +1,21 @@
+from typing import Type
+
 import netaddr
 from pydantic import IPvAnyAddress
-from sqlalchemy import select
+from sqlalchemy import select, Table
 
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    CreateOrUpdateResource,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
 
 
-class IPRangesRepository(BaseRepository):
-    async def delete(self, id: int) -> None:
-        raise NotImplementedError("Not implemented yet.")
+class IPRangesRepository(BaseRepository[IPRange]):
+    def get_repository_table(self) -> Table:
+        return IPRangeTable
 
-    async def find_by_id(self, id: int) -> IPRange | None:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[IPRange]:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def create(self, resource: CreateOrUpdateResource) -> IPRange:
-        raise NotImplementedError("Not implemented yet.")
-
-    async def update(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> IPRange:
-        raise NotImplementedError("Not implemented yet.")
+    def get_model_factory(self) -> Type[IPRange]:
+        return IPRange
 
     async def get_dynamic_range_for_ip(
         self, subnet: Subnet, ip: IPvAnyAddress
