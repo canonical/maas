@@ -41,7 +41,6 @@ class TestNodesService:
         db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
-        nodes_repository_mock.move_to_zone = AsyncMock()
         nodes_service = NodesService(
             db_connection,
             secrets_service=secrets_service_mock,
@@ -54,7 +53,6 @@ class TestNodesService:
         db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
-        nodes_repository_mock.move_bmcs_to_zone = AsyncMock()
         nodes_service = NodesService(
             db_connection,
             secrets_service=secrets_service_mock,
@@ -66,9 +64,8 @@ class TestNodesService:
     async def test_get_bmc(self) -> None:
         db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_composite_secret = AsyncMock()
         nodes_repository_mock = Mock(NodesRepository)
-        nodes_repository_mock.get_node_bmc = AsyncMock()
+        nodes_repository_mock.get_node_bmc.return_value = Mock()
         nodes_service = NodesService(
             db_connection,
             secrets_service=secrets_service_mock,

@@ -112,15 +112,11 @@ class TestLeasesService:
             interface_service=mock_interfaces_service,
             iprange_service=mock_ip_ranges_service,
         )
-        mock_static_ip_address_service.create_or_update = AsyncMock(
-            return_value=sip
-        )
-        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
-            return_value=subnet
-        )
-        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
-            return_value=[interface]
-        )
+        mock_static_ip_address_service.create_or_update.return_value = sip
+        mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
+        mock_interfaces_service.get_interfaces_for_mac.return_value = [
+            interface
+        ]
 
         ip = IPv4Address("10.0.0.2")
         await leases_service.store_lease_info(
@@ -144,8 +140,8 @@ class TestLeasesService:
         mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
-            [interface], IpAddressFamily.IPV4
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.assert_called_once_with(
+            [interface], family=IpAddressFamily.IPV4
         )
         mock_interfaces_service.add_ip.assert_called_once_with(interface, sip)
 
@@ -197,15 +193,11 @@ class TestLeasesService:
             interface_service=mock_interfaces_service,
             iprange_service=mock_ip_ranges_service,
         )
-        mock_static_ip_address_service.create_or_update = AsyncMock(
-            return_value=sip
-        )
-        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
-            return_value=subnet
-        )
-        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
-            return_value=[interface]
-        )
+        mock_static_ip_address_service.create_or_update.return_value = sip
+        mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
+        mock_interfaces_service.get_interfaces_for_mac.return_value = [
+            interface
+        ]
 
         ip = IPv6Address("fd42:be3f:b08a:3d6c::2")
         await leases_service.store_lease_info(
@@ -229,8 +221,8 @@ class TestLeasesService:
         mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
-            [interface], IpAddressFamily.IPV6
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.assert_called_once_with(
+            [interface], family=IpAddressFamily.IPV6
         )
         mock_interfaces_service.add_ip.assert_called_once_with(interface, sip)
 
@@ -282,19 +274,15 @@ class TestLeasesService:
             interface_service=mock_interfaces_service,
             iprange_service=mock_ip_ranges_service,
         )
-        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces = AsyncMock(
-            return_value=[sip]
-        )
-        mock_static_ip_address_service.get_for_interfaces = AsyncMock(
-            return_value=sip
-        )
-        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
-            return_value=subnet
-        )
-        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
-            return_value=[interface]
-        )
-        mock_interfaces_service.bulk_link_ip = AsyncMock(return_value=None)
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.return_value = [
+            sip
+        ]
+        mock_static_ip_address_service.get_for_interfaces.return_value = sip
+        mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
+        mock_interfaces_service.get_interfaces_for_mac.return_value = [
+            interface
+        ]
+        mock_interfaces_service.bulk_link_ip.return_value = None
 
         ip = IPv4Address("10.0.0.2")
         await leases_service.store_lease_info(
@@ -318,7 +306,7 @@ class TestLeasesService:
         mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.assert_called_once_with(
             [interface], family=IpAddressFamily.IPV4
         )
         sip.ip = None
@@ -374,19 +362,15 @@ class TestLeasesService:
             interface_service=mock_interfaces_service,
             iprange_service=mock_ip_ranges_service,
         )
-        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces = AsyncMock(
-            return_value=[sip]
-        )
-        mock_static_ip_address_service.get_for_interfaces = AsyncMock(
-            return_value=sip
-        )
-        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
-            return_value=subnet
-        )
-        mock_interfaces_service.get_interfaces_for_mac = AsyncMock(
-            return_value=[interface]
-        )
-        mock_interfaces_service.bulk_link_ip = AsyncMock(return_value=None)
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.return_value = [
+            sip
+        ]
+        mock_static_ip_address_service.get_for_interfaces.return_value = sip
+        mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
+        mock_interfaces_service.get_interfaces_for_mac.return_value = [
+            interface
+        ]
+        mock_interfaces_service.bulk_link_ip.return_value = None
 
         ip = IPv4Address("10.0.0.2")
         await leases_service.store_lease_info(
@@ -410,7 +394,7 @@ class TestLeasesService:
         mock_interfaces_service.get_interfaces_for_mac.assert_called_once_with(
             "00:11:22:33:44:55"
         )
-        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces(
+        mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.assert_called_once_with(
             [interface], family=IpAddressFamily.IPV4
         )
         sip.ip = None
