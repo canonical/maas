@@ -39,17 +39,17 @@ log = getLogger()
 
 
 async def _start_temporal_workers(workers: list[TemporalWorker]) -> None:
-    futures = []
+    tasks = []
     for w in workers:
-        futures.append(w.run())
-    await asyncio.wait(futures)
+        tasks.append(asyncio.create_task(w.run()))
+    await asyncio.wait(tasks)
 
 
 async def _stop_temporal_workers(workers: list[TemporalWorker]) -> None:
-    futures = []
+    tasks = []
     for w in workers:
-        futures.append(w.stop())
-    await asyncio.wait(futures)
+        tasks.append(asyncio.create_task(w.stop()))
+    await asyncio.wait(tasks)
 
 
 async def main() -> None:
