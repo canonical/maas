@@ -6,6 +6,7 @@ from functools import partial
 import logging
 import ssl
 
+from django.conf import settings as django_settings
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 import uvicorn
@@ -69,6 +70,9 @@ async def prepare_app(
     app_name: str = "apiserver",
 ) -> FastAPI:
     """Create the FastAPI application."""
+
+    if not django_settings.configured:
+        django_settings.configure()
 
     if db is None:
         db = Database(config.db, echo=config.debug_queries)

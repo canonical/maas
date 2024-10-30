@@ -192,6 +192,7 @@ APIServerRule = Rule(
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("aiohttp|aiohttp.**"),
     Allow("asyncpg|asyncpg.**"),
+    Allow("django.conf.*"),
     Allow("django.core.*"),
     Allow("fastapi|fastapi.**"),
     Allow("jose|jose.**"),
