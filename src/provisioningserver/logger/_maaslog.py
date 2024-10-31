@@ -70,6 +70,10 @@ class MAASSysLogHandler(logging.handlers.SysLogHandler):
             # Message is a string. Convert to bytes as required by RFC 5424
             msg = msg.encode("utf-8")
             msg = prio + msg
+
+            if not self.socket:
+                self.createSocket()
+
             if self.unixsocket:
                 try:
                     self.socket.send(msg)
