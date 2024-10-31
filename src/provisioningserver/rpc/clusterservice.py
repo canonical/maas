@@ -810,7 +810,7 @@ class ClusterClient(Cluster):
             MAAS_ID.set(self.localIdent)
             maas_uuid = data.get("uuid")
             MAAS_UUID.set(maas_uuid)
-            set_global_labels(maas_uuid=maas_uuid, service_type="rack")
+            set_global_labels(maas_uuid=maas_uuid)
             version = data.get("version", None)
             if version is None:
                 version_log = "MAAS version 2.2 or below"

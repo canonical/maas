@@ -3,11 +3,6 @@
 
 """Prometheus metrics."""
 
-from provisioningserver.prometheus.collectors import (
-    node_metrics_definitions,
-    update_cpu_metrics,
-    update_memory_metrics,
-)
 from provisioningserver.prometheus.utils import (
     create_metrics,
     MetricDefinition,
@@ -143,8 +138,6 @@ METRICS_DEFINITIONS = [
         "the time it takes MAAS to update BIND",
         ["update_type"],
     ),
-    # Common metrics
-    *node_metrics_definitions(),
 ]
 
 
@@ -155,8 +148,6 @@ GLOBAL_LABELS = {
     # The MAAS installation UUID, the same for all regions/racks within a
     # deployment
     "maas_uuid": None,
-    # The type of service (region/rack) exporting the metrics.
-    "service_type": None,
 }
 
 
@@ -172,5 +163,4 @@ PROMETHEUS_METRICS = create_metrics(
         "host": get_machine_default_gateway_ip(),
         "maas_id": lambda: GLOBAL_LABELS["maas_uuid"],
     },
-    update_handlers=[update_cpu_metrics, update_memory_metrics],
 )

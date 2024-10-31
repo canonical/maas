@@ -92,9 +92,7 @@ class TestMAASServices(MAASServerTestCase):
         fake_eventloop = Mock()
         services = MAASServices(fake_eventloop)
         yield services.startService()
-        mock_set_global_labels.assert_called_once_with(
-            maas_uuid=ANY, service_type="region"
-        )
+        mock_set_global_labels.assert_called_once_with(maas_uuid=ANY)
 
 
 class TestRegionEventLoop(MAASTestCase):

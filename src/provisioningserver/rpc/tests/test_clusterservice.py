@@ -1695,9 +1695,7 @@ class TestClusterClient(TestClusterClientBase):
 
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
-        mock_set_global_labels.assert_called_once_with(
-            maas_uuid="a-b-c", service_type="rack"
-        )
+        mock_set_global_labels.assert_called_once_with(maas_uuid="a-b-c")
 
     @inlineCallbacks
     def test_registerRackWithRegion_sets_uuid(self):

@@ -272,7 +272,7 @@ class MAASServices(MultiService):
         )
 
     def _set_globals(self):
-        set_global_labels(maas_uuid=MAAS_UUID.get(), service_type="region")
+        set_global_labels(maas_uuid=MAAS_UUID.get())
 
 
 class RegionEventLoop:
