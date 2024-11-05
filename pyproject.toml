@@ -50,3 +50,7 @@ filterwarnings = "error::BytesWarning"
 testpaths = [
   "src/tests",
 ]
+
+[tool.bandit]
+exclude_dirs = [ "src/tests" ]
+skips = [ "B311", "B101" ]

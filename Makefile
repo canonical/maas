@@ -179,6 +179,12 @@ update-initial-sql: bin/database bin/maas-region cleandb
 	$(dbrun) utilities/update-initial-sql src/maasserver/testing/initial.maas_test.sql
 .PHONY: update-initial-sql
 
+sec: sec-py
+.PHONY: sec sec-py
+
+sec-py:
+	@tox -e bandit
+
 lint: lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
 
