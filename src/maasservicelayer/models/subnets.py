@@ -21,3 +21,4 @@ class Subnet(MaasTimestampedBaseModel):
     active_discovery: bool
     managed: bool
     disabled_boot_architectures: list[str]
+    vlan_id: int

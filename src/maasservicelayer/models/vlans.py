@@ -14,8 +14,8 @@ class Vlan(MaasTimestampedBaseModel):
     mtu: int
     dhcp_on: bool
     external_dhcp: Optional[str]
-    primary_rack_id: Optional[str]
-    secondary_rack_id: Optional[str]
+    primary_rack_id: Optional[int]
+    secondary_rack_id: Optional[int]
     relay_vlan: Optional[int]
     fabric_id: int
     space_id: Optional[int]

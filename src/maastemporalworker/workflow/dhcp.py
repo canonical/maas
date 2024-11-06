@@ -4,7 +4,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -39,6 +39,26 @@ class ConfigureDHCPParam:
     static_ip_addr_ids: Optional[list[int]] = None
     ip_range_ids: Optional[list[int]] = None
     reserved_ip_ids: Optional[list[int]] = None
+
+
+def merge_configure_dhcp_param(
+    old: ConfigureDHCPParam, new: ConfigureDHCPParam
+) -> ConfigureDHCPParam:
+
+    def ensure_list(val: list[Any] | None) -> list[Any]:
+        return val if val is not None else []
+
+    return ConfigureDHCPParam(
+        system_ids=ensure_list(old.system_ids) + ensure_list(new.system_ids),
+        vlan_ids=ensure_list(old.vlan_ids) + ensure_list(new.vlan_ids),
+        subnet_ids=ensure_list(old.subnet_ids) + ensure_list(new.subnet_ids),
+        static_ip_addr_ids=ensure_list(old.static_ip_addr_ids)
+        + ensure_list(new.static_ip_addr_ids),
+        ip_range_ids=ensure_list(old.ip_range_ids)
+        + ensure_list(new.ip_range_ids),
+        reserved_ip_ids=ensure_list(old.reserved_ip_ids)
+        + ensure_list(new.ip_range_ids),
+    )
 
 
 @dataclass

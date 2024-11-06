@@ -26,6 +26,9 @@ class NodesService(Service):
             else NodesRepository(connection)
         )
 
+    async def get_by_id(self, id: int) -> Node | None:
+        return await self.nodes_repository.find_by_id(id)
+
     async def update_by_system_id(
         self, system_id: str, resource: CreateOrUpdateResource
     ) -> Node:

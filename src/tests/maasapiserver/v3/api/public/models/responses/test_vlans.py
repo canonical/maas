@@ -20,7 +20,7 @@ class TestVlanResponse:
             mtu=0,
             dhcp_on=True,
             external_dhcp="192.0.1.1",
-            primary_rack_id="xyz",
+            primary_rack_id=1,
             secondary_rack_id=None,
             relay_vlan=1,
             fabric_id=0,

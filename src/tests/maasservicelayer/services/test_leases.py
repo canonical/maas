@@ -77,6 +77,7 @@ class TestLeasesService:
             allow_proxy=True,
             active_discovery=True,
             managed=True,
+            vlan_id=1,
             disabled_boot_architectures=[],
         )
         interface = Interface(
@@ -158,6 +159,7 @@ class TestLeasesService:
             allow_proxy=True,
             active_discovery=True,
             managed=True,
+            vlan_id=1,
             disabled_boot_architectures=[],
         )
         interface = Interface(
@@ -239,6 +241,7 @@ class TestLeasesService:
             allow_proxy=True,
             active_discovery=True,
             managed=True,
+            vlan_id=1,
             disabled_boot_architectures=[],
         )
         interface = Interface(
@@ -327,6 +330,7 @@ class TestLeasesService:
             allow_proxy=True,
             active_discovery=True,
             managed=True,
+            vlan_id=1,
             disabled_boot_architectures=[],
         )
         interface = Interface(

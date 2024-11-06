@@ -202,6 +202,7 @@ APIServerRule = Rule(
     Allow("maasserver.config.**"),
     Allow("maasserver.enum.**"),
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
+    Allow("maasserver.workflow.worker.**"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
@@ -222,6 +223,7 @@ APIServerRule = Rule(
     Allow("requests_unixsocket.Session"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow("starlette|starlette.**"),
+    Allow("temporalio.client.**"),
     Allow("uvicorn"),
     Allow("yaml"),
     Allow(StandardLibraries),
@@ -424,6 +426,7 @@ ServiceLayerRule = Rule(
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
     Allow("maasserver.macaroons._IDClient"),
     Allow("maasservicelayer|maasservicelayer.**"),
+    Allow("maastemporalworker.workflow.**"),
     Allow("metadataserver.enum.*"),
     Allow("netaddr"),
     Allow("netaddr.**"),
@@ -434,6 +437,7 @@ ServiceLayerRule = Rule(
     Allow("pymacaroons|pymacaroons.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow("starlette.datastructures.Headers"),
+    Allow("temporalio.client.*"),
     Allow("yarl|yarl.**"),
     Allow(StandardLibraries),
     # TODO: Remove when we can do everything without Django ORM

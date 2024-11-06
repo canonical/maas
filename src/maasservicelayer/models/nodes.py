@@ -6,4 +6,5 @@ from maasservicelayer.models.base import MaasTimestampedBaseModel
 
 class Node(MaasTimestampedBaseModel):
     # TODO: model to be completed.
+    system_id: str
     status: NodeStatus

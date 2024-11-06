@@ -41,6 +41,7 @@ TEST_SUBNET = Subnet(
     active_discovery=False,
     managed=True,
     disabled_boot_architectures=[],
+    vlan_id=1,
 )
 
 TEST_SUBNET_2 = Subnet(
@@ -58,6 +59,7 @@ TEST_SUBNET_2 = Subnet(
     active_discovery=False,
     managed=True,
     disabled_boot_architectures=[],
+    vlan_id=1,
 )
 
 

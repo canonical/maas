@@ -25,6 +25,7 @@ class TestSubnetResponse:
             allow_proxy=True,
             active_discovery=False,
             managed=True,
+            vlan_id=1,
             disabled_boot_architectures=[],
             created=now,
             updated=now,

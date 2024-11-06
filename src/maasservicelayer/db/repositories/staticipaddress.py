@@ -63,7 +63,6 @@ class StaticIPAddressResourceBuilder(CreateOrUpdateResourceBuilder):
 
 
 class StaticIPAddressRepository(BaseRepository):
-
     def get_repository_table(self) -> Table:
         return StaticIPAddressTable
 

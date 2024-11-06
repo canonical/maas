@@ -1,9 +1,10 @@
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
+from temporalio.client import Client
 
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.services import ServiceCollectionV3
@@ -19,8 +20,9 @@ async def services(
 class ServicesMiddleware(BaseHTTPMiddleware):
     """Injects the V3 services in the request context if the request targets a v3 endpoint."""
 
-    def __init__(self, app: ASGIApp):
+    def __init__(self, app: ASGIApp, temporal: Optional[Client] = None):
         super().__init__(app)
+        self.temporal = temporal
 
     async def dispatch(
         self,
@@ -32,6 +34,8 @@ class ServicesMiddleware(BaseHTTPMiddleware):
         if not request.url.path.startswith(V3_API_PREFIX):
             return await call_next(request)
 
-        services = await ServiceCollectionV3.produce(request.state.conn)
+        services = await ServiceCollectionV3.produce(
+            request.state.conn, temporal=self.temporal
+        )
         request.state.services = services
         return await call_next(request)

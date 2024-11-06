@@ -66,7 +66,7 @@ def ensuremaasdjangodb(request, ensuremaasdb, pytestconfig, worker_id):
 
 
 @pytest.fixture
-def maasdb(ensuremaasdjangodb, request, pytestconfig):
+def maasdb(ensuremaasdjangodb, request, pytestconfig, mocker):
     enable_all_database_connections()
     # reset counters
     reset_queries()
@@ -75,6 +75,9 @@ def maasdb(ensuremaasdjangodb, request, pytestconfig):
     allow_transactions = (
         request.node.get_closest_marker("allow_transactions") is not None
     )
+
+    mocker.patch("maasapiserver.main.get_temporal_client_async")
+
     if allow_transactions:
         yield
         close_all_connections()

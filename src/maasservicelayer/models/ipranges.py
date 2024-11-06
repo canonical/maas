@@ -9,4 +9,5 @@ class IPRange(MaasTimestampedBaseModel):
     type: str
     start_ip: IPvAnyAddress
     end_ip: IPvAnyAddress
-    comment: Optional[str]
+    comment: Optional[str] = None
+    subnet_id: int

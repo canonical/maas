@@ -14,6 +14,7 @@ from pymacaroons import Macaroon
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
+from temporalio.client import Client as TemporalClient
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
@@ -575,9 +576,10 @@ class TestValidateUserExternalAuthCandid:
                 email="myusername@candid.example.com",
             )
         )
+        temporal = Mock(TemporalClient)
         self.request = Mock(Request)
         self.request.state.services = await ServiceCollectionV3.produce(
-            db_connection
+            db_connection, temporal
         )
         self.request.state.services.external_auth.get_candid_client = (
             AsyncMock(return_value=self.client)
@@ -714,9 +716,11 @@ class TestValidateUserExternalAuthRbac:
                 email="myusername@rbac.example.com",
             )
         )
+        temporal = Mock(TemporalClient)
         self.request = Mock(Request)
         self.request.state.services = await ServiceCollectionV3.produce(
-            db_connection
+            db_connection,
+            temporal,
         )
         self.request.state.services.external_auth.get_rbac_client = AsyncMock(
             return_value=self.client

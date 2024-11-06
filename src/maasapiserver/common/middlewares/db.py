@@ -36,6 +36,12 @@ class TransactionMiddleware(BaseHTTPMiddleware):
         async with self.get_connection() as conn:
             request.state.conn = conn
             response = await call_next(request)
+
+        if hasattr(request.state, "services") and hasattr(
+            request.state.services, "temporal"
+        ):
+            await request.state.services.temporal.post_commit()
+
         return response
 
 

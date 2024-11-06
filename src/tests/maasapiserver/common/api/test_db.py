@@ -3,6 +3,7 @@ from typing import AsyncIterator
 from fastapi import Depends, FastAPI
 from httpx import AsyncClient
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import (
     Column,
     insert,
@@ -38,8 +39,13 @@ class MyException(Exception):
 
 @pytest.fixture
 async def insert_app(
-    test_config: Config, db: Database, db_connection: AsyncConnection
+    test_config: Config,
+    db: Database,
+    db_connection: AsyncConnection,
+    mocker: MockerFixture,
 ) -> FastAPI:
+    mocker.patch("maasapiserver.main.get_temporal_client_async")
+
     class InsertHandler(Handler):
         @handler(path="/success", methods=["GET"])
         async def success(

@@ -8,7 +8,10 @@ from sqlalchemy.sql.operators import eq, or_
 
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.base import BaseRepository
+from maasservicelayer.db.repositories.base import (
+    BaseRepository,
+    CreateOrUpdateResourceBuilder,
+)
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -29,6 +32,46 @@ class VlansClauseFactory(ClauseFactory):
     @classmethod
     def with_node_type(cls, type: NodeTypeEnum) -> Clause:
         return Clause(condition=eq(NodeTable.c.node_type, type))
+
+
+class VlansResourceBuilder(CreateOrUpdateResourceBuilder):
+    def with_vid(self, vid: int) -> "VlansResourceBuilder":
+        self._request.set_value(VlanTable.c.vid, vid)
+        return self
+
+    def with_name(self, name: str) -> "VlansResourceBuilder":
+        self._request.set_value(VlanTable.c.name, name)
+        return self
+
+    def with_description(self, description: str) -> "VlansResourceBuilder":
+        self._request.set_value(VlanTable.c.description, description)
+        return self
+
+    def with_mtu(self, mtu: int) -> "VlansResourceBuilder":
+        self._request.set_value(VlanTable.c.mtu, mtu)
+        return self
+
+    def with_dhcp_on(self, dhcp_on: bool) -> "VlansResourceBuilder":
+        self._request.set_value(VlanTable.c.dhcp_on, dhcp_on)
+        return self
+
+    def with_fabric_id(self, fabric_id: int) -> "VlansResourceBuilder":
+        self._request.set_value(VlanTable.c.fabric_id, fabric_id)
+        return self
+
+    def with_primary_rack_id(
+        self, primary_rack_id: int
+    ) -> "VlansResourceBuilder":
+        self._request.set_value(VlanTable.c.primary_rack_id, primary_rack_id)
+        return self
+
+    def with_secondary_rack_id(
+        self, secondary_rack_id: int
+    ) -> "VlansResourceBuilder":
+        self._request.set_value(
+            VlanTable.c.secondary_rack_id, secondary_rack_id
+        )
+        return self
 
 
 class VlansRepository(BaseRepository[Vlan]):

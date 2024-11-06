@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient, Headers
 from macaroonbakery import bakery
 import pytest
+from pytest_mock import MockerFixture
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
@@ -214,9 +215,14 @@ async def mocked_api_client_admin_rbac(
 
 @pytest.fixture
 async def api_app(
-    test_config: Config, transaction_middleware_class: type, db: Database
+    test_config: Config,
+    transaction_middleware_class: type,
+    db: Database,
+    mocker: MockerFixture,
 ) -> Iterator[FastAPI]:
     """The API application."""
+    mocker.patch("maasapiserver.main.get_temporal_client_async")
+
     yield await create_app(
         config=test_config,
         transaction_middleware_class=transaction_middleware_class,

@@ -22,8 +22,8 @@ class VlanResponse(HalResponse[BaseHal]):
     mtu: int
     dhcp_on: bool
     external_dhcp: Optional[str]
-    primary_rack: Optional[str]
-    secondary_rack: Optional[str]
+    primary_rack: Optional[int]
+    secondary_rack: Optional[int]
     relay_vlan: Optional[int]
     fabric: BaseHref
     space: Optional[BaseHref]
