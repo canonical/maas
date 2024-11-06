@@ -270,8 +270,8 @@ EndSection
             ), password
 
     def test_generate_random_password_with_special_chars(self):
-        # Huawei uses a non-standard IPMI password policy
-        special_chars = set("!\"#$%&'()*+-./:;<=>?@[\\]^_`{|}~")
+        # Huawei and Lenovo use a non-standard IPMI password policy
+        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
         for attempt in range(0, 100):
             password = self.ipmi._generate_random_password(
                 with_special_chars=True

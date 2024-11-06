@@ -314,11 +314,11 @@ class IPMIBase(BMCConfig):
         self, min_length=10, max_length=15, with_special_chars=False
     ):
         length = random.randint(min_length, max_length)
-        special_chars = "!\"#$%&'()*+-./:;<=>?@[\\]^_`{|}~"
+        special_chars = "!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~"
         letters = ""
         if with_special_chars:
             # LP: #1621175 - Password generation for non-compliant IPMI password
-            # policy. Huawei has implemented a different password policy that
+            # policy. Huawei and Lenovo have implemented a different password policy that
             # does not confirm with the IPMI spec, hence we generate a password
             # that would be compliant to their use case.
             # Randomly select 2 Upper Case
