@@ -16,21 +16,17 @@ import sys
 
 from provisioningserver.utils.fs import atomic_write
 
-
 DATA_FILES = {
     os.path.join(os.getenv("MAAS_DATA", "/var/lib/maas"), path)
     for path in (
-            "dhcpd-interfaces",
-            "dhcpd.conf",
-            "dhcpd6-interfaces",
-            "dhcpd6.conf",
+        "dhcpd-interfaces",
+        "dhcpd.conf",
+        "dhcpd6-interfaces",
+        "dhcpd6.conf",
     )
 }
 
-CONF_FILES = {
-    "/etc/chrony/chrony.conf",
-    "/etc/chrony/maas.conf"
-}
+CONF_FILES = {"/etc/chrony/chrony.conf", "/etc/chrony/maas.conf"}
 # For DEVELOPMENT ONLY update config file paths to be prefixed
 # with MAAS_ROOT, if defined. Check real and effective UIDs to be super extra
 # paranoid (only the latter actually matters).
@@ -62,21 +58,23 @@ def main(args, fin):
     if args.filename not in WRITABLE_FILES:
         arg_parser.error(
             "Given filename %s is not in the allowed list. "
-            "Choose from: %s." % (
-                pipes.quote(args.filename), ", ".join(
-                    map(pipes.quote, sorted(WRITABLE_FILES)))))
+            "Choose from: %s."
+            % (
+                pipes.quote(args.filename),
+                ", ".join(map(pipes.quote, sorted(WRITABLE_FILES))),
+            )
+        )
 
     # Do not allow "high" bits in the mode, especially setuid and setgid.
     elif args.mode & 0o777 != args.mode:
         arg_parser.error(
             "Given file mode 0o%o is not permitted; only "
-            "permission bits may be set." % args.mode)
+            "permission bits may be set." % args.mode
+        )
 
     # Okay, good to go.
     else:
-        atomic_write(
-            fin.read(), args.filename, overwrite=True,
-            mode=args.mode)
+        atomic_write(fin.read(), args.filename, overwrite=True, mode=args.mode)
 
 
 if __name__ == "__main__":

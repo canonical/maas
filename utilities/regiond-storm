@@ -19,18 +19,15 @@ How to use:
 
 import argparse
 import random
-import sys
+
+from twisted.internet import reactor, task
+from twisted.internet.defer import inlineCallbacks
 
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
-    ServiceMonitor,
     SERVICE_STATE,
+    ServiceMonitor,
 )
-from twisted.internet import (
-    reactor,
-    task,
-)
-from twisted.internet.defer import inlineCallbacks
 
 
 class RegiondWorkerMaster(AlwaysOnService):
@@ -71,7 +68,8 @@ def run(args):
         RegiondWorkerMaster(),
         RegiondWorker2(),
         RegiondWorker3(),
-        RegiondWorker4())
+        RegiondWorker4(),
+    )
 
     @inlineCallbacks
     def doWork():
@@ -90,9 +88,7 @@ def run(args):
         if args.skip_master:
             running_count = 0
             running_workers = [
-                worker
-                for worker in running_workers
-                if not worker.is_master
+                worker for worker in running_workers if not worker.is_master
             ]
 
         while len(running_workers) > running_count:
@@ -100,13 +96,13 @@ def run(args):
             worker = running_workers.pop()
             # Workers will auto restart.
             yield monitor._execSystemDServiceAction(
-                worker.service_name, 'kill', ['-s', 'SIGKILL'])
+                worker.service_name, "kill", ["-s", "SIGKILL"]
+            )
             msg = "killed %s" % worker.name
             if worker.is_master:
                 msg += " (master)"
             print(msg)
         print("waiting 30 seconds for respawn...")
-
 
     looping = task.LoopingCall(doWork)
     looping.start(30.0)
@@ -116,12 +112,14 @@ def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--skip-master", action="store_true", help=(
-            "Never kill the master process."))
+        "--skip-master",
+        action="store_true",
+        help=("Never kill the master process."),
+    )
 
     args = parser.parse_args()
     run(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
