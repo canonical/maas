@@ -456,7 +456,7 @@ snap-tree-sync: $(UI_BUILD) clean-agent go-bins $(SNAP_UNPACKED_DIR_MARKER)
 		--exclude 'host-info' --exclude 'maas-offline-docs' \
 		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
-		$(SNAP_UNPACKED_DIR)/lib/python3.10/site-packages/
+		$(SNAP_UNPACKED_DIR)/lib/python3.*/site-packages/
 	$(RSYNC) \
 		$(UI_BUILD)/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/
