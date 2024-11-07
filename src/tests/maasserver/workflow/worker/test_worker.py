@@ -15,14 +15,14 @@ from provisioningserver.utils.env import MAAS_SHARED_SECRET
 
 
 @pytest.fixture
-def mock_register_namespace_response():
+async def mock_register_namespace_response():
     future = asyncio.Future()
     future.set_result(RegisterNamespaceResponse())
     return future
 
 
 @pytest.fixture
-def mock_describe_namespace_response():
+async def mock_describe_namespace_response():
     future = asyncio.Future()
     future.set_result(DescribeNamespaceResponse())
     return future

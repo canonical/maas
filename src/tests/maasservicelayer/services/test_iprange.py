@@ -96,7 +96,7 @@ class TestIPRangesService:
         await ipranges_service.create(resource)
 
         mock_ipranges_repository.create.assert_called_once_with(resource)
-        mock_temporal.register_or_update_workflow_call.called_once_with(
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             "configure-dhcp",
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
             parameter_merge_func=merge_configure_dhcp_param,
@@ -140,7 +140,7 @@ class TestIPRangesService:
         mock_ipranges_repository.update.assert_called_once_with(
             iprange.id, resource
         )
-        mock_temporal.register_or_update_workflow_call.called_once_with(
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             "configure-dhcp",
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
             parameter_merge_func=merge_configure_dhcp_param,
@@ -172,9 +172,9 @@ class TestIPRangesService:
         await ipranges_service.delete(iprange.id)
 
         mock_ipranges_repository.delete.assert_called_once_with(iprange.id)
-        mock_temporal.register_or_update_workflow_call.called_once_with(
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             "configure-dhcp",
-            ConfigureDHCPParam(subnet_ids=[iprange.id]),
+            ConfigureDHCPParam(subnet_ids=[iprange.subnet_id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
