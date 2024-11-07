@@ -3,6 +3,8 @@
 
 import sys
 
+from fixtures import EnvironmentVariableFixture
+
 from maascli.parser import (
     ArgumentParser,
     get_deepest_subparser,
@@ -14,6 +16,11 @@ from maastesting.testcase import MAASTestCase
 
 class TestArgumentParser(MAASTestCase):
     """Tests for `ArgumentParser`."""
+
+    def setUp(self):
+        new_home = self.make_dir()
+        self.useFixture(EnvironmentVariableFixture("HOME", new_home))
+        return super().setUp()
 
     def test_add_subparsers_single_only(self):
         parser = ArgumentParser()

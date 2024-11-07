@@ -8,6 +8,8 @@ import os.path
 import random
 from subprocess import CalledProcessError, check_output, STDOUT
 
+from fixtures import EnvironmentVariableFixture
+
 from maascli import main
 from maascli.config import ProfileConfig
 from maascli.testing.config import make_configs
@@ -22,6 +24,11 @@ def locate_maascli():
 
 
 class TestMAASCli(MAASTestCase):
+    def setUp(self):
+        new_home = self.make_dir()
+        self.useFixture(EnvironmentVariableFixture("HOME", new_home))
+        return super().setUp()
+
     def run_command(self, *args):
         check_output([locate_maascli()] + list(args), stderr=STDOUT)
 

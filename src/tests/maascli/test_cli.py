@@ -13,6 +13,7 @@ import sys
 from unittest.mock import sentinel
 
 from django.core import management
+from fixtures import EnvironmentVariableFixture
 import httplib2
 
 from apiclient.creds import convert_string_to_tuple
@@ -130,6 +131,11 @@ class TestRegisterCommands(MAASTestCase):
 
 
 class TestLogin(MAASTestCase):
+    def setUp(self):
+        new_home = self.make_dir()
+        self.useFixture(EnvironmentVariableFixture("HOME", new_home))
+        return super().setUp()
+
     def test_cmd_login_ensures_valid_apikey(self):
         parser = ArgumentParser()
         options = make_options()
@@ -254,6 +260,11 @@ class TestCmdInit(MAASTestCase):
 
 
 class TestLogout(MAASTestCase):
+    def setUp(self):
+        new_home = self.make_dir()
+        self.useFixture(EnvironmentVariableFixture("HOME", new_home))
+        return super().setUp()
+
     def test_cmd_logout_cleans_profile_cacerts(self):
         parser = ArgumentParser()
         profile_name = "test"
