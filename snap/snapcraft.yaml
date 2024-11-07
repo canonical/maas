@@ -23,7 +23,7 @@ package-repositories:
     ppa: maas-committers/latest-deps
 
 environment:
-  PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.10/dist-packages
+  PYTHONPATH: $SNAP/usr/lib/python3/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
   PEBBLE: $SNAP_COMMON/pebble
 
@@ -81,8 +81,6 @@ parts:
   maas:
     plugin: python
     source: .
-    python-requirements:
-      - snap/local/requirements.txt
     build-packages:
       - build-essential
       - git
