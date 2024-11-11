@@ -4,18 +4,33 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
+from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressClauseFactory,
     StaticIPAddressRepository,
     StaticIPAddressResourceBuilder,
 )
 from maasservicelayer.db.tables import StaticIPAddressTable
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.interface import create_test_interface_entry
+from tests.fixtures.factories.node import create_test_region_controller_entry
+from tests.fixtures.factories.node_config import create_test_node_config_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
+
+
+class TestStaticIPAddressClauseFactory:
+    def test_builder(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_node_type(
+            type=NodeTypeEnum.RACK_CONTROLLER
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.node_type = 2")
 
 
 @pytest.mark.asyncio
@@ -171,3 +186,59 @@ class TestStaticIPAddressRepository:
         assert {addr.id for addr in result} == {
             addr["id"] for addr in v4_addrs
         }
+
+    async def test_get_for_nodes_not_found(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture)
+        region_controller = await create_test_region_controller_entry(fixture)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[ip]
+        )
+        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+
+        result = await staticipaddress_repository.get_for_nodes(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory().with_node_type(
+                    NodeTypeEnum.RACK_CONTROLLER
+                )
+            )
+        )
+        assert len(result) == 0
+
+    async def test_get_for_nodes_found(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        subnet1 = await create_test_subnet_entry(fixture)
+        subnet2 = await create_test_subnet_entry(fixture)
+        region_controller = await create_test_region_controller_entry(fixture)
+        current_node_config = await create_test_node_config_entry(
+            fixture, node=region_controller
+        )
+        region_controller["current_config_id"] = current_node_config["id"]
+        [ip1] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet1
+        )
+        [ip2] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet2
+        )
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[ip1]
+        )
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[ip2]
+        )
+
+        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+
+        result = await staticipaddress_repository.get_for_nodes(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory().with_node_type(
+                    NodeTypeEnum.REGION_CONTROLLER
+                )
+            )
+        )
+        assert len(result) == 2
+        assert any(ip1["ip"] == ip.ip for ip in result)
+        assert any(ip2["ip"] == ip.ip for ip in result)

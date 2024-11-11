@@ -7,6 +7,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
+from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -15,7 +17,10 @@ from maasservicelayer.db.repositories.base import (
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
+    NodeConfigTable,
+    NodeTable,
     StaticIPAddressTable,
+    SubnetTable,
 )
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -60,6 +65,12 @@ class StaticIPAddressResourceBuilder(CreateOrUpdateResourceBuilder):
             StaticIPAddressTable.c.subnet_id.name, subnet_id
         )
         return self
+
+
+class StaticIPAddressClauseFactory(ClauseFactory):
+    @classmethod
+    def with_node_type(cls, type: NodeTypeEnum) -> Clause:
+        return Clause(condition=eq(NodeTable.c.node_type, type))
 
 
 class StaticIPAddressRepository(BaseRepository):
@@ -162,3 +173,35 @@ class StaticIPAddressRepository(BaseRepository):
         if result:
             return StaticIPAddress(**result._asdict())
         return None
+
+    async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
+        stmt = (
+            select(
+                StaticIPAddressTable,
+            )
+            .select_from(NodeTable)
+            .join(
+                NodeConfigTable,
+                NodeTable.c.current_config_id == NodeConfigTable.c.id,
+            )
+            .join(
+                InterfaceTable,
+                NodeConfigTable.c.id == InterfaceTable.c.node_config_id,
+            )
+            .join(
+                InterfaceIPAddressTable,
+                InterfaceTable.c.id == InterfaceIPAddressTable.c.interface_id,
+            )
+            .join(
+                StaticIPAddressTable,
+                InterfaceIPAddressTable.c.staticipaddress_id
+                == StaticIPAddressTable.c.id,
+            )
+            .join(
+                SubnetTable,
+                SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
+            )
+            .where(query.where.condition)
+        )
+        results = (await self.connection.execute(stmt)).all()
+        return [StaticIPAddress(**row._asdict()) for row in results]

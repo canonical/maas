@@ -1,17 +1,27 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressClauseFactory,
+)
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.vlans import Vlan
-from maasservicelayer.services import ServiceCollectionV3, VlansService
+from maasservicelayer.services import (
+    ServiceCollectionV3,
+    StaticIPAddressService,
+    VlansService,
+)
 from maasservicelayer.utils.date import utcnow
 import maastemporalworker.workflow.activity as activity_module
 from maastemporalworker.workflow.configure import (
@@ -20,14 +30,6 @@ from maastemporalworker.workflow.configure import (
     GetRackControllerVLANsResult,
     GetRegionControllerEndpointsResult,
 )
-from tests.fixtures.factories.interface import create_test_interface_entry
-from tests.fixtures.factories.node import create_test_region_controller_entry
-from tests.fixtures.factories.node_config import create_test_node_config_entry
-from tests.fixtures.factories.staticipaddress import (
-    create_test_staticipaddress_entry,
-)
-from tests.fixtures.factories.subnet import create_test_subnet_entry
-from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.mark.asyncio
@@ -83,96 +85,55 @@ class TestConfigureAgentActivity:
             )
         )
 
-    async def test_get_region_controller_endpoints_no_region_controller(
-        self, db: Database, db_connection: AsyncConnection
-    ):
+    async def test_get_region_controller_endpoints(self, monkeypatch):
+        mock_services = Mock(ServiceCollectionV3)
+        mock_services.staticipaddress = Mock(StaticIPAddressService)
+        mock_services.staticipaddress.get_for_nodes.return_value = [
+            StaticIPAddress(
+                id=0,
+                ip=IPv4Address("10.0.0.1"),
+                alloc_type=IpAddressType.STICKY,
+                lease_time=0,
+                temp_expires_on=None,
+                subnet_id=0,
+            ),
+            StaticIPAddress(
+                id=0,
+                ip=IPv6Address("2001:0:130f::9c0:876a:130b"),
+                alloc_type=IpAddressType.STICKY,
+                lease_time=0,
+                temp_expires_on=None,
+                subnet_id=0,
+            ),
+        ]
+
+        mock_services.produce.return_value = mock_services
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", mock_services
+        )
+
         configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
+            Mock(Database), connection=Mock(AsyncConnection)
         )
 
         result = await configure_activities.get_region_controller_endpoints()
-        assert result == GetRegionControllerEndpointsResult([])
-
-    async def test_get_region_controller_endpoints_one_region_controller(
-        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
-    ):
-        subnet = await create_test_subnet_entry(fixture)
-        region_controller = await create_test_region_controller_entry(fixture)
-        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
-        await create_test_interface_entry(
-            fixture, node=region_controller, ips=[ip]
+        assert result == GetRegionControllerEndpointsResult(
+            [
+                "http://10.0.0.1:5240/MAAS/",
+                "http://[2001:0:130f::9c0:876a:130b]:5240/MAAS/",
+            ]
         )
-        configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
+        mock_services.staticipaddress.get_for_nodes.assert_called_once_with(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.or_clauses(
+                    [
+                        StaticIPAddressClauseFactory.with_node_type(
+                            NodeTypeEnum.REGION_CONTROLLER
+                        ),
+                        StaticIPAddressClauseFactory.with_node_type(
+                            NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                        ),
+                    ]
+                )
+            )
         )
-
-        result = await configure_activities.get_region_controller_endpoints()
-
-        endpoint = f"http://{ip['ip']}:5240/MAAS/"
-        if ip["ip"].version == 6:
-            endpoint = f"http://[{ip['ip']}]:5240/MAAS/"
-
-        assert result == GetRegionControllerEndpointsResult([endpoint])
-
-    async def test_get_region_controller_endpoints_missing_links(
-        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
-    ):
-        subnet = await create_test_subnet_entry(fixture)
-        region_controller = await create_test_region_controller_entry(fixture)
-        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
-        await create_test_interface_entry(
-            fixture, node=region_controller, ips=[ip]
-        )
-        await create_test_interface_entry(
-            fixture, node=region_controller, ips=[]
-        )
-        configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
-        )
-
-        result = await configure_activities.get_region_controller_endpoints()
-
-        endpoint = f"http://{ip['ip']}:5240/MAAS/"
-        if ip["ip"].version == 6:
-            endpoint = f"http://[{ip['ip']}]:5240/MAAS/"
-
-        assert result == GetRegionControllerEndpointsResult([endpoint])
-
-    async def test_get_region_controller_endpoints_two_region_controllers(
-        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
-    ):
-        subnet1 = await create_test_subnet_entry(fixture)
-        subnet2 = await create_test_subnet_entry(fixture)
-        region_controller = await create_test_region_controller_entry(fixture)
-        current_node_config = await create_test_node_config_entry(
-            fixture, node=region_controller
-        )
-        region_controller["current_config_id"] = current_node_config["id"]
-        [ip1] = await create_test_staticipaddress_entry(
-            fixture, subnet=subnet1
-        )
-        [ip2] = await create_test_staticipaddress_entry(
-            fixture, subnet=subnet2
-        )
-        await create_test_interface_entry(
-            fixture, node=region_controller, ips=[ip1]
-        )
-        await create_test_interface_entry(
-            fixture, node=region_controller, ips=[ip2]
-        )
-        configure_activities = ConfigureAgentActivity(
-            db, connection=db_connection
-        )
-
-        result = await configure_activities.get_region_controller_endpoints()
-
-        endpoint1 = f"http://{ip1['ip']}:5240/MAAS/"
-        if ip1["ip"].version == 6:
-            endpoint1 = f"http://[{ip1['ip']}]:5240/MAAS/"
-
-        endpoint2 = f"http://{ip2['ip']}:5240/MAAS/"
-        if ip2["ip"].version == 6:
-            endpoint2 = f"http://[{ip2['ip']}]:5240/MAAS/"
-
-        assert isinstance(result, GetRegionControllerEndpointsResult)
-        assert set(result.endpoints) == set([endpoint1, endpoint2])

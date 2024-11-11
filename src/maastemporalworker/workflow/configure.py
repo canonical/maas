@@ -3,24 +3,18 @@
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, List
+from typing import List
 
 from netaddr import IPAddress
-from sqlalchemy import or_, select
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
-from maasservicelayer.db.tables import (
-    InterfaceIPAddressTable,
-    InterfaceTable,
-    NodeConfigTable,
-    NodeTable,
-    StaticIPAddressTable,
-    SubnetTable,
+from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressClauseFactory,
 )
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maastemporalworker.workflow.activity import ActivityBase
 
 DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT = timedelta(seconds=10)
@@ -51,7 +45,7 @@ class ConfigureAgentActivity(ActivityBase):
     @activity.defn(name="get-rack-controller-vlans")
     async def get_rack_controller_vlans(
         self, input: GetRackControllerVLANsInput
-    ):
+    ) -> GetRackControllerVLANsResult:
         async with self.start_transaction() as services:
             result = await services.vlans.get_node_vlans(
                 query=QuerySpec(
@@ -79,48 +73,26 @@ class ConfigureAgentActivity(ActivityBase):
             return GetRackControllerVLANsResult([])
 
     @activity.defn(name="get-region-controller-endpoints")
-    async def get_region_controller_endpoints(self) -> dict[str, Any]:
-        async with self._start_transaction() as tx:
-            stmt = (
-                select(
-                    SubnetTable.c.cidr,
-                    StaticIPAddressTable.c.ip,
-                )
-                .select_from(NodeTable)
-                .join(
-                    NodeConfigTable,
-                    NodeTable.c.current_config_id == NodeConfigTable.c.id,
-                )
-                .join(
-                    InterfaceTable,
-                    NodeConfigTable.c.id == InterfaceTable.c.node_config_id,
-                )
-                .join(
-                    InterfaceIPAddressTable,
-                    InterfaceTable.c.id
-                    == InterfaceIPAddressTable.c.interface_id,
-                )
-                .join(
-                    StaticIPAddressTable,
-                    InterfaceIPAddressTable.c.staticipaddress_id
-                    == StaticIPAddressTable.c.id,
-                )
-                .join(
-                    SubnetTable,
-                    SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
-                )
-                .filter(
-                    or_(
-                        NodeTable.c.node_type
-                        == NodeTypeEnum.REGION_CONTROLLER,
-                        NodeTable.c.node_type
-                        == NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
-                    ),
+    async def get_region_controller_endpoints(
+        self,
+    ) -> GetRegionControllerEndpointsResult:
+        async with self.start_transaction() as services:
+            result = await services.staticipaddress.get_for_nodes(
+                query=QuerySpec(
+                    where=StaticIPAddressClauseFactory.or_clauses(
+                        [
+                            StaticIPAddressClauseFactory.with_node_type(
+                                NodeTypeEnum.REGION_CONTROLLER
+                            ),
+                            StaticIPAddressClauseFactory.with_node_type(
+                                NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                            ),
+                        ]
+                    )
                 )
             )
-            endpoints = (await tx.execute(stmt)).all()
             return GetRegionControllerEndpointsResult(
-                [_format_endpoint(str(endpoint[1])) for endpoint in endpoints]
+                [_format_endpoint(str(ipaddress.ip)) for ipaddress in result]
             )
 
 

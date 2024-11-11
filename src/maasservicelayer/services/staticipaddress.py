@@ -3,6 +3,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
@@ -125,3 +126,6 @@ class StaticIPAddressService(Service):
         return await self.staticipaddress_repository.get_for_interfaces(
             interfaces, subnet=subnet, ip=ip, alloc_type=alloc_type
         )
+
+    async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
+        return await self.staticipaddress_repository.get_for_nodes(query=query)

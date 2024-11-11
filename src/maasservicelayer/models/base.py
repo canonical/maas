@@ -7,7 +7,9 @@ from datetime import datetime
 import hashlib
 from typing import Any, Generic, Optional, Sequence, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from maasservicelayer.utils.date import utcnow
 
 T = TypeVar("T")
 
@@ -39,8 +41,8 @@ class MaasBaseModel(ABC, BaseModel):
 
 
 class MaasTimestampedBaseModel(MaasBaseModel):
-    created: datetime
-    updated: datetime
+    created: datetime = Field(default=utcnow())
+    updated: datetime = Field(default=utcnow())
 
     def etag(self) -> str:
         m = hashlib.sha256()
