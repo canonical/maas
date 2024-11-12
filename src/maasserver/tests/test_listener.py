@@ -60,9 +60,13 @@ class PostgresListenerServiceSpy(PostgresListenerService):
 
     def _process_notifies(self):
         self.log.debug("Start processing notifies for tests")
-        for notify in self.connection.connection.notifies:
-            self._captured_notifies.put(notify)
+        # copy pending notifications
+        notifies = list(self.connection.connection.notifies)
+        # process notifications
         super()._process_notifies()
+        # call waiters
+        for n in notifies:
+            self._captured_notifies.put(n)
         self.log.debug("Done processing notifies for tests")
 
     @inlineCallbacks
