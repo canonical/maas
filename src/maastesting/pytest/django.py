@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta, timezone
 from multiprocessing import Process
 import os
 import pathlib
@@ -123,12 +123,10 @@ def maasapiserver(maasdb, tmpdir):
     server_process = Process(target=lambda: run(config), args=(), daemon=True)
     server_process.start()
 
-    timeout = datetime.datetime.now(
-        datetime.timezone.utc
-    ) + datetime.timedelta(seconds=5)
+    timeout = datetime.now(timezone.utc) + timedelta(seconds=5)
     ready = False
 
-    while not ready and datetime.datetime.now(datetime.timezone.utc) < timeout:
+    while not ready and datetime.now(timezone.utc) < timeout:
         try:
             api_client = APIServerClient("")
             root = api_client.get("/")
@@ -139,7 +137,8 @@ def maasapiserver(maasdb, tmpdir):
             time.sleep(0.1)
 
     if not ready:
-        raise Exception("MaasApiServer did not start within 30 seconds.")
+        server_process.kill()
+        raise Exception("MAASAPIServer did not start within 5 seconds.")
 
     yield
     server_process.kill()
