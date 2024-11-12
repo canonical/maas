@@ -232,6 +232,8 @@ APIServerRule = Rule(
 Common = files("src/maascommon/**/*.py")
 CommonRule = Rule(
     Allow(StandardLibraries),
+    Allow("lxml|lxml.**"),
+    Allow("maascommon|maascommon.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")
@@ -394,7 +396,6 @@ RegionControllerWorkerRule = Rule(
     Allow("aiofiles|aiofiles.**"),
     Allow("aiohttp|aiohttp.**"),
     Allow("jose|jose.**"),
-    Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),

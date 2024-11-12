@@ -6,14 +6,10 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.machines import (
-    Machine,
-    MachinesCountByStatus,
-    PciDevice,
-    UsbDevice,
-)
+from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.secrets import SecretsService
 

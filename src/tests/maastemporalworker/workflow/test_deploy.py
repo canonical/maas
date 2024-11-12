@@ -15,16 +15,16 @@ from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
 from maascommon.enums.node import NodeStatus
-from maasserver.workflow.power import (
+from maascommon.workflows.deploy import (
+    DEPLOY_N_WORKFLOW_NAME,
+    DEPLOY_WORKFLOW_NAME,
+)
+from maascommon.workflows.power import (
     PowerCycleParam,
-    PowerCycleResult,
     PowerOffParam,
-    PowerOffResult,
     PowerOnParam,
-    PowerOnResult,
     PowerParam,
     PowerQueryParam,
-    PowerQueryResult,
 )
 from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTable
@@ -35,10 +35,23 @@ from maastemporalworker.workflow.deploy import (
     DeployNWorkflow,
     DeployParam,
     DeployWorkflow,
+    GET_BOOT_ORDER_ACTIVITY_NAME,
     GetBootOrderParam,
     GetBootOrderResult,
+    SET_BOOT_ORDER_ACTIVITY_NAME,
+    SET_NODE_STATUS_ACTIVITY_NAME,
     SetBootOrderParam,
     SetNodeStatusParam,
+)
+from maastemporalworker.workflow.power import (
+    POWER_CYCLE_ACTIVITY_NAME,
+    POWER_OFF_ACTIVITY_NAME,
+    POWER_ON_ACTIVITY_NAME,
+    POWER_QUERY_ACTIVITY_NAME,
+    PowerCycleResult,
+    PowerOffResult,
+    PowerOnResult,
+    PowerQueryResult,
 )
 from tests.fixtures.factories.block_device import create_test_blockdevice_entry
 from tests.fixtures.factories.bmc import create_test_bmc_entry
@@ -192,11 +205,11 @@ class TestDeployNWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(params.status)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -211,22 +224,22 @@ class TestDeployNWorkflow:
                 order=[_stringify_datetime_fields(dev) for dev in order],
             )
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
@@ -246,7 +259,7 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy-n",
+                    DEPLOY_N_WORKFLOW_NAME,
                     DeployNParam(
                         params=[
                             DeployParam(
@@ -310,11 +323,11 @@ class TestDeployNWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(True)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -329,22 +342,22 @@ class TestDeployNWorkflow:
                 order=[_stringify_datetime_fields(dev) for dev in order],
             )
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
@@ -364,7 +377,7 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy-n",
+                    DEPLOY_N_WORKFLOW_NAME,
                     DeployNParam(
                         params=[
                             DeployParam(
@@ -440,11 +453,11 @@ class TestDeployNWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(params.status)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -463,22 +476,22 @@ class TestDeployNWorkflow:
                         ],
                     )
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
@@ -498,7 +511,7 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy-n",
+                    DEPLOY_N_WORKFLOW_NAME,
                     DeployNParam(
                         params=[
                             DeployParam(
@@ -583,11 +596,11 @@ class TestDeployNWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(True)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -609,27 +622,27 @@ class TestDeployNWorkflow:
                     )
                     return result
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
-        @activity.defn(name="set-boot-order")
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
         async def set_boot_order(params: SetBootOrderParam) -> None:
             calls["set_boot_order"].append(True)
 
@@ -649,7 +662,7 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy-n",
+                    DEPLOY_N_WORKFLOW_NAME,
                     DeployNParam(
                         params=[
                             DeployParam(
@@ -731,11 +744,11 @@ class TestDeployNWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(True)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -754,27 +767,27 @@ class TestDeployNWorkflow:
                         ],
                     )
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
-        @activity.defn(name="set-boot-order")
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
         async def set_boot_order(params: SetBootOrderParam) -> None:
             calls["set_boot_order"].append(True)
             return
@@ -795,7 +808,7 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy-n",
+                    DEPLOY_N_WORKFLOW_NAME,
                     DeployNParam(
                         params=[
                             DeployParam(
@@ -865,11 +878,11 @@ class TestDeployWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(True)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -884,22 +897,22 @@ class TestDeployWorkflow:
                 order=[_stringify_datetime_fields(dev) for dev in order],
             )
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
@@ -919,7 +932,7 @@ class TestDeployWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy",
+                    DEPLOY_WORKFLOW_NAME,
                     DeployParam(
                         system_id=machine["system_id"],
                         ephemeral_deploy=False,
@@ -976,7 +989,7 @@ class TestDeployWorkflow:
                 activities=[],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy",
+                    DEPLOY_WORKFLOW_NAME,
                     DeployParam(
                         system_id=machine["system_id"],
                         ephemeral_deploy=False,
@@ -1022,11 +1035,11 @@ class TestDeployWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(True)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -1041,22 +1054,22 @@ class TestDeployWorkflow:
                 order=[_stringify_datetime_fields(dev) for dev in order],
             )
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
@@ -1076,7 +1089,7 @@ class TestDeployWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy",
+                    DEPLOY_WORKFLOW_NAME,
                     DeployParam(
                         system_id=machine["system_id"],
                         ephemeral_deploy=True,
@@ -1127,11 +1140,11 @@ class TestDeployWorkflow:
 
         calls = defaultdict(list)
 
-        @activity.defn(name="set-node-status")
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
             calls["set_node_status"].append(True)
 
-        @activity.defn(name="get-boot-order")
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
@@ -1148,27 +1161,27 @@ class TestDeployWorkflow:
                 order=[_stringify_datetime_fields(dev) for dev in order],
             )
 
-        @activity.defn(name="power-query")
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
             calls["power_query"].append(True)
             return PowerQueryResult(state="off")
 
-        @activity.defn(name="power-cycle")
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
             calls["power_cycle"].append(True)
             return PowerCycleResult(state="on")
 
-        @activity.defn(name="power-on")
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
             calls["power_on"].append(True)
             return PowerOnResult(state="on")
 
-        @activity.defn(name="power-off")
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
-        @activity.defn(name="set-boot-order")
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
         async def set_boot_order(params: SetBootOrderParam) -> None:
             calls["set_boot_order"].append(True)
             return
@@ -1189,7 +1202,7 @@ class TestDeployWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    "deploy",
+                    DEPLOY_WORKFLOW_NAME,
                     DeployParam(
                         system_id=machine["system_id"],
                         ephemeral_deploy=False,

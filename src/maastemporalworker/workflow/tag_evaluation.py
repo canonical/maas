@@ -28,11 +28,14 @@ from datetime import timedelta
 from functools import reduce
 import logging
 
-from lxml import etree
 from sqlalchemy import text
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
+from maascommon.workflows.tag import (
+    TAG_EVALUATION_WORKFLOW_NAME,
+    TagEvaluationParam,
+)
 from maastemporalworker.workflow.activity import ActivityBase
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
@@ -44,36 +47,19 @@ logging.basicConfig(level=logging.INFO)
 
 
 TAG_EVALUATION_ACTIVITY_TIMEOUT = timedelta(minutes=10)
-"""Based on a study on the performance of the tag evaluation query, the time
-estimated for comparing a XPath expression over ten of thousands of nodes can be
-in the range of dozens of seconds (XML documents over 250K characters).
-Using batches in the range of thousands of nodes is considered a good trade-off
-between performance of the tag evaluation and the use and hijacking of a
-database connection for too long.
-"""
-TAG_EVALUATION_BATCH_SIZE = 1000
+
+# Activities names
+EVALUATE_TAG_ACTIVITY_NAME = "evaluate-tag"
 
 
-@dataclass(frozen=True)
-class TagEvaluationParam:
-    tag_id: int
-    tag_definition: str
-    batch_size: int = TAG_EVALUATION_BATCH_SIZE
-
-    def __post_init__(self):
-        # tag_definition attribute must be a valid XPath expression, otherwise
-        # it will raise an error. The validation aims to avoid potential SQL
-        # injection attacks.
-        etree.XPath(self.tag_definition)
-
-
+# Activities parameters
 @dataclass(frozen=True)
 class TagEvaluationResult:
     inserted: int
     deleted: int
 
 
-@workflow.defn(name="tag-evaluation", sandboxed=False)
+@workflow.defn(name=TAG_EVALUATION_WORKFLOW_NAME, sandboxed=False)
 class TagEvaluationWorkflow:
     """Temporal workflow for tag evaluation."""
 
@@ -100,7 +86,7 @@ class TagEvaluationWorkflow:
 class TagEvaluationActivity(ActivityBase):
     """Temporal activity for tag evaluation."""
 
-    @activity.defn(name="evaluate-tag")
+    @activity.defn(name=EVALUATE_TAG_ACTIVITY_NAME)
     async def evaluate_tag(
         self, param: TagEvaluationParam
     ) -> TagEvaluationResult:

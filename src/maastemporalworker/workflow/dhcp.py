@@ -4,13 +4,19 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity, workflow
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPForAgentParam,
+    ConfigureDHCPParam,
+)
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -30,48 +36,21 @@ GET_OMAPI_KEY_TIMEOUT = timedelta(minutes=5)
 APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT = timedelta(minutes=5)
 RESTART_DHCP_SERVICE_TIMEOUT = timedelta(minutes=5)
 
+# Activities names
+FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME = "find-agents-for-update"
+FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME = "fetch-hosts-for-update"
+GET_OMAPI_KEY_ACTIVITY_NAME = "get-omapi-key"
 
-@dataclass
-class ConfigureDHCPParam:
-    system_ids: Optional[list[str]] = None
-    vlan_ids: Optional[list[int]] = None
-    subnet_ids: Optional[list[int]] = None
-    static_ip_addr_ids: Optional[list[int]] = None
-    ip_range_ids: Optional[list[int]] = None
-    reserved_ip_ids: Optional[list[int]] = None
-
-
-def merge_configure_dhcp_param(
-    old: ConfigureDHCPParam, new: ConfigureDHCPParam
-) -> ConfigureDHCPParam:
-
-    def ensure_list(val: list[Any] | None) -> list[Any]:
-        return val if val is not None else []
-
-    return ConfigureDHCPParam(
-        system_ids=ensure_list(old.system_ids) + ensure_list(new.system_ids),
-        vlan_ids=ensure_list(old.vlan_ids) + ensure_list(new.vlan_ids),
-        subnet_ids=ensure_list(old.subnet_ids) + ensure_list(new.subnet_ids),
-        static_ip_addr_ids=ensure_list(old.static_ip_addr_ids)
-        + ensure_list(new.static_ip_addr_ids),
-        ip_range_ids=ensure_list(old.ip_range_ids)
-        + ensure_list(new.ip_range_ids),
-        reserved_ip_ids=ensure_list(old.reserved_ip_ids)
-        + ensure_list(new.ip_range_ids),
-    )
+# Executed on maasagent
+APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME = "apply-dhcp-config-via-file"
+RESTART_DHCP_SERVICE_ACTIVITY_NAME = "restart-dhcp-service"
+APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME = "apply-dhcp-config-via-omapi"
 
 
+# Activities parameters
 @dataclass
 class AgentsForUpdateResult:
     agent_system_ids: list[str]
-
-
-@dataclass
-class ConfigureDHCPForAgentParam:
-    system_id: str
-    full_reload: bool
-    static_ip_addr_ids: list[int] | None = None
-    reserved_ip_ids: list[int] | None = None
 
 
 @dataclass
@@ -251,7 +230,7 @@ class DHCPConfigActivity(ActivityBase):
         result = await tx.execute(stmt)
         return {r[0] for r in result.all()}
 
-    @activity.defn(name="find-agents-for-update")
+    @activity.defn(name=FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME)
     async def find_agents_for_updates(
         self, param: ConfigureDHCPParam
     ) -> AgentsForUpdateResult:
@@ -382,7 +361,7 @@ class DHCPConfigActivity(ActivityBase):
             for r in result.all()
         ]
 
-    @activity.defn(name="fetch-hosts-for-update")
+    @activity.defn(name=FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME)
     async def fetch_hosts_for_update(
         self, param: FetchHostsForUpdateParam
     ) -> HostsForUpdateResult:
@@ -400,14 +379,14 @@ class DHCPConfigActivity(ActivityBase):
 
             return HostsForUpdateResult(hosts=hosts)
 
-    @activity.defn(name="get-omapi-key")
+    @activity.defn(name=GET_OMAPI_KEY_ACTIVITY_NAME)
     async def get_omapi_key(self) -> OMAPIKeyResult:
         async with self.start_transaction() as services:
             key = await services.secrets.get_simple_secret("global/omapi-key")
             return OMAPIKeyResult(key=key)
 
 
-@workflow.defn(name="configure-dhcp-for-agent", sandboxed=False)
+@workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
 
     @workflow.run
@@ -415,19 +394,19 @@ class ConfigureDHCPForAgentWorkflow:
         # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
         # scenario we want to update the dhcpd config.
         await workflow.execute_activity(
-            "apply-dhcp-config-via-file",
+            APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME,
             task_queue=f"{param.system_id}@agent:main",
             start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
         )
         if param.full_reload:
             await workflow.execute_activity(
-                "restart-dhcp-service",
+                RESTART_DHCP_SERVICE_ACTIVITY_NAME,
                 task_queue=f"{param.system_id}@agent:main",
                 start_to_close_timeout=RESTART_DHCP_SERVICE_TIMEOUT,
             )
         else:
             hosts = await workflow.execute_activity(
-                "fetch-hosts-for-update",
+                FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME,
                 FetchHostsForUpdateParam(
                     system_id=param.system_id,
                     static_ip_addr_ids=param.static_ip_addr_ids,
@@ -437,12 +416,12 @@ class ConfigureDHCPForAgentWorkflow:
             )
 
             omapi_key = await workflow.execute_activity(
-                "get-omapi-key",
+                GET_OMAPI_KEY_ACTIVITY_NAME,
                 start_to_close_timeout=GET_OMAPI_KEY_TIMEOUT,
             )
 
             await workflow.execute_activity(
-                "apply-dhcp-config-via-omapi",
+                APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME,
                 ApplyConfigViaOmapiParam(
                     hosts=hosts["hosts"],
                     secret=omapi_key["key"],
@@ -452,13 +431,13 @@ class ConfigureDHCPForAgentWorkflow:
             )
 
 
-@workflow.defn(name="configure-dhcp", sandboxed=False)
+@workflow.defn(name=CONFIGURE_DHCP_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPWorkflow:
 
     @workflow.run
     async def run(self, param: ConfigureDHCPParam) -> None:
         agent_system_ids_for_update = await workflow.execute_activity(
-            "find-agents-for-update",
+            FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME,
             param,
             start_to_close_timeout=FIND_AGENTS_FOR_UPDATE_TIMEOUT,
         )
@@ -475,7 +454,7 @@ class ConfigureDHCPWorkflow:
         for system_id in agent_system_ids_for_update["agent_system_ids"]:
             try:
                 cfg_child = await workflow.start_child_workflow(
-                    "configure-dhcp-for-agent",
+                    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
                     ConfigureDHCPForAgentParam(
                         system_id=system_id,
                         full_reload=full_reload,
@@ -494,7 +473,7 @@ class ConfigureDHCPWorkflow:
                 #  workflow_id_conflict_policy.
                 #  Until that day, we just skip this workflow but we know this might lead to inconsistent statuses in DHCPD.
                 # cfg_child = await workflow.start_child_workflow(
-                #     "configure-dhcp-for-agent",
+                #     CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
                 #     ConfigureDHCPForAgentParam(
                 #         system_id=system_id,
                 #         full_reload=True,

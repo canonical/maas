@@ -12,6 +12,7 @@ from jose import jwt
 from jose.exceptions import JWTClaimsError
 from temporalio.common import WorkflowIDReusePolicy
 
+from maascommon.workflows.msm import MSM_ENROL_SITE_WORKFLOW_NAME
 from maasserver.enum import MSM_STATUS
 from maasserver.models.config import Config
 from maasserver.secrets import SecretManager
@@ -82,7 +83,7 @@ def msm_enrol(encoded: str, metainfo: str | None = None) -> str:
     )
 
     start_workflow(
-        "msm-enrol-site",
+        MSM_ENROL_SITE_WORKFLOW_NAME,
         "msm-enrol-site:region",
         param,
         task_queue=_TASK_QUEUE,

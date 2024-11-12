@@ -10,6 +10,7 @@ from lxml import etree
 from temporalio.common import WorkflowIDReusePolicy
 from twisted.internet import reactor
 
+from maascommon.workflows.tag import TAG_EVALUATION_WORKFLOW_NAME
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.workflow import start_workflow
@@ -113,7 +114,7 @@ class Tag(CleanSave, TimestampedModel):
         param = TagEvaluationParam(self.id, self.definition)
 
         start_workflow(
-            workflow_name="tag-evaluation",
+            workflow_name=TAG_EVALUATION_WORKFLOW_NAME,
             workflow_id="tag-evaluation",
             task_queue="region",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,

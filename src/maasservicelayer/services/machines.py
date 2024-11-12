@@ -3,15 +3,11 @@
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.machines import (
-    Machine,
-    MachinesCountByStatus,
-    PciDevice,
-    UsbDevice,
-)
+from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.secrets import SecretsService
 

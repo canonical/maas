@@ -30,14 +30,14 @@ from maasserver.workflow.bootresource import (
     DownloadBootResourceWorkflow,
     SyncBootResourcesWorkflow,
 )
-from maasserver.workflow.power import (
+from maasserver.workflow.worker import Worker
+from maastemporalworker.workflow.power import (
     PowerCycleWorkflow,
     PowerManyWorkflow,
     PowerOffWorkflow,
     PowerOnWorkflow,
     PowerQueryWorkflow,
 )
-from maasserver.workflow.worker import Worker
 from provisioningserver.utils.env import MAAS_ID
 
 

@@ -19,8 +19,18 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
+from maascommon.workflows.msm import (
+    MachinesCountByStatus,
+    MSM_ENROL_SITE_WORKFLOW_NAME,
+    MSM_HEARTBEAT_WORKFLOW_NAME,
+    MSM_TOKEN_REFRESH_WORKFLOW_NAME,
+    MSM_WITHDRAW_WORKFLOW_NAME,
+    MSMConnectorParam,
+    MSMEnrolParam,
+    MSMHeartbeatParam,
+    MSMTokenRefreshParam,
+)
 from maasservicelayer.db import Database
-from maasservicelayer.models.machines import MachinesCountByStatus
 from maastemporalworker.workflow.activity import ActivityBase
 
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
@@ -34,41 +44,18 @@ MSM_DETAIL_EP = "/site/v1/details"
 MSM_REFRESH_EP = "/site/v1/enrol/refresh"
 MSM_VERIFY_EP = "/site/v1/enrol/verify"
 
-
-@dataclasses.dataclass
-class MSMEnrolParam:
-    site_name: str
-    site_url: str
-    url: str
-    jwt: str
-    cluster_uuid: str
-    metainfo: str | None = None
-
-
-@dataclasses.dataclass
-class MSMConnectorParam:
-    url: str
-    jwt: str
-    rotation_interval_minutes: int = 0
+# Activities names
+MSM_CHECK_ENROL_ACTIVITY_NAME = "msm-check-enrol"
+MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME = "msm-get-token-refresh"
+MSM_SET_ENROL_ACTIVITY_NAME = "msm-set-enrol"
+MSM_VERIFY_TOKEN_ACTIVITY_NAME = "msm-verify-token"
+MSM_GET_ENROL_ACTIVITY_NAME = "msm-get-enrol"
+MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME = "msm-get-heartbeat-data"
+MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
+MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 
 
-@dataclasses.dataclass
-class MSMHeartbeatParam:
-    sm_url: str
-    jwt: str
-    site_name: str
-    site_url: str
-    rotation_interval_minutes: int
-    status: MachinesCountByStatus | None = None
-
-
-@dataclasses.dataclass
-class MSMTokenRefreshParam:
-    sm_url: str
-    jwt: str
-    rotation_interval_minutes: int
-
-
+# Activities parameters
 @dataclasses.dataclass
 class MSMTokenVerifyParam:
     sm_url: str
@@ -90,7 +77,7 @@ class MSMConnectorActivity(ActivityBase):
             trust_env=True, timeout=timeout, connector=tcp_conn
         )
 
-    @activity.defn(name="msm-send-enrol")
+    @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
     async def send_enrol(
         self, input: MSMEnrolParam
     ) -> tuple[bool, dict[str, Any] | None]:
@@ -135,7 +122,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @activity.defn(name="msm-check-enrol")
+    @activity.defn(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
     async def check_enrol(
         self, input: MSMEnrolParam
     ) -> tuple[str | None, int]:
@@ -175,7 +162,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @activity.defn(name="msm-verify-token")
+    @activity.defn(name=MSM_VERIFY_TOKEN_ACTIVITY_NAME)
     async def verify_token(self, input: MSMTokenVerifyParam) -> bool:
         """Notify MSM that the new token was successfully installed.
 
@@ -202,7 +189,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @activity.defn(name="msm-set-enrol")
+    @activity.defn(name=MSM_SET_ENROL_ACTIVITY_NAME)
     async def set_enrol(self, input: MSMConnectorParam) -> None:
         """Set enrolment data in the DB.
 
@@ -220,7 +207,7 @@ class MSMConnectorActivity(ActivityBase):
                 },
             )
 
-    @activity.defn(name="msm-get-enrol")
+    @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:
         """Get enrolment data in the DB.
 
@@ -232,7 +219,7 @@ class MSMConnectorActivity(ActivityBase):
                 f"global/{MSM_SECRET}"
             )
 
-    @activity.defn(name="msm-get-heartbeat-data")
+    @activity.defn(name=MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME)
     async def get_heartbeat_data(self) -> MachinesCountByStatus:
         """Get heartbeat data from MAAS DB
 
@@ -242,7 +229,7 @@ class MSMConnectorActivity(ActivityBase):
         async with self.start_transaction() as services:
             return await services.machines.count_machines_by_statuses()
 
-    @activity.defn(name="msm-send-heartbeat")
+    @activity.defn(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
     async def send_heartbeat(self, input: MSMHeartbeatParam) -> int:
         """Send heartbeat data to MSM.
 
@@ -281,7 +268,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @activity.defn(name="msm-get-token-refresh")
+    @activity.defn(name=MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME)
     async def refresh_token(
         self, input: MSMTokenRefreshParam
     ) -> tuple[str | None, int]:
@@ -317,7 +304,7 @@ class MSMConnectorActivity(ActivityBase):
                     )
 
 
-@workflow.defn(name="msm-enrol-site", sandboxed=False)
+@workflow.defn(name=MSM_ENROL_SITE_WORKFLOW_NAME, sandboxed=False)
 class MSMEnrolSiteWorkflow:
     """Enrol this site to MSM."""
 
@@ -339,7 +326,7 @@ class MSMEnrolSiteWorkflow:
         workflow.logger.info(f"enrolling to {input.url}")
         self._pending = True
         (sent, error) = await workflow.execute_activity(
-            "msm-send-enrol",
+            MSM_SEND_ENROL_ACTIVITY_NAME,
             input,
             start_to_close_timeout=MSM_TIMEOUT,
         )
@@ -359,13 +346,13 @@ class MSMEnrolSiteWorkflow:
             jwt=input.jwt,
         )
         await workflow.execute_activity(
-            "msm-set-enrol",
+            MSM_SET_ENROL_ACTIVITY_NAME,
             param,
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
         (new_jwt, rotation_interval_minutes) = await workflow.execute_activity(
-            "msm-check-enrol",
+            MSM_CHECK_ENROL_ACTIVITY_NAME,
             input,
             start_to_close_timeout=MSM_TIMEOUT,
             retry_policy=RetryPolicy(
@@ -382,13 +369,13 @@ class MSMEnrolSiteWorkflow:
         param.rotation_interval_minutes = rotation_interval_minutes
 
         await workflow.execute_activity(
-            "msm-set-enrol",
+            MSM_SET_ENROL_ACTIVITY_NAME,
             param,
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
         await workflow.execute_activity(
-            "msm-verify-token",
+            MSM_VERIFY_TOKEN_ACTIVITY_NAME,
             MSMTokenVerifyParam(
                 sm_url=param.url,
                 jwt=new_jwt,
@@ -397,7 +384,7 @@ class MSMEnrolSiteWorkflow:
         )
 
         await workflow.start_child_workflow(
-            "msm-heartbeat",
+            MSM_HEARTBEAT_WORKFLOW_NAME,
             MSMHeartbeatParam(
                 sm_url=param.url,
                 jwt=new_jwt,
@@ -410,7 +397,7 @@ class MSMEnrolSiteWorkflow:
             parent_close_policy=ParentClosePolicy.ABANDON,
         )
         await workflow.start_child_workflow(
-            "msm-token-refresh",
+            MSM_TOKEN_REFRESH_WORKFLOW_NAME,
             MSMTokenRefreshParam(
                 sm_url=param.url,
                 jwt=new_jwt,
@@ -432,7 +419,7 @@ class MSMEnrolSiteWorkflow:
         return self._enrolment_error
 
 
-@workflow.defn(name="msm-withdraw", sandboxed=False)
+@workflow.defn(name=MSM_WITHDRAW_WORKFLOW_NAME, sandboxed=False)
 class MSMWithdrawWorkflow:
     """Withdraw this site from MSM."""
 
@@ -445,7 +432,7 @@ class MSMWithdrawWorkflow:
         """
 
 
-@workflow.defn(name="msm-heartbeat", sandboxed=False)
+@workflow.defn(name=MSM_HEARTBEAT_WORKFLOW_NAME, sandboxed=False)
 class MSMHeartbeatWorkflow:
     """Send periodic heartbeats to MSM."""
 
@@ -463,15 +450,15 @@ class MSMHeartbeatWorkflow:
         next_update = 0
         while next_update >= 0:
             secret = await workflow.execute_activity(
-                "msm-get-enrol",
+                MSM_GET_ENROL_ACTIVITY_NAME,
                 start_to_close_timeout=MSM_TIMEOUT,
             )
             data = await workflow.execute_activity(
-                "msm-get-heartbeat-data",
+                MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
                 start_to_close_timeout=MSM_TIMEOUT,
             )
             next_update = await workflow.execute_activity(
-                "msm-send-heartbeat",
+                MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
                 dataclasses.replace(input, status=data, jwt=secret["jwt"]),
                 start_to_close_timeout=MSM_TIMEOUT,
                 retry_policy=RetryPolicy(
@@ -489,7 +476,7 @@ class MSMHeartbeatWorkflow:
         return self._running
 
 
-@workflow.defn(name="msm-token-refresh", sandboxed=False)
+@workflow.defn(name=MSM_TOKEN_REFRESH_WORKFLOW_NAME, sandboxed=False)
 class MSMTokenRefreshWorkflow:
     """Retrieve a new JWT from MSM."""
 
@@ -503,7 +490,7 @@ class MSMTokenRefreshWorkflow:
                 new_token,
                 rotation_interval_minutes,
             ) = await workflow.execute_activity(
-                "msm-get-token-refresh",
+                MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
                 input,
                 start_to_close_timeout=MSM_TIMEOUT,
                 retry_policy=RetryPolicy(
@@ -521,12 +508,12 @@ class MSMTokenRefreshWorkflow:
                 rotation_interval_minutes=rotation_interval_minutes,
             )
             await workflow.execute_activity(
-                "msm-set-enrol",
+                MSM_SET_ENROL_ACTIVITY_NAME,
                 param,
                 start_to_close_timeout=MSM_TIMEOUT,
             )
             await workflow.execute_activity(
-                "msm-verify-token",
+                MSM_VERIFY_TOKEN_ACTIVITY_NAME,
                 MSMTokenVerifyParam(
                     sm_url=input.sm_url,
                     jwt=new_token,

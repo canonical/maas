@@ -6,6 +6,11 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+    merge_configure_dhcp_param,
+)
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
@@ -46,11 +51,6 @@ class InterfacesService(Service):
             await self.interface_repository.add_ip(interface, sip)
 
     async def add_ip(self, interface: Interface, sip: StaticIPAddress) -> None:
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         await self.interface_repository.add_ip(interface, sip)
         if sip.alloc_type in (
             IpAddressType.AUTO,
@@ -58,7 +58,7 @@ class InterfacesService(Service):
             IpAddressType.USER_RESERVED,
         ):
             self.temporal_service.register_or_update_workflow_call(
-                "configure-dhcp",
+                CONFIGURE_DHCP_WORKFLOW_NAME,
                 ConfigureDHCPParam(static_ip_addr_ids=[sip.id]),
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,

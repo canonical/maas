@@ -49,6 +49,7 @@ from maasserver.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
     SpaceRequirementParam,
+    SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
@@ -148,7 +149,7 @@ def filestore_add_file(rfile: BootResourceFile):
         requirement=SpaceRequirementParam(min_free_space=rfile.size),
     )
     return execute_workflow(
-        "sync-bootresources",
+        SYNC_BOOTRESOURCES_WORKFLOW_NAME,
         f"sync-boot-resources:upload:{rfile.id}",
         params,
         task_queue=REGION_TASK_QUEUE,

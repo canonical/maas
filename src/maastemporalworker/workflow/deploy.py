@@ -13,7 +13,14 @@ from temporalio.common import RetryPolicy
 from temporalio.exceptions import CancelledError, ChildWorkflowError
 
 from maascommon.enums.node import NodeStatus
-from maasserver.workflow.power import (
+from maascommon.workflows.deploy import (
+    DEPLOY_N_WORKFLOW_NAME,
+    DEPLOY_WORKFLOW_NAME,
+    DeployNParam,
+    DeployParam,
+    DeployResult,
+)
+from maascommon.workflows.power import (
     PowerCycleParam,
     PowerOnParam,
     PowerParam,
@@ -32,29 +39,26 @@ from maasservicelayer.db.tables import (
     VirtualBlockDeviceTable,
 )
 from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.power import (
+    POWER_CYCLE_ACTIVITY_NAME,
+    POWER_ON_ACTIVITY_NAME,
+    POWER_QUERY_ACTIVITY_NAME,
+)
 
 DEFAULT_DEPLOY_ACTIVITY_TIMEOUT = timedelta(seconds=30)
 DEFAULT_DEPLOY_RETRY_TIMEOUT = timedelta(seconds=60)
+
+# Activities names
+GET_BOOT_ORDER_ACTIVITY_NAME = "get-boot-order"
+SET_NODE_STATUS_ACTIVITY_NAME = "set-node-status"
+SET_BOOT_ORDER_ACTIVITY_NAME = "set-boot-order"
 
 
 class InvalidMachineStateException(Exception):
     pass
 
 
-@dataclass
-class DeployParam:
-    system_id: str
-    ephemeral_deploy: bool
-    can_set_boot_order: bool
-    task_queue: str
-    power_params: PowerParam
-
-
-@dataclass
-class DeployNParam:
-    params: list[DeployParam]
-
-
+# Activities parameters
 @dataclass
 class SetNodeStatusParam:
     system_id: str
@@ -80,14 +84,8 @@ class SetBootOrderParam:
     order: list[dict[str, Any]]
 
 
-@dataclass
-class DeployResult:
-    system_id: str
-    success: bool
-
-
 class DeployActivity(ActivityBase):
-    @activity.defn(name="set-node-status")
+    @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
     async def set_node_status(self, params: SetNodeStatusParam) -> None:
         async with self.start_transaction() as services:
             resource = (
@@ -207,7 +205,7 @@ class DeployActivity(ActivityBase):
                         v[k2] = str(v2)
         return obj
 
-    @activity.defn(name="get-boot-order")
+    @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
     async def get_boot_order(
         self, params: GetBootOrderParam
     ) -> GetBootOrderResult:
@@ -265,7 +263,7 @@ class DeployActivity(ActivityBase):
             )
 
 
-@workflow.defn(name="deploy-n", sandboxed=False)
+@workflow.defn(name=DEPLOY_N_WORKFLOW_NAME, sandboxed=False)
 class DeployNWorkflow:
     @workflow.run
     async def run(self, params: DeployNParam) -> None:
@@ -274,7 +272,7 @@ class DeployNWorkflow:
         child_workflows = []
         for param in params.params:
             wf = await workflow.start_child_workflow(
-                "deploy",
+                DEPLOY_WORKFLOW_NAME,
                 param,
                 id=f"deploy:{param.system_id}",
                 task_queue=param.task_queue,
@@ -306,7 +304,7 @@ class DeployNWorkflow:
                 )
 
             await workflow.execute_activity(
-                "set-node-status",
+                SET_NODE_STATUS_ACTIVITY_NAME,
                 SetNodeStatusParam(
                     system_id=system_id,
                     status=status,
@@ -320,7 +318,7 @@ class DeployNWorkflow:
         workflow.logger.info("finished bulk deployment job.")
 
 
-@workflow.defn(name="deploy", sandboxed=False)
+@workflow.defn(name=DEPLOY_WORKFLOW_NAME, sandboxed=False)
 class DeployWorkflow:
     def __init__(self) -> None:
         self._has_netbooted = False
@@ -336,7 +334,7 @@ class DeployWorkflow:
 
     async def _start_deployment(self, params: DeployParam) -> None:
         result = await workflow.execute_activity(
-            "power-query",
+            POWER_QUERY_ACTIVITY_NAME,
             PowerQueryParam(
                 system_id=params.power_params.system_id,
                 driver_type=params.power_params.driver_type,
@@ -352,7 +350,7 @@ class DeployWorkflow:
 
         if result["state"] == "on":
             await workflow.execute_activity(
-                "power-cycle",
+                POWER_CYCLE_ACTIVITY_NAME,
                 PowerCycleParam(
                     system_id=params.power_params.system_id,
                     driver_type=params.power_params.driver_type,
@@ -367,7 +365,7 @@ class DeployWorkflow:
             )
         else:
             await workflow.execute_activity(
-                "power-on",
+                POWER_ON_ACTIVITY_NAME,
                 PowerOnParam(
                     system_id=params.power_params.system_id,
                     driver_type=params.power_params.driver_type,
@@ -383,7 +381,7 @@ class DeployWorkflow:
 
     async def _set_boot_order(self, params: DeployParam) -> None:
         boot_order = await workflow.execute_activity(
-            "get-boot-order",
+            GET_BOOT_ORDER_ACTIVITY_NAME,
             GetBootOrderParam(
                 system_id=params.system_id,
                 netboot=False,
@@ -396,7 +394,7 @@ class DeployWorkflow:
         )
         if boot_order:
             await workflow.execute_activity(
-                "set-boot-order",
+                SET_BOOT_ORDER_ACTIVITY_NAME,
                 SetBootOrderParam(
                     system_id=params.system_id,
                     power_params=params.power_params,

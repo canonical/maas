@@ -21,11 +21,19 @@ from maasservicelayer.db import Database
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
     MachinesCountByStatus,
+    MSM_CHECK_ENROL_ACTIVITY_NAME,
     MSM_DETAIL_EP,
     MSM_ENROL_EP,
+    MSM_GET_ENROL_ACTIVITY_NAME,
+    MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
+    MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
     MSM_REFRESH_EP,
     MSM_SECRET,
+    MSM_SEND_ENROL_ACTIVITY_NAME,
+    MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
+    MSM_SET_ENROL_ACTIVITY_NAME,
     MSM_VERIFY_EP,
+    MSM_VERIFY_TOKEN_ACTIVITY_NAME,
     MSMConnectorActivity,
     MSMConnectorParam,
     MSMEnrolParam,
@@ -410,23 +418,23 @@ class TestMSMEnrolWorkflow:
         POLL_CALL_COUNT = 3
         calls = defaultdict(list)
 
-        @activity.defn(name="msm-send-enrol")
+        @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
         async def send_enrol(input: MSMEnrolParam) -> bool:
             calls["msm-send-enrol"].append(replace(input))
             return True, None
 
-        @activity.defn(name="msm-check-enrol")
+        @activity.defn(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
         async def check_enrol(input: MSMEnrolParam) -> tuple[str, int]:
             calls["msm-check-enrol"].append(replace(input))
             if len(calls["msm-check-enrol"]) < POLL_CALL_COUNT:
                 raise ApplicationError("waiting for MSM enrolment")
             return _JWT_ACCESS, _JWT_ROTATION_INTERVAL
 
-        @activity.defn(name="msm-set-enrol")
+        @activity.defn(name=MSM_SET_ENROL_ACTIVITY_NAME)
         async def set_enrol(input: MSMConnectorParam) -> None:
             calls["msm-set-enrol"].append(replace(input))
 
-        @activity.defn(name="msm-verify-token")
+        @activity.defn(name=MSM_VERIFY_TOKEN_ACTIVITY_NAME)
         async def verify_token(input: MSMTokenVerifyParam) -> bool:
             calls["msm-verify-token"].append(replace(input))
             return True
@@ -463,12 +471,12 @@ class TestMSMEnrolWorkflow:
     async def test_enrolment_fail(self, enrol_param):
         calls = defaultdict(list)
 
-        @activity.defn(name="msm-send-enrol")
+        @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
         async def send_enrol(input: MSMEnrolParam) -> bool:
             calls["msm-send-enrol"].append(replace(input))
             return False, {"status": 401, "reason": "Unauthorized"}
 
-        @activity.defn(name="msm-check-enrol")
+        @activity.defn(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
         async def check_enrol(input: MSMEnrolParam) -> tuple[str, int]:
             calls["msm-check-enrol"].append(replace(input))
             return None, -1
@@ -496,19 +504,19 @@ class TestMSMEnrolWorkflow:
         POLL_CALL_COUNT = 3
         calls = defaultdict(list)
 
-        @activity.defn(name="msm-send-enrol")
+        @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
         async def send_enrol(input: MSMEnrolParam) -> bool:
             calls["msm-send-enrol"].append(replace(input))
             return True, None
 
-        @activity.defn(name="msm-check-enrol")
+        @activity.defn(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
         async def check_enrol(input: MSMEnrolParam) -> tuple[str, int]:
             calls["msm-check-enrol"].append(replace(input))
             if len(calls["msm-check-enrol"]) < POLL_CALL_COUNT:
                 raise ApplicationError("waiting for MSM enrolment")
             return None, -1
 
-        @activity.defn(name="msm-set-enrol")
+        @activity.defn(name=MSM_SET_ENROL_ACTIVITY_NAME)
         async def set_enrol(input: MSMConnectorParam) -> None:
             calls["msm-set-enrol"].append(replace(input))
 
@@ -539,17 +547,17 @@ class TestMSMHeartbeatWorkflow:
     async def test_heartbeat(self, hb_param):
         calls = defaultdict(list)
 
-        @activity.defn(name="msm-get-heartbeat-data")
+        @activity.defn(name=MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME)
         async def get_heartbeat_data() -> MachinesCountByStatus:
             calls["msm-get-heartbeat-data"].append(True)
             return MachinesCountByStatus(allocated=1, deployed=1)
 
-        @activity.defn(name="msm-send-heartbeat")
+        @activity.defn(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
         async def send_heartbeat(input: MSMHeartbeatParam) -> int:
             calls["msm-send-heartbeat"].append(True)
             return -1
 
-        @activity.defn(name="msm-get-enrol")
+        @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
         async def get_enrol() -> dict[str, Any]:
             calls["msm-get-enrol"].append(True)
             return {
@@ -586,18 +594,18 @@ class TestMSMTokenRefreshWorkflow:
     async def test_token_refresh(self, refresh_param):
         calls = defaultdict(list)
 
-        @activity.defn(name="msm-get-token-refresh")
+        @activity.defn(name=MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME)
         async def refresh_token(
             input: MSMTokenRefreshParam,
         ) -> tuple[str | None, int]:
             calls["msm-get-token-refresh"].append(True)
             return ("new_token", -1)
 
-        @activity.defn(name="msm-set-enrol")
+        @activity.defn(name=MSM_SET_ENROL_ACTIVITY_NAME)
         async def set_enrol(input: MSMConnectorParam):
             calls["msm-set-enrol"].append(replace(input))
 
-        @activity.defn(name="msm-verify-token")
+        @activity.defn(name=MSM_VERIFY_TOKEN_ACTIVITY_NAME)
         async def verify_token(input: MSMTokenVerifyParam) -> bool:
             calls["msm-verify-token"].append(replace(input))
             return True
@@ -628,14 +636,14 @@ class TestMSMTokenRefreshWorkflow:
     async def test_token_refresh_canceled_by_msm(self, refresh_param):
         calls = defaultdict(list)
 
-        @activity.defn(name="msm-get-token-refresh")
+        @activity.defn(name=MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME)
         async def refresh_token(
             input: MSMTokenRefreshParam,
         ) -> tuple[str | None, int]:
             calls["msm-get-token-refresh"].append(True)
             return (None, -1)
 
-        @activity.defn(name="msm-set-enrol")
+        @activity.defn(name=MSM_SET_ENROL_ACTIVITY_NAME)
         async def set_enrol(input: MSMConnectorParam):
             calls["msm-set-enrol"].append(input)
 

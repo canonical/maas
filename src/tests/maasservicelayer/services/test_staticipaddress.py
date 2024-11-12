@@ -6,6 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    merge_configure_dhcp_param,
+)
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
     StaticIPAddressResourceBuilder,
@@ -16,10 +20,7 @@ from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
-from maastemporalworker.workflow.dhcp import (
-    ConfigureDHCPParam,
-    merge_configure_dhcp_param,
-)
+from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 
 
 @pytest.mark.asyncio
@@ -147,7 +148,7 @@ class TestStaticIPAddressService:
             ),
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(
                 static_ip_addr_ids=[sip.id],
             ),
@@ -244,7 +245,7 @@ class TestStaticIPAddressService:
             ),
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(
                 static_ip_addr_ids=[sip.id],
             ),
@@ -316,7 +317,7 @@ class TestStaticIPAddressService:
             ),
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(
                 static_ip_addr_ids=[sip.id],
             ),
@@ -368,7 +369,7 @@ class TestStaticIPAddressService:
             sip.id,
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(
                 subnet_ids=[sip.subnet_id],
             ),

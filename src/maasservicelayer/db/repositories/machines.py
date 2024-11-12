@@ -9,6 +9,7 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq, le
 
 from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
+from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -20,12 +21,7 @@ from maasservicelayer.db.tables import (
     UserTable,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.machines import (
-    Machine,
-    MachinesCountByStatus,
-    PciDevice,
-    UsbDevice,
-)
+from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 
 
 class MachineClauseFactory(ClauseFactory):

@@ -6,6 +6,11 @@ from typing import Optional
 from pydantic import IPvAnyAddress
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+    merge_configure_dhcp_param,
+)
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.models.ipranges import IPRange
@@ -37,15 +42,9 @@ class IPRangesService(Service):
         )
 
     async def create(self, resource: CreateOrUpdateResource) -> IPRange:
-        # avoiding circular import of ServiceCollectionV3
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         iprange = await self.ipranges_repository.create(resource)
         self.temporal_service.register_or_update_workflow_call(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
@@ -55,15 +54,9 @@ class IPRangesService(Service):
     async def update(
         self, id: int, resource: CreateOrUpdateResource
     ) -> IPRange | None:
-        # avoiding circular import of ServiceCollectionV3
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         iprange = await self.ipranges_repository.update(id, resource)
         self.temporal_service.register_or_update_workflow_call(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
@@ -71,16 +64,10 @@ class IPRangesService(Service):
         return iprange
 
     async def delete(self, id: int) -> None:
-        # avoiding circular import of ServiceCollectionV3
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         iprange = await self.ipranges_repository.find_by_id(id=id)
         await self.ipranges_repository.delete(id)
         self.temporal_service.register_or_update_workflow_call(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[iprange.subnet_id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,

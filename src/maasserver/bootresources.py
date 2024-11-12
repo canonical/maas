@@ -101,6 +101,7 @@ from maasserver.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
     SpaceRequirementParam,
+    SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
 from provisioningserver.auth import get_maas_user_gpghome
@@ -677,7 +678,7 @@ class BootResourceStore(ObjectStore):
                         http_proxy=self._get_http_proxy(),
                     )
                     execute_workflow(
-                        "sync-bootresources",
+                        SYNC_BOOTRESOURCES_WORKFLOW_NAME,
                         self.WORKFLOW_ID,
                         sync_req,
                         task_queue=REGION_TASK_QUEUE,

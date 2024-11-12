@@ -1,17 +1,22 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from collections import namedtuple
 from unittest.mock import Mock
 
 import pytest
 
-from maasserver.models import bmc as model_bmc
-from maasserver.workflow import power as power_workflow
-from maasserver.workflow.power import (
-    convert_power_action_to_power_workflow,
-    get_temporal_task_queue_for_bmc,
+from maascommon.workflows.power import (
     PowerCycleParam,
     PowerOffParam,
     PowerOnParam,
     PowerQueryParam,
+)
+from maasserver.models import bmc as model_bmc
+from maastemporalworker.workflow import power as power_workflow
+from maastemporalworker.workflow.power import (
+    convert_power_action_to_power_workflow,
+    get_temporal_task_queue_for_bmc,
     UnknownPowerActionException,
     UnroutablePowerWorkflowException,
 )

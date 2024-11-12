@@ -3,6 +3,11 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+    merge_configure_dhcp_param,
+)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.staticipaddress import (
@@ -33,16 +38,10 @@ class StaticIPAddressService(Service):
     async def create(
         self, resource: CreateOrUpdateResource
     ) -> StaticIPAddress:
-        # avoiding circular import of ServiceCollectionV3
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         ip = await self.staticipaddress_repository.create(resource)
         if ip.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(
-                "configure-dhcp",
+                CONFIGURE_DHCP_WORKFLOW_NAME,
                 ConfigureDHCPParam(static_ip_addr_ids=[ip.id]),
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
@@ -52,16 +51,10 @@ class StaticIPAddressService(Service):
     async def update(
         self, id: int, resource: CreateOrUpdateResource
     ) -> StaticIPAddress:
-        # avoiding circular import of ServiceCollectionV3
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         ip = await self.staticipaddress_repository.update(id, resource)
         if ip.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(
-                "configure-dhcp",
+                CONFIGURE_DHCP_WORKFLOW_NAME,
                 ConfigureDHCPParam(static_ip_addr_ids=[ip.id]),
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
@@ -71,16 +64,10 @@ class StaticIPAddressService(Service):
     async def create_or_update(
         self, resource: CreateOrUpdateResource
     ) -> StaticIPAddress:
-        # avoiding circular import of ServiceCollectionV3
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         ip = await self.staticipaddress_repository.create_or_update(resource)
         if ip.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(
-                "configure-dhcp",
+                CONFIGURE_DHCP_WORKFLOW_NAME,
                 ConfigureDHCPParam(static_ip_addr_ids=[ip.id]),
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
@@ -88,18 +75,12 @@ class StaticIPAddressService(Service):
         return ip
 
     async def delete(self, id: int) -> None:
-        # avoiding circular import of ServiceCollectionV3
-        from maastemporalworker.workflow.dhcp import (
-            ConfigureDHCPParam,
-            merge_configure_dhcp_param,
-        )
-
         ip = await self.staticipaddress_repository.find_by_id(id=id)
         await self.staticipaddress_repository.delete(id)
 
         if ip.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(
-                "configure-dhcp",
+                CONFIGURE_DHCP_WORKFLOW_NAME,
                 ConfigureDHCPParam(
                     subnet_ids=[ip.subnet_id]
                 ),  # use parent id on delete

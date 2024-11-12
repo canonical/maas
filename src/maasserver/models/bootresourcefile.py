@@ -32,6 +32,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.workflow import execute_workflow
 from maasserver.workflow.bootresource import (
+    DELETE_BOOTRESOURCE_WORKFLOW_NAME,
     ResourceDeleteParam,
     ResourceIdentifier,
 )
@@ -44,7 +45,7 @@ class BootResourceFileManager(Manager):
         qs = self.filter(sha256=rfile.sha256).exclude(id=rfile.id)
         if not qs.exists():
             execute_workflow(
-                "delete-bootresource",
+                DELETE_BOOTRESOURCE_WORKFLOW_NAME,
                 f"bootresource-del:{rfile.id}",
                 ResourceDeleteParam(
                     files=[
@@ -98,7 +99,7 @@ class BootResourceFileManager(Manager):
         ]
         if to_remove:
             execute_workflow(
-                "delete-bootresource",
+                DELETE_BOOTRESOURCE_WORKFLOW_NAME,
                 param=ResourceDeleteParam(files=to_remove),
             )
         BootResourceFileSync.objects.filter(file__in=rfile_qs).delete()

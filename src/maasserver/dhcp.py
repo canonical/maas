@@ -14,6 +14,7 @@ from django.db.models import Q
 from netaddr import IPAddress, IPNetwork
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.workflows.dhcp import CONFIGURE_DHCP_WORKFLOW_NAME
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
     get_dns_server_addresses,
@@ -1052,7 +1053,7 @@ def configure_dhcp_on_agents(
     reserved_ip_ids: list[int] | None = None,
 ):
     return start_workflow(
-        workflow_name="configure-dhcp",
+        workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
         param=ConfigureDHCPParam(
             system_ids=system_ids,
             vlan_ids=vlan_ids,

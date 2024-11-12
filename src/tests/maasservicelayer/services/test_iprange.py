@@ -5,6 +5,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    merge_configure_dhcp_param,
+)
 from maasservicelayer.db.repositories.ipranges import (
     IPRangesRepository,
     IPRangesResourceBuilder,
@@ -15,10 +19,7 @@ from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
-from maastemporalworker.workflow.dhcp import (
-    ConfigureDHCPParam,
-    merge_configure_dhcp_param,
-)
+from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 
 
 @pytest.mark.asyncio
@@ -97,7 +98,7 @@ class TestIPRangesService:
 
         mock_ipranges_repository.create.assert_called_once_with(resource)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
@@ -141,7 +142,7 @@ class TestIPRangesService:
             iprange.id, resource
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
@@ -173,7 +174,7 @@ class TestIPRangesService:
 
         mock_ipranges_repository.delete.assert_called_once_with(iprange.id)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[iprange.subnet_id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,

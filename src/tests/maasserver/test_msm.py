@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from jose import jwt
 import pytest
 
+from maascommon.workflows.msm import MSM_ENROL_SITE_WORKFLOW_NAME
 from maasserver.enum import MSM_STATUS
 from maasserver.models import Config
 from maasserver.msm import (
@@ -97,7 +98,7 @@ class TestMSMEnrol:
         msm_enrol(encoded)
         mocked_start_workflow.assert_called_once()
         args = mocked_start_workflow.call_args.args
-        assert args[0] == "msm-enrol-site"
+        assert args[0] == MSM_ENROL_SITE_WORKFLOW_NAME
         assert args[2].site_name == maas_site["maas_name"]
         assert args[2].url == msm_enrol_payload["service-url"]
 

@@ -1,46 +1,40 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from dataclasses import dataclass
 from datetime import timedelta
-from enum import Enum
 from typing import Any, Optional
 import uuid
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
+from maascommon.workflows.power import (
+    POWER_CYCLE_WORKFLOW_NAME,
+    POWER_MANY_WORKFLOW_NAME,
+    POWER_OFF_WORKFLOW_NAME,
+    POWER_ON_WORKFLOW_NAME,
+    POWER_QUERY_WORKFLOW_NAME,
+    PowerAction,
+    PowerCycleParam,
+    PowerManyParam,
+    PowerOffParam,
+    PowerOnParam,
+    PowerQueryParam,
+)
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 
 # Maximum power activity duration (to cope with broken BMCs)
 POWER_ACTION_ACTIVITY_TIMEOUT = timedelta(minutes=5)
 
-
-# XXX: Once Python 3.11 switch to StrEnum
-class PowerAction(Enum):
-    POWER_ON = "power-on"
-    POWER_OFF = "power-off"
-    POWER_CYCLE = "power-cycle"
-    POWER_QUERY = "power-query"
+# Activities names
+POWER_ON_ACTIVITY_NAME = "power-on"
+POWER_OFF_ACTIVITY_NAME = "power-off"
+POWER_CYCLE_ACTIVITY_NAME = "power-cycle"
+POWER_QUERY_ACTIVITY_NAME = "power-query"
 
 
-@dataclass
-class PowerParam:
-    system_id: str
-
-    # XXX: should be removed, once we can fetch everything by system_id
-    # inside workflow itself and pass to the underlying PowerOn activity.
-    driver_type: str
-    driver_opts: dict[str, Any]
-    task_queue: str
-
-
-@dataclass
-class PowerOnParam(PowerParam):
-    """
-    Parameters required by the PowerOn workflow
-    """
-
-    pass
-
-
+# Activities parameters
 @dataclass
 class PowerOnResult:
     """
@@ -48,15 +42,6 @@ class PowerOnResult:
     """
 
     state: str
-
-
-@dataclass
-class PowerOffParam(PowerParam):
-    """
-    Parameters required by the PowerOff workflow
-    """
-
-    pass
 
 
 @dataclass
@@ -69,31 +54,12 @@ class PowerOffResult:
 
 
 @dataclass
-class PowerCycleParam(PowerParam):
-    """
-    Parameters required by the PowerCycle workflow
-    """
-
-    pass
-
-
-@dataclass
 class PowerCycleResult:
     """
     Result returned by PowerCycle workflow
     """
 
     state: str
-
-
-@dataclass
-class PowerQueryParam(PowerParam):
-    """
-
-    Parameters required by the PowerQuery workflow
-    """
-
-    pass
 
 
 @dataclass
@@ -105,7 +71,7 @@ class PowerQueryResult:
     state: str
 
 
-@workflow.defn(name="power-on", sandboxed=False)
+@workflow.defn(name=POWER_ON_WORKFLOW_NAME, sandboxed=False)
 class PowerOnWorkflow:
     """
     PowerOnWorkflow is executed by the Region Controller itself.
@@ -114,7 +80,7 @@ class PowerOnWorkflow:
     @workflow.run
     async def run(self, param: PowerOnParam) -> PowerOnResult:
         result = await workflow.execute_activity(
-            "power-on",
+            POWER_ON_ACTIVITY_NAME,
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
@@ -127,7 +93,7 @@ class PowerOnWorkflow:
         return result
 
 
-@workflow.defn(name="power-off", sandboxed=False)
+@workflow.defn(name=POWER_OFF_WORKFLOW_NAME, sandboxed=False)
 class PowerOffWorkflow:
     """
     PowerOffWorkflow is executed by the Region Controller itself.
@@ -136,7 +102,7 @@ class PowerOffWorkflow:
     @workflow.run
     async def run(self, param: PowerOffParam) -> PowerOffResult:
         result = await workflow.execute_activity(
-            "power-off",
+            POWER_OFF_ACTIVITY_NAME,
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
@@ -149,7 +115,7 @@ class PowerOffWorkflow:
         return result
 
 
-@workflow.defn(name="power-cycle", sandboxed=False)
+@workflow.defn(name=POWER_CYCLE_WORKFLOW_NAME, sandboxed=False)
 class PowerCycleWorkflow:
     """
     PowerCycleWorkflow is executed by the Region Controller itself.
@@ -158,7 +124,7 @@ class PowerCycleWorkflow:
     @workflow.run
     async def run(self, param: PowerCycleParam) -> PowerCycleResult:
         result = await workflow.execute_activity(
-            "power-cycle",
+            POWER_CYCLE_ACTIVITY_NAME,
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
@@ -171,7 +137,7 @@ class PowerCycleWorkflow:
         return result
 
 
-@workflow.defn(name="power-query", sandboxed=False)
+@workflow.defn(name=POWER_QUERY_WORKFLOW_NAME, sandboxed=False)
 class PowerQueryWorkflow:
     """
     PowerQueryWorkflow is executed by the Region Controller itself.
@@ -180,7 +146,7 @@ class PowerQueryWorkflow:
     @workflow.run
     async def run(self, param: PowerQueryParam) -> PowerQueryResult:
         result = await workflow.execute_activity(
-            "power-query",
+            POWER_QUERY_ACTIVITY_NAME,
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
@@ -192,28 +158,7 @@ class PowerQueryWorkflow:
         return result
 
 
-@dataclass
-class PowerParam:
-    # XXX: PoweParam class should be removed, once we can fetch everything by system_id
-    system_id: str
-    driver_type: str
-    driver_opts: dict[str, Any]
-    task_queue: str
-
-
-@dataclass
-class PowerManyParam:
-    """
-    Parameters required by the PowerMany workflow
-    """
-
-    action: str
-    # XXX: params property should be removed, once we can fetch everything by system_id
-    # change to list[str] (list of system_ids)
-    params: list[PowerParam]
-
-
-@workflow.defn(name="power-many", sandboxed=False)
+@workflow.defn(name=POWER_MANY_WORKFLOW_NAME, sandboxed=False)
 class PowerManyWorkflow:
     """
     PowerManyWorkflow is executed by the Region Controller itself.

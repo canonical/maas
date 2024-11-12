@@ -31,6 +31,19 @@ DISK_TIMEOUT = timedelta(minutes=15)
 DOWNLOAD_TIMEOUT = timedelta(hours=2)
 MAX_SOURCES = 5
 
+DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME = "download-bootresource"
+CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME = "check-bootresources-storage"
+SYNC_BOOTRESOURCES_WORKFLOW_NAME = "sync-bootresources"
+DELETE_BOOTRESOURCE_WORKFLOW_NAME = "delete-bootresource"
+
+CHECK_DISK_SPACE_ACTIVITY_NAME = "check-disk-space"
+GET_BOOTRESOURCEFILE_SYNC_STATUS_ACTIVITY_NAME = (
+    "get-bootresourcefile-sync-status"
+)
+GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME = "get-bootresourcefile-endpoints"
+DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME = "download-bootresourcefile"
+DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME = "delete-bootresourcefile"
+
 
 @dataclass
 class ResourceDownloadParam:
@@ -116,7 +129,7 @@ class BootResourcesActivity(MAASAPIClient):
             },
         )
 
-    @activity.defn(name="check-disk-space")
+    @activity.defn(name=CHECK_DISK_SPACE_ACTIVITY_NAME)
     async def check_disk_space(self, param: SpaceRequirementParam) -> bool:
         target_dir = get_bootresource_store_path()
         _, _, free = shutil.disk_usage(target_dir)
@@ -134,7 +147,7 @@ class BootResourcesActivity(MAASAPIClient):
             )
             return False
 
-    @activity.defn(name="get-bootresourcefile-sync-status")
+    @activity.defn(name=GET_BOOTRESOURCEFILE_SYNC_STATUS_ACTIVITY_NAME)
     async def get_bootresourcefile_sync_status(
         self, with_sources: bool = True
     ) -> dict:
@@ -143,7 +156,7 @@ class BootResourcesActivity(MAASAPIClient):
             "GET", url, params={"sources": str(with_sources)}
         )
 
-    @activity.defn(name="get-bootresourcefile-endpoints")
+    @activity.defn(name=GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME)
     async def get_bootresourcefile_endpoints(self) -> dict[str, list]:
         url = f"{self.url}/api/2.0/regioncontrollers/"
         regions = await self.request_async("GET", url)
@@ -163,7 +176,7 @@ class BootResourcesActivity(MAASAPIClient):
                 )
         return regions_endpoints
 
-    @activity.defn(name="download-bootresourcefile")
+    @activity.defn(name=DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME)
     async def download_bootresourcefile(
         self, param: ResourceDownloadParam
     ) -> bool:
@@ -251,7 +264,7 @@ class BootResourcesActivity(MAASAPIClient):
         finally:
             lfile.release_lock()
 
-    @activity.defn(name="delete-bootresourcefile")
+    @activity.defn(name=DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME)
     async def delete_bootresourcefile(
         self, param: ResourceDeleteParam
     ) -> bool:
@@ -272,14 +285,14 @@ class BootResourcesActivity(MAASAPIClient):
         return True
 
 
-@workflow.defn(name="download-bootresource", sandboxed=False)
+@workflow.defn(name=DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, sandboxed=False)
 class DownloadBootResourceWorkflow:
     """Downloads a BootResourceFile to this controller"""
 
     @workflow.run
     async def run(self, input: ResourceDownloadParam) -> None:
         return await workflow.execute_activity(
-            "download-bootresourcefile",
+            DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,
             input,
             start_to_close_timeout=DOWNLOAD_TIMEOUT,
             heartbeat_timeout=HEARTBEAT_TIMEOUT,
@@ -291,14 +304,14 @@ class DownloadBootResourceWorkflow:
         )
 
 
-@workflow.defn(name="check-bootresources-storage", sandboxed=False)
+@workflow.defn(name=CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME, sandboxed=False)
 class CheckBootResourcesStorageWorkflow:
     """Check the BootResource Storage on this controller"""
 
     @workflow.run
     async def run(self, input: SpaceRequirementParam) -> None:
         return await workflow.execute_activity(
-            "check-disk-space",
+            CHECK_DISK_SPACE_ACTIVITY_NAME,
             input,
             start_to_close_timeout=DISK_TIMEOUT,
             heartbeat_timeout=HEARTBEAT_TIMEOUT,
@@ -306,7 +319,7 @@ class CheckBootResourcesStorageWorkflow:
         )
 
 
-@workflow.defn(name="sync-bootresources", sandboxed=False)
+@workflow.defn(name=SYNC_BOOTRESOURCES_WORKFLOW_NAME, sandboxed=False)
 class SyncBootResourcesWorkflow:
     """Execute Boot Resource synchronization from external sources"""
 
@@ -317,7 +330,7 @@ class SyncBootResourcesWorkflow:
             region: str,
         ):
             return workflow.execute_child_workflow(
-                "check-bootresources-storage",
+                CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME,
                 res,
                 id=f"check-bootresources-storage:{region}",
                 execution_timeout=DISK_TIMEOUT,
@@ -331,7 +344,7 @@ class SyncBootResourcesWorkflow:
             region: str | None = None,
         ):
             return workflow.execute_child_workflow(
-                "download-bootresource",
+                DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
                 res,
                 id=f"download-bootresource:{region or 'upstream'}:{res.sha256[:12]}",
                 execution_timeout=DOWNLOAD_TIMEOUT,
@@ -342,7 +355,7 @@ class SyncBootResourcesWorkflow:
 
         # get regions and endpoints
         endpoints: dict[str, list] = await workflow.execute_activity(
-            "get-bootresourcefile-endpoints",
+            GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,
             start_to_close_timeout=timedelta(seconds=30),
         )
         regions: frozenset[str] = frozenset(endpoints.keys())
@@ -382,7 +395,7 @@ class SyncBootResourcesWorkflow:
 
         # distribute files inside cluster
         sync_status: dict[str, dict] = await workflow.execute_activity(
-            "get-bootresourcefile-sync-status",
+            GET_BOOTRESOURCEFILE_SYNC_STATUS_ACTIVITY_NAME,
             start_to_close_timeout=timedelta(seconds=30),
         )
 
@@ -425,7 +438,7 @@ class SyncBootResourcesWorkflow:
         workflow.logger.info("Sync complete")
 
 
-@workflow.defn(name="delete-bootresource", sandboxed=False)
+@workflow.defn(name=DELETE_BOOTRESOURCE_WORKFLOW_NAME, sandboxed=False)
 class DeleteBootResourceWorkflow:
     """Delete a BootResourceFile from this cluster"""
 
@@ -433,13 +446,13 @@ class DeleteBootResourceWorkflow:
     async def run(self, input: ResourceDeleteParam) -> None:
         # remove file from cluster
         endpoints = await workflow.execute_activity(
-            "get-bootresourcefile-endpoints",
+            GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,
             start_to_close_timeout=timedelta(seconds=30),
         )
         regions = frozenset(endpoints.keys())
         for r in regions:
             await workflow.execute_activity(
-                "delete-bootresourcefile",
+                DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
                 input,
                 task_queue=f"{r}:region",
                 start_to_close_timeout=DISK_TIMEOUT,

@@ -10,6 +10,14 @@ from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
 from maascommon.enums.node import NodeTypeEnum
+from maascommon.workflows.configure import (
+    CONFIGURE_AGENT_WORKFLOW_NAME,
+    CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
+    CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
+    CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
+    ConfigureAgentParam,
+    ConfigureDHCPServiceParam,
+)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
@@ -25,7 +33,14 @@ DEFAULT_CONFIGURE_RETRY_POLICY = RetryPolicy(
     maximum_interval=timedelta(seconds=2),
 )
 
+# Activities names
+GET_RACK_CONTROLLER_VLANS_ACTIVITY_NAME = "get-rack-controller-vlans"
+GET_REGION_CONTROLLER_ENDPOINTS_ACTIVITY_NAME = (
+    "get-region-controller-endpoints"
+)
 
+
+# Activities parameters
 @dataclass
 class GetRackControllerVLANsInput:
     system_id: str
@@ -42,7 +57,7 @@ class GetRegionControllerEndpointsResult:
 
 
 class ConfigureAgentActivity(ActivityBase):
-    @activity.defn(name="get-rack-controller-vlans")
+    @activity.defn(name=GET_RACK_CONTROLLER_VLANS_ACTIVITY_NAME)
     async def get_rack_controller_vlans(
         self, input: GetRackControllerVLANsInput
     ) -> GetRackControllerVLANsResult:
@@ -72,7 +87,7 @@ class ConfigureAgentActivity(ActivityBase):
                 )
             return GetRackControllerVLANsResult([])
 
-    @activity.defn(name="get-region-controller-endpoints")
+    @activity.defn(name=GET_REGION_CONTROLLER_ENDPOINTS_ACTIVITY_NAME)
     async def get_region_controller_endpoints(
         self,
     ) -> GetRegionControllerEndpointsResult:
@@ -96,16 +111,6 @@ class ConfigureAgentActivity(ActivityBase):
             )
 
 
-@dataclass
-class ConfigureAgentParam:
-    system_id: str
-
-
-@dataclass
-class ConfigureDHCPServiceParam:
-    enabled: bool
-
-
 def _format_endpoint(ip: str) -> str:
     addr = IPAddress(ip)
     if addr.version == 4:
@@ -116,7 +121,7 @@ def _format_endpoint(ip: str) -> str:
 # NOTE: Once Region can detect that Agent was reconnected or restarted
 # via Temporal server API, we should no longer need this workflow
 # and Region should execute per-service workflow for configuration.
-@workflow.defn(name="configure-agent", sandboxed=False)
+@workflow.defn(name=CONFIGURE_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureAgentWorkflow:
     """A ConfigureAgent workflow to setup MAAS Agent"""
 
@@ -126,7 +131,7 @@ class ConfigureAgentWorkflow:
         # during Temporal worker pool initialization using WithConfigurator.
         # Make sure that used workflow names are in sync with the Agent.
         await workflow.execute_child_workflow(
-            "configure-power-service",
+            CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
             param.system_id,
             id=f"configure-power-service:{param.system_id}",
             task_queue=f"{param.system_id}@agent:main",
@@ -134,7 +139,7 @@ class ConfigureAgentWorkflow:
         )
 
         await workflow.execute_child_workflow(
-            "configure-httpproxy-service",
+            CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
             param.system_id,
             id=f"configure-httpproxy-service:{param.system_id}",
             task_queue=f"{param.system_id}@agent:main",
@@ -142,7 +147,7 @@ class ConfigureAgentWorkflow:
         )
 
         await workflow.execute_child_workflow(
-            "configure-dhcp-service",
+            CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
             ConfigureDHCPServiceParam(enabled=True),
             id=f"configure-dhcp-service:{param.system_id}",
             task_queue=f"{param.system_id}@agent:main",

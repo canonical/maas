@@ -21,6 +21,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from temporalio.common import RetryPolicy
 
+from maascommon.workflows.configure import CONFIGURE_AGENT_WORKFLOW_NAME
 from maasserver.enum import (
     NODE_DEVICE_BUS,
     NODE_METADATA,
@@ -1232,7 +1233,7 @@ def process_lxd_results(node, output, exit_status):
         )
         if new_vlans != old_vlans:
             start_workflow(
-                "configure-agent",
+                CONFIGURE_AGENT_WORKFLOW_NAME,
                 param={
                     "system_id": node.system_id,
                     "task_queue": f"{node.system_id}@agent:main",

@@ -12,6 +12,7 @@ from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maascommon.workflows.dhcp import CONFIGURE_DHCP_WORKFLOW_NAME
 from maasserver import dhcp
 from maasserver import server_address as server_address_module
 import maasserver.dhcp as dhcp_module
@@ -3134,7 +3135,7 @@ class TestConfigureDhcpOnAgents(MAASServerTestCase):
         )
 
         dhcp_module.start_workflow.assert_called_once_with(
-            workflow_name="configure-dhcp",
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
             param=ConfigureDHCPParam(
                 system_ids=["test"],
                 vlan_ids=[0],

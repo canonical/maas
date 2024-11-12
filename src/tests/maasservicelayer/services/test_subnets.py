@@ -8,6 +8,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.subnet import RdnsMode
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    merge_configure_dhcp_param,
+)
 from maasservicelayer.db.repositories.subnets import (
     SubnetsRepository,
     SubnetsResourceBuilder,
@@ -17,10 +21,7 @@ from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
-from maastemporalworker.workflow.dhcp import (
-    ConfigureDHCPParam,
-    merge_configure_dhcp_param,
-)
+from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 
 
 @pytest.mark.asyncio
@@ -122,7 +123,7 @@ class TestSubnetsService:
 
         subnets_repository_mock.create.assert_called_once_with(resource)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[subnet.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
@@ -176,7 +177,7 @@ class TestSubnetsService:
             subnet.id, resource
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[subnet.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
@@ -213,7 +214,7 @@ class TestSubnetsService:
 
         subnets_repository_mock.delete.assert_called_once_with(subnet.id)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            "configure-dhcp",
+            CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(vlan_ids=[subnet.vlan_id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
