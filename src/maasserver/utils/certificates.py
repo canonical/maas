@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from OpenSSL import crypto
 
+from maascommon.constants import SYSTEM_CA_FILE
 from maasserver.models import Config
 from provisioningserver.certificates import Certificate, CertificateRequest
 from provisioningserver.utils.env import MAAS_UUID
@@ -116,7 +117,7 @@ def get_ssl_certificate(url, timeout=10):
     conn = socket.create_connection((host, port))
     context = ssl.create_default_context()
     # in case the user has added a self signed certificate
-    context.load_verify_locations(cafile="/etc/ssl/certs/ca-certificates.crt")
+    context.load_verify_locations(cafile=SYSTEM_CA_FILE)
     sock = context.wrap_socket(conn, server_hostname=host)
     sock.settimeout(timeout)
     try:

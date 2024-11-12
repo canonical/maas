@@ -5,6 +5,7 @@ from typing import Any
 from aiohttp import ClientSession, ClientTimeout, TCPConnector, UnixConnector
 
 from apiclient.maas_client import MAASOAuth
+from maascommon.constants import SYSTEM_CA_FILE
 from maasserver.models.user import get_creds_tuple
 
 
@@ -33,7 +34,7 @@ class MAASAPIClient:
         if self.user_agent:
             headers["User-Agent"] = self.user_agent
         timeout = ClientTimeout(total=60 * 60, sock_read=120)
-        context = ssl.create_default_context()
+        context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         return ClientSession(
             trust_env=True,

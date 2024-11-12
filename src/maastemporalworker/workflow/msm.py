@@ -19,6 +19,7 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
+from maascommon.constants import SYSTEM_CA_FILE
 from maascommon.workflows.msm import (
     MachinesCountByStatus,
     MSM_ENROL_SITE_WORKFLOW_NAME,
@@ -71,7 +72,7 @@ class MSMConnectorActivity(ActivityBase):
 
     def _create_session(self) -> ClientSession:
         timeout = ClientTimeout(total=60 * 60, sock_read=120)
-        context = ssl.create_default_context()
+        context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         return ClientSession(
             trust_env=True, timeout=timeout, connector=tcp_conn

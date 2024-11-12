@@ -6,6 +6,7 @@ from typing import Dict
 
 from aiohttp import ClientResponse, ClientSession, TCPConnector
 
+from maascommon.constants import SYSTEM_CA_FILE
 from maasservicelayer.vault.api.models.exceptions import (
     VaultAuthenticationException,
     VaultException,
@@ -29,9 +30,7 @@ class AsyncVaultApiClient:
         self,
         base_url: str,
     ):
-        context = ssl.create_default_context(
-            cafile="/etc/ssl/certs/ca-certificates.crt"
-        )
+        context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(base_url=base_url, connector=tcp_conn)
 

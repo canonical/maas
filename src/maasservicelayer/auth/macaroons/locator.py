@@ -8,6 +8,8 @@ from aiohttp import ClientSession, CookieJar, TCPConnector
 from macaroonbakery import bakery
 from macaroonbakery.httpbakery import BAKERY_PROTOCOL_HEADER, ThirdPartyLocator
 
+from maascommon.constants import SYSTEM_CA_FILE
+
 
 class AsyncThirdPartyLocator(ThirdPartyLocator):
     """Implements macaroonbakery.ThirdPartyLocator by first looking in the
@@ -25,7 +27,7 @@ class AsyncThirdPartyLocator(ThirdPartyLocator):
         @param allow_insecure: By default it refuses to use insecure URLs.
         """
         super().__init__(allow_insecure=allow_insecure)
-        context = ssl.create_default_context()
+        context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(
             headers=self.BAKERY_HEADERS,

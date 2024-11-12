@@ -9,6 +9,8 @@ from aiohttp import ClientSession, TCPConnector
 from oauthlib import oauth1
 from pydantic import HttpUrl
 
+from maascommon.constants import SYSTEM_CA_FILE
+
 
 class APIClient:
     def __init__(self, base_url: HttpUrl, api_key: str):
@@ -22,7 +24,9 @@ class APIClient:
         )
 
         self._session = ClientSession(
-            connector=TCPConnector(ssl=ssl.create_default_context()),
+            connector=TCPConnector(
+                ssl=ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+            ),
         )
 
     async def request(

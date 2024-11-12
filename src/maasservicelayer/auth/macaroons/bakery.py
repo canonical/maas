@@ -48,6 +48,7 @@ from macaroonbakery.httpbakery.agent import AgentInteractor
 from macaroonbakery.httpbakery.agent._agent import InteractionInfo
 from yarl import URL
 
+from maascommon.constants import SYSTEM_CA_FILE
 from maasservicelayer.auth.macaroons.models.exceptions import BakeryException
 
 
@@ -122,7 +123,7 @@ class HttpBakeryAsyncClient:
 
     def __init__(self, interaction_methods=None, key=None):
         # we need unsafe=True to save cookies from IPs
-        context = ssl.create_default_context()
+        context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(
             headers=self.BAKERY_HEADERS,
