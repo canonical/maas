@@ -22,6 +22,9 @@ class UsersService(Service):
             else UsersRepository(connection)
         )
 
+    async def create(self, resource: CreateOrUpdateResource) -> User:
+        return await self.users_repository.create(resource)
+
     async def get(self, username: str) -> User | None:
         return await self.users_repository.find_by_username(username)
 
@@ -39,6 +42,13 @@ class UsersService(Service):
     ) -> User:
         return await self.users_repository.update(
             id=user_id, resource=resource
+        )
+
+    async def create_profile(
+        self, user_id: int, resource: CreateOrUpdateResource
+    ) -> UserProfile:
+        return await self.users_repository.create_profile(
+            user_id=user_id, resource=resource
         )
 
     async def update_profile(

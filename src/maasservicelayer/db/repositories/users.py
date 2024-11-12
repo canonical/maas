@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Type
 
 from django.core import signing
-from sqlalchemy import func, select, Table, update
+from sqlalchemy import func, insert, select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
@@ -33,7 +33,16 @@ from maasservicelayer.utils.date import utcnow
 
 
 class UserCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
-    # TODO: add other fields
+    def with_username(self, value: str) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.username.name, value)
+        return self
+
+    def with_first_name(
+        self, value: str
+    ) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.first_name.name, value)
+        return self
+
     def with_last_name(
         self, value: str
     ) -> "UserCreateOrUpdateResourceBuilder":
@@ -46,6 +55,12 @@ class UserCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
         self._request.set_value(UserTable.c.is_active.name, value)
         return self
 
+    def with_is_staff(
+        self, value: bool
+    ) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.is_staff.name, value)
+        return self
+
     def with_is_superuser(
         self, value: bool
     ) -> "UserCreateOrUpdateResourceBuilder":
@@ -56,13 +71,40 @@ class UserCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
         self._request.set_value(UserTable.c.email.name, value)
         return self
 
+    def with_password(self, value: str) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.password.name, value)
+        return self
+
+    def with_date_joined(
+        self, value: datetime
+    ) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.date_joined.name, value)
+        return self
+
+    def with_last_login(
+        self, value: datetime
+    ) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.last_login.name, value)
+        return self
+
 
 class UserProfileCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
-    # TODO: add other fields
     def with_auth_last_check(
         self, value: datetime
     ) -> "UserProfileCreateOrUpdateResourceBuilder":
         self._request.set_value(UserProfileTable.c.auth_last_check.name, value)
+        return self
+
+    def with_completed_intro(
+        self, value: bool
+    ) -> "UserProfileCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserProfileTable.c.completed_intro.name, value)
+        return self
+
+    def with_is_local(
+        self, value: bool
+    ) -> "UserProfileCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserProfileTable.c.is_local.name, value)
         return self
 
 
@@ -140,6 +182,20 @@ class UsersRepository(BaseRepository[User]):
         if not row:
             return None
         return UserProfile(**row._asdict())
+
+    async def create_profile(
+        self, user_id: int, resource: CreateOrUpdateResource
+    ) -> UserProfile:
+        stmt = (
+            insert(UserProfileTable)
+            .returning(UserProfileTable)
+            .values(**resource.get_values(), user_id=user_id)
+        )
+        try:
+            profile = (await self.connection.execute(stmt)).one()
+        except IntegrityError:
+            self._raise_already_existing_exception()
+        return UserProfile(**profile._asdict())
 
     async def update_profile(
         self, user_id: int, resource: CreateOrUpdateResource

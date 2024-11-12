@@ -63,6 +63,23 @@ class TestUsersService:
             id=1, resource=builder.build()
         )
 
+    async def test_create_profile(self) -> None:
+        users_repository_mock = Mock(UsersRepository)
+        users_repository_mock.create_profile = AsyncMock()
+        users_service = UsersService(
+            Mock(AsyncConnection), users_repository=users_repository_mock
+        )
+        builder = (
+            UserProfileCreateOrUpdateResourceBuilder()
+            .with_is_local(True)
+            .with_completed_intro(True)
+            .with_auth_last_check(utcnow())
+        )
+        await users_service.create_profile(user_id=1, resource=builder.build())
+        users_repository_mock.create_profile.assert_called_once_with(
+            user_id=1, resource=builder.build()
+        )
+
     async def test_update_profile(self) -> None:
         users_repository_mock = Mock(UsersRepository)
         users_repository_mock.update_profile = AsyncMock()

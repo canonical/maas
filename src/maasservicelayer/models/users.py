@@ -5,8 +5,10 @@ from datetime import datetime
 from typing import Optional
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
+from pydantic import Field
 
 from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.utils.date import utcnow
 
 
 class User(MaasBaseModel):
@@ -14,12 +16,12 @@ class User(MaasBaseModel):
     password: str
     is_superuser: bool
     first_name: str
-    last_name: Optional[str]
+    last_name: Optional[str] = None
     is_staff: bool
     is_active: bool
-    date_joined: datetime
-    email: Optional[str]
-    last_login: Optional[datetime]
+    date_joined: datetime = Field(default_factory=utcnow)
+    email: Optional[str] = None
+    last_login: Optional[datetime] = None
 
     def etag(self) -> str:
         pass

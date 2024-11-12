@@ -27,6 +27,10 @@ from maasservicelayer.auth.macaroons.oven import AsyncOven
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
+from maasservicelayer.db.repositories.users import (
+    UserCreateOrUpdateResourceBuilder,
+    UserProfileCreateOrUpdateResourceBuilder,
+)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     DischargeRequiredException,
@@ -154,18 +158,30 @@ class ExternalAuthService(Service, RootKeyStore):
             ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
         )
 
-        user = await self.users_service.get(username=auth_info.identity.id())
+        username = auth_info.identity.id()
+        user = await self.users_service.get(username=username)
         if not user:
-            # TODO: MAASENG-3537 If a user is not found with the username from the
-            #  identity, it's created.
-            raise UnauthorizedException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_TOKEN_VIOLATION_TYPE,
-                        message="V3 API can't create a local user for a macaroon identity yet.",
-                    )
-                ]
+            user_builder = (
+                UserCreateOrUpdateResourceBuilder()
+                .with_username(username)
+                .with_first_name("")
+                .with_password("")
+                .with_is_active(True)
+                .with_is_staff(False)
+                .with_is_superuser(False)
+                .with_last_login(utcnow())
             )
+            user = await self.users_service.create(user_builder.build())
+            profile_builder = (
+                UserProfileCreateOrUpdateResourceBuilder()
+                .with_is_local(False)
+                .with_completed_intro(True)
+                .with_auth_last_check(utcnow())
+            )
+            await self.users_service.create_profile(
+                user.id, profile_builder.build()
+            )
+
         return user
 
     async def get_bakery(

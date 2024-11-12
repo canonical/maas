@@ -25,20 +25,33 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 class TestUserCreateOrUpdateResourceBuilder:
     def test_builder(self) -> None:
+        now = utcnow()
         resource = (
             UserCreateOrUpdateResourceBuilder()
-            .with_last_name("test")
+            .with_username("username")
+            .with_first_name("first")
+            .with_last_name("last")
             .with_email("test@example.com")
             .with_is_active(True)
+            .with_is_staff(False)
             .with_is_superuser(False)
+            .with_password("password")
+            .with_date_joined(now)
+            .with_last_login(now)
             .build()
         )
 
         assert resource.get_values() == {
-            "last_name": "test",
+            "username": "username",
+            "first_name": "first",
+            "last_name": "last",
             "email": "test@example.com",
             "is_active": True,
+            "is_staff": False,
             "is_superuser": False,
+            "password": "password",
+            "date_joined": now,
+            "last_login": now,
         }
 
 
@@ -48,9 +61,15 @@ class TestUserProfileCreateOrUpdateResourceBuilder:
         resource = (
             UserProfileCreateOrUpdateResourceBuilder()
             .with_auth_last_check(now)
+            .with_completed_intro(True)
+            .with_is_local(False)
             .build()
         )
-        assert resource.get_values() == {"auth_last_check": now}
+        assert resource.get_values() == {
+            "auth_last_check": now,
+            "completed_intro": True,
+            "is_local": False,
+        }
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -103,6 +122,25 @@ class TestUsersRepository:
         assert (
             await users_repository.get_user_profile(user.username)
         ) == user_profile
+
+    async def test_create_user_profile(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        users_repository = UsersRepository(db_connection)
+        now = utcnow()
+        user_profile_builder = (
+            UserProfileCreateOrUpdateResourceBuilder()
+            .with_is_local(True)
+            .with_completed_intro(True)
+            .with_auth_last_check(now)
+        )
+        user_profile = await users_repository.create_profile(
+            user.id, user_profile_builder.build()
+        )
+        assert user_profile.is_local is True
+        assert user_profile.completed_intro is True
+        assert user_profile.auth_last_check == now
 
     async def test_update(
         self, db_connection: AsyncConnection, fixture: Fixture

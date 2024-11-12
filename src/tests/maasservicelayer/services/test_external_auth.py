@@ -3,7 +3,7 @@
 
 from datetime import timedelta
 import os
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
@@ -22,12 +22,16 @@ from maasservicelayer.auth.macaroons.oven import AsyncOven
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
+from maasservicelayer.db.repositories.users import (
+    UserCreateOrUpdateResourceBuilder,
+    UserProfileCreateOrUpdateResourceBuilder,
+)
 from maasservicelayer.exceptions.catalog import (
     DischargeRequiredException,
     UnauthorizedException,
 )
 from maasservicelayer.models.external_auth import RootKey
-from maasservicelayer.models.users import User
+from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import SecretsService, UsersService
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.utils.date import utcnow
@@ -448,6 +452,86 @@ class TestExternalAuthService:
         )
         assert user == fake_user
         users_service_mock.get.assert_called_once_with(username="admin")
+
+    async def test_login_external_auth_user_not_in_db(self) -> None:
+        checker_mock = Mock(AsyncAuthChecker)
+        checker_mock.allow = AsyncMock(
+            return_value=AuthInfo(
+                identity=bakery.SimpleIdentity(user="admin"), macaroons=None
+            )
+        )
+
+        macaroon_bakery_mock = Mock(bakery.Bakery)
+        macaroon_bakery_mock.checker.auth = Mock(return_value=checker_mock)
+
+        now = utcnow()
+
+        fake_user = User(
+            id=0,
+            username="admin",
+            password="",
+            is_superuser=False,
+            first_name="admin",
+            is_staff=False,
+            is_active=True,
+            date_joined=now,
+        )
+
+        fake_profile = UserProfile(
+            id=0,
+            completed_intro=True,
+            is_local=False,
+            auth_last_check=now,
+            user_id=fake_user.id,
+        )
+
+        user_builder = (
+            UserCreateOrUpdateResourceBuilder()
+            .with_username("admin")
+            .with_first_name("")
+            .with_password("")
+            .with_is_active(True)
+            .with_is_staff(False)
+            .with_is_superuser(False)
+            .with_last_login(now)
+        ).build()
+
+        profile_builder = (
+            UserProfileCreateOrUpdateResourceBuilder()
+            .with_is_local(False)
+            .with_completed_intro(True)
+            .with_auth_last_check(now)
+        ).build()
+
+        users_service_mock = Mock(UsersService)
+        users_service_mock.get = AsyncMock(return_value=None)
+        users_service_mock.create = AsyncMock(return_value=fake_user)
+        users_service_mock.create_profile = AsyncMock(
+            return_value=fake_profile
+        )
+
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=Mock(SecretsService),
+            users_service=users_service_mock,
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+
+        with patch(
+            "maasservicelayer.services.external_auth.utcnow"
+        ) as utcnow_mock:
+            utcnow_mock.return_value = now
+            user = await external_auth_service._login(
+                [[Mock(Macaroon)]], macaroon_bakery_mock
+            )
+        assert user == fake_user
+        users_service_mock.get.assert_called_once_with(
+            username=fake_user.username
+        )
+        users_service_mock.create.assert_called_once_with(user_builder)
+        users_service_mock.create_profile.assert_called_once_with(
+            fake_user.id, profile_builder
+        )
 
     async def test_get_bakery_if_external_auth_is_not_configured(self) -> None:
         secrets_service_mock = Mock(SecretsService)
