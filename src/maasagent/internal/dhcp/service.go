@@ -24,7 +24,9 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -192,6 +194,12 @@ type ConfigureDHCPForAgentParam struct {
 }
 
 func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigParam) error {
+	if err := syscall.Unlink(dhcpdNotificationSocketName); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
+
 	if !config.Enabled {
 		return run(ctx, s.stop)
 	}
