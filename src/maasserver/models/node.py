@@ -6296,6 +6296,7 @@ class Node(CleanSave, TimestampedModel):
                     try:
                         res = yield execute_workflow(
                             workflow_name,
+                            task_queue="region",
                             param=workflow_param,
                         )
                         returnValue(res)

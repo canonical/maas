@@ -121,6 +121,11 @@ class TemporalWorkerService(Service):
                     # the image on its own storage. Then, DownloadBootResourceWorkflow is scheduled on the task queues of the
                     # other regions if the HA is being used.
                     DownloadBootResourceWorkflow,
+                    # TODO: power workflows have been moved to the maastemporalworker and the `region` task queue in 3.6.
+                    #  However, we still need them to be registered here because some env might have pending power workflows
+                    #  during an upgrade.
+                    #  As soon as 3.6 is released, we MUST remove the power workflows from this worker. This means that in 3.7
+                    #  only the maastemporalworker will execute the power workflows.
                     PowerOnWorkflow,
                     PowerOffWorkflow,
                     PowerCycleWorkflow,

@@ -30,6 +30,13 @@ from maastemporalworker.workflow.msm import (
     MSMTokenRefreshWorkflow,
     MSMWithdrawWorkflow,
 )
+from maastemporalworker.workflow.power import (
+    PowerCycleWorkflow,
+    PowerManyWorkflow,
+    PowerOffWorkflow,
+    PowerOnWorkflow,
+    PowerQueryWorkflow,
+)
 from maastemporalworker.workflow.tag_evaluation import (
     TagEvaluationActivity,
     TagEvaluationWorkflow,
@@ -84,6 +91,12 @@ async def main() -> None:
                 MSMWithdrawWorkflow,
                 MSMHeartbeatWorkflow,
                 MSMTokenRefreshWorkflow,
+                # Power workflows
+                PowerOnWorkflow,
+                PowerOffWorkflow,
+                PowerCycleWorkflow,
+                PowerQueryWorkflow,
+                PowerManyWorkflow,
                 # Tag Evaluation workflows
                 TagEvaluationWorkflow,
             ],
