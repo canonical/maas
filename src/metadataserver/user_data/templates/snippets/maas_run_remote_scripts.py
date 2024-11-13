@@ -796,7 +796,7 @@ def get_interfaces(clear_cache=False):
 def parse_parameters(script, scripts_dir):
     """Return a list containg script path and parameters to be passed to it."""
     ret = [os.path.join(scripts_dir, script["path"])]
-    for param in script.get("parameters", {}).values():
+    for key, param in script.get("parameters", {}).items():
         param_type = param.get("type")
         if param_type == "storage":
             value = param["value"]
@@ -821,7 +821,7 @@ def parse_parameters(script, scripts_dir):
                         or model == blockdev.get("model_enc")
                     ) and serial == blockdev["serial"]:
                         value["path"] = value["input"] = (
-                            "/dev/%s" % blockdev["name"]
+                            f"/dev/{blockdev['name']}"
                         )
                 if "id_path" in value and "path" not in value:
                     # some devices, such as RAID controllers, may have multiple serials
@@ -833,12 +833,11 @@ def parse_parameters(script, scripts_dir):
                 ret += argument_format.format(**value).split()
             except KeyError:
                 raise KeyError(
-                    "Storage device '%s' with serial '%s' not found!\n\n"
+                    f"Storage device '{model}' with serial '{serial}' not found!\n\n"
                     "This indicates the storage device has been removed or "
                     "the OS is unable to find it due to a hardware failure. "
                     "Please re-commission this node to re-discover the "
                     "storage devices, or delete this device manually."
-                    % (model, serial)
                 )
         elif param_type == "interface":
             value = param["value"]
@@ -856,24 +855,20 @@ def parse_parameters(script, scripts_dir):
                 ret += argument_format.format(**value).split()
             except KeyError:
                 raise KeyError(
-                    "Interface device %s (vendor: %s product: %s) with MAC "
-                    "address %s has not been found!\n\n"
+                    f"Interface device {value['name']} (vendor: {value['vendor']} "
+                    f"product: {value['product']}) with MAC address "
+                    f"{value['mac_address']} has not been found!\n\n"
                     "This indicates the interface has been removed or the OS "
                     "is unable to find it due to a hardware failure. Please "
                     "re-commision this node to re-discover the interfaces or "
                     "delete this interface manually."
-                    % (
-                        value["name"],
-                        value["vendor"],
-                        value["product"],
-                        value["mac_address"],
-                    )
                 )
         else:
             argument_format = param.get(
-                "argument_format", "--%s={input}" % param_type
+                "argument_format", f"--{key}={{input}}"
             )
-            ret += argument_format.format(input=param["value"]).split()
+            value = param["value"] if "value" in param else param["default"]
+            ret += argument_format.format(input=value).split()
 
     return ret
 

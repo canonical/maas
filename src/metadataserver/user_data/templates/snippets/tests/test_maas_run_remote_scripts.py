@@ -1754,6 +1754,25 @@ class TestParseParameters(MAASTestCase):
         )
         self.assertTrue(mock_get_storage_model_from_udev.called)
 
+    def test_parse_parameters_named_params(self):
+        scripts_dir = factory.make_name("scripts_dir")
+        script = {
+            "path": os.path.join("path_to", factory.make_name("script_name")),
+            "parameters": {
+                "foo": {"type": "url", "value": "http://foo.example.com"},
+                "bar": {"type": "url", "default": "http://bar.example.com"},
+            },
+        }
+
+        self.assertCountEqual(
+            [
+                os.path.join(scripts_dir, script["path"]),
+                f"--foo={script['parameters']['foo']['value']}",
+                f"--bar={script['parameters']['bar']['default']}",
+            ],
+            parse_parameters(script, scripts_dir),
+        )
+
     def test_parse_parameters_argument_format(self):
         mock_get_storage_model_from_udev = self.patch(
             maas_run_remote_scripts, "get_storage_model_from_udev"
