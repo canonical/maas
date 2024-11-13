@@ -4,6 +4,7 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
@@ -61,12 +62,13 @@ class TestZonesService:
         await zones_service.delete(TEST_ZONE.id)
         assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
 
-    async def test_delete_etag(self) -> None:
+    async def test_delete_etag(
+        self,
+        mocker: MockerFixture,
+    ) -> None:
         db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
-        zones_repository.delete = AsyncMock()
         zones_repository.delete.return_value = None
-        zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
             db_connection,
@@ -74,16 +76,19 @@ class TestZonesService:
             nodes_service=Mock(NodesService),
         )
 
-        Zone.etag = Mock()
-        Zone.etag.return_value = "my-etag"
+        mocker.patch(
+            "maasservicelayer.models.zones.Zone.etag", return_value="my-etag"
+        )
 
         await zones_service.delete(TEST_ZONE.id, "my-etag")
         assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
 
-    async def test_delete_etag_fail(self) -> None:
+    async def test_delete_etag_fail(
+        self,
+        mocker: MockerFixture,
+    ) -> None:
         db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
-        zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.return_value = TEST_ZONE
         zones_service = ZonesService(
             db_connection,
@@ -91,8 +96,9 @@ class TestZonesService:
             nodes_service=Mock(NodesService),
         )
 
-        Zone.etag = Mock()
-        Zone.etag.return_value = "my-etag"
+        mocker.patch(
+            "maasservicelayer.models.zones.Zone.etag", return_value="my-etag"
+        )
 
         with pytest.raises(PreconditionFailedException) as excinfo:
             await zones_service.delete(TEST_ZONE.id, "wrong-etag")
