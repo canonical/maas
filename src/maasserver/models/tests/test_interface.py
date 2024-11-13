@@ -1162,12 +1162,6 @@ class TestInterface(MAASServerTestCase):
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         ip_v4 = factory.pick_ip_in_network(network_v4)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            ip=ip_v4,
-            subnet=subnet_v4,
-            interface=interface,
-        )
         network_v6 = factory.make_ipv6_network()
         subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         ip_v6 = factory.pick_ip_in_network(network_v6)
@@ -1175,6 +1169,12 @@ class TestInterface(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.DISCOVERED,
             ip=ip_v6,
             subnet=subnet_v6,
+            interface=interface,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=ip_v4,
+            subnet=subnet_v4,
             interface=interface,
         )
         d_v4, d_v6 = interface.get_discovered()

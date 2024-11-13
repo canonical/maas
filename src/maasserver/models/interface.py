@@ -773,6 +773,13 @@ class Interface(CleanSave, TimestampedModel):
           }
 
         """
+
+        def _sort_ips(d):
+            return (
+                d["subnet"].get_ip_version(),
+                d["ip_address"],
+            )
+
         discovered_ips = [
             ip_address
             for ip_address in self.ip_addresses.all()
@@ -788,7 +795,7 @@ class Interface(CleanSave, TimestampedModel):
                             "ip_address": f"{discovered_ip.ip}",
                         }
                     )
-            return discovered
+            return sorted(discovered, key=_sort_ips)
         else:
             return None
 
