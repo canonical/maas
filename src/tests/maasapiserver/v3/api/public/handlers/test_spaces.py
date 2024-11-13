@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
@@ -62,8 +62,8 @@ class TestSpaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.spaces = Mock(SpacesService)
-        services_mock.spaces.list = AsyncMock(
-            return_value=ListResult[Space](items=[TEST_SPACE], next_token=None)
+        services_mock.spaces.list.return_value = ListResult[Space](
+            items=[TEST_SPACE], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -77,10 +77,8 @@ class TestSpaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.spaces = Mock(SpacesService)
-        services_mock.spaces.list = AsyncMock(
-            return_value=ListResult[Space](
-                items=[TEST_SPACE_2], next_token=str(TEST_SPACE.id)
-            )
+        services_mock.spaces.list.return_value = ListResult[Space](
+            items=[TEST_SPACE_2], next_token=str(TEST_SPACE.id)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -98,7 +96,7 @@ class TestSpaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.spaces = Mock(SpacesService)
-        services_mock.spaces.get_by_id = AsyncMock(return_value=TEST_SPACE)
+        services_mock.spaces.get_by_id.return_value = TEST_SPACE
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/{TEST_SPACE.id}"
         )
@@ -126,7 +124,7 @@ class TestSpaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.spaces = Mock(SpacesService)
-        services_mock.spaces.get_by_id = AsyncMock(return_value=None)
+        services_mock.spaces.get_by_id.return_value = None
         response = await mocked_api_client_user.get(
             f"{V3_API_PREFIX}/spaces/100"
         )
@@ -143,8 +141,8 @@ class TestSpaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.spaces = Mock(SpacesService)
-        services_mock.spaces.get_by_id = AsyncMock(
-            return_value=RequestValidationError(errors=[])
+        services_mock.spaces.get_by_id.return_value = RequestValidationError(
+            errors=[]
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422

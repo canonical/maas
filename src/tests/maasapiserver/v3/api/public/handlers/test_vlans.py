@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
@@ -80,8 +80,8 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.list = AsyncMock(
-            return_value=ListResult[Vlan](items=[TEST_VLAN], next_token=None)
+        services_mock.vlans.list.return_value = ListResult[Vlan](
+            items=[TEST_VLAN], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -95,10 +95,8 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.list = AsyncMock(
-            return_value=ListResult[Vlan](
-                items=[TEST_VLAN_2], next_token=str(TEST_VLAN.id)
-            )
+        services_mock.vlans.list.return_value = ListResult[Vlan](
+            items=[TEST_VLAN_2], next_token=str(TEST_VLAN.id)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -116,7 +114,7 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.get_by_id = AsyncMock(return_value=TEST_VLAN)
+        services_mock.vlans.get_by_id.return_value = TEST_VLAN
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/{TEST_VLAN.id}"
         )
@@ -149,7 +147,7 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.get_by_id = AsyncMock(return_value=None)
+        services_mock.vlans.get_by_id.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -164,8 +162,8 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.get_by_id = AsyncMock(
-            side_effect=RequestValidationError(errors=[])
+        services_mock.vlans.get_by_id.side_effect = RequestValidationError(
+            errors=[]
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422

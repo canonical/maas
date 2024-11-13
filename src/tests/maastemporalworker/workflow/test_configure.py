@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv6Address
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -38,21 +38,19 @@ class TestConfigureAgentActivity:
     async def test_get_rack_controller(self, monkeypatch):
         mock_services = Mock(ServiceCollectionV3)
         mock_services.vlans = Mock(VlansService)
-        mock_services.vlans.get_node_vlans = AsyncMock(
-            return_value=[
-                Vlan(
-                    id=1,
-                    vid=0,
-                    description="",
-                    mtu=1500,
-                    dhcp_on=False,
-                    fabric_id=0,
-                    created=utcnow(),
-                    updated=utcnow(),
-                )
-            ]
-        )
-        mock_services.produce = AsyncMock(return_value=mock_services)
+        mock_services.vlans.get_node_vlans.return_value = [
+            Vlan(
+                id=1,
+                vid=0,
+                description="",
+                mtu=1500,
+                dhcp_on=False,
+                fabric_id=0,
+                created=utcnow(),
+                updated=utcnow(),
+            )
+        ]
+        mock_services.produce.return_value = mock_services
         monkeypatch.setattr(
             activity_module, "ServiceCollectionV3", mock_services
         )

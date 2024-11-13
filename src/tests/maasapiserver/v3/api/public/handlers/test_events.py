@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 from urllib.parse import parse_qs, urlparse
 
 from httpx import AsyncClient
@@ -88,18 +88,16 @@ class TestEventsApi(ApiCommonTests):
     ) -> None:
 
         services_mock.events = Mock(EventsService)
-        services_mock.events.list = AsyncMock(
-            side_effect=[
-                ListResult[Event](items=[TEST_EVENT], next_token=None),
-                ListResult[Event](items=[TEST_EVENT_2], next_token=None),
-                ListResult[Event](
-                    items=[TEST_EVENT_2, TEST_EVENT], next_token=None
-                ),
-                ListResult[Event](
-                    items=[TEST_EVENT_2], next_token=str(TEST_EVENT.id)
-                ),
-            ]
-        )
+        services_mock.events.list.side_effect = [
+            ListResult[Event](items=[TEST_EVENT], next_token=None),
+            ListResult[Event](items=[TEST_EVENT_2], next_token=None),
+            ListResult[Event](
+                items=[TEST_EVENT_2, TEST_EVENT], next_token=None
+            ),
+            ListResult[Event](
+                items=[TEST_EVENT_2], next_token=str(TEST_EVENT.id)
+            ),
+        ]
 
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}?system_id={TEST_EVENT.node_system_id}"

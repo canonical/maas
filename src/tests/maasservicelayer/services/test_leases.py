@@ -3,7 +3,7 @@
 
 from ipaddress import IPv4Address, IPv6Address
 import time
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -46,9 +46,7 @@ class TestLeasesService:
             interface_service=mock_interfaces_service,
             iprange_service=mock_ip_ranges_service,
         )
-        mock_subnets_service.find_best_subnet_for_ip = AsyncMock(
-            return_value=None
-        )
+        mock_subnets_service.find_best_subnet_for_ip.return_value = None
         try:
             await leases_service.store_lease_info(
                 Lease(

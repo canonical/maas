@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, call, Mock
+from unittest.mock import call, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -18,18 +18,16 @@ from maasservicelayer.utils.date import utcnow
 class TestDNSResourcesService:
     async def test_get_one(self) -> None:
         mock_domains_service = Mock(DomainsService)
-        mock_domains_service.get_default_domain = AsyncMock(
-            return_value=Domain(
-                id=0,
-                name="test_domain",
-                authoritative=True,
-                created=utcnow(),
-                updated=utcnow(),
-            )
+        mock_domains_service.get_default_domain.return_value = Domain(
+            id=0,
+            name="test_domain",
+            authoritative=True,
+            created=utcnow(),
+            updated=utcnow(),
         )
 
         mock_dnsresource_repository = Mock(DNSResourceRepository)
-        mock_dnsresource_repository.get = AsyncMock(return_value=None)
+        mock_dnsresource_repository.get.return_value = None
 
         dnsresources_service = DNSResourcesService(
             Mock(AsyncConnection),
@@ -52,9 +50,7 @@ class TestDNSResourcesService:
             created=utcnow(),
             updated=utcnow(),
         )
-        mock_domains_service.get_default_domain = AsyncMock(
-            return_value=domain
-        )
+        mock_domains_service.get_default_domain.return_value = domain
 
         dnsresource = DNSResource(
             id=1,
@@ -121,9 +117,7 @@ class TestDNSResourcesService:
             created=utcnow(),
             updated=utcnow(),
         )
-        mock_domains_service.get_default_domain = AsyncMock(
-            return_value=domain
-        )
+        mock_domains_service.get_default_domain.return_value = domain
 
         sip = StaticIPAddress(
             id=1,
@@ -143,9 +137,7 @@ class TestDNSResourcesService:
         )
 
         mock_dnsresource_repository = Mock(DNSResourceRepository)
-        mock_dnsresource_repository.get_one = AsyncMock(
-            return_value=dnsresource
-        )
+        mock_dnsresource_repository.get_one.return_value = dnsresource
         mock_dnsresource_repository.get_dnsresources_in_domain_for_ip.return_value = [
             dnsresource
         ]

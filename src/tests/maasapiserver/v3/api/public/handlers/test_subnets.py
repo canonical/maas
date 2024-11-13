@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
@@ -83,10 +83,8 @@ class TestSubnetApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.subnets = Mock(SubnetsService)
-        services_mock.subnets.list = AsyncMock(
-            return_value=ListResult[Subnet](
-                items=[TEST_SUBNET], next_token=None
-            )
+        services_mock.subnets.list.return_value = ListResult[Subnet](
+            items=[TEST_SUBNET], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -100,10 +98,8 @@ class TestSubnetApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.subnets = Mock(SubnetsService)
-        services_mock.subnets.list = AsyncMock(
-            return_value=ListResult[Subnet](
-                items=[TEST_SUBNET_2], next_token=str(TEST_SUBNET.id)
-            )
+        services_mock.subnets.list.return_value = ListResult[Subnet](
+            items=[TEST_SUBNET_2], next_token=str(TEST_SUBNET.id)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -121,7 +117,7 @@ class TestSubnetApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.subnets = Mock(SubnetsService)
-        services_mock.subnets.get_by_id = AsyncMock(return_value=TEST_SUBNET)
+        services_mock.subnets.get_by_id.return_value = TEST_SUBNET
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/{TEST_SUBNET.id}"
         )
@@ -155,7 +151,7 @@ class TestSubnetApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.subnets = Mock(SubnetsService)
-        services_mock.subnets.get_by_id = AsyncMock(return_value=None)
+        services_mock.subnets.get_by_id.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -169,9 +165,9 @@ class TestSubnetApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.subnets = Mock()
-        services_mock.subnets.get_by_id = AsyncMock(
-            side_effect=RequestValidationError(errors=[])
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_by_id.side_effect = RequestValidationError(
+            errors=[]
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422

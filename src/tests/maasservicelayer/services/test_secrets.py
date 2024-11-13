@@ -3,7 +3,7 @@
 
 import abc
 from typing import Any
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -195,7 +195,7 @@ class TestSecretServiceFactory:
     async def test_with_default_settings(self) -> None:
         db_connection = Mock(AsyncConnection)
         configuration_service_mock = Mock(ConfigurationsService)
-        configuration_service_mock.get = AsyncMock(return_value=None)
+        configuration_service_mock.get.return_value = None
         assert SecretsServiceFactory.IS_VAULT_ENABLED is None
         vault_service = await SecretsServiceFactory.produce(
             db_connection, configuration_service_mock
@@ -206,7 +206,7 @@ class TestSecretServiceFactory:
     async def test_with_vault_enabled(self) -> None:
         db_connection = Mock(AsyncConnection)
         configuration_service_mock = Mock(ConfigurationsService)
-        configuration_service_mock.get = AsyncMock(return_value=True)
+        configuration_service_mock.get.return_value = True
         vault_service = await SecretsServiceFactory.produce(
             db_connection, configuration_service_mock
         )
@@ -216,7 +216,7 @@ class TestSecretServiceFactory:
     async def test_with_vault_disabled(self) -> None:
         db_connection = Mock(AsyncConnection)
         configuration_service_mock = Mock(ConfigurationsService)
-        configuration_service_mock.get = AsyncMock(return_value=False)
+        configuration_service_mock.get.return_value = False
         vault_service = await SecretsServiceFactory.produce(
             db_connection, configuration_service_mock
         )
@@ -226,7 +226,7 @@ class TestSecretServiceFactory:
     async def test_clear(self) -> None:
         db_connection = Mock(AsyncConnection)
         configuration_service_mock = Mock(ConfigurationsService)
-        configuration_service_mock.get = AsyncMock(return_value=False)
+        configuration_service_mock.get.return_value = False
         await SecretsServiceFactory.produce(
             db_connection, configuration_service_mock
         )

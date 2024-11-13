@@ -1,5 +1,5 @@
 from ipaddress import IPv4Address
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -52,9 +52,7 @@ class TestStaticIPAddressService:
         )
 
         repository_mock = Mock(StaticIPAddressRepository)
-        repository_mock.create_or_update = AsyncMock(
-            return_value=existing_ip_address
-        )
+        repository_mock.create_or_update.return_value = existing_ip_address
 
         mock_temporal = Mock(TemporalService)
 

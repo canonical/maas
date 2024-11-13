@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -23,8 +23,8 @@ class TestConfigurationsService:
     async def test_get(self, value: Any) -> None:
         db_connection = Mock(AsyncConnection)
         configurations_repository_mock = Mock(ConfigurationsRepository)
-        configurations_repository_mock.get = AsyncMock(
-            return_value=Configuration(id=1, name="test", value=value)
+        configurations_repository_mock.get.return_value = Configuration(
+            id=1, name="test", value=value
         )
         configurations_service = ConfigurationsService(
             connection=db_connection,
@@ -35,7 +35,7 @@ class TestConfigurationsService:
     async def test_unexisting_get(self) -> None:
         db_connection = Mock(AsyncConnection)
         configurations_repository_mock = Mock(ConfigurationsRepository)
-        configurations_repository_mock.get = AsyncMock(return_value=None)
+        configurations_repository_mock.get.return_value = None
         configurations_service = ConfigurationsService(
             connection=db_connection,
             configurations_repository=configurations_repository_mock,

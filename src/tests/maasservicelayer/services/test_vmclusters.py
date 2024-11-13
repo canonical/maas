@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -15,7 +15,6 @@ class TestVmClusterService:
     async def test_move_to_zone(self) -> None:
         db_connection = Mock(AsyncConnection)
         vmcluster_repository_mock = Mock(VmClustersRepository)
-        vmcluster_repository_mock.move_to_zone = AsyncMock()
         vmcluster_service = VmClustersService(
             db_connection, vmcluster_repository=vmcluster_repository_mock
         )

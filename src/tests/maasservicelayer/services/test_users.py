@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -20,7 +20,6 @@ class TestUsersService:
     async def test_get(self) -> None:
         db_connection = Mock(AsyncConnection)
         users_repository_mock = Mock(UsersRepository)
-        users_repository_mock.find_by_username = AsyncMock()
         users_service = UsersService(
             db_connection, users_repository=users_repository_mock
         )
@@ -30,7 +29,6 @@ class TestUsersService:
     async def test_get_by_session_id(self) -> None:
         db_connection = Mock(AsyncConnection)
         users_repository_mock = Mock(UsersRepository)
-        users_repository_mock.find_by_sessionid = AsyncMock()
         users_service = UsersService(
             db_connection, users_repository=users_repository_mock
         )
@@ -41,7 +39,6 @@ class TestUsersService:
 
     async def test_get_user_profile(self) -> None:
         users_repository_mock = Mock(UsersRepository)
-        users_repository_mock.get_user_profile = AsyncMock()
         users_service = UsersService(
             Mock(AsyncConnection), users_repository=users_repository_mock
         )
@@ -52,7 +49,6 @@ class TestUsersService:
 
     async def test_update(self) -> None:
         users_repository_mock = Mock(UsersRepository)
-        users_repository_mock.update = AsyncMock()
         users_service = UsersService(
             Mock(AsyncConnection), users_repository=users_repository_mock
         )
@@ -65,7 +61,6 @@ class TestUsersService:
 
     async def test_create_profile(self) -> None:
         users_repository_mock = Mock(UsersRepository)
-        users_repository_mock.create_profile = AsyncMock()
         users_service = UsersService(
             Mock(AsyncConnection), users_repository=users_repository_mock
         )
@@ -82,7 +77,6 @@ class TestUsersService:
 
     async def test_update_profile(self) -> None:
         users_repository_mock = Mock(UsersRepository)
-        users_repository_mock.update_profile = AsyncMock()
         users_service = UsersService(
             Mock(AsyncConnection), users_repository=users_repository_mock
         )
@@ -95,7 +89,6 @@ class TestUsersService:
 
     async def test_get_user_apikeys(self) -> None:
         users_repository_mock = Mock(UsersRepository)
-        users_repository_mock.get_user_apikeys = AsyncMock()
         users_service = UsersService(
             Mock(AsyncConnection), users_repository=users_repository_mock
         )

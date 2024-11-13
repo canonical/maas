@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -20,9 +20,7 @@ class TestNodesService:
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
         updated_node = Mock(Node)
-        nodes_repository_mock.update_by_system_id = AsyncMock(
-            return_value=updated_node
-        )
+        nodes_repository_mock.update_by_system_id.return_value = updated_node
         nodes_service = NodesService(
             db_connection,
             secrets_service=secrets_service_mock,

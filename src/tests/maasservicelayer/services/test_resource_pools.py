@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -30,9 +30,7 @@ class TestResourcePoolsService:
             updated=now,
         )
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.create = AsyncMock(
-            return_value=resource_pool
-        )
+        resource_pool_repository_mock.create.return_value = resource_pool
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,
             resource_pools_repository=resource_pool_repository_mock,
@@ -63,9 +61,9 @@ class TestResourcePoolsService:
     async def test_list(self) -> None:
         db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.list = AsyncMock(
-            return_value=ListResult[ResourcePool](items=[], next_token=None)
-        )
+        resource_pool_repository_mock.list.return_value = ListResult[
+            ResourcePool
+        ](items=[], next_token=None)
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,
             resource_pools_repository=resource_pool_repository_mock,
@@ -82,9 +80,7 @@ class TestResourcePoolsService:
     async def test_list_ids(self) -> None:
         db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.list_ids = AsyncMock(
-            return_value={1, 2, 3}
-        )
+        resource_pool_repository_mock.list_ids.return_value = {1, 2, 3}
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,
             resource_pools_repository=resource_pool_repository_mock,
@@ -104,9 +100,7 @@ class TestResourcePoolsService:
             updated=now,
         )
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.find_by_id = AsyncMock(
-            return_value=resource_pool
-        )
+        resource_pool_repository_mock.find_by_id.return_value = resource_pool
 
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,
@@ -123,9 +117,7 @@ class TestResourcePoolsService:
     async def test_patch_not_found(self) -> None:
         db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.update = AsyncMock(
-            side_effect=NotFoundException()
-        )
+        resource_pool_repository_mock.update.side_effect = NotFoundException()
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,
             resource_pools_repository=resource_pool_repository_mock,
@@ -153,12 +145,8 @@ class TestResourcePoolsService:
             update={"name": "test2", "description": "description2"}
         )
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.find_by_id = AsyncMock(
-            return_value=resource_pool
-        )
-        resource_pool_repository_mock.update = AsyncMock(
-            return_value=patch_resource_pool
-        )
+        resource_pool_repository_mock.find_by_id.return_value = resource_pool
+        resource_pool_repository_mock.update.return_value = patch_resource_pool
 
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,

@@ -60,6 +60,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.auth import AuthService
+from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import (
     create_test_session,
@@ -252,14 +255,14 @@ class TestV3AuthenticationMiddleware:
     async def test_authentication_with_macaroons(self) -> None:
         macaroon_auth_provider_mock = Mock(MacaroonAuthenticationProvider)
         macaroons_mock = [[Mock(Macaroon)]]
-        macaroon_auth_provider_mock.extract_macaroons = Mock(
-            return_value=macaroons_mock
+        macaroon_auth_provider_mock.extract_macaroons.return_value = (
+            macaroons_mock
         )
         authenticated_user = AuthenticatedUser(
             username="admin", roles={UserRole.USER, UserRole.ADMIN}
         )
-        macaroon_auth_provider_mock.authenticate = AsyncMock(
-            return_value=authenticated_user
+        macaroon_auth_provider_mock.authenticate.return_value = (
+            authenticated_user
         )
 
         authentication_providers_cache = AuthenticationProvidersCache(
@@ -327,14 +330,17 @@ class TestAuthenticationProvidersCache:
 
 class TestDjangoSessionAuthenticationProvider:
 
+    def mock_request(self, user) -> Mock:
+        request = Mock(Request)
+        request.state.services.users = Mock(UsersService)
+        request.state.services.users.get_by_session_id.return_value = user
+        return request
+
     async def test_dispatch(self) -> None:
         sessionid = "test"
 
         user = _make_user()
-        request = Mock(Request)
-        request.state.services.users.get_by_session_id = AsyncMock(
-            return_value=user
-        )
+        request = self.mock_request(user)
 
         provider = DjangoSessionAuthenticationProvider()
         authenticated_user = await provider.authenticate(request, sessionid)
@@ -346,10 +352,7 @@ class TestDjangoSessionAuthenticationProvider:
         sessionid = "test"
 
         user = _make_user(is_superuser=True)
-        request = Mock(Request)
-        request.state.services.users.get_by_session_id = AsyncMock(
-            return_value=user
-        )
+        request = self.mock_request(user)
 
         provider = DjangoSessionAuthenticationProvider()
         authenticated_user = await provider.authenticate(request, sessionid)
@@ -358,10 +361,7 @@ class TestDjangoSessionAuthenticationProvider:
         assert authenticated_user.roles == {UserRole.ADMIN, UserRole.USER}
 
     async def test_dispatch_unauthenticated(self) -> None:
-        request = Mock(Request)
-        request.state.services.users.get_by_session_id = AsyncMock(
-            return_value=None
-        )
+        request = self.mock_request(None)
 
         provider = DjangoSessionAuthenticationProvider()
         with pytest.raises(UnauthorizedException):
@@ -369,12 +369,12 @@ class TestDjangoSessionAuthenticationProvider:
 
 
 class TestLocalAuthenticationProvider:
+
     async def test_dispatch(self) -> None:
         jwt = JWT.create("123", "test", [UserRole.USER])
         request = Mock(Request)
-        request.state.services.auth.decode_and_verify_token = AsyncMock(
-            return_value=jwt
-        )
+        request.state.services.auth = Mock(AuthService)
+        request.state.services.auth.decode_and_verify_token.return_value = jwt
 
         provider = LocalAuthenticationProvider()
         user = await provider.authenticate(request, jwt.encoded)
@@ -384,8 +384,9 @@ class TestLocalAuthenticationProvider:
 
     async def test_dispatch_unauthenticated(self) -> None:
         request = Mock(Request)
-        request.state.services.auth.decode_and_verify_token = AsyncMock(
-            side_effect=InvalidToken()
+        request.state.services.auth = Mock(AuthService)
+        request.state.services.auth.decode_and_verify_token.side_effect = (
+            InvalidToken()
         )
 
         provider = LocalAuthenticationProvider()
@@ -396,13 +397,16 @@ class TestLocalAuthenticationProvider:
 class TestMacaroonAuthenticationProvider:
     MACAROON = "W3siaWRlbnRpZmllciI6ICJBd29RUWh2MUVQM1YtTHR2Zkg2RmJ5MF80UklCT1JvT0NnVnNiMmRwYmhJRmJHOW5hVzQiLCAic2lnbmF0dXJlIjogIjk0NDUzMmVjODYxZGJiNDFiNjBlNDdlOWE1Y2IzODFiMDc5MjU3MDJhYTVkNGI0MTYzYTJkZDEzZWRmMTYzZjEiLCAibG9jYXRpb24iOiAiaHR0cDovL2xvY2FsaG9zdDo1MjQwLyIsICJjYXZlYXRzIjogW3siY2lkIjogInRpbWUtYmVmb3JlIDIwMjQtMDctMjJUMDY6Mzc6NTQuMjA1MTc3WiJ9LCB7ImNpZCI6ICJleUpVYUdseVpGQmhjblI1VUhWaWJHbGpTMlY1SWpvZ0luTXhkMVZhVFdGMlUydFNUalZwYzJKYVdYUmhNRll5Y3pFd1JtMHhlSEkxZW1oc1ZFVklWVVF6UVhjOUlpd2dJa1pwY25OMFVHRnlkSGxRZFdKc2FXTkxaWGtpT2lBaWRXczJlbnBPYmt4SFUxRjJlRVZzYml0NmRsUnJlVkZtYWtOU1pIZFpXSEZaYkdwd2FuZFRXUzluUlQwaUxDQWlUbTl1WTJVaU9pQWlWME5EV1hKb1psVTVaVU5JZGsxaVZETm1jWFJaY25Odk4wWkdZMlp5ZEhRaUxDQWlTV1FpT2lBaWN6VmlValExWlV3ME4wNVBhazloVTBOQlp6aEtZa013ZHpVcldrMTNVWFpUTUcxUlJEWlhkRXgzVVV4M1ZGUlZTV1ZTTlU1VWJWRXJlblo0V1dKeVRscGFNMmhGY1cxa09IWnFRbWczTUdSbVkwNUpiMFI1YTBaQ2FERk1Nall4YTFKcWJETm1XRmhNWWtwbVdYaG9MeXRZTmtsNk9GTm1aa2sxWlRsQ1dtSXZOWFZLVERNMFBTSjkiLCAidmlkIjogIm1CdjlHOGFhRllEb1VsQVhIS0NIS014dWhsdmo0c3o0Qld2cUJCb1NtUlRvXzhuNlNwN3BkdlAtZU9iUnVraWllX1ZZR2dRZzB4OXRfWm9fMndVVW14R0FaMENyaHJJSCIsICJjbCI6ICJodHRwOi8vMTAuMC4xLjIzOjUwMDAvYXV0aCJ9XX0seyJpZGVudGlmaWVyIjogImV5SlVhR2x5WkZCaGNuUjVVSFZpYkdsalMyVjVJam9nSW5NeGQxVmFUV0YyVTJ0U1RqVnBjMkphV1hSaE1GWXljekV3Um0weGVISTFlbWhzVkVWSVZVUXpRWGM5SWl3Z0lrWnBjbk4wVUdGeWRIbFFkV0pzYVdOTFpYa2lPaUFpZFdzMmVucE9ia3hIVTFGMmVFVnNiaXQ2ZGxScmVWRm1ha05TWkhkWldIRlpiR3B3YW5kVFdTOW5SVDBpTENBaVRtOXVZMlVpT2lBaVYwTkRXWEpvWmxVNVpVTklkazFpVkRObWNYUlpjbk52TjBaR1kyWnlkSFFpTENBaVNXUWlPaUFpY3pWaVVqUTFaVXcwTjA1UGFrOWhVME5CWnpoS1lrTXdkelVyV2sxM1VYWlRNRzFSUkRaWGRFeDNVVXgzVkZSVlNXVlNOVTVVYlZFcmVuWjRXV0p5VGxwYU0yaEZjVzFrT0hacVFtZzNNR1JtWTA1SmIwUjVhMFpDYURGTU1qWXhhMUpxYkRObVdGaE1Za3BtV1hob0x5dFlOa2w2T0ZObVprazFaVGxDV21Jdk5YVktURE0wUFNKOSIsICJzaWduYXR1cmUiOiAiNDE2ZDYyN2VjNWI0ZTk3Nzc1MTY0ZTQ3ZGVkY2I2ODc0MDkyZmJiOGRlMjU0MzgzNzc1OGQxMWI3YTg3YjliNCIsICJjYXZlYXRzIjogW3siY2lkIjogImRlY2xhcmVkIHVzZXJuYW1lIGFkbWluIn1dfV0="
 
+    def mock_request(self) -> Mock:
+        request = Mock(Request)
+        request.state.services.external_auth = Mock(ExternalAuthService)
+        return request
+
     async def test_dispatch_with_headers(self) -> None:
 
         user = _make_user()
-        request = Mock(Request)
-        request.state.services.external_auth.login = AsyncMock(
-            return_value=user
-        )
+        request = self.mock_request()
+        request.state.services.external_auth.login.return_value = user
         request.headers = {
             "x-forwarded-host": "localhost:5240",
             "x-forwarded-proto": "http",
@@ -421,10 +425,8 @@ class TestMacaroonAuthenticationProvider:
 
     async def test_dispatch_without_headers(self) -> None:
         user = _make_user()
-        request = Mock(Request)
-        request.state.services.external_auth.login = AsyncMock(
-            return_value=user
-        )
+        request = self.mock_request()
+        request.state.services.external_auth.login.return_value = user
         request.headers = {}
         request.base_url = "http://test:5240/"
 
@@ -440,9 +442,9 @@ class TestMacaroonAuthenticationProvider:
         )
 
     async def test_dispatch_forbidden_macaroon_raises_exception(self) -> None:
-        request = Mock(Request)
-        request.state.services.external_auth.login = AsyncMock(
-            side_effect=PermissionDenied()
+        request = self.mock_request()
+        request.state.services.external_auth.login.side_effect = (
+            PermissionDenied()
         )
         request.headers = {}
         request.base_url = "http://test:5240/"
@@ -456,17 +458,17 @@ class TestMacaroonAuthenticationProvider:
     async def test_dispatch_invalid_macaroon_generates_discharge_macaroon(
         self,
     ) -> None:
-        request = Mock(Request)
-        request.state.services.external_auth.login = AsyncMock(
-            side_effect=VerificationError()
+        request = self.mock_request()
+        request.state.services.external_auth.login.side_effect = (
+            VerificationError()
         )
         bakery_mock = Mock(bakery.Bakery)
-        request.state.services.external_auth.get_bakery = AsyncMock(
-            return_value=bakery_mock
+        request.state.services.external_auth.get_bakery.return_value = (
+            bakery_mock
         )
 
-        request.state.services.external_auth.get_external_auth = AsyncMock(
-            return_value=ExternalAuthConfig(
+        request.state.services.external_auth.get_external_auth.return_value = (
+            ExternalAuthConfig(
                 type=ExternalAuthType.RBAC,
                 url="http://test/",
                 domain="",
@@ -475,8 +477,8 @@ class TestMacaroonAuthenticationProvider:
         )
 
         macaroon_mock = Mock(bakery.Macaroon)
-        request.state.services.external_auth.generate_discharge_macaroon = (
-            AsyncMock(return_value=macaroon_mock)
+        request.state.services.external_auth.generate_discharge_macaroon.return_value = (
+            macaroon_mock
         )
 
         request.headers = {}
@@ -500,19 +502,19 @@ class TestMacaroonAuthenticationProvider:
     async def test_dispatch_unverified_macaroon_generates_discharge_macaroon(
         self,
     ) -> None:
-        request = Mock(Request)
+        request = self.mock_request()
         cavs = [checkers.Caveat("is-authenticated", location="http://test/")]
         ops = [bakery.LOGIN_OP]
-        request.state.services.external_auth.login = AsyncMock(
-            side_effect=DischargeRequiredError(msg="", cavs=cavs, ops=ops)
+        request.state.services.external_auth.login.side_effect = (
+            DischargeRequiredError(msg="", cavs=cavs, ops=ops)
         )
         bakery_mock = Mock(bakery.Bakery)
-        request.state.services.external_auth.get_bakery = AsyncMock(
-            return_value=bakery_mock
+        request.state.services.external_auth.get_bakery.return_value = (
+            bakery_mock
         )
         macaroon_mock = Mock(bakery.Macaroon)
-        request.state.services.external_auth.generate_discharge_macaroon = (
-            AsyncMock(return_value=macaroon_mock)
+        request.state.services.external_auth.generate_discharge_macaroon.return_value = (
+            macaroon_mock
         )
 
         request.headers = {}
@@ -538,7 +540,7 @@ class TestMacaroonAuthenticationProvider:
         assert macaroons[0][1].version == 1
 
     async def test_extract_macaroons(self) -> None:
-        request = Mock(Request)
+        request = self.mock_request()
         request.cookies = {"macaroon-maas": self.MACAROON}
         request.headers = {}
 
@@ -546,7 +548,7 @@ class TestMacaroonAuthenticationProvider:
         macaroons_from_cookies = provider.extract_macaroons(request)
         self._check_macaroons(macaroons_from_cookies)
 
-        request = Mock(Request)
+        request = self.mock_request()
         request.cookies = {}
         request.headers = {"Macaroons": self.MACAROON}
 
@@ -554,7 +556,7 @@ class TestMacaroonAuthenticationProvider:
         macaroons_from_headers = provider.extract_macaroons(request)
         self._check_macaroons(macaroons_from_headers)
 
-        request = Mock(Request)
+        request = self.mock_request()
         request.cookies = {}
         request.headers = {}
 
@@ -569,12 +571,10 @@ class TestValidateUserExternalAuthCandid:
     @pytest.fixture(autouse=True)
     async def prepare(self, db_connection: AsyncConnection, enable_candid):
         self.client = Mock(CandidAsyncClient)
-        self.client.get_user_details = AsyncMock(
-            return_value=UserDetailsResponse(
-                username="myusername",
-                fullname="last",
-                email="myusername@candid.example.com",
-            )
+        self.client.get_user_details.return_value = UserDetailsResponse(
+            username="myusername",
+            fullname="last",
+            email="myusername@candid.example.com",
         )
         temporal = Mock(TemporalClient)
         self.request = Mock(Request)
@@ -604,8 +604,8 @@ class TestValidateUserExternalAuthCandid:
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        self.client.get_groups = AsyncMock(
-            return_value=GetGroupsResponse(groups=["group1", "group2"])
+        self.client.get_groups.return_value = GetGroupsResponse(
+            groups=["group1", "group2"]
         )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
@@ -630,10 +630,8 @@ class TestValidateUserExternalAuthCandid:
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
 
-        self.client.get_groups = AsyncMock(
-            return_value=GetGroupsResponse(
-                groups=["group1", "group2", "admin"]
-            )
+        self.client.get_groups.return_value = GetGroupsResponse(
+            groups=["group1", "group2", "admin"]
         )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
@@ -667,8 +665,8 @@ class TestValidateUserExternalAuthCandid:
         user = await create_test_user(fixture, **extra_details)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        self.client.get_groups = AsyncMock(
-            return_value=GetGroupsResponse(groups=["group1", "group2"])
+        self.client.get_groups.return_value = GetGroupsResponse(
+            groups=["group1", "group2"]
         )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
@@ -690,8 +688,8 @@ class TestValidateUserExternalAuthCandid:
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        self.client.get_groups = AsyncMock(
-            side_effect=MacaroonApiException(404, "user not found")
+        self.client.get_groups.side_effect = MacaroonApiException(
+            404, "user not found"
         )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
@@ -709,12 +707,10 @@ class TestValidateUserExternalAuthRbac:
     @pytest.fixture(autouse=True)
     async def prepare(self, db_connection: AsyncConnection, enable_rbac):
         self.client = Mock(RbacAsyncClient)
-        self.client.get_user_details = AsyncMock(
-            return_value=UserDetailsResponse(
-                username="myusername",
-                fullname="last",
-                email="myusername@rbac.example.com",
-            )
+        self.client.get_user_details.return_value = UserDetailsResponse(
+            username="myusername",
+            fullname="last",
+            email="myusername@rbac.example.com",
         )
         temporal = Mock(TemporalClient)
         self.request = Mock(Request)
@@ -746,23 +742,21 @@ class TestValidateUserExternalAuthRbac:
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
         # not an admin, but has permission on pools
-        self.client.is_user_admin = AsyncMock(return_value=False)
-        self.client.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW, resources=["1", "2"]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW_ALL, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
-                ),
-            ]
-        )
+        self.client.is_user_admin.return_value = False
+        self.client.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW, resources=["1", "2"]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW_ALL, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.ADMIN_MACHINES, resources=[]
+            ),
+        ]
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
@@ -776,24 +770,22 @@ class TestValidateUserExternalAuthRbac:
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
         # admin, but no permissions on pools
-        self.client.is_user_admin = AsyncMock(return_value=True)
+        self.client.is_user_admin.return_value = True
 
-        self.client.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW_ALL, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
-                ),
-            ]
-        )
+        self.client.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW_ALL, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.ADMIN_MACHINES, resources=[]
+            ),
+        ]
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
@@ -806,23 +798,21 @@ class TestValidateUserExternalAuthRbac:
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        self.client.is_user_admin = AsyncMock(return_value=False)
-        self.client.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW_ALL, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
-                ),
-            ]
-        )
+        self.client.is_user_admin.return_value = False
+        self.client.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW_ALL, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.ADMIN_MACHINES, resources=[]
+            ),
+        ]
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
@@ -853,23 +843,21 @@ class TestValidateUserExternalAuthRbac:
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        self.client.is_user_admin = AsyncMock(return_value=False)
-        self.client.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW, resources=["1", "2"]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW_ALL, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
-                ),
-            ]
-        )
+        self.client.is_user_admin.return_value = False
+        self.client.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW, resources=["1", "2"]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW_ALL, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.ADMIN_MACHINES, resources=[]
+            ),
+        ]
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )

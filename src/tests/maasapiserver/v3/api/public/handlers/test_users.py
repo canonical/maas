@@ -3,7 +3,7 @@
 
 import json
 from json import dumps as _dumps
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from httpx import AsyncClient
 from macaroonbakery.bakery import Macaroon
@@ -31,20 +31,18 @@ class TestUsersApi:
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get = AsyncMock(
-            return_value=User(
-                id=1,
-                username="username",
-                password="pass",
-                is_superuser=False,
-                first_name="",
-                last_name="",
-                is_staff=False,
-                is_active=True,
-                date_joined=utcnow(),
-                email=None,
-                last_login=None,
-            )
+        services_mock.users.get.return_value = User(
+            id=1,
+            username="username",
+            password="pass",
+            is_superuser=False,
+            first_name="",
+            last_name="",
+            is_staff=False,
+            is_active=True,
+            date_joined=utcnow(),
+            email=None,
+            last_login=None,
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/me",
@@ -62,20 +60,18 @@ class TestUsersApi:
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get = AsyncMock(
-            return_value=User(
-                id=1,
-                username="admin",
-                password="pass",
-                is_superuser=True,
-                first_name="",
-                last_name="",
-                is_staff=True,
-                is_active=True,
-                date_joined=utcnow(),
-                email=None,
-                last_login=None,
-            )
+        services_mock.users.get.return_value = User(
+            id=1,
+            username="admin",
+            password="pass",
+            is_superuser=True,
+            first_name="",
+            last_name="",
+            is_staff=True,
+            is_active=True,
+            date_joined=utcnow(),
+            email=None,
+            last_login=None,
         )
         response = await mocked_api_client_admin.get(
             f"{self.BASE_PATH}/me",
@@ -103,10 +99,8 @@ class TestUsersApi:
     ) -> None:
         """If external auth is enabled make sure we receive a discharge required response"""
         services_mock.external_auth = Mock(ExternalAuthService)
-        services_mock.external_auth.raise_discharge_required_exception = (
-            AsyncMock(
-                side_effect=DischargeRequiredException(macaroon=Mock(Macaroon))
-            )
+        services_mock.external_auth.raise_discharge_required_exception.side_effect = DischargeRequiredException(
+            macaroon=Mock(Macaroon)
         )
 
         # we have to mock json.dumps as it doesn't know how to deal with Mock objects

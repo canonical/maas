@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -29,8 +29,8 @@ class TestSubnetsService:
     async def test_list(self) -> None:
         db_connection = Mock(AsyncConnection)
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.list = AsyncMock(
-            return_value=ListResult[Subnet](items=[], next_token=None)
+        subnets_repository_mock.list.return_value = ListResult[Subnet](
+            items=[], next_token=None
         )
         subnets_service = SubnetsService(
             connection=db_connection,
@@ -65,9 +65,7 @@ class TestSubnetsService:
             updated=now,
         )
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.find_by_id = AsyncMock(
-            return_value=expected_subnet
-        )
+        subnets_repository_mock.find_by_id.return_value = expected_subnet
         subnets_service = SubnetsService(
             connection=db_connection,
             temporal_service=Mock(TemporalService),

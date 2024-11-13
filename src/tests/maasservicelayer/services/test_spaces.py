@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -18,8 +18,8 @@ class TestSpacesService:
     async def test_list(self) -> None:
         db_connection = Mock(AsyncConnection)
         spaces_repository_mock = Mock(SpacesRepository)
-        spaces_repository_mock.list = AsyncMock(
-            return_value=ListResult[Space](items=[], next_token=None)
+        spaces_repository_mock.list.return_value = ListResult[Space](
+            items=[], next_token=None
         )
         spaces_service = SpacesService(
             connection=db_connection, spaces_repository=spaces_repository_mock
@@ -36,9 +36,7 @@ class TestSpacesService:
             id=0, name="test", description="descr", created=now, updated=now
         )
         spaces_repository_mock = Mock(SpacesRepository)
-        spaces_repository_mock.find_by_id = AsyncMock(
-            return_value=expected_space
-        )
+        spaces_repository_mock.find_by_id.return_value = expected_space
         spaces_service = SpacesService(
             connection=db_connection,
             spaces_repository=spaces_repository_mock,

@@ -1,6 +1,6 @@
 from datetime import timedelta
 from typing import AsyncIterator, Awaitable, Callable, Iterator
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from aioresponses import aioresponses
 from django.core import signing
@@ -54,22 +54,18 @@ def create_app_with_mocks(
         ) -> Response:
             request.state.services = mocked_services
             if external_auth:
-                request.state.services.external_auth.get_external_auth = (
-                    AsyncMock(
-                        return_value=ExternalAuthConfig(
-                            type=ExternalAuthType.RBAC,
-                            url=RBAC_URL,
-                            domain="",
-                            admin_group="",
-                        )
-                    )
+                request.state.services.external_auth.get_external_auth.return_value = ExternalAuthConfig(
+                    type=ExternalAuthType.RBAC,
+                    url=RBAC_URL,
+                    domain="",
+                    admin_group="",
                 )
             else:
                 request.state.services.external_auth = Mock(
                     ExternalAuthService
                 )
-                request.state.services.external_auth.get_external_auth = (
-                    AsyncMock(return_value=None)
+                request.state.services.external_auth.get_external_auth.return_value = (
+                    None
                 )
             return await call_next(request)
 

@@ -3,7 +3,7 @@
 
 import datetime
 from typing import Any
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -45,10 +45,10 @@ class TestAuthService:
         db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get = AsyncMock(return_value=user)
+        users_service_mock.get.return_value = user
         auth_service = AuthService(
             db_connection,
             secrets_service=secrets_service_mock,
@@ -63,10 +63,10 @@ class TestAuthService:
         db_connection = Mock(AsyncConnection)
         admin = self._build_test_user(is_superuser=True)
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get = AsyncMock(return_value=admin)
+        users_service_mock.get.return_value = admin
         auth_service = AuthService(
             db_connection,
             secrets_service=secrets_service_mock,
@@ -89,18 +89,18 @@ class TestAuthService:
         )
 
         # Username exists but the password is wrong
-        users_service_mock.get = AsyncMock(return_value=user)
+        users_service_mock.get.return_value = user
         with pytest.raises(UnauthorizedException):
             await auth_service.login(user.username, "wrong")
 
         # Username exists and the password is correct, but the user is disabled
         user.is_active = False
-        users_service_mock.get = AsyncMock(return_value=user)
+        users_service_mock.get.return_value = user
         with pytest.raises(UnauthorizedException):
             await auth_service.login(user.username, "test")
 
         # Username does not exist
-        users_service_mock.get = AsyncMock(return_value=None)
+        users_service_mock.get.return_value = None
         with pytest.raises(UnauthorizedException):
             await auth_service.login("bb", "test")
 
@@ -108,10 +108,10 @@ class TestAuthService:
         db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get = AsyncMock(return_value=user)
+        users_service_mock.get.return_value = user
 
         auth_service = AuthService(
             db_connection,
@@ -136,13 +136,11 @@ class TestAuthService:
         db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(
-            side_effect=SecretNotFound(AuthService.MAAS_V3_JWT_KEY_SECRET_PATH)
+        secrets_service_mock.get_simple_secret.side_effect = SecretNotFound(
+            AuthService.MAAS_V3_JWT_KEY_SECRET_PATH
         )
-        secrets_service_mock.set_simple_secret = AsyncMock()
-
         users_service_mock = Mock(UsersService)
-        users_service_mock.get = AsyncMock(return_value=user)
+        users_service_mock.get.return_value = user
 
         auth_service = AuthService(
             db_connection,
@@ -160,7 +158,7 @@ class TestAuthService:
     async def test_decode_and_verify_token(self) -> None:
         db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        secrets_service_mock.get_simple_secret.return_value = "123"
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
             db_connection,
@@ -193,7 +191,7 @@ class TestAuthService:
     ) -> None:
         db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value=key)
+        secrets_service_mock.get_simple_secret.return_value = key
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
             db_connection,
@@ -209,7 +207,7 @@ class TestAuthService:
         db_connection = Mock(AsyncConnection)
         # signed with another key
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        secrets_service_mock.get_simple_secret.return_value = "123"
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
             db_connection,
@@ -224,7 +222,7 @@ class TestAuthService:
         db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
@@ -244,7 +242,7 @@ class TestAuthService:
         db_connection = Mock(AsyncConnection)
         admin = self._build_test_user(is_superuser=True)
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(

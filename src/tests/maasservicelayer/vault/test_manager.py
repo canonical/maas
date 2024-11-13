@@ -3,7 +3,7 @@
 
 from datetime import datetime, timedelta
 from typing import Any
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -65,27 +65,21 @@ def build_valid_self_token_response_stub(
 @pytest.fixture
 def async_vault_client_default_mock() -> AsyncVaultApiClient:
     apiclient = Mock(AsyncVaultApiClient)
-    apiclient.auth_approle_login = AsyncMock(
-        return_value=build_valid_login_response_stub()
+    apiclient.auth_approle_login.return_value = (
+        build_valid_login_response_stub()
     )
-    apiclient.token_lookup_self = AsyncMock(
-        return_value=build_valid_self_token_response_stub()
+    apiclient.token_lookup_self.return_value = (
+        build_valid_self_token_response_stub()
     )
-    apiclient.kv_v2_delete_metadata_and_all_versions = AsyncMock(
-        return_value=None
-    )
-    apiclient.kv_v2_create_or_update = AsyncMock(
-        return_value=KvV2WriteResponse(
-            **get_base_response_dict(),
-            data=KvV2WriteDetailResponse(created_time=utcnow(), version=1)
-        )
+    apiclient.kv_v2_delete_metadata_and_all_versions.return_value = None
+    apiclient.kv_v2_create_or_update.return_value = KvV2WriteResponse(
+        **get_base_response_dict(),
+        data=KvV2WriteDetailResponse(created_time=utcnow(), version=1)
     )
 
-    apiclient.kv_v2_read = AsyncMock(
-        return_value=KvV2ReadResponse(
-            **get_base_response_dict(),
-            data=KvV2ReadDetailResponse(data={"mykey": "myvalue"})
-        )
+    apiclient.kv_v2_read.return_value = KvV2ReadResponse(
+        **get_base_response_dict(),
+        data=KvV2ReadDetailResponse(data={"mykey": "myvalue"})
     )
     return apiclient
 
@@ -137,11 +131,11 @@ class TestAsyncVaultManager:
 
         # Token is retrieved again if forced. Also, let's simulate that the retrieved token is also expired for the
         # sake of the next assertion
-        async_vault_client_default_mock.auth_approle_login = AsyncMock(
-            return_value=build_valid_login_response_stub(token="new_token")
+        async_vault_client_default_mock.auth_approle_login.return_value = (
+            build_valid_login_response_stub(token="new_token")
         )
-        async_vault_client_default_mock.token_lookup_self = AsyncMock(
-            return_value=build_valid_self_token_response_stub(
+        async_vault_client_default_mock.token_lookup_self.return_value = (
+            build_valid_self_token_response_stub(
                 expire_time=utcnow() - timedelta(hours=1)
             )
         )
@@ -149,8 +143,8 @@ class TestAsyncVaultManager:
         assert new_token == "new_token"
 
         # The manager will retrieve a new token because the current one has expired.
-        async_vault_client_default_mock.auth_approle_login = AsyncMock(
-            return_value=build_valid_login_response_stub(token="updated_token")
+        async_vault_client_default_mock.auth_approle_login.return_value = (
+            build_valid_login_response_stub(token="updated_token")
         )
         updated_token = await manager.get_valid_token(force=False)
         assert updated_token == "updated_token"
@@ -167,10 +161,8 @@ class TestAsyncVaultManager:
             secrets_mount="mount",
         )
 
-        async_vault_client_default_mock.auth_approle_login = AsyncMock(
-            side_effect=VaultAuthenticationException(
-                message="Permission denied"
-            )
+        async_vault_client_default_mock.auth_approle_login.side_effect = (
+            VaultAuthenticationException(message="Permission denied")
         )
         with pytest.raises(VaultAuthenticationException):
             await manager.get_valid_token()
@@ -211,10 +203,8 @@ class TestAsyncVaultManager:
             secrets_mount="mount",
         )
 
-        async_vault_client_default_mock.kv_v2_create_or_update = AsyncMock(
-            side_effect=VaultAuthenticationException(
-                message="Permission denied"
-            )
+        async_vault_client_default_mock.kv_v2_create_or_update.side_effect = (
+            VaultAuthenticationException(message="Permission denied")
         )
         with pytest.raises(VaultAuthenticationException):
             data = {"mykey": "myvalue"}
@@ -255,10 +245,8 @@ class TestAsyncVaultManager:
             secrets_mount="mount",
         )
 
-        async_vault_client_default_mock.kv_v2_read = AsyncMock(
-            side_effect=VaultAuthenticationException(
-                message="Permission denied"
-            )
+        async_vault_client_default_mock.kv_v2_read.side_effect = (
+            VaultAuthenticationException(message="Permission denied")
         )
         with pytest.raises(VaultAuthenticationException):
             await manager.get(path="mypath")
@@ -297,10 +285,8 @@ class TestAsyncVaultManager:
             secrets_mount="mount",
         )
 
-        async_vault_client_default_mock.kv_v2_delete_metadata_and_all_versions = AsyncMock(
-            side_effect=VaultAuthenticationException(
-                message="Permission denied"
-            )
+        async_vault_client_default_mock.kv_v2_delete_metadata_and_all_versions.side_effect = VaultAuthenticationException(
+            message="Permission denied"
         )
         with pytest.raises(VaultAuthenticationException):
             await manager.delete(path="mypath")

@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -18,8 +18,8 @@ class TestFabricsService:
     async def test_list(self) -> None:
         db_connection = Mock(AsyncConnection)
         fabrics_repository_mock = Mock(FabricsRepository)
-        fabrics_repository_mock.list = AsyncMock(
-            return_value=ListResult[Fabric](items=[], next_token=None)
+        fabrics_repository_mock.list.return_value = ListResult[Fabric](
+            items=[], next_token=None
         )
         fabrics_service = FabricsService(
             connection=db_connection,
@@ -39,9 +39,7 @@ class TestFabricsService:
             id=0, name="test", description="descr", created=now, updated=now
         )
         fabrics_repository_mock = Mock(FabricsRepository)
-        fabrics_repository_mock.find_by_id = AsyncMock(
-            return_value=expected_fabric
-        )
+        fabrics_repository_mock.find_by_id.return_value = expected_fabric
         fabrics_service = FabricsService(
             connection=db_connection,
             fabrics_repository=fabrics_repository_mock,

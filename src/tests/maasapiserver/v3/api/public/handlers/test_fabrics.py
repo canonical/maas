@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
@@ -63,10 +63,8 @@ class TestFabricsApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.fabrics = Mock(FabricsService)
-        services_mock.fabrics.list = AsyncMock(
-            return_value=ListResult[Fabric](
-                items=[TEST_FABRIC], next_token=None
-            )
+        services_mock.fabrics.list.return_value = ListResult[Fabric](
+            items=[TEST_FABRIC], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -80,10 +78,8 @@ class TestFabricsApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.fabrics = Mock(FabricsService)
-        services_mock.fabrics.list = AsyncMock(
-            return_value=ListResult[Fabric](
-                items=[TEST_FABRIC_2], next_token=str(TEST_FABRIC.id)
-            )
+        services_mock.fabrics.list.return_value = ListResult[Fabric](
+            items=[TEST_FABRIC_2], next_token=str(TEST_FABRIC.id)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -101,7 +97,7 @@ class TestFabricsApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.fabrics = Mock(FabricsService)
-        services_mock.fabrics.get_by_id = AsyncMock(return_value=TEST_FABRIC)
+        services_mock.fabrics.get_by_id.return_value = TEST_FABRIC
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/{TEST_FABRIC.id}"
         )
@@ -127,7 +123,7 @@ class TestFabricsApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.fabrics = Mock(FabricsService)
-        services_mock.fabrics.get_by_id = AsyncMock(return_value=None)
+        services_mock.fabrics.get_by_id.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -142,8 +138,8 @@ class TestFabricsApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.fabrics = Mock(FabricsService)
-        services_mock.fabrics.get_by_id = AsyncMock(
-            side_effect=RequestValidationError(errors=[])
+        services_mock.fabrics.get_by_id.side_effect = RequestValidationError(
+            errors=[]
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422

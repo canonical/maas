@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 from urllib.parse import parse_qs, urlparse
 
 from fastapi.encoders import jsonable_encoder
@@ -80,10 +80,8 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.list = AsyncMock(
-            return_value=ListResult[Zone](
-                items=[TEST_ZONE], next_token=str(DEFAULT_ZONE.id)
-            )
+        services_mock.zones.list.return_value = ListResult[Zone](
+            items=[TEST_ZONE], next_token=str(DEFAULT_ZONE.id)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -100,10 +98,8 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.list = AsyncMock(
-            return_value=ListResult[Zone](
-                items=[DEFAULT_ZONE, TEST_ZONE], next_token=None
-            )
+        services_mock.zones.list.return_value = ListResult[Zone](
+            items=[DEFAULT_ZONE, TEST_ZONE], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -119,10 +115,8 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
 
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.list = AsyncMock(
-            return_value=ListResult[Zone](
-                items=[TEST_ZONE], next_token=str(DEFAULT_ZONE.id)
-            )
+        services_mock.zones.list.return_value = ListResult[Zone](
+            items=[TEST_ZONE], next_token=str(DEFAULT_ZONE.id)
         )
 
         # Get also the default zone
@@ -150,7 +144,7 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         # A "default" zone should be created at startup by the migration scripts.
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.get_by_id = AsyncMock(return_value=DEFAULT_ZONE)
+        services_mock.zones.get_by_id.return_value = DEFAULT_ZONE
         response = await mocked_api_client_user.get(self.DEFAULT_ZONE_PATH)
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
@@ -164,7 +158,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.get_by_id = AsyncMock(return_value=None)
+        services_mock.zones.get_by_id.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -179,8 +173,8 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.get_by_id = AsyncMock(
-            side_effect=RequestValidationError(errors=[])
+        services_mock.zones.get_by_id.side_effect = RequestValidationError(
+            errors=[]
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
@@ -200,7 +194,7 @@ class TestZonesApi(ApiCommonTests):
             name=TEST_ZONE.name, description=TEST_ZONE.description
         )
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.create = AsyncMock(return_value=TEST_ZONE)
+        services_mock.zones.create.return_value = TEST_ZONE
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=jsonable_encoder(zone_request)
         )
@@ -222,14 +216,12 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         zone_request = ZoneRequest(name="myzone", description=None)
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.create = AsyncMock(
-            return_value=Zone(
-                id=2,
-                name="myzone",
-                description="",
-                created=utcnow(),
-                updated=utcnow(),
-            )
+        services_mock.zones.create.return_value = Zone(
+            id=2,
+            name="myzone",
+            description="",
+            created=utcnow(),
+            updated=utcnow(),
         )
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=jsonable_encoder(zone_request)
@@ -245,19 +237,17 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         zone_request = ZoneRequest(name="myzone", description=None)
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.create = AsyncMock(
-            side_effect=[
-                TEST_ZONE,
-                AlreadyExistsException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
-                            message="A resource with such identifiers already exist.",
-                        )
-                    ]
-                ),
-            ]
-        )
+        services_mock.zones.create.side_effect = [
+            TEST_ZONE,
+            AlreadyExistsException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                        message="A resource with such identifiers already exist.",
+                    )
+                ]
+            ),
+        ]
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=jsonable_encoder(zone_request)
         )
@@ -290,8 +280,8 @@ class TestZonesApi(ApiCommonTests):
         zone_request: dict[str, str],
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.create = AsyncMock(
-            side_effect=ValueError("Invalid entity name.")
+        services_mock.zones.create.side_effect = ValueError(
+            "Invalid entity name."
         )
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=zone_request
@@ -309,15 +299,13 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.delete = AsyncMock(
-            side_effect=BadRequestException(
-                details=[
-                    BaseExceptionDetail(
-                        type=CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
-                        message="The default zone can not be deleted.",
-                    )
-                ]
-            )
+        services_mock.zones.delete.side_effect = BadRequestException(
+            details=[
+                BaseExceptionDetail(
+                    type=CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
+                    message="The default zone can not be deleted.",
+                )
+            ]
         )
 
         response = await mocked_api_client_admin.delete(self.DEFAULT_ZONE_PATH)
@@ -337,7 +325,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.delete = AsyncMock(side_effect=None)
+        services_mock.zones.delete.side_effect = None
         response = await mocked_api_client_admin.delete(
             f"{self.BASE_PATH}/100"
         )
@@ -349,19 +337,17 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.delete = AsyncMock(
-            side_effect=[
-                PreconditionFailedException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=ETAG_PRECONDITION_VIOLATION_TYPE,
-                            message="The resource etag 'wrong_etag' did not match 'my_etag'.",
-                        )
-                    ]
-                ),
-                None,
-            ]
-        )
+        services_mock.zones.delete.side_effect = [
+            PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                        message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                    )
+                ]
+            ),
+            None,
+        ]
 
         failed_response = await mocked_api_client_admin.delete(
             f"{self.BASE_PATH}/100",

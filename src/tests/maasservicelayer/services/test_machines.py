@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -18,8 +18,8 @@ from maasservicelayer.services.secrets import SecretsService
 class TestMachinesService:
     async def test_list(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
-        machines_repository_mock.list = AsyncMock(
-            return_value=ListResult[Machine](items=[], next_token=None)
+        machines_repository_mock.list.return_value = ListResult[Machine](
+            items=[], next_token=None
         )
         machines_service = MachinesService(
             connection=Mock(AsyncConnection),
@@ -35,8 +35,8 @@ class TestMachinesService:
 
     async def test_list_machine_usb_devices(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
-        machines_repository_mock.list_machine_usb_devices = AsyncMock(
-            return_value=ListResult[UsbDevice](items=[], next_token=None)
+        machines_repository_mock.list_machine_usb_devices.return_value = (
+            ListResult[UsbDevice](items=[], next_token=None)
         )
         machines_service = MachinesService(
             connection=Mock(AsyncConnection),
@@ -54,8 +54,8 @@ class TestMachinesService:
 
     async def test_list_machine_pci_devices(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
-        machines_repository_mock.list_machine_pci_devices = AsyncMock(
-            return_value=ListResult[PciDevice](items=[], next_token=None)
+        machines_repository_mock.list_machine_pci_devices.return_value = (
+            ListResult[PciDevice](items=[], next_token=None)
         )
         machines_service = MachinesService(
             connection=Mock(AsyncConnection),
@@ -74,8 +74,8 @@ class TestMachinesService:
     async def test_count_machines_by_statuses(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
         return_value = Mock(MachinesCountByStatus)
-        machines_repository_mock.count_machines_by_statuses = AsyncMock(
-            return_value=return_value
+        machines_repository_mock.count_machines_by_statuses.return_value = (
+            return_value
         )
         machines_service = MachinesService(
             connection=Mock(AsyncConnection),

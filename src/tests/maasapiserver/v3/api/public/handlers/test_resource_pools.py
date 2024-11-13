@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timezone
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -87,11 +87,9 @@ class TestResourcePoolApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list = AsyncMock(
-            return_value=ListResult[ResourcePool](
-                items=[TEST_RESOURCE_POOL], next_token=None
-            )
-        )
+        services_mock.resource_pools.list.return_value = ListResult[
+            ResourcePool
+        ](items=[TEST_RESOURCE_POOL], next_token=None)
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         resource_pools_response = ResourcePoolsListResponse(**response.json())
@@ -104,11 +102,11 @@ class TestResourcePoolApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list = AsyncMock(
-            return_value=ListResult[ResourcePool](
-                items=[TEST_RESOURCE_POOL_2],
-                next_token=str(TEST_RESOURCE_POOL.id),
-            )
+        services_mock.resource_pools.list.return_value = ListResult[
+            ResourcePool
+        ](
+            items=[TEST_RESOURCE_POOL_2],
+            next_token=str(TEST_RESOURCE_POOL.id),
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -128,26 +126,24 @@ class TestResourcePoolApi(ApiCommonTests):
 
         rbac_client_mock = Mock(RbacAsyncClient)
 
-        rbac_client_mock.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW, resources=[1, 2]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW_ALL, resources=[1]
-                ),
-            ]
-        )
-        services_mock.external_auth.get_rbac_client = AsyncMock(
-            return_value=rbac_client_mock
+        rbac_client_mock.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW, resources=[1, 2]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW_ALL, resources=[1]
+            ),
+        ]
+        services_mock.external_auth.get_rbac_client.return_value = (
+            rbac_client_mock
         )
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list = AsyncMock(
-            return_value=ListResult[ResourcePool](
-                items=[TEST_RESOURCE_POOL, TEST_RESOURCE_POOL_2],
-                next_token=None,
-            )
+        services_mock.resource_pools.list.return_value = ListResult[
+            ResourcePool
+        ](
+            items=[TEST_RESOURCE_POOL, TEST_RESOURCE_POOL_2],
+            next_token=None,
         )
         response = await mocked_api_client_user_rbac.get(f"{self.BASE_PATH}")
         assert response.status_code == 200
@@ -170,8 +166,8 @@ class TestResourcePoolApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.get_by_id = AsyncMock(
-            return_value=(TEST_RESOURCE_POOL)
+        services_mock.resource_pools.get_by_id.return_value = (
+            TEST_RESOURCE_POOL
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"
@@ -197,7 +193,7 @@ class TestResourcePoolApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.get_by_id = AsyncMock(return_value=None)
+        services_mock.resource_pools.get_by_id.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -212,8 +208,8 @@ class TestResourcePoolApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.get_by_id = AsyncMock(
-            side_effect=(RequestValidationError(errors=[]))
+        services_mock.resource_pools.get_by_id.side_effect = (
+            RequestValidationError(errors=[])
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
@@ -232,22 +228,20 @@ class TestResourcePoolApi(ApiCommonTests):
 
         rbac_client_mock = Mock(RbacAsyncClient)
 
-        rbac_client_mock.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    # can access only
-                    permission=RbacPermission.VIEW,
-                    resources=[1],
-                ),
-            ]
-        )
-        services_mock.external_auth.get_rbac_client = AsyncMock(
-            return_value=rbac_client_mock
+        rbac_client_mock.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                # can access only
+                permission=RbacPermission.VIEW,
+                resources=[1],
+            ),
+        ]
+        services_mock.external_auth.get_rbac_client.return_value = (
+            rbac_client_mock
         )
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.get_by_id = AsyncMock(
-            return_value=TEST_RESOURCE_POOL
+        services_mock.resource_pools.get_by_id.return_value = (
+            TEST_RESOURCE_POOL
         )
         response = await mocked_api_client_user_rbac.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
@@ -274,9 +268,7 @@ class TestResourcePoolApi(ApiCommonTests):
             description=TEST_RESOURCE_POOL.description,
         )
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.create = AsyncMock(
-            return_value=TEST_RESOURCE_POOL
-        )
+        services_mock.resource_pools.create.return_value = TEST_RESOURCE_POOL
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=jsonable_encoder(resource_pool_request)
         )
@@ -311,8 +303,8 @@ class TestResourcePoolApi(ApiCommonTests):
         resource_pool_request: dict[str, str],
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.create = AsyncMock(
-            side_effect=ValueError("Invalid entity name.")
+        services_mock.resource_pools.create.side_effect = ValueError(
+            "Invalid entity name."
         )
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=resource_pool_request
@@ -332,21 +324,17 @@ class TestResourcePoolApi(ApiCommonTests):
 
         rbac_client_mock = Mock(RbacAsyncClient)
 
-        rbac_client_mock.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.EDIT, resources=[""]
-                ),
-            ]
-        )
-        services_mock.external_auth.get_rbac_client = AsyncMock(
-            return_value=rbac_client_mock
+        rbac_client_mock.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.EDIT, resources=[""]
+            ),
+        ]
+        services_mock.external_auth.get_rbac_client.return_value = (
+            rbac_client_mock
         )
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.create = AsyncMock(
-            return_value=TEST_RESOURCE_POOL
-        )
+        services_mock.resource_pools.create.return_value = TEST_RESOURCE_POOL
 
         resource_pool_request = ResourcePoolRequest(
             name=TEST_RESOURCE_POOL.name,
@@ -371,23 +359,19 @@ class TestResourcePoolApi(ApiCommonTests):
 
         rbac_client_mock = Mock(RbacAsyncClient)
 
-        rbac_client_mock.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    # The user can create resources only if [""] (alias ALL resources) is set
-                    permission=RbacPermission.EDIT,
-                    resources=[1],
-                ),
-            ]
-        )
-        services_mock.external_auth.get_rbac_client = AsyncMock(
-            return_value=rbac_client_mock
+        rbac_client_mock.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                # The user can create resources only if [""] (alias ALL resources) is set
+                permission=RbacPermission.EDIT,
+                resources=[1],
+            ),
+        ]
+        services_mock.external_auth.get_rbac_client.return_value = (
+            rbac_client_mock
         )
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.create = AsyncMock(
-            return_value=TEST_RESOURCE_POOL
-        )
+        services_mock.resource_pools.create.return_value = TEST_RESOURCE_POOL
 
         resource_pool_request = ResourcePoolRequest(
             name=TEST_RESOURCE_POOL.name,
@@ -412,9 +396,7 @@ class TestResourcePoolApi(ApiCommonTests):
         updated_rp.name = "newname"
         updated_rp.description = "new description"
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.update = AsyncMock(
-            return_value=updated_rp
-        )
+        services_mock.resource_pools.update.return_value = updated_rp
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )
@@ -444,15 +426,13 @@ class TestResourcePoolApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.update = AsyncMock(
-            side_effect=NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message="Resource pool with id 1000 does not exist.",
-                    )
-                ]
-            )
+        services_mock.resource_pools.update.side_effect = NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message="Resource pool with id 1000 does not exist.",
+                )
+            ]
         )
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
@@ -484,8 +464,8 @@ class TestResourcePoolApi(ApiCommonTests):
         resource_pool_request: dict[str, str],
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.update = AsyncMock(
-            side_effect=(RequestValidationError(errors=[]))
+        services_mock.resource_pools.update.side_effect = (
+            RequestValidationError(errors=[])
         )
         response = await mocked_api_client_admin.put(
             f"{self.BASE_PATH}/1", json=resource_pool_request
@@ -501,15 +481,13 @@ class TestResourcePoolApi(ApiCommonTests):
 
         rbac_client_mock = Mock(RbacAsyncClient)
 
-        rbac_client_mock.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.EDIT, resources=[1]
-                ),
-            ]
-        )
-        services_mock.external_auth.get_rbac_client = AsyncMock(
-            return_value=rbac_client_mock
+        rbac_client_mock.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.EDIT, resources=[1]
+            ),
+        ]
+        services_mock.external_auth.get_rbac_client.return_value = (
+            rbac_client_mock
         )
 
         updated_rp = TEST_RESOURCE_POOL
@@ -518,9 +496,7 @@ class TestResourcePoolApi(ApiCommonTests):
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
 
-        services_mock.resource_pools.update = AsyncMock(
-            return_value=updated_rp
-        )
+        services_mock.resource_pools.update.return_value = updated_rp
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )

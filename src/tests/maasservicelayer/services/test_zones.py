@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -49,9 +49,7 @@ class TestZonesService:
     async def test_delete(self) -> None:
         db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
-        zones_repository.delete = AsyncMock()
         zones_repository.delete.return_value = None
-        zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
             db_connection,
@@ -109,9 +107,7 @@ class TestZonesService:
     async def test_delete_default_zone(self) -> None:
         db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
-        zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.return_value = DEFAULT_ZONE
-        zones_repository.get_default_zone = AsyncMock()
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
         zones_service = ZonesService(
             db_connection,
@@ -131,16 +127,10 @@ class TestZonesService:
     ) -> None:
         db_connection = Mock(AsyncConnection)
         nodes_service_mock = Mock(NodesService)
-        nodes_service_mock.move_to_zone = AsyncMock()
-        nodes_service_mock.move_bmcs_to_zone = AsyncMock()
         vmclusters_service_mock = Mock(VmClustersService)
-        vmclusters_service_mock.move_to_zone = AsyncMock()
         zones_repository = Mock(ZonesRepository)
-        zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.return_value = TEST_ZONE
-        zones_repository.get_default_zone = AsyncMock()
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
-        zones_repository.delete = AsyncMock()
         zones_repository.delete.return_value = None
 
         zones_service = ZonesService(
@@ -165,8 +155,8 @@ class TestZonesService:
     async def test_list(self) -> None:
         db_connection = Mock(AsyncConnection)
         zones_repository_mock = Mock(ZonesRepository)
-        zones_repository_mock.list = AsyncMock(
-            return_value=ListResult[ZonesRepository](items=[], next_token=None)
+        zones_repository_mock.list.return_value = ListResult[ZonesRepository](
+            items=[], next_token=None
         )
         resource_pools_service = ZonesService(
             connection=db_connection,

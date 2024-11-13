@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from httpx import AsyncClient
 import pytest
@@ -174,10 +174,8 @@ class TestMachinesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list = AsyncMock(
-            return_value=ListResult[Machine](
-                items=[TEST_MACHINE_2], next_token=str(TEST_MACHINE.id)
-            )
+        services_mock.machines.list.return_value = ListResult[Machine](
+            items=[TEST_MACHINE_2], next_token=str(TEST_MACHINE.id)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -194,10 +192,8 @@ class TestMachinesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list = AsyncMock(
-            return_value=ListResult[Machine](
-                items=[TEST_MACHINE_2, TEST_MACHINE], next_token=None
-            )
+        services_mock.machines.list.return_value = ListResult[Machine](
+            items=[TEST_MACHINE_2, TEST_MACHINE], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
@@ -211,10 +207,8 @@ class TestMachinesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list = AsyncMock(
-            return_value=ListResult[Machine](
-                items=[TEST_MACHINE], next_token=None
-            )
+        services_mock.machines.list.return_value = ListResult[Machine](
+            items=[TEST_MACHINE], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
@@ -240,10 +234,8 @@ class TestMachinesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list = AsyncMock(
-            return_value=ListResult[Machine](
-                items=[TEST_MACHINE_2], next_token=None
-            )
+        services_mock.machines.list.return_value = ListResult[Machine](
+            items=[TEST_MACHINE_2], next_token=None
         )
         response = await mocked_api_client_admin.get(
             f"{self.BASE_PATH}?size=2"
@@ -265,27 +257,23 @@ class TestMachinesApi(ApiCommonTests):
 
         rbac_client_mock = Mock(RbacAsyncClient)
 
-        rbac_client_mock.get_resource_pool_ids = AsyncMock(
-            return_value=[
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW, resources=[0, 1]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.VIEW_ALL, resources=[0]
-                ),
-                PermissionResourcesMapping(
-                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
-                ),
-            ]
-        )
-        services_mock.external_auth.get_rbac_client = AsyncMock(
-            return_value=rbac_client_mock
+        rbac_client_mock.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW, resources=[0, 1]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.VIEW_ALL, resources=[0]
+            ),
+            PermissionResourcesMapping(
+                permission=RbacPermission.ADMIN_MACHINES, resources=[]
+            ),
+        ]
+        services_mock.external_auth.get_rbac_client.return_value = (
+            rbac_client_mock
         )
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list = AsyncMock(
-            return_value=ListResult[Machine](
-                items=[TEST_MACHINE], next_token=None
-            )
+        services_mock.machines.list.return_value = ListResult[Machine](
+            items=[TEST_MACHINE], next_token=None
         )
         response = await mocked_api_client_user_rbac.get(self.BASE_PATH)
         assert response.status_code == 200
@@ -339,7 +327,7 @@ class TestMachinesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.get_bmc = AsyncMock(return_value=TEST_BMC)
+        services_mock.machines.get_bmc.return_value = TEST_BMC
         response = await mocked_api_client_admin.get(
             f"{self.BASE_PATH}/1/power_parameters"
         )
@@ -356,7 +344,7 @@ class TestMachinesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.get_bmc = AsyncMock(return_value=None)
+        services_mock.machines.get_bmc.return_value = None
         response = await mocked_api_client_admin.get(
             f"{self.BASE_PATH}/1/power_parameters"
         )
@@ -385,12 +373,10 @@ class TestUsbDevicesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list_machine_usb_devices = AsyncMock(
-            return_value=(
-                ListResult[UsbDevice](
-                    items=[TEST_USB_DEVICE_2],
-                    next_token=str(TEST_USB_DEVICE.id),
-                )
+        services_mock.machines.list_machine_usb_devices.return_value = (
+            ListResult[UsbDevice](
+                items=[TEST_USB_DEVICE_2],
+                next_token=str(TEST_USB_DEVICE.id),
             )
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
@@ -408,11 +394,9 @@ class TestUsbDevicesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list_machine_usb_devices = AsyncMock(
-            return_value=(
-                ListResult[UsbDevice](
-                    items=[TEST_USB_DEVICE_2, TEST_USB_DEVICE], next_token=None
-                )
+        services_mock.machines.list_machine_usb_devices.return_value = (
+            ListResult[UsbDevice](
+                items=[TEST_USB_DEVICE_2, TEST_USB_DEVICE], next_token=None
             )
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
@@ -441,7 +425,6 @@ class TestPciDevicesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list_machine_pci_devices = AsyncMock()
         services_mock.machines.list_machine_pci_devices.return_value = (
             ListResult[PciDevice](
                 items=[TEST_PCI_DEVICE_2], next_token=str(TEST_PCI_DEVICE.id)
@@ -462,7 +445,6 @@ class TestPciDevicesApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list_machine_pci_devices = AsyncMock()
         services_mock.machines.list_machine_pci_devices.return_value = (
             ListResult[PciDevice](
                 items=[TEST_PCI_DEVICE_2, TEST_PCI_DEVICE], next_token=None

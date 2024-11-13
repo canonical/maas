@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from json import dumps as _dumps
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
@@ -40,8 +40,8 @@ class TestAuthApi:
         mocked_api_client: AsyncClient,
     ) -> None:
         services_mock.auth = Mock(AuthService)
-        services_mock.auth.login = AsyncMock(
-            return_value=JWT.create("key", "username", [UserRole.USER])
+        services_mock.auth.login.return_value = JWT.create(
+            "key", "username", [UserRole.USER]
         )
         response = await mocked_api_client.post(
             f"{self.BASE_PATH}/login",
@@ -62,8 +62,8 @@ class TestAuthApi:
         mocked_api_client: AsyncClient,
     ) -> None:
         services_mock.auth = Mock(AuthService)
-        services_mock.auth.login = AsyncMock(
-            side_effect=RequestValidationError(errors=[])
+        services_mock.auth.login.side_effect = RequestValidationError(
+            errors=[]
         )
         response = await mocked_api_client.post(
             f"{self.BASE_PATH}/login", data={"username": "username"}
@@ -77,10 +77,8 @@ class TestAuthApi:
         mocked_api_client_user_rbac: AsyncClient,
     ) -> None:
         services_mock.external_auth = Mock(ExternalAuthService)
-        services_mock.external_auth.raise_discharge_required_exception = (
-            AsyncMock(
-                side_effect=DischargeRequiredException(macaroon=Mock(Macaroon))
-            )
+        services_mock.external_auth.raise_discharge_required_exception.side_effect = DischargeRequiredException(
+            macaroon=Mock(Macaroon)
         )
 
         # we have to mock json.dumps as it doesn't know how to deal with Mock objects
@@ -104,15 +102,13 @@ class TestAuthApi:
         mocked_api_client: AsyncClient,
     ) -> None:
         services_mock.auth = Mock(AuthService)
-        services_mock.auth.login = AsyncMock(
-            side_effect=UnauthorizedException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
-                        message="The credentials are not matching or the user does not exist",
-                    )
-                ]
-            )
+        services_mock.auth.login.side_effect = UnauthorizedException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
+                    message="The credentials are not matching or the user does not exist",
+                )
+            ]
         )
         response = await mocked_api_client.post(
             f"{self.BASE_PATH}/login",
@@ -130,8 +126,8 @@ class TestAuthApi:
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.auth = Mock(AuthService)
-        services_mock.auth.access_token = AsyncMock(
-            return_value=JWT.create("key", "username", [UserRole.USER])
+        services_mock.auth.access_token.return_value = JWT.create(
+            "key", "username", [UserRole.USER]
         )
 
         response = await mocked_api_client_user.get(
@@ -153,8 +149,8 @@ class TestAuthApi:
         mocked_api_client_session_id: AsyncClient,
     ) -> None:
         services_mock.auth = Mock(AuthService)
-        services_mock.auth.access_token = AsyncMock(
-            return_value=JWT.create("key", "username", [UserRole.USER])
+        services_mock.auth.access_token.return_value = JWT.create(
+            "key", "username", [UserRole.USER]
         )
         response = await mocked_api_client_session_id.get(
             f"{self.BASE_PATH}/access_token",

@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from httpx import AsyncClient
 from netaddr import IPAddress
@@ -81,10 +81,8 @@ class TestInterfaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.list = AsyncMock(
-            return_value=ListResult[Interface](
-                items=[TEST_INTERFACE_2], next_token=str(TEST_INTERFACE.id)
-            )
+        services_mock.interfaces.list.return_value = ListResult[Interface](
+            items=[TEST_INTERFACE_2], next_token=str(TEST_INTERFACE.id)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -101,10 +99,8 @@ class TestInterfaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.list = AsyncMock(
-            return_value=ListResult[Interface](
-                items=[TEST_INTERFACE_2, TEST_INTERFACE], next_token=None
-            )
+        services_mock.interfaces.list.return_value = ListResult[Interface](
+            items=[TEST_INTERFACE_2, TEST_INTERFACE], next_token=None
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200

@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -32,8 +32,8 @@ class TestVlansService:
         db_connection = Mock(AsyncConnection)
         nodes_service_mock = Mock(NodesService)
         vlans_repository_mock = Mock(VlansRepository)
-        vlans_repository_mock.list = AsyncMock(
-            return_value=ListResult[Vlan](items=[], next_token=None)
+        vlans_repository_mock.list.return_value = ListResult[Vlan](
+            items=[], next_token=None
         )
         vlans_service = VlansService(
             connection=db_connection,
@@ -62,9 +62,7 @@ class TestVlansService:
         )
         nodes_service_mock = Mock(NodesService)
         vlans_repository_mock = Mock(VlansRepository)
-        vlans_repository_mock.find_by_id = AsyncMock(
-            return_value=expected_vlan
-        )
+        vlans_repository_mock.find_by_id.return_value = expected_vlan
         vlans_service = VlansService(
             connection=db_connection,
             temporal_service=Mock(TemporalService),
@@ -90,9 +88,7 @@ class TestVlansService:
             updated=now,
         )
         vlans_repository_mock = Mock(VlansRepository)
-        vlans_repository_mock.get_node_vlans = AsyncMock(
-            return_value=expected_vlan
-        )
+        vlans_repository_mock.get_node_vlans.return_value = expected_vlan
         vlans_service = VlansService(
             connection=db_connection,
             vlans_repository=vlans_repository_mock,
