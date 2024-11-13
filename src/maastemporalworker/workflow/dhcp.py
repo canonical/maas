@@ -28,6 +28,10 @@ from maasservicelayer.db.tables import (
     VlanTable,
 )
 from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.utils import (
+    with_context_activity,
+    with_context_workflow,
+)
 
 FIND_AGENTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
 APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT = timedelta(minutes=5)
@@ -230,6 +234,7 @@ class DHCPConfigActivity(ActivityBase):
         result = await tx.execute(stmt)
         return {r[0] for r in result.all()}
 
+    @with_context_activity
     @activity.defn(name=FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME)
     async def find_agents_for_updates(
         self, param: ConfigureDHCPParam
@@ -361,6 +366,7 @@ class DHCPConfigActivity(ActivityBase):
             for r in result.all()
         ]
 
+    @with_context_activity
     @activity.defn(name=FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME)
     async def fetch_hosts_for_update(
         self, param: FetchHostsForUpdateParam
@@ -379,6 +385,7 @@ class DHCPConfigActivity(ActivityBase):
 
             return HostsForUpdateResult(hosts=hosts)
 
+    @with_context_activity
     @activity.defn(name=GET_OMAPI_KEY_ACTIVITY_NAME)
     async def get_omapi_key(self) -> OMAPIKeyResult:
         async with self.start_transaction() as services:
@@ -389,6 +396,7 @@ class DHCPConfigActivity(ActivityBase):
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
 
+    @with_context_workflow
     @workflow.run
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
         # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
@@ -434,6 +442,7 @@ class ConfigureDHCPForAgentWorkflow:
 @workflow.defn(name=CONFIGURE_DHCP_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPWorkflow:
 
+    @with_context_workflow
     @workflow.run
     async def run(self, param: ConfigureDHCPParam) -> None:
         agent_system_ids_for_update = await workflow.execute_activity(

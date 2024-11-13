@@ -1,15 +1,15 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-import logging
 import os
 import signal
 
 from asyncpg import Connection
+import structlog
 
 from maasservicelayer.db.listeners import PostgresListener
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger(__name__)
 
 
 class VaultMigrationPostgresListener(PostgresListener):

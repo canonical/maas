@@ -3,8 +3,9 @@
 
 from datetime import timedelta
 from functools import lru_cache
-import logging
 from typing import Any
+
+import structlog
 
 from maasserver.config import RegionConfiguration
 from maasservicelayer.utils.date import utcnow
@@ -17,7 +18,7 @@ from maasservicelayer.vault.api.models.requests import (
 TOKEN_BEFORE_EXPIRY_LIMIT = timedelta(seconds=20)
 APPROLE = "approle"
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger()
 
 
 class AsyncVaultManager:

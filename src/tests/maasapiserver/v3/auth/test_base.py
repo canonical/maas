@@ -15,6 +15,7 @@ from maasapiserver.v3.auth.base import (
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db import Database
@@ -66,6 +67,7 @@ def auth_app(
     app.add_middleware(AuthTestMiddleware)
     app.add_middleware(ServicesMiddleware)
     app.add_middleware(transaction_middleware_class, db=db)
+    app.add_middleware(ContextMiddleware)
 
     @app.post(f"{V3_API_PREFIX}/user")
     async def get_user(

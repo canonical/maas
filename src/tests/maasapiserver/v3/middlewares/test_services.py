@@ -8,6 +8,7 @@ from starlette.responses import Response
 
 from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasservicelayer.db import Database
 
@@ -21,6 +22,7 @@ def services_app(
     app = FastAPI()
     app.add_middleware(ServicesMiddleware)
     app.add_middleware(transaction_middleware_class, db=db)
+    app.add_middleware(ContextMiddleware)
 
     def check_services_are_set(request: Request) -> int:
         """Return 200 if the request context has the services, 404 otherwise"""

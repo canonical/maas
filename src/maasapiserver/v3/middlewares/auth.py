@@ -1,7 +1,6 @@
 import abc
 from datetime import timedelta
 import json
-import logging
 from typing import Awaitable, Callable, Dict, Sequence
 
 from fastapi import Request, Response
@@ -52,8 +51,6 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 from maasservicelayer.utils.date import utcnow
-
-logger = logging.getLogger()
 
 EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
 

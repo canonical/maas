@@ -24,6 +24,10 @@ from maasservicelayer.db.repositories.staticipaddress import (
 )
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.utils import (
+    with_context_activity,
+    with_context_workflow,
+)
 
 DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT = timedelta(seconds=10)
 DEFAULT_CONFIGURE_RETRY_POLICY = RetryPolicy(
@@ -57,6 +61,7 @@ class GetRegionControllerEndpointsResult:
 
 
 class ConfigureAgentActivity(ActivityBase):
+    @with_context_activity
     @activity.defn(name=GET_RACK_CONTROLLER_VLANS_ACTIVITY_NAME)
     async def get_rack_controller_vlans(
         self, input: GetRackControllerVLANsInput
@@ -87,6 +92,7 @@ class ConfigureAgentActivity(ActivityBase):
                 )
             return GetRackControllerVLANsResult([])
 
+    @with_context_activity
     @activity.defn(name=GET_REGION_CONTROLLER_ENDPOINTS_ACTIVITY_NAME)
     async def get_region_controller_endpoints(
         self,
@@ -125,6 +131,7 @@ def _format_endpoint(ip: str) -> str:
 class ConfigureAgentWorkflow:
     """A ConfigureAgent workflow to setup MAAS Agent"""
 
+    @with_context_workflow
     @workflow.run
     async def run(self, param: ConfigureAgentParam) -> None:
         # Agent registers workflows for configuring it's services

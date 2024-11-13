@@ -2,9 +2,10 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
-import logging
 import os
 from pathlib import Path
+
+import structlog
 
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasservicelayer.db import DatabaseConfig
@@ -12,14 +13,15 @@ from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
 from maasservicelayer.vault.manager import get_region_vault_manager
 from provisioningserver.path import get_maas_data_path
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger()
 
 
 @dataclass
 class Config:
     db: DatabaseConfig | None
-    debug_queries: bool = False
     debug: bool = False
+    debug_queries: bool = False
+    debug_http: bool = False
 
 
 def api_service_socket_path() -> Path:
@@ -70,7 +72,7 @@ async def _get_default_db_config(
         except Exception as e:
             # Vault entry is unavailable for some reason (misconfigured/sealed/wrong permissions).
             # Report and use local credentials.
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "Unable to fetch DB credentials from Vault: ", exc_info=e
             )
             pass
@@ -88,9 +90,9 @@ async def read_config() -> Config:
     try:
         with RegionConfiguration.open() as config:
             database_config = await _get_default_db_config(config)
-            debug_queries = config.debug_queries
             debug = config.debug
-            # XXX: todo check for HTTP debug flags
+            debug_queries = debug or config.debug_queries
+            debug_http = debug or config.debug_http
 
     except (FileNotFoundError, KeyError, ValueError):
         # The regiond.conf will attempt to be loaded when the 'maas' command
@@ -98,6 +100,13 @@ async def read_config() -> Config:
         # database information. Django will still complain since no 'default'
         # connection is defined.
         database_config = None
-        debug_queries = False
         debug = False
-    return Config(db=database_config, debug_queries=debug_queries, debug=debug)
+        debug_queries = False
+        debug_http = False
+
+    return Config(
+        db=database_config,
+        debug=debug,
+        debug_queries=debug_queries,
+        debug_http=debug_http,
+    )

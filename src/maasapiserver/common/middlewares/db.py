@@ -14,7 +14,7 @@ from maasservicelayer.db import Database
 class TransactionMiddleware(BaseHTTPMiddleware):
     """Run a request in a transaction, handling commit/rollback.
 
-    This makes the database connection available as `request.state.conn`.
+    This makes the database connection available as `request.state.context.get_connection()`.
     """
 
     def __init__(self, app: ASGIApp, db: Database):
@@ -34,7 +34,7 @@ class TransactionMiddleware(BaseHTTPMiddleware):
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         async with self.get_connection() as conn:
-            request.state.conn = conn
+            request.state.context.set_connection(conn)
             response = await call_next(request)
 
         if hasattr(request.state, "services") and hasattr(
@@ -49,7 +49,7 @@ class DatabaseMetricsMiddleware(BaseHTTPMiddleware):
     """Track database-related metrics.
 
     It requires the database connection to be available as
-    `request.state.conn`.
+    `request.state.context.get_connection()`.
     """
 
     def __init__(self, app: ASGIApp, db: Database):
@@ -74,7 +74,7 @@ class DatabaseMetricsMiddleware(BaseHTTPMiddleware):
             request.state.query_metrics["count"] += 1
             del request.state.cur_query_start
 
-        conn = request.state.conn.sync_connection
+        conn = request.state.context.get_connection().sync_connection
         event.listen(conn, "before_cursor_execute", before)
         event.listen(conn, "after_cursor_execute", after)
         try:

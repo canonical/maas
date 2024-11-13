@@ -26,9 +26,9 @@ expression.
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import reduce
-import logging
 
 from sqlalchemy import text
+import structlog
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
@@ -37,13 +37,17 @@ from maascommon.workflows.tag import (
     TagEvaluationParam,
 )
 from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.utils import (
+    with_context_activity,
+    with_context_workflow,
+)
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
 )
 
-logging.basicConfig(level=logging.INFO)
+logger = structlog.getLogger()
 
 
 TAG_EVALUATION_ACTIVITY_TIMEOUT = timedelta(minutes=10)
@@ -63,29 +67,25 @@ class TagEvaluationResult:
 class TagEvaluationWorkflow:
     """Temporal workflow for tag evaluation."""
 
+    @with_context_workflow
     @workflow.run
     async def run(self, param: TagEvaluationParam) -> None:
-        workflow.logger.info("Tag (id=%d) evaluation starts.", param.tag_id)
-
+        logger.info(f"Tag (id={param.tag_id}) evaluation starts.")
         result: TagEvaluationResult = await workflow.execute_activity(
             TagEvaluationActivity.evaluate_tag,
             arg=param,
             retry_policy=RetryPolicy(maximum_attempts=3),
             start_to_close_timeout=TAG_EVALUATION_ACTIVITY_TIMEOUT,
         )
-
-        workflow.logger.info(
-            "Tag (id=%d) evaluation ends: %d nodes were tagged and %d nodes "
-            "were untagged",
-            param.tag_id,
-            result.inserted,
-            result.deleted,
+        logger.info(
+            f"Tag (id={param.tag_id}) evaluation ends: {result.inserted} nodes were tagged and {result.deleted} nodes were untagged"
         )
 
 
 class TagEvaluationActivity(ActivityBase):
     """Temporal activity for tag evaluation."""
 
+    @with_context_activity
     @activity.defn(name=EVALUATE_TAG_ACTIVITY_NAME)
     async def evaluate_tag(
         self, param: TagEvaluationParam

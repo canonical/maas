@@ -11,6 +11,7 @@ from maasapiserver.common.api.handlers import APICommon
 from maasapiserver.common.constants import API_PREFIX
 from maasapiserver.common.middlewares.db import DatabaseMetricsMiddleware
 from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
+from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasservicelayer.db import Database
 
 
@@ -24,6 +25,7 @@ def app(
     app.add_middleware(PrometheusMiddleware)
     app.add_middleware(DatabaseMetricsMiddleware, db=db)
     app.add_middleware(transaction_middleware_class, db=db)
+    app.add_middleware(ContextMiddleware)
     APICommon.register(app.router)
 
     @app.get("/{count}")

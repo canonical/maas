@@ -1,6 +1,6 @@
 from typing import AsyncIterator
 
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from httpx import AsyncClient
 import pytest
 from pytest_mock import MockerFixture
@@ -15,9 +15,9 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.ext.asyncio import AsyncConnection
+from starlette.requests import Request
 
 from maasapiserver.common.api.base import API, Handler, handler
-from maasapiserver.common.api.db import db_conn
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
 from maasservicelayer.db import Database
@@ -48,14 +48,16 @@ async def insert_app(
 
     class InsertHandler(Handler):
         @handler(path="/success", methods=["GET"])
-        async def success(
-            self, conn: AsyncConnection = Depends(db_conn)
-        ) -> None:
-            await conn.execute(insert(TestTable).values(id=42, name="default"))
+        async def success(self, request: Request) -> None:
+            await request.state.context.get_connection().execute(
+                insert(TestTable).values(id=42, name="default")
+            )
 
         @handler(path="/failure", methods=["GET"])
-        async def fail(self, conn: AsyncConnection = Depends(db_conn)) -> None:
-            await conn.execute(insert(TestTable).values(id=42))
+        async def fail(self, request: Request) -> None:
+            await request.state.context.get_connection().execute(
+                insert(TestTable).values(id=42)
+            )
             raise MyException("boom")
 
     api_app = await create_app(config=test_config, db=db)

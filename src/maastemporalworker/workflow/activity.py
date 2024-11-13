@@ -5,11 +5,14 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncConnection
+import structlog
 
 from maasservicelayer.db import Database
 from maasservicelayer.services import ServiceCollectionV3
 
 UNSET = object()
+
+logger = structlog.getLogger()
 
 
 class ActivityBase:

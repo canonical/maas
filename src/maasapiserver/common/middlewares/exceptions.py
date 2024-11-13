@@ -1,10 +1,10 @@
-import logging
 from typing import Awaitable, Callable
 
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+import structlog
 
 from maasapiserver.common.api.models.responses.errors import (
     BadRequestResponse,
@@ -30,7 +30,7 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger(__name__)
 
 
 class ExceptionHandlers:

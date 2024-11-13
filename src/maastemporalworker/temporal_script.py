@@ -2,12 +2,15 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
-from logging import getLogger
+import logging
 import signal
+
+import structlog
 
 from maasapiserver.settings import read_config
 from maasserver.workflow.worker import Worker as TemporalWorker
 from maasservicelayer.db import Database
+from maasservicelayer.logging.configure import configure_logging
 from maastemporalworker.workflow.commission import CommissionNWorkflow
 from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
@@ -42,7 +45,7 @@ from maastemporalworker.workflow.tag_evaluation import (
     TagEvaluationWorkflow,
 )
 
-log = getLogger()
+log = structlog.getLogger()
 
 
 async def _start_temporal_workers(workers: list[TemporalWorker]) -> None:
@@ -61,8 +64,13 @@ async def _stop_temporal_workers(workers: list[TemporalWorker]) -> None:
 
 async def main() -> None:
     # TODO check that Temporal is active
-    log.info("starting region temporal-worker process")
     config = await read_config()
+    configure_logging(
+        level=logging.DEBUG if config.debug else logging.INFO,
+        query_level=logging.DEBUG if config.debug else logging.WARNING,
+    )
+
+    log.info("starting region temporal-worker process")
     log.debug("connecting to MAAS DB")
     db = Database(config.db, echo=config.debug_queries)
     log.debug("connecting to Temporal server")

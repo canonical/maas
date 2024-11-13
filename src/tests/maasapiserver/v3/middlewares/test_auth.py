@@ -31,6 +31,7 @@ from maasapiserver.v3.middlewares.auth import (
     MacaroonAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
+from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
@@ -105,6 +106,7 @@ def auth_app(
     app.add_middleware(ServicesMiddleware)
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ExceptionMiddleware)
+    app.add_middleware(ContextMiddleware)
 
     @app.get("/MAAS/a/v3/users/{username}/token")
     async def get_token(

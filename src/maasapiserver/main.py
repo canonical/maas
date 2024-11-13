@@ -9,6 +9,7 @@ import ssl
 from django.conf import settings as django_settings
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+import structlog
 import uvicorn
 
 from maasapiserver.common.api.handlers import APICommon
@@ -39,6 +40,7 @@ from maasapiserver.v3.middlewares.auth import (
     MacaroonAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
+from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasserver.workflow.worker import (
     get_client_async as get_temporal_client_async,
@@ -46,9 +48,19 @@ from maasserver.workflow.worker import (
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import StartupLock
+from maasservicelayer.logging.configure import configure_logging
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger()
+
+
+def config_uvicorn_logging(level=logging.INFO) -> None:
+    logging.getLogger("uvicorn.error").setLevel(level)
+    logging.getLogger("uvicorn.asgi").setLevel(level)
+    # We have already a middleware to log this info: let's log only ERROR unless debug is enabled.
+    logging.getLogger("uvicorn.access").setLevel(
+        logging.ERROR if level == logging.INFO else level
+    )
 
 
 async def wait_for_startup(db: Database):
@@ -111,6 +123,7 @@ async def prepare_app(
     app.add_middleware(ServicesMiddleware, temporal=temporal)
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ExceptionMiddleware)
+    app.add_middleware(ContextMiddleware)
 
     # Add exception handlers for exceptions that can be thrown outside the middlewares.
     app.add_exception_handler(
@@ -183,16 +196,27 @@ def run(app_config: Config | None = None, start_internal_server: bool = True):
     if app_config is None:
         app_config = loop.run_until_complete(read_config())
 
-    logging.basicConfig(
-        level=logging.DEBUG if app_config.debug else logging.INFO
-    )
-
     servers_tasks = []
+
+    configure_logging(
+        level=logging.DEBUG if app_config.debug else logging.INFO,
+        query_level=(
+            logging.DEBUG if app_config.debug_queries else logging.WARNING
+        ),
+    )
+    config_uvicorn_logging(
+        logging.DEBUG if app_config.debug_http else logging.INFO
+    )
 
     # User app
     user_app = loop.run_until_complete(create_app(config=app_config))
     user_server_config = uvicorn.Config(
-        user_app, loop=loop, proxy_headers=True, uds=api_service_socket_path()
+        user_app,
+        loop=loop,
+        proxy_headers=True,
+        uds=api_service_socket_path(),
+        # We configure the logging OUTSIDE the library in order to use our custom json formatter.
+        log_config=None,
     )
     user_server = uvicorn.Server(user_server_config)
     servers_tasks.append(user_server.serve())
@@ -212,6 +236,8 @@ def run(app_config: Config | None = None, start_internal_server: bool = True):
         ssl_certfile=cert,
         ssl_ca_certs=cacerts,
         ssl_cert_reqs=ssl.CERT_REQUIRED,
+        # We configure the logging OUTSIDE the library in order to use our custom json formatter.
+        log_config=None,
     )
     internal_server = uvicorn.Server(internal_server_config)
 

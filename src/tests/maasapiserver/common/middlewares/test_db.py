@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.middlewares.db import DatabaseMetricsMiddleware
+from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasservicelayer.db import Database
 
 
@@ -19,6 +20,7 @@ def query_count_app(
     app = FastAPI()
     app.add_middleware(DatabaseMetricsMiddleware, db=db)
     app.add_middleware(transaction_middleware_class, db=db)
+    app.add_middleware(ContextMiddleware)
 
     @app.get("/{count}")
     async def get(request: Request, count: int) -> Any:

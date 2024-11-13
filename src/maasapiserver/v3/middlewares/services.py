@@ -35,7 +35,7 @@ class ServicesMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         services = await ServiceCollectionV3.produce(
-            request.state.conn, temporal=self.temporal
+            request.state.context.get_connection(), temporal=self.temporal
         )
         request.state.services = services
         return await call_next(request)

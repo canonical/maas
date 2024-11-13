@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy import Result, select
 from sqlalchemy.ext.asyncio import AsyncConnection
+import structlog
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import CancelledError, ChildWorkflowError
@@ -44,6 +45,12 @@ from maastemporalworker.workflow.power import (
     POWER_ON_ACTIVITY_NAME,
     POWER_QUERY_ACTIVITY_NAME,
 )
+from maastemporalworker.workflow.utils import (
+    with_context_activity,
+    with_context_workflow,
+)
+
+logger = structlog.getLogger()
 
 DEFAULT_DEPLOY_ACTIVITY_TIMEOUT = timedelta(seconds=30)
 DEFAULT_DEPLOY_RETRY_TIMEOUT = timedelta(seconds=60)
@@ -85,6 +92,7 @@ class SetBootOrderParam:
 
 
 class DeployActivity(ActivityBase):
+    @with_context_activity
     @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
     async def set_node_status(self, params: SetNodeStatusParam) -> None:
         async with self.start_transaction() as services:
@@ -205,6 +213,7 @@ class DeployActivity(ActivityBase):
                         v[k2] = str(v2)
         return obj
 
+    @with_context_activity
     @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
     async def get_boot_order(
         self, params: GetBootOrderParam
@@ -265,10 +274,9 @@ class DeployActivity(ActivityBase):
 
 @workflow.defn(name=DEPLOY_N_WORKFLOW_NAME, sandboxed=False)
 class DeployNWorkflow:
+    @with_context_workflow
     @workflow.run
     async def run(self, params: DeployNParam) -> None:
-        workflow.logger.info("starting bulk deployment job...")
-
         child_workflows = []
         for param in params.params:
             wf = await workflow.start_child_workflow(
@@ -315,7 +323,6 @@ class DeployNWorkflow:
                     maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
                 ),
             )
-        workflow.logger.info("finished bulk deployment job.")
 
 
 @workflow.defn(name=DEPLOY_WORKFLOW_NAME, sandboxed=False)
@@ -409,23 +416,22 @@ class DeployWorkflow:
         else:
             raise InvalidMachineStateException("no boot order found")
 
+    @with_context_workflow
     @workflow.run
     async def run(self, params: DeployParam) -> DeployResult:
-        workflow.logger.info(f"deploying {params.system_id}")
+        logger.info(f"deploying {params.system_id}")
 
         await self._start_deployment(params)
 
         await workflow.wait_condition(lambda: self._has_netbooted)
 
-        workflow.logger.debug(f"{params.system_id} has finished netboot")
+        logger.debug(f"{params.system_id} has finished netboot")
 
         if not params.ephemeral_deploy:
             if params.can_set_boot_order:
                 await self._set_boot_order(params)
 
             await workflow.wait_condition(lambda: self._deployed_os_ready)
-            workflow.logger.debug(
-                f"{params.system_id} has booted into deployed OS"
-            )
+            logger.debug(f"{params.system_id} has booted into deployed OS")
 
         return DeployResult(system_id=params.system_id, success=True)
