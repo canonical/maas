@@ -41,6 +41,7 @@ class ZoneService(Service):
                 )
             )
             .group_by(ZoneTable.c.id)
+            .order_by(ZoneTable.c.id)
         )
 
         result = await self.conn.execute(stmt)
