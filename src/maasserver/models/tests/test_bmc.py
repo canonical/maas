@@ -1978,9 +1978,13 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             machine.interfaces[0].mac_address
             for machine in discovered.machines
         ]
-        created_machines = Machine.objects.filter(
-            current_config__interface__mac_address__in=machine_macs
-        ).distinct()
+        created_machines = (
+            Machine.objects.filter(
+                current_config__interface__mac_address__in=machine_macs
+            )
+            .order_by("id")
+            .distinct()
+        )
         for created_machine, discovered_machine in zip(
             created_machines, discovered.machines
         ):
