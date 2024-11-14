@@ -150,6 +150,7 @@ parts:
       - python3-oauthlib
       - python3-packaging
       - python3-paramiko
+      - python3-passlib
       - python3-petname
       - python3-pexpect
       - python3-prometheus-client

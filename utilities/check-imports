@@ -373,6 +373,7 @@ RegionControllerRule = Rule(
     Allow("oauthlib.oauth1"),
     Allow("OpenSSL|OpenSSL.**"),
     Allow("paramiko.**"),
+    Allow("passlib.hash.*"),
     Allow("petname"),
     Allow("piston3|piston3.**"),
     Allow("prometheus_client"),

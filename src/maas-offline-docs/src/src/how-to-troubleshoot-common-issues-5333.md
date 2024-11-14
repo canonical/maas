@@ -2634,7 +2634,7 @@ sudo tar -C xenial -xpSf xenial-server-cloudimg-amd64-root.tar.gz --numeric-owne
 Create a SHA-512 hashed password:
 
 ```nohighlight
-python3 -c 'import crypt; print(crypt.crypt("ubuntu", crypt.mksalt(crypt.METHOD_SHA512)))'
+python3 -c 'import passlib.hash; print(passlib.hash.sha512_crypt.hash("ubuntu"))'
 ```
 
 Modify the `xenial/etc/shadow` file to insert this hash.

@@ -5,7 +5,6 @@
 
 
 from base64 import b64encode
-from crypt import crypt
 from ipaddress import ip_address
 from itertools import chain
 from os import urandom
@@ -13,6 +12,7 @@ import pkgutil
 from textwrap import dedent
 
 from netaddr import IPAddress
+from passlib.hash import sha512_crypt
 import tempita
 import yaml
 
@@ -257,7 +257,7 @@ def generate_kvm_pod_configuration(node):
             {
                 "name": "virsh",
                 "lock_passwd": False,
-                "passwd": crypt(password),
+                "passwd": sha512_crypt.hash(password),
                 "shell": "/bin/rbash",
             },
         ]

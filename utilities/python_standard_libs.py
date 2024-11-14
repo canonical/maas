@@ -79,7 +79,6 @@ python_standard_libs = [
     "copy",
     "copyreg",
     "cProfile",
-    "crypt",
     "csv",
     "ctypes",
     "curses",
