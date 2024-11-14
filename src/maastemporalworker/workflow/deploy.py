@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import Result, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
-from temporalio import activity, workflow
+from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import CancelledError, ChildWorkflowError
 
@@ -46,8 +46,8 @@ from maastemporalworker.workflow.power import (
     POWER_QUERY_ACTIVITY_NAME,
 )
 from maastemporalworker.workflow.utils import (
-    with_context_activity,
-    with_context_workflow,
+    activity_defn_with_context,
+    workflow_run_with_context,
 )
 
 logger = structlog.getLogger()
@@ -92,8 +92,7 @@ class SetBootOrderParam:
 
 
 class DeployActivity(ActivityBase):
-    @with_context_activity
-    @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
+    @activity_defn_with_context(name=SET_NODE_STATUS_ACTIVITY_NAME)
     async def set_node_status(self, params: SetNodeStatusParam) -> None:
         async with self.start_transaction() as services:
             resource = (
@@ -213,8 +212,7 @@ class DeployActivity(ActivityBase):
                         v[k2] = str(v2)
         return obj
 
-    @with_context_activity
-    @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
+    @activity_defn_with_context(name=GET_BOOT_ORDER_ACTIVITY_NAME)
     async def get_boot_order(
         self, params: GetBootOrderParam
     ) -> GetBootOrderResult:
@@ -274,8 +272,7 @@ class DeployActivity(ActivityBase):
 
 @workflow.defn(name=DEPLOY_N_WORKFLOW_NAME, sandboxed=False)
 class DeployNWorkflow:
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, params: DeployNParam) -> None:
         child_workflows = []
         for param in params.params:
@@ -416,8 +413,7 @@ class DeployWorkflow:
         else:
             raise InvalidMachineStateException("no boot order found")
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, params: DeployParam) -> DeployResult:
         logger.info(f"deploying {params.system_id}")
 

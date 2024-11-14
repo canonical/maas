@@ -78,7 +78,7 @@ class PowerOnWorkflow:
     """
 
     # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @with_context_workflow
+    # @workflow_run_with_context
     @workflow.run
     async def run(self, param: PowerOnParam) -> PowerOnResult:
         result = await workflow.execute_activity(
@@ -102,7 +102,7 @@ class PowerOffWorkflow:
     """
 
     # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @with_context_workflow
+    # @workflow_run_with_context
     @workflow.run
     async def run(self, param: PowerOffParam) -> PowerOffResult:
         result = await workflow.execute_activity(
@@ -126,7 +126,7 @@ class PowerCycleWorkflow:
     """
 
     # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @with_context_workflow
+    # @workflow_run_with_context
     @workflow.run
     async def run(self, param: PowerCycleParam) -> PowerCycleResult:
         result = await workflow.execute_activity(
@@ -150,7 +150,7 @@ class PowerQueryWorkflow:
     """
 
     # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @with_context_workflow
+    # @workflow_run_with_context
     @workflow.run
     async def run(self, param: PowerQueryParam) -> PowerQueryResult:
         result = await workflow.execute_activity(
@@ -174,7 +174,7 @@ class PowerManyWorkflow:
     """
 
     # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @with_context_workflow
+    # @workflow_run_with_context
     @workflow.run
     async def run(self, param: PowerManyParam) -> None:
         for child in param.params:

@@ -9,13 +9,12 @@ from maascommon.workflows.commission import (
     COMMISSION_WORKFLOW_NAME,
     CommissionNParam,
 )
-from maastemporalworker.workflow.utils import with_context_workflow
+from maastemporalworker.workflow.utils import workflow_run_with_context
 
 
 @workflow.defn(name=COMMISSION_N_WORKFLOW_NAME, sandboxed=False)
 class CommissionNWorkflow:
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, params: CommissionNParam) -> None:
         for param in params.params:
             await workflow.execute_child_workflow(

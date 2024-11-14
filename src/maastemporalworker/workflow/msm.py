@@ -14,7 +14,7 @@ from typing import Any
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
-from temporalio import activity, workflow
+from temporalio import workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
@@ -35,8 +35,8 @@ from maascommon.workflows.msm import (
 from maasservicelayer.db import Database
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
-    with_context_activity,
-    with_context_workflow,
+    activity_defn_with_context,
+    workflow_run_with_context,
 )
 
 logger = structlog.getLogger()
@@ -85,8 +85,7 @@ class MSMConnectorActivity(ActivityBase):
             trust_env=True, timeout=timeout, connector=tcp_conn
         )
 
-    @with_context_activity
-    @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_SEND_ENROL_ACTIVITY_NAME)
     async def send_enrol(
         self, input: MSMEnrolParam
     ) -> tuple[bool, dict[str, Any] | None]:
@@ -131,8 +130,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @with_context_activity
-    @activity.defn(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
     async def check_enrol(
         self, input: MSMEnrolParam
     ) -> tuple[str | None, int]:
@@ -170,8 +168,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @with_context_activity
-    @activity.defn(name=MSM_VERIFY_TOKEN_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_VERIFY_TOKEN_ACTIVITY_NAME)
     async def verify_token(self, input: MSMTokenVerifyParam) -> bool:
         """Notify MSM that the new token was successfully installed.
 
@@ -198,8 +195,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @with_context_activity
-    @activity.defn(name=MSM_SET_ENROL_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_SET_ENROL_ACTIVITY_NAME)
     async def set_enrol(self, input: MSMConnectorParam) -> None:
         """Set enrolment data in the DB.
 
@@ -217,8 +213,7 @@ class MSMConnectorActivity(ActivityBase):
                 },
             )
 
-    @with_context_activity
-    @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:
         """Get enrolment data in the DB.
 
@@ -230,8 +225,7 @@ class MSMConnectorActivity(ActivityBase):
                 f"global/{MSM_SECRET}"
             )
 
-    @with_context_activity
-    @activity.defn(name=MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME)
     async def get_heartbeat_data(self) -> MachinesCountByStatus:
         """Get heartbeat data from MAAS DB
 
@@ -241,8 +235,7 @@ class MSMConnectorActivity(ActivityBase):
         async with self.start_transaction() as services:
             return await services.machines.count_machines_by_statuses()
 
-    @with_context_activity
-    @activity.defn(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
     async def send_heartbeat(self, input: MSMHeartbeatParam) -> int:
         """Send heartbeat data to MSM.
 
@@ -279,8 +272,7 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
-    @with_context_activity
-    @activity.defn(name=MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME)
+    @activity_defn_with_context(name=MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME)
     async def refresh_token(
         self, input: MSMTokenRefreshParam
     ) -> tuple[str | None, int]:
@@ -322,8 +314,7 @@ class MSMEnrolSiteWorkflow:
         self._pending = False
         self._enrolment_error = None
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: MSMEnrolParam) -> None:
         """Run workflow.
 
@@ -434,8 +425,7 @@ class MSMEnrolSiteWorkflow:
 class MSMWithdrawWorkflow:
     """Withdraw this site from MSM."""
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: MSMConnectorParam) -> None:
         """Run workflow.
 
@@ -451,8 +441,7 @@ class MSMHeartbeatWorkflow:
     def __init__(self) -> None:
         self._running = False
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: MSMHeartbeatParam) -> None:
         """Run workflow.
 
@@ -493,8 +482,7 @@ class MSMHeartbeatWorkflow:
 class MSMTokenRefreshWorkflow:
     """Retrieve a new JWT from MSM."""
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: MSMTokenRefreshParam) -> None:
         next_refresh = input.rotation_interval_minutes * 60
         while next_refresh >= 0:

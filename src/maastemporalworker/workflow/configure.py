@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import List
 
 from netaddr import IPAddress
-from temporalio import activity, workflow
+from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 from maascommon.enums.node import NodeTypeEnum
@@ -25,8 +25,8 @@ from maasservicelayer.db.repositories.staticipaddress import (
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
-    with_context_activity,
-    with_context_workflow,
+    activity_defn_with_context,
+    workflow_run_with_context,
 )
 
 DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT = timedelta(seconds=10)
@@ -61,8 +61,7 @@ class GetRegionControllerEndpointsResult:
 
 
 class ConfigureAgentActivity(ActivityBase):
-    @with_context_activity
-    @activity.defn(name=GET_RACK_CONTROLLER_VLANS_ACTIVITY_NAME)
+    @activity_defn_with_context(name=GET_RACK_CONTROLLER_VLANS_ACTIVITY_NAME)
     async def get_rack_controller_vlans(
         self, input: GetRackControllerVLANsInput
     ) -> GetRackControllerVLANsResult:
@@ -92,8 +91,9 @@ class ConfigureAgentActivity(ActivityBase):
                 )
             return GetRackControllerVLANsResult([])
 
-    @with_context_activity
-    @activity.defn(name=GET_REGION_CONTROLLER_ENDPOINTS_ACTIVITY_NAME)
+    @activity_defn_with_context(
+        name=GET_REGION_CONTROLLER_ENDPOINTS_ACTIVITY_NAME
+    )
     async def get_region_controller_endpoints(
         self,
     ) -> GetRegionControllerEndpointsResult:
@@ -131,8 +131,7 @@ def _format_endpoint(ip: str) -> str:
 class ConfigureAgentWorkflow:
     """A ConfigureAgent workflow to setup MAAS Agent"""
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: ConfigureAgentParam) -> None:
         # Agent registers workflows for configuring it's services
         # during Temporal worker pool initialization using WithConfigurator.

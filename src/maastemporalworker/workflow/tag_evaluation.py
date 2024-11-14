@@ -29,7 +29,7 @@ from functools import reduce
 
 from sqlalchemy import text
 import structlog
-from temporalio import activity, workflow
+from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 from maascommon.workflows.tag import (
@@ -38,8 +38,8 @@ from maascommon.workflows.tag import (
 )
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
-    with_context_activity,
-    with_context_workflow,
+    activity_defn_with_context,
+    workflow_run_with_context,
 )
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
@@ -67,8 +67,7 @@ class TagEvaluationResult:
 class TagEvaluationWorkflow:
     """Temporal workflow for tag evaluation."""
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: TagEvaluationParam) -> None:
         logger.info(f"Tag (id={param.tag_id}) evaluation starts.")
         result: TagEvaluationResult = await workflow.execute_activity(
@@ -85,8 +84,7 @@ class TagEvaluationWorkflow:
 class TagEvaluationActivity(ActivityBase):
     """Temporal activity for tag evaluation."""
 
-    @with_context_activity
-    @activity.defn(name=EVALUATE_TAG_ACTIVITY_NAME)
+    @activity_defn_with_context(name=EVALUATE_TAG_ACTIVITY_NAME)
     async def evaluate_tag(
         self, param: TagEvaluationParam
     ) -> TagEvaluationResult:

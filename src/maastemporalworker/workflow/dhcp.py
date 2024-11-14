@@ -8,7 +8,7 @@ from typing import Optional
 
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
-from temporalio import activity, workflow
+from temporalio import workflow
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from maascommon.workflows.dhcp import (
@@ -29,8 +29,8 @@ from maasservicelayer.db.tables import (
 )
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
-    with_context_activity,
-    with_context_workflow,
+    activity_defn_with_context,
+    workflow_run_with_context,
 )
 
 FIND_AGENTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
@@ -234,8 +234,7 @@ class DHCPConfigActivity(ActivityBase):
         result = await tx.execute(stmt)
         return {r[0] for r in result.all()}
 
-    @with_context_activity
-    @activity.defn(name=FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME)
+    @activity_defn_with_context(name=FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME)
     async def find_agents_for_updates(
         self, param: ConfigureDHCPParam
     ) -> AgentsForUpdateResult:
@@ -366,8 +365,7 @@ class DHCPConfigActivity(ActivityBase):
             for r in result.all()
         ]
 
-    @with_context_activity
-    @activity.defn(name=FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME)
+    @activity_defn_with_context(name=FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME)
     async def fetch_hosts_for_update(
         self, param: FetchHostsForUpdateParam
     ) -> HostsForUpdateResult:
@@ -385,8 +383,7 @@ class DHCPConfigActivity(ActivityBase):
 
             return HostsForUpdateResult(hosts=hosts)
 
-    @with_context_activity
-    @activity.defn(name=GET_OMAPI_KEY_ACTIVITY_NAME)
+    @activity_defn_with_context(name=GET_OMAPI_KEY_ACTIVITY_NAME)
     async def get_omapi_key(self) -> OMAPIKeyResult:
         async with self.start_transaction() as services:
             key = await services.secrets.get_simple_secret("global/omapi-key")
@@ -396,8 +393,7 @@ class DHCPConfigActivity(ActivityBase):
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
         # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
         # scenario we want to update the dhcpd config.
@@ -442,8 +438,7 @@ class ConfigureDHCPForAgentWorkflow:
 @workflow.defn(name=CONFIGURE_DHCP_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPWorkflow:
 
-    @with_context_workflow
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: ConfigureDHCPParam) -> None:
         agent_system_ids_for_update = await workflow.execute_activity(
             FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME,

@@ -3,30 +3,46 @@
 from functools import wraps
 
 import structlog
+from temporalio import activity, workflow
 
 from maasservicelayer.logging.context import Context
 
 logger = structlog.getLogger()
 
 
-def with_context_activity(func):
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        context = Context()
-        structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(context_id=context.context_id)
-        logger.info(f"Starting activity {func.__name__}")
-        res = await func(*args, **kwargs)
-        logger.info(
-            "Activity has completed",
-            elapsed_time_seconds=context.get_elapsed_time_seconds(),
-        )
-        return res
+def activity_defn_with_context(name):
+    """
+    You MUST always use this decorator instead of the plain @activity.defn.
+    """
 
-    return wrapper
+    def decorator(func):
+        @activity.defn(name=name)
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            context = Context()
+            structlog.contextvars.clear_contextvars()
+            structlog.contextvars.bind_contextvars(
+                context_id=context.context_id
+            )
+            logger.info(f"Starting activity {func.__name__}")
+            res = await func(*args, **kwargs)
+            logger.info(
+                "Activity has completed",
+                elapsed_time_seconds=context.get_elapsed_time_seconds(),
+            )
+            return res
+
+        return wrapper
+
+    return decorator
 
 
-def with_context_workflow(func):
+def workflow_run_with_context(func):
+    """
+    You MUST always use this decorator instead of the plain @workflow.run.
+    """
+
+    @workflow.run
     @wraps(func)
     async def wrapper(*args, **kwargs):
         context = Context()
