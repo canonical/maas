@@ -9,3 +9,9 @@ CONFIGURE_DNS_WORKFLOW_NAME = "configure-dns"
 @dataclass
 class ConfigureDNSParam:
     need_full_reload: bool
+
+
+def merge_configure_dns_params(
+    old: ConfigureDNSParam, new: ConfigureDNSParam
+) -> ConfigureDNSParam:
+    return old if old.need_full_reload else new

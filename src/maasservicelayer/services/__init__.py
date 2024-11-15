@@ -9,6 +9,7 @@ from temporalio.client import Client
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.events import EventsService
@@ -57,6 +58,7 @@ class ServiceCollectionV3:
     leases: LeasesService
     domains: DomainsService
     dnsresources: DNSResourcesService
+    dnspublications: DNSPublicationsService
     staticipaddress: StaticIPAddressService
     ipranges: IPRangesService
     temporal: TemporalService
@@ -115,6 +117,10 @@ class ServiceCollectionV3:
         services.domains = DomainsService(connection=connection)
         services.dnsresources = DNSResourcesService(
             connection=connection, domains_service=services.domains
+        )
+        services.dnspublications = DNSPublicationsService(
+            connection=connection,
+            temporal_service=services.temporal,
         )
         services.staticipaddress = StaticIPAddressService(
             connection=connection,
