@@ -4,9 +4,30 @@ from typing import Type
 
 from sqlalchemy import select, Table
 
-from maasservicelayer.db.repositories.base import BaseRepository
+from maasservicelayer.db.repositories.base import (
+    BaseRepository,
+    CreateOrUpdateResourceBuilder,
+)
 from maasservicelayer.db.tables import DomainTable, GlobalDefaultTable
 from maasservicelayer.models.domains import Domain
+
+
+class DomainsResourceBuilder(CreateOrUpdateResourceBuilder):
+    def with_authoritative(
+        self, authoritative: bool
+    ) -> "DomainsResourceBuilder":
+        self._request.set_value(
+            DomainTable.c.authoritative.name, authoritative
+        )
+        return self
+
+    def with_ttl(self, ttl: int) -> "DomainsResourceBuilder":
+        self._request.set_value(DomainTable.c.ttl.name, ttl)
+        return self
+
+    def with_name(self, name: str) -> "DomainsResourceBuilder":
+        self._request.set_value(DomainTable.c.name.name, name)
+        return self
 
 
 class DomainsRepository(BaseRepository[Domain]):

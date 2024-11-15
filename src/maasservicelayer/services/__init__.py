@@ -114,13 +114,16 @@ class ServiceCollectionV3:
             temporal_service=services.temporal,
         )
         services.agents = AgentsService(connection=connection)
-        services.domains = DomainsService(connection=connection)
-        services.dnsresources = DNSResourcesService(
-            connection=connection, domains_service=services.domains
-        )
         services.dnspublications = DNSPublicationsService(
             connection=connection,
             temporal_service=services.temporal,
+        )
+        services.domains = DomainsService(
+            connection=connection,
+            dnspublications_service=services.dnspublications,
+        )
+        services.dnsresources = DNSResourcesService(
+            connection=connection, domains_service=services.domains
         )
         services.staticipaddress = StaticIPAddressService(
             connection=connection,
