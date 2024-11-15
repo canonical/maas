@@ -85,7 +85,7 @@ class DNSConfigActivity(ActivityBase):
         return DNSUpdateResult(serial=1)
 
     @activity.defn(name=DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME)
-    async def dynammic_update_dns_configuration(
+    async def dynamic_update_dns_configuration(
         self, updates: DynamicUpdateParam
     ) -> DNSUpdateResult:
         # TODO apply dynamic updates
