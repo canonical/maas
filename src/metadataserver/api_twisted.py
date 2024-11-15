@@ -501,7 +501,7 @@ class StatusWorkerService(TimerService):
 
                 if not failed and activity_name == "modules-final":
                     signal_workflow(
-                        f"deploy-{node.system_id}", "netboot-finished"
+                        f"deploy:{node.system_id}", "netboot-finished"
                     )
 
             elif node.status == NODE_STATUS.DISK_ERASING:
