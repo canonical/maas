@@ -20,6 +20,8 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -29,7 +31,7 @@ class VlansHandler(Handler):
     TAGS = ["Vlans"]
 
     @handler(
-        path="/vlans",
+        path="/fabrics/{fabric_id}/vlans",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -42,24 +44,29 @@ class VlansHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def list_vlans(
+    async def list_fabric_vlans(
         self,
+        fabric_id: int,
         token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         vlans = await services.vlans.list(
             token=token_pagination_params.token,
             size=token_pagination_params.size,
+            query=QuerySpec(
+                where=VlansClauseFactory.with_fabric_id(fabric_id)
+            ),
         )
         return VlansListResponse(
             items=[
                 VlanResponse.from_model(
-                    vlan=vlan, self_base_hyperlink=f"{V3_API_PREFIX}/vlans"
+                    vlan=vlan,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans",
                 )
                 for vlan in vlans.items
             ],
             next=(
-                f"{V3_API_PREFIX}/vlans?"
+                f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans?"
                 f"{TokenPaginationParams.to_href_format(vlans.next_token, token_pagination_params.size)}"
                 if vlans.next_token
                 else None
@@ -67,7 +74,7 @@ class VlansHandler(Handler):
         )
 
     @handler(
-        path="/vlans/{vlan_id}",
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -86,17 +93,21 @@ class VlansHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def get_vlan(
+    async def get_fabric_vlan(
         self,
+        fabric_id: int,
         vlan_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        vlan = await services.vlans.get_by_id(vlan_id)
+        vlan = await services.vlans.get_by_id(
+            fabric_id=fabric_id, vlan_id=vlan_id
+        )
         if not vlan:
             return NotFoundResponse()
 
         response.headers["ETag"] = vlan.etag()
         return VlanResponse.from_model(
-            vlan=vlan, self_base_hyperlink=f"{V3_API_PREFIX}/vlans"
+            vlan=vlan,
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans",
         )

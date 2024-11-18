@@ -61,7 +61,7 @@ TEST_VLAN_2 = Vlan(
 
 
 class TestVlanApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/vlans"
+    BASE_PATH = f"{V3_API_PREFIX}/fabrics/1/vlans"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
@@ -134,9 +134,6 @@ class TestVlanApi(ApiCommonTests):
             "relay_vlan": TEST_VLAN.relay_vlan,
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
-            "fabric": {
-                "href": f"{V3_API_PREFIX}/fabrics/{TEST_VLAN.fabric_id}"
-            },
             "space": None,
             "_links": {"self": {"href": f"{self.BASE_PATH}/{TEST_VLAN.id}"}},
         }

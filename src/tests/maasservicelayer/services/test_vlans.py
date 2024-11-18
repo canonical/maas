@@ -13,6 +13,7 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.vlans import (
+    VlansClauseFactory,
     VlansRepository,
     VlansResourceBuilder,
 )
@@ -41,8 +42,13 @@ class TestVlansService:
             nodes_service=nodes_service_mock,
             vlans_repository=vlans_repository_mock,
         )
-        vlans_list = await vlans_service.list(token=None, size=1)
-        vlans_repository_mock.list.assert_called_once_with(token=None, size=1)
+        query = QuerySpec(where=VlansClauseFactory.with_fabric_id(fabric_id=0))
+        vlans_list = await vlans_service.list(token=None, size=1, query=query)
+        vlans_repository_mock.list.assert_called_once_with(
+            token=None,
+            size=1,
+            query=query,
+        )
         assert vlans_list.next_token is None
         assert vlans_list.items == []
 
@@ -69,9 +75,36 @@ class TestVlansService:
             nodes_service=nodes_service_mock,
             vlans_repository=vlans_repository_mock,
         )
-        vlan = await vlans_service.get_by_id(id=1)
+        vlan = await vlans_service.get_by_id(fabric_id=0, vlan_id=1)
         vlans_repository_mock.find_by_id.assert_called_once_with(id=1)
         assert expected_vlan == vlan
+
+    async def test_get_by_id_wrong_fabric(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        now = utcnow()
+        expected_vlan = Vlan(
+            id=0,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=0,
+            dhcp_on=True,
+            fabric_id=0,
+            created=now,
+            updated=now,
+        )
+        nodes_service_mock = Mock(NodesService)
+        vlans_repository_mock = Mock(VlansRepository)
+        vlans_repository_mock.find_by_id.return_value = expected_vlan
+        vlans_service = VlansService(
+            connection=db_connection,
+            temporal_service=Mock(TemporalService),
+            nodes_service=nodes_service_mock,
+            vlans_repository=vlans_repository_mock,
+        )
+        vlan = await vlans_service.get_by_id(fabric_id=1, vlan_id=1)
+        vlans_repository_mock.find_by_id.assert_called_once_with(id=1)
+        assert vlan is None
 
     async def test_get_node_vlans(self) -> None:
         db_connection = Mock(AsyncConnection)

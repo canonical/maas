@@ -25,6 +25,11 @@ from maasservicelayer.models.vlans import Vlan
 
 
 class VlansClauseFactory(ClauseFactory):
+
+    @classmethod
+    def with_fabric_id(cls, fabric_id: int) -> Clause:
+        return Clause(condition=eq(VlanTable.c.fabric_id, fabric_id))
+
     @classmethod
     def with_system_id(cls, system_id: str) -> Clause:
         return Clause(condition=eq(NodeTable.c.system_id, system_id))

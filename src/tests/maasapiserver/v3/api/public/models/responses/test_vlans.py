@@ -39,5 +39,4 @@ class TestVlanResponse:
         assert vlan.primary_rack_id == vlan_response.primary_rack
         assert vlan.secondary_rack_id == vlan_response.secondary_rack
         assert vlan.relay_vlan == vlan_response.relay_vlan
-        assert vlan_response.fabric.href.endswith(f"fabrics/{vlan.fabric_id}")
         assert vlan_response.space.href.endswith(f"spaces/{vlan.space_id}")

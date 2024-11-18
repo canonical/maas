@@ -30,9 +30,7 @@ class FabricResponse(HalResponse[BaseHal]):
             name=fabric.name,
             description=fabric.description,
             class_type=fabric.class_type,
-            vlans=BaseHref(
-                href=f"{V3_API_PREFIX}/vlans?filter=fabric_id eq {fabric.id}"
-            ),
+            vlans=BaseHref(href=f"{V3_API_PREFIX}/fabrics/{fabric.id}/vlans"),
             hal_links=BaseHal(
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{fabric.id}"

@@ -112,7 +112,7 @@ class TestFabricsApi(ApiCommonTests):
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
             "vlans": {
-                "href": f"{V3_API_PREFIX}/vlans?filter=fabric_id eq {TEST_FABRIC.id}"
+                "href": f"{V3_API_PREFIX}/fabrics/{TEST_FABRIC.id}/vlans"
             },
             "_links": {"self": {"href": f"{self.BASE_PATH}/{TEST_FABRIC.id}"}},
         }
