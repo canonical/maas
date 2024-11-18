@@ -18,6 +18,7 @@ import yaml
 
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.db import Database
+from maasservicelayer.services import CacheForServices
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
     MachinesCountByStatus,
@@ -66,7 +67,8 @@ async def msm_act(mocker, db: Database, db_connection: AsyncConnection):
     mocker.patch.object(
         MSMConnectorActivity, "_create_session", return_value=mock_session
     )
-    act = MSMConnectorActivity(db, db_connection)
+    services_cache = CacheForServices()
+    act = MSMConnectorActivity(db, services_cache, db_connection)
     return act
 
 

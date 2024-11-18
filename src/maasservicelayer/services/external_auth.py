@@ -1,6 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from dataclasses import dataclass
 from datetime import timedelta
 from functools import lru_cache
 import os
@@ -38,7 +39,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
 from maasservicelayer.models.users import User
-from maasservicelayer.services._base import Service
+from maasservicelayer.services._base import Service, ServiceCache
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
@@ -54,11 +55,23 @@ def get_third_party_locator(auth_endpoint: str):
     )
 
 
+@dataclass(slots=True)
+class ExternalAuthServiceCache(ServiceCache):
+    external_auth_config: ExternalAuthConfig | None = None
+    auth_info: AuthInfo | None = None
+    bakery_key: bakery.PrivateKey | None = None
+    candid_client: CandidAsyncClient | None = None
+    rbac_client: RbacAsyncClient | None = None
+
+    async def close(self) -> None:
+        if self.rbac_client:
+            await self.rbac_client.close()
+        if self.candid_client:
+            await self.candid_client.close()
+
+
 # We need to implement RootKeyStore because we pass this service to the Macaroon Auth Checker
 class ExternalAuthService(Service, RootKeyStore):
-    # TODO: MAASENG-3538 implement an ExternalAuthServiceFactory to cache the external_auth_config, keys and other things that
-    #  do not need to be refetched from the DB.
-
     EXTERNAL_AUTH_SECRET_PATH = "global/external-auth"
     BAKERY_KEY_SECRET_PATH = "global/macaroon-key"
     ROOTKEY_MATERIAL_SECRET_FORMAT = "rootkey/%s/material"
@@ -71,15 +84,21 @@ class ExternalAuthService(Service, RootKeyStore):
         connection: AsyncConnection,
         secrets_service: SecretsService,
         users_service: UsersService,
+        cache: ExternalAuthServiceCache | None = None,
         external_auth_repository: ExternalAuthRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(connection, cache)
         self.secrets_service = secrets_service
         self.users_service = users_service
         self.external_auth_repository = (
             external_auth_repository or ExternalAuthRepository(connection)
         )
 
+    @staticmethod
+    def build_cache_object() -> ExternalAuthServiceCache:
+        return ExternalAuthServiceCache()
+
+    @Service.from_cache_or_execute(attr="external_auth_config")
     async def get_external_auth(self) -> ExternalAuthConfig | None:
         """
         Same logic of maasserver.middleware.ExternalAuthInfoMiddleware._get_external_auth_info
@@ -113,6 +132,7 @@ class ExternalAuthService(Service, RootKeyStore):
             admin_group=auth_admin_group,
         )
 
+    @Service.from_cache_or_execute(attr="auth_info")
     async def get_auth_info(self) -> AuthInfo | None:
         """
         Same logic of maasserver.macaroon_auth.get_auth_info
@@ -213,6 +233,7 @@ class ExternalAuthService(Service, RootKeyStore):
         )
         return base_bakery
 
+    @Service.from_cache_or_execute(attr="bakery_key")
     async def get_or_create_bakery_key(self) -> bakery.PrivateKey:
         key = await self.secrets_service.get_simple_secret(
             path=self.BAKERY_KEY_SECRET_PATH, default=None
@@ -309,10 +330,12 @@ class ExternalAuthService(Service, RootKeyStore):
         )
         raise DischargeRequiredException(macaroon=macaroon)
 
+    @Service.from_cache_or_execute(attr="candid_client")
     async def get_candid_client(self) -> CandidAsyncClient:
         auth_info = await self.get_auth_info()
         return CandidAsyncClient(auth_info)
 
+    @Service.from_cache_or_execute(attr="rbac_client")
     async def get_rbac_client(self) -> RbacAsyncClient:
         auth_info = await self.get_auth_info()
         auth_config = await self.get_external_auth()

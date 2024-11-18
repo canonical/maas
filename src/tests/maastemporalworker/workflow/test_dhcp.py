@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.testing import ActivityEnvironment
 
 from maasservicelayer.db import Database
+from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.dhcp import (
     ConfigureDHCPParam,
     DHCPConfigActivity,
@@ -41,7 +42,10 @@ class TestDHCPConfigActivity:
             dhcp_on=True,
         )
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await activities._get_agents_for_vlans(
             db_connection, {vlan["id"]}
@@ -67,7 +71,10 @@ class TestDHCPConfigActivity:
             for _ in range(3)
         ]
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await activities._get_vlans_for_subnets(
             db_connection, [s["id"] for s in subnets]
@@ -90,7 +97,10 @@ class TestDHCPConfigActivity:
             for subnet in subnets
         ]
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await activities._get_vlans_for_ip_ranges(
             db_connection, [ip_range["id"] for ip_range in ip_ranges]
@@ -118,7 +128,10 @@ class TestDHCPConfigActivity:
             for _ in range(3)
         ]
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await activities._get_vlans_for_static_ip_addrs(
             db_connection, [ip["id"] for ip in ips]
@@ -141,7 +154,10 @@ class TestDHCPConfigActivity:
             for subnet in subnets
         ]
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await activities._get_vlans_for_reserved_ips(
             db_connection, [ip["id"] for ip in reserved_ips]
@@ -170,7 +186,10 @@ class TestDHCPConfigActivity:
 
         subnet = await create_test_subnet_entry(fixture, vlan_id=vlan2["id"])
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await env.run(
             activities.find_agents_for_updates,
@@ -201,7 +220,10 @@ class TestDHCPConfigActivity:
             fixture, node=machine, ips=ips, vlan_id=vlan["id"]
         )
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await activities._get_hosts_for_static_ip_addresses(
             db_connection, rack["system_id"], [ip["id"] for ip in ips]
@@ -227,7 +249,10 @@ class TestDHCPConfigActivity:
             fixture, subnet=subnet
         )
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await activities._get_hosts_for_reserved_ips(
             db_connection, rack["system_id"], [reserved_ip["id"]]
@@ -259,7 +284,10 @@ class TestDHCPConfigActivity:
             fixture, subnet=subnet
         )
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await env.run(
             activities.fetch_hosts_for_update,
@@ -294,7 +322,10 @@ class TestDHCPConfigActivity:
             fixture, path="global/omapi-key", value={"secret": "abc"}
         )
 
-        activities = DHCPConfigActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
 
         result = await env.run(activities.get_omapi_key)
 

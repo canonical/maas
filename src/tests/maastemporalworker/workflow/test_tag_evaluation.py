@@ -17,6 +17,7 @@ from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTagTable, TagTable
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.users import User
+from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.tag_evaluation import (
     EVALUATE_TAG_ACTIVITY_NAME,
     TagEvaluationActivity,
@@ -297,8 +298,9 @@ class TestTagEvaluationActivities:
             rows = cursor_result.all()
             return rows
 
+        services_cache = CacheForServices()
         tag_evaluation_activity = TagEvaluationActivity(
-            db, connection=db_connection
+            db, services_cache, connection=db_connection
         )
 
         machine_1, machine_2, _, _, machine_5 = (

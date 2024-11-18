@@ -33,6 +33,7 @@ from maascommon.workflows.msm import (
     MSMTokenRefreshParam,
 )
 from maasservicelayer.db import Database
+from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -72,9 +73,12 @@ class MSMTokenVerifyParam:
 
 class MSMConnectorActivity(ActivityBase):
     def __init__(
-        self, db: Database, connection: AsyncConnection | None = None
+        self,
+        db: Database,
+        services_cache: CacheForServices,
+        connection: AsyncConnection | None = None,
     ):
-        super().__init__(db, connection)
+        super().__init__(db, services_cache, connection)
         self._session = self._create_session()
 
     def _create_session(self) -> ClientSession:

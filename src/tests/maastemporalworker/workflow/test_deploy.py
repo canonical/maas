@@ -29,6 +29,7 @@ from maascommon.workflows.power import (
 from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTable
 from maasservicelayer.models.nodes import Node
+from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.deploy import (
     DeployActivity,
     DeployNParam,
@@ -90,7 +91,10 @@ class TestDeployActivity:
     ):
         node = await create_test_machine_entry(fixture, status=NodeStatus.NEW)
         env = ActivityEnvironment()
-        activities = DeployActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DeployActivity(
+            db, services_cache, connection=db_connection
+        )
         await env.run(
             activities.set_node_status,
             SetNodeStatusParam(
@@ -132,7 +136,10 @@ class TestDeployActivity:
             link["ip"] = str(link["ip"])
         boot_disk = await create_test_blockdevice_entry(fixture, node=machine)
         other_disk = await create_test_blockdevice_entry(fixture, node=machine)
-        activities = DeployActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DeployActivity(
+            db, services_cache, connection=db_connection
+        )
         env = ActivityEnvironment()
         boot_order = await env.run(
             activities.get_boot_order,
@@ -173,7 +180,10 @@ class TestDeployActivity:
             link["ip"] = str(link["ip"])
         boot_disk = await create_test_blockdevice_entry(fixture, node=machine)
         other_disk = await create_test_blockdevice_entry(fixture, node=machine)
-        activities = DeployActivity(db, connection=db_connection)
+        services_cache = CacheForServices()
+        activities = DeployActivity(
+            db, services_cache, connection=db_connection
+        )
         env = ActivityEnvironment()
         boot_order = await env.run(
             activities.get_boot_order,

@@ -11,6 +11,7 @@ from maasapiserver.settings import read_config
 from maasserver.workflow.worker import Worker as TemporalWorker
 from maasservicelayer.db import Database
 from maasservicelayer.logging.configure import configure_logging
+from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.commission import CommissionNWorkflow
 from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
@@ -82,12 +83,13 @@ async def main() -> None:
 
     maas_id = MAAS_ID.get()
 
-    configure_activity = ConfigureAgentActivity(db)
-    msm_activity = MSMConnectorActivity(db)
-    tag_evaluation_activity = TagEvaluationActivity(db)
-    deploy_activity = DeployActivity(db)
-    dhcp_activity = DHCPConfigActivity(db)
-    dns_activity = DNSConfigActivity(db)
+    services_cache = CacheForServices()
+    configure_activity = ConfigureAgentActivity(db, services_cache)
+    msm_activity = MSMConnectorActivity(db, services_cache)
+    tag_evaluation_activity = TagEvaluationActivity(db, services_cache)
+    deploy_activity = DeployActivity(db, services_cache)
+    dhcp_activity = DHCPConfigActivity(db, services_cache)
+    dns_activity = DNSConfigActivity(db, services_cache)
 
     temporal_workers = [
         # All regions listen to a shared task queue. The first to pick up a task will execute it.

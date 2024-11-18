@@ -60,7 +60,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
-from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.users import UsersService
@@ -94,6 +94,7 @@ def auth_app(
     transaction_middleware_class: type,
 ) -> Iterator[FastAPI]:
     app = FastAPI()
+    services_cache = CacheForServices()
 
     app.add_middleware(
         V3AuthenticationMiddleware,
@@ -103,10 +104,11 @@ def auth_app(
             macaroon_authentication_provider=MacaroonAuthenticationProvider(),
         ),
     )
-    app.add_middleware(ServicesMiddleware)
+    app.add_middleware(ServicesMiddleware, cache=services_cache)
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ExceptionMiddleware)
     app.add_middleware(ContextMiddleware)
+    app.add_event_handler("shutdown", services_cache.close)
 
     @app.get("/MAAS/a/v3/users/{username}/token")
     async def get_token(
@@ -579,9 +581,10 @@ class TestValidateUserExternalAuthCandid:
             email="myusername@candid.example.com",
         )
         temporal = Mock(TemporalClient)
+        cache = CacheForServices()
         self.request = Mock(Request)
         self.request.state.services = await ServiceCollectionV3.produce(
-            db_connection, temporal
+            db_connection, cache, temporal
         )
         self.request.state.services.external_auth.get_candid_client = (
             AsyncMock(return_value=self.client)
@@ -715,9 +718,11 @@ class TestValidateUserExternalAuthRbac:
             email="myusername@rbac.example.com",
         )
         temporal = Mock(TemporalClient)
+        cache = CacheForServices()
         self.request = Mock(Request)
         self.request.state.services = await ServiceCollectionV3.produce(
             db_connection,
+            cache,
             temporal,
         )
         self.request.state.services.external_auth.get_rbac_client = AsyncMock(

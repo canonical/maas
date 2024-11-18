@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
 
 from maasservicelayer.db import Database
-from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 
 UNSET = object()
 
@@ -19,11 +19,15 @@ class ActivityBase:
     _db: Database
 
     def __init__(
-        self, db: Database, connection: AsyncConnection | None = None
+        self,
+        db: Database,
+        services_cache: CacheForServices,
+        connection: AsyncConnection | None = None,
     ):
         self._db = db
         # if provided, will use the single connection and assume a transaction has begun
         self._conn = connection
+        self.services_cache = services_cache
 
     @asynccontextmanager
     async def _start_transaction(self) -> AsyncIterator[AsyncConnection]:
@@ -40,4 +44,6 @@ class ActivityBase:
     @asynccontextmanager
     async def start_transaction(self) -> AsyncIterator[ServiceCollectionV3]:
         async with self._start_transaction() as conn:
-            yield await ServiceCollectionV3.produce(conn)
+            yield await ServiceCollectionV3.produce(
+                conn, cache=self.services_cache
+            )

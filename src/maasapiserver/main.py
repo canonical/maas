@@ -49,6 +49,7 @@ from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import StartupLock
 from maasservicelayer.logging.configure import configure_logging
+from maasservicelayer.services import CacheForServices
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 
 logger = structlog.getLogger()
@@ -96,6 +97,7 @@ async def prepare_app(
     await wait_for_startup(db)
 
     temporal = await get_temporal_client_async()
+    services_cache = CacheForServices()
 
     app = FastAPI(
         title=app_title,
@@ -120,7 +122,9 @@ async def prepare_app(
             ),
         )
 
-    app.add_middleware(ServicesMiddleware, temporal=temporal)
+    app.add_middleware(
+        ServicesMiddleware, temporal=temporal, cache=services_cache
+    )
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ExceptionMiddleware)
     app.add_middleware(ContextMiddleware)
@@ -141,6 +145,7 @@ async def prepare_app(
             listeners=[VaultMigrationPostgresListener()],
         ),
     )
+    app.add_event_handler("shutdown", services_cache.close)
 
     return app
 

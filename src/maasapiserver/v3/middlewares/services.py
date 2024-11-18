@@ -7,7 +7,7 @@ from starlette.types import ASGIApp
 from temporalio.client import Client
 
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 
 
 async def services(
@@ -20,9 +20,15 @@ async def services(
 class ServicesMiddleware(BaseHTTPMiddleware):
     """Injects the V3 services in the request context if the request targets a v3 endpoint."""
 
-    def __init__(self, app: ASGIApp, temporal: Optional[Client] = None):
+    def __init__(
+        self,
+        app: ASGIApp,
+        cache: CacheForServices,
+        temporal: Optional[Client] = None,
+    ):
         super().__init__(app)
         self.temporal = temporal
+        self.services_cache = cache
 
     async def dispatch(
         self,
@@ -35,7 +41,9 @@ class ServicesMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         services = await ServiceCollectionV3.produce(
-            request.state.context.get_connection(), temporal=self.temporal
+            request.state.context.get_connection(),
+            cache=self.services_cache,
+            temporal=self.temporal,
         )
         request.state.services = services
         return await call_next(request)

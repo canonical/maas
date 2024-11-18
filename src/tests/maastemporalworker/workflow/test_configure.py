@@ -18,6 +18,7 @@ from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import (
+    CacheForServices,
     ServiceCollectionV3,
     StaticIPAddressService,
     VlansService,
@@ -55,8 +56,9 @@ class TestConfigureAgentActivity:
             activity_module, "ServiceCollectionV3", mock_services
         )
 
+        services_cache = CacheForServices()
         configure_activities = ConfigureAgentActivity(
-            Mock(Database), connection=Mock(AsyncConnection)
+            Mock(Database), services_cache, connection=Mock(AsyncConnection)
         )
 
         result = await configure_activities.get_rack_controller_vlans(
@@ -110,8 +112,9 @@ class TestConfigureAgentActivity:
             activity_module, "ServiceCollectionV3", mock_services
         )
 
+        services_cache = CacheForServices()
         configure_activities = ConfigureAgentActivity(
-            Mock(Database), connection=Mock(AsyncConnection)
+            Mock(Database), services_cache, connection=Mock(AsyncConnection)
         )
 
         result = await configure_activities.get_region_controller_endpoints()

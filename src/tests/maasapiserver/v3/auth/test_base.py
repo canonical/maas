@@ -26,6 +26,7 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.services import CacheForServices
 
 
 class AuthTestMiddleware(BaseHTTPMiddleware):
@@ -64,10 +65,13 @@ def auth_app(
 ) -> Iterator[FastAPI]:
     app = FastAPI()
 
+    services_cache = CacheForServices()
     app.add_middleware(AuthTestMiddleware)
-    app.add_middleware(ServicesMiddleware)
+    app.add_middleware(ServicesMiddleware, cache=services_cache)
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ContextMiddleware)
+
+    app.add_event_handler("shutdown", services_cache.close)
 
     @app.post(f"{V3_API_PREFIX}/user")
     async def get_user(

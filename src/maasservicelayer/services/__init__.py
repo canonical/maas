@@ -1,11 +1,12 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
+from typing import Callable, Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
 
+from maasservicelayer.services._base import ServiceCache
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.configurations import ConfigurationsService
@@ -33,6 +34,29 @@ from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.services.vmcluster import VmClustersService
 from maasservicelayer.services.zones import ZonesService
+
+
+class CacheForServices:
+    def __init__(self):
+        self.cache: dict[str, ServiceCache] = {}
+
+    def get(self, name: str, fn: Callable) -> ServiceCache:
+        """Get the ServiceCache for service named *name*.
+        Params:
+            - name: class name of the service
+            - fn: function to create the cache if it doesn't exists
+        Returns:
+            ServiceCache: cache for the specified service.
+        """
+        if name in self.cache:
+            return self.cache[name]
+        self.cache[name] = fn()
+        return self.cache[name]
+
+    async def close(self) -> None:
+        """Perform all the shutdown operations for all caches."""
+        for cache in self.cache.values():
+            await cache.close()
 
 
 class ServiceCollectionV3:
@@ -65,7 +89,10 @@ class ServiceCollectionV3:
 
     @classmethod
     async def produce(
-        cls, connection: AsyncConnection, temporal: Optional[Client] = None
+        cls,
+        connection: AsyncConnection,
+        cache: CacheForServices,
+        temporal: Optional[Client] = None,
     ) -> "ServiceCollectionV3":
         services = cls()
         services.configurations = ConfigurationsService(connection=connection)
@@ -83,6 +110,7 @@ class ServiceCollectionV3:
             connection=connection,
             secrets_service=services.secrets,
             users_service=services.users,
+            cache=cache.get(ExternalAuthService.__name__, ExternalAuthService.build_cache_object),  # type: ignore
         )
         services.nodes = NodesService(
             connection=connection, secrets_service=services.secrets

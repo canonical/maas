@@ -3,7 +3,7 @@
 
 from datetime import timedelta
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import call, Mock, patch
 
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
@@ -33,27 +33,46 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.models.external_auth import RootKey
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import SecretsService, UsersService
-from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.external_auth import (
+    ExternalAuthService,
+    ExternalAuthServiceCache,
+)
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.security import to_bin, to_hex
+
+TEST_KEY = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+
+TEST_CONFIG_CANDID = {
+    "key": TEST_KEY,
+    "url": "http://10.0.1.23:8081/",
+    "user": "admin@candid",
+    "domain": "",
+    "rbac-url": "",
+    "admin-group": "admin",
+}
+
+TEST_CONFIG_RBAC = {
+    "key": TEST_KEY,
+    "url": "",
+    "user": "admin@candid",
+    "domain": "",
+    "rbac-url": "http://10.0.1.23:5000",
+    "admin-group": "admin",
+}
 
 
 @pytest.mark.asyncio
 class TestExternalAuthService:
     async def test_get_external_auth_candid(self) -> None:
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_composite_secret.return_value = {
-            "key": "mykey",
-            "url": "http://10.0.1.23:8081/",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "",
-            "admin-group": "admin",
-        }
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_CANDID
+        )
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         external_auth = await external_auth_service.get_external_auth()
@@ -67,18 +86,14 @@ class TestExternalAuthService:
 
     async def test_get_external_auth_rbac(self) -> None:
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_composite_secret.return_value = {
-            "key": "mykey",
-            "url": "",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "http://10.0.1.23:5000",
-            "admin-group": "admin",
-        }
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_RBAC
+        )
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         external_auth = await external_auth_service.get_external_auth()
@@ -97,6 +112,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         external_auth = await external_auth_service.get_external_auth()
@@ -107,27 +123,21 @@ class TestExternalAuthService:
 
     async def test_get_auth_info(self) -> None:
         secrets_service_mock = Mock(SecretsService)
-        secrets_service_mock.get_composite_secret.return_value = {
-            "key": "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw=",
-            "url": "http://10.0.1.23:8081/",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "",
-            "admin-group": "admin",
-        }
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_CANDID
+        )
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         auth_info = await external_auth_service.get_auth_info()
         assert auth_info is not None
         assert auth_info.agents[0].url == "http://10.0.1.23:8081/"
         assert auth_info.agents[0].username == "admin@candid"
-        assert auth_info.key == bakery.PrivateKey.deserialize(
-            "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
-        )
+        assert auth_info.key == bakery.PrivateKey.deserialize(TEST_KEY)
         secrets_service_mock.get_composite_secret.assert_called_once_with(
             path="global/external-auth", default=None
         )
@@ -139,6 +149,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         auth_info = await external_auth_service.get_auth_info()
@@ -148,7 +159,7 @@ class TestExternalAuthService:
         )
 
     async def test_get_or_create_bakery_key(self) -> None:
-        key = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+        key = TEST_KEY
         expected_bakery_key = bakery.PrivateKey.deserialize(key)
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = key
@@ -156,6 +167,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         bakery_key = await external_auth_service.get_or_create_bakery_key()
@@ -167,9 +179,7 @@ class TestExternalAuthService:
         assert expected_bakery_key.public_key == bakery_key.public_key
 
     async def test_get_or_create_bakery_key_is_created(self, mocker) -> None:
-        fake_private_key = bakery.PrivateKey.deserialize(
-            "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
-        )
+        fake_private_key = bakery.PrivateKey.deserialize(TEST_KEY)
         bakery_mock = mocker.patch.object(bakery, "generate_key")
         bakery_mock.return_value = fake_private_key
 
@@ -180,6 +190,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         bakery_key = await external_auth_service.get_or_create_bakery_key()
@@ -193,20 +204,6 @@ class TestExternalAuthService:
         )
         assert fake_private_key.key == bakery_key.key
         assert fake_private_key.public_key == bakery_key.public_key
-
-    async def get_or_create_bakery_key(self) -> bakery.PrivateKey:
-        key = await self.secrets_service.get_simple_secret(
-            path=self.BAKERY_KEY_SECRET_PATH, default=None
-        )
-        if key:
-            return bakery.PrivateKey.deserialize(key)
-
-        key = bakery.generate_key()
-        await self.secrets_service.set_simple_secret(
-            path=self.BAKERY_KEY_SECRET_PATH,
-            value=key.serialize().decode("ascii"),
-        )
-        return key
 
     async def test_get_rootkey(self) -> None:
         now = utcnow()
@@ -223,6 +220,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey = await external_auth_service.get(b"1")
@@ -242,6 +240,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey = await external_auth_service.get(b"1")
@@ -261,6 +260,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey = await external_auth_service.get(b"1")
@@ -286,6 +286,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey, key_id = await external_auth_service.root_key()
@@ -329,6 +330,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey, key_id = await external_auth_service.root_key()
@@ -362,6 +364,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         with pytest.raises(UnauthorizedException) as exc:
@@ -386,6 +389,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         with pytest.raises(DischargeRequiredError):
@@ -424,6 +428,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
             users_service=users_service_mock,
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
@@ -490,6 +495,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
             users_service=users_service_mock,
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
@@ -517,6 +523,7 @@ class TestExternalAuthService:
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
@@ -528,23 +535,16 @@ class TestExternalAuthService:
     async def test_get_bakery(self) -> None:
         secrets_service_mock = Mock(SecretsService)
         # get the external auth config
-        secrets_service_mock.get_composite_secret.return_value = {
-            "key": "mykey",
-            "url": "",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "http://10.0.1.23:5000",
-            "admin-group": "admin",
-        }
-
-        # get the bakery key
-        secrets_service_mock.get_simple_secret.return_value = (
-            "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_RBAC
         )
+        # get the bakery key
+        secrets_service_mock.get_simple_secret.return_value = TEST_KEY
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
@@ -555,7 +555,7 @@ class TestExternalAuthService:
         assert isinstance(bakery_instance.checker, AsyncChecker)
         assert isinstance(bakery_instance.oven, AsyncOven)
         assert bakery_instance.oven.key == bakery.PrivateKey.deserialize(
-            "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+            TEST_KEY
         )
         assert isinstance(bakery_instance.oven.locator, AsyncThirdPartyLocator)
         assert bakery_instance.oven.locator._allow_insecure is True
@@ -564,29 +564,23 @@ class TestExternalAuthService:
     async def test_get_discharge_macaroon(self, mock_aioresponse) -> None:
         secrets_service_mock = Mock(SecretsService)
         # get the external auth config
-        secrets_service_mock.get_composite_secret.return_value = {
-            "key": "mykey",
-            "url": "",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "http://10.0.1.23:5000",
-            "admin-group": "admin",
-        }
-
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_RBAC
+        )
         os_urandom = b"\xf2\x92\x8b\x04G|@\x9fRP\xcb\xd6\x8d\xad\xee\x88A\xa4T\x9d\xe5Rx\xc6o\x1bc\x1e*\xb3\xfe}"
         hex_os_urandom = to_hex(os_urandom)
-        bakery_key = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
         # There are 2 subsequent calls to get_simple_secret:
         # - the first one will get the bakery key
         # - the second one will get the material key
         secrets_service_mock.get_simple_secret.side_effect = [
-            bakery_key,
+            TEST_KEY,
             hex_os_urandom,
         ]
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
@@ -629,29 +623,23 @@ class TestExternalAuthService:
     ) -> None:
         secrets_service_mock = Mock(SecretsService)
         # get the external auth config
-        secrets_service_mock.get_composite_secret.return_value = {
-            "key": "mykey",
-            "url": "",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "http://10.0.1.23:5000",
-            "admin-group": "admin",
-        }
-
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_RBAC
+        )
         os_urandom = b"\xf2\x92\x8b\x04G|@\x9fRP\xcb\xd6\x8d\xad\xee\x88A\xa4T\x9d\xe5Rx\xc6o\x1bc\x1e*\xb3\xfe}"
         hex_os_urandom = to_hex(os_urandom)
-        bakery_key = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
         # There are 2 subsequent calls to get_simple_secret:
         # - the first one will get the bakery key
         # - the second one will get the material key
         secrets_service_mock.get_simple_secret.side_effect = [
-            bakery_key,
+            TEST_KEY,
             hex_os_urandom,
         ]
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
@@ -699,29 +687,23 @@ class TestExternalAuthService:
     async def test_raise_discharge_exception(self):
         secrets_service_mock = Mock(SecretsService)
         # get the external auth config
-        secrets_service_mock.get_composite_secret.return_value = {
-            "key": "mykey",
-            "url": "",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "http://10.0.1.23:5000",
-            "admin-group": "admin",
-        }
-
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_RBAC
+        )
         os_urandom = b"\xf2\x92\x8b\x04G|@\x9fRP\xcb\xd6\x8d\xad\xee\x88A\xa4T\x9d\xe5Rx\xc6o\x1bc\x1e*\xb3\xfe}"
         hex_os_urandom = to_hex(os_urandom)
-        bakery_key = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
         # There are 2 subsequent calls to get_simple_secret:
         # - the first one will get the bakery key
         # - the second one will get the material key
         secrets_service_mock.get_simple_secret.side_effect = [
-            bakery_key,
+            TEST_KEY,
             hex_os_urandom,
         ]
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
@@ -733,3 +715,83 @@ class TestExternalAuthService:
             )
 
         assert exc_info.value.args[0] == "Macaroon discharge required."
+
+    async def test_cache(self):
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_composite_secret.return_value = (
+            TEST_CONFIG_RBAC
+        )
+        secrets_service_mock.get_simple_secret.return_value = TEST_KEY
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
+            cache=ExternalAuthService.build_cache_object(),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+
+        assert type(external_auth_service.cache) is ExternalAuthServiceCache
+        # external_auth
+        ext_auth1 = await external_auth_service.get_external_auth()
+        assert external_auth_service.cache.external_auth_config is not None
+        ext_auth2 = await external_auth_service.get_external_auth()
+        assert (
+            ext_auth1
+            == ext_auth2
+            == external_auth_service.cache.external_auth_config
+        )
+        # if we hit the cache we call get_composite_secret only once
+        secrets_service_mock.get_composite_secret.assert_called_once()
+        external_auth_service.cache.clear()
+        secrets_service_mock.reset_mock()
+
+        # auth_info
+        auth_info1 = await external_auth_service.get_auth_info()
+        assert external_auth_service.cache.auth_info is not None
+        auth_info2 = await external_auth_service.get_auth_info()
+        assert (
+            auth_info1 == auth_info2 == external_auth_service.cache.auth_info
+        )
+        secrets_service_mock.get_composite_secret.assert_called_once()
+        external_auth_service.cache.clear()
+        secrets_service_mock.reset_mock()
+
+        # bakery_key
+        bakery_key = await external_auth_service.get_or_create_bakery_key()
+        assert external_auth_service.cache.bakery_key is not None
+        bakery_key2 = await external_auth_service.get_or_create_bakery_key()
+        assert (
+            bakery_key == bakery_key2 == external_auth_service.cache.bakery_key
+        )
+        secrets_service_mock.get_simple_secret.assert_called_once()
+        external_auth_service.cache.clear()
+        secrets_service_mock.reset_mock()
+
+        # candid_client
+        client1 = await external_auth_service.get_candid_client()
+        assert external_auth_service.cache.candid_client is not None
+        client2 = await external_auth_service.get_candid_client()
+        assert client1 == client2 == external_auth_service.cache.candid_client
+        secrets_service_mock.get_composite_secret.assert_called_once()
+        external_auth_service.cache.clear()
+        secrets_service_mock.reset_mock()
+
+        # rbac_client
+        client1 = await external_auth_service.get_rbac_client()
+        assert external_auth_service.cache.rbac_client is not None
+        client2 = await external_auth_service.get_rbac_client()
+        assert client1 == client2 == external_auth_service.cache.rbac_client
+        # get_rbac_client calls get_auth_info and get_external_auth
+        secrets_service_mock.get_composite_secret.assert_has_calls(
+            [
+                call(
+                    path=ExternalAuthService.EXTERNAL_AUTH_SECRET_PATH,
+                    default=None,
+                ),
+                call(
+                    path=ExternalAuthService.EXTERNAL_AUTH_SECRET_PATH,
+                    default={},
+                ),
+            ]
+        )
+        external_auth_service.cache.clear()
