@@ -92,3 +92,6 @@ class SimplifiedNodeStatusEnum(str, Enum):
     RESCUE_MODE = "Rescue Mode"
     TESTING = "Testing"
     OTHER = "Other"
+
+    def __str__(self):
+        return str(self.value)

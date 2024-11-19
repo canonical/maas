@@ -13,3 +13,6 @@ class DnsUpdateAction(str, Enum):
     DELETE = "DELETE"
     DELETE_IP = "DELETE-IP"
     DELETE_IFACE_IP = "DELETE-IFACE-IP"
+
+    def __str__(self):
+        return str(self.value)

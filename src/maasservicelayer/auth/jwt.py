@@ -23,6 +23,9 @@ class UserRole(str, Enum):
     USER = "user"
     ADMIN = "admin"
 
+    def __str__(self):
+        return str(self.value)
+
 
 @dataclass(frozen=True)
 class JWT:

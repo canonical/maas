@@ -26,3 +26,6 @@ class PowerTypeEnum(str, Enum):
     VMWARE = "vmware"
     WEBHOOK = "webhook"
     WEDGE = "wedge"
+
+    def __str__(self):
+        return str(self.value)

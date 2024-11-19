@@ -18,6 +18,9 @@ class InterfaceType(str, Enum):
     # Interface that is created when it is not linked to a node.
     UNKNOWN = "unknown"
 
+    def __str__(self):
+        return str(self.value)
+
 
 class InterfaceLinkType(str, Enum):
     """The vocabulary of possible types to link a `Subnet` to a `Interface`."""
@@ -26,3 +29,6 @@ class InterfaceLinkType(str, Enum):
     DHCP = "dhcp"
     STATIC = "static"
     LINK_UP = "link_up"
+
+    def __str__(self):
+        return str(self.value)

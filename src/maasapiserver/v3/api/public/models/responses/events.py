@@ -24,6 +24,9 @@ class EventTypeLevelEnum(str, Enum):
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
 
+    def __str__(self):
+        return str(self.value)
+
 
 LogginLevelEnumResponseMapper = {
     LoggingLevelEnum.AUDIT: EventTypeLevelEnum.AUDIT,

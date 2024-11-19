@@ -48,3 +48,6 @@ class LeaseAction(str, Enum):
     COMMIT = "commit"
     EXPIRY = "expiry"
     RELEASE = "release"
+
+    def __str__(self):
+        return str(self.value)
