@@ -6,32 +6,28 @@ from sqlalchemy import select, Table
 
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
 
 
-class IPRangesResourceBuilder(CreateOrUpdateResourceBuilder):
-    def with_type(self, type: str) -> "IPRangesResourceBuilder":
-        self._request.set_value(IPRangeTable.c.type, type)
+class IPRangeResourceBuilder(ResourceBuilder):
+    def with_type(self, type: str) -> "IPRangeResourceBuilder":
+        self._request.set_value(IPRangeTable.c.type.name, type)
         return self
 
-    def with_start_ip(self, ip: IPvAnyAddress) -> "IPRangesResourceBuilder":
-        self._request.set_value(IPRangeTable.c.start_ip, str(ip))
+    def with_start_ip(self, ip: IPvAnyAddress) -> "IPRangeResourceBuilder":
+        self._request.set_value(IPRangeTable.c.start_ip.name, str(ip))
         return self
 
-    def with_end_ip(self, ip: IPvAnyAddress) -> "IPRangesResourceBuilder":
-        self._request.set_value(IPRangeTable.c.end_ip, str(ip))
+    def with_end_ip(self, ip: IPvAnyAddress) -> "IPRangeResourceBuilder":
+        self._request.set_value(IPRangeTable.c.end_ip.name, str(ip))
         return self
 
-    def with_comment(self, comment: str) -> "IPRangesResourceBuilder":
-        self._request.set_value(IPRangeTable.c.comment, comment)
-        return self
-
-    def with_subnet_id(self, id: int) -> "IPRangesResourceBuilder":
-        self._request.set_value(IPRangeTable.c.subnet_id, id)
+    def with_subnet_id(self, id: int) -> "IPRangeResourceBuilder":
+        self._request.set_value(IPRangeTable.c.subnet_id.name, id)
         return self
 
 

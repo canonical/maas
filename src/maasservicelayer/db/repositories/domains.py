@@ -6,26 +6,26 @@ from sqlalchemy import select, Table
 
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import DomainTable, GlobalDefaultTable
 from maasservicelayer.models.domains import Domain
 
 
-class DomainsResourceBuilder(CreateOrUpdateResourceBuilder):
+class DomainResourceBuilder(ResourceBuilder):
     def with_authoritative(
         self, authoritative: bool
-    ) -> "DomainsResourceBuilder":
+    ) -> "DomainResourceBuilder":
         self._request.set_value(
             DomainTable.c.authoritative.name, authoritative
         )
         return self
 
-    def with_ttl(self, ttl: int) -> "DomainsResourceBuilder":
+    def with_ttl(self, ttl: int) -> "DomainResourceBuilder":
         self._request.set_value(DomainTable.c.ttl.name, ttl)
         return self
 
-    def with_name(self, name: str) -> "DomainsResourceBuilder":
+    def with_name(self, name: str) -> "DomainResourceBuilder":
         self._request.set_value(DomainTable.c.name.name, name)
         return self
 

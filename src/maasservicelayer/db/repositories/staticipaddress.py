@@ -12,7 +12,7 @@ from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -27,7 +27,7 @@ from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 
 
-class StaticIPAddressResourceBuilder(CreateOrUpdateResourceBuilder):
+class StaticIPAddressResourceBuilder(ResourceBuilder):
     def with_ip(
         self, ip: IPvAnyAddress | None
     ) -> "StaticIPAddressResourceBuilder":

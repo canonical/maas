@@ -7,13 +7,13 @@ from sqlalchemy import desc, select, Table
 
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import DNSPublicationTable
 from maasservicelayer.models.dnspublications import DNSPublication
 
 
-class DNSPublicationResourceBuilder(CreateOrUpdateResourceBuilder):
+class DNSPublicationResourceBuilder(ResourceBuilder):
     def with_serial(self, serial: int) -> "DNSPublicationResourceBuilder":
         self._request.set_value(DNSPublicationTable.c.serial.name, serial)
         return self

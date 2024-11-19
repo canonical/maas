@@ -9,65 +9,65 @@ from sqlalchemy import desc, func, select, Table
 
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import SubnetTable, VlanTable
 from maasservicelayer.models.subnets import Subnet
 
 
-class SubnetsResourceBuilder(CreateOrUpdateResourceBuilder):
-    def with_cidr(self, cidr: IPNetwork) -> "SubnetsResourceBuilder":
-        self._request.set_value(SubnetTable.c.cidr, str(cidr))
+class SubnetResourceBuilder(ResourceBuilder):
+    def with_cidr(self, cidr: IPNetwork) -> "SubnetResourceBuilder":
+        self._request.set_value(SubnetTable.c.cidr.name, str(cidr))
         return self
 
-    def with_name(self, name: str) -> "SubnetsResourceBuilder":
-        self._request.set_value(SubnetTable.c.name, name)
+    def with_name(self, name: str) -> "SubnetResourceBuilder":
+        self._request.set_value(SubnetTable.c.name.name, name)
         return self
 
-    def with_description(self, description: str) -> "SubnetsResourceBuilder":
-        self._request.set_value(SubnetTable.c.description, description)
+    def with_description(self, description: str) -> "SubnetResourceBuilder":
+        self._request.set_value(SubnetTable.c.description.name, description)
         return self
 
-    def with_allow_dns(self, allow_dns: bool) -> "SubnetsResourceBuilder":
-        self._request.set_value(SubnetTable.c.allow_dns, allow_dns)
+    def with_allow_dns(self, allow_dns: bool) -> "SubnetResourceBuilder":
+        self._request.set_value(SubnetTable.c.allow_dns.name, allow_dns)
         return self
 
-    def with_allow_proxy(self, allow_proxy: bool) -> "SubnetsResourceBuilder":
-        self._request.set_value(SubnetTable.c.allow_proxy, allow_proxy)
+    def with_allow_proxy(self, allow_proxy: bool) -> "SubnetResourceBuilder":
+        self._request.set_value(SubnetTable.c.allow_proxy.name, allow_proxy)
         return self
 
-    def with_rdns_mode(self, rdns_mode: int) -> "SubnetsResourceBuilder":
-        self._request.set_value(SubnetTable.c.rdns_mode, rdns_mode)
+    def with_rdns_mode(self, rdns_mode: int) -> "SubnetResourceBuilder":
+        self._request.set_value(SubnetTable.c.rdns_mode.name, rdns_mode)
         return self
 
     def with_active_discovery(
         self, active_discovery: bool
-    ) -> "SubnetsResourceBuilder":
+    ) -> "SubnetResourceBuilder":
         self._request.set_value(
-            SubnetTable.c.active_discovery, active_discovery
+            SubnetTable.c.active_discovery.name, active_discovery
         )
         return self
 
-    def with_managed(self, managed: bool) -> "SubnetsResourceBuilder":
-        self._request.set_value(SubnetTable.c.managed, managed)
+    def with_managed(self, managed: bool) -> "SubnetResourceBuilder":
+        self._request.set_value(SubnetTable.c.managed.name, managed)
         return self
 
     def with_disabled_boot_architectures(
         self, disabled_boot_architectures: list[str]
-    ) -> "SubnetsResourceBuilder":
+    ) -> "SubnetResourceBuilder":
         self._request.set_value(
-            SubnetTable.c.disabled_boot_architectures,
+            SubnetTable.c.disabled_boot_architectures.name,
             disabled_boot_architectures,
         )
         return self
 
     def with_gateway_ip(
         self, gateway_ip: IPvAnyAddress
-    ) -> "SubnetsResourceBuilder":
+    ) -> "SubnetResourceBuilder":
         self._request.set_value(SubnetTable.c.gateway_ip, gateway_ip)
         return self
 
-    def with_vlan_id(self, vlan_id: int) -> "SubnetsResourceBuilder":
+    def with_vlan_id(self, vlan_id: int) -> "SubnetResourceBuilder":
         self._request.set_value(SubnetTable.c.vlan_id, vlan_id)
         return self
 

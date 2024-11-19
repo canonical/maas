@@ -12,7 +12,7 @@ from sqlalchemy.sql.operators import and_, eq, gt
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import (
     ConsumerTable,
@@ -32,78 +32,62 @@ from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.utils.date import utcnow
 
 
-class UserCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
-    def with_username(self, value: str) -> "UserCreateOrUpdateResourceBuilder":
+class UserResourceBuilder(ResourceBuilder):
+    def with_username(self, value: str) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.username.name, value)
         return self
 
-    def with_first_name(
-        self, value: str
-    ) -> "UserCreateOrUpdateResourceBuilder":
+    def with_first_name(self, value: str) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.first_name.name, value)
         return self
 
-    def with_last_name(
-        self, value: str
-    ) -> "UserCreateOrUpdateResourceBuilder":
+    def with_last_name(self, value: str) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.last_name.name, value)
         return self
 
-    def with_is_active(
-        self, value: bool
-    ) -> "UserCreateOrUpdateResourceBuilder":
+    def with_is_active(self, value: bool) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.is_active.name, value)
         return self
 
-    def with_is_staff(
-        self, value: bool
-    ) -> "UserCreateOrUpdateResourceBuilder":
+    def with_is_staff(self, value: bool) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.is_staff.name, value)
         return self
 
-    def with_is_superuser(
-        self, value: bool
-    ) -> "UserCreateOrUpdateResourceBuilder":
+    def with_is_superuser(self, value: bool) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.is_superuser.name, value)
         return self
 
-    def with_email(self, value: str) -> "UserCreateOrUpdateResourceBuilder":
+    def with_email(self, value: str) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.email.name, value)
         return self
 
-    def with_password(self, value: str) -> "UserCreateOrUpdateResourceBuilder":
+    def with_password(self, value: str) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.password.name, value)
         return self
 
-    def with_date_joined(
-        self, value: datetime
-    ) -> "UserCreateOrUpdateResourceBuilder":
+    def with_date_joined(self, value: datetime) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.date_joined.name, value)
         return self
 
-    def with_last_login(
-        self, value: datetime
-    ) -> "UserCreateOrUpdateResourceBuilder":
+    def with_last_login(self, value: datetime) -> "UserResourceBuilder":
         self._request.set_value(UserTable.c.last_login.name, value)
         return self
 
 
-class UserProfileCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
+class UserProfileResourceBuilder(ResourceBuilder):
     def with_auth_last_check(
         self, value: datetime
-    ) -> "UserProfileCreateOrUpdateResourceBuilder":
+    ) -> "UserProfileResourceBuilder":
         self._request.set_value(UserProfileTable.c.auth_last_check.name, value)
         return self
 
     def with_completed_intro(
         self, value: bool
-    ) -> "UserProfileCreateOrUpdateResourceBuilder":
+    ) -> "UserProfileResourceBuilder":
         self._request.set_value(UserProfileTable.c.completed_intro.name, value)
         return self
 
-    def with_is_local(
-        self, value: bool
-    ) -> "UserProfileCreateOrUpdateResourceBuilder":
+    def with_is_local(self, value: bool) -> "UserProfileResourceBuilder":
         self._request.set_value(UserProfileTable.c.is_local.name, value)
         return self
 

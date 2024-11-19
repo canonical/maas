@@ -12,7 +12,7 @@ from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import (
-    ZoneCreateOrUpdateResourceBuilder,
+    ZoneResourceBuilder,
     ZonesClauseFactory,
     ZonesRepository,
 )
@@ -47,7 +47,7 @@ class TestZoneCreateOrUpdateResourceBuilder:
     def test_builder(self) -> None:
         now = utcnow()
         resource = (
-            ZoneCreateOrUpdateResourceBuilder()
+            ZoneResourceBuilder()
             .with_name("test")
             .with_description("descr")
             .with_created(now)
@@ -131,7 +131,7 @@ class TestZonesRepository:
         now = utcnow()
         zones_repository = ZonesRepository(db_connection)
         created_zone = await zones_repository.create(
-            ZoneCreateOrUpdateResourceBuilder()
+            ZoneResourceBuilder()
             .with_name("my_zone")
             .with_description("my description")
             .with_created(now)
@@ -157,7 +157,7 @@ class TestZonesRepository:
 
         with pytest.raises(AlreadyExistsException):
             await zones_repository.create(
-                ZoneCreateOrUpdateResourceBuilder()
+                ZoneResourceBuilder()
                 .with_name(created_zone.name)
                 .with_description(created_zone.description)
                 .with_created(now)

@@ -23,8 +23,8 @@ from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
 from maasservicelayer.db.repositories.users import (
-    UserCreateOrUpdateResourceBuilder,
-    UserProfileCreateOrUpdateResourceBuilder,
+    UserProfileResourceBuilder,
+    UserResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import (
     DischargeRequiredException,
@@ -469,7 +469,7 @@ class TestExternalAuthService:
         )
 
         user_builder = (
-            UserCreateOrUpdateResourceBuilder()
+            UserResourceBuilder()
             .with_username("admin")
             .with_first_name("")
             .with_password("")
@@ -480,7 +480,7 @@ class TestExternalAuthService:
         ).build()
 
         profile_builder = (
-            UserProfileCreateOrUpdateResourceBuilder()
+            UserProfileResourceBuilder()
             .with_is_local(False)
             .with_completed_intro(True)
             .with_auth_last_check(now)

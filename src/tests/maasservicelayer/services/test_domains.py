@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.db.repositories.domains import (
+    DomainResourceBuilder,
     DomainsRepository,
-    DomainsResourceBuilder,
 )
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services.dnspublications import DNSPublicationsService
@@ -40,7 +40,7 @@ class TestDomainsService:
         )
 
         resource = (
-            DomainsResourceBuilder()
+            DomainResourceBuilder()
             .with_name(domain.name)
             .with_authoritative(domain.authoritative)
             .with_ttl(domain.ttl)
@@ -90,7 +90,7 @@ class TestDomainsService:
         )
 
         resource = (
-            DomainsResourceBuilder()
+            DomainResourceBuilder()
             .with_name(new_domain.name)
             .with_authoritative(new_domain.authoritative)
             .with_ttl(new_domain.ttl)
@@ -142,7 +142,7 @@ class TestDomainsService:
         )
 
         resource = (
-            DomainsResourceBuilder()
+            DomainResourceBuilder()
             .with_name(new_domain.name)
             .with_authoritative(new_domain.authoritative)
             .with_ttl(new_domain.ttl)
@@ -194,7 +194,7 @@ class TestDomainsService:
         )
 
         resource = (
-            DomainsResourceBuilder()
+            DomainResourceBuilder()
             .with_name(new_domain.name)
             .with_authoritative(new_domain.authoritative)
             .with_ttl(new_domain.ttl)
@@ -246,7 +246,7 @@ class TestDomainsService:
         )
 
         resource = (
-            DomainsResourceBuilder()
+            DomainResourceBuilder()
             .with_name(new_domain.name)
             .with_authoritative(new_domain.authoritative)
             .with_ttl(new_domain.ttl)

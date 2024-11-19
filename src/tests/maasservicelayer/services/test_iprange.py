@@ -10,8 +10,8 @@ from maascommon.workflows.dhcp import (
     merge_configure_dhcp_param,
 )
 from maasservicelayer.db.repositories.ipranges import (
+    IPRangeResourceBuilder,
     IPRangesRepository,
-    IPRangesResourceBuilder,
 )
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -85,7 +85,7 @@ class TestIPRangesService:
         )
 
         resource = (
-            IPRangesResourceBuilder()
+            IPRangeResourceBuilder()
             .with_type(iprange.type)
             .with_start_ip(iprange.start_ip)
             .with_end_ip(iprange.end_ip)
@@ -127,7 +127,7 @@ class TestIPRangesService:
         )
 
         resource = (
-            IPRangesResourceBuilder()
+            IPRangeResourceBuilder()
             .with_type(iprange.type)
             .with_start_ip(iprange.start_ip)
             .with_end_ip(iprange.end_ip)

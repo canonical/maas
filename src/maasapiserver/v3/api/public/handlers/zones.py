@@ -30,9 +30,7 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.zones import (
-    ZoneCreateOrUpdateResourceBuilder,
-)
+from maasservicelayer.db.repositories.zones import ZoneResourceBuilder
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
@@ -113,7 +111,7 @@ class ZonesHandler(Handler):
     ) -> Response:
         now = utcnow()
         resource = (
-            ZoneCreateOrUpdateResourceBuilder()
+            ZoneResourceBuilder()
             .with_name(zone_request.name)
             .with_description(zone_request.description)
             .with_created(now)

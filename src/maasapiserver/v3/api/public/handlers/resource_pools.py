@@ -31,7 +31,7 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
-    ResourcePoolCreateOrUpdateResourceBuilder,
+    ResourcePoolResourceBuilder,
 )
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
@@ -159,7 +159,7 @@ class ResourcePoolHandler(Handler):
             )
         now = utcnow()
         resource = (
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name(resource_pool_request.name)
             .with_description(resource_pool_request.description)
             .with_created(now)
@@ -279,7 +279,7 @@ class ResourcePoolHandler(Handler):
                 ]
             )
         resource = (
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name(resource_pool_request.name)
             .with_description(resource_pool_request.description)
             .with_updated(utcnow())

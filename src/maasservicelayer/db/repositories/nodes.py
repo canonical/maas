@@ -11,17 +11,15 @@ from maascommon.enums.node import NodeStatus
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import BMCTable, NodeTable
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 
 
-class NodeCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
-    def with_status(
-        self, status: NodeStatus
-    ) -> "NodeCreateOrUpdateResourceBuilder":
+class NodeResourceBuilder(ResourceBuilder):
+    def with_status(self, status: NodeStatus) -> "NodeResourceBuilder":
         self._request.set_value(NodeTable.c.status.name, status)
         return self
 

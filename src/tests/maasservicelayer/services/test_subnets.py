@@ -13,8 +13,8 @@ from maascommon.workflows.dhcp import (
     merge_configure_dhcp_param,
 )
 from maasservicelayer.db.repositories.subnets import (
+    SubnetResourceBuilder,
     SubnetsRepository,
-    SubnetsResourceBuilder,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
@@ -103,7 +103,7 @@ class TestSubnetsService:
         )
 
         resource = (
-            SubnetsResourceBuilder()
+            SubnetResourceBuilder()
             .with_cidr(subnet.cidr)
             .with_rdns_mode(subnet.rdns_mode)
             .with_allow_dns(subnet.allow_dns)
@@ -155,7 +155,7 @@ class TestSubnetsService:
         )
 
         resource = (
-            SubnetsResourceBuilder()
+            SubnetResourceBuilder()
             .with_cidr(subnet.cidr)
             .with_rdns_mode(subnet.rdns_mode)
             .with_allow_dns(subnet.allow_dns)

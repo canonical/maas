@@ -8,22 +8,18 @@ from sqlalchemy import select, Table
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import ResourcePoolTable
 from maasservicelayer.models.resource_pools import ResourcePool
 
 
-class ResourcePoolCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
-    def with_name(
-        self, value: str
-    ) -> "ResourcePoolCreateOrUpdateResourceBuilder":
+class ResourcePoolResourceBuilder(ResourceBuilder):
+    def with_name(self, value: str) -> "ResourcePoolResourceBuilder":
         self._request.set_value(ResourcePoolTable.c.name.name, value)
         return self
 
-    def with_description(
-        self, value: str
-    ) -> "ResourcePoolCreateOrUpdateResourceBuilder":
+    def with_description(self, value: str) -> "ResourcePoolResourceBuilder":
         self._request.set_value(ResourcePoolTable.c.description.name, value)
         return self
 

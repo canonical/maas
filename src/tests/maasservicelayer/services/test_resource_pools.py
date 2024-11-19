@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db.repositories.resource_pools import (
-    ResourcePoolCreateOrUpdateResourceBuilder,
     ResourcePoolRepository,
+    ResourcePoolResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
@@ -36,7 +36,7 @@ class TestResourcePoolsService:
             resource_pools_repository=resource_pool_repository_mock,
         )
         resource = (
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name(resource_pool.name)
             .with_description(resource_pool.description)
             .with_created(now)
@@ -125,7 +125,7 @@ class TestResourcePoolsService:
         with pytest.raises(NotFoundException):
             await resource_pools_service.update(
                 id=1000,
-                resource=ResourcePoolCreateOrUpdateResourceBuilder()
+                resource=ResourcePoolResourceBuilder()
                 .with_name("name")
                 .with_description("description")
                 .build(),
@@ -154,7 +154,7 @@ class TestResourcePoolsService:
         )
         updated_resource_pool = await resource_pools_service.update(
             id=resource_pool.id,
-            resource=ResourcePoolCreateOrUpdateResourceBuilder()
+            resource=ResourcePoolResourceBuilder()
             .with_name(patch_resource_pool.name)
             .with_description(patch_resource_pool.description)
             .build(),

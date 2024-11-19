@@ -8,7 +8,7 @@ from sqlalchemy.sql.operators import eq
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.db.repositories.nodes import (
-    NodeCreateOrUpdateResourceBuilder,
+    NodeResourceBuilder,
     NodesRepository,
 )
 from maasservicelayer.db.tables import BMCTable, NodeTable, ZoneTable
@@ -127,7 +127,7 @@ class TestNodesRepository:
 
         nodes_repository = NodesRepository(db_connection)
         resource = (
-            NodeCreateOrUpdateResourceBuilder()
+            NodeResourceBuilder()
             .with_status(status=NodeStatus.DEPLOYED)
             .build()
         )
@@ -140,7 +140,7 @@ class TestNodesRepository:
         assert updated_node.status == NodeStatus.DEPLOYED
 
         resource = (
-            NodeCreateOrUpdateResourceBuilder()
+            NodeResourceBuilder()
             .with_status(status=NodeStatus.FAILED_DEPLOYMENT)
             .build()
         )
@@ -155,7 +155,7 @@ class TestNodesRepository:
     ) -> None:
         nodes_repository = NodesRepository(db_connection)
         resource = (
-            NodeCreateOrUpdateResourceBuilder()
+            NodeResourceBuilder()
             .with_status(status=NodeStatus.DEPLOYED)
             .build()
         )

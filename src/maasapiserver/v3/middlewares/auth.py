@@ -32,8 +32,8 @@ from maasservicelayer.auth.macaroons.models.responses import (
 )
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.db.repositories.users import (
-    UserCreateOrUpdateResourceBuilder,
-    UserProfileCreateOrUpdateResourceBuilder,
+    UserProfileResourceBuilder,
+    UserResourceBuilder,
 )
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
@@ -269,7 +269,7 @@ class MacaroonAuthenticationProvider:
         except MacaroonApiException:
             return None
 
-        user_builder = UserCreateOrUpdateResourceBuilder()
+        user_builder = UserResourceBuilder()
         if validate_user_response.active ^ user.is_active:
             user_builder.with_is_active(validate_user_response.active)
         if validate_user_response.fullname is not None:
@@ -282,7 +282,7 @@ class MacaroonAuthenticationProvider:
             user.id, user_builder.build()
         )
 
-        profile_builder = UserProfileCreateOrUpdateResourceBuilder()
+        profile_builder = UserProfileResourceBuilder()
         profile_builder.with_auth_last_check(now)
         user_profile = await request.state.services.users.update_profile(
             user.id, profile_builder.build()

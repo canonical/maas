@@ -9,20 +9,18 @@ from sqlalchemy.sql.operators import eq
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import DefaultResourceTable, ZoneTable
 from maasservicelayer.models.zones import Zone
 
 
-class ZoneCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
-    def with_name(self, value: str) -> "ZoneCreateOrUpdateResourceBuilder":
+class ZoneResourceBuilder(ResourceBuilder):
+    def with_name(self, value: str) -> "ZoneResourceBuilder":
         self._request.set_value(ZoneTable.c.name.name, value)
         return self
 
-    def with_description(
-        self, value: str
-    ) -> "ZoneCreateOrUpdateResourceBuilder":
+    def with_description(self, value: str) -> "ZoneResourceBuilder":
         self._request.set_value(ZoneTable.c.description.name, value)
         return self
 

@@ -8,8 +8,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db.repositories.users import (
-    UserCreateOrUpdateResourceBuilder,
-    UserProfileCreateOrUpdateResourceBuilder,
+    UserProfileResourceBuilder,
+    UserResourceBuilder,
     UsersRepository,
 )
 from maasservicelayer.utils.date import utcnow
@@ -27,7 +27,7 @@ class TestUserCreateOrUpdateResourceBuilder:
     def test_builder(self) -> None:
         now = utcnow()
         resource = (
-            UserCreateOrUpdateResourceBuilder()
+            UserResourceBuilder()
             .with_username("username")
             .with_first_name("first")
             .with_last_name("last")
@@ -59,7 +59,7 @@ class TestUserProfileCreateOrUpdateResourceBuilder:
     def test_builder(self) -> None:
         now = utcnow()
         resource = (
-            UserProfileCreateOrUpdateResourceBuilder()
+            UserProfileResourceBuilder()
             .with_auth_last_check(now)
             .with_completed_intro(True)
             .with_is_local(False)
@@ -130,7 +130,7 @@ class TestUsersRepository:
         users_repository = UsersRepository(db_connection)
         now = utcnow()
         user_profile_builder = (
-            UserProfileCreateOrUpdateResourceBuilder()
+            UserProfileResourceBuilder()
             .with_is_local(True)
             .with_completed_intro(True)
             .with_auth_last_check(now)
@@ -147,7 +147,7 @@ class TestUsersRepository:
     ) -> None:
         user = await create_test_user(fixture)
         users_repository = UsersRepository(db_connection)
-        builder = UserCreateOrUpdateResourceBuilder()
+        builder = UserResourceBuilder()
         builder.with_last_name("test")
         updated_user = await users_repository.update(user.id, builder.build())
         assert updated_user.last_name == "test"
@@ -159,7 +159,7 @@ class TestUsersRepository:
         user = await create_test_user(fixture)
         await create_test_user_profile(fixture, user.id)
         users_repository = UsersRepository(db_connection)
-        builder = UserProfileCreateOrUpdateResourceBuilder()
+        builder = UserProfileResourceBuilder()
         builder.with_auth_last_check(now)
         updated_profile = await users_repository.update_profile(
             user.id, builder.build()

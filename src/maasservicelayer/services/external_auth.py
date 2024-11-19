@@ -29,8 +29,8 @@ from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
 from maasservicelayer.db.repositories.users import (
-    UserCreateOrUpdateResourceBuilder,
-    UserProfileCreateOrUpdateResourceBuilder,
+    UserProfileResourceBuilder,
+    UserResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -182,7 +182,7 @@ class ExternalAuthService(Service, RootKeyStore):
         user = await self.users_service.get(username=username)
         if not user:
             user_builder = (
-                UserCreateOrUpdateResourceBuilder()
+                UserResourceBuilder()
                 .with_username(username)
                 .with_first_name("")
                 .with_password("")
@@ -193,7 +193,7 @@ class ExternalAuthService(Service, RootKeyStore):
             )
             user = await self.users_service.create(user_builder.build())
             profile_builder = (
-                UserProfileCreateOrUpdateResourceBuilder()
+                UserProfileResourceBuilder()
                 .with_is_local(False)
                 .with_completed_intro(True)
                 .with_auth_last_check(utcnow())

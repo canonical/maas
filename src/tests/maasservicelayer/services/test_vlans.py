@@ -13,9 +13,9 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.vlans import (
+    VlanResourceBuilder,
     VlansClauseFactory,
     VlansRepository,
-    VlansResourceBuilder,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.nodes import Node
@@ -163,7 +163,7 @@ class TestVlansService:
         )
 
         resource = (
-            VlansResourceBuilder()
+            VlanResourceBuilder()
             .with_vid(vlan.vid)
             .with_name(vlan.name)
             .with_description(vlan.description)
@@ -212,7 +212,7 @@ class TestVlansService:
         )
 
         resource = (
-            VlansResourceBuilder()
+            VlanResourceBuilder()
             .with_vid(vlan.vid)
             .with_name(vlan.name)
             .with_description(vlan.description)

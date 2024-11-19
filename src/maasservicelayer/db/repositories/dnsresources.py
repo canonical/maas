@@ -7,7 +7,7 @@ from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResourceBuilder,
+    ResourceBuilder,
 )
 from maasservicelayer.db.tables import (
     DNSResourceIPAddressTable,
@@ -29,7 +29,7 @@ class DNSResourceClauseFactory(ClauseFactory):
         return Clause(condition=eq(DNSResourceTable.c.domain_id, id))
 
 
-class DNSResourceResourceBuilder(CreateOrUpdateResourceBuilder):
+class DNSResourceResourceBuilder(ResourceBuilder):
     def with_name(self, value: str) -> "DNSResourceResourceBuilder":
         self._request.set_value(DNSResourceTable.c.name.name, value)
         return self

@@ -3,11 +3,39 @@ from ipaddress import IPv4Address
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.db.repositories.ipranges import IPRangesRepository
+from maasservicelayer.db.repositories.ipranges import (
+    IPRangeResourceBuilder,
+    IPRangesRepository,
+)
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
+
+
+class TestIPRangesResourceBuilder:
+    def test_builder(self) -> None:
+        now = utcnow()
+        resource = (
+            IPRangeResourceBuilder()
+            .with_type("type")
+            .with_start_ip("10.0.0.1")
+            .with_end_ip("10.0.0.1")
+            .with_subnet_id(0)
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
+
+        assert resource.get_values() == {
+            "type": "type",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.1",
+            "subnet_id": 0,
+            "created": now,
+            "updated": now,
+        }
 
 
 @pytest.mark.asyncio

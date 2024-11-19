@@ -27,9 +27,7 @@ from maascommon.workflows.power import (
     PowerParam,
     PowerQueryParam,
 )
-from maasservicelayer.db.repositories.nodes import (
-    NodeCreateOrUpdateResourceBuilder,
-)
+from maasservicelayer.db.repositories.nodes import NodeResourceBuilder
 from maasservicelayer.db.tables import (
     BlockDeviceTable,
     InterfaceIPAddressTable,
@@ -96,9 +94,7 @@ class DeployActivity(ActivityBase):
     async def set_node_status(self, params: SetNodeStatusParam) -> None:
         async with self.start_transaction() as services:
             resource = (
-                NodeCreateOrUpdateResourceBuilder()
-                .with_status(status=params.status)
-                .build()
+                NodeResourceBuilder().with_status(status=params.status).build()
             )
             await services.nodes.update_by_system_id(
                 system_id=params.system_id, resource=resource

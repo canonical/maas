@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db.repositories.users import (
-    UserCreateOrUpdateResourceBuilder,
-    UserProfileCreateOrUpdateResourceBuilder,
+    UserProfileResourceBuilder,
+    UserResourceBuilder,
     UsersRepository,
 )
 from maasservicelayer.services import UsersService
@@ -52,7 +52,7 @@ class TestUsersService:
         users_service = UsersService(
             Mock(AsyncConnection), users_repository=users_repository_mock
         )
-        builder = UserCreateOrUpdateResourceBuilder()
+        builder = UserResourceBuilder()
         builder.with_last_name("test")
         await users_service.update(user_id=1, resource=builder.build())
         users_repository_mock.update.assert_called_once_with(
@@ -65,7 +65,7 @@ class TestUsersService:
             Mock(AsyncConnection), users_repository=users_repository_mock
         )
         builder = (
-            UserProfileCreateOrUpdateResourceBuilder()
+            UserProfileResourceBuilder()
             .with_is_local(True)
             .with_completed_intro(True)
             .with_auth_last_check(utcnow())
@@ -80,7 +80,7 @@ class TestUsersService:
         users_service = UsersService(
             Mock(AsyncConnection), users_repository=users_repository_mock
         )
-        builder = UserProfileCreateOrUpdateResourceBuilder()
+        builder = UserProfileResourceBuilder()
         builder.with_auth_last_check(utcnow())
         await users_service.update_profile(user_id=1, resource=builder.build())
         users_repository_mock.update_profile.assert_called_once_with(

@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
-    ResourcePoolCreateOrUpdateResourceBuilder,
     ResourcePoolRepository,
+    ResourcePoolResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
@@ -30,7 +30,7 @@ class TestResourcePoolCreateOrUpdateResourceBuilder:
     def test_builder(self) -> None:
         now = utcnow()
         resource = (
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name("test")
             .with_description("descr")
             .with_created(now)
@@ -131,7 +131,7 @@ class TestResourcePoolRepository:
         now = utcnow()
         resource_pools_repository = ResourcePoolRepository(db_connection)
         created_resource_pools = await resource_pools_repository.create(
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name("my_resource_pool")
             .with_description("my description")
             .with_created(now)
@@ -157,7 +157,7 @@ class TestResourcePoolRepository:
 
         with pytest.raises(AlreadyExistsException):
             await resource_pools_repository.create(
-                ResourcePoolCreateOrUpdateResourceBuilder()
+                ResourcePoolResourceBuilder()
                 .with_name(created_resource_pools.name)
                 .with_description(created_resource_pools.description)
                 .with_created(now)
@@ -172,7 +172,7 @@ class TestResourcePoolRepository:
         created_resource_pool = await create_test_resource_pool(fixture)
         now = utcnow()
         updated_resource = (
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name("new name")
             .with_description("new description")
             .with_updated(now)
@@ -202,7 +202,7 @@ class TestResourcePoolRepository:
 
         now = utcnow()
         updated_resource = (
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name(created_resource_pool.name)
             .with_updated(now)
             .build()
@@ -219,7 +219,7 @@ class TestResourcePoolRepository:
         now = utcnow()
         resource_pools_repository = ResourcePoolRepository(db_connection)
         resource = (
-            ResourcePoolCreateOrUpdateResourceBuilder()
+            ResourcePoolResourceBuilder()
             .with_name("test")
             .with_description("test")
             .with_updated(now)

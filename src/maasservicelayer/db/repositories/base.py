@@ -34,7 +34,7 @@ class CreateOrUpdateResource(dict):
         self[key] = value
 
 
-class CreateOrUpdateResourceBuilder(ABC):
+class ResourceBuilder(ABC):
     """
     Every repository should provide a builder for their entity objects.
     """
@@ -42,11 +42,11 @@ class CreateOrUpdateResourceBuilder(ABC):
     def __init__(self):
         self._request = CreateOrUpdateResource()
 
-    def with_created(self, value: datetime) -> "CreateOrUpdateResourceBuilder":
+    def with_created(self, value: datetime) -> "ResourceBuilder":
         self._request.set_value("created", value)
         return self
 
-    def with_updated(self, value: datetime) -> "CreateOrUpdateResourceBuilder":
+    def with_updated(self, value: datetime) -> "ResourceBuilder":
         self._request.set_value("updated", value)
         return self
 
