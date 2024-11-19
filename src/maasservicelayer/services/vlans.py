@@ -92,9 +92,9 @@ class VlansService(Service):
                 )
                 system_ids.append(secondary_rack.system_id)
 
-        self.temporal_service.register_or_update_workflow_call(
-            CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(system_ids=system_ids),
-            parameter_merge_func=merge_configure_dhcp_param,
-            wait=False,
-        )
+            self.temporal_service.register_or_update_workflow_call(
+                CONFIGURE_DHCP_WORKFLOW_NAME,
+                ConfigureDHCPParam(system_ids=system_ids),
+                parameter_merge_func=merge_configure_dhcp_param,
+                wait=False,
+            )

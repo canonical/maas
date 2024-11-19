@@ -277,3 +277,45 @@ class TestVlansService:
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
+
+    async def test_delete_dhcp_disabled(self) -> None:
+        now = utcnow()
+        vlan = Vlan(
+            id=1,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=0,
+            dhcp_on=False,
+            primary_rack_id=2,
+            fabric_id=1,
+            created=now,
+            updated=now,
+        )
+        primary_rack = Node(
+            id=2,
+            system_id="abc",
+            status=NodeStatus.DEPLOYED,
+            created=now,
+            updated=now,
+        )
+
+        nodes_service_mock = Mock(NodesService)
+        nodes_service_mock.get_by_id.return_value = primary_rack
+
+        vlans_repository_mock = Mock(VlansRepository)
+        vlans_repository_mock.find_by_id.return_value = vlan
+
+        mock_temporal = Mock(TemporalService)
+
+        vlans_service = VlansService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            nodes_service=nodes_service_mock,
+            vlans_repository=vlans_repository_mock,
+        )
+
+        await vlans_service.delete(vlan.id)
+
+        vlans_repository_mock.delete.assert_called_once_with(vlan.id)
+        mock_temporal.register_or_update_workflow_call.assert_not_called()
