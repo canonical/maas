@@ -3,14 +3,13 @@
 
 from typing import List
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
@@ -22,16 +21,16 @@ from maasservicelayer.services.temporal import TemporalService
 class InterfacesService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         temporal_service: TemporalService,
         interface_repository: InterfaceRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.temporal_service = temporal_service
         self.interface_repository = (
             interface_repository
             if interface_repository
-            else InterfaceRepository(connection)
+            else InterfaceRepository(context)
         )
 
     async def list(

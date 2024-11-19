@@ -2,16 +2,16 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.tables import ConfigTable
 from maasservicelayer.models.configurations import Configuration
 
 
 class ConfigurationsRepository:
-    def __init__(self, connection: AsyncConnection):
-        self.connection = connection
+    def __init__(self, context: Context):
+        self.connection = context.get_connection()
 
     async def get(self, name: str) -> Configuration | None:
         stmt = (

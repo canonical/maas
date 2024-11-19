@@ -1,10 +1,10 @@
 #  Copyright 2023-2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncConnection
+from maasservicelayer.context import Context
 
 
 @dataclass(slots=True)
@@ -15,7 +15,6 @@ class ServiceCache(ABC):
         for field in list(self.__slots__):
             self.__setattr__(field, None)
 
-    @abstractmethod
     async def close(self):
         """Shutdown operations to be performed when destroying the cache."""
 
@@ -23,10 +22,8 @@ class ServiceCache(ABC):
 class Service(ABC):
     """Base class for services."""
 
-    def __init__(
-        self, connection: AsyncConnection, cache: ServiceCache | None = None
-    ):
-        self.conn = connection
+    def __init__(self, context: Context, cache: ServiceCache | None = None):
+        self.context = context
         self.cache = cache
 
     @staticmethod

@@ -7,4 +7,4 @@ def services(
     request: Request,
 ) -> ServiceCollectionV2:
     """Dependency to return the services collection."""
-    return ServiceCollectionV2(request.state.context.get_connection())
+    return ServiceCollectionV2(request.state.context)

@@ -1,10 +1,9 @@
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
-from temporalio.client import Client
 
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
@@ -24,10 +23,8 @@ class ServicesMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         cache: CacheForServices,
-        temporal: Optional[Client] = None,
     ):
         super().__init__(app)
-        self.temporal = temporal
         self.services_cache = cache
 
     async def dispatch(
@@ -41,9 +38,8 @@ class ServicesMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         services = await ServiceCollectionV3.produce(
-            request.state.context.get_connection(),
+            request.state.context,
             cache=self.services_cache,
-            temporal=self.temporal,
         )
         request.state.services = services
         return await call_next(request)

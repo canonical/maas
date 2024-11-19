@@ -4,6 +4,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.models.spaces import Space
 from tests.fixtures.factories.spaces import create_test_space_entry
@@ -16,7 +17,7 @@ class TestSpacesRepository(RepositoryCommonTests[Space]):
     def repository_instance(
         self, db_connection: AsyncConnection
     ) -> SpacesRepository:
-        return SpacesRepository(db_connection)
+        return SpacesRepository(Context(connection=db_connection))
 
     @pytest.fixture
     async def _setup_test_list(

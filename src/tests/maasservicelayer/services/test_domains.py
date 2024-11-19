@@ -1,9 +1,9 @@
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.dns import DnsUpdateAction
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import (
     DomainResourceBuilder,
     DomainsRepository,
@@ -34,7 +34,7 @@ class TestDomainsService:
         dnspublications_service = Mock(DNSPublicationsService)
 
         service = DomainsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             dnspublications_service=dnspublications_service,
             domains_repository=domains_repository,
         )
@@ -84,7 +84,7 @@ class TestDomainsService:
         dnspublications_service = Mock(DNSPublicationsService)
 
         service = DomainsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             dnspublications_service=dnspublications_service,
             domains_repository=domains_repository,
         )
@@ -136,7 +136,7 @@ class TestDomainsService:
         dnspublications_service = Mock(DNSPublicationsService)
 
         service = DomainsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             dnspublications_service=dnspublications_service,
             domains_repository=domains_repository,
         )
@@ -188,7 +188,7 @@ class TestDomainsService:
         dnspublications_service = Mock(DNSPublicationsService)
 
         service = DomainsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             dnspublications_service=dnspublications_service,
             domains_repository=domains_repository,
         )
@@ -240,7 +240,7 @@ class TestDomainsService:
         dnspublications_service = Mock(DNSPublicationsService)
 
         service = DomainsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             dnspublications_service=dnspublications_service,
             domains_repository=domains_repository,
         )
@@ -283,7 +283,7 @@ class TestDomainsService:
         dnspublications_service = Mock(DNSPublicationsService)
 
         service = DomainsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             dnspublications_service=dnspublications_service,
             domains_repository=domains_repository,
         )

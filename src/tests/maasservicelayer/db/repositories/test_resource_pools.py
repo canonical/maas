@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
@@ -64,7 +65,7 @@ class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
     def repository_instance(
         self, db_connection: AsyncConnection
     ) -> ResourcePoolRepository:
-        return ResourcePoolRepository(db_connection)
+        return ResourcePoolRepository(Context(connection=db_connection))
 
     @pytest.fixture
     async def _setup_test_list(
@@ -112,7 +113,9 @@ class TestResourcePoolRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         resource_pools = await create_n_test_resource_pools(fixture, size=5)
-        resource_pools_repository = ResourcePoolRepository(db_connection)
+        resource_pools_repository = ResourcePoolRepository(
+            Context(connection=db_connection)
+        )
         selected_ids = [resource_pools[0].id, resource_pools[1].id]
         retrieved_resource_pools = await resource_pools_repository.list(
             token=None,
@@ -129,7 +132,9 @@ class TestResourcePoolRepository:
 
     async def test_create(self, db_connection: AsyncConnection) -> None:
         now = utcnow()
-        resource_pools_repository = ResourcePoolRepository(db_connection)
+        resource_pools_repository = ResourcePoolRepository(
+            Context(connection=db_connection)
+        )
         created_resource_pools = await resource_pools_repository.create(
             ResourcePoolResourceBuilder()
             .with_name("my_resource_pool")
@@ -152,7 +157,9 @@ class TestResourcePoolRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         now = utcnow()
-        resource_pools_repository = ResourcePoolRepository(db_connection)
+        resource_pools_repository = ResourcePoolRepository(
+            Context(connection=db_connection)
+        )
         created_resource_pools = await create_test_resource_pool(fixture)
 
         with pytest.raises(AlreadyExistsException):
@@ -168,7 +175,9 @@ class TestResourcePoolRepository:
     async def test_update(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
-        resource_pools_repository = ResourcePoolRepository(db_connection)
+        resource_pools_repository = ResourcePoolRepository(
+            Context(connection=db_connection)
+        )
         created_resource_pool = await create_test_resource_pool(fixture)
         now = utcnow()
         updated_resource = (
@@ -192,7 +201,9 @@ class TestResourcePoolRepository:
     async def test_update_duplicated_name(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
-        resource_pools_repository = ResourcePoolRepository(db_connection)
+        resource_pools_repository = ResourcePoolRepository(
+            Context(connection=db_connection)
+        )
         created_resource_pool = await create_test_resource_pool(
             fixture, name="test1"
         )
@@ -217,7 +228,9 @@ class TestResourcePoolRepository:
         self, db_connection: AsyncConnection
     ) -> None:
         now = utcnow()
-        resource_pools_repository = ResourcePoolRepository(db_connection)
+        resource_pools_repository = ResourcePoolRepository(
+            Context(connection=db_connection)
+        )
         resource = (
             ResourcePoolResourceBuilder()
             .with_name("test")

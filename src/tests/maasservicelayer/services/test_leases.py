@@ -14,6 +14,7 @@ from maascommon.enums.ipaddress import (
     IpAddressType,
     LeaseAction,
 )
+from maasservicelayer.context import Context
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.leases import Lease
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -38,7 +39,7 @@ class TestLeasesService:
         mock_interfaces_service = Mock(InterfacesService)
         mock_ip_ranges_service = Mock(IPRangesService)
         leases_service = LeasesService(
-            Mock(AsyncConnection),
+            context=Context(),
             dnsresource_service=mock_dns_resources_service,
             node_service=mock_nodes_service,
             staticipaddress_service=mock_static_ip_address_service,
@@ -103,7 +104,7 @@ class TestLeasesService:
         mock_interfaces_service = Mock(InterfacesService)
         mock_ip_ranges_service = Mock(IPRangesService)
         leases_service = LeasesService(
-            Mock(AsyncConnection),
+            context=Context(),
             dnsresource_service=mock_dns_resources_service,
             node_service=mock_nodes_service,
             staticipaddress_service=mock_static_ip_address_service,
@@ -185,7 +186,7 @@ class TestLeasesService:
         mock_interfaces_service = Mock(InterfacesService)
         mock_ip_ranges_service = Mock(IPRangesService)
         leases_service = LeasesService(
-            Mock(AsyncConnection),
+            context=Context(),
             dnsresource_service=mock_dns_resources_service,
             node_service=mock_nodes_service,
             staticipaddress_service=mock_static_ip_address_service,
@@ -267,7 +268,7 @@ class TestLeasesService:
         mock_interfaces_service = Mock(InterfacesService)
         mock_ip_ranges_service = Mock(IPRangesService)
         leases_service = LeasesService(
-            Mock(AsyncConnection),
+            context=Context(),
             dnsresource_service=mock_dns_resources_service,
             node_service=mock_nodes_service,
             staticipaddress_service=mock_static_ip_address_service,
@@ -356,7 +357,7 @@ class TestLeasesService:
         mock_interfaces_service = Mock(InterfacesService)
         mock_ip_ranges_service = Mock(IPRangesService)
         leases_service = LeasesService(
-            Mock(AsyncConnection),
+            context=Context(),
             dnsresource_service=mock_dns_resources_service,
             node_service=mock_nodes_service,
             staticipaddress_service=mock_static_ip_address_service,

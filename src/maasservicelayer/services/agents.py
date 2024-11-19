@@ -1,9 +1,8 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
 from maasservicelayer.apiclient.client import APIClient
+from maasservicelayer.context import Context
 from maasservicelayer.services._base import Service
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.users import UsersService
@@ -12,19 +11,19 @@ from maasservicelayer.services.users import UsersService
 class AgentsService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         configurations_service: ConfigurationsService | None = None,
         users_service: UsersService | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self._apiclient = None
         self.configurations_service = (
             configurations_service
             if configurations_service
-            else ConfigurationsService(connection)
+            else ConfigurationsService(context)
         )
         self.users_service = (
-            users_service if users_service else UsersService(connection)
+            users_service if users_service else UsersService(context)
         )
 
     async def _get_apiclient(self) -> APIClient:

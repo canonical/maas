@@ -202,7 +202,6 @@ APIServerRule = Rule(
     Allow("maasserver.config.**"),
     Allow("maasserver.enum.**"),
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
-    Allow("maasserver.workflow.worker.**"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
@@ -429,6 +428,7 @@ ServiceLayerRule = Rule(
     Allow("maasserver.config.RegionConfiguration"),
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
     Allow("maasserver.macaroons._IDClient"),
+    Allow("maasserver.workflow.worker.**"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("maastemporalworker.workflow.**"),
     Allow("metadataserver.enum.*"),

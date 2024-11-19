@@ -6,9 +6,9 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.context import Context
 from maasservicelayer.exceptions.catalog import UnauthorizedException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
@@ -42,7 +42,6 @@ class TestAuthService:
         return User(**data)
 
     async def test_login(self) -> None:
-        db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
@@ -50,7 +49,7 @@ class TestAuthService:
         users_service_mock = Mock(UsersService)
         users_service_mock.get.return_value = user
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -60,7 +59,6 @@ class TestAuthService:
         assert token.roles == [UserRole.USER]
 
     async def test_login_admin(self) -> None:
-        db_connection = Mock(AsyncConnection)
         admin = self._build_test_user(is_superuser=True)
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
@@ -68,7 +66,7 @@ class TestAuthService:
         users_service_mock = Mock(UsersService)
         users_service_mock.get.return_value = admin
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -78,12 +76,11 @@ class TestAuthService:
         assert set(token.roles) == {UserRole.USER, UserRole.ADMIN}
 
     async def test_login_unauthorized(self) -> None:
-        db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -105,7 +102,6 @@ class TestAuthService:
             await auth_service.login("bb", "test")
 
     async def test_jwt_key_is_cached(self) -> None:
-        db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
@@ -114,7 +110,7 @@ class TestAuthService:
         users_service_mock.get.return_value = user
 
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -133,7 +129,6 @@ class TestAuthService:
         )
 
     async def test_jwt_key_is_created(self) -> None:
-        db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.side_effect = SecretNotFound(
@@ -143,7 +138,7 @@ class TestAuthService:
         users_service_mock.get.return_value = user
 
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -156,12 +151,11 @@ class TestAuthService:
         secrets_service_mock.set_simple_secret.assert_called_once()
 
     async def test_decode_and_verify_token(self) -> None:
-        db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -189,12 +183,11 @@ class TestAuthService:
         key: str,
         invalid_token: str,
     ) -> None:
-        db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = key
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -204,13 +197,12 @@ class TestAuthService:
     async def test_decode_and_verify_token_signed_with_another_key(
         self,
     ) -> None:
-        db_connection = Mock(AsyncConnection)
         # signed with another key
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -219,14 +211,13 @@ class TestAuthService:
             await auth_service.decode_and_verify_token(token)
 
     async def test_access_token(self) -> None:
-        db_connection = Mock(AsyncConnection)
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
@@ -239,14 +230,13 @@ class TestAuthService:
         assert token.roles == [UserRole.USER]
 
     async def test_access_token_admin(self) -> None:
-        db_connection = Mock(AsyncConnection)
         admin = self._build_test_user(is_superuser=True)
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )

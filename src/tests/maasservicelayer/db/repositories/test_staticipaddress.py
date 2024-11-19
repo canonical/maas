@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
@@ -40,7 +41,9 @@ class TestStaticIPAddressRepository:
     ) -> None:
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
 
-        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+        staticipaddress_repository = StaticIPAddressRepository(
+            Context(connection=db_connection)
+        )
 
         now = utcnow()
 
@@ -93,7 +96,9 @@ class TestStaticIPAddressRepository:
             .build()
         )
 
-        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+        staticipaddress_repository = StaticIPAddressRepository(
+            Context(connection=db_connection)
+        )
 
         await staticipaddress_repository.update(sip["id"], resource)
 
@@ -132,7 +137,9 @@ class TestStaticIPAddressRepository:
             .build()
         )
 
-        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+        staticipaddress_repository = StaticIPAddressRepository(
+            Context(connection=db_connection)
+        )
 
         await staticipaddress_repository.create_or_update(resource)
 
@@ -178,7 +185,9 @@ class TestStaticIPAddressRepository:
             for _ in range(3)
         ]
 
-        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+        staticipaddress_repository = StaticIPAddressRepository(
+            Context(connection=db_connection)
+        )
         result = await staticipaddress_repository.get_discovered_ips_in_family_for_interfaces(
             interfaces, family=IpAddressFamily.IPV4.value
         )
@@ -196,7 +205,9 @@ class TestStaticIPAddressRepository:
         await create_test_interface_entry(
             fixture, node=region_controller, ips=[ip]
         )
-        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+        staticipaddress_repository = StaticIPAddressRepository(
+            Context(connection=db_connection)
+        )
 
         result = await staticipaddress_repository.get_for_nodes(
             query=QuerySpec(
@@ -230,7 +241,9 @@ class TestStaticIPAddressRepository:
             fixture, node=region_controller, ips=[ip2]
         )
 
-        staticipaddress_repository = StaticIPAddressRepository(db_connection)
+        staticipaddress_repository = StaticIPAddressRepository(
+            Context(connection=db_connection)
+        )
 
         result = await staticipaddress_repository.get_for_nodes(
             query=QuerySpec(

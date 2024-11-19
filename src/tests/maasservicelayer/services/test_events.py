@@ -4,8 +4,8 @@
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.events import EventsRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.events import Event
@@ -15,13 +15,12 @@ from maasservicelayer.services.events import EventsService
 @pytest.mark.asyncio
 class TestEventsService:
     async def test_list(self) -> None:
-        db_connection = Mock(AsyncConnection)
         events_repository_mock = Mock(EventsRepository)
         events_repository_mock.list.return_value = ListResult[Event](
             items=[], next_token=None
         )
         events_service = EventsService(
-            connection=db_connection,
+            context=Context(),
             events_repository=events_repository_mock,
         )
         events_list = await events_service.list(token=None, size=1, query=None)

@@ -1,30 +1,49 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import asyncio
+from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from temporalio.client import Client
 
-from maasservicelayer.services._base import Service
+from maasserver.workflow.worker import (
+    get_client_async as get_temporal_client_async,
+)
+from maasservicelayer.context import Context
+from maasservicelayer.services._base import Service, ServiceCache
+
+
+@dataclass(slots=True)
+class TemporalServiceCache(ServiceCache):
+    temporal_client: Client | None = None
 
 
 class TemporalService(Service):
     def __init__(
-        self, temporal: Optional[Client] = None
+        self, context: Context, cache: ServiceCache
     ):  # we shouldn't do anything inside workflows
-        self._temporal = temporal
+        super().__init__(context, cache)
         self._post_commit_workflows = {}
         self._running_workflows = []
 
-    async def post_commit(self) -> None:
-        if not self._temporal:
-            return
+    @staticmethod
+    def build_cache_object() -> ServiceCache:
+        return TemporalServiceCache()
 
+    @Service.from_cache_or_execute(attr="temporal_client")
+    async def get_temporal_client(self) -> Client:
+        return await get_temporal_client_async()
+
+    async def post_commit(self) -> None:
         for key, arguments in self._post_commit_workflows.items():
             workflow_name, parameter, workflow_id, wait, args, kwargs = (
                 arguments
             )
 
+            client = await self.get_temporal_client()
             if wait:
-                await self._temporal.execute_workflow(
+                await client.execute_workflow(
                     workflow_name,
                     parameter,
                     workflow_id=workflow_id,
@@ -32,7 +51,7 @@ class TemporalService(Service):
                     **kwargs,
                 )
             else:
-                fut = await self._temporal.start_workflow(
+                fut = await client.start_workflow(
                     workflow_name,
                     parameter,
                     workflow_id=workflow_id,
@@ -66,9 +85,6 @@ class TemporalService(Service):
         *args: list[Any],
         **kwargs: dict[str, Any],
     ) -> None:
-        if not self._temporal:
-            return
-
         key = self._make_key(workflow_name, workflow_id)
         self._post_commit_workflows[key] = (
             workflow_name,
@@ -88,9 +104,6 @@ class TemporalService(Service):
         override_previous_parameters: Optional[bool] = False,
         parameter_merge_func: Optional[Callable] = None,
     ) -> None:
-        if not self._temporal:
-            return
-
         key = self._make_key(workflow_name, workflow_id)
 
         if self.workflow_is_registered(workflow_name, workflow_id=workflow_id):

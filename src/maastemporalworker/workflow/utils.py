@@ -5,7 +5,7 @@ from functools import wraps
 import structlog
 from temporalio import activity, workflow
 
-from maasservicelayer.logging.context import Context
+from maasservicelayer.context import Context
 
 logger = structlog.getLogger()
 

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.db.tables import VmClusterTable, ZoneTable
 from maasservicelayer.models.zones import Zone
@@ -33,7 +34,9 @@ class TestVmClustersRepository:
         vmcluster_b = await create_test_vmcluster(
             fixture, name="B", zone_id=zone_b.id
         )
-        vmcluster_repository = VmClustersRepository(db_connection)
+        vmcluster_repository = VmClustersRepository(
+            Context(connection=db_connection)
+        )
         await vmcluster_repository.move_to_zone(zone_b.id, zone_a.id)
 
         [updated_vmcluster_b] = await fixture.get(

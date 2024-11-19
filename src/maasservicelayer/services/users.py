@@ -1,8 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.models.users import User, UserProfile
@@ -12,14 +11,12 @@ from maasservicelayer.services._base import Service
 class UsersService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         users_repository: UsersRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.users_repository = (
-            users_repository
-            if users_repository
-            else UsersRepository(connection)
+            users_repository if users_repository else UsersRepository(context)
         )
 
     async def create(self, resource: CreateOrUpdateResource) -> User:

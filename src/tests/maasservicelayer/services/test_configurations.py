@@ -5,8 +5,8 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.configurations import (
     ConfigurationsRepository,
 )
@@ -21,23 +21,21 @@ class TestConfigurationsService:
         ["test", True, {"test": {"name": "myname", "age": 18}}, 1234, None],
     )
     async def test_get(self, value: Any) -> None:
-        db_connection = Mock(AsyncConnection)
         configurations_repository_mock = Mock(ConfigurationsRepository)
         configurations_repository_mock.get.return_value = Configuration(
             id=1, name="test", value=value
         )
         configurations_service = ConfigurationsService(
-            connection=db_connection,
+            context=Context(),
             configurations_repository=configurations_repository_mock,
         )
         assert value == await configurations_service.get("test")
 
     async def test_unexisting_get(self) -> None:
-        db_connection = Mock(AsyncConnection)
         configurations_repository_mock = Mock(ConfigurationsRepository)
         configurations_repository_mock.get.return_value = None
         configurations_service = ConfigurationsService(
-            connection=db_connection,
+            context=Context(),
             configurations_repository=configurations_repository_mock,
         )
         assert await configurations_service.get("test") is None

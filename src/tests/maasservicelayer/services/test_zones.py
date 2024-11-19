@@ -5,9 +5,9 @@ from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
@@ -47,14 +47,14 @@ TEST_ZONE = Zone(
 @pytest.mark.asyncio
 class TestZonesService:
     async def test_delete(self) -> None:
-        db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
         zones_repository.delete.return_value = None
         zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
-            db_connection,
+            context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
+            vmcluster_service=Mock(VmClustersService),
         )
 
         await zones_service.delete(TEST_ZONE.id)
@@ -64,14 +64,14 @@ class TestZonesService:
         self,
         mocker: MockerFixture,
     ) -> None:
-        db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
         zones_repository.delete.return_value = None
         zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
-            db_connection,
+            context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
+            vmcluster_service=Mock(VmClustersService),
         )
 
         mocker.patch(
@@ -85,13 +85,13 @@ class TestZonesService:
         self,
         mocker: MockerFixture,
     ) -> None:
-        db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
         zones_repository.find_by_id.return_value = TEST_ZONE
         zones_service = ZonesService(
-            db_connection,
+            context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
+            vmcluster_service=Mock(VmClustersService),
         )
 
         mocker.patch(
@@ -105,14 +105,14 @@ class TestZonesService:
         )
 
     async def test_delete_default_zone(self) -> None:
-        db_connection = Mock(AsyncConnection)
         zones_repository = Mock(ZonesRepository)
         zones_repository.find_by_id.return_value = DEFAULT_ZONE
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
         zones_service = ZonesService(
-            db_connection,
+            context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
+            vmcluster_service=Mock(VmClustersService),
         )
 
         with pytest.raises(BadRequestException) as excinfo:
@@ -125,7 +125,6 @@ class TestZonesService:
     async def test_delete_related_objects_are_moved_to_default_zone(
         self,
     ) -> None:
-        db_connection = Mock(AsyncConnection)
         nodes_service_mock = Mock(NodesService)
         vmclusters_service_mock = Mock(VmClustersService)
         zones_repository = Mock(ZonesRepository)
@@ -134,10 +133,10 @@ class TestZonesService:
         zones_repository.delete.return_value = None
 
         zones_service = ZonesService(
-            db_connection,
+            context=Context(),
+            zones_repository=zones_repository,
             nodes_service=nodes_service_mock,
             vmcluster_service=vmclusters_service_mock,
-            zones_repository=zones_repository,
         )
 
         await zones_service.delete(TEST_ZONE.id)
@@ -153,15 +152,15 @@ class TestZonesService:
         )
 
     async def test_list(self) -> None:
-        db_connection = Mock(AsyncConnection)
         zones_repository_mock = Mock(ZonesRepository)
         zones_repository_mock.list.return_value = ListResult[ZonesRepository](
             items=[], next_token=None
         )
         resource_pools_service = ZonesService(
-            connection=db_connection,
+            context=Context(),
             zones_repository=zones_repository_mock,
             nodes_service=Mock(NodesService),
+            vmcluster_service=Mock(VmClustersService),
         )
         query_mock = Mock(QuerySpec)
         resource_pools_list = await resource_pools_service.list(

@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.workflows.msm import MachinesCountByStatus
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
@@ -22,7 +23,7 @@ class TestMachinesService:
             items=[], next_token=None
         )
         machines_service = MachinesService(
-            connection=Mock(AsyncConnection),
+            context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
@@ -39,7 +40,7 @@ class TestMachinesService:
             ListResult[UsbDevice](items=[], next_token=None)
         )
         machines_service = MachinesService(
-            connection=Mock(AsyncConnection),
+            context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
@@ -58,7 +59,7 @@ class TestMachinesService:
             ListResult[PciDevice](items=[], next_token=None)
         )
         machines_service = MachinesService(
-            connection=Mock(AsyncConnection),
+            context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
@@ -78,7 +79,7 @@ class TestMachinesService:
             return_value
         )
         machines_service = MachinesService(
-            connection=Mock(AsyncConnection),
+            context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )

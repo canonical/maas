@@ -7,8 +7,11 @@ from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
+import structlog
 
 from maasservicelayer.db import Database
+
+logger = structlog.get_logger()
 
 
 class TransactionMiddleware(BaseHTTPMiddleware):
@@ -36,6 +39,15 @@ class TransactionMiddleware(BaseHTTPMiddleware):
         async with self.get_connection() as conn:
             request.state.context.set_connection(conn)
             response = await call_next(request)
+
+        # TODO: rewrite the temporal service in order to just register the post commit hooks with no additional logic
+        # After the transaction has been committed, we execute all the post commit hooks in the order they were registered.
+        # for post_commit_hook in request.state.context.get_post_commit_hooks():
+        #     try:
+        #         await post_commit_hook()
+        #     except Exception as e:
+        #         logger.error("The transaction has been committed but a post commit hook has failed.", exc_info=e)
+        #         raise e
 
         if hasattr(request.state, "services") and hasattr(
             request.state.services, "temporal"

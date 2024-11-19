@@ -1,13 +1,13 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from pydantic import IPvAnyAddress
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.models.base import ListResult
@@ -19,16 +19,16 @@ from maasservicelayer.services.temporal import TemporalService
 class SubnetsService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         temporal_service: TemporalService,
         subnets_repository: SubnetsRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.temporal_service = temporal_service
         self.subnets_repository = (
             subnets_repository
             if subnets_repository
-            else SubnetsRepository(connection)
+            else SubnetsRepository(context)
         )
 
     async def list(self, token: str | None, size: int) -> ListResult[Subnet]:

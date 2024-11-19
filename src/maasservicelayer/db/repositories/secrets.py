@@ -6,16 +6,16 @@ from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.tables import SecretTable
 from maasservicelayer.models.secrets import Secret
 
 
 class SecretsRepository:
-    def __init__(self, connection: AsyncConnection):
-        self.connection = connection
+    def __init__(self, context: Context):
+        self.connection = context.get_connection()
 
     async def create_or_update(self, path: str, value: dict[str, Any]) -> None:
         created_at = updated_at = datetime.datetime.now(datetime.timezone.utc)

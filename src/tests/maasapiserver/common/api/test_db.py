@@ -44,7 +44,6 @@ async def insert_app(
     db_connection: AsyncConnection,
     mocker: MockerFixture,
 ) -> FastAPI:
-    mocker.patch("maasapiserver.main.get_temporal_client_async")
 
     class InsertHandler(Handler):
         @handler(path="/success", methods=["GET"])

@@ -3,6 +3,7 @@ from ipaddress import IPv4Address
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.ipranges import (
     IPRangeResourceBuilder,
     IPRangesRepository,
@@ -52,7 +53,9 @@ class TestIPRangesRepository:
             fixture, subnet=subnet_data, offset=1, size=5, type="dynamic"
         )
 
-        ipranges_repository = IPRangesRepository(db_connection)
+        ipranges_repository = IPRangesRepository(
+            Context(connection=db_connection)
+        )
 
         result = await ipranges_repository.get_dynamic_range_for_ip(subnet, ip)
 

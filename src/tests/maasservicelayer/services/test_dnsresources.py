@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.models.dnsresources import DNSResource
@@ -79,7 +80,7 @@ class TestDNSResourcesService:
         ]
 
         dnsresources_service = DNSResourcesService(
-            Mock(AsyncConnection),
+            context=Context(),
             domains_service=mock_domains_service,
             dnsresource_repository=mock_dnsresource_repository,
         )
@@ -144,7 +145,7 @@ class TestDNSResourcesService:
         mock_dnsresource_repository.get_ips_for_dnsresource.return_value = []
 
         dnsresources_service = DNSResourcesService(
-            Mock(AsyncConnection),
+            context=Context(),
             domains_service=mock_domains_service,
             dnsresource_repository=mock_dnsresource_repository,
         )

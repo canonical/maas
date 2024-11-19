@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.node import NodeStatus
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import (
     MachineClauseFactory,
@@ -52,7 +53,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
     def repository_instance(
         self, db_connection: AsyncConnection
     ) -> MachinesRepository:
-        return MachinesRepository(db_connection)
+        return MachinesRepository(Context(connection=db_connection))
 
     @pytest.fixture
     async def _setup_test_list(

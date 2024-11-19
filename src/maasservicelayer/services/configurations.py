@@ -3,8 +3,7 @@
 
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.configurations import (
     ConfigurationsRepository,
 )
@@ -14,14 +13,14 @@ from maasservicelayer.services._base import Service
 class ConfigurationsService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         configurations_repository: ConfigurationsRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.configurations_repository = (
             configurations_repository
             if configurations_repository
-            else ConfigurationsRepository(connection)
+            else ConfigurationsRepository(context)
         )
 
     # We inherit this from the django legacy implementation. When we will have moved away, we can refactor the way we store the

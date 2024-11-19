@@ -4,8 +4,8 @@
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
     ResourcePoolResourceBuilder,
@@ -20,7 +20,6 @@ from maasservicelayer.utils.date import utcnow
 @pytest.mark.asyncio
 class TestResourcePoolsService:
     async def test_create(self) -> None:
-        db_connection = Mock(AsyncConnection)
         now = utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -32,7 +31,7 @@ class TestResourcePoolsService:
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
         resource_pool_repository_mock.create.return_value = resource_pool
         resource_pools_service = ResourcePoolsService(
-            connection=db_connection,
+            context=Context(),
             resource_pools_repository=resource_pool_repository_mock,
         )
         resource = (
@@ -59,13 +58,12 @@ class TestResourcePoolsService:
         assert created_resource_pool is not None
 
     async def test_list(self) -> None:
-        db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
         resource_pool_repository_mock.list.return_value = ListResult[
             ResourcePool
         ](items=[], next_token=None)
         resource_pools_service = ResourcePoolsService(
-            connection=db_connection,
+            context=Context(),
             resource_pools_repository=resource_pool_repository_mock,
         )
         resource_pools_list = await resource_pools_service.list(
@@ -78,11 +76,10 @@ class TestResourcePoolsService:
         assert resource_pools_list.items == []
 
     async def test_list_ids(self) -> None:
-        db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
         resource_pool_repository_mock.list_ids.return_value = {1, 2, 3}
         resource_pools_service = ResourcePoolsService(
-            connection=db_connection,
+            context=Context(),
             resource_pools_repository=resource_pool_repository_mock,
         )
         ids_list = await resource_pools_service.list_ids()
@@ -90,7 +87,6 @@ class TestResourcePoolsService:
         assert ids_list == {1, 2, 3}
 
     async def test_get_by_id(self) -> None:
-        db_connection = Mock(AsyncConnection)
         now = utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -103,7 +99,7 @@ class TestResourcePoolsService:
         resource_pool_repository_mock.find_by_id.return_value = resource_pool
 
         resource_pools_service = ResourcePoolsService(
-            connection=db_connection,
+            context=Context(),
             resource_pools_repository=resource_pool_repository_mock,
         )
         retrieved_resource_pool = await resource_pools_service.get_by_id(
@@ -115,11 +111,10 @@ class TestResourcePoolsService:
         assert retrieved_resource_pool == resource_pool
 
     async def test_patch_not_found(self) -> None:
-        db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
         resource_pool_repository_mock.update.side_effect = NotFoundException()
         resource_pools_service = ResourcePoolsService(
-            connection=db_connection,
+            context=Context(),
             resource_pools_repository=resource_pool_repository_mock,
         )
         with pytest.raises(NotFoundException):
@@ -132,7 +127,6 @@ class TestResourcePoolsService:
             )
 
     async def test_update(self) -> None:
-        db_connection = Mock(AsyncConnection)
         now = utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -149,7 +143,7 @@ class TestResourcePoolsService:
         resource_pool_repository_mock.update.return_value = patch_resource_pool
 
         resource_pools_service = ResourcePoolsService(
-            connection=db_connection,
+            context=Context(),
             resource_pools_repository=resource_pool_repository_mock,
         )
         updated_resource_pool = await resource_pools_service.update(

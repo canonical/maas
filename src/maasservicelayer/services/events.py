@@ -1,8 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.events import EventsRepository
 from maasservicelayer.models.base import ListResult
@@ -13,14 +12,14 @@ from maasservicelayer.services._base import Service
 class EventsService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         events_repository: EventsRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.events_repository = (
             events_repository
             if events_repository
-            else EventsRepository(connection)
+            else EventsRepository(context)
         )
 
     async def list(

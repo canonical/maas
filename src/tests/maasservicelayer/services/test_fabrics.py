@@ -4,8 +4,8 @@
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fabrics import Fabric
@@ -16,13 +16,12 @@ from maasservicelayer.utils.date import utcnow
 @pytest.mark.asyncio
 class TestFabricsService:
     async def test_list(self) -> None:
-        db_connection = Mock(AsyncConnection)
         fabrics_repository_mock = Mock(FabricsRepository)
         fabrics_repository_mock.list.return_value = ListResult[Fabric](
             items=[], next_token=None
         )
         fabrics_service = FabricsService(
-            connection=db_connection,
+            context=Context(),
             fabrics_repository=fabrics_repository_mock,
         )
         fabrics_list = await fabrics_service.list(token=None, size=1)
@@ -33,7 +32,6 @@ class TestFabricsService:
         assert fabrics_list.items == []
 
     async def test_get_by_id(self) -> None:
-        db_connection = Mock(AsyncConnection)
         now = utcnow()
         expected_fabric = Fabric(
             id=0, name="test", description="descr", created=now, updated=now
@@ -41,7 +39,7 @@ class TestFabricsService:
         fabrics_repository_mock = Mock(FabricsRepository)
         fabrics_repository_mock.find_by_id.return_value = expected_fabric
         fabrics_service = FabricsService(
-            connection=db_connection,
+            context=Context(),
             fabrics_repository=fabrics_repository_mock,
         )
         fabric = await fabrics_service.get_by_id(id=1)

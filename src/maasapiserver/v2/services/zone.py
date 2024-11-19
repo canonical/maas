@@ -44,5 +44,5 @@ class ZoneService(Service):
             .order_by(ZoneTable.c.id)
         )
 
-        result = await self.conn.execute(stmt)
+        result = await self.context.get_connection().execute(stmt)
         return [Zone(**row._asdict()) for row in result.all()]

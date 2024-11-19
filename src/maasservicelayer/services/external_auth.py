@@ -10,7 +10,6 @@ from macaroonbakery import bakery, checkers, httpbakery
 from macaroonbakery.bakery._store import RootKeyStore
 from macaroonbakery.httpbakery.agent import Agent, AuthInfo
 from pymacaroons import Macaroon
-from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.datastructures import Headers
 
 from maasserver.macaroons import _get_macaroon_caveats_ops, _IDClient
@@ -25,6 +24,7 @@ from maasservicelayer.auth.macaroons.macaroon_client import (
     RbacAsyncClient,
 )
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
@@ -81,17 +81,17 @@ class ExternalAuthService(Service, RootKeyStore):
 
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         secrets_service: SecretsService,
         users_service: UsersService,
         cache: ExternalAuthServiceCache | None = None,
         external_auth_repository: ExternalAuthRepository | None = None,
     ):
-        super().__init__(connection, cache)
+        super().__init__(context, cache)
         self.secrets_service = secrets_service
         self.users_service = users_service
         self.external_auth_repository = (
-            external_auth_repository or ExternalAuthRepository(connection)
+            external_auth_repository or ExternalAuthRepository(context)
         )
 
     @staticmethod

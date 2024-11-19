@@ -19,7 +19,7 @@ class UserService(Service):
                 SessionTable.c.expire_date > utcnow(),
             )
         )
-        row = (await self.conn.execute(stmt)).one_or_none()
+        row = (await self.context.get_connection().execute(stmt)).one_or_none()
         if not row:
             return None
         session_data = row[0]
@@ -36,7 +36,7 @@ class UserService(Service):
             .select_from(UserTable)
             .filter(UserTable.c.id == user_id)
         )
-        row = (await self.conn.execute(stmt)).one_or_none()
+        row = (await self.context.get_connection().execute(stmt)).one_or_none()
         if not row:
             return None
         return User(**row._asdict())

@@ -42,9 +42,6 @@ from maasapiserver.v3.middlewares.auth import (
 )
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
-from maasserver.workflow.worker import (
-    get_client_async as get_temporal_client_async,
-)
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import StartupLock
@@ -96,7 +93,6 @@ async def prepare_app(
     # In maasserver we have a startup lock. If it is set, we have to wait to start maasapiserver as well.
     await wait_for_startup(db)
 
-    temporal = await get_temporal_client_async()
     services_cache = CacheForServices()
 
     app = FastAPI(
@@ -122,9 +118,7 @@ async def prepare_app(
             ),
         )
 
-    app.add_middleware(
-        ServicesMiddleware, temporal=temporal, cache=services_cache
-    )
+    app.add_middleware(ServicesMiddleware, cache=services_cache)
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ExceptionMiddleware)
     app.add_middleware(ContextMiddleware)

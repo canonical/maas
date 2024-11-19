@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.configurations import (
     ConfigurationsRepository,
 )
@@ -26,7 +27,9 @@ class TestConfigurationsRepository:
         await create_test_configuration(
             fixture=fixture, name="test", value=value
         )
-        configuration_repository = ConfigurationsRepository(db_connection)
+        configuration_repository = ConfigurationsRepository(
+            Context(connection=db_connection)
+        )
         configuration = await configuration_repository.get("test")
         assert value == configuration.value
         assert "test" == configuration.name
@@ -34,5 +37,7 @@ class TestConfigurationsRepository:
     async def test_unexisting_get(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
-        configuration_repository = ConfigurationsRepository(db_connection)
+        configuration_repository = ConfigurationsRepository(
+            Context(connection=db_connection)
+        )
         assert None == (await configuration_repository.get("whatever"))

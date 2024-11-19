@@ -3,9 +3,8 @@
 
 from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
 from maascommon.enums.ipaddress import IpAddressType
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.dnsresources import (
@@ -24,16 +23,16 @@ from provisioningserver.utils.network import coerce_to_valid_hostname
 class DNSResourcesService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         domains_service: DomainsService,
         dnsresource_repository: Optional[DNSResourceRepository] = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.domains_service = domains_service
         self.dnsresource_repository = (
             dnsresource_repository
             if dnsresource_repository
-            else DNSResourceRepository(connection)
+            else DNSResourceRepository(context)
         )
 
     async def get_one(self, query: QuerySpec) -> DNSResource | None:

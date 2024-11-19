@@ -4,8 +4,8 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.services import (
     AgentsService,
     ConfigurationsService,
@@ -16,12 +16,11 @@ from maasservicelayer.services import (
 @pytest.mark.asyncio
 class TestAgentsService:
     async def test_get_service_configuration(self) -> None:
-        db_connection = Mock(AsyncConnection)
         configurations_service = Mock(ConfigurationsService)
         users_service = Mock(UsersService)
 
         agents_service = AgentsService(
-            db_connection,
+            context=Context(),
             configurations_service=configurations_service,
             users_service=users_service,
         )
@@ -37,14 +36,13 @@ class TestAgentsService:
         )
 
     async def test_get_apiclient(self) -> None:
-        db_connection = Mock(AsyncConnection)
         configurations_service = Mock(ConfigurationsService)
         configurations_service.get.return_value = "http://example.com"
         users_service = Mock(UsersService)
         users_service.get_user_apikeys.return_value = ["key:token:secret"]
 
         agents_service = AgentsService(
-            db_connection,
+            context=Context(),
             configurations_service=configurations_service,
             users_service=users_service,
         )

@@ -1,9 +1,8 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
 from maascommon.workflows.msm import MachinesCountByStatus
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
@@ -15,15 +14,15 @@ from maasservicelayer.services.secrets import SecretsService
 class MachinesService(NodesService):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         secrets_service: SecretsService,
         machines_repository: MachinesRepository | None = None,
     ):
-        super().__init__(connection, secrets_service)
+        super().__init__(context, secrets_service)
         self.machines_repository = (
             machines_repository
             if machines_repository
-            else MachinesRepository(connection)
+            else MachinesRepository(context)
         )
 
     async def list(

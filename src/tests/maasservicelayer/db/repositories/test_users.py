@@ -2,11 +2,11 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import datetime
-from typing import List
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.users import (
     UserProfileResourceBuilder,
     UserResourceBuilder,
@@ -79,7 +79,7 @@ class TestUsersRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user = await create_test_user(fixture)
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         assert (await users_repository.find_by_username("unexisting")) is None
         fetched_user = await users_repository.find_by_username(user.username)
         assert user == fetched_user
@@ -90,7 +90,7 @@ class TestUsersRepository:
         user = await create_test_user(fixture)
         await create_test_session(fixture, user.id, "test_session")
 
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         assert (await users_repository.find_by_sessionid("unexisting")) is None
 
         fetched_user = await users_repository.find_by_sessionid("test_session")
@@ -108,7 +108,7 @@ class TestUsersRepository:
             - datetime.timedelta(seconds=1),
         )
 
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         assert (
             await users_repository.find_by_sessionid("test_session")
         ) is None
@@ -118,7 +118,7 @@ class TestUsersRepository:
     ) -> None:
         user = await create_test_user(fixture)
         user_profile = await create_test_user_profile(fixture, user.id)
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         assert (
             await users_repository.get_user_profile(user.username)
         ) == user_profile
@@ -127,7 +127,7 @@ class TestUsersRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user = await create_test_user(fixture)
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         now = utcnow()
         user_profile_builder = (
             UserProfileResourceBuilder()
@@ -146,7 +146,7 @@ class TestUsersRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user = await create_test_user(fixture)
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         builder = UserResourceBuilder()
         builder.with_last_name("test")
         updated_user = await users_repository.update(user.id, builder.build())
@@ -158,7 +158,7 @@ class TestUsersRepository:
         now = utcnow()
         user = await create_test_user(fixture)
         await create_test_user_profile(fixture, user.id)
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         builder = UserProfileResourceBuilder()
         builder.with_auth_last_check(now)
         updated_profile = await users_repository.update_profile(
@@ -168,7 +168,7 @@ class TestUsersRepository:
 
     async def test_get_user_apikeys(
         self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> List[str]:
+    ) -> None:
         user = await create_test_user(fixture)
         user_consumer = await create_test_user_consumer(fixture, user.id)
         user_token = await create_test_user_token(
@@ -179,6 +179,6 @@ class TestUsersRepository:
             [user_consumer.key, user_token.key, user_token.secret]
         )
 
-        users_repository = UsersRepository(db_connection)
+        users_repository = UsersRepository(Context(connection=db_connection))
         apikeys = await users_repository.get_user_apikeys(user.username)
         assert apikeys[0] == apikey

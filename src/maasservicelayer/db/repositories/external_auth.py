@@ -5,9 +5,9 @@ import datetime
 
 from sqlalchemy import delete, desc, select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import and_, eq, ge, le
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.tables import RootKeyTable
 from maasservicelayer.models.external_auth import RootKey
 from maasservicelayer.utils.date import utcnow
@@ -17,8 +17,8 @@ class ExternalAuthRepository:
     GENERATE_INTERVAL = datetime.timedelta(days=1)
     EXPIRY_DURATION = datetime.timedelta(days=1)
 
-    def __init__(self, connection: AsyncConnection):
-        self.connection = connection
+    def __init__(self, context: Context):
+        self.connection = context.get_connection()
 
     async def create(self) -> RootKey:
         now = utcnow()

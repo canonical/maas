@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
+from maasservicelayer.context import Context
 from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.events import (
@@ -54,7 +55,7 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
     def repository_instance(
         self, db_connection: AsyncConnection
     ) -> EventsRepository:
-        return EventsRepository(db_connection)
+        return EventsRepository(Context(connection=db_connection))
 
     @pytest.fixture
     async def _setup_test_list(

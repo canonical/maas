@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceClauseFactory,
@@ -32,7 +33,9 @@ class TestDNSResourceRepository:
         )[0]
         dnsresource = await create_test_dnsresource_entry(fixture, domain, sip)
 
-        dnsresource_repository = DNSResourceRepository(db_connection)
+        dnsresource_repository = DNSResourceRepository(
+            Context(connection=db_connection)
+        )
 
         query = QuerySpec(
             where=DNSResourceClauseFactory.and_clauses(
@@ -52,7 +55,9 @@ class TestDNSResourceRepository:
     ) -> None:
         domain = await create_test_domain_entry(fixture)
 
-        dnsresource_repository = DNSResourceRepository(db_connection)
+        dnsresource_repository = DNSResourceRepository(
+            Context(connection=db_connection)
+        )
 
         now = utcnow()
 
@@ -84,7 +89,9 @@ class TestDNSResourceRepository:
             for _ in range(3)
         ]
 
-        dnsresource_repository = DNSResourceRepository(db_connection)
+        dnsresource_repository = DNSResourceRepository(
+            Context(connection=db_connection)
+        )
 
         result = (
             await dnsresource_repository.get_dnsresources_in_domain_for_ip(
@@ -107,7 +114,9 @@ class TestDNSResourceRepository:
         )[0]
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
-        dnsresource_repository = DNSResourceRepository(db_connection)
+        dnsresource_repository = DNSResourceRepository(
+            Context(connection=db_connection)
+        )
 
         ip = StaticIPAddress(**sip)
 
@@ -137,7 +146,9 @@ class TestDNSResourceRepository:
         ]
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
-        dnsresource_repository = DNSResourceRepository(db_connection)
+        dnsresource_repository = DNSResourceRepository(
+            Context(connection=db_connection)
+        )
 
         for sip in sips:
             await dnsresource_repository.link_ip(dnsresource, sip)
@@ -158,7 +169,9 @@ class TestDNSResourceRepository:
         )[0]
         dnsresource = await create_test_dnsresource_entry(fixture, domain, sip)
 
-        dnsresource_repository = DNSResourceRepository(db_connection)
+        dnsresource_repository = DNSResourceRepository(
+            Context(connection=db_connection)
+        )
 
         await dnsresource_repository.remove_ip_relation(
             dnsresource, StaticIPAddress(**sip)
@@ -175,7 +188,9 @@ class TestDNSResourceRepository:
         domain = await create_test_domain_entry(fixture)
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
-        dnsresource_repository = DNSResourceRepository(db_connection)
+        dnsresource_repository = DNSResourceRepository(
+            Context(connection=db_connection)
+        )
 
         await dnsresource_repository.delete(dnsresource.id)
 

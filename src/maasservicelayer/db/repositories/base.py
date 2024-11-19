@@ -8,8 +8,8 @@ from typing import Any, Generic, Type, TypeVar
 
 from sqlalchemy import delete, desc, insert, select, Select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
@@ -55,8 +55,9 @@ class ResourceBuilder(ABC):
 
 
 class BaseRepository(ABC, Generic[T]):
-    def __init__(self, connection: AsyncConnection):
-        self.connection = connection
+    def __init__(self, context: Context):
+        self.context = context
+        self.connection = context.get_connection()
 
     @abstractmethod
     def get_repository_table(self) -> Table:

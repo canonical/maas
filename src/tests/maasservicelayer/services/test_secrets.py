@@ -8,6 +8,7 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.secrets import SecretsRepository
 from maasservicelayer.models.secrets import Secret
 from maasservicelayer.services import ConfigurationsService
@@ -134,8 +135,8 @@ class SecretsServiceTestSuite:
 
 
 class SecretsRepositoryMock(SecretsRepository):
-    def __init__(self, connection):
-        super().__init__(connection)
+    def __init__(self, context: Context):
+        super().__init__(context)
         self.storage = {}
 
     async def create_or_update(self, path: str, value: dict[str, Any]) -> None:
@@ -153,8 +154,9 @@ class SecretsRepositoryMock(SecretsRepository):
 class TestLocalSecretStorageService(SecretsServiceTestSuite):
     def get_vault_service(self) -> SecretsService:
         connection = Mock(AsyncConnection)
+        context = Context(connection=connection)
         return LocalSecretsStorageService(
-            connection, secrets_repository=SecretsRepositoryMock(connection)
+            context, secrets_repository=SecretsRepositoryMock(context)
         )
 
 
@@ -185,8 +187,9 @@ class AsyncVaultManagerMock(AsyncVaultManager):
 class TestVaultSecretService(SecretsServiceTestSuite):
     def get_vault_service(self) -> SecretsService:
         connection = Mock(AsyncConnection)
+        context = Context(connection=connection)
         return VaultSecretsService(
-            connection=connection, vault_manager=AsyncVaultManagerMock()
+            context=context, vault_manager=AsyncVaultManagerMock()
         )
 
 
@@ -194,41 +197,45 @@ class TestVaultSecretService(SecretsServiceTestSuite):
 class TestSecretServiceFactory:
     async def test_with_default_settings(self) -> None:
         db_connection = Mock(AsyncConnection)
+        context = Context(connection=db_connection)
         configuration_service_mock = Mock(ConfigurationsService)
         configuration_service_mock.get.return_value = None
         assert SecretsServiceFactory.IS_VAULT_ENABLED is None
         vault_service = await SecretsServiceFactory.produce(
-            db_connection, configuration_service_mock
+            context, configuration_service_mock
         )
         assert SecretsServiceFactory.IS_VAULT_ENABLED is False
         assert isinstance(vault_service, LocalSecretsStorageService)
 
     async def test_with_vault_enabled(self) -> None:
         db_connection = Mock(AsyncConnection)
+        context = Context(connection=db_connection)
         configuration_service_mock = Mock(ConfigurationsService)
         configuration_service_mock.get.return_value = True
         vault_service = await SecretsServiceFactory.produce(
-            db_connection, configuration_service_mock
+            context, configuration_service_mock
         )
         assert SecretsServiceFactory.IS_VAULT_ENABLED is True
         assert isinstance(vault_service, VaultSecretsService)
 
     async def test_with_vault_disabled(self) -> None:
         db_connection = Mock(AsyncConnection)
+        context = Context(connection=db_connection)
         configuration_service_mock = Mock(ConfigurationsService)
         configuration_service_mock.get.return_value = False
         vault_service = await SecretsServiceFactory.produce(
-            db_connection, configuration_service_mock
+            context, configuration_service_mock
         )
         assert SecretsServiceFactory.IS_VAULT_ENABLED is False
         assert isinstance(vault_service, LocalSecretsStorageService)
 
     async def test_clear(self) -> None:
         db_connection = Mock(AsyncConnection)
+        context = Context(connection=db_connection)
         configuration_service_mock = Mock(ConfigurationsService)
         configuration_service_mock.get.return_value = False
         await SecretsServiceFactory.produce(
-            db_connection, configuration_service_mock
+            context, configuration_service_mock
         )
         assert SecretsServiceFactory.IS_VAULT_ENABLED is False
         SecretsServiceFactory.clear()

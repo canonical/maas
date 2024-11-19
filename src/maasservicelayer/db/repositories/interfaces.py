@@ -4,11 +4,11 @@
 from typing import Any, List
 
 from sqlalchemy import desc, insert, select, Select
-from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
 from maascommon.enums.ipaddress import IpAddressType
+from maasservicelayer.context import Context
 from maasservicelayer.db.tables import (  # TODO; VlanTable,
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -36,8 +36,8 @@ def build_interface_links(
 
 
 class InterfaceRepository:
-    def __init__(self, connection: AsyncConnection):
-        self.connection = connection
+    def __init__(self, context: Context):
+        self.connection = context.get_connection()
 
     async def list(
         self, node_id: int, token: str | None, size: int

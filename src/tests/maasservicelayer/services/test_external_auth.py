@@ -9,7 +9,6 @@ from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
 from pymacaroons import Macaroon
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import ExternalAuthType
@@ -19,6 +18,7 @@ from maasservicelayer.auth.macaroons.checker import (
 )
 from maasservicelayer.auth.macaroons.locator import AsyncThirdPartyLocator
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
@@ -69,7 +69,7 @@ class TestExternalAuthService:
             TEST_CONFIG_CANDID
         )
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -90,7 +90,7 @@ class TestExternalAuthService:
             TEST_CONFIG_RBAC
         )
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -109,7 +109,7 @@ class TestExternalAuthService:
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_composite_secret.return_value = {}
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -127,7 +127,7 @@ class TestExternalAuthService:
             TEST_CONFIG_CANDID
         )
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -146,7 +146,7 @@ class TestExternalAuthService:
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_composite_secret.return_value = None
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -164,7 +164,7 @@ class TestExternalAuthService:
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = key
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -187,7 +187,7 @@ class TestExternalAuthService:
         secrets_service_mock.get_simple_secret.return_value = None
 
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -217,7 +217,7 @@ class TestExternalAuthService:
         external_auth_repository_mock = Mock(ExternalAuthRepository)
         external_auth_repository_mock.find_by_id.return_value = rootkey
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -237,7 +237,7 @@ class TestExternalAuthService:
         external_auth_repository_mock = Mock(ExternalAuthRepository)
         external_auth_repository_mock.find_by_id.return_value = None
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -257,7 +257,7 @@ class TestExternalAuthService:
         external_auth_repository_mock = Mock(ExternalAuthRepository)
         external_auth_repository_mock.find_by_id.return_value = rootkey
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -283,7 +283,7 @@ class TestExternalAuthService:
         external_auth_repository_mock = Mock(ExternalAuthRepository)
         external_auth_repository_mock.find_best_key.return_value = rootkey
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -327,7 +327,7 @@ class TestExternalAuthService:
         os_mock.return_value = os_urandom
 
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(context_id="1224"),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -361,7 +361,7 @@ class TestExternalAuthService:
         secrets_service_mock.get_composite_secret.return_value = {}
 
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -386,7 +386,7 @@ class TestExternalAuthService:
         macaroon_bakery.checker.auth = Mock(return_value=checker_mock)
 
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -425,7 +425,7 @@ class TestExternalAuthService:
         users_service_mock.get.return_value = fake_user
 
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=users_service_mock,
             cache=ExternalAuthService.build_cache_object(),
@@ -492,7 +492,7 @@ class TestExternalAuthService:
         users_service_mock.create_profile.return_value = fake_profile
 
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=users_service_mock,
             cache=ExternalAuthService.build_cache_object(),
@@ -520,7 +520,7 @@ class TestExternalAuthService:
         secrets_service_mock.get_composite_secret.return_value = {}
 
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -541,7 +541,7 @@ class TestExternalAuthService:
         # get the bakery key
         secrets_service_mock.get_simple_secret.return_value = TEST_KEY
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -577,7 +577,7 @@ class TestExternalAuthService:
             hex_os_urandom,
         ]
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -636,7 +636,7 @@ class TestExternalAuthService:
             hex_os_urandom,
         ]
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -700,7 +700,7 @@ class TestExternalAuthService:
             hex_os_urandom,
         ]
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -723,7 +723,7 @@ class TestExternalAuthService:
         )
         secrets_service_mock.get_simple_secret.return_value = TEST_KEY
         external_auth_service = ExternalAuthService(
-            Mock(AsyncConnection),
+            context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),

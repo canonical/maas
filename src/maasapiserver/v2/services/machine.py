@@ -59,7 +59,7 @@ class MachineService(Service):
             ids += list(map(lambda x: x.id, group.items))
 
         stmt = self._single_query(ids)
-        result = await self.conn.execute(stmt)
+        result = await self.context.get_connection().execute(stmt)
 
         machines = {}
         for row in result.all():

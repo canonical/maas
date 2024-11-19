@@ -1,11 +1,9 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Callable, Optional
+from typing import Callable
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-from temporalio.client import Client
-
+from maasservicelayer.context import Context
 from maasservicelayer.services._base import ServiceCache
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
@@ -90,79 +88,83 @@ class ServiceCollectionV3:
     @classmethod
     async def produce(
         cls,
-        connection: AsyncConnection,
+        context: Context,
         cache: CacheForServices,
-        temporal: Optional[Client] = None,
     ) -> "ServiceCollectionV3":
         services = cls()
-        services.configurations = ConfigurationsService(connection=connection)
+        services.configurations = ConfigurationsService(context=context)
         services.secrets = await SecretsServiceFactory.produce(
-            connection=connection, config_service=services.configurations
+            context=context, config_service=services.configurations
         )
-        services.temporal = TemporalService(temporal=temporal)
-        services.users = UsersService(connection=connection)
+        services.temporal = TemporalService(
+            context=context,
+            cache=cache.get(
+                TemporalService.__name__, TemporalService.build_cache_object
+            ),
+        )
+        services.users = UsersService(context=context)
         services.auth = AuthService(
-            connection=connection,
+            context=context,
             secrets_service=services.secrets,
             users_service=services.users,
         )
         services.external_auth = ExternalAuthService(
-            connection=connection,
+            context=context,
             secrets_service=services.secrets,
             users_service=services.users,
             cache=cache.get(ExternalAuthService.__name__, ExternalAuthService.build_cache_object),  # type: ignore
         )
         services.nodes = NodesService(
-            connection=connection, secrets_service=services.secrets
+            context=context, secrets_service=services.secrets
         )
-        services.vmclusters = VmClustersService(connection=connection)
+        services.vmclusters = VmClustersService(context=context)
         services.zones = ZonesService(
-            connection=connection,
+            context=context,
             nodes_service=services.nodes,
             vmcluster_service=services.vmclusters,
         )
-        services.resource_pools = ResourcePoolsService(connection=connection)
+        services.resource_pools = ResourcePoolsService(context=context)
         services.machines = MachinesService(
-            connection=connection, secrets_service=services.secrets
+            context=context, secrets_service=services.secrets
         )
-        services.events = EventsService(connection=connection)
+        services.events = EventsService(context=context)
         services.interfaces = InterfacesService(
-            connection=connection,
+            context=context,
             temporal_service=services.temporal,
         )
-        services.fabrics = FabricsService(connection=connection)
-        services.spaces = SpacesService(connection=connection)
+        services.fabrics = FabricsService(context=context)
+        services.spaces = SpacesService(context=context)
         services.vlans = VlansService(
-            connection=connection,
+            context=context,
             temporal_service=services.temporal,
             nodes_service=services.nodes,
         )
         services.subnets = SubnetsService(
-            connection=connection,
+            context=context,
             temporal_service=services.temporal,
         )
-        services.agents = AgentsService(connection=connection)
+        services.agents = AgentsService(context=context)
         services.dnspublications = DNSPublicationsService(
-            connection=connection,
+            context=context,
             temporal_service=services.temporal,
         )
         services.domains = DomainsService(
-            connection=connection,
+            context=context,
             dnspublications_service=services.dnspublications,
         )
         services.dnsresources = DNSResourcesService(
-            connection=connection, domains_service=services.domains
+            context=context, domains_service=services.domains
         )
         services.staticipaddress = StaticIPAddressService(
-            connection=connection,
+            context=context,
             temporal_service=services.temporal,
         )
         services.ipranges = IPRangesService(
-            connection=connection,
+            context=context,
             temporal_service=services.temporal,
         )
         services.leases = LeasesService(
-            connection=connection,
+            context=context,
             dnsresource_service=services.dnsresources,
             node_service=services.nodes,
             staticipaddress_service=services.staticipaddress,

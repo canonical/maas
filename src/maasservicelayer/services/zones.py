@@ -3,8 +3,7 @@
 
 from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.zones import ZonesRepository
@@ -27,22 +26,20 @@ from maasservicelayer.services.vmcluster import VmClustersService
 class ZonesService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         nodes_service: NodesService,
         zones_repository: ZonesRepository | None = None,
         vmcluster_service: VmClustersService | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.nodes_service = nodes_service
         self.zones_repository = (
-            zones_repository
-            if zones_repository
-            else ZonesRepository(connection)
+            zones_repository if zones_repository else ZonesRepository(context)
         )
         self.vmcluster_service = (
             vmcluster_service
             if vmcluster_service
-            else VmClustersService(connection)
+            else VmClustersService(context)
         )
 
     async def create(self, resource: CreateOrUpdateResource) -> Zone:

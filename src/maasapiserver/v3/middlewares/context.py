@@ -9,7 +9,7 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 import structlog
 
-from maasservicelayer.logging.context import Context
+from maasservicelayer.context import Context
 
 logger = structlog.getLogger()
 

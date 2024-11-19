@@ -4,8 +4,8 @@
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.nodes import NodesRepository
 from maasservicelayer.models.nodes import Node
@@ -16,13 +16,12 @@ from maasservicelayer.services.secrets import SecretsService
 @pytest.mark.asyncio
 class TestNodesService:
     async def test_update_by_system_id(self) -> None:
-        db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
         updated_node = Mock(Node)
         nodes_repository_mock.update_by_system_id.return_value = updated_node
         nodes_service = NodesService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
         )
@@ -36,11 +35,10 @@ class TestNodesService:
         )
 
     async def test_move_to_zone(self) -> None:
-        db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
         nodes_service = NodesService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
         )
@@ -48,11 +46,10 @@ class TestNodesService:
         nodes_repository_mock.move_to_zone.assert_called_once_with(0, 0)
 
     async def test_move_bmcs_to_zone(self) -> None:
-        db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
         nodes_service = NodesService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
         )
@@ -60,12 +57,11 @@ class TestNodesService:
         nodes_repository_mock.move_bmcs_to_zone.assert_called_once_with(0, 0)
 
     async def test_get_bmc(self) -> None:
-        db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
         nodes_repository_mock.get_node_bmc.return_value = Mock()
         nodes_service = NodesService(
-            db_connection,
+            context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
         )

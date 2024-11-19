@@ -2,7 +2,6 @@ from ipaddress import IPv4Address
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
@@ -10,6 +9,7 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
     StaticIPAddressResourceBuilder,
@@ -57,9 +57,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            Mock(AsyncConnection),
-            mock_temporal,
-            repository_mock,
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=repository_mock,
         )
 
         await staticipaddress_service.create_or_update(
@@ -117,9 +117,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            Mock(AsyncConnection),
-            mock_temporal,
-            mock_staticipaddress_repository,
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
         )
 
         await staticipaddress_service.create_or_update(
@@ -170,9 +170,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            Mock(AsyncConnection),
-            mock_temporal,
-            repository_mock,
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=repository_mock,
         )
 
         await staticipaddress_service.get_discovered_ips_in_family_for_interfaces(
@@ -214,9 +214,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            Mock(AsyncConnection),
-            mock_temporal,
-            mock_staticipaddress_repository,
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
         )
 
         await staticipaddress_service.create(
@@ -282,9 +282,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            Mock(AsyncConnection),
-            mock_temporal,
-            mock_staticipaddress_repository,
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
         )
 
         await staticipaddress_service.update(
@@ -354,9 +354,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            Mock(AsyncConnection),
-            mock_temporal,
-            mock_staticipaddress_repository,
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
         )
 
         await staticipaddress_service.delete(

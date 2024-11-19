@@ -5,13 +5,13 @@ from ipaddress import IPv4Address, IPv4Network
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.subnet import RdnsMode
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.subnets import (
     SubnetResourceBuilder,
     SubnetsRepository,
@@ -27,13 +27,12 @@ from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 @pytest.mark.asyncio
 class TestSubnetsService:
     async def test_list(self) -> None:
-        db_connection = Mock(AsyncConnection)
         subnets_repository_mock = Mock(SubnetsRepository)
         subnets_repository_mock.list.return_value = ListResult[Subnet](
             items=[], next_token=None
         )
         subnets_service = SubnetsService(
-            connection=db_connection,
+            context=Context(),
             temporal_service=Mock(TemporalService),
             subnets_repository=subnets_repository_mock,
         )
@@ -45,7 +44,6 @@ class TestSubnetsService:
         assert subnets_list.items == []
 
     async def test_get_by_id(self) -> None:
-        db_connection = Mock(AsyncConnection)
         now = utcnow()
         expected_subnet = Subnet(
             id=0,
@@ -67,7 +65,7 @@ class TestSubnetsService:
         subnets_repository_mock = Mock(SubnetsRepository)
         subnets_repository_mock.find_by_id.return_value = expected_subnet
         subnets_service = SubnetsService(
-            connection=db_connection,
+            context=Context(),
             temporal_service=Mock(TemporalService),
             subnets_repository=subnets_repository_mock,
         )
@@ -97,7 +95,7 @@ class TestSubnetsService:
         mock_temporal = Mock(TemporalService)
 
         subnets_service = SubnetsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             temporal_service=mock_temporal,
             subnets_repository=subnets_repository_mock,
         )
@@ -115,6 +113,7 @@ class TestSubnetsService:
             )
             .with_created(subnet.created)
             .with_updated(subnet.updated)
+            .build()
         )
 
         await subnets_service.create(resource)
@@ -149,7 +148,7 @@ class TestSubnetsService:
         mock_temporal = Mock(TemporalService)
 
         subnets_service = SubnetsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             temporal_service=mock_temporal,
             subnets_repository=subnets_repository_mock,
         )
@@ -167,6 +166,7 @@ class TestSubnetsService:
             )
             .with_created(subnet.created)
             .with_updated(subnet.updated)
+            .build()
         )
 
         await subnets_service.update(subnet.id, resource)
@@ -203,7 +203,7 @@ class TestSubnetsService:
         mock_temporal = Mock(TemporalService)
 
         subnets_service = SubnetsService(
-            connection=Mock(AsyncConnection),
+            context=Context(),
             temporal_service=mock_temporal,
             subnets_repository=subnets_repository_mock,
         )

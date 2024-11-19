@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
@@ -80,7 +81,9 @@ class TestInterfaceRepository:
         machine["current_config_id"] = config["id"]
 
         interface_count = 4
-        interfaces_repository = InterfaceRepository(db_connection)
+        interfaces_repository = InterfaceRepository(
+            Context(connection=db_connection)
+        )
         created_interfaces = [
             (
                 await create_test_interface(
@@ -145,7 +148,9 @@ class TestInterfaceRepository:
         machine2["current_config_id"] = config2["id"]
 
         interface1_count = 4
-        interfaces_repository = InterfaceRepository(db_connection)
+        interfaces_repository = InterfaceRepository(
+            Context(connection=db_connection)
+        )
         created_interfaces1 = [
             (
                 await create_test_interface(
@@ -205,7 +210,9 @@ class TestInterfaceRepository:
         machine["current_config_id"] = config["id"]
 
         interface_count = 4
-        interfaces_repository = InterfaceRepository(db_connection)
+        interfaces_repository = InterfaceRepository(
+            Context(connection=db_connection)
+        )
         created_interfaces = [
             (
                 await create_test_interface(
@@ -283,7 +290,9 @@ class TestInterfaceRepository:
 
         ip_count = 4
         interface_count = 4
-        interfaces_repository = InterfaceRepository(db_connection)
+        interfaces_repository = InterfaceRepository(
+            Context(connection=db_connection)
+        )
 
         created_interfaces = []
         for i in range(0, interface_count):

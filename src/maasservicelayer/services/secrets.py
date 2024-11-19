@@ -4,8 +4,7 @@
 import abc
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.secrets import SecretsRepository
 from maasservicelayer.services._base import Service
 from maasservicelayer.services.configurations import ConfigurationsService
@@ -78,14 +77,14 @@ class LocalSecretsStorageService(SecretsService):
 
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         secrets_repository: SecretsRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.secrets_repository = (
             secrets_repository
             if secrets_repository
-            else SecretsRepository(connection)
+            else SecretsRepository(context)
         )
 
     async def set_composite_secret(
@@ -113,10 +112,8 @@ class LocalSecretsStorageService(SecretsService):
 
 
 class VaultSecretsService(SecretsService):
-    def __init__(
-        self, connection: AsyncConnection, vault_manager: AsyncVaultManager
-    ):
-        super().__init__(connection)
+    def __init__(self, context: Context, vault_manager: AsyncVaultManager):
+        super().__init__(context)
         self.vault_manager = vault_manager
 
     async def set_composite_secret(
@@ -155,7 +152,7 @@ class SecretsServiceFactory:
 
     @classmethod
     async def produce(
-        cls, connection: AsyncConnection, config_service: ConfigurationsService
+        cls, context: Context, config_service: ConfigurationsService
     ) -> SecretsService:
         """
         Produce a `SecretService` based on the configuration settings.
@@ -175,9 +172,9 @@ class SecretsServiceFactory:
         if cls.IS_VAULT_ENABLED:
             vault_manager = get_region_vault_manager()
             return VaultSecretsService(
-                connection=connection, vault_manager=vault_manager
+                context=context, vault_manager=vault_manager
             )
-        return LocalSecretsStorageService(connection=connection)
+        return LocalSecretsStorageService(context=context)
 
     @classmethod
     def clear(cls) -> None:

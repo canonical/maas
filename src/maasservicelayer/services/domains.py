@@ -1,8 +1,7 @@
 from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
 from maascommon.enums.dns import DnsUpdateAction
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.domains import Domain
@@ -13,15 +12,15 @@ from maasservicelayer.services.dnspublications import DNSPublicationsService
 class DomainsService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         dnspublications_service: DNSPublicationsService,
         domains_repository: Optional[DomainsRepository] = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.domains_repository = (
             domains_repository
             if domains_repository
-            else DomainsRepository(connection)
+            else DomainsRepository(context)
         )
         self.dnspublications_service = dnspublications_service
 

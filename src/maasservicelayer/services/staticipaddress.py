@@ -1,13 +1,12 @@
 from typing import List, Optional
 
-from sqlalchemy.ext.asyncio import AsyncConnection
-
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.staticipaddress import (
@@ -23,16 +22,16 @@ from maasservicelayer.services.temporal import TemporalService
 class StaticIPAddressService(Service):
     def __init__(
         self,
-        connection: AsyncConnection,
+        context: Context,
         temporal_service: TemporalService,
         staticipaddress_repository: Optional[StaticIPAddressRepository] = None,
     ):
-        super().__init__(connection)
+        super().__init__(context)
         self.temporal_service = temporal_service
         self.staticipaddress_repository = (
             staticipaddress_repository
             if staticipaddress_repository
-            else StaticIPAddressRepository(connection)
+            else StaticIPAddressRepository(context)
         )
 
     async def create(

@@ -17,6 +17,7 @@ from temporalio.worker import Worker
 import yaml
 
 from maascommon.enums.node import NodeStatus
+from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.services import CacheForServices
 from maasservicelayer.services.secrets import LocalSecretsStorageService
@@ -74,7 +75,7 @@ async def msm_act(mocker, db: Database, db_connection: AsyncConnection):
 
 @pytest.fixture
 async def secrets(db: Database, db_connection: AsyncConnection):
-    store = LocalSecretsStorageService(db_connection)
+    store = LocalSecretsStorageService(Context(connection=db_connection))
     yield store
 
 

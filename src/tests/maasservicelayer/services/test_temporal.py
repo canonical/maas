@@ -5,7 +5,11 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
 
-from maasservicelayer.services.temporal import TemporalService
+from maasservicelayer.context import Context
+from maasservicelayer.services.temporal import (
+    TemporalService,
+    TemporalServiceCache,
+)
 
 
 @pytest.mark.asyncio
@@ -14,7 +18,10 @@ class TestTemporalService:
         mock_connection = Mock(AsyncConnection)
         mock_connection.closed = False
         mock_temporal = Mock(Client)
-        service = TemporalService(temporal=mock_temporal)
+        service = TemporalService(
+            context=Context(),
+            cache=TemporalServiceCache(temporal_client=mock_temporal),
+        )
 
         service.register_workflow_call(
             "test_workflow", None, workflow_id="abc"
@@ -27,7 +34,10 @@ class TestTemporalService:
         )
 
     async def test_workflow_is_registered(self):
-        service = TemporalService(temporal=Mock(Client))
+        service = TemporalService(
+            context=Context(),
+            cache=TemporalServiceCache(temporal_client=Mock(Client)),
+        )
 
         assert not service.workflow_is_registered("test_workflow")
         assert not service.workflow_is_registered(
@@ -47,7 +57,10 @@ class TestTemporalService:
         )
 
     async def test_register_workflow_call(self):
-        service = TemporalService(temporal=Mock(Client))
+        service = TemporalService(
+            context=Context(),
+            cache=TemporalServiceCache(temporal_client=Mock(Client)),
+        )
 
         assert not service.workflow_is_registered("test_workflow")
         assert not service.workflow_is_registered(
@@ -64,7 +77,10 @@ class TestTemporalService:
         )
 
     async def test_register_or_update_workflow_call_override_parameters(self):
-        service = TemporalService(temporal=Mock(Client))
+        service = TemporalService(
+            context=Context(),
+            cache=TemporalServiceCache(temporal_client=Mock(Client)),
+        )
 
         service.register_workflow_call(
             "test_workflow", None, workflow_id="abc"
@@ -84,7 +100,10 @@ class TestTemporalService:
         )
 
     async def test_register_or_update_workflow_call_merge_parameters(self):
-        service = TemporalService(temporal=Mock(Client))
+        service = TemporalService(
+            context=Context(),
+            cache=TemporalServiceCache(temporal_client=Mock(Client)),
+        )
 
         parameter = {"a": 1, "b": 2}
 

@@ -7,6 +7,7 @@ from operator import eq
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
@@ -23,7 +24,9 @@ class TestExternalAuthRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         test_start = utcnow()
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         root_key = await external_auth_repository.create()
         assert root_key.created >= test_start
         assert root_key.updated >= test_start
@@ -34,14 +37,18 @@ class TestExternalAuthRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         created_rootkey = await create_rootkey(fixture)
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         rootkey = await external_auth_repository.find_by_id(created_rootkey.id)
         assert rootkey == created_rootkey
 
     async def test_find_by_id_not_found(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         rootkey = await external_auth_repository.find_by_id(-1)
         assert rootkey is None
 
@@ -57,7 +64,9 @@ class TestExternalAuthRepository:
         )
         valid_rootkey = await create_rootkey(fixture)
 
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         rootkeys = await external_auth_repository.find_expired_keys()
         assert len(rootkeys) == 2
         assert expired_rootkey1 in rootkeys
@@ -79,7 +88,9 @@ class TestExternalAuthRepository:
             expiration=now + timedelta(days=2),
         )
 
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         rootkey = await external_auth_repository.find_best_key()
         assert rootkey == best_key
 
@@ -91,7 +102,9 @@ class TestExternalAuthRepository:
         expiration = now + timedelta(days=1)
         await create_rootkey(fixture, created=created, expiration=expiration)
 
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         rootkey = await external_auth_repository.find_best_key()
         assert rootkey is None
 
@@ -103,7 +116,9 @@ class TestExternalAuthRepository:
         expiration = now - timedelta(seconds=1)
         await create_rootkey(fixture, created=created, expiration=expiration)
 
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         rootkey = await external_auth_repository.find_best_key()
         assert rootkey is None
 
@@ -115,7 +130,9 @@ class TestExternalAuthRepository:
         expiration = now + timedelta(hours=23)
         await create_rootkey(fixture, created=created, expiration=expiration)
 
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         rootkey = await external_auth_repository.find_best_key()
         assert rootkey is None
 
@@ -124,7 +141,9 @@ class TestExternalAuthRepository:
     ) -> None:
         created_rootkey = await create_rootkey(fixture)
 
-        external_auth_repository = ExternalAuthRepository(db_connection)
+        external_auth_repository = ExternalAuthRepository(
+            Context(connection=db_connection)
+        )
         await external_auth_repository.delete(created_rootkey.id)
 
         rootkey = await fixture.get(
