@@ -15,9 +15,9 @@ from temporalio.exceptions import CancelledError, ChildWorkflowError
 
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.deploy import (
-    DEPLOY_N_WORKFLOW_NAME,
+    DEPLOY_MANY_WORKFLOW_NAME,
     DEPLOY_WORKFLOW_NAME,
-    DeployNParam,
+    DeployManyParam,
     DeployParam,
     DeployResult,
 )
@@ -266,10 +266,10 @@ class DeployActivity(ActivityBase):
             )
 
 
-@workflow.defn(name=DEPLOY_N_WORKFLOW_NAME, sandboxed=False)
-class DeployNWorkflow:
+@workflow.defn(name=DEPLOY_MANY_WORKFLOW_NAME, sandboxed=False)
+class DeployManyWorkflow:
     @workflow_run_with_context
-    async def run(self, params: DeployNParam) -> None:
+    async def run(self, params: DeployManyParam) -> None:
         child_workflows = []
         for param in params.params:
             wf = await workflow.start_child_workflow(
@@ -284,8 +284,6 @@ class DeployNWorkflow:
             child_workflows.append((param.system_id, wf))
 
         for system_id, wf in child_workflows:
-            status = None
-
             try:
                 result = await wf
             except (CancelledError, asyncio.CancelledError):

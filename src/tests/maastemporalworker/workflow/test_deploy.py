@@ -16,7 +16,7 @@ from temporalio.worker import Worker
 
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.deploy import (
-    DEPLOY_N_WORKFLOW_NAME,
+    DEPLOY_MANY_WORKFLOW_NAME,
     DEPLOY_WORKFLOW_NAME,
 )
 from maascommon.workflows.power import (
@@ -32,8 +32,8 @@ from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.deploy import (
     DeployActivity,
-    DeployNParam,
-    DeployNWorkflow,
+    DeployManyParam,
+    DeployManyWorkflow,
     DeployParam,
     DeployWorkflow,
     GET_BOOT_ORDER_ACTIVITY_NAME,
@@ -196,7 +196,7 @@ class TestDeployActivity:
 
 
 @pytest.mark.asyncio
-class TestDeployNWorkflow:
+class TestDeployManyWorkflow:
     async def test_deploy_n_workflow_1_node(
         self,
         fixture: Fixture,
@@ -258,7 +258,7 @@ class TestDeployNWorkflow:
             async with Worker(
                 env.client,
                 task_queue="region",
-                workflows=[DeployNWorkflow, DeployWorkflow],
+                workflows=[DeployManyWorkflow, DeployWorkflow],
                 activities=[
                     set_node_status,
                     get_boot_order,
@@ -269,8 +269,8 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    DEPLOY_N_WORKFLOW_NAME,
-                    DeployNParam(
+                    DEPLOY_MANY_WORKFLOW_NAME,
+                    DeployManyParam(
                         params=[
                             DeployParam(
                                 system_id=machine["system_id"],
@@ -376,7 +376,7 @@ class TestDeployNWorkflow:
             async with Worker(
                 env.client,
                 task_queue="region",
-                workflows=[DeployNWorkflow, DeployWorkflow],
+                workflows=[DeployManyWorkflow, DeployWorkflow],
                 activities=[
                     set_node_status,
                     get_boot_order,
@@ -387,8 +387,8 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    DEPLOY_N_WORKFLOW_NAME,
-                    DeployNParam(
+                    DEPLOY_MANY_WORKFLOW_NAME,
+                    DeployManyParam(
                         params=[
                             DeployParam(
                                 system_id=machine["system_id"],
@@ -510,7 +510,7 @@ class TestDeployNWorkflow:
             async with Worker(
                 env.client,
                 task_queue="region",
-                workflows=[DeployNWorkflow, DeployWorkflow],
+                workflows=[DeployManyWorkflow, DeployWorkflow],
                 activities=[
                     set_node_status,
                     get_boot_order,
@@ -521,8 +521,8 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    DEPLOY_N_WORKFLOW_NAME,
-                    DeployNParam(
+                    DEPLOY_MANY_WORKFLOW_NAME,
+                    DeployManyParam(
                         params=[
                             DeployParam(
                                 system_id=machine["system_id"],
@@ -660,7 +660,7 @@ class TestDeployNWorkflow:
             async with Worker(
                 env.client,
                 task_queue="region",
-                workflows=[DeployNWorkflow, DeployWorkflow],
+                workflows=[DeployManyWorkflow, DeployWorkflow],
                 activities=[
                     set_node_status,
                     get_boot_order,
@@ -672,8 +672,8 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    DEPLOY_N_WORKFLOW_NAME,
-                    DeployNParam(
+                    DEPLOY_MANY_WORKFLOW_NAME,
+                    DeployManyParam(
                         params=[
                             DeployParam(
                                 system_id=machine["system_id"],
@@ -806,7 +806,7 @@ class TestDeployNWorkflow:
             async with Worker(
                 env.client,
                 task_queue="region",
-                workflows=[DeployNWorkflow, DeployWorkflow],
+                workflows=[DeployManyWorkflow, DeployWorkflow],
                 activities=[
                     set_node_status,
                     get_boot_order,
@@ -818,8 +818,8 @@ class TestDeployNWorkflow:
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
-                    DEPLOY_N_WORKFLOW_NAME,
-                    DeployNParam(
+                    DEPLOY_MANY_WORKFLOW_NAME,
+                    DeployManyParam(
                         params=[
                             DeployParam(
                                 system_id=machine["system_id"],

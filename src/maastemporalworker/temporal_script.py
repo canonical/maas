@@ -19,7 +19,7 @@ from maastemporalworker.workflow.configure import (
 )
 from maastemporalworker.workflow.deploy import (
     DeployActivity,
-    DeployNWorkflow,
+    DeployManyWorkflow,
     DeployWorkflow,
 )
 from maastemporalworker.workflow.dhcp import (
@@ -102,7 +102,7 @@ async def main() -> None:
                 ConfigureDHCPForAgentWorkflow,
                 ConfigureDNSWorkflow,
                 # Lifecycle workflows
-                DeployNWorkflow,
+                DeployManyWorkflow,
                 DeployWorkflow,
                 CommissionNWorkflow,
                 # MSM Connector service

@@ -74,7 +74,7 @@ from twisted.internet.error import ConnectionDone
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
-from maascommon.workflows.deploy import DEPLOY_N_WORKFLOW_NAME
+from maascommon.workflows.deploy import DEPLOY_MANY_WORKFLOW_NAME
 from maascommon.workflows.power import PowerParam
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
@@ -173,7 +173,7 @@ from maasserver.utils.orm import (
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
 from maasserver.workflow import execute_workflow, start_workflow, stop_workflow
-from maastemporalworker.workflow.deploy import DeployNParam, DeployParam
+from maastemporalworker.workflow.deploy import DeployManyParam, DeployParam
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
     get_temporal_task_queue_for_bmc,
@@ -5900,8 +5900,8 @@ class Node(CleanSave, TimestampedModel):
         self, _, d: Deferred, power_info: PowerInfo, task_queue: str
     ) -> Deferred:
         dd = start_workflow(
-            DEPLOY_N_WORKFLOW_NAME,
-            param=DeployNParam(
+            DEPLOY_MANY_WORKFLOW_NAME,
+            param=DeployManyParam(
                 params=[
                     DeployParam(
                         system_id=str(self.system_id),

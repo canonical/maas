@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from maascommon.workflows.power import PowerParam
 
-DEPLOY_N_WORKFLOW_NAME = "deploy-n"
+DEPLOY_MANY_WORKFLOW_NAME = "deploy-many"
 DEPLOY_WORKFLOW_NAME = "deploy"
 
 
@@ -20,7 +20,7 @@ class DeployParam:
 
 
 @dataclass
-class DeployNParam:
+class DeployManyParam:
     params: list[DeployParam]
 
 
