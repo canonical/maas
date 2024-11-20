@@ -53,15 +53,9 @@ class VlansService(Service):
         return await self.vlans_repository.get_node_vlans(query=query)
 
     async def create(self, resource: CreateOrUpdateResource) -> Vlan:
-        vlan = await self.vlans_repository.create(resource)
-        if vlan.dhcp_on or vlan.relay_vlan:
-            self.temporal_service.register_or_update_workflow_call(
-                CONFIGURE_DHCP_WORKFLOW_NAME,
-                ConfigureDHCPParam(vlan_ids=[vlan.id]),
-                parameter_merge_func=merge_configure_dhcp_param,
-                wait=False,
-            )
-        return vlan
+        # When the VLAN is created it has no related IPRanges. For this reason it's not possible to enable DHCP
+        # at creation time and we don't have to start the temporal workflow.
+        return await self.vlans_repository.create(resource)
 
     async def update(
         self, id: int, resource: CreateOrUpdateResource

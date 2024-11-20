@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.vlans import (
     VlansRepository,
 )
 from maasservicelayer.db.tables import VlanTable
+from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.fabric import create_test_fabric_entry
@@ -55,6 +56,7 @@ class TestVlansResourceBuilder:
             .with_vid(0)
             .with_dhcp_on(True)
             .with_fabric_id(0)
+            .with_space_id(0)
             .with_primary_rack_id(0)
             .with_secondary_rack_id(0)
             .with_created(now)
@@ -69,11 +71,51 @@ class TestVlansResourceBuilder:
             "vid": 0,
             "dhcp_on": True,
             "fabric_id": 0,
+            "space_id": 0,
             "primary_rack_id": 0,
             "secondary_rack_id": 0,
             "created": now,
             "updated": now,
         }
+
+    @pytest.mark.parametrize(
+        "mtu, is_valid",
+        [
+            (0, False),
+            (551, False),
+            (552, True),
+            (1000, True),
+            (65535, True),
+            (65536, False),
+        ],
+    )
+    def test_mtu_validation(self, mtu: int, is_valid: bool) -> None:
+        if is_valid:
+            VlanResourceBuilder().with_mtu(mtu).build()
+        else:
+            with pytest.raises(ValidationException):
+                VlanResourceBuilder().with_mtu(mtu).build()
+
+    @pytest.mark.parametrize(
+        "vid, is_valid",
+        [
+            (-1, False),
+            (0, True),
+            (1000, True),
+            (4094, True),
+            (4095, False),
+        ],
+    )
+    def test_vid_validation(self, vid: int, is_valid: bool) -> None:
+        if is_valid:
+            VlanResourceBuilder().with_vid(vid).build()
+        else:
+            with pytest.raises(ValidationException):
+                VlanResourceBuilder().with_vid(vid).build()
+
+    def test_defaults(self) -> None:
+        resource = VlanResourceBuilder().with_mtu(None).build()
+        assert resource.get_values() == {"mtu": 1500}
 
 
 class TestVlansRepository(RepositoryCommonTests[Vlan]):

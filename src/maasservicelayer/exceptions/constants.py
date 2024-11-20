@@ -14,6 +14,7 @@ USER_EXTERNAL_VALIDATION_FAILED = "UserExternalValidationFailed"
 UNIQUE_CONSTRAINT_VIOLATION_TYPE = "UniqueConstraintViolation"
 ETAG_PRECONDITION_VIOLATION_TYPE = "EtagPreconditionViolation"
 UNEXISTING_RESOURCE_VIOLATION_TYPE = "UnexistingResourceViolation"
+INVALID_ARGUMENT_VIOLATION_TYPE = "InvalidArgumentViolation"
 
 # Zones
 CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE = "CannotDeleteDefaultZoneViolation"

@@ -53,6 +53,11 @@ class PreconditionFailedException(BaseException):
         super().__init__("A precondition has failed.", details)
 
 
+class ValidationException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__("Invalid value.", details)
+
+
 class ServiceUnavailableException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("The service is not available.", details)

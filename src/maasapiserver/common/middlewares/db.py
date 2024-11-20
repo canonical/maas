@@ -4,12 +4,20 @@ from typing import Any, AsyncIterator, Awaitable, Callable
 
 from fastapi import Request, Response
 from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import structlog
 
 from maasservicelayer.db import Database
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 
 logger = structlog.get_logger()
 
@@ -27,9 +35,20 @@ class TransactionMiddleware(BaseHTTPMiddleware):
     @asynccontextmanager
     async def get_connection(self) -> AsyncIterator[AsyncConnection]:
         """Return the connection in a transaction context manager."""
-        async with self.db.engine.connect() as conn:
-            async with conn.begin():
-                yield conn
+        try:
+            async with self.db.engine.connect() as conn:
+                async with conn.begin():
+                    yield conn
+        # Foreign key exceptions are raised only when the transaction is committed, so we have to capture them here.
+        except IntegrityError as e:
+            raise ValidationException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=f"The reference to an entity is not valid. Raw exception is: {e.orig}",
+                    )
+                ]
+            )
 
     async def dispatch(
         self,

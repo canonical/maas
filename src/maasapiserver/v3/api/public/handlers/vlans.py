@@ -13,6 +13,7 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.vlans import VlanCreateRequest
 from maasapiserver.v3.api.public.models.responses.vlans import (
     VlanResponse,
     VlansListResponse,
@@ -29,6 +30,41 @@ class VlansHandler(Handler):
     """Vlans API handler."""
 
     TAGS = ["Vlans"]
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": VlanResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def create_fabric_vlan(
+        self,
+        fabric_id: int,
+        vlan_request: VlanCreateRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        vlan_builder = vlan_request.to_builder()
+        vlan_builder.with_fabric_id(fabric_id)
+        vlan = await services.vlans.create(resource=vlan_builder.build())
+        response.headers["ETag"] = vlan.etag()
+        return VlanResponse.from_model(
+            vlan=vlan,
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans",
+        )
 
     @handler(
         path="/fabrics/{fabric_id}/vlans",

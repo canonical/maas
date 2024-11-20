@@ -58,7 +58,7 @@ class TestVlansService:
             vid=0,
             name="test",
             description="descr",
-            mtu=0,
+            mtu=1500,
             dhcp_on=True,
             fabric_id=0,
             created=now,
@@ -84,7 +84,7 @@ class TestVlansService:
             vid=0,
             name="test",
             description="descr",
-            mtu=0,
+            mtu=1500,
             dhcp_on=True,
             fabric_id=0,
             created=now,
@@ -110,7 +110,7 @@ class TestVlansService:
             vid=0,
             name="test",
             description="descr",
-            mtu=0,
+            mtu=1500,
             dhcp_on=True,
             fabric_id=0,
             created=now,
@@ -138,7 +138,7 @@ class TestVlansService:
             vid=0,
             name="test",
             description="descr",
-            mtu=0,
+            mtu=1500,
             dhcp_on=True,
             fabric_id=1,
             created=now,
@@ -174,12 +174,7 @@ class TestVlansService:
         await vlans_service.create(resource)
 
         vlans_repository_mock.create.assert_called_once_with(resource)
-        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
-            CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(vlan_ids=[vlan.id]),
-            parameter_merge_func=merge_configure_dhcp_param,
-            wait=False,
-        )
+        mock_temporal.register_or_update_workflow_call.assert_not_called()
 
     async def test_update(self) -> None:
         now = utcnow()
@@ -188,7 +183,7 @@ class TestVlansService:
             vid=0,
             name="test",
             description="descr",
-            mtu=0,
+            mtu=1500,
             dhcp_on=True,
             fabric_id=1,
             created=now,
@@ -238,7 +233,7 @@ class TestVlansService:
             vid=0,
             name="test",
             description="descr",
-            mtu=0,
+            mtu=1500,
             dhcp_on=True,
             primary_rack_id=2,
             fabric_id=1,

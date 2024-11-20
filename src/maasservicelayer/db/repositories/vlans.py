@@ -21,7 +21,16 @@ from maasservicelayer.db.tables import (
     SubnetTable,
     VlanTable,
 )
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.vlans import Vlan
+
+DEFAULT_MTU = 1500
 
 
 class VlansClauseFactory(ClauseFactory):
@@ -41,19 +50,42 @@ class VlansClauseFactory(ClauseFactory):
 
 class VlanResourceBuilder(ResourceBuilder):
     def with_vid(self, vid: int) -> "VlanResourceBuilder":
+        if vid < 0 or vid > 4094:
+            raise ValidationException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message="The VLAN VID must be within the range [0, 4094].",
+                    )
+                ]
+            )
         self._request.set_value(VlanTable.c.vid.name, vid)
         return self
 
-    def with_name(self, name: str) -> "VlanResourceBuilder":
+    def with_name(self, name: str | None = None) -> "VlanResourceBuilder":
         self._request.set_value(VlanTable.c.name.name, name)
         return self
 
-    def with_description(self, description: str) -> "VlanResourceBuilder":
+    def with_description(
+        self, description: str | None = None
+    ) -> "VlanResourceBuilder":
+        if not description:
+            # inherited from the django model where it's optional in the request and empty by default.
+            description = ""
         self._request.set_value(VlanTable.c.description.name, description)
         return self
 
-    def with_mtu(self, mtu: int) -> "VlanResourceBuilder":
-        self._request.set_value(VlanTable.c.mtu.name, mtu)
+    def with_mtu(self, mtu: int | None = None) -> "VlanResourceBuilder":
+        if mtu is not None and (mtu < 552 or mtu > 65535):
+            raise ValidationException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message="The MTU must be within the range [552,65535].",
+                    )
+                ]
+            )
+        self._request.set_value(VlanTable.c.mtu.name, mtu or DEFAULT_MTU)
         return self
 
     def with_dhcp_on(self, dhcp_on: bool) -> "VlanResourceBuilder":
@@ -62,6 +94,12 @@ class VlanResourceBuilder(ResourceBuilder):
 
     def with_fabric_id(self, fabric_id: int) -> "VlanResourceBuilder":
         self._request.set_value(VlanTable.c.fabric_id.name, fabric_id)
+        return self
+
+    def with_space_id(
+        self, space_id: int | None = None
+    ) -> "VlanResourceBuilder":
+        self._request.set_value(VlanTable.c.space_id.name, space_id)
         return self
 
     def with_primary_rack_id(

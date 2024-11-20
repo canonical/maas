@@ -1,3 +1,6 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import Awaitable, Callable
 
 from fastapi.exceptions import RequestValidationError
@@ -28,6 +31,7 @@ from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
     ServiceUnavailableException,
     UnauthorizedException,
+    ValidationException,
 )
 
 logger = structlog.getLogger(__name__)
@@ -69,6 +73,9 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except ForbiddenException as e:
             logger.debug(e)
             return ForbiddenResponse(e.details)
+        except ValidationException as e:
+            logger.debug(e)
+            return ValidationErrorResponse(e.details)
         except NotFoundException as e:
             logger.debug(e)
             return NotFoundResponse()

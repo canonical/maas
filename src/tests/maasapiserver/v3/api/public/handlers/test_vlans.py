@@ -3,6 +3,7 @@
 
 from unittest.mock import Mock
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
@@ -11,10 +12,13 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.vlans import VlanCreateRequest
 from maasapiserver.v3.api.public.models.responses.vlans import (
+    VlanResponse,
     VlansListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.db.repositories.vlans import VlanResourceBuilder
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
@@ -72,7 +76,86 @@ class TestVlanApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
+        ]
+
+    # POST /fabrics/{fabric_id}/vlans
+    async def test_post_201(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        mocker,
+    ) -> None:
+        now = utcnow()
+        mocker.patch(
+            "maasapiserver.v3.api.public.models.requests.vlans.utcnow",
+            lambda: now,
+        )
+        vlan_request = VlanCreateRequest(
+            name=TEST_VLAN.name,
+            description=TEST_VLAN.description,
+            vid=TEST_VLAN.vid,
+            mtu=TEST_VLAN.mtu,
+        )
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.create.return_value = TEST_VLAN
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(vlan_request)
+        )
+        assert response.status_code == 201
+        assert len(response.headers["ETag"]) > 0
+        vlan_response = VlanResponse(**response.json())
+        assert vlan_response.id == TEST_VLAN.id
+        assert vlan_response.name == vlan_request.name
+        assert vlan_response.description == vlan_request.description
+        assert vlan_response.vid == vlan_request.vid
+        assert vlan_response.mtu == vlan_request.mtu
+        assert vlan_response.dhcp_on is False
+        assert vlan_response.external_dhcp is None
+        assert vlan_response.primary_rack is None
+        assert vlan_response.secondary_rack is None
+        assert vlan_response.relay_vlan is None
+        assert (
+            vlan_response.hal_links.self.href
+            == f"{self.BASE_PATH}/{vlan_response.id}"
+        )
+        services_mock.vlans.create.assert_called_with(
+            resource=VlanResourceBuilder()
+            .with_name(TEST_VLAN.name)
+            .with_description(TEST_VLAN.description)
+            .with_vid(TEST_VLAN.vid)
+            .with_mtu(TEST_VLAN.mtu)
+            .with_dhcp_on(False)
+            .with_space_id(TEST_VLAN.space_id)
+            .with_fabric_id(TEST_VLAN.fabric_id)
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "vlan_request",
+        [
+            VlanCreateRequest(vid=-1),
+            VlanCreateRequest(vid=4097),
+            VlanCreateRequest(vid=0, mtu=551),
+            VlanCreateRequest(vid=0, mtu=65536),
+        ],
+    )
+    async def test_post_invalid_parameters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        vlan_request: VlanCreateRequest,
+    ) -> None:
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.create.return_value = TEST_VLAN
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(vlan_request)
+        )
+        assert response.status_code == 422
 
     async def test_list_no_other_page(
         self,
