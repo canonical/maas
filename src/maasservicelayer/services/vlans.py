@@ -12,6 +12,13 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.vlans import VlansRepository
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services._base import Service
@@ -72,9 +79,26 @@ class VlansService(Service):
         )
         return vlan
 
-    async def delete(self, id: int) -> None:
-        vlan = await self.vlans_repository.find_by_id(id=id)
-        await self.vlans_repository.delete(id)
+    async def delete(
+        self, fabric_id: int, vlan_id: int, etag_if_match: str | None = None
+    ) -> None:
+        vlan = await self.vlans_repository.find_by_id(id=vlan_id)
+        if not vlan:
+            return None
+
+        if vlan.fabric_id != fabric_id:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Could not find VLAN {vlan_id} in fabric {fabric_id}.",
+                    )
+                ]
+            )
+
+        self.etag_check(vlan, etag_if_match)
+        await self.vlans_repository.delete(vlan.id)
+
         if vlan.dhcp_on or vlan.relay_vlan:
             primary_rack = await self.nodes_service.get_by_id(
                 vlan.primary_rack_id

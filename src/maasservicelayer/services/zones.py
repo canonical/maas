@@ -10,11 +10,9 @@ from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
-    PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
-    ETAG_PRECONDITION_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
@@ -67,16 +65,10 @@ class ZonesService(Service):
         zone = await self.get_by_id(zone_id)
         if not zone:
             return None
-        if etag_if_match is not None and zone.etag() != etag_if_match:
-            raise PreconditionFailedException(
-                details=[
-                    BaseExceptionDetail(
-                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
-                        message=f"The resource etag '{zone.etag()}' did not match '{etag_if_match}'.",
-                    )
-                ]
-            )
+
+        self.etag_check(zone, etag_if_match)
         default_zone = await self.zones_repository.get_default_zone()
+
         if default_zone.id == zone.id:
             raise BadRequestException(
                 details=[

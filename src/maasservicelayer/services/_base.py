@@ -5,6 +5,14 @@ from abc import ABC
 from dataclasses import dataclass
 
 from maasservicelayer.context import Context
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
+from maasservicelayer.models.base import MaasBaseModel
 
 
 @dataclass(slots=True)
@@ -25,6 +33,22 @@ class Service(ABC):
     def __init__(self, context: Context, cache: ServiceCache | None = None):
         self.context = context
         self.cache = cache
+
+    def etag_check(
+        self, model: MaasBaseModel, etag_if_match: str | None = None
+    ):
+        """
+        Raises a PreconditionFailedException if the etag does not match.
+        """
+        if etag_if_match is not None and model.etag() != etag_if_match:
+            raise PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                        message=f"The resource etag '{model.etag()}' did not match '{etag_if_match}'.",
+                    )
+                ]
+            )
 
     @staticmethod
     def build_cache_object() -> ServiceCache:

@@ -19,6 +19,13 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.repositories.vlans import VlanResourceBuilder
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
@@ -78,6 +85,7 @@ class TestVlanApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     # POST /fabrics/{fabric_id}/vlans
@@ -252,3 +260,39 @@ class TestVlanApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_delete(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.delete.return_value = None
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        assert response.status_code == 204
+        services_mock.vlans.delete.assert_called_with(
+            fabric_id=1, vlan_id=1, etag_if_match=None
+        )
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.delete.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
+        )
+        assert response.status_code == 412
+        services_mock.vlans.delete.assert_called_with(
+            fabric_id=1, vlan_id=1, etag_if_match="wrong_etag"
+        )
