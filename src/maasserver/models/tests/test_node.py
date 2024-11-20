@@ -4802,24 +4802,36 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(event.type.name, EVENT_TYPES.EXITED_RESCUE_MODE)
 
     def test_end_deployment_changes_state_and_creates_sts_msg(self):
+        signal_workflow = self.patch(node_module, "signal_workflow")
         self.disable_node_query()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+
         node.end_deployment()
+
         events = Event.objects.filter(node=node)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
         self.assertEqual(
             {event.type.name for event in events},
             {EVENT_TYPES.IMAGE_DEPLOYED, EVENT_TYPES.DEPLOYED},
         )
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
+        )
 
     def test_end_deployment_sets_first_last_sync_value(self):
+        signal_workflow = self.patch(node_module, "signal_workflow")
         self.disable_node_query()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, enable_hw_sync=True
         )
         self.assertIsNone(node.last_sync)
+
         node.end_deployment()
+
         self.assertIsNotNone(node.last_sync)
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
+        )
 
     def test_start_deployment_changes_state_and_creates_sts_msg(self):
         node = factory.make_Node_with_Interface_on_Subnet(

@@ -7,9 +7,9 @@ flowchart TD
     C-->|Invalid| D[error end]
     C-->|Valid| E{Set Deploy Parameters}
     E-->|Conflict| F[error end]
-    E-->|Success| G(DeployN Workflow Starts)
+    E-->|Success| G(DeployMany Workflow Starts)
     G-->H(Fetch all power parameters)
-    H--> I(DeployWorkflow execution starts for each machine)
+    H--> I(Deploy Workflow execution starts for each machine)
     I-->J(Power on/cycle)
     J-->K{Wait for DHCP Lease}
     K-->|Timeout| J
@@ -33,7 +33,7 @@ flowchart TD
     U-->|Timeout| R
     U-->|Success| V{Wait for cloud-init finish}
     V-->|Timeout| R
-    V-->|Success| W{Deploy workflow finishes}
+    V-->|Success| W{Deploy Workflow finishes}
     W-->|Error| X(Set Node status 'deployment failed')
     W-->|Success| Y(Set Node status 'deployed')
     X-->Z[end]

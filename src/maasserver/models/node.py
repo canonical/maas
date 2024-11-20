@@ -172,7 +172,12 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
-from maasserver.workflow import execute_workflow, start_workflow, stop_workflow
+from maasserver.workflow import (
+    execute_workflow,
+    signal_workflow,
+    start_workflow,
+    stop_workflow,
+)
 from maastemporalworker.workflow.deploy import DeployManyParam, DeployParam
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
@@ -1843,6 +1848,10 @@ class Node(CleanSave, TimestampedModel):
             self.last_sync = timezone.now()
         self.update_deployment_time()
         self.save()
+
+        # Send Temporal signal to inform that the deployment has finished
+        maaslog.info("%s: Sending 'deployed-os-ready' signal", self.hostname)
+        signal_workflow(f"deploy:{self.system_id}", "deployed-os-ready")
 
         # Create a status message for DEPLOYED.
         Event.objects.create_node_event(self, EVENT_TYPES.DEPLOYED)

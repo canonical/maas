@@ -131,7 +131,7 @@ async def signal_workflow(
     temporal_client = await get_client_async()
     hdl = temporal_client.get_workflow_handle(workflow_id=workflow_id)
     try:
-        hdl.signal(signal_channel, *args, **kwargs)
+        await hdl.signal(signal_channel, *args, **kwargs)
     except RPCError:
         return None
 

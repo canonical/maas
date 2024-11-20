@@ -25,6 +25,7 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
 )
+import maasserver.models.node as node_module
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
@@ -406,6 +407,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         )
 
     def test_shows_last_deployment_time(self) -> None:
+        signal_workflow = self.patch(node_module, "signal_workflow")
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         resource = factory.make_usable_boot_resource(
@@ -431,8 +433,12 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             ).astimezone(),
             start_time,
         )
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
+        )
 
     def test_shows_latest_deployment_time(self) -> None:
+        signal_workflow = self.patch(node_module, "signal_workflow")
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         resource = factory.make_usable_boot_resource(
@@ -461,6 +467,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 resource["lastDeployed"], DATETIME_FORMAT
             ).astimezone(),
             start_time,
+        )
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
         )
 
     def test_shows_number_of_machines_deployed_at_current(self) -> None:

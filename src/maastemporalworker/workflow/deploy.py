@@ -324,10 +324,12 @@ class DeployWorkflow:
 
     @workflow.signal(name="netboot-finished")
     async def netboot_signal(self, *args: list[Any]) -> None:
+        logger.info("DeployWorkflow: received 'netboot-finished' signal")
         self._has_netbooted = True
 
     @workflow.signal(name="deployed-os-ready")
     async def deployed_os_signal(self, *args: list[Any]) -> None:
+        logger.info("DeployWorkflow: received 'deployed_os_signal' signal")
         self._deployed_os_ready = True
 
     async def _start_deployment(self, params: DeployParam) -> None:

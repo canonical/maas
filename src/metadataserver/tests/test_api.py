@@ -43,6 +43,7 @@ from maasserver.models import (
     SSHKey,
     VersionedTextFile,
 )
+import maasserver.models.node as node_module
 from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.preseed import get_network_yaml_settings
@@ -1106,12 +1107,16 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(status, reload_object(node).status)
 
     def test_request_causes_status_change_if_deploying(self):
+        signal_workflow = self.patch(node_module, "signal_workflow")
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
+        )
 
     def test_skips_status_change_if_installing_kvm_and_sets_agent_name(self):
         node = factory.make_Node(
@@ -1140,6 +1145,7 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(node.agent_name, "maas-kvm-pod")
 
     def test_returns_plain_text_user_data_when_uploaded_as_plain_text(self):
+        signal_workflow = self.patch(node_module, "signal_workflow")
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         user_data = factory.make_name("user_data").encode()
         NodeUserData.objects.set_user_data(node, user_data)
@@ -1148,8 +1154,12 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
         self.assertEqual(user_data, response.content)
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
+        )
 
     def test_returns_plain_text_user_data_when_uploaded_as_b64(self):
+        signal_workflow = self.patch(node_module, "signal_workflow")
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         user_data = factory.make_name("user_data").encode()
         NodeUserData.objects.set_user_data(node, base64.b64encode(user_data))
@@ -1158,8 +1168,12 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
         self.assertEqual(user_data, response.content)
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
+        )
 
     def test_returns_plain_text_user_data_when_uploaded_as_b64_with_nl(self):
+        signal_workflow = self.patch(node_module, "signal_workflow")
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         user_data = factory.make_name("user_data").encode()
         b64_user_data = base64.b64encode(user_data).decode()
@@ -1171,6 +1185,9 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
         self.assertEqual(user_data, response.content)
+        signal_workflow.assert_called_with(
+            f"deploy:{node.system_id}", "deployed-os-ready"
+        )
 
 
 class TestCurtinMetadataUserData(MAASServerTestCase):

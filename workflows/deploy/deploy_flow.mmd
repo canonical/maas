@@ -3,8 +3,8 @@ title: Deploy Workflow
 ---
 flowchart TD
     A[1 or more ready machines] -->|User selects machines for deployment| B(Input deploy parameters)
-    B--> C(DeployNWorkflow execution starts)
-    C-->|For each machine| D(DeployWorkflow execution starts)
+    B--> C(DeployMany Workflow execution starts)
+    C-->|For each machine| D(Deploy Workflow execution starts)
     D-->E(Fetch power parameters)
     D-->F(Fetch user info)
     E-->G(Resolve DB read activity futures)
@@ -31,7 +31,7 @@ flowchart TD
     T-->|Timeout| R
     T-->|Success| U{Wait for cloud-init start}
     U-->|Timeout| R
-    U-->|Success| V{Wait for cloud-init finsih}
+    U-->|Success| V{Wait for cloud-init finish}
     V-->|Timeout| R
     V-->|Success| W(Update Node Status)
     W--> 'end'
