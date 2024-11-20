@@ -8,6 +8,7 @@ import re
 
 from tftp.backend import FilesystemReader
 
+from maascommon.bootmethods import PowerNvBootMetadata
 from provisioningserver.boot import (
     BootMethod,
     BytesReader,
@@ -67,15 +68,7 @@ def format_bootif(mac):
     return f"{ARP_HTYPE.ETHERNET:02x}-{mac}"
 
 
-class PowerNVBootMethod(BootMethod):
-    name = "powernv"
-    bios_boot_method = "powernv"
-    template_subdir = "pxe"
-    bootloader_arches = ["ppc64el"]
-    bootloader_path = "pxelinux.0"
-    arch_octet = "00:0E"
-    user_class = None
-    path_prefix = "ppc64el/"
+class PowerNVBootMethod(BootMethod, PowerNvBootMetadata):
 
     def get_params(self, backend, path):
         """Gets the matching parameters from the requested path."""

@@ -8,6 +8,7 @@ import re
 
 from tftp.backend import FilesystemReader
 
+from maascommon.bootmethods import S390XBootMetadata
 from provisioningserver.boot import (
     BootMethod,
     BytesReader,
@@ -66,18 +67,7 @@ def format_bootif(mac):
     return f"{ARP_HTYPE.ETHERNET:02x}-{mac}"
 
 
-class S390XBootMethod(BootMethod):
-    name = "s390x"
-    bios_boot_method = "s390x"
-    template_subdir = "pxe"
-    bootloader_arches = ["s390x"]
-    # boots390x.bin is a place holder to allow the path_prefix to be set.
-    # s390x KVM uses a bootloader shipped with KVM.
-    bootloader_path = "boots390x.bin"
-    arch_octet = "00:1F"
-    path_prefix = "s390x/"
-    user_class = None
-
+class S390XBootMethod(BootMethod, S390XBootMetadata):
     def get_params(self, backend, path):
         """Gets the matching parameters from the requested path."""
         match = re_config_file.match(path)

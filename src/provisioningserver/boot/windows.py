@@ -15,6 +15,7 @@ from tftp.backend import FilesystemReader
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.python.filepath import FilePath
 
+from maascommon.bootmethods import WindowsPXEBootMetadata
 from provisioningserver.boot import (
     BootMethod,
     BootMethodError,
@@ -179,15 +180,7 @@ class Bcd:
         self.hive.commit(None)
 
 
-class WindowsPXEBootMethod(BootMethod):
-    name = "windows"
-    bios_boot_method = "pxe"
-    template_subdir = "windows"
-    bootloader_arches = []
-    bootloader_path = "pxeboot.0"
-    arch_octet = None
-    user_class = None
-
+class WindowsPXEBootMethod(BootMethod, WindowsPXEBootMetadata):
     @deferred
     def get_node_info(self):
         """Gets node information via the remote mac."""

@@ -9,6 +9,7 @@ import re
 
 import tempita
 
+from maascommon.bootmethods import PXEBootMetadata
 from provisioningserver.boot import BootMethod, BytesReader, get_parameters
 from provisioningserver.logger import get_maas_logger
 
@@ -64,24 +65,7 @@ re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
-class PXEBootMethod(BootMethod):
-    name = "pxe"
-    bios_boot_method = "pxe"
-    template_subdir = "pxe"
-    bootloader_arches = ["i386", "amd64"]
-    bootloader_path = "lpxelinux.0"
-    bootloader_files = [
-        "lpxelinux.0",
-        "chain.c32",
-        "ifcpu64.c32",
-        "ldlinux.c32",
-        "libcom32.c32",
-        "libutil.c32",
-    ]
-    arch_octet = "00:00"
-    user_class = None
-    path_prefix_http = True
-    path_prefix_force = True
+class PXEBootMethod(BootMethod, PXEBootMetadata):
 
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be

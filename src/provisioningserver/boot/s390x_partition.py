@@ -3,27 +3,16 @@
 
 """S390X DPM Partition Boot Method"""
 
+
 import tempita
 
+from maascommon.bootmethods import S390XPartitionBootMetadata
 from provisioningserver.boot import BootMethod, BytesReader, get_remote_mac
 from provisioningserver.boot.s390x import format_bootif
 from provisioningserver.kernel_opts import compose_kernel_command_line
 
 
-class S390XPartitionBootMethod(BootMethod):
-    name = "s390x_partition"
-    bios_boot_method = "s390x_partition"
-    template_subdir = "s390x_partition"
-    bootloader_arches = ["s390x"]
-    # S390X partitions has its bootloader built into the firmware. The
-    # "bootloader" provided must be the bootloader configuration file. The
-    # file format is similar to pxelinux.cfg but supports limited options
-    # and requires an '=' to be used between keys and values.
-    # https://www.ibm.com/support/pages/sites/default/files/inline-files/SB10-7176-01.pdf
-    bootloader_path = "s390x_partition/maas"
-    arch_octet = "00:20"
-    user_class = None
-
+class S390XPartitionBootMethod(BootMethod, S390XPartitionBootMetadata):
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be
         generated.

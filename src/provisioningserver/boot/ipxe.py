@@ -11,6 +11,7 @@ from textwrap import dedent
 
 import tempita
 
+from maascommon.bootmethods import IPXEBootMetadata
 from provisioningserver.boot import BootMethod, BytesReader, get_parameters
 
 CONFIG_FILE = dedent(
@@ -53,18 +54,8 @@ re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
-class IPXEBootMethod(BootMethod):
+class IPXEBootMethod(BootMethod, IPXEBootMetadata):
     """Boot method for iPXE boot loader."""
-
-    name = "ipxe"
-    bios_boot_method = "ipxe"
-    template_subdir = "ipxe"
-    bootloader_arches = []
-    bootloader_path = "ipxe.cfg"
-    arch_octet = None
-    user_class = "iPXE"
-    path_prefix_http = True
-    absolute_url_as_filename = True
 
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be

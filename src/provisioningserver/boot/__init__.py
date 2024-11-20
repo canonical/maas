@@ -4,7 +4,7 @@
 """Boot Methods."""
 
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from errno import ENOENT
 from functools import lru_cache
 from io import BytesIO
@@ -15,6 +15,7 @@ import tempita
 from tftp.backend import IReader
 from zope.interface import implementer
 
+from maascommon.bootmethods import BootMethodMetadata
 from provisioningserver.config import debug_enabled
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import (
@@ -92,74 +93,8 @@ def get_remote_mac():
     return find_mac_via_arp(remote_host)
 
 
-class BootMethod(metaclass=ABCMeta):
+class BootMethod(BootMethodMetadata, metaclass=ABCMeta):
     """Skeleton for a boot method."""
-
-    # Path prefix that is used for the pxelinux.cfg. Used for
-    # the dhcpd.conf that is generated.  Format is "path/to/dir/".
-    # relative to tftpboot directory.
-    path_prefix = None
-
-    # Set to `True` to have the path_prefix to be an absolute prefix
-    # for the HTTP boot endpoint. It is not required that `path_prefix`
-    # also be set.
-    path_prefix_http = False
-
-    # Force that the path_prefix is sent over DHCP even if the client didn't
-    # request that information.
-    path_prefix_force = False
-
-    # Use the full absolute URL for filename access. Instead of providing a
-    # relative path to the `bootloader_path` ensure that the DHCP renders
-    # with an absolute path.
-    absolute_url_as_filename = False
-
-    # When providing a URL in the bootloader make it HTTP instead of TFTP.
-    # Includes "HTTPClient" as the vendor-class-identifier.
-    http_url = False
-
-    # Bootloader files to symlink into the root tftp directory.
-    bootloader_files = []
-
-    @property
-    @abstractmethod
-    def name(self):
-        """Name of the boot method."""
-
-    @property
-    @abstractmethod
-    def bios_boot_method(self):
-        """Method used by the bios to boot. E.g. `pxe`."""
-
-    @property
-    @abstractmethod
-    def template_subdir(self):
-        """Name of template sub-directory."""
-
-    @property
-    @abstractmethod
-    def bootloader_arches(self):
-        """Arches for which this boot method is for."""
-
-    @property
-    @abstractmethod
-    def bootloader_path(self):
-        """Relative path from `path_prefix` to boot loader."""
-
-    @property
-    @abstractmethod
-    def arch_octet(self):
-        """Architecture type that supports this method. Used for the
-        dhcpd.conf file that is generated. Must be in the format XX:XX.
-        See http://www.iana.org/assignments/dhcpv6-parameters/
-        dhcpv6-parameters.xhtml#processor-architecture
-        """
-
-    @property
-    @abstractmethod
-    def user_class(self):
-        """User class that supports this method. Used for the
-        dhcpd.conf file that is generated."""
 
     def match_path(self, backend, path):
         """Checks path for a file the boot method needs to handle.
