@@ -93,7 +93,7 @@ class TestSubnetsRepositoryMethods:
     async def test_find_best_subnet_for_ip(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
-        await create_test_subnet_entry(fixture, cidr="10.0.0.0/16")
+        await create_test_subnet_entry(fixture, cidr="10.0.0.0/25")
         subnet2 = await create_test_subnet_entry(fixture, cidr="10.0.1.0/24")
 
         ip = await create_test_staticipaddress_entry(fixture, ip="10.0.1.2")
@@ -101,5 +101,5 @@ class TestSubnetsRepositoryMethods:
         subnets = SubnetsRepository(Context(connection=db_connection))
 
         result = await subnets.find_best_subnet_for_ip(str(ip[0]["ip"]))
-
+        assert result is not None
         assert result.id == subnet2["id"]

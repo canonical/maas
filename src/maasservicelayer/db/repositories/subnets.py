@@ -102,6 +102,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
                 desc(VlanTable.c.dhcp_on),
                 desc("prefixlen"),
             )
+            .where(SubnetTable.c.cidr.op(">>")(ip_addr))
         )
 
         result = (await self.connection.execute(stmt)).first()
