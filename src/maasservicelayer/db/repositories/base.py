@@ -26,7 +26,6 @@ T = TypeVar("T", bound=MaasBaseModel)
 
 
 class CreateOrUpdateResource(dict):
-
     def get_values(self) -> dict[str, Any]:
         return self
 
@@ -73,15 +72,15 @@ class BaseRepository(ABC, Generic[T]):
         )
 
     async def get(self, query: QuerySpec) -> list[T]:
-        stmt = self.select_all_statement().where(query.where.condition)
+        stmt = self.select_all_statement()
+        stmt = query.enrich_stmt(stmt)
 
         result = (await self.connection.execute(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
 
     async def get_one(self, query: QuerySpec) -> T | None:
-        stmt = (
-            self.select_all_statement().where(query.where.condition).limit(1)
-        )
+        stmt = self.select_all_statement().limit(1)
+        stmt = query.enrich_stmt(stmt)
 
         result = (await self.connection.execute(stmt)).one_or_none()
         if result:
@@ -113,8 +112,8 @@ class BaseRepository(ABC, Generic[T]):
             .order_by(desc(self.get_repository_table().c.id))
             .limit(size + 1)
         )
-        if query and query.where:
-            stmt = stmt.where(query.where.condition)
+        if query:
+            stmt = query.enrich_stmt(stmt)
 
         if token is not None:
             stmt = stmt.where(le(self.get_repository_table().c.id, int(token)))
@@ -136,10 +135,10 @@ class BaseRepository(ABC, Generic[T]):
     ) -> T:
         stmt = (
             update(self.get_repository_table())
-            .where(query.where.condition)
             .returning(self.get_repository_table())
             .values(**resource.get_values())
         )
+        stmt = query.enrich_stmt(stmt)
         try:
             updated_resource = (await self.connection.execute(stmt)).one()
         except IntegrityError:
@@ -162,7 +161,8 @@ class BaseRepository(ABC, Generic[T]):
         """
         If no resource for the query is found, silently ignore it and return `None` in any case.
         """
-        stmt = delete(self.get_repository_table()).where(query.where.condition)
+        stmt = delete(self.get_repository_table())
+        stmt = query.enrich_stmt(stmt)
         await self.connection.execute(stmt)
 
     async def delete_by_id(self, id: int) -> None:

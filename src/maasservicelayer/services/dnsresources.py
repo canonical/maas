@@ -57,7 +57,9 @@ class DNSResourcesService(Service):
         dnsresource = await self.dnsresource_repository.create(resource)
 
         domain = await self.domains_service.get_one(
-            DomainsClauseFactory.with_id(dnsresource.domain_id)
+            QuerySpec(
+                where=DomainsClauseFactory.with_id(dnsresource.domain_id)
+            )
         )
         await self.dnspublications_service.create_for_config_update(
             source=f"zone {domain.name} added resource {dnsresource.name}",

@@ -172,7 +172,7 @@ class VlansRepository(BaseRepository[Vlan]):
                     VlanTable.c.id == InterfaceTable.c.vlan_id,
                 ),
             )
-            .where(query.where.condition)
         )
+        stmt = query.enrich_stmt(stmt)
         result = (await self.connection.execute(stmt)).all()
         return [Vlan(**row._asdict()) for row in result]

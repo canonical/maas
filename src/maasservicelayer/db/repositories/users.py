@@ -156,7 +156,7 @@ class UsersRepository(BaseRepository[User]):
 
     async def get_user_profile(self, username: str) -> UserProfile | None:
         stmt = (
-            select(UserProfileTable.columns)
+            select(UserProfileTable)
             .select_from(UserProfileTable)
             .join(UserTable, eq(UserProfileTable.c.user_id, UserTable.c.id))
             .where(eq(UserTable.c.username, username))
@@ -187,7 +187,7 @@ class UsersRepository(BaseRepository[User]):
         stmt = (
             update(UserProfileTable)
             .where(eq(UserProfileTable.c.user_id, user_id))
-            .returning(UserProfileTable.columns)
+            .returning(UserProfileTable)
             .values(**resource.get_values())
         )
         try:
