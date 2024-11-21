@@ -53,6 +53,11 @@ class ZonesService(Service):
             token=token, size=size, query=query
         )
 
+    async def update_by_id(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> Zone:
+        return await self.zones_repository.update_by_id(id, resource)
+
     async def delete_by_id(
         self, zone_id: int, etag_if_match: str | None = None
     ) -> None:

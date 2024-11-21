@@ -70,6 +70,7 @@ class TestZonesApi(ApiCommonTests):
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
         return [
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/2"),
         ]
@@ -181,6 +182,91 @@ class TestZonesApi(ApiCommonTests):
         assert "ETag" not in response.headers
 
         error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    # PUT /zones/{zone_id}
+    async def test_put(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        updated_test_zone = TEST_ZONE
+        updated_test_zone.name = "new_name"
+        updated_test_zone.description = "new_description"
+
+        update_zone_request = ZoneRequest(
+            name="new_name",
+            description="new_description",
+        )
+        services_mock.zones = Mock(ZonesService)
+        services_mock.zones.update_by_id.return_value = updated_test_zone
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{str(TEST_ZONE.id)}",
+            json=jsonable_encoder(update_zone_request),
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        updated_zone_response = ZoneResponse(**response.json())
+
+        assert updated_zone_response.id == updated_test_zone.id
+        assert updated_zone_response.name == updated_test_zone.name
+        assert (
+            updated_zone_response.description == updated_test_zone.description
+        )
+
+    async def test_put_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.zones = Mock(ZonesService)
+        services_mock.zones.update_by_id.return_value = None
+
+        update_zone_request = ZoneRequest(
+            name="new_name",
+            description="new_description",
+        )
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/99",
+            json=jsonable_encoder(update_zone_request),
+        )
+
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_put_422(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.zones = Mock(ZonesService)
+        services_mock.zones.update_by_id.return_value = None
+
+        update_zone_request = ZoneRequest(
+            name="new_name",
+            description="new_description",
+        )
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/xyz",
+            json=jsonable_encoder(update_zone_request),
+        )
+
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
         assert error_response.kind == "Error"
         assert error_response.code == 422
 

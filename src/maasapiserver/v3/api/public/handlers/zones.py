@@ -161,6 +161,49 @@ class ZonesHandler(Handler):
 
     @handler(
         path="/zones/{zone_id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": ZoneResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_zone(
+        self,
+        zone_id: int,
+        zone_request: ZoneRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        resource = (
+            ZoneResourceBuilder()
+            .with_name(zone_request.name)
+            .with_description(zone_request.description)
+            .build()
+        )
+
+        zone = await services.zones.update_by_id(zone_id, resource)
+        if not zone:
+            return NotFoundResponse()
+
+        response.headers["ETag"] = zone.etag()
+        return ZoneResponse.from_model(
+            zone=zone, self_base_hyperlink=f"{V3_API_PREFIX}/zones"
+        )
+
+    @handler(
+        path="/zones/{zone_id}",
         methods=["DELETE"],
         description="Deletes a zone. All the resources belonging to this zone will be moved to the default zone.",
         tags=TAGS,
