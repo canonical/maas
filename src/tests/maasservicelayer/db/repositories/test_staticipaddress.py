@@ -100,7 +100,7 @@ class TestStaticIPAddressRepository:
             Context(connection=db_connection)
         )
 
-        await staticipaddress_repository.update(sip["id"], resource)
+        await staticipaddress_repository.update_by_id(sip["id"], resource)
 
         result_stmt = (
             select(StaticIPAddressTable)

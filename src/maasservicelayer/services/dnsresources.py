@@ -69,18 +69,26 @@ class DNSResourcesService(Service):
 
         return dnsresource
 
-    async def update(
+    async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
     ) -> DNSResource:
-        old_dnsresource = await self.dnsresource_repository.get_one(id=id)
+        old_dnsresource = await self.dnsresource_repository.get_by_id(id=id)
         old_domain = await self.domains_service.get_one(
-            id=old_dnsresource.domain_id
+            query=QuerySpec(
+                where=DNSResourceClauseFactory.with_domain_id(
+                    old_dnsresource.domain_id
+                )
+            )
         )
 
-        dnsresource = await self.dnsresource_repository.update(id, resource)
+        dnsresource = await self.dnsresource_repository.update_by_id(
+            id, resource
+        )
 
         domain = await self.domains_service.get_one(
-            DomainsClauseFactory.with_id(dnsresource.domain_id)
+            query=QuerySpec(
+                where=DomainsClauseFactory.with_id(dnsresource.domain_id)
+            )
         )
 
         if old_domain.id != domain.id:
@@ -110,14 +118,16 @@ class DNSResourcesService(Service):
 
         return dnsresource
 
-    async def delete(self, id: int) -> None:
-        dnsresource = await self.dnsresource_repository.get_one(id=id)
+    async def delete_by_id(self, id: int) -> None:
+        dnsresource = await self.dnsresource_repository.get_by_id(id=id)
 
         domain = await self.domains_service.get_one(
-            DomainsClauseFactory.with_id(dnsresource.domain_id)
+            query=QuerySpec(
+                where=DomainsClauseFactory.with_id(dnsresource.domain_id)
+            )
         )
 
-        await self.dnsresource_repository.delete(id=id)
+        await self.dnsresource_repository.delete_by_id(id=id)
 
         await self.dnspublications_service.create_for_config_update(
             source=f"zone {domain.name} removed resource {dnsresource.name}",
@@ -155,7 +165,7 @@ class DNSResourcesService(Service):
                 )
             )
             if len(remaining_relations) == 0:
-                await self.dnsresource_repository.delete(dnsrr.id)
+                await self.dnsresource_repository.delete_by_id(dnsrr.id)
 
                 await self.dnspublications_service.create_for_config_update(
                     source=f"zone {default_domain.name} removed resource {dnsrr.name}",

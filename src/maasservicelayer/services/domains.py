@@ -37,12 +37,12 @@ class DomainsService(Service):
             )
         return domain
 
-    async def update(
+    async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
     ) -> Domain:
-        old_domain = await self.domains_repository.get_one(id=id)
+        old_domain = await self.domains_repository.get_by_id(id=id)
 
-        new_domain = await self.domains_repository.update(id, resource)
+        new_domain = await self.domains_repository.update_by_id(id, resource)
 
         source = None
         if old_domain.authoritative and not new_domain.authoritative:
@@ -66,10 +66,10 @@ class DomainsService(Service):
 
         return new_domain
 
-    async def delete(self, id: int) -> None:
-        domain = await self.domains_repository.get_one(id=id)
+    async def delete_by_id(self, id: int) -> None:
+        domain = await self.domains_repository.get_by_id(id=id)
 
-        await self.domains_repository.delete(id)
+        await self.domains_repository.delete_by_id(id)
 
         if domain.authoritative:
             await self.dnspublications_service.create_for_config_update(

@@ -192,7 +192,7 @@ class TestDNSResourceRepository:
             Context(connection=db_connection)
         )
 
-        await dnsresource_repository.delete(dnsresource.id)
+        await dnsresource_repository.delete_by_id(dnsresource.id)
 
         stmt = (
             select(DNSResourceTable)

@@ -277,7 +277,7 @@ class TestStaticIPAddressService:
         )
 
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
-        mock_staticipaddress_repository.update.return_value = sip
+        mock_staticipaddress_repository.update_by_id.return_value = sip
 
         mock_temporal = Mock(TemporalService)
 
@@ -287,7 +287,7 @@ class TestStaticIPAddressService:
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
-        await staticipaddress_service.update(
+        await staticipaddress_service.update_by_id(
             sip.id,
             (
                 StaticIPAddressResourceBuilder()
@@ -301,7 +301,7 @@ class TestStaticIPAddressService:
             ),
         )
 
-        mock_staticipaddress_repository.update.assert_called_once_with(
+        mock_staticipaddress_repository.update_by_id.assert_called_once_with(
             sip.id,
             (
                 StaticIPAddressResourceBuilder()
@@ -349,7 +349,7 @@ class TestStaticIPAddressService:
         )
 
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
-        mock_staticipaddress_repository.find_by_id.return_value = sip
+        mock_staticipaddress_repository.get_by_id.return_value = sip
 
         mock_temporal = Mock(TemporalService)
 
@@ -359,11 +359,11 @@ class TestStaticIPAddressService:
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
-        await staticipaddress_service.delete(
+        await staticipaddress_service.delete_by_id(
             id=sip.id,
         )
 
-        mock_staticipaddress_repository.delete.assert_called_once_with(
+        mock_staticipaddress_repository.delete_by_id.assert_called_once_with(
             sip.id,
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(

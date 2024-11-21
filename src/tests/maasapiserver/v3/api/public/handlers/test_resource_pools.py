@@ -396,7 +396,7 @@ class TestResourcePoolApi(ApiCommonTests):
         updated_rp.name = "newname"
         updated_rp.description = "new description"
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.update.return_value = updated_rp
+        services_mock.resource_pools.update_by_id.return_value = updated_rp
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )
@@ -426,13 +426,15 @@ class TestResourcePoolApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.update.side_effect = NotFoundException(
-            details=[
-                BaseExceptionDetail(
-                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                    message="Resource pool with id 1000 does not exist.",
-                )
-            ]
+        services_mock.resource_pools.update_by_id.side_effect = (
+            NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message="Resource pool with id 1000 does not exist.",
+                    )
+                ]
+            )
         )
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
@@ -464,7 +466,7 @@ class TestResourcePoolApi(ApiCommonTests):
         resource_pool_request: dict[str, str],
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.update.side_effect = (
+        services_mock.resource_pools.update_by_id.side_effect = (
             RequestValidationError(errors=[])
         )
         response = await mocked_api_client_admin.put(
@@ -496,7 +498,7 @@ class TestResourcePoolApi(ApiCommonTests):
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
 
-        services_mock.resource_pools.update.return_value = updated_rp
+        services_mock.resource_pools.update_by_id.return_value = updated_rp
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )

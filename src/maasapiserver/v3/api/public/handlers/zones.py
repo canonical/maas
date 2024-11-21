@@ -182,5 +182,5 @@ class ZonesHandler(Handler):
         ),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        await services.zones.delete(zone_id, etag_if_match)
+        await services.zones.delete_by_id(zone_id, etag_if_match)
         return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -117,7 +117,7 @@ class TestIPRangesService:
         )
 
         mock_ipranges_repository = Mock(IPRangesRepository)
-        mock_ipranges_repository.update.return_value = iprange
+        mock_ipranges_repository.update_by_id.return_value = iprange
 
         mock_temporal = Mock(TemporalService)
 
@@ -137,9 +137,9 @@ class TestIPRangesService:
             .build()
         )
 
-        await ipranges_service.update(iprange.id, resource)
+        await ipranges_service.update_by_id(iprange.id, resource)
 
-        mock_ipranges_repository.update.assert_called_once_with(
+        mock_ipranges_repository.update_by_id.assert_called_once_with(
             iprange.id, resource
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
@@ -161,7 +161,7 @@ class TestIPRangesService:
         )
 
         mock_ipranges_repository = Mock(IPRangesRepository)
-        mock_ipranges_repository.find_by_id.return_value = iprange
+        mock_ipranges_repository.get_by_id.return_value = iprange
 
         mock_temporal = Mock(TemporalService)
 
@@ -171,9 +171,11 @@ class TestIPRangesService:
             ipranges_repository=mock_ipranges_repository,
         )
 
-        await ipranges_service.delete(iprange.id)
+        await ipranges_service.delete_by_id(iprange.id)
 
-        mock_ipranges_repository.delete.assert_called_once_with(iprange.id)
+        mock_ipranges_repository.delete_by_id.assert_called_once_with(
+            iprange.id
+        )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[iprange.subnet_id]),

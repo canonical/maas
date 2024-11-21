@@ -105,7 +105,7 @@ class LeasesService(Service):
                     await self.dnsresource_service.release_dynamic_hostname(
                         address
                     )
-                    await self.staticipaddress_service.delete(address.id)
+                    await self.staticipaddress_service.delete_by_id(address.id)
                 else:
                     sip = address
 
@@ -185,7 +185,7 @@ class LeasesService(Service):
                     .build()
                 )
         else:
-            await self.staticipaddress_service.update(
+            await self.staticipaddress_service.update_by_id(
                 sip.id,
                 StaticIPAddressResourceBuilder()
                 .with_ip(sip.ip)

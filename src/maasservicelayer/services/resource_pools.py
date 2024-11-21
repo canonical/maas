@@ -29,7 +29,7 @@ class ResourcePoolsService(Service):
         return await self.resource_pools_repository.create(resource)
 
     async def get_by_id(self, id: int) -> Optional[ResourcePool]:
-        return await self.resource_pools_repository.find_by_id(id)
+        return await self.resource_pools_repository.get_by_id(id)
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec | None = None
@@ -38,10 +38,10 @@ class ResourcePoolsService(Service):
             token=token, size=size, query=query
         )
 
-    async def update(
+    async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
     ) -> ResourcePool:
-        return await self.resource_pools_repository.update(id, resource)
+        return await self.resource_pools_repository.update_by_id(id, resource)
 
     async def list_ids(self) -> set[int]:
         """Returns all the ids of the resource pools in the db."""

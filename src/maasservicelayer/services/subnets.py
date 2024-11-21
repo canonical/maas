@@ -35,7 +35,7 @@ class SubnetsService(Service):
         return await self.subnets_repository.list(token=token, size=size)
 
     async def get_by_id(self, id: int) -> Subnet | None:
-        return await self.subnets_repository.find_by_id(id=id)
+        return await self.subnets_repository.get_by_id(id=id)
 
     async def find_best_subnet_for_ip(
         self, ip: IPvAnyAddress
@@ -52,10 +52,10 @@ class SubnetsService(Service):
         )
         return subnet
 
-    async def update(
+    async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
     ) -> Subnet | None:
-        subnet = await self.subnets_repository.update(id, resource)
+        subnet = await self.subnets_repository.update_by_id(id, resource)
         if subnet:
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -65,9 +65,9 @@ class SubnetsService(Service):
             )
         return subnet
 
-    async def delete(self, id: int) -> None:
-        subnet = await self.subnets_repository.find_by_id(id=id)
-        await self.subnets_repository.delete(id)
+    async def delete_by_id(self, id: int) -> None:
+        subnet = await self.subnets_repository.get_by_id(id=id)
+        await self.subnets_repository.delete_by_id(id)
         if subnet:
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,

@@ -187,7 +187,7 @@ class TestResourcePoolRepository:
             .with_updated(now)
             .build()
         )
-        updated_pools = await resource_pools_repository.update(
+        updated_pools = await resource_pools_repository.update_by_id(
             created_resource_pool.id, updated_resource
         )
         # unchanged
@@ -220,7 +220,7 @@ class TestResourcePoolRepository:
         )
 
         with pytest.raises(AlreadyExistsException):
-            await resource_pools_repository.update(
+            await resource_pools_repository.update_by_id(
                 created_resource_pool2.id, updated_resource
             )
 
@@ -239,4 +239,4 @@ class TestResourcePoolRepository:
             .build()
         )
         with pytest.raises(NotFoundException):
-            await resource_pools_repository.update(1000, resource)
+            await resource_pools_repository.update_by_id(1000, resource)

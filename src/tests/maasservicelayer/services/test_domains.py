@@ -78,8 +78,8 @@ class TestDomainsService:
             updated=now,
         )
 
-        domains_repository.get_one.return_value = old_domain
-        domains_repository.update.return_value = new_domain
+        domains_repository.get_by_id.return_value = old_domain
+        domains_repository.update_by_id.return_value = new_domain
 
         dnspublications_service = Mock(DNSPublicationsService)
 
@@ -99,9 +99,9 @@ class TestDomainsService:
             .build()
         )
 
-        await service.update(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, resource)
 
-        domains_repository.update.assert_called_once_with(
+        domains_repository.update_by_id.assert_called_once_with(
             old_domain.id, resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
@@ -130,8 +130,8 @@ class TestDomainsService:
             updated=now,
         )
 
-        domains_repository.get_one.return_value = old_domain
-        domains_repository.update.return_value = new_domain
+        domains_repository.get_by_id.return_value = old_domain
+        domains_repository.update_by_id.return_value = new_domain
 
         dnspublications_service = Mock(DNSPublicationsService)
 
@@ -151,9 +151,9 @@ class TestDomainsService:
             .build()
         )
 
-        await service.update(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, resource)
 
-        domains_repository.update.assert_called_once_with(
+        domains_repository.update_by_id.assert_called_once_with(
             old_domain.id, resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
@@ -182,8 +182,8 @@ class TestDomainsService:
             updated=now,
         )
 
-        domains_repository.get_one.return_value = old_domain
-        domains_repository.update.return_value = new_domain
+        domains_repository.get_by_id.return_value = old_domain
+        domains_repository.update_by_id.return_value = new_domain
 
         dnspublications_service = Mock(DNSPublicationsService)
 
@@ -203,9 +203,9 @@ class TestDomainsService:
             .build()
         )
 
-        await service.update(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, resource)
 
-        domains_repository.update.assert_called_once_with(
+        domains_repository.update_by_id.assert_called_once_with(
             old_domain.id, resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
@@ -234,8 +234,8 @@ class TestDomainsService:
             updated=now,
         )
 
-        domains_repository.get_one.return_value = old_domain
-        domains_repository.update.return_value = new_domain
+        domains_repository.get_by_id.return_value = old_domain
+        domains_repository.update_by_id.return_value = new_domain
 
         dnspublications_service = Mock(DNSPublicationsService)
 
@@ -255,9 +255,9 @@ class TestDomainsService:
             .build()
         )
 
-        await service.update(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, resource)
 
-        domains_repository.update.assert_called_once_with(
+        domains_repository.update_by_id.assert_called_once_with(
             old_domain.id, resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
@@ -278,7 +278,7 @@ class TestDomainsService:
             updated=now,
         )
 
-        domains_repository.get_one.return_value = domain
+        domains_repository.get_by_id.return_value = domain
 
         dnspublications_service = Mock(DNSPublicationsService)
 
@@ -288,9 +288,9 @@ class TestDomainsService:
             domains_repository=domains_repository,
         )
 
-        await service.delete(domain.id)
+        await service.delete_by_id(domain.id)
 
-        domains_repository.delete.assert_called_once_with(domain.id)
+        domains_repository.delete_by_id.assert_called_once_with(domain.id)
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="removed zone example.com",
             action=DnsUpdateAction.RELOAD,

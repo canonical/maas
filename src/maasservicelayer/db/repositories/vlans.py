@@ -36,6 +36,10 @@ DEFAULT_MTU = 1500
 class VlansClauseFactory(ClauseFactory):
 
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(VlanTable.c.id, id))
+
+    @classmethod
     def with_fabric_id(cls, fabric_id: int) -> Clause:
         return Clause(condition=eq(VlanTable.c.fabric_id, fabric_id))
 

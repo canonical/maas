@@ -44,10 +44,7 @@ class ZonesService(Service):
         return await self.zones_repository.create(resource)
 
     async def get_by_id(self, id: int) -> Optional[Zone]:
-        return await self.zones_repository.find_by_id(id)
-
-    async def get_by_name(self, name: str) -> Optional[Zone]:
-        return await self.zones_repository.find_by_name(name)
+        return await self.zones_repository.get_by_id(id)
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec
@@ -56,7 +53,7 @@ class ZonesService(Service):
             token=token, size=size, query=query
         )
 
-    async def delete(
+    async def delete_by_id(
         self, zone_id: int, etag_if_match: str | None = None
     ) -> None:
         """
@@ -78,7 +75,7 @@ class ZonesService(Service):
                     )
                 ]
             )
-        await self.zones_repository.delete(zone_id)
+        await self.zones_repository.delete_by_id(zone_id)
 
         # Cascade deletion to the related models and move the resources from the deleted zone to the default zone
         await self.nodes_service.move_to_zone(zone_id, default_zone.id)

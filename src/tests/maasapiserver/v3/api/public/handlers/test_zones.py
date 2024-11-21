@@ -299,7 +299,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.delete.side_effect = BadRequestException(
+        services_mock.zones.delete_by_id.side_effect = BadRequestException(
             details=[
                 BaseExceptionDetail(
                     type=CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
@@ -325,7 +325,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.delete.side_effect = None
+        services_mock.zones.delete_by_id.side_effect = None
         response = await mocked_api_client_admin.delete(
             f"{self.BASE_PATH}/100"
         )
@@ -337,7 +337,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.zones = Mock(ZonesService)
-        services_mock.zones.delete.side_effect = [
+        services_mock.zones.delete_by_id.side_effect = [
             PreconditionFailedException(
                 details=[
                     BaseExceptionDetail(

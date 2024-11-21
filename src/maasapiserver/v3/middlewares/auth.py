@@ -278,13 +278,13 @@ class MacaroonAuthenticationProvider:
             user_builder.with_email(validate_user_response.email)
 
         user_builder.with_is_superuser(validate_user_response.superuser)
-        user = await request.state.services.users.update(
+        user = await request.state.services.users.update_by_id(
             user.id, user_builder.build()
         )
 
         profile_builder = UserProfileResourceBuilder()
         profile_builder.with_auth_last_check(now)
-        user_profile = await request.state.services.users.update_profile(
+        await request.state.services.users.update_profile(
             user.id, profile_builder.build()
         )
         return user

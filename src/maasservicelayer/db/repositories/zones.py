@@ -38,18 +38,6 @@ class ZonesRepository(BaseRepository[Zone]):
     def get_model_factory(self) -> Type[Zone]:
         return Zone
 
-    async def find_by_name(self, name: str) -> Zone | None:
-        stmt = (
-            select(ZoneTable)
-            .select_from(ZoneTable)
-            .where(eq(ZoneTable.c.name, name))
-        )
-        result = await self.connection.execute(stmt)
-        zone = result.first()
-        if not zone:
-            return None
-        return Zone(**zone._asdict())
-
     async def get_default_zone(self) -> Zone:
         stmt = (
             select(ZoneTable)

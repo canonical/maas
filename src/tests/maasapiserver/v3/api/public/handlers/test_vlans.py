@@ -18,7 +18,11 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
     VlansListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.db.repositories.vlans import VlanResourceBuilder
+from maasservicelayer.db.filters import ClauseFactory, QuerySpec
+from maasservicelayer.db.repositories.vlans import (
+    VlanResourceBuilder,
+    VlansClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -271,7 +275,15 @@ class TestVlanApi(ApiCommonTests):
         response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 204
         services_mock.vlans.delete.assert_called_with(
-            fabric_id=1, vlan_id=1, etag_if_match=None
+            query=QuerySpec(
+                where=ClauseFactory.and_clauses(
+                    [
+                        VlansClauseFactory.with_id(1),
+                        VlansClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+            etag_if_match=None,
         )
 
     async def test_delete_with_etag(
@@ -294,5 +306,13 @@ class TestVlanApi(ApiCommonTests):
         )
         assert response.status_code == 412
         services_mock.vlans.delete.assert_called_with(
-            fabric_id=1, vlan_id=1, etag_if_match="wrong_etag"
+            query=QuerySpec(
+                where=ClauseFactory.and_clauses(
+                    [
+                        VlansClauseFactory.with_id(1),
+                        VlansClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+            etag_if_match="wrong_etag",
         )

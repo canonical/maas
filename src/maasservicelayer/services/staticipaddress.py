@@ -47,10 +47,10 @@ class StaticIPAddressService(Service):
             )
         return ip
 
-    async def update(
+    async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
     ) -> StaticIPAddress:
-        ip = await self.staticipaddress_repository.update(id, resource)
+        ip = await self.staticipaddress_repository.update_by_id(id, resource)
         if ip.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -73,9 +73,9 @@ class StaticIPAddressService(Service):
             )
         return ip
 
-    async def delete(self, id: int) -> None:
-        ip = await self.staticipaddress_repository.find_by_id(id=id)
-        await self.staticipaddress_repository.delete(id)
+    async def delete_by_id(self, id: int) -> None:
+        ip = await self.staticipaddress_repository.get_by_id(id=id)
+        await self.staticipaddress_repository.delete_by_id(id)
 
         if ip.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(

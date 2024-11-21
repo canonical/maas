@@ -285,7 +285,7 @@ class ResourcePoolHandler(Handler):
             .with_updated(utcnow())
             .build()
         )
-        resource_pool = await services.resource_pools.update(
+        resource_pool = await services.resource_pools.update_by_id(
             resource_pool_id, resource
         )
         response.headers["ETag"] = resource_pool.etag()

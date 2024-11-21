@@ -8,7 +8,9 @@ from sqlalchemy.sql.operators import eq
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodes import (
+    NodeClauseFactory,
     NodeResourceBuilder,
     NodesRepository,
 )
@@ -132,8 +134,11 @@ class TestNodesRepository:
             .with_status(status=NodeStatus.DEPLOYED)
             .build()
         )
-        await nodes_repository.update_by_system_id(
-            system_id=machine.system_id, resource=resource
+        await nodes_repository.update(
+            query=QuerySpec(
+                where=NodeClauseFactory.with_system_id(machine.system_id)
+            ),
+            resource=resource,
         )
         [updated_node] = await fixture.get_typed(
             NodeTable.name, Node, eq(NodeTable.c.id, machine.id)
@@ -145,7 +150,7 @@ class TestNodesRepository:
             .with_status(status=NodeStatus.FAILED_DEPLOYMENT)
             .build()
         )
-        await nodes_repository.update(id=machine.id, resource=resource)
+        await nodes_repository.update_by_id(id=machine.id, resource=resource)
         [updated_node] = await fixture.get_typed(
             NodeTable.name, Node, eq(NodeTable.c.id, machine.id)
         )
@@ -161,9 +166,10 @@ class TestNodesRepository:
             .build()
         )
         with pytest.raises(NotFoundException):
-            await nodes_repository.update_by_system_id(
-                system_id="mario", resource=resource
+            await nodes_repository.update(
+                query=QuerySpec(NodeClauseFactory.with_system_id("mario")),
+                resource=resource,
             )
 
         with pytest.raises(NotFoundException):
-            await nodes_repository.update(id=-1, resource=resource)
+            await nodes_repository.update_by_id(id=-1, resource=resource)

@@ -82,13 +82,13 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         )
 
     @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id_not_found(
+    async def test_get_by_id_not_found(
         self, repository_instance: MachinesRepository
     ):
         pass
 
     @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id(
+    async def test_get_by_id(
         self,
         repository_instance: MachinesRepository,
         _created_instance: Machine,

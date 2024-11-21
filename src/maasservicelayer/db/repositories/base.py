@@ -10,7 +10,7 @@ from sqlalchemy import delete, desc, insert, select, Select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -88,6 +88,11 @@ class BaseRepository(ABC, Generic[T]):
             return self.get_model_factory()(**result._asdict())
         return None
 
+    async def get_by_id(self, id: int) -> T | None:
+        return await self.get_one(
+            QuerySpec(where=Clause(eq(self.get_repository_table().c.id, id)))
+        )
+
     async def create(self, resource: CreateOrUpdateResource) -> T:
         stmt = (
             insert(self.get_repository_table())
@@ -99,15 +104,6 @@ class BaseRepository(ABC, Generic[T]):
             return self.get_model_factory()(**result._asdict())
         except IntegrityError:
             self._raise_already_existing_exception()
-
-    async def find_by_id(self, id: int) -> T | None:
-        stmt = self.select_all_statement().where(
-            eq(self.get_repository_table().c.id, id),
-        )
-        result = (await self.connection.execute(stmt)).one_or_none()
-        if result:
-            return self.get_model_factory()(**result._asdict())
-        return None
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec | None = None
@@ -135,10 +131,12 @@ class BaseRepository(ABC, Generic[T]):
             next_token=next_token,
         )
 
-    async def update(self, id: int, resource: CreateOrUpdateResource) -> T:
+    async def update(
+        self, query: QuerySpec, resource: CreateOrUpdateResource
+    ) -> T:
         stmt = (
             update(self.get_repository_table())
-            .where(eq(self.get_repository_table().c.id, id))
+            .where(query.where.condition)
             .returning(self.get_repository_table())
             .values(**resource.get_values())
         )
@@ -150,14 +148,29 @@ class BaseRepository(ABC, Generic[T]):
             self._raise_not_found_exception()
         return self.get_model_factory()(**updated_resource._asdict())
 
-    async def delete(self, id: int) -> None:
-        """
-        If no resource with such `id` is found, silently ignore it and return `None` in any case.
-        """
-        stmt = delete(self.get_repository_table()).where(
-            self.get_repository_table().c.id == id
+    async def update_by_id(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> T:
+        return await self.update(
+            query=QuerySpec(
+                where=Clause(eq(self.get_repository_table().c.id, id))
+            ),
+            resource=resource,
         )
+
+    async def delete(self, query: QuerySpec) -> None:
+        """
+        If no resource for the query is found, silently ignore it and return `None` in any case.
+        """
+        stmt = delete(self.get_repository_table()).where(query.where.condition)
         await self.connection.execute(stmt)
+
+    async def delete_by_id(self, id: int) -> None:
+        return await self.delete(
+            query=QuerySpec(
+                where=Clause(eq(self.get_repository_table().c.id, id))
+            )
+        )
 
     def _raise_already_existing_exception(self):
         raise AlreadyExistsException(

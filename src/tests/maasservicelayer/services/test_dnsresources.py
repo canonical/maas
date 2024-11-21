@@ -142,8 +142,8 @@ class TestDNSResourcesService:
         )
 
         mock_domains_service.get_one.side_effect = domain_list
-        mock_dnsresource_repository.get_one.return_value = old_dnsresource
-        mock_dnsresource_repository.update.return_value = new_dnsresource
+        mock_dnsresource_repository.get_by_id.return_value = old_dnsresource
+        mock_dnsresource_repository.update_by_id.return_value = new_dnsresource
 
         service = DNSResourcesService(
             Context(),
@@ -152,9 +152,9 @@ class TestDNSResourcesService:
             dnsresource_repository=mock_dnsresource_repository,
         )
 
-        await service.update(old_dnsresource.id, resource)
+        await service.update_by_id(old_dnsresource.id, resource)
 
-        mock_dnsresource_repository.update.assert_called_once_with(
+        mock_dnsresource_repository.update_by_id.assert_called_once_with(
             old_dnsresource.id, resource
         )
         mock_dnspublications_service.create_for_config_update.assert_has_calls(
@@ -215,8 +215,8 @@ class TestDNSResourcesService:
         )
 
         mock_domains_service.get_one.return_value = domain
-        mock_dnsresource_repository.get_one.return_value = old_dnsresource
-        mock_dnsresource_repository.update.return_value = dnsresource
+        mock_dnsresource_repository.get_by_id.return_value = old_dnsresource
+        mock_dnsresource_repository.update_by_id.return_value = dnsresource
 
         service = DNSResourcesService(
             Context(),
@@ -225,9 +225,9 @@ class TestDNSResourcesService:
             dnsresource_repository=mock_dnsresource_repository,
         )
 
-        await service.update(old_dnsresource.id, resource)
+        await service.update_by_id(old_dnsresource.id, resource)
 
-        mock_dnsresource_repository.update.assert_called_once_with(
+        mock_dnsresource_repository.update_by_id.assert_called_once_with(
             old_dnsresource.id, resource
         )
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(
@@ -260,7 +260,7 @@ class TestDNSResourcesService:
         )
 
         mock_domains_service.get_one.return_value = domain
-        mock_dnsresource_repository.get_one.return_value = dnsresource
+        mock_dnsresource_repository.get_by_id.return_value = dnsresource
 
         service = DNSResourcesService(
             Context(),
@@ -269,9 +269,9 @@ class TestDNSResourcesService:
             dnsresource_repository=mock_dnsresource_repository,
         )
 
-        await service.delete(dnsresource.id)
+        await service.delete_by_id(dnsresource.id)
 
-        mock_dnsresource_repository.delete.assert_called_once_with(
+        mock_dnsresource_repository.delete_by_id.assert_called_once_with(
             id=dnsresource.id
         )
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(

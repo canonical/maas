@@ -171,7 +171,7 @@ class TestZonesRepository:
     ) -> None:
         zones_repository = ZonesRepository(Context(connection=db_connection))
         created_zone = await create_test_zone(fixture)
-        assert (await zones_repository.delete(created_zone.id)) is None
+        assert (await zones_repository.delete_by_id(created_zone.id)) is None
 
         zones = await fixture.get(
             ZoneTable.name, eq(ZoneTable.c.id, created_zone.id)
@@ -179,7 +179,7 @@ class TestZonesRepository:
         assert zones == []
 
         # If the entity does not exist, silently ignore it.
-        assert (await zones_repository.delete(created_zone.id)) is None
+        assert (await zones_repository.delete_by_id(created_zone.id)) is None
 
     async def test_get_default_zone(
         self, db_connection: AsyncConnection, fixture: Fixture

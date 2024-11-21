@@ -89,13 +89,13 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
         )
 
     @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id_not_found(
+    async def test_get_by_id_not_found(
         self, repository_instance: EventsRepository
     ):
         pass
 
     @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id(
+    async def test_get_by_id(
         self,
         repository_instance: EventsRepository,
         _created_instance: Event,

@@ -88,16 +88,16 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
     async def test_create_duplicated(self):
         pass
 
-    async def test_find_by_id_not_found(
+    async def test_get_by_id_not_found(
         self, repository_instance: BaseRepository
     ):
-        instance = await repository_instance.find_by_id(-1)
+        instance = await repository_instance.get_by_id(-1)
         assert instance is None
 
-    async def test_find_by_id(
+    async def test_get_by_id(
         self, repository_instance: BaseRepository, _created_instance: T
     ):
-        instance = await repository_instance.find_by_id(_created_instance.id)
+        instance = await repository_instance.get_by_id(_created_instance.id)
         assert instance == _created_instance
 
     async def test_delete(self):

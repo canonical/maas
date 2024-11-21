@@ -63,14 +63,14 @@ class TestSubnetsService:
             updated=now,
         )
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.find_by_id.return_value = expected_subnet
+        subnets_repository_mock.get_by_id.return_value = expected_subnet
         subnets_service = SubnetsService(
             context=Context(),
             temporal_service=Mock(TemporalService),
             subnets_repository=subnets_repository_mock,
         )
         subnet = await subnets_service.get_by_id(id=1)
-        subnets_repository_mock.find_by_id.assert_called_once_with(id=1)
+        subnets_repository_mock.get_by_id.assert_called_once_with(id=1)
         assert expected_subnet == subnet
 
     async def test_create(self) -> None:
@@ -143,7 +143,7 @@ class TestSubnetsService:
         )
 
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.update.return_value = subnet
+        subnets_repository_mock.update_by_id.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
 
@@ -169,9 +169,9 @@ class TestSubnetsService:
             .build()
         )
 
-        await subnets_service.update(subnet.id, resource)
+        await subnets_service.update_by_id(subnet.id, resource)
 
-        subnets_repository_mock.update.assert_called_once_with(
+        subnets_repository_mock.update_by_id.assert_called_once_with(
             subnet.id, resource
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
@@ -198,7 +198,7 @@ class TestSubnetsService:
         )
 
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.find_by_id.return_value = subnet
+        subnets_repository_mock.get_by_id.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
 
@@ -208,9 +208,9 @@ class TestSubnetsService:
             subnets_repository=subnets_repository_mock,
         )
 
-        await subnets_service.delete(subnet.id)
+        await subnets_service.delete_by_id(subnet.id)
 
-        subnets_repository_mock.delete.assert_called_once_with(subnet.id)
+        subnets_repository_mock.delete_by_id.assert_called_once_with(subnet.id)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(vlan_ids=[subnet.vlan_id]),

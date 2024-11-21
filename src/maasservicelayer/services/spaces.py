@@ -25,4 +25,4 @@ class SpacesService(Service):
         return await self.spaces_repository.list(token=token, size=size)
 
     async def get_by_id(self, id: int) -> Space | None:
-        return await self.spaces_repository.find_by_id(id=id)
+        return await self.spaces_repository.get_by_id(id=id)

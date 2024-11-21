@@ -24,7 +24,7 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -175,6 +175,14 @@ class VlansHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         await services.vlans.delete(
-            fabric_id=fabric_id, vlan_id=vlan_id, etag_if_match=etag_if_match
+            query=QuerySpec(
+                where=ClauseFactory.and_clauses(
+                    [
+                        VlansClauseFactory.with_id(vlan_id),
+                        VlansClauseFactory.with_fabric_id(fabric_id),
+                    ]
+                )
+            ),
+            etag_if_match=etag_if_match,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -2,8 +2,12 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
-from maasservicelayer.db.repositories.nodes import NodesRepository
+from maasservicelayer.db.repositories.nodes import (
+    NodeClauseFactory,
+    NodesRepository,
+)
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services._base import Service
@@ -24,13 +28,14 @@ class NodesService(Service):
         )
 
     async def get_by_id(self, id: int) -> Node | None:
-        return await self.nodes_repository.find_by_id(id)
+        return await self.nodes_repository.get_by_id(id)
 
     async def update_by_system_id(
         self, system_id: str, resource: CreateOrUpdateResource
     ) -> Node:
-        return await self.nodes_repository.update_by_system_id(
-            system_id=system_id, resource=resource
+        return await self.nodes_repository.update(
+            query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id)),
+            resource=resource,
         )
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:

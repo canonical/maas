@@ -34,11 +34,11 @@ class TestSpacesService:
             id=0, name="test", description="descr", created=now, updated=now
         )
         spaces_repository_mock = Mock(SpacesRepository)
-        spaces_repository_mock.find_by_id.return_value = expected_space
+        spaces_repository_mock.get_by_id.return_value = expected_space
         spaces_service = SpacesService(
             context=Context(),
             spaces_repository=spaces_repository_mock,
         )
         space = await spaces_service.get_by_id(id=1)
-        spaces_repository_mock.find_by_id.assert_called_once_with(id=1)
+        spaces_repository_mock.get_by_id.assert_called_once_with(id=1)
         assert expected_space == space

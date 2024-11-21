@@ -149,7 +149,9 @@ class TestUsersRepository:
         users_repository = UsersRepository(Context(connection=db_connection))
         builder = UserResourceBuilder()
         builder.with_last_name("test")
-        updated_user = await users_repository.update(user.id, builder.build())
+        updated_user = await users_repository.update_by_id(
+            user.id, builder.build()
+        )
         assert updated_user.last_name == "test"
 
     async def test_update_profile(

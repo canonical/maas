@@ -3,14 +3,13 @@
 
 from typing import Any, Type
 
-from sqlalchemy import ColumnElement, Select, select, Table, update
-from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy import Select, select, Table, update
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeStatus
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
-    CreateOrUpdateResource,
     ResourceBuilder,
 )
 from maasservicelayer.db.tables import BMCTable, NodeTable
@@ -24,6 +23,12 @@ class NodeResourceBuilder(ResourceBuilder):
         return self
 
 
+class NodeClauseFactory(ClauseFactory):
+    @classmethod
+    def with_system_id(cls, system_id: str) -> Clause:
+        return Clause(condition=eq(NodeTable.c.system_id, system_id))
+
+
 class NodesRepository(BaseRepository[Node]):
 
     def get_repository_table(self) -> Table:
@@ -31,33 +36,6 @@ class NodesRepository(BaseRepository[Node]):
 
     def get_model_factory(self) -> Type[Node]:
         return Node
-
-    async def update(self, id: int, resource: CreateOrUpdateResource) -> Node:
-        return await self._update(eq(NodeTable.c.id, id), resource)
-
-    async def update_by_system_id(
-        self, system_id: str, resource: CreateOrUpdateResource
-    ) -> Node:
-        return await self._update(
-            eq(NodeTable.c.system_id, system_id), resource
-        )
-
-    async def _update(
-        self, clause: ColumnElement, resource: CreateOrUpdateResource
-    ) -> Node:
-        stmt = (
-            update(NodeTable)
-            .where(clause)
-            .returning(NodeTable)
-            .values(**resource.get_values())
-        )
-        try:
-            new_node = (await self.connection.execute(stmt)).one()
-        except IntegrityError:
-            self._raise_already_existing_exception()
-        except NoResultFound:
-            self._raise_not_found_exception()
-        return Node(**new_node._asdict())
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         stmt = (

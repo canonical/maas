@@ -12,13 +12,6 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.vlans import VlansRepository
-from maasservicelayer.exceptions.catalog import (
-    BaseExceptionDetail,
-    NotFoundException,
-)
-from maasservicelayer.exceptions.constants import (
-    UNEXISTING_RESOURCE_VIOLATION_TYPE,
-)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services._base import Service
@@ -51,7 +44,7 @@ class VlansService(Service):
         )
 
     async def get_by_id(self, fabric_id: int, vlan_id: int) -> Vlan | None:
-        vlan = await self.vlans_repository.find_by_id(id=vlan_id)
+        vlan = await self.vlans_repository.get_by_id(id=vlan_id)
         if vlan is None or vlan.fabric_id != fabric_id:
             return None
         return vlan
@@ -64,10 +57,10 @@ class VlansService(Service):
         # at creation time and we don't have to start the temporal workflow.
         return await self.vlans_repository.create(resource)
 
-    async def update(
+    async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
     ) -> Vlan | None:
-        vlan = await self.vlans_repository.update(id, resource)
+        vlan = await self.vlans_repository.update_by_id(id, resource)
 
         # dhcp_on could've been true prior to update or updated to true,
         # so always register configure-dhcp on update
@@ -79,25 +72,22 @@ class VlansService(Service):
         )
         return vlan
 
-    async def delete(
-        self, fabric_id: int, vlan_id: int, etag_if_match: str | None = None
+    async def delete_by_id(self, id: int, etag_if_match: str | None = None):
+        vlan = await self.vlans_repository.get_by_id(id=id)
+        return await self._delete(vlan, etag_if_match)
+
+    async def delete(self, query: QuerySpec, etag_if_match: str | None = None):
+        vlan = await self.vlans_repository.get_one(query=query)
+        return await self._delete(vlan, etag_if_match)
+
+    async def _delete(
+        self, vlan: Vlan | None, etag_if_match: str | None = None
     ) -> None:
-        vlan = await self.vlans_repository.find_by_id(id=vlan_id)
         if not vlan:
             return None
 
-        if vlan.fabric_id != fabric_id:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message=f"Could not find VLAN {vlan_id} in fabric {fabric_id}.",
-                    )
-                ]
-            )
-
         self.etag_check(vlan, etag_if_match)
-        await self.vlans_repository.delete(vlan.id)
+        await self.vlans_repository.delete_by_id(vlan.id)
 
         if vlan.dhcp_on or vlan.relay_vlan:
             primary_rack = await self.nodes_service.get_by_id(

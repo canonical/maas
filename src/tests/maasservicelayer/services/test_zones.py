@@ -49,7 +49,7 @@ class TestZonesService:
     async def test_delete(self) -> None:
         zones_repository = Mock(ZonesRepository)
         zones_repository.delete.return_value = None
-        zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
+        zones_repository.get_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
             context=Context(),
             zones_repository=zones_repository,
@@ -57,7 +57,7 @@ class TestZonesService:
             vmcluster_service=Mock(VmClustersService),
         )
 
-        await zones_service.delete(TEST_ZONE.id)
+        await zones_service.delete_by_id(TEST_ZONE.id)
         assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
 
     async def test_delete_etag(
@@ -66,7 +66,7 @@ class TestZonesService:
     ) -> None:
         zones_repository = Mock(ZonesRepository)
         zones_repository.delete.return_value = None
-        zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
+        zones_repository.get_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
             context=Context(),
             zones_repository=zones_repository,
@@ -78,7 +78,7 @@ class TestZonesService:
             "maasservicelayer.models.zones.Zone.etag", return_value="my-etag"
         )
 
-        await zones_service.delete(TEST_ZONE.id, "my-etag")
+        await zones_service.delete_by_id(TEST_ZONE.id, "my-etag")
         assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
 
     async def test_delete_etag_fail(
@@ -86,7 +86,7 @@ class TestZonesService:
         mocker: MockerFixture,
     ) -> None:
         zones_repository = Mock(ZonesRepository)
-        zones_repository.find_by_id.return_value = TEST_ZONE
+        zones_repository.get_by_id.return_value = TEST_ZONE
         zones_service = ZonesService(
             context=Context(),
             zones_repository=zones_repository,
@@ -99,14 +99,14 @@ class TestZonesService:
         )
 
         with pytest.raises(PreconditionFailedException) as excinfo:
-            await zones_service.delete(TEST_ZONE.id, "wrong-etag")
+            await zones_service.delete_by_id(TEST_ZONE.id, "wrong-etag")
         assert (
             excinfo.value.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
 
     async def test_delete_default_zone(self) -> None:
         zones_repository = Mock(ZonesRepository)
-        zones_repository.find_by_id.return_value = DEFAULT_ZONE
+        zones_repository.get_by_id.return_value = DEFAULT_ZONE
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
         zones_service = ZonesService(
             context=Context(),
@@ -116,7 +116,7 @@ class TestZonesService:
         )
 
         with pytest.raises(BadRequestException) as excinfo:
-            await zones_service.delete(DEFAULT_ZONE.id)
+            await zones_service.delete_by_id(DEFAULT_ZONE.id)
         assert (
             excinfo.value.details[0].type
             == CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE
@@ -128,7 +128,7 @@ class TestZonesService:
         nodes_service_mock = Mock(NodesService)
         vmclusters_service_mock = Mock(VmClustersService)
         zones_repository = Mock(ZonesRepository)
-        zones_repository.find_by_id.return_value = TEST_ZONE
+        zones_repository.get_by_id.return_value = TEST_ZONE
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
         zones_repository.delete.return_value = None
 
@@ -139,7 +139,7 @@ class TestZonesService:
             vmcluster_service=vmclusters_service_mock,
         )
 
-        await zones_service.delete(TEST_ZONE.id)
+        await zones_service.delete_by_id(TEST_ZONE.id)
 
         nodes_service_mock.move_to_zone.assert_called_once_with(
             TEST_ZONE.id, DEFAULT_ZONE.id

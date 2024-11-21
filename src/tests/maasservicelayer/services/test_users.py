@@ -52,8 +52,8 @@ class TestUsersService:
         )
         builder = UserResourceBuilder()
         builder.with_last_name("test")
-        await users_service.update(user_id=1, resource=builder.build())
-        users_repository_mock.update.assert_called_once_with(
+        await users_service.update_by_id(user_id=1, resource=builder.build())
+        users_repository_mock.update_by_id.assert_called_once_with(
             id=1, resource=builder.build()
         )
 

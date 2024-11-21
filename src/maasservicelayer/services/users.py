@@ -34,10 +34,10 @@ class UsersService(Service):
     async def get_user_apikeys(self, username: str) -> list[str] | None:
         return await self.users_repository.get_user_apikeys(username)
 
-    async def update(
+    async def update_by_id(
         self, user_id: int, resource: CreateOrUpdateResource
     ) -> User:
-        return await self.users_repository.update(
+        return await self.users_repository.update_by_id(
             id=user_id, resource=resource
         )
 

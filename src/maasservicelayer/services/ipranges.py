@@ -51,10 +51,10 @@ class IPRangesService(Service):
         )
         return iprange
 
-    async def update(
+    async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
     ) -> IPRange | None:
-        iprange = await self.ipranges_repository.update(id, resource)
+        iprange = await self.ipranges_repository.update_by_id(id, resource)
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
@@ -63,9 +63,9 @@ class IPRangesService(Service):
         )
         return iprange
 
-    async def delete(self, id: int) -> None:
-        iprange = await self.ipranges_repository.find_by_id(id=id)
-        await self.ipranges_repository.delete(id)
+    async def delete_by_id(self, id: int) -> None:
+        iprange = await self.ipranges_repository.get_by_id(id=id)
+        await self.ipranges_repository.delete_by_id(id)
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[iprange.subnet_id]),
