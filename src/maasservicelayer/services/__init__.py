@@ -153,7 +153,9 @@ class ServiceCollectionV3:
             dnspublications_service=services.dnspublications,
         )
         services.dnsresources = DNSResourcesService(
-            context=context, domains_service=services.domains
+            context=context,
+            domains_service=services.domains,
+            dnspublications_service=services.dnspublications,
         )
         services.staticipaddress = StaticIPAddressService(
             context=context,

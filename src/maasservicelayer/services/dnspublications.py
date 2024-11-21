@@ -63,7 +63,11 @@ class DNSPublicationsService(Service):
         if action == DnsUpdateAction.RELOAD:
             update = DnsUpdateAction.RELOAD
         else:
-            update = f"{action} {zone} {label} {rtype} {ttl} {answer}"
+            update = f"{action} {zone} {label} {rtype}"
+            if ttl:
+                update += f" {ttl}"
+            if answer:
+                update += f" {answer}"
 
         next_serial = None
         if latest_serial < (2**63) - 1:

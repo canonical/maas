@@ -3,13 +3,25 @@
 from typing import Type
 
 from sqlalchemy import select, Table
+from sqlalchemy.sql.operators import eq
 
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ResourceBuilder,
 )
 from maasservicelayer.db.tables import DomainTable, GlobalDefaultTable
 from maasservicelayer.models.domains import Domain
+
+
+class DomainsClauseFactory(ClauseFactory):
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(DomainTable.c.id, id))
+
+    @classmethod
+    def with_name(cls, name: str) -> Clause:
+        return Clause(condition=eq(DomainTable.c.name, name))
 
 
 class DomainResourceBuilder(ResourceBuilder):

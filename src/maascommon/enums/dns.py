@@ -8,6 +8,7 @@ class DnsUpdateAction(str, Enum):
     RELOAD = "RELOAD"
     INSERT = "INSERT"
     INSERT_DATA = "INSERT-DATA"
+    INSERT_NAME = "INSERT-NAME"
     UPDATE_DATA = "UPDATE-DATA"
     UPDATE = "UPDATE"
     DELETE = "DELETE"

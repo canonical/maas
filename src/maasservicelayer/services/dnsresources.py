@@ -3,6 +3,7 @@
 
 from typing import Optional
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -12,12 +13,17 @@ from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceRepository,
     DNSResourceResourceBuilder,
 )
+from maasservicelayer.db.repositories.domains import DomainsClauseFactory
 from maasservicelayer.models.dnsresources import DNSResource
+from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services._base import Service
+from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.utils.network import coerce_to_valid_hostname
+
+DEFAULT_DNSRESOURCE_TTL = 30
 
 
 class DNSResourcesService(Service):
@@ -25,10 +31,12 @@ class DNSResourcesService(Service):
         self,
         context: Context,
         domains_service: DomainsService,
+        dnspublications_service: DNSPublicationsService,
         dnsresource_repository: Optional[DNSResourceRepository] = None,
     ):
         super().__init__(context)
         self.domains_service = domains_service
+        self.dnspublications_service = dnspublications_service
         self.dnsresource_repository = (
             dnsresource_repository
             if dnsresource_repository
@@ -38,8 +46,86 @@ class DNSResourcesService(Service):
     async def get_one(self, query: QuerySpec) -> DNSResource | None:
         return await self.dnsresource_repository.get_one(query=query)
 
+    def _get_ttl(self, dnsresource: DNSResource, domain: Domain) -> int:
+        return (
+            dnsresource.address_ttl
+            if dnsresource.address_ttl
+            else (domain.ttl if domain.ttl else DEFAULT_DNSRESOURCE_TTL)
+        )
+
     async def create(self, resource: CreateOrUpdateResource) -> DNSResource:
-        return await self.dnsresource_repository.create(resource=resource)
+        dnsresource = await self.dnsresource_repository.create(resource)
+
+        domain = await self.domains_service.get_one(
+            DomainsClauseFactory.with_id(dnsresource.domain_id)
+        )
+        await self.dnspublications_service.create_for_config_update(
+            source=f"zone {domain.name} added resource {dnsresource.name}",
+            action=DnsUpdateAction.INSERT_NAME,
+            label=dnsresource.name,
+            rtype="A",
+            zone=domain.name,
+        )
+
+        return dnsresource
+
+    async def update(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> DNSResource:
+        old_dnsresource = await self.dnsresource_repository.get_one(id=id)
+        old_domain = await self.domains_service.get_one(
+            id=old_dnsresource.domain_id
+        )
+
+        dnsresource = await self.dnsresource_repository.update(id, resource)
+
+        domain = await self.domains_service.get_one(
+            DomainsClauseFactory.with_id(dnsresource.domain_id)
+        )
+
+        if old_domain.id != domain.id:
+            await self.dnspublications_service.create_for_config_update(
+                source=f"zone {old_domain.name} removed resource {old_dnsresource.name}",
+                action=DnsUpdateAction.DELETE,
+                label=old_dnsresource.name,
+                rtype="A",
+                zone=old_domain.name,
+            )
+            await self.dnspublications_service.create_for_config_update(
+                source=f"zone {domain.name} added resource {dnsresource.name}",
+                action=DnsUpdateAction.INSERT_NAME,
+                label=dnsresource.name,
+                rtype="A",
+                zone=domain.name,
+            )
+        else:
+            await self.dnspublications_service.create_for_config_update(
+                source=f"zone {domain.name} updated resource {dnsresource.name}",
+                action=DnsUpdateAction.UPDATE,
+                label=dnsresource.name,
+                rtype="A",
+                zone=domain.name,
+                ttl=self._get_ttl(dnsresource, domain),
+            )
+
+        return dnsresource
+
+    async def delete(self, id: int) -> None:
+        dnsresource = await self.dnsresource_repository.get_one(id=id)
+
+        domain = await self.domains_service.get_one(
+            DomainsClauseFactory.with_id(dnsresource.domain_id)
+        )
+
+        await self.dnsresource_repository.delete(id=id)
+
+        await self.dnspublications_service.create_for_config_update(
+            source=f"zone {domain.name} removed resource {dnsresource.name}",
+            action=DnsUpdateAction.DELETE,
+            label=dnsresource.name,
+            rtype="A",
+            zone=domain.name,
+        )
 
     async def release_dynamic_hostname(
         self, ip: StaticIPAddress, but_not_for: Optional[DNSResource] = None
@@ -71,12 +157,30 @@ class DNSResourcesService(Service):
             if len(remaining_relations) == 0:
                 await self.dnsresource_repository.delete(dnsrr.id)
 
+                await self.dnspublications_service.create_for_config_update(
+                    source=f"zone {default_domain.name} removed resource {dnsrr.name}",
+                    action=DnsUpdateAction.DELETE,
+                    label=dnsrr.name,
+                    rtype="AAAA" if ip.ip.version == 6 else "A",
+                )
+            else:
+                await self.dnspublications_service.create_for_config_update(
+                    source=f"ip {ip.ip} unlinked from resource {dnsrr.name} on zone {default_domain.name}",
+                    action=DnsUpdateAction.DELETE,
+                    label=dnsrr.name,
+                    rtype="AAAA" if ip.ip.version == 6 else "A",
+                    ttl=self._get_ttl(dnsrr, default_domain),
+                    answer=str(ip.ip),
+                )
+
     async def update_dynamic_hostname(
         self, ip: StaticIPAddress, hostname: str
     ) -> None:
         hostname = coerce_to_valid_hostname(hostname)
 
         await self.release_dynamic_hostname(ip)
+
+        domain = await self.domains_service.get_default_domain()
 
         dnsrr = await self.get_one(
             query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
@@ -86,15 +190,24 @@ class DNSResourcesService(Service):
             resource = (
                 DNSResourceResourceBuilder()
                 .with_name(hostname)
-                .with_domain_id(
-                    (await self.domains_service.get_default_domain()).id
-                )
+                .with_domain_id(domain.id)
                 .with_created(now)
                 .with_updated(now)
                 .build()
             )
             dnsrr = await self.create(resource=resource)
             await self.dnsresource_repository.link_ip(dnsrr, ip)
+            # Here we link an IP after the dnsresource was create,
+            # so we create the DNSPublication here instead of in create()
+            await self.dnspublications_service.create_for_config_update(
+                source=f"ip {ip.ip} linked to resource {dnsrr.name} on zone {domain.name}",
+                action=DnsUpdateAction.INSERT,
+                label=dnsrr.name,
+                rtype="AAAA" if ip.ip.version == 6 else "A",
+                ttl=self._get_ttl(dnsrr, domain),
+                zone=domain.name,
+                answer=str(ip.ip),
+            )
         else:
             ips = await self.dnsresource_repository.get_ips_for_dnsresource(
                 dnsrr
@@ -112,3 +225,12 @@ class DNSResourcesService(Service):
                 return
 
             await self.dnsresource_repository.link_ip(dnsrr, ip)
+            await self.dnspublications_service.create_for_config_update(
+                source=f"ip {ip.ip} linked to resource {dnsrr.name} on zone {domain.name}",
+                action=DnsUpdateAction.INSERT,
+                label=dnsrr.name,
+                rtype="AAAA" if ip.ip.version == 6 else "A",
+                ttl=self._get_ttl(dnsrr, domain),
+                zone=domain.name,
+                answer=str(ip.ip),
+            )

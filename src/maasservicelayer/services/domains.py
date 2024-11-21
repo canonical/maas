@@ -2,6 +2,7 @@ from typing import Optional
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.domains import Domain
@@ -23,6 +24,9 @@ class DomainsService(Service):
             else DomainsRepository(context)
         )
         self.dnspublications_service = dnspublications_service
+
+    async def get_one(self, query: QuerySpec) -> Domain | None:
+        return await self.domains_repository.get_one(query=query)
 
     async def create(self, resource: CreateOrUpdateResource) -> Domain:
         domain = await self.domains_repository.create(resource)

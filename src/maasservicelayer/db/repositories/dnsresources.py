@@ -38,6 +38,10 @@ class DNSResourceResourceBuilder(ResourceBuilder):
         self._request.set_value(DNSResourceTable.c.domain_id.name, value)
         return self
 
+    def with_address_ttl(self, value: int) -> "DNSResourceResourceBuilder":
+        self._request.set_value(DNSResourceTable.c.address_ttl.name, value)
+        return self
+
 
 class DNSResourceRepository(BaseRepository[DNSResource]):
     def get_repository_table(self) -> Table:
