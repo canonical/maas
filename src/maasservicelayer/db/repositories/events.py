@@ -3,7 +3,7 @@
 
 from typing import Any, Type
 
-from sqlalchemy import case, select, Select, Table
+from sqlalchemy import case, Select, select, Table
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, ne, or_
 

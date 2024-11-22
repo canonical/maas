@@ -1,7 +1,91 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-  "setuptools",
+  "setuptools>61",
+]
+
+[project]
+name = "maas"
+version = "3.6.0a1"
+description = "Metal As A Service"
+readme = { file = "README.rst", content-type = "text/x-rst" }
+license = { file = "LICENSE" }
+
+authors = [
+  { name = "MAAS Developers", email = "maas-devel@lists.launchpad.net" },
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: JavaScript",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Systems Administration",
+]
+optional-dependencies.testing = [
+  "aiohttp>=3.10,<3.11",
+  "aioresponses>=0.7,<0.8",
+  "fixtures>=4.1,<4.2",
+  "httpx>=0.27,<0.28",
+  "hypothesis>=6.116,<6.117",
+  "ipdb>=0.13,<0.14",
+  "junitxml>=0.7,<0.8",
+  "postgresfixture>=0.5,<0.6",
+  "pytest>=7.4,<8",
+  "pytest-asyncio>=0.23,<0.24",
+  "pytest-mock>=3.14,<3.15",
+  "pytest-xdist>=3.6,<3.7",
+  "python-subunit>=1.4,<1.5",
+  "testresources>=2,<2.1",
+  "testscenarios>=0.5,<0.6",
+  "testtools>=2.7,<2.8",
+  "typing-extensions>=4.12,<4.13",
+]
+urls.Documentation = "https://maas.io/docs"
+urls.Homepage = "https://maas.io/"
+urls.Repository = "https://launchpad.net/maas"
+
+scripts.maas = "maascli:main"
+scripts.maas-apiserver = "maasapiserver.main:run"
+scripts.maas-common = "provisioningserver.rack_script:run"
+scripts.maas-power = "provisioningserver.power_driver_command:run"
+scripts.maas-rack = "provisioningserver.rack_script:run"
+scripts.maas-region = "maasserver.region_script:run"
+scripts.maas-sampledata = "maasserver.testing.sampledata.main:main"
+scripts.maas-temporal-worker = "maastemporalworker.temporal_script:run"
+scripts.rackd = "provisioningserver.server:run"
+scripts.regiond = "maasserver.server:run"
+scripts."test.parallel" = "maastesting.scripts:run_parallel"
+scripts."test.rack" = "maastesting.scripts:run_rack"
+scripts."test.region" = "maastesting.scripts:run_region"
+scripts."test.region.legacy" = "maastesting.scripts:run_region_legacy"
+entry-points.pytest11.maas-database = "maastesting.pytest.database"
+entry-points.pytest11.maas-django = "maastesting.pytest.django"
+entry-points.pytest11.maas-environment = "maastesting.pytest.environment"
+entry-points.pytest11.maas-perftest = "maastesting.pytest.perftest"
+entry-points.pytest11.maas-seeds = "maastesting.pytest.seeds"
+entry-points.pytest11.maas-sqlalchemy = "maastesting.pytest.sqlalchemy"
+
+[tool.setuptools.packages.find]
+where = [ "src" ]
+exclude = [ "*.testing", "*.tests" ]
+include = [
+  "apiclient*",
+  "maasapiserver*",
+  "maascli*",
+  "maascommon*",
+  "maasserver*",
+  "maasservicelayer*",
+  "maastemporalworker*",
+  "metadataserver*",
+  "provisioningserver*",
 ]
 
 [tool.black]
@@ -40,16 +124,12 @@ order_by_type = false
 
 [tool.flake8]
 ignore = [ "E203", "E266", "E501", "W503", "W504" ]
-exclude = [
-  "src/*/migrations/*",
-]
+exclude = [ "src/*/migrations/*" ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 filterwarnings = "error::BytesWarning"
-testpaths = [
-  "src/tests",
-]
+testpaths = [ "src/tests" ]
 
 [tool.bandit]
 exclude_dirs = [ "src/tests" ]

@@ -5,7 +5,7 @@ description: |
   Total automation of your physical servers for amazing data center operational efficiency.
 grade: stable
 confinement: strict
-base: core22
+base: core24
 assumes:
   - snapd2.53
 system-usernames:

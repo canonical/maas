@@ -1,3 +1,9 @@
+maas (1:3.6.0~alpha1-0ubuntu1) noble; urgency=medium
+
+  * New ubuntu release
+
+ -- Alexsander Silva de Souza <alexsander.souza@canonical.com>  Thu, 07 Nov 2024 14:58:43 +0000
+
 maas (1:3.5.0~beta1-0ubuntu1) jammy; urgency=medium
 
   * New upstream release, MAAS 3.5.0 beta1.

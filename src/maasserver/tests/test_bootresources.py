@@ -42,8 +42,8 @@ from maasserver.import_images.product_mapping import ProductMapping
 from maasserver.listener import PostgresListenerService
 from maasserver.models import (
     BootResource,
-    bootresourcefile,
     BootResourceFile,
+    bootresourcefile,
     BootResourceSet,
     BootSource,
     Config,

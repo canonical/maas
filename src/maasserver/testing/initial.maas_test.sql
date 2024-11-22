@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.13 (Ubuntu 14.13-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.13 (Ubuntu 14.13-0ubuntu0.22.04.1)
+-- Dumped from database version 16.4 (Ubuntu 16.4-0ubuntu0.24.04.2)
+-- Dumped by pg_dump version 16.4 (Ubuntu 16.4-0ubuntu0.24.04.2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -10001,6 +10001,29 @@ CREATE TABLE temporal.namespaces (
 
 
 --
+-- Name: nexus_incoming_services; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.nexus_incoming_services (
+    service_id bytea NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL,
+    version bigint NOT NULL
+);
+
+
+--
+-- Name: nexus_incoming_services_partition_status; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.nexus_incoming_services_partition_status (
+    id integer DEFAULT 0 NOT NULL,
+    version bigint NOT NULL,
+    CONSTRAINT only_one_row CHECK ((id = 0))
+);
+
+
+--
 -- Name: queue; Type: TABLE; Schema: temporal; Owner: -
 --
 
@@ -10013,6 +10036,20 @@ CREATE TABLE temporal.queue (
 
 
 --
+-- Name: queue_messages; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.queue_messages (
+    queue_type integer NOT NULL,
+    queue_name character varying(255) NOT NULL,
+    queue_partition bigint NOT NULL,
+    message_id bigint NOT NULL,
+    message_payload bytea NOT NULL,
+    message_encoding character varying(16) NOT NULL
+);
+
+
+--
 -- Name: queue_metadata; Type: TABLE; Schema: temporal; Owner: -
 --
 
@@ -10021,6 +10058,18 @@ CREATE TABLE temporal.queue_metadata (
     data bytea NOT NULL,
     data_encoding character varying(16) DEFAULT 'Json'::character varying NOT NULL,
     version bigint DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: queues; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.queues (
+    queue_type integer NOT NULL,
+    queue_name character varying(255) NOT NULL,
+    metadata_payload bytea NOT NULL,
+    metadata_encoding character varying(16) NOT NULL
 );
 
 
@@ -10278,7 +10327,13 @@ CREATE TABLE temporal_visibility.executions_visibility (
     keywordlist02 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList02'::text)) STORED,
     keywordlist03 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList03'::text)) STORED,
     history_size_bytes bigint,
-    buildids jsonb GENERATED ALWAYS AS ((search_attributes -> 'BuildIds'::text)) STORED
+    buildids jsonb GENERATED ALWAYS AS ((search_attributes -> 'BuildIds'::text)) STORED,
+    execution_duration bigint,
+    state_transition_count bigint,
+    parent_workflow_id character varying(255),
+    parent_run_id character varying(255),
+    root_workflow_id character varying(255) DEFAULT ''::character varying NOT NULL,
+    root_run_id character varying(255) DEFAULT ''::character varying NOT NULL
 );
 
 
@@ -12969,6 +13024,22 @@ COPY temporal.namespaces (partition_id, id, name, notification_version, data, da
 
 
 --
+-- Data for Name: nexus_incoming_services; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.nexus_incoming_services (service_id, data, data_encoding, version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: nexus_incoming_services_partition_status; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.nexus_incoming_services_partition_status (id, version) FROM stdin;
+\.
+
+
+--
 -- Data for Name: queue; Type: TABLE DATA; Schema: temporal; Owner: -
 --
 
@@ -12977,10 +13048,26 @@ COPY temporal.queue (queue_type, message_id, message_payload, message_encoding) 
 
 
 --
+-- Data for Name: queue_messages; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.queue_messages (queue_type, queue_name, queue_partition, message_id, message_payload, message_encoding) FROM stdin;
+\.
+
+
+--
 -- Data for Name: queue_metadata; Type: TABLE DATA; Schema: temporal; Owner: -
 --
 
 COPY temporal.queue_metadata (queue_type, data, data_encoding, version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: queues; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.queues (queue_type, queue_name, metadata_payload, metadata_encoding) FROM stdin;
 \.
 
 
@@ -13025,6 +13112,8 @@ COPY temporal.schema_update_history (version_partition, year, month, update_time
 0	2023	9	2023-09-01 03:30:50.496234	drop unused tasks table; Expand VARCHAR columns governed by maxIDLength to VARCHAR(255)	229846b5beb0b96f49e7a3c5fde09fa7	1.8	1.7
 0	2023	9	2023-09-01 03:30:50.502285	add history tasks table	b62e4e5826967e152e00b75da42d12ea	1.9	1.8
 0	2023	10	2023-10-24 03:52:08.21352	add storage for update records and create task_queue_user_data table	2b0c361b0d4ab7cf09ead5566f0db520	1.10	1.9
+0	2024	11	2024-11-20 17:19:47.81129	add queues and queue_messages tables	790ad04897813446f2953f5bd174ad9e	1.11	1.10
+0	2024	11	2024-11-20 17:19:47.815033	add storage for Nexus incoming service records and create nexus_incoming_services and nexus_incoming_services_partition_status tables	9a9c378fc124da5a172f8229872bd24c	1.12	1.11
 \.
 
 
@@ -13033,7 +13122,7 @@ COPY temporal.schema_update_history (version_partition, year, month, update_time
 --
 
 COPY temporal.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
-0	maas	2023-10-24 03:52:08.21298	1.10	1.0
+0	maas	2024-11-20 17:19:47.814504	1.12	1.0
 \.
 
 
@@ -13121,7 +13210,7 @@ COPY temporal.visibility_tasks (shard_id, task_id, data, data_encoding) FROM std
 -- Data for Name: executions_visibility; Type: TABLE DATA; Schema: temporal_visibility; Owner: -
 --
 
-COPY temporal_visibility.executions_visibility (namespace_id, run_id, start_time, execution_time, workflow_id, workflow_type_name, status, close_time, history_length, memo, encoding, task_queue, search_attributes, history_size_bytes) FROM stdin;
+COPY temporal_visibility.executions_visibility (namespace_id, run_id, start_time, execution_time, workflow_id, workflow_type_name, status, close_time, history_length, memo, encoding, task_queue, search_attributes, history_size_bytes, execution_duration, state_transition_count, parent_workflow_id, parent_run_id, root_workflow_id, root_run_id) FROM stdin;
 \.
 
 
@@ -13135,6 +13224,9 @@ COPY temporal_visibility.schema_update_history (version_partition, year, month, 
 0	2023	9	2023-09-01 03:30:50.668808	add close time & status index	3bc835a57de6e863cf545c25aa418aa3	1.1	1.0
 0	2023	9	2023-09-01 03:30:50.821314	update schema to support advanced visibility	3943d27399fe3df0f1be869a4982c0bb	1.2	1.1
 0	2023	10	2023-10-24 03:52:08.304127	add history size bytes and build IDs visibility columns and indices	62928bdd9093a8c18bb4a39bfe8e3a22	1.3	1.2
+0	2024	11	2024-11-20 17:19:47.858019	add execution duration, state transition count and parent workflow info columns, and indices	c28266b8b78448f2fefb507a74c7dcdf	1.4	1.3
+0	2024	11	2024-11-20 17:19:47.860485	add root workflow info columns and indices	f8da72ec53ef81b85988465e08b20319	1.5	1.4
+0	2024	11	2024-11-20 17:19:47.865207	fix root workflow info columns	0cf22b219b64b4c76988c616e2c776de	1.6	1.5
 \.
 
 
@@ -13143,7 +13235,7 @@ COPY temporal_visibility.schema_update_history (version_partition, year, month, 
 --
 
 COPY temporal_visibility.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
-0	maas	2023-10-24 03:52:08.303597	1.3	0.1
+0	maas	2024-11-20 17:19:47.864954	1.6	0.1
 \.
 
 
@@ -15514,6 +15606,30 @@ ALTER TABLE ONLY temporal.namespaces
 
 
 --
+-- Name: nexus_incoming_services_partition_status nexus_incoming_services_partition_status_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.nexus_incoming_services_partition_status
+    ADD CONSTRAINT nexus_incoming_services_partition_status_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: nexus_incoming_services nexus_incoming_services_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.nexus_incoming_services
+    ADD CONSTRAINT nexus_incoming_services_pkey PRIMARY KEY (service_id);
+
+
+--
+-- Name: queue_messages queue_messages_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.queue_messages
+    ADD CONSTRAINT queue_messages_pkey PRIMARY KEY (queue_type, queue_name, queue_partition, message_id);
+
+
+--
 -- Name: queue_metadata queue_metadata_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
 --
 
@@ -15527,6 +15643,14 @@ ALTER TABLE ONLY temporal.queue_metadata
 
 ALTER TABLE ONLY temporal.queue
     ADD CONSTRAINT queue_pkey PRIMARY KEY (queue_type, message_id);
+
+
+--
+-- Name: queues queues_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.queues
+    ADD CONSTRAINT queues_pkey PRIMARY KEY (queue_type, queue_name);
 
 
 --
@@ -17039,6 +17163,13 @@ CREATE INDEX by_double_03 ON temporal_visibility.executions_visibility USING btr
 
 
 --
+-- Name: by_execution_duration; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_execution_duration ON temporal_visibility.executions_visibility USING btree (namespace_id, execution_duration, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
 -- Name: by_execution_time; Type: INDEX; Schema: temporal_visibility; Owner: -
 --
 
@@ -17169,6 +17300,41 @@ CREATE INDEX by_keyword_list_02 ON temporal_visibility.executions_visibility USI
 --
 
 CREATE INDEX by_keyword_list_03 ON temporal_visibility.executions_visibility USING gin (namespace_id, keywordlist03 jsonb_path_ops);
+
+
+--
+-- Name: by_parent_run_id; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_parent_run_id ON temporal_visibility.executions_visibility USING btree (namespace_id, parent_run_id, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_parent_workflow_id; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_parent_workflow_id ON temporal_visibility.executions_visibility USING btree (namespace_id, parent_workflow_id, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_root_run_id; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_root_run_id ON temporal_visibility.executions_visibility USING btree (namespace_id, root_run_id, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_root_workflow_id; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_root_workflow_id ON temporal_visibility.executions_visibility USING btree (namespace_id, root_workflow_id, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_state_transition_count; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_state_transition_count ON temporal_visibility.executions_visibility USING btree (namespace_id, state_transition_count, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
 
 
 --

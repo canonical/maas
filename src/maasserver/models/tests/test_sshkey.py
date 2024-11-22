@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.utils.safestring import SafeString
 
 from maasserver.enum import KEYS_PROTOCOL_TYPE
-from maasserver.models import sshkey, SSHKey
+from maasserver.models import SSHKey, sshkey
 from maasserver.models.sshkey import (
     get_html_display_for_key,
     HELLIPSIS,
