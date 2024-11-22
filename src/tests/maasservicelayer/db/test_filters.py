@@ -336,3 +336,126 @@ class TestQuerySpec:
             ).replace("\n", "")
             == "DELETE FROM test_table_a USING test_table_b, test_table_c WHERE test_table_a.id < 3 AND test_table_b.id = 1 AND test_table_c.id = 2 AND test_table_a.b_id = test_table_b.id AND test_table_c.id = test_table_b.c_id"
         )
+
+    def test_enrich_stmt_select_multiple_redundant_joins(self):
+        stmt = select(A.c.id)
+        query = QuerySpec(
+            ClauseFactory.and_clauses(
+                [
+                    Clause(
+                        condition=eq(B.c.id, 1),
+                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
+                    ),
+                    Clause(
+                        condition=eq(B.c.id, 2),
+                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
+                    ),
+                ]
+            )
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "SELECT test_table_a.id FROM test_table_a JOIN test_table_b ON test_table_a.b_id = test_table_b.id WHERE test_table_b.id = 1 AND test_table_b.id = 2"
+        )
+
+    def test_enrich_stmt_select_update_redundant_joins(self):
+        stmt = update(A).values(id=100)
+        query = QuerySpec(
+            ClauseFactory.and_clauses(
+                [
+                    Clause(
+                        condition=eq(B.c.id, 1),
+                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
+                    ),
+                    Clause(
+                        condition=eq(B.c.id, 2),
+                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
+                    ),
+                ]
+            )
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "UPDATE test_table_a SET id=100 FROM test_table_b WHERE test_table_b.id = 1 AND test_table_b.id = 2 AND test_table_a.b_id = test_table_b.id"
+        )
+
+    def test_enrich_stmt_select_delete_redundant_joins(self):
+        stmt = delete(A).where(A.c.id < 3)
+        query = QuerySpec(
+            ClauseFactory.and_clauses(
+                [
+                    Clause(
+                        condition=eq(B.c.id, 1),
+                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
+                    ),
+                    Clause(
+                        condition=eq(B.c.id, 2),
+                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
+                    ),
+                ]
+            )
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "DELETE FROM test_table_a USING test_table_b WHERE test_table_a.id < 3 AND test_table_b.id = 1 AND test_table_b.id = 2 AND test_table_a.b_id = test_table_b.id"
+        )
+
+    def test_sqlalchemy_setup_joins(self):
+        stmt = select(A)
+        joined_tables = [joined_table[0] for joined_table in stmt._setup_joins]
+        assert joined_tables == []
+
+        stmt = select(A).join(B, eq(A.c.b_id, B.c.id))
+        joined_tables = [joined_table[0] for joined_table in stmt._setup_joins]
+        assert joined_tables == [B]
+
+        stmt = (
+            select(A)
+            .join(B, eq(A.c.b_id, B.c.id))
+            .join(C, eq(C.c.id, B.c.c_id))
+        )
+        joined_tables = [joined_table[0] for joined_table in stmt._setup_joins]
+        assert joined_tables == [B, C]
+
+    def test_sqlalchemy_where_criteria(self):
+        stmt = update(A)
+        assert stmt._where_criteria == ()
+
+        cond1 = eq(A.c.id, 100)
+        stmt = update(A).where(cond1)
+        assert stmt._where_criteria == (cond1,)
+
+        cond2 = eq(A.c.b_id, B.c.id)
+        stmt = update(A).where(cond1).where(cond2)
+        assert stmt._where_criteria == (cond1, cond2)
+
+        cond3 = eq(B.c.c_id, C.c.id)
+        stmt = update(A).where(cond1).where(cond2).where(cond3)
+        assert stmt._where_criteria == (cond1, cond2, cond3)
+
+        stmt = delete(A).where(cond1)
+        assert stmt._where_criteria == (cond1,)
+
+        stmt = delete(A).where(cond1).where(cond2)
+        assert stmt._where_criteria == (cond1, cond2)
+
+        stmt = delete(A).where(cond1).where(cond2).where(cond3)
+        assert stmt._where_criteria == (cond1, cond2, cond3)

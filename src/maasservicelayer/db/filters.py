@@ -51,10 +51,11 @@ class QuerySpec:
 
         The where condition is added to all kind of statements through the .where() method,
         the join conditions, instead, works different based on the statement type.
-        For the Select statement we can add it through the join_from() method.
+        For the Select statement we can add them through either the join or join_from() method.
         For the Update/Delete statements we can leverage the UPDATE .. FROM and
         DELETE .. USING syntax that PostgreSQL uses. To do this, we have to specify
         the join condition inside the where clause and SQLAlchemy will do the rest.
+        In both cases, we only add the join if it's not redundant.
 
         Params:
             stmt: the SQL statement to enrich
@@ -65,14 +66,33 @@ class QuerySpec:
             if self.where:
                 stmt = stmt.where(self.where.condition)
                 for j in self.where.joins:
-                    stmt = stmt.join_from(j.left, j.right, j.onclause)
+                    already_joined = [
+                        joined_table[0] for joined_table in stmt._setup_joins
+                    ]
+                    already_joined += stmt.columns_clause_froms
+                    if (
+                        j.left not in already_joined
+                        and j.right not in already_joined
+                    ):
+                        stmt = stmt.join_from(j.left, j.right, j.onclause)
+                    elif j.left not in already_joined:
+                        stmt = stmt.join(j.left, j.onclause)
+                    elif j.right not in already_joined:
+                        stmt = stmt.join(j.right, j.onclause)
         elif isinstance(stmt, Update) or isinstance(stmt, Delete):
             if self.where:
                 stmt = stmt.where(self.where.condition)
                 for j in self.where.joins:
                     # we want to make sure that the onclause is set
                     assert j.onclause is not None
-                    stmt = stmt.where(j.onclause)
+                    # we check that the clause isn't already present
+                    if all(
+                        [
+                            not j.onclause.compare(where)
+                            for where in stmt._where_criteria
+                        ]
+                    ):
+                        stmt = stmt.where(j.onclause)
         return stmt
 
 
