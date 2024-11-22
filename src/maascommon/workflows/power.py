@@ -71,15 +71,6 @@ class PowerOffParam(PowerParam):
 
 
 @dataclass
-class PowerParam:
-    # XXX: PoweParam class should be removed, once we can fetch everything by system_id
-    system_id: str
-    driver_type: str
-    driver_opts: dict[str, Any]
-    task_queue: str
-
-
-@dataclass
 class PowerManyParam:
     """
     Parameters required by the PowerMany workflow

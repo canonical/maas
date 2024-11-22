@@ -34,7 +34,7 @@ class DNSResourceResourceBuilder(ResourceBuilder):
         self._request.set_value(DNSResourceTable.c.name.name, value)
         return self
 
-    def with_domain_id(self, value: id) -> "DNSResourceResourceBuilder":
+    def with_domain_id(self, value: int) -> "DNSResourceResourceBuilder":
         self._request.set_value(DNSResourceTable.c.domain_id.name, value)
         return self
 

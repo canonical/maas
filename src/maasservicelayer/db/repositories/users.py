@@ -205,7 +205,7 @@ class UsersRepository(BaseRepository[User]):
             )
         return UserProfile(**updated_profile._asdict())
 
-    async def get_user_apikeys(self, username: str) -> List[str]:
+    async def get_user_apikeys(self, username: str) -> List[str] | None:
         stmt = (
             select(
                 func.concat(
