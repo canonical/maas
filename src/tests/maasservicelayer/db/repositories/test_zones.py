@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasservicelayer.context import Context
@@ -18,7 +17,6 @@ from maasservicelayer.db.repositories.zones import (
     ZonesRepository,
 )
 from maasservicelayer.db.tables import ZoneTable
-from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.zones import Zone
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.zone import create_test_zone
@@ -64,7 +62,7 @@ class TestZoneCreateOrUpdateResourceBuilder:
         }
 
 
-class TestZonesRepo(RepositoryCommonTests[Zone]):
+class TestZonesRepository(RepositoryCommonTests[Zone]):
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection
@@ -101,89 +99,35 @@ class TestZonesRepo(RepositoryCommonTests[Zone]):
         return created_zones
 
     @pytest.fixture
-    async def _created_instance(self, fixture: Fixture) -> Zone:
+    async def created_instance(self, fixture: Fixture) -> Zone:
         return await create_test_zone(
             fixture, name="myzone", description="description"
         )
 
+    @pytest.fixture
+    async def instance_builder(self) -> ZoneResourceBuilder:
+        return (
+            ZoneResourceBuilder()
+            .with_name("name")
+            .with_description("description")
+        )
 
-@pytest.mark.usefixtures("ensuremaasdb")
-@pytest.mark.asyncio
-class TestZonesRepository:
     async def test_list_with_filters(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, repository_instance: ZonesRepository, created_instance: Zone
     ) -> None:
-        created_zone = await create_test_zone(fixture)
-
-        zones_repository = ZonesRepository(Context(connection=db_connection))
-
         query = QuerySpec(where=ZonesClauseFactory.with_ids([1]))
-        zones = await zones_repository.list(None, 20, query)
+        zones = await repository_instance.list(None, 20, query)
         assert len(zones.items) == 1
         assert zones.items[0].id == 1
 
         query = QuerySpec(
-            where=ZonesClauseFactory.with_ids([1, created_zone.id])
+            where=ZonesClauseFactory.with_ids([1, created_instance.id])
         )
-        zones = await zones_repository.list(None, 20, query)
+        zones = await repository_instance.list(None, 20, query)
         assert len(zones.items) == 2
 
-    async def test_create(self, db_connection: AsyncConnection) -> None:
-        now = utcnow()
-        zones_repository = ZonesRepository(Context(connection=db_connection))
-        created_zone = await zones_repository.create(
-            ZoneResourceBuilder()
-            .with_name("my_zone")
-            .with_description("my description")
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-        assert created_zone.id > 1
-        assert created_zone.name == "my_zone"
-        assert created_zone.description == "my description"
-        assert created_zone.created.astimezone(timezone.utc) >= now.astimezone(
-            timezone.utc
-        )
-        assert created_zone.updated.astimezone(timezone.utc) >= now.astimezone(
-            timezone.utc
-        )
-
-    async def test_create_duplicated(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        now = utcnow()
-        zones_repository = ZonesRepository(Context(connection=db_connection))
-        created_zone = await create_test_zone(fixture)
-
-        with pytest.raises(AlreadyExistsException):
-            await zones_repository.create(
-                ZoneResourceBuilder()
-                .with_name(created_zone.name)
-                .with_description(created_zone.description)
-                .with_created(now)
-                .with_updated(now)
-                .build()
-            )
-
-    async def test_delete(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        zones_repository = ZonesRepository(Context(connection=db_connection))
-        created_zone = await create_test_zone(fixture)
-        assert (await zones_repository.delete_by_id(created_zone.id)) is None
-
-        zones = await fixture.get(
-            ZoneTable.name, eq(ZoneTable.c.id, created_zone.id)
-        )
-        assert zones == []
-
-        # If the entity does not exist, silently ignore it.
-        assert (await zones_repository.delete_by_id(created_zone.id)) is None
-
     async def test_get_default_zone(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, repository_instance: ZonesRepository
     ) -> None:
-        zones_repository = ZonesRepository(Context(connection=db_connection))
-        default_zone = await zones_repository.get_default_zone()
+        default_zone = await repository_instance.get_default_zone()
         assert default_zone.name == DEFAULT_ZONE_NAME

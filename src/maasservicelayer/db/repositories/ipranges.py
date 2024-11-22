@@ -19,11 +19,11 @@ class IPRangeResourceBuilder(ResourceBuilder):
         return self
 
     def with_start_ip(self, ip: IPvAnyAddress) -> "IPRangeResourceBuilder":
-        self._request.set_value(IPRangeTable.c.start_ip.name, str(ip))
+        self._request.set_value(IPRangeTable.c.start_ip.name, ip)
         return self
 
     def with_end_ip(self, ip: IPvAnyAddress) -> "IPRangeResourceBuilder":
-        self._request.set_value(IPRangeTable.c.end_ip.name, str(ip))
+        self._request.set_value(IPRangeTable.c.end_ip.name, ip)
         return self
 
     def with_subnet_id(self, id: int) -> "IPRangeResourceBuilder":

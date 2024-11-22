@@ -8,11 +8,13 @@ from maasservicelayer.db.repositories.ipranges import (
     IPRangeResourceBuilder,
     IPRangesRepository,
 )
+from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestIPRangesResourceBuilder:
@@ -21,8 +23,8 @@ class TestIPRangesResourceBuilder:
         resource = (
             IPRangeResourceBuilder()
             .with_type("type")
-            .with_start_ip("10.0.0.1")
-            .with_end_ip("10.0.0.1")
+            .with_start_ip(IPv4Address("10.0.0.1"))
+            .with_end_ip(IPv4Address("10.0.0.1"))
             .with_subnet_id(0)
             .with_created(now)
             .with_updated(now)
@@ -31,8 +33,8 @@ class TestIPRangesResourceBuilder:
 
         assert resource.get_values() == {
             "type": "type",
-            "start_ip": "10.0.0.1",
-            "end_ip": "10.0.0.1",
+            "start_ip": IPv4Address("10.0.0.1"),
+            "end_ip": IPv4Address("10.0.0.1"),
             "subnet_id": 0,
             "created": now,
             "updated": now,
@@ -40,7 +42,61 @@ class TestIPRangesResourceBuilder:
 
 
 @pytest.mark.asyncio
-class TestIPRangesRepository:
+class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
+    @pytest.fixture
+    def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> IPRangesRepository:
+        return IPRangesRepository(Context(connection=db_connection))
+
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture, num_objects: int
+    ) -> list[IPRange]:
+        subnet = await create_test_subnet_entry(
+            fixture, name="name", description="description"
+        )
+        created_ipranges = [
+            IPRange(
+                **(
+                    await create_test_ip_range_entry(
+                        fixture, subnet=subnet, offset=i
+                    )
+                )
+            )
+            for i in range(num_objects)
+        ]
+        return created_ipranges
+
+    @pytest.fixture
+    async def created_instance(self, fixture: Fixture) -> IPRange:
+        subnet = await create_test_subnet_entry(
+            fixture, name="name", description="description"
+        )
+        return IPRange(
+            **(await create_test_ip_range_entry(fixture, subnet=subnet))
+        )
+
+    @pytest.fixture
+    async def instance_builder(self) -> IPRangeResourceBuilder:
+        return (
+            IPRangeResourceBuilder()
+            .with_type("type")
+            .with_start_ip(IPv4Address("10.0.0.1"))
+            .with_end_ip(IPv4Address("10.0.0.2"))
+            .with_subnet_id(0)
+        )
+
+    # TODO: ip ranges contraints are not defined at DB level. We must check them
+    # manually before creating the ip range.
+    @pytest.mark.skip
+    async def test_create_duplicated(
+        self,
+        repository_instance: IPRangesRepository,
+        instance_builder: IPRangeResourceBuilder,
+    ):
+        pass
+
     async def test_get_dyanmic_range_for_ip(
         self, db_connection: AsyncConnection, fixture: Fixture
     ):

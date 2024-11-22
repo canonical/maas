@@ -1,8 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import timezone
-from ipaddress import IPv4Network
+from ipaddress import IPv4Address, IPv4Network
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -12,7 +11,6 @@ from maasservicelayer.db.repositories.subnets import (
     SubnetResourceBuilder,
     SubnetsRepository,
 )
-from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.staticipaddress import (
@@ -83,7 +81,7 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
         return created_subnets
 
     @pytest.fixture
-    async def _created_instance(self, fixture: Fixture) -> Subnet:
+    async def created_instance(self, fixture: Fixture) -> Subnet:
         return Subnet(
             **(
                 await create_test_subnet_entry(
@@ -92,11 +90,9 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
             )
         )
 
-    async def test_create(
-        self, repository_instance: SubnetsRepository
-    ) -> None:
-        now = utcnow()
-        created_subnet = await repository_instance.create(
+    @pytest.fixture
+    async def instance_builder(self) -> SubnetResourceBuilder:
+        return (
             SubnetResourceBuilder()
             .with_cidr(IPv4Network("10.0.0.1"))
             .with_name("name")
@@ -106,52 +102,10 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
             .with_rdns_mode(0)
             .with_active_discovery(True)
             .with_managed(True)
-            .with_disabled_boot_architectures(["ipxe"])
+            .with_disabled_boot_architectures(["amd64"])
+            .with_gateway_ip(IPv4Address("10.0.0.1"))
             .with_vlan_id(0)
-            .with_created(now)
-            .with_updated(now)
-            .build()
         )
-        assert created_subnet.id > 1
-        assert created_subnet.cidr == IPv4Network("10.0.0.1")
-        assert created_subnet.name == "name"
-        assert created_subnet.description == "description"
-        assert created_subnet.allow_dns is True
-        assert created_subnet.allow_proxy is True
-        assert created_subnet.rdns_mode == 0
-        assert created_subnet.active_discovery is True
-        assert created_subnet.managed is True
-        assert created_subnet.disabled_boot_architectures == ["ipxe"]
-        assert created_subnet.created.astimezone(
-            timezone.utc
-        ) >= now.astimezone(timezone.utc)
-        assert created_subnet.updated.astimezone(
-            timezone.utc
-        ) >= now.astimezone(timezone.utc)
-
-    async def test_create_duplicated(
-        self, repository_instance: SubnetsRepository, _created_instance: Subnet
-    ) -> None:
-        now = utcnow()
-        with pytest.raises(AlreadyExistsException):
-            await repository_instance.create(
-                SubnetResourceBuilder()
-                .with_cidr(_created_instance.cidr)
-                .with_name(_created_instance.name)
-                .with_description(_created_instance.description)
-                .with_allow_dns(_created_instance.allow_dns)
-                .with_allow_proxy(_created_instance.allow_proxy)
-                .with_rdns_mode(_created_instance.rdns_mode)
-                .with_active_discovery(_created_instance.active_discovery)
-                .with_managed(_created_instance.managed)
-                .with_disabled_boot_architectures(
-                    _created_instance.disabled_boot_architectures
-                )
-                .with_vlan_id(0)
-                .with_created(now)
-                .with_updated(now)
-                .build()
-            )
 
 
 @pytest.mark.usefixtures("ensuremaasdb")

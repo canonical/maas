@@ -42,7 +42,7 @@ class SubnetClauseFactory(ClauseFactory):
 
 class SubnetResourceBuilder(ResourceBuilder):
     def with_cidr(self, cidr: IPNetwork) -> "SubnetResourceBuilder":
-        self._request.set_value(SubnetTable.c.cidr.name, str(cidr))
+        self._request.set_value(SubnetTable.c.cidr.name, cidr)
         return self
 
     def with_name(self, name: str) -> "SubnetResourceBuilder":

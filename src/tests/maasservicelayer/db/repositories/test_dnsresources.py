@@ -1,5 +1,6 @@
+from collections.abc import Sequence
+
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
@@ -9,9 +10,8 @@ from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceRepository,
     DNSResourceResourceBuilder,
 )
-from maasservicelayer.db.tables import DNSResourceTable
+from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.staticipaddress import StaticIPAddress
-from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
 from tests.fixtures.factories.staticipaddress import (
@@ -19,65 +19,81 @@ from tests.fixtures.factories.staticipaddress import (
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 @pytest.mark.asyncio
-class TestDNSResourceRepository:
-    async def test_get_one(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
+class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
+    @pytest.fixture
+    def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> DNSResourceRepository:
+        return DNSResourceRepository(Context(connection=db_connection))
+
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture, num_objects: int
+    ) -> Sequence[DNSResource]:
+        subnet = await create_test_subnet_entry(fixture)
+        domain = await create_test_domain_entry(fixture)
+        sip = (
+            await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        )[0]
+        dnsresources = [
+            await create_test_dnsresource_entry(fixture, domain, sip)
+            for _ in range(num_objects)
+        ]
+        return dnsresources
+
+    @pytest.fixture
+    async def created_instance(self, fixture: Fixture) -> DNSResource:
         subnet = await create_test_subnet_entry(fixture)
         domain = await create_test_domain_entry(fixture)
         sip = (
             await create_test_staticipaddress_entry(fixture, subnet=subnet)
         )[0]
         dnsresource = await create_test_dnsresource_entry(fixture, domain, sip)
+        return dnsresource
 
-        dnsresource_repository = DNSResourceRepository(
-            Context(connection=db_connection)
+    @pytest.fixture
+    async def instance_builder(
+        self, fixture: Fixture
+    ) -> DNSResourceResourceBuilder:
+        domain = await create_test_domain_entry(fixture)
+        return (
+            DNSResourceResourceBuilder()
+            .with_name("test_name")
+            .with_domain_id(domain.id)
         )
 
+    @pytest.mark.skip(reason="Not applicable")
+    async def test_create_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        pass
+
+    async def test_get_one(
+        self,
+        repository_instance: DNSResourceRepository,
+        created_instance: DNSResource,
+    ) -> None:
         query = QuerySpec(
             where=DNSResourceClauseFactory.and_clauses(
                 [
-                    DNSResourceClauseFactory.with_name(dnsresource.name),
-                    DNSResourceClauseFactory.with_domain_id(domain.id),
+                    DNSResourceClauseFactory.with_name(created_instance.name),
+                    DNSResourceClauseFactory.with_domain_id(
+                        created_instance.domain_id
+                    ),
                 ]
             ),
         )
 
-        result = await dnsresource_repository.get_one(query)
-
-        assert result.id == dnsresource.id
-
-    async def test_create(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        domain = await create_test_domain_entry(fixture)
-
-        dnsresource_repository = DNSResourceRepository(
-            Context(connection=db_connection)
-        )
-
-        now = utcnow()
-
-        resource = (
-            DNSResourceResourceBuilder()
-            .with_name("test_name")
-            .with_domain_id(domain.id)
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        result = await dnsresource_repository.create(resource)
-
+        result = await repository_instance.get_one(query)
         assert result is not None
-        assert result.name == "test_name"
-        assert result.domain_id == domain.id
+        assert result.id == created_instance.id
 
     async def test_get_dnsresources_in_domain_for_ip(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, repository_instance: DNSResourceRepository, fixture: Fixture
     ) -> None:
         subnet = await create_test_subnet_entry(fixture)
         domain = await create_test_domain_entry(fixture)
@@ -89,15 +105,9 @@ class TestDNSResourceRepository:
             for _ in range(3)
         ]
 
-        dnsresource_repository = DNSResourceRepository(
-            Context(connection=db_connection)
-        )
-
-        result = (
-            await dnsresource_repository.get_dnsresources_in_domain_for_ip(
-                domain,
-                StaticIPAddress(**sip),
-            )
+        result = await repository_instance.get_dnsresources_in_domain_for_ip(
+            domain,
+            StaticIPAddress(**sip),
         )
 
         assert {dnsresource.id for dnsresource in dnsresources} == {
@@ -105,7 +115,7 @@ class TestDNSResourceRepository:
         }
 
     async def test_link_ip(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, repository_instance: DNSResourceRepository, fixture: Fixture
     ) -> None:
         subnet = await create_test_subnet_entry(fixture)
         domain = await create_test_domain_entry(fixture)
@@ -114,22 +124,18 @@ class TestDNSResourceRepository:
         )[0]
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
-        dnsresource_repository = DNSResourceRepository(
-            Context(connection=db_connection)
-        )
-
         ip = StaticIPAddress(**sip)
 
-        await dnsresource_repository.link_ip(dnsresource, ip)
+        await repository_instance.link_ip(dnsresource, ip)
 
-        link = await dnsresource_repository.get_dnsresources_in_domain_for_ip(
+        link = await repository_instance.get_dnsresources_in_domain_for_ip(
             domain, ip
         )
 
         assert link[0].id == dnsresource.id
 
     async def test_get_ips_for_dnsresource(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, repository_instance: DNSResourceRepository, fixture: Fixture
     ) -> None:
         subnet = await create_test_subnet_entry(fixture)
         domain = await create_test_domain_entry(fixture)
@@ -146,21 +152,15 @@ class TestDNSResourceRepository:
         ]
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
-        dnsresource_repository = DNSResourceRepository(
-            Context(connection=db_connection)
-        )
-
         for sip in sips:
-            await dnsresource_repository.link_ip(dnsresource, sip)
+            await repository_instance.link_ip(dnsresource, sip)
 
-        result = await dnsresource_repository.get_ips_for_dnsresource(
-            dnsresource
-        )
+        result = await repository_instance.get_ips_for_dnsresource(dnsresource)
 
         assert {ip.id for ip in sips} == {ip.id for ip in result}
 
     async def test_remove_ip_relation(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, repository_instance: DNSResourceRepository, fixture: Fixture
     ) -> None:
         subnet = await create_test_subnet_entry(fixture)
         domain = await create_test_domain_entry(fixture)
@@ -169,37 +169,11 @@ class TestDNSResourceRepository:
         )[0]
         dnsresource = await create_test_dnsresource_entry(fixture, domain, sip)
 
-        dnsresource_repository = DNSResourceRepository(
-            Context(connection=db_connection)
-        )
-
-        await dnsresource_repository.remove_ip_relation(
+        await repository_instance.remove_ip_relation(
             dnsresource, StaticIPAddress(**sip)
         )
 
-        remaining = await dnsresource_repository.get_ips_for_dnsresource(
+        remaining = await repository_instance.get_ips_for_dnsresource(
             dnsresource
         )
         assert len(remaining) == 0
-
-    async def test_delete(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        domain = await create_test_domain_entry(fixture)
-        dnsresource = await create_test_dnsresource_entry(fixture, domain)
-
-        dnsresource_repository = DNSResourceRepository(
-            Context(connection=db_connection)
-        )
-
-        await dnsresource_repository.delete_by_id(dnsresource.id)
-
-        stmt = (
-            select(DNSResourceTable)
-            .select_from(DNSResourceTable)
-            .filter(DNSResourceTable.c.id == dnsresource.id)
-        )
-
-        result = (await db_connection.execute(stmt)).one_or_none()
-
-        assert result is None

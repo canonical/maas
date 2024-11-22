@@ -9,8 +9,13 @@ from typing import Generic, TypeVar
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.db.repositories.base import BaseRepository
+from maasservicelayer.db.repositories.base import (
+    BaseRepository,
+    ResourceBuilder,
+)
+from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
 T = TypeVar("T", bound=MaasTimestampedBaseModel)
@@ -44,11 +49,20 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
 
     @pytest.fixture
     @abc.abstractmethod
-    async def _created_instance(self, fixture: Fixture) -> T:
-        """Fixture used to setup the necessary environment for the `test_find_*` methods.
+    async def created_instance(self, fixture: Fixture) -> T:
+        """Fixture used to provide an instance of the model that has been created in the db.
 
         Returns:
             T: a created object in the database ready to be retrieved.
+        """
+
+    @pytest.fixture
+    @abc.abstractmethod
+    async def instance_builder(self, *args, **kwargs) -> ResourceBuilder:
+        """Fixture used to provide a builder for the model being tested.
+
+        Returns:
+            ResourceBuilder: builder to be used for create/update methods.
         """
 
     @pytest.mark.parametrize("num_objects", [10])
@@ -82,11 +96,28 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
                     assert created_objects.pop() in objects_results.items
             current_token = objects_results.next_token
 
-    async def test_create(self):
-        pass
+    async def test_create(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        now = utcnow()
+        resource = instance_builder.with_created(now).with_updated(now).build()
+        created_resource = await repository_instance.create(resource)
+        created_resource = created_resource.dict()
+        for key, value in resource.get_values().items():
+            assert created_resource[key] == value
 
-    async def test_create_duplicated(self):
-        pass
+    async def test_create_duplicated(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        now = utcnow()
+        resource = instance_builder.with_created(now).with_updated(now).build()
+        await repository_instance.create(resource)
+        with pytest.raises(AlreadyExistsException):
+            await repository_instance.create(resource)
 
     async def test_get_by_id_not_found(
         self, repository_instance: BaseRepository
@@ -95,13 +126,29 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
         assert instance is None
 
     async def test_get_by_id(
-        self, repository_instance: BaseRepository, _created_instance: T
+        self, repository_instance: BaseRepository, created_instance: T
     ):
-        instance = await repository_instance.get_by_id(_created_instance.id)
-        assert instance == _created_instance
+        instance = await repository_instance.get_by_id(created_instance.id)
+        assert instance == created_instance
 
-    async def test_delete(self):
-        pass
+    async def test_delete(
+        self, repository_instance: BaseRepository, created_instance: T
+    ):
+        await repository_instance.delete_by_id(created_instance.id)
+        deleted = await repository_instance.get_by_id(created_instance.id)
+        assert deleted is None
 
-    async def test_update(self):
-        pass
+    async def test_update(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        now = utcnow()
+        builder = instance_builder.with_created(now).with_updated(now)
+        created_resource = await repository_instance.create(builder.build())
+        updated_time = utcnow()
+        builder = builder.with_updated(updated_time)
+        updated_resource = await repository_instance.update_by_id(
+            created_resource.id, builder.build()
+        )
+        assert updated_resource.updated == updated_time
