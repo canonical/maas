@@ -4,8 +4,16 @@ from fastapi import APIRouter
 class Handler:
     """An API handler for an entity."""
 
+    def get_handlers(self):
+        """Get the alphebetised list of all handler functions in the class.
+
+        Subclasses may override this to define their own, non-alphabetised
+        handler registration order.
+        """
+        return dir(self)
+
     def register(self, router: APIRouter):
-        for name in dir(self):
+        for name in self.get_handlers():
             if name.startswith("_"):
                 continue
 

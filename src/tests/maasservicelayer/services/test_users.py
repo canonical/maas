@@ -11,6 +11,7 @@ from maasservicelayer.db.repositories.users import (
     UserResourceBuilder,
     UsersRepository,
 )
+from maasservicelayer.models.users import User
 from maasservicelayer.services import UsersService
 from maasservicelayer.utils.date import utcnow
 
@@ -93,4 +94,42 @@ class TestUsersService:
         await users_service.get_user_apikeys(username="username")
         users_repository_mock.get_user_apikeys.assert_called_once_with(
             "username"
+        )
+
+    async def test_create(self) -> None:
+        now = utcnow()
+        test_user = User(
+            id=1,
+            username="test_username",
+            password="test_password",
+            first_name="test_first_name",
+            last_name="test_last_name",
+            is_superuser=False,
+            is_active=False,
+            is_staff=False,
+            email="email@example.com",
+            date_joined=now,
+            last_login=now,
+        )
+
+        blank_create_resource = UserResourceBuilder().build()
+
+        users_repository_mock = Mock(UsersRepository)
+        users_repository_mock.create.return_value = test_user
+
+        users_service = UsersService(
+            context=Context(), users_repository=users_repository_mock
+        )
+        await users_service.create(blank_create_resource)
+
+        users_repository_mock.create.assert_called_once()
+
+        # Ensure a new user profile is created each time also
+        users_repository_mock.create_profile.assert_called_once_with(
+            user_id=1,
+            resource={
+                "auth_last_check": None,
+                "is_local": True,
+                "completed_intro": False,
+            },
         )
