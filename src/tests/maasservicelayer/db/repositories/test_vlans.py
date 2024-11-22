@@ -155,6 +155,16 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         )
         assert result == []
 
+    async def test_get_fabric_default_vlan(
+        self, fixture: Fixture, repository_instance: VlansRepository
+    ):
+        fabric = await create_test_fabric_entry(fixture)
+        vlan1 = await create_test_vlan_entry(fixture, fabric_id=fabric.id)
+        await create_test_vlan_entry(fixture, fabric_id=fabric.id)
+        await create_test_vlan_entry(fixture, fabric_id=fabric.id)
+        result = await repository_instance.get_fabric_default_vlan(fabric.id)
+        assert result.id == vlan1["id"]
+
     async def test_get_node_vlans_with_valid_system_id(
         self, fixture: Fixture, repository_instance: VlansRepository
     ):

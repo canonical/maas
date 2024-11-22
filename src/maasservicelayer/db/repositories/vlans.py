@@ -122,6 +122,10 @@ class VlanResourceBuilder(ResourceBuilder):
         )
         return self
 
+    def with_relay_vlan_id(self, relay_vlan_id: int) -> "VlanResourceBuilder":
+        self._request.set_value(VlanTable.c.relay_vlan_id.name, relay_vlan_id)
+        return self
+
 
 class VlansRepository(BaseRepository[Vlan]):
     def get_repository_table(self) -> Table:
@@ -129,6 +133,17 @@ class VlansRepository(BaseRepository[Vlan]):
 
     def get_model_factory(self) -> Type[Vlan]:
         return Vlan
+
+    async def get_fabric_default_vlan(self, fabric_id: int) -> Vlan:
+        # Same logic of maasserver.models.fabric.Fabric.get_default_vlan.
+        stmt = (
+            self.select_all_statement()
+            .where(eq(VlanTable.c.fabric_id, fabric_id))
+            .order_by(VlanTable.c.fabric_id)
+            .limit(1)
+        )
+        result = (await self.connection.execute(stmt)).one()
+        return self.get_model_factory()(**result._asdict())
 
     async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
         """

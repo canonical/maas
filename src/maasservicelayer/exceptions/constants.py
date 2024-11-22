@@ -16,5 +16,10 @@ ETAG_PRECONDITION_VIOLATION_TYPE = "EtagPreconditionViolation"
 UNEXISTING_RESOURCE_VIOLATION_TYPE = "UnexistingResourceViolation"
 INVALID_ARGUMENT_VIOLATION_TYPE = "InvalidArgumentViolation"
 
+# VLANs
+CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE = (
+    "CannotDeleteDefaultFabricVlanViolation"
+)
+
 # Zones
 CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE = "CannotDeleteDefaultZoneViolation"

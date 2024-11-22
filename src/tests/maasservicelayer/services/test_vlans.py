@@ -17,7 +17,10 @@ from maasservicelayer.db.repositories.vlans import (
     VlansClauseFactory,
     VlansRepository,
 )
-from maasservicelayer.exceptions.catalog import PreconditionFailedException
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    PreconditionFailedException,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.vlans import Vlan
@@ -243,6 +246,9 @@ class TestVlansService:
             created=now,
             updated=now,
         )
+        default_vlan = vlan.copy()
+        default_vlan.id = 2
+
         primary_rack = Node(
             id=2,
             system_id="abc",
@@ -256,6 +262,9 @@ class TestVlansService:
 
         vlans_repository_mock = Mock(VlansRepository)
         vlans_repository_mock.get_one.return_value = vlan
+        vlans_repository_mock.get_fabric_default_vlan.return_value = (
+            default_vlan
+        )
 
         mock_temporal = Mock(TemporalService)
 
@@ -298,9 +307,14 @@ class TestVlansService:
             created=now,
             updated=now,
         )
+        default_vlan = vlan.copy()
+        default_vlan.id = 2
 
         vlans_repository_mock = Mock(VlansRepository)
         vlans_repository_mock.get_by_id.return_value = vlan
+        vlans_repository_mock.get_fabric_default_vlan.return_value = (
+            default_vlan
+        )
 
         mock_temporal = Mock(TemporalService)
 
@@ -330,9 +344,14 @@ class TestVlansService:
             created=now,
             updated=now,
         )
+        default_vlan = vlan.copy()
+        default_vlan.id = 2
 
         vlans_repository_mock = Mock(VlansRepository)
         vlans_repository_mock.get_by_id.return_value = vlan
+        vlans_repository_mock.get_fabric_default_vlan.return_value = (
+            default_vlan
+        )
 
         vlans_service = VlansService(
             context=Context(),
@@ -360,9 +379,14 @@ class TestVlansService:
             created=now,
             updated=now,
         )
+        default_vlan = vlan.copy()
+        default_vlan.id = 2
 
         vlans_repository_mock = Mock(VlansRepository)
         vlans_repository_mock.get_by_id.return_value = vlan
+        vlans_repository_mock.get_fabric_default_vlan.return_value = (
+            default_vlan
+        )
 
         vlans_service = VlansService(
             context=Context(),
@@ -373,3 +397,32 @@ class TestVlansService:
 
         await vlans_service.delete_by_id(vlan.id, vlan.etag())
         vlans_repository_mock.delete_by_id.assert_called_once_with(vlan.id)
+
+    async def test_delete_default_vlan(self) -> None:
+        now = utcnow()
+        vlan = Vlan(
+            id=1,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=0,
+            dhcp_on=False,
+            primary_rack_id=2,
+            fabric_id=1,
+            created=now,
+            updated=now,
+        )
+
+        vlans_repository_mock = Mock(VlansRepository)
+        vlans_repository_mock.get_by_id.return_value = vlan
+        vlans_repository_mock.get_fabric_default_vlan.return_value = vlan
+
+        vlans_service = VlansService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            nodes_service=Mock(NodesService),
+            vlans_repository=vlans_repository_mock,
+        )
+
+        with pytest.raises(BadRequestException):
+            await vlans_service.delete_by_id(vlan.id)

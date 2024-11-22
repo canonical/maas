@@ -12,6 +12,13 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.vlans import VlansRepository
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services._base import Service
@@ -52,16 +59,27 @@ class VlansService(Service):
     async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
         return await self.vlans_repository.get_node_vlans(query=query)
 
+    async def get_fabric_default_vlan(self, fabric_id: int) -> Vlan:
+        return await self.vlans_repository.get_fabric_default_vlan(fabric_id)
+
     async def create(self, resource: CreateOrUpdateResource) -> Vlan:
         # When the VLAN is created it has no related IPRanges. For this reason it's not possible to enable DHCP
         # at creation time and we don't have to start the temporal workflow.
         return await self.vlans_repository.create(resource)
 
+    async def update(
+        self, query: QuerySpec, resource: CreateOrUpdateResource
+    ) -> Vlan:
+        vlan = await self.vlans_repository.update(query, resource)
+        return await self._post_update(vlan)
+
     async def update_by_id(
         self, id: int, resource: CreateOrUpdateResource
-    ) -> Vlan | None:
+    ) -> Vlan:
         vlan = await self.vlans_repository.update_by_id(id, resource)
+        return await self._post_update(vlan)
 
+    async def _post_update(self, vlan: Vlan) -> Vlan:
         # dhcp_on could've been true prior to update or updated to true,
         # so always register configure-dhcp on update
         self.temporal_service.register_or_update_workflow_call(
@@ -87,6 +105,20 @@ class VlansService(Service):
             return None
 
         self.etag_check(vlan, etag_if_match)
+
+        default_fabric_vlan = await self.get_fabric_default_vlan(
+            vlan.fabric_id
+        )
+        if default_fabric_vlan == vlan:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
+                        message=f"The VLAN {vlan.id} is the default VLAN for the fabric {vlan.fabric_id} and can't be deleted.",
+                    )
+                ]
+            )
+
         await self.vlans_repository.delete_by_id(vlan.id)
 
         if vlan.dhcp_on or vlan.relay_vlan:
