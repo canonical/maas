@@ -13,14 +13,10 @@ class EventsService(Service):
     def __init__(
         self,
         context: Context,
-        events_repository: EventsRepository | None = None,
+        events_repository: EventsRepository,
     ):
         super().__init__(context)
-        self.events_repository = (
-            events_repository
-            if events_repository
-            else EventsRepository(context)
-        )
+        self.events_repository = events_repository
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec | None = None

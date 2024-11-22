@@ -18,12 +18,10 @@ class ResourcePoolsService(Service):
     def __init__(
         self,
         context: Context,
-        resource_pools_repository: Optional[ResourcePoolRepository] = None,
+        resource_pools_repository: ResourcePoolRepository,
     ):
         super().__init__(context)
-        self.resource_pools_repository = (
-            resource_pools_repository or ResourcePoolRepository(context)
-        )
+        self.resource_pools_repository = resource_pools_repository
 
     async def create(self, resource: CreateOrUpdateResource) -> ResourcePool:
         return await self.resource_pools_repository.create(resource)

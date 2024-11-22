@@ -76,7 +76,7 @@ class UserResourceBuilder(ResourceBuilder):
 
 class UserProfileResourceBuilder(ResourceBuilder):
     def with_auth_last_check(
-        self, value: datetime
+        self, value: datetime | None
     ) -> "UserProfileResourceBuilder":
         self._request.set_value(UserProfileTable.c.auth_last_check.name, value)
         return self

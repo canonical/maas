@@ -24,15 +24,11 @@ class StaticIPAddressService(Service):
         self,
         context: Context,
         temporal_service: TemporalService,
-        staticipaddress_repository: Optional[StaticIPAddressRepository] = None,
+        staticipaddress_repository: StaticIPAddressRepository,
     ):
         super().__init__(context)
         self.temporal_service = temporal_service
-        self.staticipaddress_repository = (
-            staticipaddress_repository
-            if staticipaddress_repository
-            else StaticIPAddressRepository(context)
-        )
+        self.staticipaddress_repository = staticipaddress_repository
 
     async def create(
         self, resource: CreateOrUpdateResource

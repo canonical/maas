@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-
-from typing import Any, Type
+from abc import ABC
+from typing import Any, Type, TypeVar
 
 from sqlalchemy import Select, select, Table, update
 from sqlalchemy.sql.operators import eq
@@ -29,13 +29,10 @@ class NodeClauseFactory(ClauseFactory):
         return Clause(condition=eq(NodeTable.c.system_id, system_id))
 
 
-class NodesRepository(BaseRepository[Node]):
+T = TypeVar("T", bound=Node)
 
-    def get_repository_table(self) -> Table:
-        return NodeTable
 
-    def get_model_factory(self) -> Type[Node]:
-        return Node
+class AbstractNodesRepository(BaseRepository[T], ABC):
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         stmt = (
@@ -87,3 +84,12 @@ class NodesRepository(BaseRepository[Node]):
             .select_from(BMCTable)
             .join(NodeTable, eq(NodeTable.c.bmc_id, BMCTable.c.id))
         )
+
+
+class NodesRepository(AbstractNodesRepository[Node]):
+
+    def get_repository_table(self) -> Table:
+        return NodeTable
+
+    def get_model_factory(self) -> Type[Node]:
+        return Node

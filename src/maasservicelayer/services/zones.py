@@ -26,19 +26,13 @@ class ZonesService(Service):
         self,
         context: Context,
         nodes_service: NodesService,
-        zones_repository: ZonesRepository | None = None,
-        vmcluster_service: VmClustersService | None = None,
+        vmcluster_service: VmClustersService,
+        zones_repository: ZonesRepository,
     ):
         super().__init__(context)
         self.nodes_service = nodes_service
-        self.zones_repository = (
-            zones_repository if zones_repository else ZonesRepository(context)
-        )
-        self.vmcluster_service = (
-            vmcluster_service
-            if vmcluster_service
-            else VmClustersService(context)
-        )
+        self.zones_repository = zones_repository
+        self.vmcluster_service = vmcluster_service
 
     async def create(self, resource: CreateOrUpdateResource) -> Zone:
         return await self.zones_repository.create(resource)

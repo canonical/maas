@@ -32,14 +32,12 @@ class VlansService(Service):
         context: Context,
         temporal_service: TemporalService,
         nodes_service: NodesService,
-        vlans_repository: VlansRepository | None = None,
+        vlans_repository: VlansRepository,
     ):
         super().__init__(context)
         self.temporal_service = temporal_service
         self.nodes_service = nodes_service
-        self.vlans_repository = (
-            vlans_repository if vlans_repository else VlansRepository(context)
-        )
+        self.vlans_repository = vlans_repository
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec | None = None

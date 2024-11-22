@@ -16,14 +16,10 @@ class MachinesService(NodesService):
         self,
         context: Context,
         secrets_service: SecretsService,
-        machines_repository: MachinesRepository | None = None,
+        machines_repository: MachinesRepository,
     ):
-        super().__init__(context, secrets_service)
-        self.machines_repository = (
-            machines_repository
-            if machines_repository
-            else MachinesRepository(context)
-        )
+        super().__init__(context, secrets_service, machines_repository)
+        self.machines_repository = machines_repository
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec | None = None

@@ -17,27 +17,24 @@ class UsersService(Service):
     def __init__(
         self,
         context: Context,
-        users_repository: UsersRepository | None = None,
+        users_repository: UsersRepository,
     ):
         super().__init__(context)
-        self.users_repository = (
-            users_repository if users_repository else UsersRepository(context)
-        )
+        self.users_repository = users_repository
 
     async def create(self, resource: CreateOrUpdateResource) -> User:
         user = await self.users_repository.create(resource)
-        if user is not None:
-            user_profile_resource = (
-                UserProfileResourceBuilder()
-                .with_completed_intro(False)
-                .with_auth_last_check(None)
-                .with_is_local(True)
-                .build()
-            )
-            await self.create_profile(
-                user.id,
-                user_profile_resource,
-            )
+        user_profile_resource = (
+            UserProfileResourceBuilder()
+            .with_completed_intro(False)
+            .with_auth_last_check(None)
+            .with_is_local(True)
+            .build()
+        )
+        await self.create_profile(
+            user.id,
+            user_profile_resource,
+        )
         return user
 
     async def get(self, username: str) -> User | None:

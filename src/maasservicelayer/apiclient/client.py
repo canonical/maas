@@ -48,3 +48,6 @@ class APIClient:
         ) as response:
             response.raise_for_status()
             return await response.json()
+
+    async def close(self):
+        await self._session.close()

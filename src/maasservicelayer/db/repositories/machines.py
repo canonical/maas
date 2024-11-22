@@ -11,7 +11,7 @@ from sqlalchemy.sql.operators import eq, le
 from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
 from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import BaseRepository
+from maasservicelayer.db.repositories.nodes import AbstractNodesRepository
 from maasservicelayer.db.tables import (
     BMCTable,
     DomainTable,
@@ -36,7 +36,7 @@ class MachineClauseFactory(ClauseFactory):
         return Clause(condition=NodeTable.c.pool_id.in_(rp_ids))
 
 
-class MachinesRepository(BaseRepository[Machine]):
+class MachinesRepository(AbstractNodesRepository[Machine]):
 
     def get_repository_table(self) -> Table:
         return NodeTable

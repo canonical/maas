@@ -5,8 +5,8 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.nodes import (
+    AbstractNodesRepository,
     NodeClauseFactory,
-    NodesRepository,
 )
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
@@ -19,13 +19,11 @@ class NodesService(Service):
         self,
         context: Context,
         secrets_service: SecretsService,
-        nodes_repository: NodesRepository | None = None,
+        nodes_repository: AbstractNodesRepository,
     ):
         super().__init__(context)
         self.secrets_service = secrets_service
-        self.nodes_repository = (
-            nodes_repository if nodes_repository else NodesRepository(context)
-        )
+        self.nodes_repository = nodes_repository
 
     async def get_by_id(self, id: int) -> Node | None:
         return await self.nodes_repository.get_by_id(id)

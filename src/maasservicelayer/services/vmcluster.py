@@ -8,16 +8,10 @@ from maasservicelayer.services._base import Service
 
 class VmClustersService(Service):
     def __init__(
-        self,
-        context: Context,
-        vmcluster_repository: VmClustersRepository | None = None,
+        self, context: Context, vmcluster_repository: VmClustersRepository
     ):
         super().__init__(context)
-        self.vmcluster_repository = (
-            vmcluster_repository
-            if vmcluster_repository
-            else VmClustersRepository(context)
-        )
+        self.vmcluster_repository = vmcluster_repository
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         """

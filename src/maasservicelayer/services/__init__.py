@@ -4,6 +4,32 @@
 from typing import Callable
 
 from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.dnspublications import (
+    DNSPublicationRepository,
+)
+from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
+from maasservicelayer.db.repositories.domains import DomainsRepository
+from maasservicelayer.db.repositories.events import EventsRepository
+from maasservicelayer.db.repositories.external_auth import (
+    ExternalAuthRepository,
+)
+from maasservicelayer.db.repositories.fabrics import FabricsRepository
+from maasservicelayer.db.repositories.interfaces import InterfaceRepository
+from maasservicelayer.db.repositories.ipranges import IPRangesRepository
+from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.db.repositories.nodes import NodesRepository
+from maasservicelayer.db.repositories.resource_pools import (
+    ResourcePoolRepository,
+)
+from maasservicelayer.db.repositories.spaces import SpacesRepository
+from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressRepository,
+)
+from maasservicelayer.db.repositories.subnets import SubnetsRepository
+from maasservicelayer.db.repositories.users import UsersRepository
+from maasservicelayer.db.repositories.vlans import VlansRepository
+from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
+from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.services._base import ServiceCache
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
@@ -102,7 +128,9 @@ class ServiceCollectionV3:
                 TemporalService.__name__, TemporalService.build_cache_object
             ),
         )
-        services.users = UsersService(context=context)
+        services.users = UsersService(
+            context=context, users_repository=UsersRepository(context)
+        )
         services.auth = AuthService(
             context=context,
             secrets_service=services.secrets,
@@ -112,58 +140,88 @@ class ServiceCollectionV3:
             context=context,
             secrets_service=services.secrets,
             users_service=services.users,
+            external_auth_repository=ExternalAuthRepository(context),
             cache=cache.get(ExternalAuthService.__name__, ExternalAuthService.build_cache_object),  # type: ignore
         )
         services.nodes = NodesService(
-            context=context, secrets_service=services.secrets
+            context=context,
+            secrets_service=services.secrets,
+            nodes_repository=NodesRepository(context),
         )
-        services.vmclusters = VmClustersService(context=context)
+        services.vmclusters = VmClustersService(
+            context=context, vmcluster_repository=VmClustersRepository(context)
+        )
         services.zones = ZonesService(
             context=context,
             nodes_service=services.nodes,
             vmcluster_service=services.vmclusters,
+            zones_repository=ZonesRepository(context),
         )
-        services.resource_pools = ResourcePoolsService(context=context)
+        services.resource_pools = ResourcePoolsService(
+            context=context,
+            resource_pools_repository=ResourcePoolRepository(context),
+        )
         services.machines = MachinesService(
-            context=context, secrets_service=services.secrets
+            context=context,
+            secrets_service=services.secrets,
+            machines_repository=MachinesRepository(context),
         )
-        services.events = EventsService(context=context)
+        services.events = EventsService(
+            context=context, events_repository=EventsRepository(context)
+        )
         services.interfaces = InterfacesService(
             context=context,
             temporal_service=services.temporal,
+            interface_repository=InterfaceRepository(context),
         )
-        services.fabrics = FabricsService(context=context)
-        services.spaces = SpacesService(context=context)
+        services.fabrics = FabricsService(
+            context=context, fabrics_repository=FabricsRepository(context)
+        )
+        services.spaces = SpacesService(
+            context=context, spaces_repository=SpacesRepository(context)
+        )
         services.vlans = VlansService(
             context=context,
             temporal_service=services.temporal,
             nodes_service=services.nodes,
+            vlans_repository=VlansRepository(context),
         )
         services.subnets = SubnetsService(
             context=context,
             temporal_service=services.temporal,
+            subnets_repository=SubnetsRepository(context),
         )
-        services.agents = AgentsService(context=context)
+        services.agents = AgentsService(
+            context=context,
+            configurations_service=services.configurations,
+            users_service=services.users,
+            cache=cache.get(AgentsService.__name__, AgentsService.build_cache_object),  # type: ignore
+        )
         services.dnspublications = DNSPublicationsService(
             context=context,
             temporal_service=services.temporal,
+            dnspublication_repository=DNSPublicationRepository(context),
         )
         services.domains = DomainsService(
             context=context,
             dnspublications_service=services.dnspublications,
+            domains_repository=DomainsRepository(context),
         )
         services.dnsresources = DNSResourcesService(
             context=context,
             domains_service=services.domains,
             dnspublications_service=services.dnspublications,
+            dnsresource_repository=DNSResourceRepository(context),
         )
         services.staticipaddress = StaticIPAddressService(
             context=context,
             temporal_service=services.temporal,
+            staticipaddress_repository=StaticIPAddressRepository(context),
         )
         services.ipranges = IPRangesService(
             context=context,
             temporal_service=services.temporal,
+            ipranges_repository=IPRangesRepository(context),
         )
         services.leases = LeasesService(
             context=context,

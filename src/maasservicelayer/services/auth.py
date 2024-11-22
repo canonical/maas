@@ -29,13 +29,11 @@ class AuthService(Service):
         self,
         context: Context,
         secrets_service: SecretsService,
-        users_service: UsersService | None = None,
+        users_service: UsersService,
     ):
         super().__init__(context)
         self.secrets_service = secrets_service
-        self.users_service = (
-            users_service if users_service else UsersService(context)
-        )
+        self.users_service = users_service
 
     async def login(self, username: str, password: str) -> JWT:
         user = await self.users_service.get(username)

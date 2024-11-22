@@ -12,14 +12,10 @@ class FabricsService(Service):
     def __init__(
         self,
         context: Context,
-        fabrics_repository: FabricsRepository | None = None,
+        fabrics_repository: FabricsRepository,
     ):
         super().__init__(context)
-        self.fabrics_repository = (
-            fabrics_repository
-            if fabrics_repository
-            else FabricsRepository(context)
-        )
+        self.fabrics_repository = fabrics_repository
 
     async def list(self, token: str | None, size: int) -> ListResult[Fabric]:
         return await self.fabrics_repository.list(token=token, size=size)

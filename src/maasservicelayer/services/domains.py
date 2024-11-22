@@ -1,4 +1,5 @@
-from typing import Optional
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.context import Context
@@ -15,15 +16,11 @@ class DomainsService(Service):
         self,
         context: Context,
         dnspublications_service: DNSPublicationsService,
-        domains_repository: Optional[DomainsRepository] = None,
+        domains_repository: DomainsRepository,
     ):
         super().__init__(context)
-        self.domains_repository = (
-            domains_repository
-            if domains_repository
-            else DomainsRepository(context)
-        )
         self.dnspublications_service = dnspublications_service
+        self.domains_repository = domains_repository
 
     async def get_one(self, query: QuerySpec) -> Domain | None:
         return await self.domains_repository.get_one(query=query)

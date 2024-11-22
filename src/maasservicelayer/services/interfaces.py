@@ -23,15 +23,11 @@ class InterfacesService(Service):
         self,
         context: Context,
         temporal_service: TemporalService,
-        interface_repository: InterfaceRepository | None = None,
+        interface_repository: InterfaceRepository,
     ):
         super().__init__(context)
         self.temporal_service = temporal_service
-        self.interface_repository = (
-            interface_repository
-            if interface_repository
-            else InterfaceRepository(context)
-        )
+        self.interface_repository = interface_repository
 
     async def list(
         self, node_id: int, token: str | None, size: int

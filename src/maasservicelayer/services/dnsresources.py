@@ -32,16 +32,12 @@ class DNSResourcesService(Service):
         context: Context,
         domains_service: DomainsService,
         dnspublications_service: DNSPublicationsService,
-        dnsresource_repository: Optional[DNSResourceRepository] = None,
+        dnsresource_repository: DNSResourceRepository,
     ):
         super().__init__(context)
         self.domains_service = domains_service
         self.dnspublications_service = dnspublications_service
-        self.dnsresource_repository = (
-            dnsresource_repository
-            if dnsresource_repository
-            else DNSResourceRepository(context)
-        )
+        self.dnsresource_repository = dnsresource_repository
 
     async def get_one(self, query: QuerySpec) -> DNSResource | None:
         return await self.dnsresource_repository.get_one(query=query)

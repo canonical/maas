@@ -1,8 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
-
 from pydantic import IPvAnyAddress
 
 from maascommon.workflows.dhcp import (
@@ -24,15 +22,11 @@ class IPRangesService(Service):
         self,
         context: Context,
         temporal_service: TemporalService,
-        ipranges_repository: Optional[IPRangesRepository] = None,
+        ipranges_repository: IPRangesRepository,
     ):
         super().__init__(context)
         self.temporal_service = temporal_service
-        self.ipranges_repository = (
-            ipranges_repository
-            if ipranges_repository
-            else IPRangesRepository(context)
-        )
+        self.ipranges_repository = ipranges_repository
 
     async def get_dynamic_range_for_ip(
         self, subnet: Subnet, ip: IPvAnyAddress

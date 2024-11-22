@@ -11,6 +11,7 @@ from maasservicelayer.services import (
     ConfigurationsService,
     UsersService,
 )
+from maasservicelayer.services.agents import AgentsServiceCache
 
 
 @pytest.mark.asyncio
@@ -50,3 +51,26 @@ class TestAgentsService:
         apiclient = await agents_service._get_apiclient()
 
         assert apiclient.base_url == "http://example.com/api/2.0/"
+
+    async def test_get_apiclient_is_cached(self) -> None:
+        configurations_service = Mock(ConfigurationsService)
+        configurations_service.get.return_value = "http://example.com"
+        users_service = Mock(UsersService)
+        users_service.get_user_apikeys.return_value = ["key:token:secret"]
+
+        cache = AgentsServiceCache()
+        agents_service = AgentsService(
+            context=Context(),
+            configurations_service=configurations_service,
+            users_service=users_service,
+            cache=cache,
+        )
+
+        apiclient = await agents_service._get_apiclient()
+        assert apiclient.base_url == "http://example.com/api/2.0/"
+        configurations_service.get.assert_called_once()
+
+        await agents_service._get_apiclient()
+        configurations_service.get.assert_called_once()
+
+        assert cache.api_client is not None

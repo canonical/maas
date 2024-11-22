@@ -1,31 +1,41 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+from dataclasses import dataclass
 
 from maasservicelayer.apiclient.client import APIClient
 from maasservicelayer.context import Context
-from maasservicelayer.services._base import Service
+from maasservicelayer.services._base import Service, ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.users import UsersService
+
+
+@dataclass(slots=True)
+class AgentsServiceCache(ServiceCache):
+    api_client: APIClient | None = None
+
+    async def close(self) -> None:
+        if self.api_client:
+            await self.api_client.close()
 
 
 class AgentsService(Service):
     def __init__(
         self,
         context: Context,
-        configurations_service: ConfigurationsService | None = None,
-        users_service: UsersService | None = None,
+        configurations_service: ConfigurationsService,
+        users_service: UsersService,
+        cache: AgentsServiceCache | None = None,
     ):
-        super().__init__(context)
+        super().__init__(context, cache)
         self._apiclient = None
-        self.configurations_service = (
-            configurations_service
-            if configurations_service
-            else ConfigurationsService(context)
-        )
-        self.users_service = (
-            users_service if users_service else UsersService(context)
-        )
+        self.configurations_service = configurations_service
+        self.users_service = users_service
 
+    @staticmethod
+    def build_cache_object() -> AgentsServiceCache:
+        return AgentsServiceCache()
+
+    @Service.from_cache_or_execute(attr="api_client")
     async def _get_apiclient(self) -> APIClient:
         if self._apiclient:
             return self._apiclient

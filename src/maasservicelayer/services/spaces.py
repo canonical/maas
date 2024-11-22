@@ -12,14 +12,10 @@ class SpacesService(Service):
     def __init__(
         self,
         context: Context,
-        spaces_repository: SpacesRepository | None = None,
+        spaces_repository: SpacesRepository,
     ):
         super().__init__(context)
-        self.spaces_repository = (
-            spaces_repository
-            if spaces_repository
-            else SpacesRepository(context)
-        )
+        self.spaces_repository = spaces_repository
 
     async def list(self, token: str | None, size: int) -> ListResult[Space]:
         return await self.spaces_repository.list(token=token, size=size)

@@ -31,15 +31,11 @@ class DNSPublicationsService(Service):
         self,
         context: Context,
         temporal_service: TemporalService,
-        dnspublication_repository: Optional[DNSPublicationRepository] = None,
+        dnspublication_repository: DNSPublicationRepository,
     ):
         super().__init__(context)
-        self.dnspublication_repository = (
-            dnspublication_repository
-            if dnspublication_repository
-            else DNSPublicationRepository(context)
-        )
         self.temporal_service = temporal_service
+        self.dnspublication_repository = dnspublication_repository
 
     async def create(self, resource: CreateOrUpdateResource) -> DNSPublication:
         return await self.dnspublication_repository.create(resource)

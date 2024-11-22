@@ -84,15 +84,13 @@ class ExternalAuthService(Service, RootKeyStore):
         context: Context,
         secrets_service: SecretsService,
         users_service: UsersService,
+        external_auth_repository: ExternalAuthRepository,
         cache: ExternalAuthServiceCache | None = None,
-        external_auth_repository: ExternalAuthRepository | None = None,
     ):
         super().__init__(context, cache)
         self.secrets_service = secrets_service
         self.users_service = users_service
-        self.external_auth_repository = (
-            external_auth_repository or ExternalAuthRepository(context)
-        )
+        self.external_auth_repository = external_auth_repository
 
     @staticmethod
     def build_cache_object() -> ExternalAuthServiceCache:

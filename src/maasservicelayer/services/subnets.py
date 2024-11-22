@@ -25,15 +25,11 @@ class SubnetsService(Service):
         self,
         context: Context,
         temporal_service: TemporalService,
-        subnets_repository: SubnetsRepository | None = None,
+        subnets_repository: SubnetsRepository,
     ):
         super().__init__(context)
         self.temporal_service = temporal_service
-        self.subnets_repository = (
-            subnets_repository
-            if subnets_repository
-            else SubnetsRepository(context)
-        )
+        self.subnets_repository = subnets_repository
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec | None = None
