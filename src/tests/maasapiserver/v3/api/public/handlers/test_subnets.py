@@ -64,7 +64,7 @@ TEST_SUBNET_2 = Subnet(
 
 
 class TestSubnetApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/subnets"
+    BASE_PATH = f"{V3_API_PREFIX}/fabrics/1/vlans/1/subnets"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:

@@ -1,18 +1,43 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from operator import eq
 from typing import Type
 
 from netaddr import IPAddress, IPNetwork
 from pydantic import IPvAnyAddress
-from sqlalchemy import desc, func, select, Table
+from sqlalchemy import desc, func, join, select, Table
 
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ResourceBuilder,
 )
 from maasservicelayer.db.tables import SubnetTable, VlanTable
 from maasservicelayer.models.subnets import Subnet
+
+
+class SubnetClauseFactory(ClauseFactory):
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(SubnetTable.c.id, id))
+
+    @classmethod
+    def with_vlan_id(cls, vlan_id: int) -> Clause:
+        return Clause(condition=eq(SubnetTable.c.vlan_id, vlan_id))
+
+    @classmethod
+    def with_fabric_id(cls, fabric_id: int) -> Clause:
+        return Clause(
+            condition=eq(VlanTable.c.fabric_id, fabric_id),
+            joins=[
+                join(
+                    SubnetTable,
+                    VlanTable,
+                    eq(SubnetTable.c.vlan_id, VlanTable.c.id),
+                )
+            ],
+        )
 
 
 class SubnetResourceBuilder(ResourceBuilder):
@@ -64,11 +89,11 @@ class SubnetResourceBuilder(ResourceBuilder):
     def with_gateway_ip(
         self, gateway_ip: IPvAnyAddress
     ) -> "SubnetResourceBuilder":
-        self._request.set_value(SubnetTable.c.gateway_ip, gateway_ip)
+        self._request.set_value(SubnetTable.c.gateway_ip.name, gateway_ip)
         return self
 
     def with_vlan_id(self, vlan_id: int) -> "SubnetResourceBuilder":
-        self._request.set_value(SubnetTable.c.vlan_id, vlan_id)
+        self._request.set_value(SubnetTable.c.vlan_id.name, vlan_id)
         return self
 
 

@@ -20,6 +20,8 @@ from maasapiserver.v3.api.public.models.responses.subnets import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -29,7 +31,7 @@ class SubnetsHandler(Handler):
     TAGS = ["Subnets"]
 
     @handler(
-        path="/subnets",
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -42,25 +44,36 @@ class SubnetsHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def list_subnets(
+    async def list_fabric_vlan_subnets(
         self,
+        fabric_id: int,
+        vlan_id: int,
         token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
+        query = QuerySpec(
+            where=SubnetClauseFactory.and_clauses(
+                [
+                    SubnetClauseFactory.with_fabric_id(fabric_id),
+                    SubnetClauseFactory.with_vlan_id(vlan_id),
+                ]
+            )
+        )
         subnets = await services.subnets.list(
             token=token_pagination_params.token,
             size=token_pagination_params.size,
+            query=query,
         )
         return SubnetsListResponse(
             items=[
                 SubnetResponse.from_model(
                     subnet=subnet,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/subnets",
+                    self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets",
                 )
                 for subnet in subnets.items
             ],
             next=(
-                f"{V3_API_PREFIX}/subnets?"
+                f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets?"
                 f"{TokenPaginationParams.to_href_format(subnets.next_token, token_pagination_params.size)}"
                 if subnets.next_token
                 else None
@@ -68,7 +81,7 @@ class SubnetsHandler(Handler):
         )
 
     @handler(
-        path="/subnets/{subnet_id}",
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -87,17 +100,22 @@ class SubnetsHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def get_subnet(
+    async def get_fabric_vlan_subnet(
         self,
+        fabric_id: int,
+        vlan_id: int,
         subnet_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        subnet = await services.subnets.get_by_id(subnet_id)
+        subnet = await services.subnets.get_by_id(
+            fabric_id, vlan_id, subnet_id
+        )
         if not subnet:
             return NotFoundResponse()
 
         response.headers["ETag"] = subnet.etag()
         return SubnetResponse.from_model(
-            subnet=subnet, self_base_hyperlink=f"{V3_API_PREFIX}/subnets"
+            subnet=subnet,
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets",
         )
