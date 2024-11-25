@@ -21,6 +21,9 @@ from maasservicelayer.db.repositories.nodes import NodesRepository
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
 )
+from maasservicelayer.db.repositories.service_status import (
+    ServiceStatusRepository,
+)
 from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
@@ -50,6 +53,7 @@ from maasservicelayer.services.secrets import (
     SecretsService,
     SecretsServiceFactory,
 )
+from maasservicelayer.services.service_status import ServiceStatusService
 from maasservicelayer.services.spaces import SpacesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.subnets import SubnetsService
@@ -119,6 +123,10 @@ class ServiceCollectionV3:
     ) -> "ServiceCollectionV3":
         services = cls()
         services.configurations = ConfigurationsService(context=context)
+        services.service_status = ServiceStatusService(
+            context=context,
+            service_status_repository=ServiceStatusRepository(context),
+        )
         services.secrets = await SecretsServiceFactory.produce(
             context=context, config_service=services.configurations
         )

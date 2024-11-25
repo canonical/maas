@@ -655,6 +655,23 @@ SecretTable = Table(
     Column("value", JSONB, nullable=False),
 )
 
+ServiceStatusTable = Table(
+    "maasserver_service",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("name", String(255), nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("status", String(10), nullable=False),
+    Column("status_info", String(255), nullable=False),
+    Column(
+        "node_id",
+        BigInteger,
+        ForeignKey("maasserver_node.id"),
+        nullable=False,
+    ),
+)
+
 SessionTable = Table(
     "django_session",
     METADATA,
