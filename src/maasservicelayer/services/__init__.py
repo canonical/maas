@@ -182,9 +182,6 @@ class ServiceCollectionV3:
             temporal_service=services.temporal,
             interface_repository=InterfaceRepository(context),
         )
-        services.fabrics = FabricsService(
-            context=context, fabrics_repository=FabricsRepository(context)
-        )
         services.spaces = SpacesService(
             context=context, spaces_repository=SpacesRepository(context)
         )
@@ -193,6 +190,11 @@ class ServiceCollectionV3:
             temporal_service=services.temporal,
             nodes_service=services.nodes,
             vlans_repository=VlansRepository(context),
+        )
+        services.fabrics = FabricsService(
+            context=context,
+            vlans_service=services.vlans,
+            fabrics_repository=FabricsRepository(context),
         )
         services.subnets = SubnetsService(
             context=context,

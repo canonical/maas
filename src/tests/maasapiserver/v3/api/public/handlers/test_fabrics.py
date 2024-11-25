@@ -3,18 +3,28 @@
 
 from unittest.mock import Mock
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.fabrics import FabricRequest
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
 from maasapiserver.v3.api.public.models.responses.fabrics import (
+    FabricResponse,
     FabricsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.services import ServiceCollectionV3
@@ -55,7 +65,9 @@ class TestFabricsApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(method="POST", path=self.BASE_PATH),
+        ]
 
     async def test_list_no_other_page(
         self,
@@ -146,5 +158,110 @@ class TestFabricsApi(ApiCommonTests):
         assert "ETag" not in response.headers
 
         error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    # POST /fabric
+    async def test_post_201(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        new_fabric = Fabric(
+            id=1,
+            name="new_fabric",
+            description="new_description",
+            class_type="new_class_type",
+        )
+        new_fabric_request = FabricRequest(
+            name="new_fabric",
+            description="new_description",
+            class_type="new_class_type",
+        )
+
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.create.return_value = new_fabric
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH,
+            json=jsonable_encoder(new_fabric_request),
+        )
+
+        assert response.status_code == 201
+        assert len(response.headers["ETag"]) > 0
+
+        fabric_response = FabricResponse(**response.json())
+
+        assert fabric_response.id == new_fabric.id
+        assert fabric_response.name == new_fabric.name
+        assert fabric_response.description == new_fabric.description
+        assert fabric_response.class_type == new_fabric.class_type
+
+    async def test_post_409(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        new_fabric = Fabric(
+            id=1,
+            name="new_fabric",
+            description="new_description",
+            class_type="new_class_type",
+        )
+        new_fabric_request = FabricRequest(
+            name="new_fabric",
+            description="new_description",
+            class_type="new_class_type",
+        )
+
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.create.side_effect = [
+            new_fabric,
+            AlreadyExistsException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                        message="A resource with such identifiers already exist.",
+                    )
+                ]
+            ),
+        ]
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH,
+            json=jsonable_encoder(new_fabric_request),
+        )
+        assert response.status_code == 201
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH,
+            json=jsonable_encoder(new_fabric_request),
+        )
+        assert response.status_code == 409
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+
+    async def test_post_422(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        new_fabric_request = {"name": None}
+
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.create.return_value = None
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH,
+            json=jsonable_encoder(new_fabric_request),
+        )
+
+        assert response.status_code == 422
+
+        error_response = ErrorBodyResponse(**response.json())
+
         assert error_response.kind == "Error"
         assert error_response.code == 422

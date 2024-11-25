@@ -30,6 +30,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.vlans import Vlan
 
+DEFAULT_VID = 0
 DEFAULT_MTU = 1500
 
 
@@ -53,8 +54,8 @@ class VlansClauseFactory(ClauseFactory):
 
 
 class VlanResourceBuilder(ResourceBuilder):
-    def with_vid(self, vid: int) -> "VlanResourceBuilder":
-        if vid < 0 or vid > 4094:
+    def with_vid(self, vid: int | None = None) -> "VlanResourceBuilder":
+        if vid is not None and (vid < 0 or vid > 4094):
             raise ValidationException(
                 details=[
                     BaseExceptionDetail(
@@ -63,7 +64,7 @@ class VlanResourceBuilder(ResourceBuilder):
                     )
                 ]
             )
-        self._request.set_value(VlanTable.c.vid.name, vid)
+        self._request.set_value(VlanTable.c.vid.name, vid or DEFAULT_VID)
         return self
 
     def with_name(self, name: str | None = None) -> "VlanResourceBuilder":
