@@ -30,7 +30,7 @@ class TestTemporalService:
         await service.post_commit()
 
         mock_temporal.execute_workflow.assert_called_once_with(
-            "test_workflow", None, workflow_id="abc"
+            "test_workflow", None, id="abc", task_queue="region"
         )
 
     async def test_workflow_is_registered(self):

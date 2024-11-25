@@ -4,6 +4,7 @@
 import asyncio
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
+import uuid
 
 from temporalio.client import Client
 
@@ -40,13 +41,17 @@ class TemporalService(Service):
             workflow_name, parameter, workflow_id, wait, args, kwargs = (
                 arguments
             )
+            if not workflow_id:
+                workflow_id = str(uuid.uuid4())
 
             client = await self.get_temporal_client()
+            # TODO: make the task_queue a workflow parameter instead of hardcoding it here.
             if wait:
                 await client.execute_workflow(
                     workflow_name,
                     parameter,
-                    workflow_id=workflow_id,
+                    id=workflow_id,
+                    task_queue="region",
                     *args,
                     **kwargs,
                 )
@@ -54,7 +59,8 @@ class TemporalService(Service):
                 fut = await client.start_workflow(
                     workflow_name,
                     parameter,
-                    workflow_id=workflow_id,
+                    id=workflow_id,
+                    task_queue="region",
                     *args,
                     **kwargs,
                 )
