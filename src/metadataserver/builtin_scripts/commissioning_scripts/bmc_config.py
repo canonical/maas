@@ -1200,12 +1200,22 @@ def main():
             file=sys.stderr,
         )
         sys.exit(os.EX_USAGE)
-    if args.ipmi_k_g and len(args.ipmi_k_g) > 20:
-        print(
-            "ERROR: IPMI K_g key must be 20 characters or less!",
-            file=sys.stderr,
+    if args.ipmi_k_g:
+        # k_g can either be provided as:
+        # - Regular string, limited to 20 characters
+        # - Hex-encoded string, limited to 42 characters ("0x" plus 20 hex pairs)
+        valid_k_g_match = re.search(
+            r"^(0x[a-zA-Z0-9]{40}|[\w\W]{20})$", str(args.ipmi_k_g)
         )
-        sys.exit(os.EX_USAGE)
+        if not valid_k_g_match:
+            print(
+                (
+                    "ERROR: IPMI K_g key must be 20 characters long, or 40 characters "
+                    "long and prefixed with '0x' if in hex-encoded format."
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(os.EX_USAGE)
 
     bmc_config_path = os.environ.get("BMC_CONFIG_PATH")
     if not bmc_config_path:

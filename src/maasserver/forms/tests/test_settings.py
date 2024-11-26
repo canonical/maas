@@ -134,3 +134,30 @@ class TestMAASSessionTimeoutSettings(MAASServerTestCase):
         value = 300
         field = get_config_field("session_length")
         self.assertEqual(value, field.clean(value))
+
+
+class TestIPMIKGConfigSettings(MAASServerTestCase):
+    def test_default_value(self):
+        form = get_config_form("maas_auto_ipmi_k_g_bmc_key")
+        self.assertEqual({"maas_auto_ipmi_k_g_bmc_key": ""}, form.initial)
+
+    def test_valid_nonhex_input(self):
+        input_value = factory.make_string(20)
+        field = get_config_field("maas_auto_ipmi_k_g_bmc_key")
+        self.assertTrue(input_value, field.clean(input_value))
+
+    def test_valid_hex_input(self):
+        input_value = "0x" + factory.make_hex_string(40)
+        field = get_config_field("maas_auto_ipmi_k_g_bmc_key")
+        self.assertTrue(input_value, field.clean(input_value))
+
+    def test_invalid_nonhex_input(self):
+        input_value = factory.make_string(19)
+        field = get_config_field("maas_auto_ipmi_k_g_bmc_key")
+        self.assertRaises(ValidationError, field.clean, input_value)
+
+    def test_invalid_hex_input(self):
+        # Hex-based inputs must be prefixed with "0x"
+        input_value = factory.make_hex_string(40)
+        field = get_config_field("maas_auto_ipmi_k_g_bmc_key")
+        self.assertRaises(ValidationError, field.clean, input_value)

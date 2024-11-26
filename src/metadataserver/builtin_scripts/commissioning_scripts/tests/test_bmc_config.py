@@ -1748,6 +1748,7 @@ class TestMain(MAASTestCase):
         self.mock_parse_args = self.patch(
             bmc_config.argparse.ArgumentParser, "parse_args"
         )
+        self.mock_parse_args.return_value.ipmi_k_g = None
         self.patch(bmc_config, "print")
 
     def test_validates_username_isnt_too_long(self):
@@ -1760,6 +1761,12 @@ class TestMain(MAASTestCase):
 
     def test_validates_ipmi_k_g_isnt_too_long(self):
         self.mock_parse_args.return_value.ipmi_k_g = factory.make_string(21)
+        self.assertRaises(SystemExit, bmc_config.main)
+
+    def test_validates_ipmi_k_g_hex_isnt_too_long(self):
+        self.mock_parse_args.return_value.ipmi_k_g = (
+            "0x" + factory.make_string(41)
+        )
         self.assertRaises(SystemExit, bmc_config.main)
 
     def test_checks_bmc_config_path_env_var_set(self):
