@@ -1,321 +1,134 @@
+;; Welcome to your streamlined Emacs!
+
 > *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/fresh-installation-of-maas" target = "_blank">Let us know.</a>*
 
-This page explains how to install MAAS from scratch.  
+Be sure to check the [MAAS installation requirements](/t/reference-installation-requirements/6233) to make sure that your hardware will support MAAS.
 
-> **Important note**: If you're not already running PostgreSQL 14, it's important to [upgrade](/t/how-to-upgrade-postgresql-v12-to-v14/7203) before installing MAAS 3.4 or higher.  Also, you should review the new PostgreSQL requirements in the [installation requirements document](/t/reference-installation-requirements/6233) before installing MAAS.
 
-## Install from Snap
+## Install MAAS (snap or packages)
 
-To install MAAS from a snap:
+* **Install from [snap](https://snapcraft.io/maas):**
+   ```nohighlight
+   sudo snap install --channel=<version> maas
+   ```
+   Replace `<version>` with the desired MAAS version.
 
-1. Check the [MAAS installation requirements](/t/reference-installation-requirements/6233) to make sure that your hardware will support MAAS.
+* **Install from packages:**
+   ```nohighlight
+   sudo apt-add-repository ppa:maas/<version>
+   sudo apt update
+   sudo apt-get -y install maas
+   ```
+## Post-install setup (POC)
 
-2. Enter the following command:
+There is a proof-of-concept configuration defined ***for the MAAS snap version only***. To initialise the MAAS snap in this POC configuration, use the `--help` flag with `maas init` and follow the instructions. This POC uses the [`maas-test-db`](https://snapcraft.io/maas-test-db).
 
-```nohighlight
-    sudo snap install --channel=X.X maas
-```
+## Post-install setup (production)
 
-    where "X.X" is the MAAS version you want to install (3.5, 3.4, 3.3, etc.).
-	
-3. Enter your account password.
+1. **Disable conflicting NTP:**
+   ```nohighlight
+   sudo systemctl disable --now systemd-timesyncd
+   ```
 
-At this point, the snap will download and install the chosen version.
-
-## Install from packages
-
-To install MAAS from packages:
-
-1. Check the [MAAS installation requirements](/t/reference-installation-requirements/6233) to make sure that your hardware will support MAAS.
-
-2. Add the MAAS PPA to your `apt` repository paths:
-
-```nohighlight
-    sudo apt-add-repository ppa:maas/X.X
-```
-
-   where "X.X" is the MAAS version you want to install (3.5, 3.4, 3.3, etc).
-   
-3. Update your `apt` repository lists:
-
-```nohighlight
-    sudo apt update
-```
-	
-4. Install MAAS with the following command:
-
-```nohighlight
-    sudo apt-get -y install maas
-```
-
-5. Choose "Y" if asked about whether to continue with the install.
-
-## Potential NTP conflicts
-
-When installing MAAS on Ubuntu, there can be conflicts between the existing NTP client, `systemd-timesyncd`, and the NTP client/server provided by MAAS, chrony. This can lead to time synchronisation issues, especially if MAAS is configured with different upstream NTP servers than the ones used by `systemd-timesyncd`. To avoid conflicts, users can manually disable and stop `systemd-timesyncd` using the following command:
-
-```nohighlight
-sudo systemctl disable --now systemd-timesyncd
-```
-
-Also note that support for PostgreSQL 12 has been deprecated in MAAS 3.3 and will be discontinued in MAAS 3.5.
-
-## POC configuration (Snap only)
-
-There is a proof-of-concept configuration defined for the MAAS Snap version. To initialise the MAAS snap in this POC configuration, simply use the `--help` flag with `maas init` and follow the instructions.
- 
-## Production configuration
-
-To install MAAS in a production configuration:
-
-1. Install PostgreSQL on any machine where you want to keep the database with the following commands:
-
-```nohighlight
-    sudo apt update -y
-    sudo apt install -y postgresql
-```
-
-2. Create desired values for the following variables (replace them in the commands below):
-
-```nohighlight
-    $MAAS_DBUSER = ___________
-    $MAAS_DBPASS = ___________
-    $MAAS_DBNAME = ___________
-    $HOSTNAME = _________
-```
-
-Note that for most situations, you can use `localhost` for `$HOSTNAME`.
-
-3. Create a suitable PostgreSQL user:
-
-```nohighlight
-    sudo -i -u postgres psql -c "CREATE USER \"$MAAS_DBUSER\" WITH ENCRYPTED PASSWORD '$MAAS_DBPASS'"
-```
-
-4. Create the MAAS database:
-
-```nohighlight
-    sudo -i -u postgres createdb -O "$MAAS_DBUSER" "$MAAS_DBNAME"
-```
-
-5. Edit `/etc/postgresql/14/main/pg_hba.conf` and add a line for the newly created database:
-
-```nohighlight
+2. **Configure PostgreSQL for production:**
+   ```nohighlight
+   sudo apt install -y postgresql
+   sudo -i -u postgres psql -c "CREATE USER \"$DBUSER\" WITH ENCRYPTED PASSWORD '$DBPASS'"
+   sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"
+   ```
+3. **Edit `/etc/postgresql/14/main/pg_hba.conf`**, adding a line for the newly created database:
+   ```nohighlight
     host    $MAAS_DBNAME    $MAAS_DBUSER    0/0     md5
-```
 
-6. Initialise MAAS via the following command:
+4. **Initialize MAAS with the database:**
+   ```nohighlight
+   sudo maas init region+rack --database-uri "postgres://$DBUSER:$DBPASS@$HOSTNAME/$DBNAME"
+   ```
 
-```nohighlight
-    sudo maas init region+rack --database-uri "postgres://$MAAS_DBUSER:$MAAS_DBPASS@$HOSTNAME/$MAAS_DBNAME"
-```
-	
-## Distributed environment (packages only)
+   ```
+5. **Create an admin user:**
+   ```bash
+   sudo maas create admin --username=$PROFILE --email=$EMAIL_ADDRESS
+   ```
 
-You can set up a distributed environment when you install with MAAS packages. To run MAAS region and rack controllers on separate machines:
+## Upgrading MAAS
 
-1. Check the [MAAS installation requirements](/t/reference-installation-requirements/6233) to make sure that your hardware will support MAAS.
+* **Upgrade MAAS (snap):**
+   ```bash
+   sudo snap refresh maas --channel=<version>/stable
+   ```
 
-2. Add the MAAS PPA to your `apt` repository paths on both region and rack target hosts:
+* **Upgrade MAAS (packages):**
+   ```bash
+   sudo apt-add-repository ppa:maas/<version>
+   sudo do-release-upgrade --allow-third-party
+   ```
 
-```nohighlight
-    sudo apt-add-repository ppa:maas/X.X
-```
-	
-   where "X.X" is the MAAS version you want to install.
+### Notes
 
-3. Update your `apt` repository lists on both region and rack hosts:
+- For PostgreSQL 12 users, [upgrade to PostgreSQL 14](/t/how-to-upgrade-postgresql-v12-to-v14/7203) before installing or upgrading to MAAS 3.5+.
+- Review the new PostgreSQL requirements in the [installation requirements document](/t/reference-installation-requirements/6233) before installing MAAS.
+- For Ubuntu 20.04 LTS users, upgrade to Ubuntu 22.04 before moving to MAAS 3.5+.
+- Always [back up your MAAS](/t/how-to-back-up-maas/5096) server before upgrading.
 
-```nohighlight
-    sudo apt update
-```
-	
-4. Install the MAAS region controller on the target region host:
+## Special upgrade situations
 
-```nohighlight
-    sudo apt install maas-region-controller
-```
+For multi-node setups, upgrade rack nodes before region nodes. For BMC setups with duplicate IP/username combos, ensure unique combinations to avoid migration failures.
 
-5. Install the MAAS rack controller on the target rack host:
+## Configuring and starting MAAS
 
-```nohighlight
-    sudo apt install maas-rack-controller
-```
-	
-6. Register the rack controller with the region controller by running the following command on the rack host:
+### Checking MAAS status
 
-```nohighlight
-    sudo maas-rack register
-```
-
-These two steps will lead you through two similar <code>apt</code> install sequences.
-
-## Create an admin user
-
-To create a MAAS administrative user:
-
-1. Create a MAAS administrator user to access the web UI:
-
-```nohighlight
-    sudo maas createadmin --username=$PROFILE --email=$EMAIL_ADDRESS
-```
-    Substitute `$PROFILE` with the administrative MAAS username you wish to create. `$EMAIL_ADDRESS` is an email address you may type in at random (currently, MAAS does not use this email address). The `createadmin` option will cause MAAS to ask for an SSH key.
-
-2. To use an SSH key associated with your launchpad accounts, enter `lp:$USERNAME` (substitute your LP username for `$USERNAME`). 
-
-3. Alternatively, to use an SSH key associated with your github account, enter `gh:$USERNAME` (substitute your github username for `$USERNAME`)
-
-## Check MAAS status
-
-To check the status of running services, enter:
-
-```nohighlight
+To check the status of MAAS services, use:
+```bash
 sudo maas status
 ```
-
-Typical output looks like this:
-
-```nohighlight
-bind9                            RUNNING   pid 7999, uptime 0:09:17
-dhcpd                            STOPPED   Not started
-dhcpd6                           STOPPED   Not started
-ntp                              RUNNING   pid 8598, uptime 0:05:42
-postgresql                       RUNNING   pid 8001, uptime 0:09:17
-proxy                            STOPPED   Not started
-rackd                            RUNNING   pid 8000, uptime 0:09:17
-regiond:regiond-0                RUNNING   pid 8003, uptime 0:09:17
-regiond:regiond-1                RUNNING   pid 8008, uptime 0:09:17
-regiond:regiond-2                RUNNING   pid 8005, uptime 0:09:17
-regiond:regiond-3                RUNNING   pid 8015, uptime 0:09:17
-tgt                              RUNNING   pid 8040, uptime 0:09:15
-```
-Your mileage may vary.
-
-## More init options
-
-The `init` command can takes optional arguments. To list them, as well as read a brief description of each, you can enter:
-
-```nohighlight
-sudo maas init --help
+Output example:
+```bash
+bind9        RUNNING   pid 7999, uptime 0:09:17
+dhcpd        STOPPED   Not started
+postgresql   RUNNING   pid 8001, uptime 0:09:17
+...
 ```
 
-## Configure MAAS with the UI
+### MAAS UI setup
 
-To configure MAAS for first-time use with the MAAS UI:
+1. **Access the UI:**
+   ```http://$API_HOST:5240/MAAS```
+   Log in with the credentials created during installation.
+2. **DNS forwarder:** Set to a suitable value (e.g., 8.8.8.8).
+3. **Image import:** Select at least one Ubuntu LTS image.
+4. **SSH key import:** Choose between Launchpad, GitHub, or upload a key from `.ssh/id_rsa.pub`.
 
-1. Access MAAS at this address, where `$API_HOST` is the hostname or IP address of the region API server, which was set during installation:
+### MAAS CLI setup
 
-```nohighlight
-    http://${API_HOST}:5240/MAAS
-```
-2. Log in at the prompts, with the login information you created when initialising MAAS.
+1. **Login:**
+   ```bash
+   maas login $PROFILE $MAAS_URL $(cat api-key-file)
+   ```
+2. **Configure DNS:**
+   ```bash
+   maas $PROFILE maas set-config name=upstream_dns value="8.8.8.8"
+   ```
+3. **Add SSH key:**
+   ```bash
+   maas $PROFILE sshkeys create "key=$SSH_KEY"
+   ```
 
-3. On the first welcome screen, set the DNS forwarder to a suitable value, e.g., `8.8.8.8`. This could be your own internal DNS server, if you have one.
+## Enabling DHCP
 
-4. Select an Ubuntu image to import; you may be required to select at least one LTS version.
+### UI
+1. **Navigate to Subnets > VLAN > Configure DHCP.**
+2. **Select the appropriate DHCP options (Managed or Relay).**
+3. **Save and apply changes.**
 
-5. Click *Continue*; a screen labelled, “SSH keys for admin:” appears.
-
-6. In the *Source* drop-down, select “Launchpad,” “Github,” or “Upload.”  
-
-7. If you want to upload your SSH public key from Launchpad, you would enter the following, where `<username>` is your Launchpad username:
-
-```nohighlight
-    lp:<username>
-```
-
-8. If you want to upload your github public SSH key, you would enter the following, where `<username>` is your GitHub username:
-
-```nohighlight
-    gh:<username>
-```
-
-9. If you want to use your existing public key from your home directory, select *Upload*.
-
-10. Copy your entire public key from `.ssh/id_rsa.pub` (or wherever you may have stored the key).
-
-11. Paste the public key into the block labelled “Public key.”  
-
-12. Press the “Import” button to import this key.
-
-13. You should see a message that MAAS has been successfully set up. Click *Go to the Dashboard* to proceed.
-
-14. Select *Subnets* from the top menu.
-
-15. Choose the VLAN on which you want to enable DHCP.
-
-16. Select *Enable DHCP*.
-
-You should now be able to add, commission, and deploy machines.
-
-## Configure MAAS with the CLI
-
-Login to the MAAS CLI via the following process:
-
-1. Generate the API-key for the login you're going to use, replacing `$PROFILE` with whatever username you set during the `createadmin` part of the install process.
-
-```nohighlight
-    sudo maas apikey --username=$PROFILE > api-key-file
-```
-
-2. Login with the following command, substituting `$MAAS_URL` with the URL that was returned to you when you initialised MAAS, for example, `192.168.43.251:5240/MAAS`. :
-
-```nohighlight
-    maas login $PROFILE $MAAS_URL < (cat api-key-file) 
-```
-
-3. Set upstream DNS (8.8.8.8 is always a reliable value):
-
-```nohighlight
-    maas $PROFILE maas set-config name=upstream_dns value="8.8.8.8"
-```
-
-4. Add a public SSH key to a MAAS user account:
-
-```nohighlight
-    maas $PROFILE sshkeys create "key=$SSH_KEY"
-```
-
-5. See what images you may have already downloaded:
-
-```nohighlight
-    maas $PROFILE boot-resources read | jq -r '.[] | "\(.name)\t\(.architecture)"'
-```
-
-6. Select an image(s) for download (e.g., "trusty" in this example):
-
-```nohighlight
-    maas $PROFILE boot-source-selections create 1 os="ubuntu" release="trusty" arches="amd64" subarches="*"  labels="*"
-```
-
-7. Import your selected image(s):
-
-```nohighlight
-    maas admin boot-resources import
-```
-
-8. Identify a valid fabric ID for DHCP (returns `"fabric_id": $FABRIC_ID,`):
-
-```nohighlight
-    maas $PROFILE subnet read $SUBNET_CIDR | grep fabric_id
-```
-	
-9. Find the name of the primary rack controller:
-
-```nohighlight
-    maas $PROFILE rack-controllers read | grep hostname | cut -d '"' -f 4
-```
-
-10. Create an IP range for DHCP (in this case, a dynamic range):
-
-```nohighlight
-    maas $PROFILE ipranges create type=dynamic start_ip=$START_IP end_ip=$END_IP
-```
-
-11. Use this collected information to turn on DHCP:
-
-```nohighlight
-    maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True primary_rack=$RACK_CONTR_HOSTNAME
-```
-
-You should now be able to add, commission, and deploy machines.
+### CLI
+1. **Enable DHCP:**
+   ```bash
+   maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True \
+       primary_rack=$PRIMARY_RACK_CONTROLLER
+   ```
+2. **Set default gateway:**
+   ```bash
+   maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
+   ```
