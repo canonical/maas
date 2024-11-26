@@ -60,19 +60,21 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_supported_commissioning_releases(self):
         self.patch_autospec(UbuntuDistroInfo, "is_lts").return_value = True
         self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
-            "precise",
-            "trusty",
-            "vivid",
-            "wily",
             "xenial",
+            "bionic",
+            "focal",
+            "jammy",
+            "noble",
         ]
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
-        self.assertSequenceEqual(["vivid", "wily", "xenial"], releases)
+        self.assertSequenceEqual(
+            ["bionic", "focal", "jammy", "noble"], releases
+        )
 
     def test_get_supported_commissioning_releases_excludes_non_lts(self):
-        supported = ["precise", "trusty", "vivid", "wily", "xenial"]
+        supported = ["bionic", "focal", "jammy", "noble"]
         self.patch_autospec(
             UbuntuDistroInfo, "supported"
         ).return_value = supported
