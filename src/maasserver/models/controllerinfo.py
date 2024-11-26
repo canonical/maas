@@ -59,7 +59,7 @@ class ControllerInfoManager(Manager):
     def set_versions_info(self, controller, versions):
         details = {
             "install_type": versions.install_type,
-            "version": versions.current.version,
+            "version": str(MAASVersion.from_string(versions.current.version)),
             # initialize other fields as null in case the controller is
             # upgraded from one install type to another
             "update_version": "",
@@ -87,7 +87,9 @@ class ControllerInfoManager(Manager):
         if versions.update:
             details.update(
                 {
-                    "update_version": versions.update.version,
+                    "update_version": str(
+                        MAASVersion.from_string(versions.update.version)
+                    ),
                     "update_first_reported": datetime.now(),
                 }
             )

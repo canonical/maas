@@ -290,7 +290,7 @@ class TestInnerStartUp(MAASServerTestCase):
         with post_commit_hooks:
             start_up.inner_start_up()
         region = RegionController.objects.first()
-        self.assertEqual(region.version, "1:3.1.0-1234-g.deadbeef")
+        self.assertEqual(region.version, "3.1.0-1234-g.deadbeef")
         self.assertEqual(region.info.install_type, "deb")
 
     def test_sets_vault_flag_disabled(self):
