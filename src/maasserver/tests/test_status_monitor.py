@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the status monitor module."""
@@ -384,6 +384,33 @@ class TestStatusMonitorService(MAASServerTestCase):
         # Advancing the clock one more second causes another call to
         # `check_status`.
         service.clock.advance(1)
+        mock_check_status.assert_called_once_with()
+
+    def test_failures_do_not_stop_the_timer_job(self):
+        mock_check_status = self.patch(status_monitor, "check_status")
+        mock_check_status.side_effect = Exception("BOOM")
+        self.patch(status_monitor, "deferToDatabase", maybeDeferred)
+
+        service = StatusMonitorService()
+        # Use a deterministic clock instead of the reactor for testing.
+        service.clock = Clock()
+
+        # The interval is stored as `step` by TimerService,
+        # StatusMonitorService's parent class.
+        interval = 60  # seconds.
+        self.assertEqual(service.step, interval)
+
+        service.startService()
+        mock_check_status.assert_called_once_with()
+        mock_check_status.reset_mock()
+
+        # Call the function
+        service.clock.advance(interval)
+        mock_check_status.assert_called_once_with()
+        mock_check_status.reset_mock()
+
+        # The function should be called again even if the previous call has crashed
+        service.clock.advance(interval)
         mock_check_status.assert_called_once_with()
 
     def test_interval_can_be_set(self):
