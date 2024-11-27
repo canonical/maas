@@ -21,8 +21,10 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -67,6 +69,7 @@ class TestFabricsApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
         ]
 
     async def test_list_no_other_page(
@@ -260,6 +263,114 @@ class TestFabricsApi(ApiCommonTests):
         )
 
         assert response.status_code == 422
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    # PUT /fabric/{fabric_id}
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        updated_fabric = TEST_FABRIC
+        updated_fabric.name = "updated_name"
+        updated_fabric.description = "updated_description"
+        updated_fabric.class_type = "updated_class_type"
+
+        update_fabric_request = FabricRequest(
+            name="updated_name",
+            description="updated_description",
+            class_type="updated_class_type",
+        )
+
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.update_by_id.return_value = updated_fabric
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{str(TEST_FABRIC.id)}",
+            json=jsonable_encoder(update_fabric_request),
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        updated_fabric_response = FabricResponse(**response.json())
+
+        assert updated_fabric_response.id == updated_fabric.id
+        assert updated_fabric_response.name == updated_fabric.name
+        assert (
+            updated_fabric_response.description == updated_fabric.description
+        )
+        assert updated_fabric_response.class_type == updated_fabric.class_type
+
+    async def test_put_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        update_fabric_request = FabricRequest(
+            name="updated_name",
+            description="updated_description",
+            class_type="updated_class_type",
+        )
+
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.update_by_id.side_effect = NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message="Fabric with id 99 does not exist.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/99",
+            json=jsonable_encoder(update_fabric_request),
+        )
+
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    @pytest.mark.parametrize(
+        "update_fabric_request",
+        [
+            {"name": None},
+            {"name": "xyz$123"},
+        ],
+    )
+    async def test_put_422(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        update_fabric_request: dict[str, str],
+    ) -> None:
+        update_fabric_request = FabricRequest(
+            name="updated_name",
+            description="updated_description",
+            class_type="updated_class_type",
+        )
+
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.update_by_id.side_effect = (
+            RequestValidationError(errors=[])
+        )
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_fabric_request),
+        )
+
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
 
         error_response = ErrorBodyResponse(**response.json())
 

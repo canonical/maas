@@ -147,3 +147,41 @@ class FabricsHandler(Handler):
             fabric=fabric,
             self_base_hyperlink=f"{V3_API_PREFIX}/fabrics",
         )
+
+    @handler(
+        path="/fabrics/{fabric_id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": FabricResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_fabric(
+        self,
+        fabric_id: int,
+        fabric_request: FabricRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        now = utcnow()
+        fabric = await services.fabrics.update_by_id(
+            id=fabric_id,
+            resource=fabric_request.to_builder().with_updated(now).build(),
+        )
+
+        response.headers["ETag"] = fabric.etag()
+        return FabricResponse.from_model(
+            fabric=fabric, self_base_hyperlink=f"{V3_API_PREFIX}/fabrics"
+        )

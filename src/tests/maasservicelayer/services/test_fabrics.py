@@ -94,3 +94,39 @@ class TestFabricsService:
         assert create_vlan_args["name"] == "Default VLAN"
         assert create_vlan_args["mtu"] == 1500
         assert create_vlan_args["dhcp_on"] is False
+
+    async def test_update_by_id(self) -> None:
+        now = utcnow()
+        fabric = Fabric(
+            id=1,
+            name="fabric",
+            description="description",
+            class_type="class",
+            created=now,
+            updated=now,
+        )
+
+        vlans_service_mock = Mock(VlansService)
+        fabrics_repository_mock = Mock(FabricsRepository)
+        fabrics_repository_mock.update_by_id.return_value = fabric
+        fabrics_service = FabricsService(
+            context=Context(),
+            vlans_service=vlans_service_mock,
+            fabrics_repository=fabrics_repository_mock,
+        )
+
+        resource = (
+            FabricsResourceBuilder()
+            .with_name(fabric.name)
+            .with_description(fabric.description)
+            .with_class_type(fabric.class_type)
+            .with_created(fabric.created)
+            .with_updated(fabric.updated)
+            .build()
+        )
+
+        await fabrics_service.update_by_id(id=fabric.id, resource=resource)
+
+        fabrics_repository_mock.update_by_id.assert_called_once_with(
+            id=fabric.id, resource=resource
+        )

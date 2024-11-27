@@ -48,3 +48,10 @@ class FabricsService(Service):
 
     async def get_by_id(self, id: int) -> Fabric | None:
         return await self.fabrics_repository.get_by_id(id=id)
+
+    async def update_by_id(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> Fabric:
+        return await self.fabrics_repository.update_by_id(
+            id=id, resource=resource
+        )
