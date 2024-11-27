@@ -1518,6 +1518,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         constraints = {
             "arch": arch,
             "not_arch": arch,
+            "system_id": "asfghc",
             "cpu_count": random.randint(1, 32),
             "cpu_speed": random.randint(1, 32),
             "devices": "vendor_id=8086",
@@ -1644,6 +1645,15 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         [node1.tags.add(tag) for tag in tags]
         constraints = {
             "tags": [tag.name[len("tag-") + 1 :] for tag in tags],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_system_id_filter(self):
+        system_id = factory.make_name("abcdef")
+        node1 = factory.make_Node(system_id=system_id)
+        factory.make_Node()
+        constraints = {
+            "system_id": system_id[:6],
         }
         self.assertConstrainedNodes([node1], constraints)
 
