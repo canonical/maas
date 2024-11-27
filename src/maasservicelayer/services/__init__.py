@@ -184,14 +184,16 @@ class ServiceCollectionV3:
             temporal_service=services.temporal,
             interface_repository=InterfaceRepository(context),
         )
-        services.spaces = SpacesService(
-            context=context, spaces_repository=SpacesRepository(context)
-        )
         services.vlans = VlansService(
             context=context,
             temporal_service=services.temporal,
             nodes_service=services.nodes,
             vlans_repository=VlansRepository(context),
+        )
+        services.spaces = SpacesService(
+            context=context,
+            vlans_service=services.vlans,
+            spaces_repository=SpacesRepository(context),
         )
         services.fabrics = FabricsService(
             context=context,

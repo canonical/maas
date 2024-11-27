@@ -45,6 +45,10 @@ class VlansClauseFactory(ClauseFactory):
         return Clause(condition=eq(VlanTable.c.fabric_id, fabric_id))
 
     @classmethod
+    def with_space_id(cls, space_id: int) -> Clause:
+        return Clause(condition=eq(VlanTable.c.space_id, space_id))
+
+    @classmethod
     def with_system_id(cls, system_id: str) -> Clause:
         return Clause(condition=eq(NodeTable.c.system_id, system_id))
 

@@ -21,8 +21,10 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -66,6 +68,7 @@ class TestSpaceApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     async def test_list_no_other_page(
@@ -265,3 +268,52 @@ class TestSpaceApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    # DELETE /spaces/{space_id}
+    async def test_delete_204(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.delete_by_id.side_effect = None
+
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 204
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.delete_by_id.side_effect = [
+            PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                        message="The resource etag 'wrong_etag' did not match 'correct-etag'.",
+                    )
+                ]
+            ),
+            None,
+        ]
+
+        failed_response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1",
+            headers={"if-match": "wrong-etag"},
+        )
+        assert failed_response.status_code == 412
+        error_response = ErrorBodyResponse(**failed_response.json())
+        assert error_response.code == 412
+        assert error_response.message == "A precondition has failed."
+        assert (
+            error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
+        )
+
+        success_response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1",
+            headers={"if-match": "correct-etag"},
+        )
+        assert success_response.status_code == 204
