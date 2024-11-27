@@ -3,6 +3,7 @@
 
 from unittest.mock import Mock
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
@@ -11,10 +12,19 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.spaces import SpaceRequest
 from maasapiserver.v3.api.public.models.responses.spaces import (
+    SpaceResponse,
     SpacesListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.spaces import Space
 from maasservicelayer.services import ServiceCollectionV3
@@ -54,7 +64,9 @@ class TestSpaceApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(method="POST", path=self.BASE_PATH),
+        ]
 
     async def test_list_no_other_page(
         self,
@@ -147,6 +159,108 @@ class TestSpaceApi(ApiCommonTests):
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    # POST /spaces
+    async def test_post_201(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        create_space_request = SpaceRequest(
+            name=TEST_SPACE.name,
+            description=TEST_SPACE.description,
+        )
+
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.create.return_value = TEST_SPACE
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}",
+            json=jsonable_encoder(create_space_request),
+        )
+
+        assert response.status_code == 201
+        assert len(response.headers["ETag"]) > 0
+
+        space_response = SpaceResponse(**response.json())
+
+        assert space_response.name == create_space_request.name
+        assert space_response.description == create_space_request.description
+        assert (
+            space_response.vlans.href
+            == f"{V3_API_PREFIX}/vlans?filter=space_id eq {space_response.id}"
+        )
+        assert (
+            space_response.subnets.href
+            == f"{V3_API_PREFIX}/subnets?filter=space_id eq {space_response.id}"
+        )
+        assert (
+            space_response.hal_links.self.href
+            == f"{self.BASE_PATH}/{space_response.id}"
+        )
+
+    async def test_post_409(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        create_space_request = SpaceRequest(
+            name=TEST_SPACE.name,
+            description=TEST_SPACE.description,
+        )
+
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.create.side_effect = [
+            TEST_SPACE,
+            AlreadyExistsException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                        message="A resource with such identifiers already exist.",
+                    )
+                ]
+            ),
+        ]
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}",
+            json=jsonable_encoder(create_space_request),
+        )
+        assert response.status_code == 201
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}",
+            json=jsonable_encoder(create_space_request),
+        )
+        assert response.status_code == 409
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+        assert len(error_response.details) == 1
+        assert error_response.details[0].type == "UniqueConstraintViolation"
+        assert "already exist" in error_response.details[0].message
+
+    async def test_post_422(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        create_space_request = {"name": ""}
+
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.create.side_effect = ValueError(
+            "Invalid entity name."
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}",
+            json=jsonable_encoder(create_space_request),
+        )
+        assert response.status_code == 422
 
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"

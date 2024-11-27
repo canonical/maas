@@ -5,6 +5,7 @@ from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
     ValidationErrorBodyResponse,
@@ -13,6 +14,7 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.spaces import SpaceRequest
 from maasapiserver.v3.api.public.models.responses.spaces import (
     SpaceResponse,
     SpacesListResponse,
@@ -21,6 +23,7 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.utils.date import utcnow
 
 
 class SpacesHandler(Handler):
@@ -96,6 +99,44 @@ class SpacesHandler(Handler):
         if not space:
             return NotFoundResponse()
 
+        response.headers["ETag"] = space.etag()
+        return SpaceResponse.from_model(
+            space=space, self_base_hyperlink=f"{V3_API_PREFIX}/spaces"
+        )
+
+    @handler(
+        path="/spaces",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {
+                "model": SpaceResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            409: {"model": ConflictBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def create_space(
+        self,
+        response: Response,
+        space_request: SpaceRequest,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        now = utcnow()
+        space = await services.spaces.create(
+            resource=space_request.to_builder()
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
         response.headers["ETag"] = space.etag()
         return SpaceResponse.from_model(
             space=space, self_base_hyperlink=f"{V3_API_PREFIX}/spaces"

@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.spaces import Space
@@ -22,3 +23,6 @@ class SpacesService(Service):
 
     async def get_by_id(self, id: int) -> Space | None:
         return await self.spaces_repository.get_by_id(id=id)
+
+    async def create(self, resource: CreateOrUpdateResource) -> Space:
+        return await self.spaces_repository.create(resource=resource)
