@@ -13,14 +13,13 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
-from maasapiserver.v3.api.public.models.requests.subnets import (
-    SubnetCreateRequest,
-)
+from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
 from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
@@ -82,7 +81,10 @@ class TestSubnetApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return [Endpoint(method="POST", path=self.BASE_PATH)]
+        return [
+            Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+        ]
 
     async def test_list_no_other_page(
         self,
@@ -206,7 +208,7 @@ class TestSubnetApi(ApiCommonTests):
             fabric_id=1,
             space_id=None,
         )
-        request = SubnetCreateRequest(cidr=TEST_SUBNET_2.cidr)
+        request = SubnetRequest(cidr=TEST_SUBNET_2.cidr)
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=jsonable_encoder(request)
         )
@@ -222,8 +224,53 @@ class TestSubnetApi(ApiCommonTests):
         services_mock.subnets.create.return_value = TEST_SUBNET_2
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_by_id.return_value = None
-        request = SubnetCreateRequest(cidr=TEST_SUBNET_2.cidr)
+        request = SubnetRequest(cidr=TEST_SUBNET_2.cidr)
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=jsonable_encoder(request)
+        )
+        assert response.status_code == 404
+
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        modified_subnet = TEST_SUBNET_2
+        modified_subnet.name = "modified"
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.update.return_value = modified_subnet
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.get_by_id.return_value = Vlan(
+            id=1,
+            vid=1,
+            name="test_vlan",
+            description="test_description",
+            mtu=1500,
+            dhcp_on=False,
+            external_dhcp=None,
+            primary_rack_id=None,
+            secondary_rack_id=None,
+            relay_vlan=None,
+            fabric_id=1,
+            space_id=None,
+        )
+        request = SubnetRequest(cidr=TEST_SUBNET_2.cidr, name="modified")
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1", json=jsonable_encoder(request)
+        )
+        assert response.status_code == 200
+
+    async def test_put_404_vlan_not_in_fabric(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        modified_subnet = TEST_SUBNET_2
+        modified_subnet.name = "modified"
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.update.side_effect = NotFoundException()
+        request = SubnetRequest(cidr=TEST_SUBNET_2.cidr, name="modified")
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1", json=jsonable_encoder(request)
         )
         assert response.status_code == 404

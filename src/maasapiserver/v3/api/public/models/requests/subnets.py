@@ -10,11 +10,10 @@ from maasapiserver.v3.api.public.models.requests.base import (
 )
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.repositories.subnets import SubnetResourceBuilder
-from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.validators import IPv4v6Network
 
 
-class SubnetCreateRequest(OptionalNamedBaseModel):
+class SubnetRequest(OptionalNamedBaseModel):
     description: Optional[str] = Field(
         description="The description of the subnet.", default=None
     )
@@ -76,7 +75,6 @@ class SubnetCreateRequest(OptionalNamedBaseModel):
             raise ValueError("gateway IP must be within CIDR range.")
 
     def to_builder(self) -> SubnetResourceBuilder:
-        now = utcnow()
         builder = (
             SubnetResourceBuilder()
             .with_name(self.name if self.name else str(self.cidr))
@@ -90,7 +88,5 @@ class SubnetCreateRequest(OptionalNamedBaseModel):
             .with_active_discovery(self.active_discovery)
             .with_managed(self.managed)
             .with_disabled_boot_architectures(self.disabled_boot_architectures)
-            .with_created(now)
-            .with_updated(now)
         )
         return builder

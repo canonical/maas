@@ -67,10 +67,10 @@ class SubnetsService(Service):
         )
         return subnet
 
-    async def update_by_id(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> Subnet | None:
-        subnet = await self.subnets_repository.update_by_id(id, resource)
+    async def update(
+        self, query: QuerySpec, resource: CreateOrUpdateResource
+    ) -> Subnet:
+        subnet = await self.subnets_repository.update(query, resource)
         if subnet:
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,

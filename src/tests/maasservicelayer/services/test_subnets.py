@@ -164,7 +164,7 @@ class TestSubnetsService:
         )
 
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.update_by_id.return_value = subnet
+        subnets_repository_mock.update.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
 
@@ -189,12 +189,10 @@ class TestSubnetsService:
             .with_updated(subnet.updated)
             .build()
         )
+        query = Mock(QuerySpec)
+        await subnets_service.update(query, resource)
 
-        await subnets_service.update_by_id(subnet.id, resource)
-
-        subnets_repository_mock.update_by_id.assert_called_once_with(
-            subnet.id, resource
-        )
+        subnets_repository_mock.update.assert_called_once_with(query, resource)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[subnet.id]),

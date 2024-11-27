@@ -6,17 +6,15 @@ from ipaddress import IPv4Address, IPv4Network, IPv6Address
 from pydantic import IPvAnyAddress, ValidationError
 import pytest
 
-from maasapiserver.v3.api.public.models.requests.subnets import (
-    SubnetCreateRequest,
-)
+from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.utils.validators import IPv4v6Network
 
 
-class TestSubnetCreateRequest:
+class TestSubnetRequest:
     def test_mandatory_params(self) -> None:
         with pytest.raises(ValidationError) as e:
-            SubnetCreateRequest()
+            SubnetRequest()
 
         assert len(e.value.errors()) == 1
         assert e.value.errors()[0]["loc"][0] == "cidr"
@@ -35,10 +33,10 @@ class TestSubnetCreateRequest:
         self, cidr: IPv4v6Network, is_valid: bool
     ) -> None:
         if is_valid:
-            SubnetCreateRequest(cidr=cidr)
+            SubnetRequest(cidr=cidr)
         else:
             with pytest.raises(ValueError):
-                SubnetCreateRequest(cidr=cidr)
+                SubnetRequest(cidr=cidr)
 
     @pytest.mark.parametrize(
         "gateway_ip, cidr, is_valid,",
@@ -54,13 +52,13 @@ class TestSubnetCreateRequest:
         self, gateway_ip: IPvAnyAddress, cidr: IPv4v6Network, is_valid: bool
     ) -> None:
         if is_valid:
-            SubnetCreateRequest(cidr=cidr, gateway_ip=gateway_ip)
+            SubnetRequest(cidr=cidr, gateway_ip=gateway_ip)
         else:
             with pytest.raises(ValueError):
-                SubnetCreateRequest(cidr=cidr, gateway_ip=gateway_ip)
+                SubnetRequest(cidr=cidr, gateway_ip=gateway_ip)
 
     def test_defaults(self):
-        request = SubnetCreateRequest(cidr=IPv4Network("10.0.0.1"))
+        request = SubnetRequest(cidr=IPv4Network("10.0.0.1"))
         assert request.name is None
         assert request.description is None
         assert request.rdns_mode == RdnsMode.DEFAULT
@@ -74,9 +72,7 @@ class TestSubnetCreateRequest:
 
     def test_to_builder(self) -> None:
         resource = (
-            SubnetCreateRequest(cidr=IPv4Network("10.0.0.1"))
-            .to_builder()
-            .build()
+            SubnetRequest(cidr=IPv4Network("10.0.0.1")).to_builder().build()
         )
         assert resource.get_values()["name"] == "10.0.0.1/32"
         assert resource.get_values()["description"] == ""
