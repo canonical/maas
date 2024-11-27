@@ -3,17 +3,18 @@
 
 from typing import Optional
 
-from pydantic import IPvAnyAddress, IPvAnyNetwork
+from pydantic import IPvAnyAddress
 
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.utils.validators import IPv4v6Network
 
 
 class Subnet(MaasTimestampedBaseModel):
     name: Optional[str]
     description: Optional[str]
-    cidr: IPvAnyNetwork
-    # TODO: move RDNS_MODE to enum and change the type here
-    rdns_mode: int
+    cidr: IPv4v6Network
+    rdns_mode: RdnsMode
     gateway_ip: Optional[IPvAnyAddress]
     dns_servers: Optional[list[str]]
     allow_dns: bool

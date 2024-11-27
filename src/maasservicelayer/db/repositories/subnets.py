@@ -4,17 +4,27 @@
 from operator import eq
 from typing import Type
 
-from netaddr import IPAddress, IPNetwork
+from netaddr import IPAddress
 from pydantic import IPvAnyAddress
 from sqlalchemy import desc, func, join, select, Table
 
+from maascommon.bootmethods import find_boot_method_by_arch_or_octet
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ResourceBuilder,
 )
 from maasservicelayer.db.tables import SubnetTable, VlanTable
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.utils.validators import IPv4v6Network
 
 
 class SubnetClauseFactory(ClauseFactory):
@@ -41,7 +51,7 @@ class SubnetClauseFactory(ClauseFactory):
 
 
 class SubnetResourceBuilder(ResourceBuilder):
-    def with_cidr(self, cidr: IPNetwork) -> "SubnetResourceBuilder":
+    def with_cidr(self, cidr: IPv4v6Network) -> "SubnetResourceBuilder":
         self._request.set_value(SubnetTable.c.cidr.name, cidr)
         return self
 
@@ -49,7 +59,12 @@ class SubnetResourceBuilder(ResourceBuilder):
         self._request.set_value(SubnetTable.c.name.name, name)
         return self
 
-    def with_description(self, description: str) -> "SubnetResourceBuilder":
+    def with_description(
+        self, description: str | None
+    ) -> "SubnetResourceBuilder":
+        # inherited from the django model where it's empty by default.
+        if description is None:
+            description = ""
         self._request.set_value(SubnetTable.c.description.name, description)
         return self
 
@@ -61,7 +76,7 @@ class SubnetResourceBuilder(ResourceBuilder):
         self._request.set_value(SubnetTable.c.allow_proxy.name, allow_proxy)
         return self
 
-    def with_rdns_mode(self, rdns_mode: int) -> "SubnetResourceBuilder":
+    def with_rdns_mode(self, rdns_mode: RdnsMode) -> "SubnetResourceBuilder":
         self._request.set_value(SubnetTable.c.rdns_mode.name, rdns_mode)
         return self
 
@@ -80,16 +95,40 @@ class SubnetResourceBuilder(ResourceBuilder):
     def with_disabled_boot_architectures(
         self, disabled_boot_architectures: list[str]
     ) -> "SubnetResourceBuilder":
+        disabled_boot_method_names = []
+        for disabled_arch in disabled_boot_architectures:
+            boot_method = find_boot_method_by_arch_or_octet(
+                disabled_arch, disabled_arch.replace("0x", "00:")
+            )
+            if boot_method is None or (
+                not boot_method.arch_octet and not boot_method.path_prefix_http
+            ):
+                raise ValidationException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message=f"Unkown boot architecture {disabled_arch}",
+                        )
+                    ]
+                )
+            disabled_boot_method_names.append(boot_method.name)
         self._request.set_value(
             SubnetTable.c.disabled_boot_architectures.name,
-            disabled_boot_architectures,
+            disabled_boot_method_names,
         )
         return self
 
     def with_gateway_ip(
-        self, gateway_ip: IPvAnyAddress
+        self, gateway_ip: IPvAnyAddress | None
     ) -> "SubnetResourceBuilder":
         self._request.set_value(SubnetTable.c.gateway_ip.name, gateway_ip)
+        return self
+
+    def with_dns_servers(
+        self, dns_servers: list[IPvAnyAddress]
+    ) -> "SubnetResourceBuilder":
+        values = [str(server) for server in dns_servers]
+        self._request.set_value(SubnetTable.c.dns_servers.name, values)
         return self
 
     def with_vlan_id(self, vlan_id: int) -> "SubnetResourceBuilder":

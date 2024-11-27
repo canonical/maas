@@ -104,6 +104,7 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
         now = utcnow()
         resource = instance_builder.with_created(now).with_updated(now).build()
         created_resource = await repository_instance.create(resource)
+        assert created_resource is not None
         created_resource = created_resource.dict()
         for key, value in resource.get_values().items():
             assert created_resource[key] == value

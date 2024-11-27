@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from pydantic import IPvAnyAddress, IPvAnyNetwork
+from pydantic import IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,6 +13,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.utils.validators import IPv4v6Network
 
 
 class SubnetResponse(HalResponse[BaseHal]):
@@ -21,7 +22,7 @@ class SubnetResponse(HalResponse[BaseHal]):
     name: Optional[str]
     description: Optional[str]
     vlan: BaseHref
-    cidr: IPvAnyNetwork
+    cidr: IPv4v6Network
     # TODO: move RDNS_MODE to enum and change the type here
     rdns_mode: int
     gateway_ip: Optional[IPvAnyAddress]

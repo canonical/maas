@@ -13,6 +13,9 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.subnets import (
+    SubnetCreateRequest,
+)
 from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetResponse,
     SubnetsListResponse,
@@ -22,6 +25,13 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -114,6 +124,52 @@ class SubnetsHandler(Handler):
         if not subnet:
             return NotFoundResponse()
 
+        response.headers["ETag"] = subnet.etag()
+        return SubnetResponse.from_model(
+            subnet=subnet,
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets",
+        )
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {
+                "model": SubnetResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def create_fabric_vlan_subnet(
+        self,
+        fabric_id: int,
+        vlan_id: int,
+        subnet_request: SubnetCreateRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        builder = subnet_request.to_builder().with_vlan_id(vlan_id)
+        vlan = await services.vlans.get_by_id(fabric_id, vlan_id)
+        if vlan is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message="Could not find VLAN {vlan_id} in fabric {fabric_id}",
+                    )
+                ]
+            )
+        subnet = await services.subnets.create(builder.build())
         response.headers["ETag"] = subnet.etag()
         return SubnetResponse.from_model(
             subnet=subnet,

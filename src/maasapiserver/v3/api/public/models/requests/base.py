@@ -30,8 +30,6 @@ class OptionalNamedBaseModel(BaseModel):
     @validator("name")
     def check_regex_name(cls, v: str) -> str:
         # If the name is set, it must not be None and it must match the regex
-        if v is None:
-            raise ValueError("The name for the resource must not be null.")
-        if not MODEL_NAME_VALIDATOR.match(v):
+        if v is not None and not MODEL_NAME_VALIDATOR.match(v):
             raise ValueError("Invalid entity name.")
         return v

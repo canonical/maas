@@ -400,3 +400,36 @@ class WindowsPXEBootMetadata(BootMethodMetadata):
     @property
     def user_class(self) -> None:
         return None
+
+
+BOOT_METHODS_METADATA: list[BootMethodMetadata] = [
+    IPXEBootMetadata(),
+    PXEBootMetadata(),
+    UefiAmd64BootMetadata(),
+    UefiAmd64HttpBootMetadata(),
+    UefiEbcBootMetadata(),
+    UefiArm64BootMetadata(),
+    UefiArm64HttpBootMetadata(),
+    OpenFirmwarePpc64elBootMetadata(),
+    PowerNvBootMetadata(),
+    S390XBootMetadata(),
+    S390XPartitionBootMetadata(),
+    WindowsPXEBootMetadata(),
+]
+
+
+def find_boot_method_by_arch_or_octet(
+    arch: str, arch_octet: str
+) -> BootMethodMetadata | None:
+    """Finds the boot method corresponding to the *arch* or *arch_octet* passed.
+
+    Args:
+        - arch: architecture to look for
+        - arch_octet: octet to match
+    Returns:
+        BootMethodMetadata if the arch or arch_octet matches, None otherwise.
+    """
+    for boot_method in BOOT_METHODS_METADATA:
+        if boot_method.name == arch or boot_method.arch_octet == arch_octet:
+            return boot_method
+    return None

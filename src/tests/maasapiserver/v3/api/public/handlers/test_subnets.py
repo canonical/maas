@@ -1,8 +1,10 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Network
 from unittest.mock import Mock
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
@@ -11,6 +13,9 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.subnets import (
+    SubnetCreateRequest,
+)
 from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetsListResponse,
 )
@@ -18,8 +23,10 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.subnets import SubnetsService
+from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -32,7 +39,7 @@ TEST_SUBNET = Subnet(
     updated=utcnow(),
     name="test_name",
     description="test_description",
-    cidr="10.10.10.10",
+    cidr=IPv4Network("10.10.10.10"),
     rdns_mode=RdnsMode.DEFAULT,
     gateway_ip=None,
     dns_servers=None,
@@ -50,7 +57,7 @@ TEST_SUBNET_2 = Subnet(
     updated=utcnow(),
     name="test_name_2",
     description="test_description_2",
-    cidr="12.12.12.12",
+    cidr=IPv4Network("12.12.12.12"),
     rdns_mode=RdnsMode.DEFAULT,
     gateway_ip=None,
     dns_servers=None,
@@ -75,7 +82,7 @@ class TestSubnetApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [Endpoint(method="POST", path=self.BASE_PATH)]
 
     async def test_list_no_other_page(
         self,
@@ -176,3 +183,47 @@ class TestSubnetApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_post_201(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.create.return_value = TEST_SUBNET_2
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.get_by_id.return_value = Vlan(
+            id=1,
+            vid=1,
+            name="test_vlan",
+            description="test_description",
+            mtu=1500,
+            dhcp_on=False,
+            external_dhcp=None,
+            primary_rack_id=None,
+            secondary_rack_id=None,
+            relay_vlan=None,
+            fabric_id=1,
+            space_id=None,
+        )
+        request = SubnetCreateRequest(cidr=TEST_SUBNET_2.cidr)
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(request)
+        )
+        assert response.status_code == 201
+        assert "ETag" in response.headers
+
+    async def test_post_404_vlan_not_in_fabric(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.create.return_value = TEST_SUBNET_2
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.get_by_id.return_value = None
+        request = SubnetCreateRequest(cidr=TEST_SUBNET_2.cidr)
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(request)
+        )
+        assert response.status_code == 404

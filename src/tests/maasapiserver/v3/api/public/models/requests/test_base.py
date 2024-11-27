@@ -51,9 +51,3 @@ class TestOptionalNamedBaseModel:
     def test_none_name(self):
         model = OptionalNamedBaseModel()
         assert model.name is None
-
-    def test_none_name_if_set(self):
-        with pytest.raises(
-            ValueError, match="The name for the resource must not be null."
-        ):
-            OptionalNamedBaseModel(name=None)
