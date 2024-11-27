@@ -421,6 +421,44 @@ class TestMachineForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual({"license_key"}, form._errors.keys())
 
+    def test_rejects_invalid_osystem_and_distro_series(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
+        osystem = factory.make_name("osystem")
+        release = factory.make_name("release")
+        distro_series = f"{osystem}/{release}"
+        make_osystem(self, osystem, [release])
+
+        form = MachineForm(
+            data={
+                "architecture": make_usable_architecture(self),
+                "osystem": osystem,
+                "distro_series": distro_series,
+            },
+            instance=node,
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_accepts_osystem_and_distro_series_if_deployed(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
+        osystem = factory.make_name("osystem")
+        release = factory.make_name("release")
+        distro_series = f"{osystem}/{release}"
+        make_osystem(self, osystem, [release])
+
+        form = MachineForm(
+            data={
+                "architecture": make_usable_architecture(self),
+                "osystem": osystem,
+                "distro_series": distro_series,
+            },
+            instance=node,
+        )
+        self.assertTrue(form.is_valid(), form._errors)
+
 
 class TestAdminMachineForm(MAASServerTestCase):
     def test_AdminMachineForm_contains_limited_set_of_fields(self):
