@@ -855,8 +855,7 @@ class TestDeployManyWorkflow:
                     )
                     await deploy_wf.signal("netboot-finished")
                     await env.sleep(duration=timedelta(seconds=1))
-                    if i != 2:
-                        await deploy_wf.signal("deployed-os-ready")
+                    await deploy_wf.signal("deployed-os-ready")
 
                 await env.sleep(duration=timedelta(seconds=5))
 
@@ -1124,6 +1123,7 @@ class TestDeployWorkflow:
                 await env.sleep(duration=timedelta(seconds=5))
                 await wf.signal("netboot-finished")
                 await env.sleep(duration=timedelta(seconds=5))
+                await wf.signal("deployed-os-ready")
 
                 await wf.result()
 
