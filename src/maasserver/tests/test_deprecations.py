@@ -14,9 +14,9 @@ from provisioningserver.logger import LegacyLogger
 
 class TestGetDeprecations(MAASServerTestCase):
     def test_old_postgres_version(self):
-        self.patch(deprecations, "postgresql_major_version").return_value = 12
+        self.patch(deprecations, "postgresql_major_version").return_value = 14
         self.assertIn(
-            DEPRECATIONS["POSTGRES_OLDER_THAN_14"], get_deprecations()
+            DEPRECATIONS["POSTGRES_OLDER_THAN_16"], get_deprecations()
         )
 
     def test_wrong_database_owner(self):

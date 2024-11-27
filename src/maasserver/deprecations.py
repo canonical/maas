@@ -29,10 +29,10 @@ class Deprecation:
 
 # all known deprecation notices
 DEPRECATIONS = {
-    "POSTGRES_OLDER_THAN_14": Deprecation(
-        id="MD3",
-        since="3.3",
-        description="The PostgreSQL version in use is older than 14.",
+    "POSTGRES_OLDER_THAN_16": Deprecation(
+        id="MD5",
+        since="3.6",
+        description="The PostgreSQL version in use is older than 16.",
         link_text="How to upgrade the PostgreSQL server",
     ),
     "WRONG_MAAS_DATABASE_OWNER": Deprecation(
@@ -48,8 +48,8 @@ def get_deprecations():
     """Return a list of currently active deprecation notices."""
 
     deprecations = []
-    if postgresql_major_version() < 14:
-        deprecations.append(DEPRECATIONS["POSTGRES_OLDER_THAN_14"])
+    if postgresql_major_version() < 16:
+        deprecations.append(DEPRECATIONS["POSTGRES_OLDER_THAN_16"])
     if get_database_owner() == "postgres":
         deprecations.append(DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"])
     return deprecations
