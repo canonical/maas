@@ -1,5 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+from typing import List
 
 from pydantic import IPvAnyAddress
 
@@ -9,6 +10,7 @@ from maascommon.workflows.dhcp import (
     merge_configure_dhcp_param,
 )
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.models.ipranges import IPRange
@@ -34,6 +36,9 @@ class IPRangesService(Service):
         return await self.ipranges_repository.get_dynamic_range_for_ip(
             subnet, ip
         )
+
+    async def get(self, query: QuerySpec) -> List[IPRange]:
+        return await self.ipranges_repository.get(query)
 
     async def create(self, resource: CreateOrUpdateResource) -> IPRange:
         iprange = await self.ipranges_repository.create(resource)

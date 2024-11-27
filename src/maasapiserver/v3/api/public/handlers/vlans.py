@@ -16,7 +16,10 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
-from maasapiserver.v3.api.public.models.requests.vlans import VlanCreateRequest
+from maasapiserver.v3.api.public.models.requests.vlans import (
+    VlanCreateRequest,
+    VlanUpdateRequest,
+)
 from maasapiserver.v3.api.public.models.responses.vlans import (
     VlanResponse,
     VlansListResponse,
@@ -27,6 +30,7 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.utils.date import utcnow
 
 
 class VlansHandler(Handler):
@@ -60,8 +64,13 @@ class VlansHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        vlan_builder = vlan_request.to_builder()
-        vlan_builder.with_fabric_id(fabric_id)
+        now = utcnow()
+        vlan_builder = (
+            (await vlan_request.to_builder(services))
+            .with_fabric_id(fabric_id)
+            .with_created(now)
+            .with_updated(now)
+        )
         vlan = await services.vlans.create(resource=vlan_builder.build())
         response.headers["ETag"] = vlan.etag()
         return VlanResponse.from_model(
@@ -139,12 +148,66 @@ class VlansHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        vlan = await services.vlans.get_by_id(
-            fabric_id=fabric_id, vlan_id=vlan_id
+        vlan = await services.vlans.get_one(
+            query=QuerySpec(
+                ClauseFactory.and_clauses(
+                    [
+                        VlansClauseFactory.with_fabric_id(fabric_id),
+                        VlansClauseFactory.with_id(vlan_id),
+                    ]
+                )
+            )
         )
         if not vlan:
             return NotFoundResponse()
 
+        response.headers["ETag"] = vlan.etag()
+        return VlanResponse.from_model(
+            vlan=vlan,
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans",
+        )
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": VlanResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_fabric_vlan(
+        self,
+        fabric_id: int,
+        vlan_id: int,
+        response: Response,
+        vlan_request: VlanUpdateRequest,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        resource_builder = await vlan_request.to_builder(services, vlan_id)
+        resource = resource_builder.with_updated(utcnow()).build()
+        vlan = await services.vlans.update(
+            query=QuerySpec(
+                ClauseFactory.and_clauses(
+                    [
+                        VlansClauseFactory.with_fabric_id(fabric_id),
+                        VlansClauseFactory.with_id(vlan_id),
+                    ]
+                )
+            ),
+            resource=resource,
+        )
         response.headers["ETag"] = vlan.etag()
         return VlanResponse.from_model(
             vlan=vlan,

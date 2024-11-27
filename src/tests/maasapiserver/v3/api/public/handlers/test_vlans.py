@@ -12,7 +12,10 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
-from maasapiserver.v3.api.public.models.requests.vlans import VlanCreateRequest
+from maasapiserver.v3.api.public.models.requests.vlans import (
+    VlanCreateRequest,
+    VlanUpdateRequest,
+)
 from maasapiserver.v3.api.public.models.responses.vlans import (
     VlanResponse,
     VlansListResponse,
@@ -52,7 +55,7 @@ TEST_VLAN = Vlan(
     external_dhcp=None,
     primary_rack_id=None,
     secondary_rack_id=None,
-    relay_vlan=None,
+    relay_vlan_id=None,
     fabric_id=1,
     space_id=None,
 )
@@ -69,7 +72,7 @@ TEST_VLAN_2 = Vlan(
     external_dhcp=None,
     primary_rack_id=None,
     secondary_rack_id=None,
-    relay_vlan=None,
+    relay_vlan_id=None,
     fabric_id=2,
     space_id=None,
 )
@@ -101,7 +104,7 @@ class TestVlanApi(ApiCommonTests):
     ) -> None:
         now = utcnow()
         mocker.patch(
-            "maasapiserver.v3.api.public.models.requests.vlans.utcnow",
+            "maasapiserver.v3.api.public.handlers.vlans.utcnow",
             lambda: now,
         )
         vlan_request = VlanCreateRequest(
@@ -127,7 +130,7 @@ class TestVlanApi(ApiCommonTests):
         assert vlan_response.external_dhcp is None
         assert vlan_response.primary_rack is None
         assert vlan_response.secondary_rack is None
-        assert vlan_response.relay_vlan is None
+        assert vlan_response.relay_vlan_id is None
         assert (
             vlan_response.hal_links.self.href
             == f"{self.BASE_PATH}/{vlan_response.id}"
@@ -209,7 +212,7 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.get_by_id.return_value = TEST_VLAN
+        services_mock.vlans.get_one.return_value = TEST_VLAN
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/{TEST_VLAN.id}"
         )
@@ -226,7 +229,7 @@ class TestVlanApi(ApiCommonTests):
             "external_dhcp": TEST_VLAN.external_dhcp,
             "primary_rack": TEST_VLAN.primary_rack_id,
             "secondary_rack": TEST_VLAN.secondary_rack_id,
-            "relay_vlan": TEST_VLAN.relay_vlan,
+            "relay_vlan_id": TEST_VLAN.relay_vlan_id,
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
             "space": None,
@@ -239,7 +242,7 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.get_by_id.return_value = None
+        services_mock.vlans.get_one.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -264,6 +267,63 @@ class TestVlanApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        updated_vlan = TEST_VLAN.copy()
+        updated_vlan.name = "newname"
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.update.return_value = updated_vlan
+        update_vlan_request = VlanUpdateRequest(
+            name="newname",
+            description=TEST_VLAN.description,
+            vid=TEST_VLAN.vid,
+            mtu=TEST_VLAN.mtu,
+            dhcp_on=False,
+            fabric_id=TEST_VLAN.fabric_id,
+        )
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{str(TEST_VLAN.id)}",
+            json=jsonable_encoder(update_vlan_request),
+        )
+        assert response.status_code == 200
+
+        updated_vlan = VlanResponse(**response.json())
+        assert updated_vlan.id == TEST_VLAN.id
+        assert updated_vlan.name == "newname"
+        assert updated_vlan.description == TEST_VLAN.description
+
+    # All the validations are covered in the VlanUpdateRequest tests.
+    async def test_put_422_dhcp_on_incompatible_with_relay(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        update_vlan_request = VlanUpdateRequest(
+            name="newname",
+            description=TEST_VLAN.description,
+            vid=TEST_VLAN.vid,
+            mtu=TEST_VLAN.mtu,
+            dhcp_on=True,
+            fabric_id=TEST_VLAN.fabric_id,
+            relay_vlan_id=1,
+        )
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{str(TEST_VLAN.id)}",
+            json=jsonable_encoder(update_vlan_request),
+        )
+        assert response.status_code == 422
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert len(error_response.details) == 1
+        assert error_response.details[0].field == "relay_vlan_id"
+        assert (
+            error_response.details[0].message
+            == "'relay_vlan_id' cannot be set when dhcp is on."
+        )
 
     async def test_delete(
         self,

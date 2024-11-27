@@ -16,6 +16,6 @@ class Vlan(MaasTimestampedBaseModel):
     external_dhcp: Optional[str] = None
     primary_rack_id: Optional[int] = None
     secondary_rack_id: Optional[int] = None
-    relay_vlan: Optional[int] = None
+    relay_vlan_id: Optional[int] = None
     fabric_id: int
     space_id: Optional[int] = None

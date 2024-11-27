@@ -90,30 +90,32 @@ class CacheForServices:
 class ServiceCollectionV3:
     """Provide all v3 services."""
 
+    # Keep them in alphabetical order, please
+    agents: AgentsService
+    auth: AuthService
+    configurations: ConfigurationsService
+    dnspublications: DNSPublicationsService
+    dnsresources: DNSResourcesService
+    domains: DomainsService
+    events: EventsService
+    external_auth: ExternalAuthService
+    fabrics: FabricsService
+    interfaces: InterfacesService
+    ipranges: IPRangesService
+    leases: LeasesService
+    machines: MachinesService
     nodes: NodesService
+    resource_pools: ResourcePoolsService
+    secrets: SecretsService
+    service_status: ServiceStatusService
+    spaces: SpacesService
+    staticipaddress: StaticIPAddressService
+    subnets: SubnetsService
+    temporal: TemporalService
+    users: UsersService
+    vlans: VlansService
     vmclusters: VmClustersService
     zones: ZonesService
-    secrets: SecretsService
-    configurations: ConfigurationsService
-    resource_pools: ResourcePoolsService
-    auth: AuthService
-    external_auth: ExternalAuthService
-    machines: MachinesService
-    events: EventsService
-    interfaces: InterfacesService
-    fabrics: FabricsService
-    spaces: SpacesService
-    vlans: VlansService
-    users: UsersService
-    subnets: SubnetsService
-    agents: AgentsService
-    leases: LeasesService
-    domains: DomainsService
-    dnsresources: DNSResourcesService
-    dnspublications: DNSPublicationsService
-    staticipaddress: StaticIPAddressService
-    ipranges: IPRangesService
-    temporal: TemporalService
 
     @classmethod
     async def produce(

@@ -1,9 +1,13 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import Type
 
 import netaddr
 from pydantic import IPvAnyAddress
 from sqlalchemy import select, Table
 
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ResourceBuilder,
@@ -11,6 +15,12 @@ from maasservicelayer.db.repositories.base import (
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
+
+
+class IPRangeClauseFactory(ClauseFactory):
+    @classmethod
+    def with_subnet_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=IPRangeTable.c.subnet_id.in_(ids))
 
 
 class IPRangeResourceBuilder(ResourceBuilder):

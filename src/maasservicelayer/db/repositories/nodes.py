@@ -6,7 +6,7 @@ from typing import Any, Type, TypeVar
 from sqlalchemy import Select, select, Table, update
 from sqlalchemy.sql.operators import eq
 
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
@@ -25,8 +25,20 @@ class NodeResourceBuilder(ResourceBuilder):
 
 class NodeClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(NodeTable.c.id, id))
+
+    @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=NodeTable.c.id.in_(ids))
+
+    @classmethod
     def with_system_id(cls, system_id: str) -> Clause:
         return Clause(condition=eq(NodeTable.c.system_id, system_id))
+
+    @classmethod
+    def with_type(cls, value: NodeTypeEnum) -> Clause:
+        return Clause(condition=eq(NodeTable.c.node_type, value))
 
 
 T = TypeVar("T", bound=Node)

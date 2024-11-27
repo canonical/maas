@@ -1,5 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+from typing import List
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -24,6 +25,9 @@ class NodesService(Service):
         super().__init__(context)
         self.secrets_service = secrets_service
         self.nodes_repository = nodes_repository
+
+    async def get(self, query: QuerySpec) -> List[Node]:
+        return await self.nodes_repository.get(query)
 
     async def get_by_id(self, id: int) -> Node | None:
         return await self.nodes_repository.get_by_id(id)

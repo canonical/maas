@@ -55,58 +55,6 @@ class TestVlansService:
         assert vlans_list.next_token is None
         assert vlans_list.items == []
 
-    async def test_get_by_id(self) -> None:
-        now = utcnow()
-        expected_vlan = Vlan(
-            id=0,
-            vid=0,
-            name="test",
-            description="descr",
-            mtu=1500,
-            dhcp_on=True,
-            fabric_id=0,
-            created=now,
-            updated=now,
-        )
-        nodes_service_mock = Mock(NodesService)
-        vlans_repository_mock = Mock(VlansRepository)
-        vlans_repository_mock.get_by_id.return_value = expected_vlan
-        vlans_service = VlansService(
-            context=Context(),
-            temporal_service=Mock(TemporalService),
-            nodes_service=nodes_service_mock,
-            vlans_repository=vlans_repository_mock,
-        )
-        vlan = await vlans_service.get_by_id(fabric_id=0, vlan_id=1)
-        vlans_repository_mock.get_by_id.assert_called_once_with(id=1)
-        assert expected_vlan == vlan
-
-    async def test_get_by_id_wrong_fabric(self) -> None:
-        now = utcnow()
-        expected_vlan = Vlan(
-            id=0,
-            vid=0,
-            name="test",
-            description="descr",
-            mtu=1500,
-            dhcp_on=True,
-            fabric_id=0,
-            created=now,
-            updated=now,
-        )
-        nodes_service_mock = Mock(NodesService)
-        vlans_repository_mock = Mock(VlansRepository)
-        vlans_repository_mock.get_by_id.return_value = expected_vlan
-        vlans_service = VlansService(
-            Context(),
-            temporal_service=Mock(TemporalService),
-            nodes_service=nodes_service_mock,
-            vlans_repository=vlans_repository_mock,
-        )
-        vlan = await vlans_service.get_by_id(fabric_id=1, vlan_id=1)
-        vlans_repository_mock.get_by_id.assert_called_once_with(id=1)
-        assert vlan is None
-
     async def test_get_node_vlans(self) -> None:
         now = utcnow()
         expected_vlan = Vlan(

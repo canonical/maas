@@ -48,11 +48,11 @@ class VlansService(Service):
             query=query,
         )
 
-    async def get_by_id(self, fabric_id: int, vlan_id: int) -> Vlan | None:
-        vlan = await self.vlans_repository.get_by_id(id=vlan_id)
-        if vlan is None or vlan.fabric_id != fabric_id:
-            return None
-        return vlan
+    async def get_by_id(self, vlan_id: int) -> Vlan | None:
+        return await self.vlans_repository.get_by_id(vlan_id)
+
+    async def get_one(self, query: QuerySpec) -> Vlan | None:
+        return await self.vlans_repository.get_one(query=query)
 
     async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
         return await self.vlans_repository.get_node_vlans(query=query)
@@ -119,14 +119,14 @@ class VlansService(Service):
 
         await self.vlans_repository.delete_by_id(vlan.id)
 
-        if vlan.dhcp_on or vlan.relay_vlan:
+        if vlan.dhcp_on or vlan.relay_vlan_id is not None:
             primary_rack = await self.nodes_service.get_by_id(
                 vlan.primary_rack_id
             )
             system_ids = [primary_rack.system_id]
-            if vlan.secondary_rack_id:
+            if vlan.secondary_rack_id is not None:
                 secondary_rack = await self.nodes_service.get_by_id(
-                    vlan.second_rack_id
+                    vlan.secondary_rack_id
                 )
                 system_ids.append(secondary_rack.system_id)
 

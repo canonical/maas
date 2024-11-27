@@ -38,5 +38,5 @@ class TestVlanResponse:
         assert vlan.external_dhcp == vlan_response.external_dhcp
         assert vlan.primary_rack_id == vlan_response.primary_rack
         assert vlan.secondary_rack_id == vlan_response.secondary_rack
-        assert vlan.relay_vlan == vlan_response.relay_vlan
+        assert vlan.relay_vlan_id == vlan_response.relay_vlan_id
         assert vlan_response.space.href.endswith(f"spaces/{vlan.space_id}")

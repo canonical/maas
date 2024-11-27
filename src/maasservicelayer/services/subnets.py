@@ -1,5 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+from typing import List
+
 from pydantic import IPvAnyAddress
 
 from maascommon.workflows.dhcp import (
@@ -37,6 +39,9 @@ class SubnetsService(Service):
         return await self.subnets_repository.list(
             token=token, size=size, query=query
         )
+
+    async def get(self, query: QuerySpec) -> List[Subnet]:
+        return await self.subnets_repository.get(query)
 
     async def get_by_id(
         self, fabric_id: int, vlan_id: int, id: int

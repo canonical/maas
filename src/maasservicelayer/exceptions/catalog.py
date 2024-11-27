@@ -4,10 +4,16 @@
 from macaroonbakery.bakery import Macaroon
 from pydantic import BaseModel
 
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
+
 
 class BaseExceptionDetail(BaseModel):
     type: str
     message: str
+    field: str | None = None
+    location: str | None = None
 
 
 class BaseException(Exception):
@@ -56,6 +62,20 @@ class PreconditionFailedException(BaseException):
 class ValidationException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("Invalid value.", details)
+
+    @classmethod
+    def build_for_field(
+        self, field: str, message: str
+    ) -> "ValidationException":
+        return ValidationException(
+            details=[
+                BaseExceptionDetail(
+                    type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                    field=field,
+                    message=message,
+                )
+            ]
+        )
 
 
 class ServiceUnavailableException(BaseException):

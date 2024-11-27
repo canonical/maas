@@ -20,6 +20,7 @@ INVALID_ARGUMENT_VIOLATION_TYPE = "InvalidArgumentViolation"
 CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE = (
     "CannotDeleteDefaultFabricVlanViolation"
 )
+MISSING_DYNAMIC_RANGE_VIOLATION_TYPE = "MissingDynamicRangeViolation"
 
 # Zones
 CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE = "CannotDeleteDefaultZoneViolation"

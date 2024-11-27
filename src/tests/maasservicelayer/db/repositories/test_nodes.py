@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodes import (
@@ -24,6 +24,29 @@ from tests.fixtures.factories.node import create_test_machine_entry
 from tests.fixtures.factories.user import create_test_user
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
+
+
+class TestNodeClauseFactory:
+    def test_builder(self) -> None:
+        clause = NodeClauseFactory.with_system_id(system_id="abc")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.system_id = 'abc'")
+
+        clause = NodeClauseFactory.with_id(0)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.id = 0")
+
+        clause = NodeClauseFactory.with_ids([0, 1])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.id IN (0, 1)")
+
+        clause = NodeClauseFactory.with_type(NodeTypeEnum.RACK_CONTROLLER)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.node_type = 2")
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
