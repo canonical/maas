@@ -115,6 +115,38 @@ DefaultResourceTable = Table(
     ),
 )
 
+DHCPSnippetTable = Table(
+    "maasserver_dhcpsnippet",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("description", Text, nullable=False),
+    Column("enabled", Boolean, nullable=False),
+    Column(
+        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
+    ),
+    Column(
+        "subnet_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+    ),
+    Column(
+        "value_id",
+        BigInteger,
+        ForeignKey("maasserver_versionedtextfile.id"),
+        nullable=True,
+    ),
+    Column(
+        "iprange_id",
+        BigInteger,
+        ForeignKey("maasserver_iprange.id"),
+        nullable=False,
+    ),
+)
+
 DNSPublicationTable = Table(
     "maasserver_dnspublication",
     METADATA,
@@ -366,6 +398,19 @@ NodeDeviceVpdTable = Table(
     ),
 )
 
+NodeGroupToRackControllerTable = Table(
+    "maasserver_nodegrouptorackcontroller",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("uuid", String(36), nullable=False),
+    Column(
+        "subnet_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+    ),
+)
+
 NodeTable = Table(
     "maasserver_node",
     METADATA,
@@ -528,7 +573,7 @@ ReservedIPTable = Table(
         unique=False,
     ),
     Column("ip", INET, nullable=False, unique=True),
-    Column("mac_address", Text, nullable=True, unique=False),
+    Column("mac_address", Text, nullable=False, unique=False),
     Column("comment", String(255), nullable=True, unique=False),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
@@ -707,6 +752,28 @@ StaticIPAddressTable = Table(
     Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
     Column("lease_time", Integer, nullable=False),
     Column("temp_expires_on", DateTime(timezone=True), nullable=True),
+)
+
+StaticRouteTable = Table(
+    "maasserver_staticroute",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("gateway_ip", INET, nullable=False),
+    Column("metric", Integer, nullable=False),
+    Column(
+        "destination_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+    ),
+    Column(
+        "source_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+    ),
 )
 
 SubnetTable = Table(
