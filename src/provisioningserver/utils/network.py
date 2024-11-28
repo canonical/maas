@@ -13,6 +13,7 @@ import socket
 from socket import (
     AF_INET,
     AF_INET6,
+    EAI_ADDRFAMILY,
     EAI_NODATA,
     EAI_NONAME,
     gaierror,
@@ -790,12 +791,16 @@ def safe_getaddrinfo(
         result = _v6_lookup()
         # this should only happen in tests where twisted is in the thread,
         # but this is called from a synchronous context
-        if isinstance(result, Deferred) and result.result:
+        # may empty result here, so we need check if has called
+        if isinstance(result, Deferred) and result.called:
             return result.result
         # synchronous contexts should use sync_safe_getaddrinfo to ensure
         # this is not a Deferred
         return result
     else:
+        # only AF_INET6 will arrive here, and return empty list if addr is ipv4
+        if addr.version == 4:
+            return []
         return [(AF_INET6, sock_type, proto, "", (str(addr), port, 0, 0))]
 
 
@@ -824,7 +829,7 @@ def resolve_host_to_addrinfo(
             hostname, port, family=addr_families[ip_version], proto=proto
         )
     except gaierror as e:
-        if e.errno in (EAI_NONAME, EAI_NODATA):
+        if e.errno in (EAI_NONAME, EAI_NODATA, EAI_ADDRFAMILY):
             # Name does not resolve.
             address_info = []
         else:
