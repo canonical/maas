@@ -3,9 +3,11 @@
 
 from unittest.mock import Mock
 
+from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
@@ -54,6 +56,7 @@ class TestReservedIPsApi(ApiCommonTests):
     def user_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
         ]
 
     @pytest.fixture
@@ -118,3 +121,73 @@ class TestReservedIPsApi(ApiCommonTests):
                 )
             ),
         )
+
+    async def test_get_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.get_one.return_value = TEST_RESERVEDIP
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        assert response.json() == {
+            "kind": "ReservedIP",
+            "id": TEST_RESERVEDIP.id,
+            "ip": "10.0.0.1",
+            "mac_address": "01:02:03:04:05:06",
+            "comment": "test_comment",
+            "subnet_id": 1,
+            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
+            "_embedded": None,
+            "_links": {
+                "self": {"href": f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}"}
+            },
+        }
+        services_mock.reservedips.get_one.assert_called_once_with(
+            query=QuerySpec(
+                ReservedIPsClauseFactory.and_clauses(
+                    [
+                        ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
+                        ReservedIPsClauseFactory.with_fabric_id(1),
+                        ReservedIPsClauseFactory.with_subnet_id(1),
+                        ReservedIPsClauseFactory.with_vlan_id(1),
+                    ]
+                )
+            )
+        )
+
+    async def test_get_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.get_one.return_value = None
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_get_422(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.get_one.return_value = (
+            RequestValidationError(errors=[])
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422

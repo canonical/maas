@@ -20,6 +20,12 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestReservedIPsClauseFactory:
+    def test_with_id(self) -> None:
+        clause = ReservedIPsClauseFactory.with_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_reservedip.id = 1")
+
     def test_with_subnet_id(self) -> None:
         clause = ReservedIPsClauseFactory.with_subnet_id(1)
         assert str(

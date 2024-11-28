@@ -14,6 +14,10 @@ from maasservicelayer.models.reservedips import ReservedIP
 
 class ReservedIPsClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(ReservedIPTable.c.id, id))
+
+    @classmethod
     def with_subnet_id(cls, subnet_id: int) -> Clause:
         return Clause(condition=eq(ReservedIPTable.c.subnet_id, subnet_id))
 

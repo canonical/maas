@@ -23,5 +23,8 @@ class ReservedIPsService(Service):
             token=token, size=size, query=query
         )
 
+    async def get_one(self, query: QuerySpec) -> ReservedIP | None:
+        return await self.reservedips_repository.get_one(query)
+
     async def delete(self, query: QuerySpec) -> ReservedIP | None:
         return await self.reservedips_repository.delete(query)
