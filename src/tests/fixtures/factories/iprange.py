@@ -3,6 +3,7 @@ from typing import Any
 
 from netaddr import IPAddress, IPNetwork
 
+from maascommon.enums.ipranges import IPRangeType
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -19,7 +20,7 @@ async def create_test_ip_range_entry(
         "created": created_at,
         "updated": updated_at,
         "subnet_id": subnet["id"],
-        "type": "reserved",
+        "type": IPRangeType.RESERVED,
     }
 
     network = IPNetwork(str(subnet["cidr"]))

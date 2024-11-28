@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maascommon.bootmethods import BOOT_METHODS_METADATA
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.subnets import (
     SubnetClauseFactory,
     SubnetResourceBuilder,
@@ -17,10 +18,12 @@ from maasservicelayer.db.repositories.subnets import (
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.utils.date import utcnow
+from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
+from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -159,6 +162,52 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
             .with_gateway_ip(IPv4Address("10.0.0.1"))
             .with_vlan_id(0)
         )
+
+    @pytest.mark.skip(reason="custom delete checks")
+    async def test_delete(self, repository_instance, created_instance):
+        pass
+
+    async def test_delete_checks_vlan_dhcp_on_dynamic_range(
+        self, repository_instance: SubnetsRepository, fixture: Fixture
+    ) -> None:
+        vlan_with_dhcp_on = await create_test_vlan_entry(fixture, dhcp_on=True)
+        subnet = await create_test_subnet_entry(
+            fixture, vlan_id=vlan_with_dhcp_on["id"]
+        )
+        await create_test_ip_range_entry(
+            fixture, subnet=subnet, type="dynamic"
+        )
+        query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
+        with pytest.raises(ValidationException):
+            await repository_instance.delete(query)
+
+    async def test_delete_checks_vlan_dhcp_on_reserved_range(
+        self, repository_instance: SubnetsRepository, fixture: Fixture
+    ) -> None:
+        vlan_with_dhcp_on = await create_test_vlan_entry(fixture, dhcp_on=True)
+        subnet = await create_test_subnet_entry(
+            fixture, vlan_id=vlan_with_dhcp_on["id"]
+        )
+        await create_test_ip_range_entry(
+            fixture, subnet=subnet, type="reserved"
+        )
+        query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
+        await repository_instance.delete(query)
+
+    async def test_delete_checks_vlan_dhcp_off_dynamic_range(
+        self, repository_instance: SubnetsRepository, fixture: Fixture
+    ) -> None:
+        vlan_with_dhcp_off = await create_test_vlan_entry(
+            fixture, dhcp_on=False
+        )
+        subnet = await create_test_subnet_entry(
+            fixture, vlan_id=vlan_with_dhcp_off["id"]
+        )
+        await create_test_ip_range_entry(
+            fixture, subnet=subnet, type="dynamic"
+        )
+        query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
+        await repository_instance.delete(query)
 
 
 @pytest.mark.usefixtures("ensuremaasdb")

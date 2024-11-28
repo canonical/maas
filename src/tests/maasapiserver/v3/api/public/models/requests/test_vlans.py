@@ -10,6 +10,7 @@ from maasapiserver.v3.api.public.models.requests.vlans import (
     VlanCreateRequest,
     VlanUpdateRequest,
 )
+from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.node import NodeStatus
 from maascommon.enums.service import ServiceName, ServiceStatusEnum
 from maasservicelayer.exceptions.catalog import ValidationException
@@ -282,7 +283,7 @@ class TestVlanUpdateRequest:
         services_mock.ipranges.get.return_value = [
             IPRange(
                 id=0,
-                type="DYNAMIC",
+                type=IPRangeType.DYNAMIC,
                 start_ip="10.0.0.100",
                 end_ip="10.0.0.105",
                 subnet_id=0,

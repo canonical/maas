@@ -5,11 +5,16 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
+from maascommon.enums.ipranges import IPRangeType
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.dhcpsnippets import (
+    DhcpSnippetsClauseFactory,
+)
 from maasservicelayer.db.repositories.ipranges import (
     IPRangeResourceBuilder,
     IPRangesRepository,
@@ -17,6 +22,7 @@ from maasservicelayer.db.repositories.ipranges import (
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
@@ -54,6 +60,7 @@ class TestIPRangesService:
         ipranges_service = IPRangesService(
             Mock(AsyncConnection),
             Mock(TemporalService),
+            Mock(DhcpSnippetsService),
             ipranges_repository=mock_ipranges_repository,
         )
 
@@ -66,7 +73,7 @@ class TestIPRangesService:
     async def test_create(self):
         iprange = IPRange(
             id=1,
-            type="dynamic",
+            type=IPRangeType.DYNAMIC,
             start_ip="10.0.0.1",
             end_ip="10.0.0.20",
             subnet_id=2,
@@ -82,6 +89,7 @@ class TestIPRangesService:
         ipranges_service = IPRangesService(
             context=Context(),
             temporal_service=mock_temporal,
+            dhcpsnippets_service=Mock(DhcpSnippetsService),
             ipranges_repository=mock_ipranges_repository,
         )
 
@@ -108,7 +116,7 @@ class TestIPRangesService:
     async def test_update(self):
         iprange = IPRange(
             id=1,
-            type="dynamic",
+            type=IPRangeType.DYNAMIC,
             start_ip="10.0.0.1",
             end_ip="10.0.0.20",
             subnet_id=2,
@@ -124,6 +132,7 @@ class TestIPRangesService:
         ipranges_service = IPRangesService(
             context=Context(),
             temporal_service=mock_temporal,
+            dhcpsnippets_service=Mock(DhcpSnippetsService),
             ipranges_repository=mock_ipranges_repository,
         )
 
@@ -142,6 +151,7 @@ class TestIPRangesService:
         mock_ipranges_repository.update_by_id.assert_called_once_with(
             iprange.id, resource
         )
+
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
@@ -152,7 +162,7 @@ class TestIPRangesService:
     async def test_delete(self):
         iprange = IPRange(
             id=1,
-            type="dynamic",
+            type=IPRangeType.DYNAMIC,
             start_ip="10.0.0.1",
             end_ip="10.0.0.20",
             subnet_id=2,
@@ -161,13 +171,15 @@ class TestIPRangesService:
         )
 
         mock_ipranges_repository = Mock(IPRangesRepository)
-        mock_ipranges_repository.get_by_id.return_value = iprange
+        mock_ipranges_repository.delete_by_id.return_value = iprange
 
         mock_temporal = Mock(TemporalService)
+        dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
 
         ipranges_service = IPRangesService(
             context=Context(),
             temporal_service=mock_temporal,
+            dhcpsnippets_service=dhcpsnippets_service_mock,
             ipranges_repository=mock_ipranges_repository,
         )
 
@@ -175,6 +187,11 @@ class TestIPRangesService:
 
         mock_ipranges_repository.delete_by_id.assert_called_once_with(
             iprange.id
+        )
+        dhcpsnippets_service_mock.delete.assert_called_once_with(
+            QuerySpec(
+                where=DhcpSnippetsClauseFactory.with_iprange_id(iprange.id)
+            )
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,

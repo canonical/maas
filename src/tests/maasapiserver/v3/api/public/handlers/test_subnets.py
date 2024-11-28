@@ -19,7 +19,16 @@ from maasapiserver.v3.api.public.models.responses.subnets import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
@@ -84,6 +93,7 @@ class TestSubnetApi(ApiCommonTests):
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     async def test_list_no_other_page(
@@ -274,3 +284,45 @@ class TestSubnetApi(ApiCommonTests):
             f"{self.BASE_PATH}/1", json=jsonable_encoder(request)
         )
         assert response.status_code == 404
+
+    async def test_delete(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.delete.return_value = None
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        assert response.status_code == 204
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.delete.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
+        )
+        assert response.status_code == 412
+        services_mock.subnets.delete.assert_called_with(
+            query=QuerySpec(
+                where=SubnetClauseFactory.and_clauses(
+                    [
+                        SubnetClauseFactory.with_id(1),
+                        SubnetClauseFactory.with_vlan_id(1),
+                        SubnetClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+            etag_if_match="wrong_etag",
+        )

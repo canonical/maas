@@ -1,12 +1,14 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from operator import eq
 from typing import Type
 
 import netaddr
 from pydantic import IPvAnyAddress
 from sqlalchemy import select, Table
 
+from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
@@ -19,12 +21,16 @@ from maasservicelayer.models.subnets import Subnet
 
 class IPRangeClauseFactory(ClauseFactory):
     @classmethod
+    def with_subnet_id(cls, subnet_id: int) -> Clause:
+        return Clause(condition=eq(IPRangeTable.c.subnet_id, subnet_id))
+
+    @classmethod
     def with_subnet_ids(cls, ids: list[int]) -> Clause:
         return Clause(condition=IPRangeTable.c.subnet_id.in_(ids))
 
 
 class IPRangeResourceBuilder(ResourceBuilder):
-    def with_type(self, type: str) -> "IPRangeResourceBuilder":
+    def with_type(self, type: IPRangeType) -> "IPRangeResourceBuilder":
         self._request.set_value(IPRangeTable.c.type.name, type)
         return self
 

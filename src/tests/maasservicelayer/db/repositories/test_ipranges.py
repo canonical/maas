@@ -3,6 +3,7 @@ from ipaddress import IPv4Address
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.ipranges import (
     IPRangeResourceBuilder,
@@ -22,7 +23,7 @@ class TestIPRangesResourceBuilder:
         now = utcnow()
         resource = (
             IPRangeResourceBuilder()
-            .with_type("type")
+            .with_type(IPRangeType.RESERVED)
             .with_start_ip(IPv4Address("10.0.0.1"))
             .with_end_ip(IPv4Address("10.0.0.1"))
             .with_subnet_id(0)
@@ -32,7 +33,7 @@ class TestIPRangesResourceBuilder:
         )
 
         assert resource.get_values() == {
-            "type": "type",
+            "type": IPRangeType.RESERVED,
             "start_ip": IPv4Address("10.0.0.1"),
             "end_ip": IPv4Address("10.0.0.1"),
             "subnet_id": 0,
@@ -81,7 +82,7 @@ class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
     async def instance_builder(self) -> IPRangeResourceBuilder:
         return (
             IPRangeResourceBuilder()
-            .with_type("type")
+            .with_type(IPRangeType.RESERVED)
             .with_start_ip(IPv4Address("10.0.0.1"))
             .with_end_ip(IPv4Address("10.0.0.2"))
             .with_subnet_id(0)
@@ -106,7 +107,11 @@ class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
         subnet = Subnet(**subnet_data)
         ip = IPv4Address("10.0.0.2")
         dynamic_range = await create_test_ip_range_entry(
-            fixture, subnet=subnet_data, offset=1, size=5, type="dynamic"
+            fixture,
+            subnet=subnet_data,
+            offset=1,
+            size=5,
+            type=IPRangeType.DYNAMIC,
         )
 
         ipranges_repository = IPRangesRepository(

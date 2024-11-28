@@ -1,7 +1,9 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -231,3 +233,40 @@ class SubnetsHandler(Handler):
         return SubnetResponse.from_model(
             subnet=subnet, self_base_hyperlink=f"{V3_API_PREFIX}/subnets"
         )
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_fabric_vlan_subnet(
+        self,
+        fabric_id: int,
+        vlan_id: int,
+        id: int,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        query = QuerySpec(
+            where=SubnetClauseFactory.and_clauses(
+                [
+                    SubnetClauseFactory.with_id(id),
+                    SubnetClauseFactory.with_vlan_id(vlan_id),
+                    SubnetClauseFactory.with_fabric_id(fabric_id),
+                ]
+            )
+        )
+        await services.subnets.delete(query=query, etag_if_match=etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

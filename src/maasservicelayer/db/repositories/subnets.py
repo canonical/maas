@@ -10,18 +10,19 @@ from sqlalchemy import desc, func, join, select, Table
 
 from maascommon.bootmethods import find_boot_method_by_arch_or_octet
 from maascommon.enums.subnet import RdnsMode
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ResourceBuilder,
 )
-from maasservicelayer.db.tables import SubnetTable, VlanTable
+from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
+    PRECONDITION_FAILED,
 )
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.utils.validators import IPv4v6Network
@@ -177,3 +178,33 @@ class SubnetsRepository(BaseRepository[Subnet]):
         del res["prefixlen"]
         del res["dhcp_on"]
         return Subnet(**res)
+
+    async def _pre_delete_checks(self, query: QuerySpec) -> None:
+        vlan_dhcp_on_and_dynamic_ip_range = (
+            select(SubnetTable)
+            .join(VlanTable, eq(SubnetTable.c.vlan_id, VlanTable.c.id))
+            .join(IPRangeTable, eq(SubnetTable.c.id, IPRangeTable.c.subnet_id))
+            .where(eq(VlanTable.c.dhcp_on, True))
+            .where(eq(IPRangeTable.c.type, "dynamic"))
+            .exists()
+        )
+        stmt = self.select_all_statement().where(
+            vlan_dhcp_on_and_dynamic_ip_range
+        )
+        # use the query from `delete` to specify which subnet we want to delete
+        stmt = query.enrich_stmt(stmt)
+        subnet = (await self.connection.execute(stmt)).one_or_none()
+        if subnet:
+            raise ValidationException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PRECONDITION_FAILED,
+                        message="Cannot delete a subnet that is actively servicing a dynamic "
+                        "IP range. (Delete the dynamic range or disable DHCP first.)",
+                    )
+                ]
+            )
+
+    async def delete(self, query: QuerySpec) -> Subnet | None:
+        await self._pre_delete_checks(query)
+        return await super().delete(query)

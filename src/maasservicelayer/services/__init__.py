@@ -232,15 +232,32 @@ class ServiceCollectionV3:
             context=context,
             dhcpsnippets_repository=DhcpSnippetsRepository(context),
         )
+        services.ipranges = IPRangesService(
+            context=context,
+            temporal_service=services.temporal,
+            dhcpsnippets_service=services.dhcpsnippets,
+            ipranges_repository=IPRangesRepository(context),
+        )
         services.nodegrouptorackcontrollers = NodeGroupToRackControllersService(
             context=context,
             nodegrouptorackcontrollers_repository=NodeGroupToRackControllersRepository(
                 context
             ),
         )
+        services.staticipaddress = StaticIPAddressService(
+            context=context,
+            temporal_service=services.temporal,
+            staticipaddress_repository=StaticIPAddressRepository(context),
+        )
         services.subnets = SubnetsService(
             context=context,
             temporal_service=services.temporal,
+            staticipaddress_service=services.staticipaddress,
+            ipranges_service=services.ipranges,
+            staticroutes_service=services.staticroutes,
+            reservedips_service=services.reservedips,
+            dhcpsnippets_service=services.dhcpsnippets,
+            nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
             subnets_repository=SubnetsRepository(context),
         )
         services.agents = AgentsService(
@@ -264,16 +281,6 @@ class ServiceCollectionV3:
             domains_service=services.domains,
             dnspublications_service=services.dnspublications,
             dnsresource_repository=DNSResourceRepository(context),
-        )
-        services.staticipaddress = StaticIPAddressService(
-            context=context,
-            temporal_service=services.temporal,
-            staticipaddress_repository=StaticIPAddressRepository(context),
-        )
-        services.ipranges = IPRangesService(
-            context=context,
-            temporal_service=services.temporal,
-            ipranges_repository=IPRangesRepository(context),
         )
         services.leases = LeasesService(
             context=context,

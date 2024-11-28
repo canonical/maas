@@ -157,15 +157,21 @@ class BaseRepository(ABC, Generic[T]):
             resource=resource,
         )
 
-    async def delete(self, query: QuerySpec) -> None:
+    async def delete(self, query: QuerySpec) -> T | None:
         """
-        If no resource for the query is found, silently ignore it and return `None` in any case.
+        If no resource for the query is found, silently ignore it and return `None`.
+        Otherwise, return the deleted resource.
         """
-        stmt = delete(self.get_repository_table())
+        stmt = delete(self.get_repository_table()).returning(
+            self.get_repository_table()
+        )
         stmt = query.enrich_stmt(stmt)
-        await self.connection.execute(stmt)
+        result = (await self.connection.execute(stmt)).one_or_none()
+        if result is not None:
+            result = self.get_model_factory()(**result._asdict())
+        return result
 
-    async def delete_by_id(self, id: int) -> None:
+    async def delete_by_id(self, id: int) -> T | None:
         return await self.delete(
             query=QuerySpec(
                 where=Clause(eq(self.get_repository_table().c.id, id))

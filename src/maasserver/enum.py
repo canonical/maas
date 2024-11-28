@@ -49,6 +49,7 @@ from typing import Callable, cast
 from maascommon.enums.bmc import BmcType
 from maascommon.enums.interface import InterfaceLinkType, InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
+from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.node import (
     NodeDeviceBus,
     NodeStatus,
@@ -409,10 +410,10 @@ class IPRANGE_TYPE:
     """The vocabulary of possible types of `IPRange` objects."""
 
     # Dynamic IP Range.
-    DYNAMIC = "dynamic"
+    DYNAMIC = IPRangeType.DYNAMIC.value
 
     # Reserved for exclusive use by MAAS (and possibly a particular user).
-    RESERVED = "reserved"
+    RESERVED = IPRangeType.RESERVED.value
 
 
 IPRANGE_TYPE_CHOICES = (

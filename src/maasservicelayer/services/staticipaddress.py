@@ -69,6 +69,9 @@ class StaticIPAddressService(Service):
             )
         return ip
 
+    async def delete(self, query: QuerySpec) -> StaticIPAddress | None:
+        return await self.staticipaddress_repository.delete(query)
+
     async def delete_by_id(self, id: int) -> None:
         ip = await self.staticipaddress_repository.get_by_id(id=id)
         await self.staticipaddress_repository.delete_by_id(id)
