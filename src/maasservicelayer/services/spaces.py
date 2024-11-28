@@ -36,6 +36,13 @@ class SpacesService(Service):
     async def create(self, resource: CreateOrUpdateResource) -> Space:
         return await self.spaces_repository.create(resource=resource)
 
+    async def update_by_id(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> Space | None:
+        return await self.spaces_repository.update_by_id(
+            id=id, resource=resource
+        )
+
     async def delete_by_id(
         self, id: int, etag_if_match: str | None = None
     ) -> None:

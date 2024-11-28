@@ -21,10 +21,12 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    NotFoundException,
     PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -67,6 +69,7 @@ class TestSpaceApi(ApiCommonTests):
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
         return [
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=self.BASE_PATH),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
@@ -266,6 +269,124 @@ class TestSpaceApi(ApiCommonTests):
         assert response.status_code == 422
 
         error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    # PUT /spaces/{space_id}
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        updated_space = TEST_SPACE
+        updated_space.name = "updated_space"
+        updated_space.description = "updated_description"
+
+        update_space_request = SpaceRequest(
+            name="updated_space",
+            description="updated_description",
+        )
+
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.update_by_id.return_value = updated_space
+
+        response = await mocked_api_client_admin.put(
+            url=f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_space_request),
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        space_response = SpaceResponse(**response.json())
+
+        assert space_response.id == updated_space.id
+        assert space_response.name == updated_space.name
+        assert space_response.description == updated_space.description
+
+    async def test_put_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        update_space_request = SpaceRequest(
+            name="updated_space",
+            description="updated_description",
+        )
+
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.update_by_id.side_effect = NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message="Space with id 99 does not exist.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.put(
+            url=f"{self.BASE_PATH}/99",
+            json=jsonable_encoder(update_space_request),
+        )
+
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_put_422_request_path(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        update_space_request = SpaceRequest(
+            name="updated_space",
+            description="updated_description",
+        )
+
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.update_by_id.side_effect = RequestValidationError(
+            errors=[]
+        )
+
+        response = await mocked_api_client_admin.put(
+            url=f"{self.BASE_PATH}/xyz",
+            json=jsonable_encoder(update_space_request),
+        )
+
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    @pytest.mark.parametrize("update_space_request", [{"name": None}])
+    async def test_put_422_request_body(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        update_space_request: dict[str, str],
+    ) -> None:
+        services_mock.spaces = Mock(SpacesService)
+        services_mock.spaces.update_by_id.side_effect = RequestValidationError(
+            errors=[]
+        )
+
+        response = await mocked_api_client_admin.put(
+            url=f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_space_request),
+        )
+
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
         assert error_response.kind == "Error"
         assert error_response.code == 422
 

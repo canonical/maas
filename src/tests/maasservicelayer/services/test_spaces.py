@@ -104,6 +104,29 @@ class TestSpacesService:
             resource=resource
         )
 
+    async def test_update_by_id(self) -> None:
+        resource = (
+            SpaceResourceBuilder()
+            .with_name("updated_name")
+            .with_description("updated_description")
+            .build()
+        )
+
+        vlans_service_mock = Mock(VlansService)
+        spaces_repository_mock = Mock(SpacesRepository)
+        spaces_repository_mock.update_by_id.return_value = None
+        spaces_service = SpacesService(
+            context=Context(),
+            vlans_service=vlans_service_mock,
+            spaces_repository=spaces_repository_mock,
+        )
+
+        await spaces_service.update_by_id(id=1, resource=resource)
+
+        spaces_repository_mock.update_by_id.assert_called_once_with(
+            id=1, resource=resource
+        )
+
     async def test_delete_by_id(
         self,
         mocker: MockerFixture,
