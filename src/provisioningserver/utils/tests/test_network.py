@@ -4,16 +4,25 @@
 import itertools
 import json
 import socket
-from socket import EAI_BADFLAGS, EAI_NODATA, EAI_NONAME, gaierror, IPPROTO_TCP
+from socket import (
+    AF_INET,
+    AF_INET6,
+    EAI_ADDRFAMILY,
+    EAI_BADFLAGS,
+    EAI_NODATA,
+    EAI_NONAME,
+    gaierror,
+    IPPROTO_TCP,
+)
 from typing import List
 from unittest import mock, TestCase
 from unittest.mock import Mock
 
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
 import netifaces
-from netifaces import AF_INET, AF_INET6, AF_LINK
+from netifaces import AF_LINK
 from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.names.dns import AAAA, Record_AAAA, RRHeader
+from twisted.names.dns import A, AAAA, Record_A, Record_AAAA, RRHeader
 from twisted.names.error import (
     AuthoritativeDomainError,
     DNSQueryTimeoutError,
@@ -2470,3 +2479,58 @@ class TestSafeGetaddrinfo(MAASTestCase):
             "example.com", 53, family=AF_INET6, proto=IPPROTO_TCP
         )
         self.assertCountEqual(expected, result)
+
+    def test_safe_get_addrinfo_only_v6_result_and_want_v4(self):
+        try:
+            safe_getaddrinfo(
+                "ipv6.test-ipv6.com", 80, family=AF_INET, proto=IPPROTO_TCP
+            )
+        except Exception as e:
+            self.assertIsInstance(e, gaierror)
+        else:
+            self.fail("exception not raised")
+
+    def test_safe_get_addrinfo_only_v4_result_and_want_v6(self):
+        mock_resolver = Mock()
+        mock_resolver.lookupIPV6Address = lambda _: succeed(
+            (
+                [
+                    RRHeader(
+                        name="example.com",
+                        type=A,
+                        payload=Record_A(address="0.0.0.0"),
+                    )
+                ],
+                [],
+                [],
+            )
+        )
+        get_resolver = self.patch(network_module, "getResolver")
+        get_resolver.return_value = mock_resolver
+        self.assertEqual(
+            safe_getaddrinfo(
+                "example.com", 80, family=AF_INET6, proto=IPPROTO_TCP
+            ),
+            [],
+        )
+
+    def test_safe_get_addrinfo_is_ipv6_address_but_want_v4(self):
+        try:
+            safe_getaddrinfo("::1", 80, family=AF_INET, proto=IPPROTO_TCP)
+        except gaierror as e:
+            if e.errno in (EAI_NONAME, EAI_NODATA, EAI_ADDRFAMILY):
+                pass
+            else:
+                self.fail("unknown e.errno")
+        except Exception as e:
+            self.fail("exception not gaierror" + str(e))
+        else:
+            self.fail("exception not raised")
+
+    def test_safe_get_addrinfo_is_ipv4_address_but_want_v6(self):
+        self.assertEqual(
+            safe_getaddrinfo(
+                "0.0.0.0", 80, family=AF_INET6, proto=IPPROTO_TCP
+            ),
+            [],
+        )
