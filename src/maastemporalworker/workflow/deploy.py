@@ -13,6 +13,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import CancelledError, ChildWorkflowError
 
+from maascommon.constants import NODE_TIMEOUT
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.deploy import (
     DEPLOY_MANY_WORKFLOW_NAME,
@@ -270,7 +271,11 @@ class DeployActivity(ActivityBase):
 class DeployManyWorkflow:
     @workflow_run_with_context
     async def run(self, params: DeployManyParam) -> None:
+        # timeout of workflow is defined as 3 times the default node timeout
+        wf_timeout = 3 * NODE_TIMEOUT
+
         child_workflows = []
+
         for param in params.params:
             wf = await workflow.start_child_workflow(
                 DEPLOY_WORKFLOW_NAME,
@@ -280,6 +285,7 @@ class DeployManyWorkflow:
                 retry_policy=RetryPolicy(
                     maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
                 ),
+                execution_timeout=timedelta(minutes=wf_timeout),
             )
             child_workflows.append((param.system_id, wf))
 

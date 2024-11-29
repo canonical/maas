@@ -74,6 +74,7 @@ from twisted.internet.error import ConnectionDone
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
+from maascommon.constants import NODE_TIMEOUT
 from maascommon.workflows.deploy import DEPLOY_MANY_WORKFLOW_NAME
 from maascommon.workflows.power import PowerParam
 from maasserver.clusterrpc.pods import decompose_machine
@@ -5908,6 +5909,9 @@ class Node(CleanSave, TimestampedModel):
     def _temporal_deploy(
         self, _, d: Deferred, power_info: PowerInfo, task_queue: str
     ) -> Deferred:
+        # timeout of workflow is defined as 3 times the default node timeout
+        wf_timeout = 3 * NODE_TIMEOUT
+
         dd = start_workflow(
             DEPLOY_MANY_WORKFLOW_NAME,
             param=DeployManyParam(
@@ -5926,6 +5930,7 @@ class Node(CleanSave, TimestampedModel):
                     ),
                 ],
             ),
+            execution_timeout=timedelta(minutes=wf_timeout),
             task_queue="region",
         )
         if not dd.called:

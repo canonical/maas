@@ -14,6 +14,7 @@ import uuid
 from django.db.models import CharField, JSONField, Manager, Model
 from django.db.models.signals import post_save
 
+from maascommon.constants import NODE_TIMEOUT
 from maasserver.listener import notify_action
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.events import EVENT_TYPES
@@ -121,7 +122,7 @@ def get_default_config():
         "release_notifications": True,
         # MAAS Architecture.
         "use_rack_proxy": True,
-        "node_timeout": 30,
+        "node_timeout": NODE_TIMEOUT,
         # prometheus.
         "prometheus_enabled": False,
         "prometheus_push_gateway": None,
