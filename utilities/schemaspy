@@ -9,7 +9,7 @@ DEPS_DIR=build/schemaspy/deps
 OUT_DIR=build/schemaspy/out
 SCHEMASPY_VERSION=6.1.0
 SCHEMASPY_JAR=schemaspy-${SCHEMASPY_VERSION}.jar
-PGJDBC_JAR=/usr/share/java/postgresql-42.3.3.jar
+PGJDBC_JAR=/usr/share/java/postgresql.jar
 PORT=4444
 
 sudo apt install graphviz openjdk-8-jre-headless libpostgresql-jdbc-java
