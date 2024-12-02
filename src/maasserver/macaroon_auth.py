@@ -6,6 +6,7 @@
 
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
+from functools import partial
 import os
 from typing import Optional
 from urllib.parse import quote
@@ -367,7 +368,7 @@ class UserValidationFailed(Exception):
 def validate_user_external_auth(
     user,
     auth_info,
-    now=datetime.now(timezone.utc),
+    now=partial(datetime.now, timezone.utc),
     candid_client=None,
     rbac_client=None,
     *,
