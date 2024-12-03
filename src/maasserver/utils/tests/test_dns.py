@@ -245,3 +245,18 @@ class TestIfaceBasedHostnameGenerator(MAASTestCase):
 
     def test_interface_name_unchanged(self):
         self.assertEqual(get_iface_name_based_hostname("eth0"), "eth0")
+
+    def test_interface_name_trailing(self):
+        self.assertEqual(
+            get_iface_name_based_hostname("interface-"), "interface"
+        )
+
+    def test_interface_name_leading(self):
+        self.assertEqual(
+            get_iface_name_based_hostname("-interface"), "interface"
+        )
+
+    def test_interface_name_leading_nonletter(self):
+        self.assertEqual(
+            get_iface_name_based_hostname("33inter_face"), "inter-face"
+        )

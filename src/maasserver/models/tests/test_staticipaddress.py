@@ -1083,7 +1083,10 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 node.system_id, 30, {phy_staticip.ip}, node.node_type
             ),
             "%s.%s"
-            % (vlanif.name, node.fqdn): HostnameIPMapping(
+            % (
+                get_iface_name_based_hostname(vlanif.name),
+                node.fqdn,
+            ): HostnameIPMapping(
                 node.system_id, 30, {vlanip.ip}, node.node_type
             ),
         }
