@@ -93,11 +93,20 @@ def get_ip_based_hostname(ip):
 
 def get_iface_name_based_hostname(iface_name):
     """Given the specified interface name, creates an automatically generated
-    hostname by converting the '_' characters in it to '-' characters.
+    hostname by converting the '_' characters in it to '-' characters, and by
+    removing any non-letters in the beginning of the name, and
+    non-letters-or-digits from the end.
+
+    Note that according to RFC 952 <http://www.faqs.org/rfcs/rfc952.html> the
+    lexical grammar of a name is given by
+
+    <name>  ::= <let>[*[<let-or-digit-or-hyphen>]<let-or-digit>]
 
     :param iface_name: Input value for the interface name.
     """
     hostname = iface_name.replace("_", "-")
+    hostname = re.sub(r"^[^a-zA-Z]+", "", hostname)
+    hostname = re.sub(r"[^a-zA-Z0-9]+$", "", hostname)
     return hostname
 
 
