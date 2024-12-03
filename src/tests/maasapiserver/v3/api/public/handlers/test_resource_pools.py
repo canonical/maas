@@ -1,7 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import timezone
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -179,8 +178,6 @@ class TestResourcePoolApi(ApiCommonTests):
             "id": TEST_RESOURCE_POOL.id,
             "name": TEST_RESOURCE_POOL.name,
             "description": TEST_RESOURCE_POOL.description,
-            "created": TEST_RESOURCE_POOL.created.isoformat(),
-            "updated": TEST_RESOURCE_POOL.updated.isoformat(),
             "_embedded": None,
             "_links": {
                 "self": {"href": f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"}
@@ -413,12 +410,6 @@ class TestResourcePoolApi(ApiCommonTests):
             update_resource_pool.description
             == update_resource_pool_request.description
         )
-        assert update_resource_pool.created.astimezone(
-            timezone.utc
-        ) == TEST_RESOURCE_POOL.created.astimezone(timezone.utc)
-        assert update_resource_pool.updated.astimezone(
-            timezone.utc
-        ) >= TEST_RESOURCE_POOL.updated.astimezone(timezone.utc)
 
     async def test_put_404(
         self,

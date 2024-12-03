@@ -11,7 +11,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     TokenPaginatedResponse,
 )
-from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.utils.validators import IPv4v6Network
 
@@ -21,10 +21,8 @@ class SubnetResponse(HalResponse[BaseHal]):
     id: int
     name: Optional[str]
     description: Optional[str]
-    vlan: BaseHref
     cidr: IPv4v6Network
-    # TODO: move RDNS_MODE to enum and change the type here
-    rdns_mode: int
+    rdns_mode: RdnsMode
     gateway_ip: Optional[IPvAnyAddress]
     dns_servers: Optional[list[str]]
     allow_dns: bool
@@ -39,9 +37,6 @@ class SubnetResponse(HalResponse[BaseHal]):
             id=subnet.id,
             name=subnet.name,
             description=subnet.description,
-            vlan=BaseHref(
-                href=f"{V3_API_PREFIX}/vlans?filter=subnet_id eq {subnet.id}"
-            ),
             cidr=subnet.cidr,
             rdns_mode=subnet.rdns_mode,
             gateway_ip=subnet.gateway_ip,

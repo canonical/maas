@@ -25,6 +25,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -62,6 +63,25 @@ class SubnetsHandler(Handler):
         token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
+        vlan = await services.vlans.get_one(
+            QuerySpec(
+                where=VlansClauseFactory.and_clauses(
+                    [
+                        VlansClauseFactory.with_id(vlan_id),
+                        VlansClauseFactory.with_fabric_id(fabric_id),
+                    ]
+                )
+            )
+        )
+        if vlan is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message="Could not find VLAN {vlan_id} in fabric {fabric_id}",
+                    )
+                ]
+            )
         query = QuerySpec(
             where=SubnetClauseFactory.and_clauses(
                 [
