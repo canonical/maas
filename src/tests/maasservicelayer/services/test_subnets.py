@@ -30,13 +30,13 @@ from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
 from maasservicelayer.db.repositories.subnets import (
-    SubnetClauseFactory,
     SubnetResourceBuilder,
     SubnetsRepository,
 )
 from maasservicelayer.exceptions.catalog import PreconditionFailedException
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
@@ -49,16 +49,14 @@ from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 
 @pytest.mark.asyncio
-class TestSubnetsService:
-    async def test_list(self) -> None:
-        subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.list.return_value = ListResult[Subnet](
-            items=[], next_token=None
-        )
-        subnets_service = SubnetsService(
+class TestCommonSubnetsService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return SubnetsService(
             context=Context(),
             temporal_service=Mock(TemporalService),
             staticipaddress_service=Mock(StaticIPAddressService),
@@ -69,21 +67,14 @@ class TestSubnetsService:
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService
             ),
-            subnets_repository=subnets_repository_mock,
+            subnets_repository=Mock(SubnetsRepository),
         )
-        subnets_list = await subnets_service.list(
-            token=None, size=1, query=None
-        )
-        subnets_repository_mock.list.assert_called_once_with(
-            token=None, size=1, query=None
-        )
-        assert subnets_list.next_token is None
-        assert subnets_list.items == []
 
-    async def test_get_by_id(self) -> None:
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
         now = utcnow()
-        expected_subnet = Subnet(
-            id=0,
+        return Subnet(
+            id=1,
             name="my subnet",
             description="subnet description",
             cidr=IPv4Network("10.0.0.0/24"),
@@ -95,38 +86,26 @@ class TestSubnetsService:
             active_discovery=False,
             managed=True,
             disabled_boot_architectures=[],
-            vlan_id=0,
+            vlan_id=2,
             created=now,
             updated=now,
         )
-        subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.get_one.return_value = expected_subnet
-        subnets_service = SubnetsService(
-            context=Context(),
-            temporal_service=Mock(TemporalService),
-            staticipaddress_service=Mock(StaticIPAddressService),
-            ipranges_service=Mock(IPRangesService),
-            staticroutes_service=Mock(StaticRoutesService),
-            reservedips_service=Mock(ReservedIPsService),
-            dhcpsnippets_service=Mock(DhcpSnippetsService),
-            nodegrouptorackcontrollers_service=Mock(
-                NodeGroupToRackControllersService
-            ),
-            subnets_repository=subnets_repository_mock,
-        )
-        subnet = await subnets_service.get_by_id(fabric_id=0, vlan_id=0, id=1)
-        query = QuerySpec(
-            where=SubnetClauseFactory.and_clauses(
-                [
-                    SubnetClauseFactory.with_id(1),
-                    SubnetClauseFactory.with_vlan_id(0),
-                    SubnetClauseFactory.with_fabric_id(0),
-                ]
-            )
-        )
-        subnets_repository_mock.get_one.assert_called_once_with(query=query)
-        assert expected_subnet == subnet
 
+    async def test_update_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_update_many(service_instance, test_instance)
+
+    async def test_delete_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_delete_many(service_instance, test_instance)
+
+
+@pytest.mark.asyncio
+class TestSubnetsService:
     async def test_create(self) -> None:
         now = utcnow()
         subnet = Subnet(
@@ -184,7 +163,9 @@ class TestSubnetsService:
 
         await subnets_service.create(resource)
 
-        subnets_repository_mock.create.assert_called_once_with(resource)
+        subnets_repository_mock.create.assert_called_once_with(
+            resource=resource
+        )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[subnet.id]),
@@ -213,7 +194,8 @@ class TestSubnetsService:
         )
 
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.update.return_value = subnet
+        subnets_repository_mock.get_one.return_value = subnet
+        subnets_repository_mock.update_by_id.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
 
@@ -247,9 +229,11 @@ class TestSubnetsService:
             .build()
         )
         query = Mock(QuerySpec)
-        await subnets_service.update(query, resource)
+        await subnets_service.update_one(query, resource)
 
-        subnets_repository_mock.update.assert_called_once_with(query, resource)
+        subnets_repository_mock.update_by_id.assert_called_once_with(
+            id=subnet.id, resource=resource
+        )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[subnet.id]),
@@ -278,7 +262,8 @@ class TestSubnetsService:
         )
 
         subnets_repository_mock = Mock(SubnetsRepository)
-        subnets_repository_mock.delete.return_value = subnet
+        subnets_repository_mock.get_one.return_value = subnet
+        subnets_repository_mock.delete_by_id.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
         staticipaddress_service_mock = Mock(StaticIPAddressService)
@@ -303,19 +288,23 @@ class TestSubnetsService:
         )
 
         query = Mock(QuerySpec)
-        await subnets_service.delete(query)
+        await subnets_service.delete_one(query)
 
-        subnets_repository_mock.delete.assert_called_once_with(query)
-        staticipaddress_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        subnets_repository_mock.delete_by_id.assert_called_once_with(
+            id=subnet.id
+        )
+        staticipaddress_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=StaticIPAddressClauseFactory.with_subnet_id(subnet.id)
             )
         )
-        ipranges_service_mock.delete.assert_called_once_with(
-            QuerySpec(where=IPRangeClauseFactory.with_subnet_id(subnet.id))
+        ipranges_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.with_subnet_id(subnet.id)
+            )
         )
-        staticroutes_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        staticroutes_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=StaticRoutesClauseFactory.or_clauses(
                     [
                         StaticRoutesClauseFactory.with_source_id(subnet.id),
@@ -326,16 +315,18 @@ class TestSubnetsService:
                 )
             )
         )
-        reservedips_service_mock.delete.assert_called_once_with(
-            QuerySpec(where=ReservedIPsClauseFactory.with_subnet_id(subnet.id))
+        reservedips_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
+                where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
+            )
         )
-        dhcpsnippets_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        dhcpsnippets_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=DhcpSnippetsClauseFactory.with_subnet_id(subnet.id)
             )
         )
-        nodegrouptorackcontrollers_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        nodegrouptorackcontrollers_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=NodeGroupToRackControllersClauseFactory.with_subnet_id(
                     subnet.id
                 )
@@ -370,7 +361,7 @@ class TestSubnetsService:
 
         subnets_repository_mock = Mock(SubnetsRepository)
         subnets_repository_mock.get_one.return_value = subnet
-        subnets_repository_mock.delete.return_value = subnet
+        subnets_repository_mock.delete_by_id.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
         staticipaddress_service_mock = Mock(StaticIPAddressService)
@@ -395,19 +386,23 @@ class TestSubnetsService:
         )
 
         query = Mock(QuerySpec)
-        await subnets_service.delete(query, subnet.etag())
+        await subnets_service.delete_one(query, subnet.etag())
 
-        subnets_repository_mock.delete.assert_called_once_with(query)
-        staticipaddress_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        subnets_repository_mock.delete_by_id.assert_called_once_with(
+            id=subnet.id
+        )
+        staticipaddress_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=StaticIPAddressClauseFactory.with_subnet_id(subnet.id)
             )
         )
-        ipranges_service_mock.delete.assert_called_once_with(
-            QuerySpec(where=IPRangeClauseFactory.with_subnet_id(subnet.id))
+        ipranges_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.with_subnet_id(subnet.id)
+            )
         )
-        staticroutes_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        staticroutes_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=StaticRoutesClauseFactory.or_clauses(
                     [
                         StaticRoutesClauseFactory.with_source_id(subnet.id),
@@ -418,16 +413,18 @@ class TestSubnetsService:
                 )
             )
         )
-        reservedips_service_mock.delete.assert_called_once_with(
-            QuerySpec(where=ReservedIPsClauseFactory.with_subnet_id(subnet.id))
+        reservedips_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
+                where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
+            )
         )
-        dhcpsnippets_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        dhcpsnippets_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=DhcpSnippetsClauseFactory.with_subnet_id(subnet.id)
             )
         )
-        nodegrouptorackcontrollers_service_mock.delete.assert_called_once_with(
-            QuerySpec(
+        nodegrouptorackcontrollers_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
                 where=NodeGroupToRackControllersClauseFactory.with_subnet_id(
                     subnet.id
                 )
@@ -481,12 +478,12 @@ class TestSubnetsService:
 
         query = Mock(QuerySpec)
         with pytest.raises(PreconditionFailedException):
-            await subnets_service.delete(query, "wrong-etag")
+            await subnets_service.delete_one(query, "wrong-etag")
 
-        subnets_repository_mock.delete.assert_not_called()
-        staticipaddress_service_mock.delete.assert_not_called()
-        ipranges_service_mock.delete.assert_not_called()
-        staticroutes_service_mock.delete.assert_not_called()
-        reservedips_service_mock.delete.assert_not_called()
-        dhcpsnippets_service_mock.delete.assert_not_called()
-        nodegrouptorackcontrollers_service_mock.delete.assert_not_called()
+        subnets_repository_mock.delete_one.assert_not_called()
+        staticipaddress_service_mock.delete_many.assert_not_called()
+        ipranges_service_mock.delete_many.assert_not_called()
+        staticroutes_service_mock.delete_many.assert_not_called()
+        reservedips_service_mock.delete_many.assert_not_called()
+        dhcpsnippets_service_mock.delete_many.assert_not_called()
+        nodegrouptorackcontrollers_service_mock.delete_many.assert_not_called()

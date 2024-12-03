@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from enum import Enum
+from enum import IntEnum
 from typing import Optional
 
 from pydantic import IPvAnyAddress
@@ -9,13 +9,13 @@ from pydantic import IPvAnyAddress
 from maasservicelayer.models.base import MaasTimestampedBaseModel
 
 
-class EndpointChoicesEnum(Enum):
+class EndpointChoicesEnum(IntEnum):
     API = 0
     UI = 1
     CLI = 2
 
 
-class LoggingLevelEnum(Enum):
+class LoggingLevelEnum(IntEnum):
     AUDIT = 0
     DEBUG = 10
     INFO = 20

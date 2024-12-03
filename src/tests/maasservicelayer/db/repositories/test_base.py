@@ -1,3 +1,6 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from operator import eq
 from typing import Type
 
@@ -18,8 +21,10 @@ from maasservicelayer.db import Database
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
+    MultipleResultsException,
     ResourceBuilder,
 )
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import MaasTimestampedBaseModel
 
 METADATA = MetaData()
@@ -56,7 +61,13 @@ async def setup(db: Database):
             B.insert(),
             [{"id": 1, "c_id": 1}, {"id": 2, "c_id": 2}, {"id": 3, "c_id": 3}],
         )
-        await conn.execute(A.insert(), [{"id": 1, "data": "foo", "b_id": 1}])
+        await conn.execute(
+            A.insert(),
+            [
+                {"id": 1, "data": "foo", "b_id": 1},
+                {"id": 2, "data": "boo", "b_id": 1},
+            ],
+        )
     yield
     async with db.engine.begin() as conn:
         await conn.run_sync(METADATA.drop_all)
@@ -84,7 +95,12 @@ class MyRepository(BaseRepository[AModel]):
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestMyRepository:
-    async def test_get(self, db_connection: AsyncConnection) -> None:
+    async def test_get_many(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        a_objs = await repo.get_many(QuerySpec())
+        assert len(a_objs) == 2
+
+    async def test_get_one(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
         query = QuerySpec(
             where=Clause(
@@ -96,6 +112,34 @@ class TestMyRepository:
         assert a_obj is not None
         assert a_obj.id == 1
         assert a_obj.data == "foo"
+
+    async def test_get_one_multiple_results(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        with pytest.raises(MultipleResultsException):
+            await repo.get_one(QuerySpec())
+
+    async def test_get_one_not_found(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        a_obj = await repo.get_one(QuerySpec(where=Clause(eq(A.c.id, 0))))
+        assert a_obj is None
+
+    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        a_obj = await repo.get_by_id(1)
+        assert a_obj is not None
+        assert a_obj.id == 1
+        assert a_obj.data == "foo"
+
+    async def test_get_by_id_not_found(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        a_obj = await repo.get_by_id(0)
+        assert a_obj is None
 
     async def test_get_multiple_joins(
         self, db_connection: AsyncConnection
@@ -120,7 +164,7 @@ class TestMyRepository:
         assert a_obj.id == 1
         assert a_obj.data == "foo"
 
-    async def test_update(self, db_connection: AsyncConnection) -> None:
+    async def test_update_one(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
         builder = AResourceBuilder().with_data("test")
         query = QuerySpec(
@@ -129,11 +173,41 @@ class TestMyRepository:
                 joins=[join(A, B, eq(A.c.b_id, B.c.id))],
             )
         )
-        updated_obj = await repo.update(query=query, resource=builder.build())
+        updated_obj = await repo.update_one(
+            query=query, resource=builder.build()
+        )
         assert updated_obj is not None
         assert updated_obj.data == "test"
 
-    async def test_update_multiple_joins(
+    async def test_update_one_multiple_matches(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        builder = AResourceBuilder().with_data("test")
+        query = QuerySpec()
+        with pytest.raises(MultipleResultsException):
+            await repo.update_one(query=query, resource=builder.build())
+
+    async def test_update_one_no_matches(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        builder = AResourceBuilder().with_data("test")
+        query = QuerySpec(
+            where=Clause(condition=eq(A.c.data, "definitely_not_a_match"))
+        )
+        with pytest.raises(NotFoundException):
+            await repo.update_one(query=query, resource=builder.build())
+
+    async def test_update_by_id_no_matches(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        builder = AResourceBuilder().with_data("test")
+        with pytest.raises(NotFoundException):
+            await repo.update_by_id(0, resource=builder.build())
+
+    async def test_update_one_multiple_joins(
         self, db_connection: AsyncConnection
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
@@ -152,11 +226,22 @@ class TestMyRepository:
                 ]
             )
         )
-        updated_obj = await repo.update(query=query, resource=builder.build())
+        updated_obj = await repo.update_one(
+            query=query, resource=builder.build()
+        )
         assert updated_obj is not None
         assert updated_obj.data == "test"
 
-    async def test_delete(self, db_connection: AsyncConnection) -> None:
+    async def test_update_many(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        builder = AResourceBuilder().with_data("test")
+        resources = await repo.update_many(
+            QuerySpec(), resource=builder.build()
+        )
+        assert len(resources) == 2
+        assert all(resource.data == "test" for resource in resources)
+
+    async def test_delete_one(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
         query = QuerySpec(
             where=Clause(
@@ -164,8 +249,30 @@ class TestMyRepository:
                 joins=[join(A, B, eq(A.c.b_id, B.c.id))],
             )
         )
-        await repo.delete(query=query)
+        deleted_resource = await repo.delete_one(query=query)
+        assert deleted_resource.id == 1
         deleted_obj = await repo.get_one(query=query)
+        assert deleted_obj is None
+
+    async def test_delete_one_no_match(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        query = QuerySpec(
+            where=Clause(
+                condition=eq(A.c.data, "definitely not a match"),
+            )
+        )
+        deleted_resource = await repo.delete_one(query=query)
+        assert deleted_resource is None
+        deleted_obj = await repo.get_one(query=query)
+        assert deleted_obj is None
+
+    async def test_delete_by_id(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        deleted_resource = await repo.delete_by_id(1)
+        assert deleted_resource.id == 1
+        deleted_obj = await repo.get_by_id(1)
         assert deleted_obj is None
 
     async def test_delete_multiple_joins(
@@ -186,6 +293,11 @@ class TestMyRepository:
                 ]
             )
         )
-        await repo.delete(query=query)
-        deleted_obj = await repo.delete(query=query)
+        await repo.delete_one(query=query)
+        deleted_obj = await repo.delete_one(query=query)
         assert deleted_obj is None
+
+    async def test_delete_many(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        deleted_resources = await repo.delete_many(QuerySpec())
+        assert len(deleted_resources) == 2

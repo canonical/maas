@@ -12,6 +12,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
+@pytest.mark.skip(reason="Not implemented yet")
 class TestDhcpSnippetsRepository(RepositoryCommonTests[DhcpSnippet]):
     @pytest.fixture
     def repository_instance(

@@ -8,9 +8,12 @@ from typing import Generic, TypeVar
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.sql.operators import eq
 
+from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
+    MultipleResultsException,
     ResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
@@ -132,14 +135,102 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
         instance = await repository_instance.get_by_id(created_instance.id)
         assert instance == created_instance
 
-    async def test_delete(
+    async def test_get_one_not_found(
+        self, repository_instance: BaseRepository
+    ):
+        instance = await repository_instance.get_one(
+            QuerySpec(
+                where=Clause(
+                    eq(repository_instance.get_repository_table().c.id, -1)
+                )
+            )
+        )
+        assert instance is None
+
+    async def test_get_one(
+        self, repository_instance: BaseRepository, created_instance: T
+    ):
+        instance = await repository_instance.get_one(
+            QuerySpec(
+                where=Clause(
+                    eq(
+                        repository_instance.get_repository_table().c.id,
+                        created_instance.id,
+                    )
+                )
+            )
+        )
+        assert instance == created_instance
+
+    @pytest.mark.parametrize("num_objects", [3])
+    async def test_get_one_multiple_results(
+        self,
+        repository_instance: BaseRepository,
+        _setup_test_list: Sequence[T],
+        num_objects: int,
+    ):
+        with pytest.raises(MultipleResultsException):
+            await repository_instance.get_one(QuerySpec())
+
+    @pytest.mark.parametrize("num_objects", [3])
+    async def test_get_many(
+        self,
+        repository_instance: BaseRepository,
+        _setup_test_list: Sequence[T],
+        num_objects: int,
+    ):
+        instances = await repository_instance.get_many(QuerySpec())
+        assert len(instances) == num_objects
+
+    async def test_delete_one(
+        self, repository_instance: BaseRepository, created_instance: T
+    ):
+        deleted_resource = await repository_instance.delete_one(
+            QuerySpec(
+                where=Clause(
+                    eq(
+                        repository_instance.get_repository_table().c.id,
+                        created_instance.id,
+                    )
+                )
+            )
+        )
+        assert deleted_resource.id == created_instance.id
+        deleted = await repository_instance.get_by_id(created_instance.id)
+        assert deleted is None
+
+    @pytest.mark.parametrize("num_objects", [3])
+    async def test_delete_one_multiple_results(
+        self,
+        repository_instance: BaseRepository,
+        _setup_test_list: Sequence[T],
+        num_objects: int,
+    ):
+        with pytest.raises(MultipleResultsException):
+            await repository_instance.delete_one(QuerySpec())
+
+    async def test_delete_by_id(
         self, repository_instance: BaseRepository, created_instance: T
     ):
         await repository_instance.delete_by_id(created_instance.id)
         deleted = await repository_instance.get_by_id(created_instance.id)
         assert deleted is None
 
-    async def test_update(
+    @pytest.mark.parametrize("num_objects", [3])
+    async def test_delete_many(
+        self,
+        repository_instance: BaseRepository,
+        _setup_test_list: Sequence[T],
+        num_objects: int,
+    ):
+        deleted_resources = await repository_instance.delete_many(
+            query=QuerySpec()
+        )
+        assert len(deleted_resources) == num_objects
+        resources = await repository_instance.get_many(query=QuerySpec())
+        assert len(resources) == 0
+
+    async def test_update_by_id(
         self,
         repository_instance: BaseRepository,
         instance_builder: ResourceBuilder,
@@ -153,3 +244,51 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
             created_resource.id, builder.build()
         )
         assert updated_resource.updated == updated_time
+
+    async def test_update_one(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        now = utcnow()
+        builder = instance_builder.with_created(now).with_updated(now)
+        created_resource = await repository_instance.create(builder.build())
+        updated_time = utcnow()
+        builder = builder.with_updated(updated_time)
+        updated_resource = await repository_instance.update_one(
+            QuerySpec(
+                where=Clause(
+                    eq(
+                        repository_instance.get_repository_table().c.id,
+                        created_resource.id,
+                    )
+                )
+            ),
+            builder.build(),
+        )
+        assert updated_resource.updated == updated_time
+
+    @pytest.mark.parametrize("num_objects", [2])
+    async def test_update_one_multiple_results(
+        self,
+        repository_instance: BaseRepository,
+        _setup_test_list: Sequence[T],
+        num_objects: int,
+    ):
+        builder = ResourceBuilder().with_updated(utcnow())
+        with pytest.raises(MultipleResultsException):
+            await repository_instance.update_one(QuerySpec(), builder.build())
+
+    @pytest.mark.parametrize("num_objects", [2])
+    async def test_update_many(
+        self,
+        repository_instance: BaseRepository,
+        _setup_test_list: Sequence[T],
+        num_objects: int,
+    ):
+        builder = ResourceBuilder().with_updated(utcnow())
+        updated_resources = await repository_instance.update_many(
+            QuerySpec(), builder.build()
+        )
+        assert len(updated_resources) == 2
+        assert all(resource.updated for resource in updated_resources)

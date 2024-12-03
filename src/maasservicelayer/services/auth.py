@@ -5,6 +5,8 @@ import os
 
 from maasservicelayer.auth.jwt import JWT, UserRole
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     UnauthorizedException,
@@ -36,7 +38,9 @@ class AuthService(Service):
         self.users_service = users_service
 
     async def login(self, username: str, password: str) -> JWT:
-        user = await self.users_service.get(username)
+        user = await self.users_service.get_one(
+            QuerySpec(UserClauseFactory.with_username(username))
+        )
         if not user or not user.is_active or not user.check_password(password):
             raise UnauthorizedException(
                 details=[

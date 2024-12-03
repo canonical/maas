@@ -16,6 +16,7 @@ from macaroonbakery.bakery import (
 from pymacaroons import Macaroon
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.sql.operators import eq
 from starlette.responses import Response
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
@@ -55,6 +56,7 @@ from maasservicelayer.auth.macaroons.models.responses import (
 from maasservicelayer.constants import NODE_INIT_USERNAME, WORKER_USERNAME
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
+from maasservicelayer.db.tables import UserTable
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     DischargeRequiredException,
@@ -704,7 +706,9 @@ class TestValidateUserExternalAuthCandid:
         )
         assert validated_user is None
         # fetch the user from the db to verify it's still active
-        user = await self.request.state.services.users.get(user.username)
+        [user] = await fixture.get_typed(
+            "auth_user", User, eq(UserTable.c.username, user.username)
+        )
         assert user.is_active is True
         self.client.get_groups.assert_called_once_with(user.username)
 

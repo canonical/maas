@@ -4,10 +4,10 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from operator import eq, le
-from typing import Any, Generic, Type, TypeVar
+from typing import Any, Generic, List, Sequence, Type, TypeVar
 
-from sqlalchemy import delete, desc, insert, select, Select, Table, update
-from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy import delete, desc, insert, Row, select, Select, Table, update
+from sqlalchemy.exc import IntegrityError
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import Clause, QuerySpec
@@ -21,6 +21,11 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult, MaasBaseModel
+
+
+class MultipleResultsException(Exception):
+    pass
+
 
 T = TypeVar("T", bound=MaasBaseModel)
 
@@ -71,26 +76,31 @@ class BaseRepository(ABC, Generic[T]):
             self.get_repository_table()
         )
 
-    async def get(self, query: QuerySpec) -> list[T]:
-        stmt = self.select_all_statement()
-        stmt = query.enrich_stmt(stmt)
-
-        result = (await self.connection.execute(stmt)).all()
-        return [self.get_model_factory()(**row._asdict()) for row in result]
-
-    async def get_one(self, query: QuerySpec) -> T | None:
-        stmt = self.select_all_statement().limit(1)
-        stmt = query.enrich_stmt(stmt)
-
-        result = (await self.connection.execute(stmt)).one_or_none()
-        if result:
-            return self.get_model_factory()(**result._asdict())
-        return None
+    async def get_many(self, query: QuerySpec) -> List[T]:
+        return await self._get(query)
 
     async def get_by_id(self, id: int) -> T | None:
         return await self.get_one(
             QuerySpec(where=Clause(eq(self.get_repository_table().c.id, id)))
         )
+
+    async def get_one(self, query: QuerySpec) -> T | None:
+        results = await self._get(query)
+
+        if results:
+            if len(results) > 1:
+                raise MultipleResultsException(
+                    "Multiple results were returned by get_one."
+                )
+            return results[0]
+        return None
+
+    async def _get(self, query: QuerySpec) -> List[T]:
+        stmt = self.select_all_statement()
+        stmt = query.enrich_stmt(stmt)
+
+        result = (await self.connection.execute(stmt)).all()
+        return [self.get_model_factory()(**row._asdict()) for row in result]
 
     async def create(self, resource: CreateOrUpdateResource) -> T:
         stmt = (
@@ -130,9 +140,38 @@ class BaseRepository(ABC, Generic[T]):
             next_token=next_token,
         )
 
-    async def update(
+    async def update_many(
+        self, query: QuerySpec, resource: CreateOrUpdateResource
+    ) -> List[T]:
+        updated_resources = await self._update(query, resource)
+        return [
+            self.get_model_factory()(**row._asdict())
+            for row in updated_resources
+        ]
+
+    async def update_by_id(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> T:
+        return await self.update_one(
+            query=QuerySpec(
+                where=Clause(eq(self.get_repository_table().c.id, id))
+            ),
+            resource=resource,
+        )
+
+    async def update_one(
         self, query: QuerySpec, resource: CreateOrUpdateResource
     ) -> T:
+        updated_resources = await self._update(query, resource)
+        if not updated_resources:
+            self._raise_not_found_exception()
+        if len(updated_resources) > 1:
+            raise MultipleResultsException()
+        return self.get_model_factory()(**updated_resources[0]._asdict())
+
+    async def _update(
+        self, query: QuerySpec, resource: CreateOrUpdateResource
+    ) -> Sequence[Row]:
         stmt = (
             update(self.get_repository_table())
             .returning(self.get_repository_table())
@@ -140,43 +179,42 @@ class BaseRepository(ABC, Generic[T]):
         )
         stmt = query.enrich_stmt(stmt)
         try:
-            updated_resource = (await self.connection.execute(stmt)).one()
+            updated_resources = (await self.connection.execute(stmt)).all()
         except IntegrityError:
             self._raise_already_existing_exception()
-        except NoResultFound:
-            self._raise_not_found_exception()
-        return self.get_model_factory()(**updated_resource._asdict())
+        return updated_resources
 
-    async def update_by_id(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> T:
-        return await self.update(
+    async def delete_many(self, query: QuerySpec) -> List[T]:
+        return await self._delete(query)
+
+    async def delete_by_id(self, id: int) -> T | None:
+        return await self.delete_one(
             query=QuerySpec(
                 where=Clause(eq(self.get_repository_table().c.id, id))
-            ),
-            resource=resource,
+            )
         )
 
-    async def delete(self, query: QuerySpec) -> T | None:
+    async def delete_one(self, query: QuerySpec) -> T | None:
+        result = await self._delete(query)
+        if not result:
+            return None
+        if len(result) > 1:
+            raise MultipleResultsException(
+                "Multiple results matched the delete_one query."
+            )
+        return result[0]
+
+    async def _delete(self, query: QuerySpec) -> List[T]:
         """
         If no resource for the query is found, silently ignore it and return `None`.
-        Otherwise, return the deleted resource.
+        Otherwise, return the deleted resources.
         """
         stmt = delete(self.get_repository_table()).returning(
             self.get_repository_table()
         )
         stmt = query.enrich_stmt(stmt)
-        result = (await self.connection.execute(stmt)).one_or_none()
-        if result is not None:
-            result = self.get_model_factory()(**result._asdict())
-        return result
-
-    async def delete_by_id(self, id: int) -> T | None:
-        return await self.delete(
-            query=QuerySpec(
-                where=Clause(eq(self.get_repository_table().c.id, id))
-            )
-        )
+        results = (await self.connection.execute(stmt)).all()
+        return [self.get_model_factory()(**row._asdict()) for row in results]
 
     def _raise_already_existing_exception(self):
         raise AlreadyExistsException(

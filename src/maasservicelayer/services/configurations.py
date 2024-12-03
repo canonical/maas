@@ -14,14 +14,10 @@ class ConfigurationsService(Service):
     def __init__(
         self,
         context: Context,
-        configurations_repository: ConfigurationsRepository | None = None,
+        configurations_repository: ConfigurationsRepository,
     ):
         super().__init__(context)
-        self.configurations_repository = (
-            configurations_repository
-            if configurations_repository
-            else ConfigurationsRepository(context)
-        )
+        self.configurations_repository = configurations_repository
 
     # We inherit this from the django legacy implementation. When we will have moved away, we can refactor the way we store the
     # configurations and provide a proper typing. For the time being, the consumer has to know how to consume the configuration.

@@ -163,8 +163,22 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
             .with_vlan_id(0)
         )
 
-    @pytest.mark.skip(reason="custom delete checks")
-    async def test_delete(self, repository_instance, created_instance):
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_delete_one(self, repository_instance, created_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_delete_one_multiple_results(
+        self, repository_instance, created_instance
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_delete_by_id(self, repository_instance, created_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_delete_many(self, repository_instance, created_instance):
         pass
 
     async def test_delete_checks_vlan_dhcp_on_dynamic_range(
@@ -179,7 +193,7 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
         )
         query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
         with pytest.raises(ValidationException):
-            await repository_instance.delete(query)
+            await repository_instance.delete_one(query)
 
     async def test_delete_checks_vlan_dhcp_on_reserved_range(
         self, repository_instance: SubnetsRepository, fixture: Fixture
@@ -192,7 +206,7 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
             fixture, subnet=subnet, type="reserved"
         )
         query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
-        await repository_instance.delete(query)
+        await repository_instance.delete_one(query)
 
     async def test_delete_checks_vlan_dhcp_off_dynamic_range(
         self, repository_instance: SubnetsRepository, fixture: Fixture
@@ -207,7 +221,7 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
             fixture, subnet=subnet, type="dynamic"
         )
         query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
-        await repository_instance.delete(query)
+        await repository_instance.delete_one(query)
 
 
 @pytest.mark.usefixtures("ensuremaasdb")

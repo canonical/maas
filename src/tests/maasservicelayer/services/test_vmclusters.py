@@ -7,7 +7,30 @@ import pytest
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
+from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.vmcluster import VmCluster
 from maasservicelayer.services import VmClustersService
+from maasservicelayer.services._base import BaseService
+from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonVmClusterService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return VmClustersService(
+            context=Context(), vmcluster_repository=Mock(VmClustersRepository)
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return VmCluster(
+            id=0,
+            created=now,
+            updated=now,
+        )
 
 
 @pytest.mark.asyncio

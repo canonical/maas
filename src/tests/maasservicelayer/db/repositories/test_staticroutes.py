@@ -52,6 +52,18 @@ class TestStaticRoutesRepository(RepositoryCommonTests[StaticRoute]):
         pass
 
     @pytest.mark.skip(reason="Not implemented yet")
+    async def test_get_one(self, repository_instance, created_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_get_one_multiple_results(self, repository_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_get_many(self, repository_instance, created_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
     async def test_get_by_id(self, repository_instance, created_instance):
         pass
 
@@ -60,9 +72,37 @@ class TestStaticRoutesRepository(RepositoryCommonTests[StaticRoute]):
         pass
 
     @pytest.mark.skip(reason="Not implemented yet")
-    async def test_update(self, repository_instance, instance_builder):
+    async def test_delete_one(self, repository_instance, created_instance):
         pass
 
     @pytest.mark.skip(reason="Not implemented yet")
-    async def test_delete(self, repository_instance, created_instance):
+    async def test_delete_one_multiple_results(
+        self, repository_instance, created_instance
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_delete_by_id(self, repository_instance, created_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_delete_many(self, repository_instance, created_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_update_by_id(self, repository_instance, instance_builder):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_update_one(self, repository_instance, instance_builder):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_update_one_multiple_results(
+        self, repository_instance, instance_builder
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_update_many(self, repository_instance, instance_builder):
         pass

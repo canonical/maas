@@ -27,6 +27,8 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     UnauthorizedException,
@@ -82,7 +84,11 @@ class UsersHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),
     ) -> UserInfoResponse:
         assert authenticated_user is not None
-        user = await services.users.get(username=authenticated_user.username)
+        user = await services.users.get_one(
+            QuerySpec(
+                UserClauseFactory.with_username(authenticated_user.username)
+            )
+        )
         if user is None:
             raise UnauthorizedException(
                 details=[
@@ -163,7 +169,7 @@ class UsersHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> UserResponse:
-        user = await services.users.find_by_id(user_id)
+        user = await services.users.get_by_id(user_id)
         if not user:
             return NotFoundResponse()
 

@@ -25,10 +25,12 @@ from maasservicelayer.auth.macaroons.macaroon_client import (
 )
 from maasservicelayer.auth.macaroons.oven import AsyncOven
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
 from maasservicelayer.db.repositories.users import (
+    UserClauseFactory,
     UserProfileResourceBuilder,
     UserResourceBuilder,
 )
@@ -177,7 +179,9 @@ class ExternalAuthService(Service, RootKeyStore):
         )
 
         username = auth_info.identity.id()
-        user = await self.users_service.get(username=username)
+        user = await self.users_service.get_one(
+            query=QuerySpec(UserClauseFactory.with_username(username))
+        )
         if not user:
             user_builder = (
                 UserResourceBuilder()

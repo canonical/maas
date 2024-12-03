@@ -9,6 +9,8 @@ import pytest
 
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import UnauthorizedException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
@@ -47,7 +49,7 @@ class TestAuthService:
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get.return_value = user
+        users_service_mock.get_one.return_value = user
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
@@ -57,6 +59,9 @@ class TestAuthService:
         assert len(token.encoded) > 0
         assert token.subject == user.username
         assert token.roles == [UserRole.USER]
+        users_service_mock.get_one.assert_awaited_once_with(
+            QuerySpec(UserClauseFactory.with_username(user.username))
+        )
 
     async def test_login_admin(self) -> None:
         admin = self._build_test_user(is_superuser=True)
@@ -64,7 +69,7 @@ class TestAuthService:
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get.return_value = admin
+        users_service_mock.get_one.return_value = admin
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
@@ -74,6 +79,9 @@ class TestAuthService:
         assert len(token.encoded) > 0
         assert token.subject == admin.username
         assert set(token.roles) == {UserRole.USER, UserRole.ADMIN}
+        users_service_mock.get_one.assert_awaited_once_with(
+            QuerySpec(UserClauseFactory.with_username(admin.username))
+        )
 
     async def test_login_unauthorized(self) -> None:
         user = self._build_test_user()
@@ -86,18 +94,18 @@ class TestAuthService:
         )
 
         # Username exists but the password is wrong
-        users_service_mock.get.return_value = user
+        users_service_mock.get_one.return_value = user
         with pytest.raises(UnauthorizedException):
             await auth_service.login(user.username, "wrong")
 
         # Username exists and the password is correct, but the user is disabled
         user.is_active = False
-        users_service_mock.get.return_value = user
+        users_service_mock.get_one.return_value = user
         with pytest.raises(UnauthorizedException):
             await auth_service.login(user.username, "test")
 
         # Username does not exist
-        users_service_mock.get.return_value = None
+        users_service_mock.get_one.return_value = None
         with pytest.raises(UnauthorizedException):
             await auth_service.login("bb", "test")
 
@@ -107,7 +115,7 @@ class TestAuthService:
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get.return_value = user
+        users_service_mock.get_one.return_value = user
 
         auth_service = AuthService(
             context=Context(),
@@ -135,7 +143,7 @@ class TestAuthService:
             AuthService.MAAS_V3_JWT_KEY_SECRET_PATH
         )
         users_service_mock = Mock(UsersService)
-        users_service_mock.get.return_value = user
+        users_service_mock.get_one.return_value = user
 
         auth_service = AuthService(
             context=Context(),

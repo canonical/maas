@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.base import ResourceBuilder
-from maasservicelayer.db.repositories.fabrics import FabricsRepository
+from maasservicelayer.db.repositories.fabrics import (
+    FabricsRepository,
+    FabricsResourceBuilder,
+)
 from maasservicelayer.models.fabrics import Fabric
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -38,25 +41,12 @@ class TestFabricsRepository(RepositoryCommonTests[Fabric]):
             fixture, name=str("myfabric"), description=str("description")
         )
 
-    # TODO
     @pytest.fixture
     async def instance_builder(self) -> ResourceBuilder:
-        return ResourceBuilder()
+        return FabricsResourceBuilder().with_description("")
 
-    @pytest.mark.skip(reason="Not implemented yet")
-    async def test_create(self, repository_instance, instance_builder):
-        pass
-
-    @pytest.mark.skip(reason="Not implemented yet")
+    @pytest.mark.skip(reason="Does not apply to fabrics.")
     async def test_create_duplicated(
         self, repository_instance, instance_builder
     ):
-        pass
-
-    @pytest.mark.skip(reason="Not implemented yet")
-    async def test_delete(self, repository_instance, created_instance):
-        pass
-
-    @pytest.mark.skip(reason="Not implemented yet")
-    async def test_update(self, repository_instance, instance_builder):
         pass

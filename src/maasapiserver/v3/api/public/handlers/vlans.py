@@ -197,7 +197,7 @@ class VlansHandler(Handler):
     ) -> Response:
         resource_builder = await vlan_request.to_builder(services, vlan_id)
         resource = resource_builder.with_updated(utcnow()).build()
-        vlan = await services.vlans.update(
+        vlan = await services.vlans.update_one(
             query=QuerySpec(
                 ClauseFactory.and_clauses(
                     [
@@ -237,7 +237,7 @@ class VlansHandler(Handler):
         ),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        await services.vlans.delete(
+        await services.vlans.delete_one(
             query=QuerySpec(
                 where=ClauseFactory.and_clauses(
                     [

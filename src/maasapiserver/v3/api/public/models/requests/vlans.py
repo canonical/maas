@@ -110,7 +110,7 @@ class VlanUpdateRequest(VlanCreateRequest):
             if self.secondary_rack_id:
                 node_ids.append(self.secondary_rack_id)
 
-            racks = await services.nodes.get(
+            racks = await services.nodes.get_many(
                 query=QuerySpec(
                     ClauseFactory.and_clauses(
                         [
@@ -137,10 +137,10 @@ class VlanUpdateRequest(VlanCreateRequest):
                 )
 
             # There must be at least one subnet with a dynamic range defined.
-            vlan_subnets = await services.subnets.get(
+            vlan_subnets = await services.subnets.get_many(
                 query=QuerySpec(SubnetClauseFactory.with_vlan_id(vlan_id))
             )
-            dynamic_ranges = await services.ipranges.get(
+            dynamic_ranges = await services.ipranges.get_many(
                 query=QuerySpec(
                     IPRangeClauseFactory.with_subnet_ids(
                         [subnet.id for subnet in vlan_subnets]

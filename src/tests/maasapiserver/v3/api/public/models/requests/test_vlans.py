@@ -191,7 +191,7 @@ class TestVlanUpdateRequest:
     async def test_dhcp_on_unknown_primary(self):
         services_mock = Mock(ServiceCollectionV3)
         services_mock.nodes = Mock(NodesService)
-        services_mock.nodes.get.return_value = []
+        services_mock.nodes.get_many.return_value = []
         with pytest.raises(ValidationException) as e:
             await VlanUpdateRequest(
                 vid=0, dhcp_on=True, primary_rack_id=0, fabric_id=0
@@ -206,7 +206,7 @@ class TestVlanUpdateRequest:
     async def test_dhcp_on_unknown_secondary(self):
         services_mock = Mock(ServiceCollectionV3)
         services_mock.nodes = Mock(NodesService)
-        services_mock.nodes.get.return_value = [
+        services_mock.nodes.get_many.return_value = [
             Node(id=0, system_id="", status=NodeStatus.DEPLOYED)
         ]
         with pytest.raises(ValidationException) as e:
@@ -227,11 +227,11 @@ class TestVlanUpdateRequest:
     async def test_dhcp_on_without_dynamic_ranges(self):
         services_mock = Mock(ServiceCollectionV3)
         services_mock.nodes = Mock(NodesService)
-        services_mock.nodes.get.return_value = [
+        services_mock.nodes.get_many.return_value = [
             Node(id=0, system_id="", status=NodeStatus.DEPLOYED)
         ]
         services_mock.subnets = Mock(SubnetsService)
-        services_mock.subnets.get.return_value = [
+        services_mock.subnets.get_many.return_value = [
             Subnet(
                 id=0,
                 cidr="10.0.0.1",
@@ -245,7 +245,7 @@ class TestVlanUpdateRequest:
             )
         ]
         services_mock.ipranges = Mock(IPRangesService)
-        services_mock.ipranges.get.return_value = []
+        services_mock.ipranges.get_many.return_value = []
 
         with pytest.raises(ValidationException) as e:
             await VlanUpdateRequest(
@@ -261,12 +261,12 @@ class TestVlanUpdateRequest:
     async def test_dhcp_on_when_primary_is_dead(self):
         services_mock = Mock(ServiceCollectionV3)
         services_mock.nodes = Mock(NodesService)
-        services_mock.nodes.get.return_value = [
+        services_mock.nodes.get_many.return_value = [
             Node(id=0, system_id="", status=NodeStatus.DEPLOYED),
             Node(id=2, system_id="", status=NodeStatus.DEPLOYED),
         ]
         services_mock.subnets = Mock(SubnetsService)
-        services_mock.subnets.get.return_value = [
+        services_mock.subnets.get_many.return_value = [
             Subnet(
                 id=0,
                 cidr="10.0.0.1",
@@ -280,7 +280,7 @@ class TestVlanUpdateRequest:
             )
         ]
         services_mock.ipranges = Mock(IPRangesService)
-        services_mock.ipranges.get.return_value = [
+        services_mock.ipranges.get_many.return_value = [
             IPRange(
                 id=0,
                 type=IPRangeType.DYNAMIC,

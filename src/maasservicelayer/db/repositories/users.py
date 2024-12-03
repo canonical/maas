@@ -9,6 +9,7 @@ from sqlalchemy import func, insert, select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -90,6 +91,12 @@ class UserProfileResourceBuilder(ResourceBuilder):
     def with_is_local(self, value: bool) -> "UserProfileResourceBuilder":
         self._request.set_value(UserProfileTable.c.is_local.name, value)
         return self
+
+
+class UserClauseFactory(ClauseFactory):
+    @classmethod
+    def with_username(cls, username: str) -> Clause:
+        return Clause(condition=eq(UserTable.c.username, username))
 
 
 class UsersRepository(BaseRepository[User]):

@@ -9,7 +9,10 @@ from pytest_mock import MockerFixture
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.zones import ZonesRepository
+from maasservicelayer.db.repositories.zones import (
+    ZonesClauseFactory,
+    ZonesRepository,
+)
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     PreconditionFailedException,
@@ -18,14 +21,16 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.zones import Zone
 from maasservicelayer.services import (
     NodesService,
     VmClustersService,
     ZonesService,
 )
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 DEFAULT_ZONE = Zone(
     id=1,
@@ -45,10 +50,48 @@ TEST_ZONE = Zone(
 
 
 @pytest.mark.asyncio
+class TestCommonZonesService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return ZonesService(
+            context=Context(),
+            zones_repository=Mock(ZonesRepository),
+            nodes_service=Mock(NodesService),
+            vmcluster_service=Mock(VmClustersService),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        return TEST_ZONE
+
+    async def test_delete_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_delete_many(service_instance, test_instance)
+
+
+@pytest.mark.asyncio
 class TestZonesService:
     async def test_delete(self) -> None:
         zones_repository = Mock(ZonesRepository)
-        zones_repository.delete.return_value = None
+        zones_repository.delete_by_id.return_value = TEST_ZONE
+        zones_repository.get_one.side_effect = [TEST_ZONE, None]
+        zones_service = ZonesService(
+            context=Context(),
+            zones_repository=zones_repository,
+            nodes_service=Mock(NodesService),
+            vmcluster_service=Mock(VmClustersService),
+        )
+
+        await zones_service.delete_one(
+            query=QuerySpec(ZonesClauseFactory.with_ids([TEST_ZONE.id]))
+        )
+        zones_repository.delete_by_id.assert_awaited_once_with(id=TEST_ZONE.id)
+
+    async def test_delete_by_id(self) -> None:
+        zones_repository = Mock(ZonesRepository)
+        zones_repository.delete_by_id.return_value = TEST_ZONE
         zones_repository.get_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
             context=Context(),
@@ -58,14 +101,14 @@ class TestZonesService:
         )
 
         await zones_service.delete_by_id(TEST_ZONE.id)
-        assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
+        zones_repository.delete_by_id.assert_awaited_once_with(id=TEST_ZONE.id)
 
-    async def test_delete_etag(
+    async def test_delete_by_id_etag(
         self,
         mocker: MockerFixture,
     ) -> None:
         zones_repository = Mock(ZonesRepository)
-        zones_repository.delete.return_value = None
+        zones_repository.delete_by_id.return_value = TEST_ZONE
         zones_repository.get_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
             context=Context(),
@@ -79,9 +122,9 @@ class TestZonesService:
         )
 
         await zones_service.delete_by_id(TEST_ZONE.id, "my-etag")
-        assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
+        zones_repository.delete_by_id.assert_awaited_once_with(id=TEST_ZONE.id)
 
-    async def test_delete_etag_fail(
+    async def test_delete_by_id_etag_fail(
         self,
         mocker: MockerFixture,
     ) -> None:
@@ -103,8 +146,9 @@ class TestZonesService:
         assert (
             excinfo.value.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
+        zones_repository.delete_by_id.assert_not_called()
 
-    async def test_delete_default_zone(self) -> None:
+    async def test_delete_by_id_default_zone(self) -> None:
         zones_repository = Mock(ZonesRepository)
         zones_repository.get_by_id.return_value = DEFAULT_ZONE
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
@@ -121,8 +165,9 @@ class TestZonesService:
             excinfo.value.details[0].type
             == CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE
         )
+        zones_repository.delete_by_id.assert_not_called()
 
-    async def test_delete_related_objects_are_moved_to_default_zone(
+    async def test_delete_by_id_related_objects_are_moved_to_default_zone(
         self,
     ) -> None:
         nodes_service_mock = Mock(NodesService)
@@ -130,7 +175,7 @@ class TestZonesService:
         zones_repository = Mock(ZonesRepository)
         zones_repository.get_by_id.return_value = TEST_ZONE
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
-        zones_repository.delete.return_value = None
+        zones_repository.delete_by_id.return_value = TEST_ZONE
 
         zones_service = ZonesService(
             context=Context(),
@@ -151,23 +196,21 @@ class TestZonesService:
             TEST_ZONE.id, DEFAULT_ZONE.id
         )
 
-    async def test_list(self) -> None:
-        zones_repository_mock = Mock(ZonesRepository)
-        zones_repository_mock.list.return_value = ListResult[ZonesRepository](
-            items=[], next_token=None
-        )
-        resource_pools_service = ZonesService(
+    async def test_default_zone_is_cached(self) -> None:
+        zones_repository = Mock(ZonesRepository)
+        zones_repository.get_default_zone.return_value = DEFAULT_ZONE
+
+        cache = ZonesService.build_cache_object()
+        zones_service = ZonesService(
             context=Context(),
-            zones_repository=zones_repository_mock,
             nodes_service=Mock(NodesService),
             vmcluster_service=Mock(VmClustersService),
+            zones_repository=zones_repository,
+            cache=cache,
         )
-        query_mock = Mock(QuerySpec)
-        resource_pools_list = await resource_pools_service.list(
-            token=None, size=1, query=query_mock
-        )
-        zones_repository_mock.list.assert_called_once_with(
-            token=None, size=1, query=query_mock
-        )
-        assert resource_pools_list.next_token is None
-        assert resource_pools_list.items == []
+
+        await zones_service.get_default_zone()
+        await zones_service.get_default_zone()
+
+        zones_repository.get_default_zone.assert_called_once()
+        assert cache.default_zone == DEFAULT_ZONE

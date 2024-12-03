@@ -1,3 +1,6 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from ipaddress import IPv4Address
 from unittest.mock import Mock
 
@@ -14,13 +17,53 @@ from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
     StaticIPAddressResourceBuilder,
 )
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonStaticIPAddressService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return StaticIPAddressService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            staticipaddress_repository=Mock(StaticIPAddressRepository),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return StaticIPAddress(
+            id=1,
+            ip=IPv4Address("10.0.0.1"),
+            alloc_type=IpAddressType.DISCOVERED,
+            lease_time=30,
+            temp_expires_on=now,
+            subnet_id=1,
+            created=now,
+            updated=now,
+        )
+
+    async def test_update_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_update_many(service_instance, test_instance)
+
+    async def test_delete_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_delete_many(service_instance, test_instance)
 
 
 @pytest.mark.asyncio
@@ -231,7 +274,7 @@ class TestStaticIPAddressService:
         )
 
         mock_staticipaddress_repository.create.assert_called_once_with(
-            (
+            resource=(
                 StaticIPAddressResourceBuilder()
                 .with_ip(sip.ip)
                 .with_lease_time(sip.lease_time)
@@ -277,6 +320,7 @@ class TestStaticIPAddressService:
         )
 
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = sip
         mock_staticipaddress_repository.update_by_id.return_value = sip
 
         mock_temporal = Mock(TemporalService)
@@ -287,32 +331,24 @@ class TestStaticIPAddressService:
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
+        resource = (
+            StaticIPAddressResourceBuilder()
+            .with_ip(sip.ip)
+            .with_lease_time(sip.lease_time)
+            .with_alloc_type(sip.alloc_type)
+            .with_subnet_id(sip.subnet_id)
+            .with_created(sip.created)
+            .with_updated(sip.updated)
+            .build()
+        )
         await staticipaddress_service.update_by_id(
             sip.id,
-            (
-                StaticIPAddressResourceBuilder()
-                .with_ip(sip.ip)
-                .with_lease_time(sip.lease_time)
-                .with_alloc_type(sip.alloc_type)
-                .with_subnet_id(sip.subnet_id)
-                .with_created(sip.created)
-                .with_updated(sip.updated)
-                .build()
-            ),
+            resource,
         )
 
         mock_staticipaddress_repository.update_by_id.assert_called_once_with(
-            sip.id,
-            (
-                StaticIPAddressResourceBuilder()
-                .with_ip(sip.ip)
-                .with_lease_time(sip.lease_time)
-                .with_alloc_type(sip.alloc_type)
-                .with_subnet_id(sip.subnet_id)
-                .with_created(sip.created)
-                .with_updated(sip.updated)
-                .build()
-            ),
+            id=sip.id,
+            resource=resource,
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -350,6 +386,7 @@ class TestStaticIPAddressService:
 
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
         mock_staticipaddress_repository.get_by_id.return_value = sip
+        mock_staticipaddress_repository.delete_by_id.return_value = sip
 
         mock_temporal = Mock(TemporalService)
 
@@ -364,7 +401,7 @@ class TestStaticIPAddressService:
         )
 
         mock_staticipaddress_repository.delete_by_id.assert_called_once_with(
-            sip.id,
+            id=sip.id,
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,

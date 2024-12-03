@@ -6,33 +6,55 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.node import NodeStatus
 from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.machines import MachinesRepository
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import ListResult, MaasBaseModel
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.secrets import SecretsService
+from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonMachinesService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return MachinesService(
+            context=Context(connection=Mock(AsyncConnection)),
+            secrets_service=Mock(SecretsService),
+            machines_repository=Mock(MachinesRepository),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        return Machine(
+            id=2,
+            description="test_description_2",
+            created=utcnow(),
+            updated=utcnow(),
+            system_id="e8slyu",
+            owner="admin",
+            cpu_speed=1800,
+            memory=16384,
+            osystem="ubuntu",
+            architecture="amd64/generic",
+            distro_series="jammy",
+            hwe_kernel=None,
+            locked=False,
+            cpu_count=8,
+            status=NodeStatus.NEW,
+            power_type=None,
+            fqdn="maas.local",
+            hostname="hostname",
+        )
 
 
 @pytest.mark.asyncio
 class TestMachinesService:
-    async def test_list(self) -> None:
-        machines_repository_mock = Mock(MachinesRepository)
-        machines_repository_mock.list.return_value = ListResult[Machine](
-            items=[], next_token=None
-        )
-        machines_service = MachinesService(
-            context=Context(connection=Mock(AsyncConnection)),
-            secrets_service=Mock(SecretsService),
-            machines_repository=machines_repository_mock,
-        )
-        machines_list = await machines_service.list(token=None, size=1)
-        machines_repository_mock.list.assert_called_once_with(
-            token=None, size=1, query=None
-        )
-        assert machines_list.next_token is None
-        assert machines_list.items == []
 
     async def test_list_machine_usb_devices(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)

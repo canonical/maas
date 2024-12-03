@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
@@ -12,9 +13,27 @@ from maasservicelayer.db.repositories.nodes import (
     NodeClauseFactory,
     NodesRepository,
 )
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import NodesService
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.secrets import SecretsService
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonNodesService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return NodesService(
+            context=Context(),
+            secrets_service=Mock(SecretsService),
+            nodes_repository=Mock(NodesRepository),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        return Node(id=2, system_id="systemid", status=NodeStatus.NEW)
 
 
 @pytest.mark.asyncio
@@ -23,7 +42,7 @@ class TestNodesService:
         secrets_service_mock = Mock(SecretsService)
         nodes_repository_mock = Mock(NodesRepository)
         updated_node = Mock(Node)
-        nodes_repository_mock.update.return_value = updated_node
+        nodes_repository_mock.update_one.return_value = updated_node
         nodes_service = NodesService(
             context=Context(),
             secrets_service=secrets_service_mock,
@@ -34,7 +53,7 @@ class TestNodesService:
             system_id="xyzio", resource=resource
         )
         assert result == updated_node
-        nodes_repository_mock.update.assert_called_once_with(
+        nodes_repository_mock.update_one.assert_called_once_with(
             query=QuerySpec(where=NodeClauseFactory.with_system_id("xyzio")),
             resource=resource,
         )

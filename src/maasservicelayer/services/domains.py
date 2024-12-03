@@ -1,59 +1,50 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+from typing import List
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.domains import Domain
-from maasservicelayer.services._base import Service
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 
 
-class DomainsService(Service):
+class DomainsService(BaseService[Domain, DomainsRepository]):
     def __init__(
         self,
         context: Context,
         dnspublications_service: DNSPublicationsService,
         domains_repository: DomainsRepository,
     ):
-        super().__init__(context)
+        super().__init__(context, domains_repository)
         self.dnspublications_service = dnspublications_service
-        self.domains_repository = domains_repository
 
-    async def get_one(self, query: QuerySpec) -> Domain | None:
-        return await self.domains_repository.get_one(query=query)
-
-    async def create(self, resource: CreateOrUpdateResource) -> Domain:
-        domain = await self.domains_repository.create(resource)
-        if domain.authoritative:
+    async def post_create_hook(self, resource: Domain) -> None:
+        if resource.authoritative:
             await self.dnspublications_service.create_for_config_update(
-                source=f"added zone {domain.name}",
+                source=f"added zone {resource.name}",
                 action=DnsUpdateAction.RELOAD,
             )
-        return domain
+        return
 
-    async def update_by_id(
-        self, id: int, resource: CreateOrUpdateResource
+    async def post_update_hook(
+        self, old_resource: Domain, updated_resource: Domain
     ) -> Domain:
-        old_domain = await self.domains_repository.get_by_id(id=id)
-
-        new_domain = await self.domains_repository.update_by_id(id, resource)
 
         source = None
-        if old_domain.authoritative and not new_domain.authoritative:
-            source = f"removed zone {new_domain.name}"
-        elif not old_domain.authoritative and new_domain.authoritative:
-            source = f"added zone {new_domain.name}"
-        elif old_domain.authoritative and new_domain.authoritative:
+        if old_resource.authoritative and not updated_resource.authoritative:
+            source = f"removed zone {updated_resource.name}"
+        elif not old_resource.authoritative and updated_resource.authoritative:
+            source = f"added zone {updated_resource.name}"
+        elif old_resource.authoritative and updated_resource.authoritative:
             changes = []
-            if old_domain.name != new_domain.name:
-                changes.append(f"renamed to {new_domain.name}")
-            if old_domain.ttl != new_domain.ttl:
-                changes.append(f"ttl changed to {new_domain.ttl}")
+            if old_resource.name != updated_resource.name:
+                changes.append(f"renamed to {updated_resource.name}")
+            if old_resource.ttl != updated_resource.ttl:
+                changes.append(f"ttl changed to {updated_resource.ttl}")
             if changes:
-                source = f"zone {old_domain.name} " + " and ".join(changes)
+                source = f"zone {old_resource.name} " + " and ".join(changes)
 
         if source:
             await self.dnspublications_service.create_for_config_update(
@@ -61,18 +52,20 @@ class DomainsService(Service):
                 action=DnsUpdateAction.RELOAD,
             )
 
-        return new_domain
+        return updated_resource
 
-    async def delete_by_id(self, id: int) -> None:
-        domain = await self.domains_repository.get_by_id(id=id)
+    async def post_update_many_hook(self, resources: List[Domain]) -> None:
+        raise NotImplementedError("Not implemented yet.")
 
-        await self.domains_repository.delete_by_id(id)
-
-        if domain.authoritative:
+    async def post_delete_hook(self, resource: Domain) -> None:
+        if resource.authoritative:
             await self.dnspublications_service.create_for_config_update(
-                source=f"removed zone {domain.name}",
+                source=f"removed zone {resource.name}",
                 action=DnsUpdateAction.RELOAD,
             )
 
+    async def post_delete_many_hook(self, resources: List[Domain]) -> None:
+        raise NotImplementedError("Not implemented yet.")
+
     async def get_default_domain(self) -> Domain:
-        return await self.domains_repository.get_default_domain()
+        return await self.repository.get_default_domain()

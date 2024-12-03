@@ -276,7 +276,7 @@ class TestVlanApi(ApiCommonTests):
         updated_vlan = TEST_VLAN.copy()
         updated_vlan.name = "newname"
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.update.return_value = updated_vlan
+        services_mock.vlans.update_one.return_value = updated_vlan
         update_vlan_request = VlanUpdateRequest(
             name="newname",
             description=TEST_VLAN.description,
@@ -331,10 +331,10 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.delete.return_value = None
+        services_mock.vlans.delete_one.return_value = None
         response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 204
-        services_mock.vlans.delete.assert_called_with(
+        services_mock.vlans.delete_one.assert_called_with(
             query=QuerySpec(
                 where=ClauseFactory.and_clauses(
                     [
@@ -352,7 +352,7 @@ class TestVlanApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.delete.side_effect = PreconditionFailedException(
+        services_mock.vlans.delete_one.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
                     type=ETAG_PRECONDITION_VIOLATION_TYPE,
@@ -365,7 +365,7 @@ class TestVlanApi(ApiCommonTests):
             f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
         )
         assert response.status_code == 412
-        services_mock.vlans.delete.assert_called_with(
+        services_mock.vlans.delete_one.assert_called_with(
             query=QuerySpec(
                 where=ClauseFactory.and_clauses(
                     [

@@ -11,7 +11,6 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsClauseFactory,
 )
@@ -28,13 +27,9 @@ from maasservicelayer.db.repositories.staticipaddress import (
 from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
-from maasservicelayer.db.repositories.subnets import (
-    SubnetClauseFactory,
-    SubnetsRepository,
-)
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services._base import Service
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
@@ -46,7 +41,7 @@ from maasservicelayer.services.staticroutes import StaticRoutesService
 from maasservicelayer.services.temporal import TemporalService
 
 
-class SubnetsService(Service):
+class SubnetsService(BaseService[Subnet, SubnetsRepository]):
     def __init__(
         self,
         context: Context,
@@ -59,7 +54,7 @@ class SubnetsService(Service):
         nodegrouptorackcontrollers_service: NodeGroupToRackControllersService,
         subnets_repository: SubnetsRepository,
     ):
-        super().__init__(context)
+        super().__init__(context, subnets_repository)
         self.temporal_service = temporal_service
         self.staticipaddress_service = staticipaddress_service
         self.ipranges_service = ipranges_service
@@ -67,121 +62,87 @@ class SubnetsService(Service):
         self.reservedips_service = reservedips_service
         self.dhcpsnippets_service = dhcpsnippets_service
         self.nodegrouptorackcontrollers = nodegrouptorackcontrollers_service
-        self.subnets_repository = subnets_repository
-
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[Subnet]:
-        return await self.subnets_repository.list(
-            token=token, size=size, query=query
-        )
-
-    async def get(self, query: QuerySpec) -> List[Subnet]:
-        return await self.subnets_repository.get(query)
-
-    async def get_by_id(
-        self, fabric_id: int, vlan_id: int, id: int
-    ) -> Subnet | None:
-        query = QuerySpec(
-            where=SubnetClauseFactory.and_clauses(
-                [
-                    SubnetClauseFactory.with_id(id),
-                    SubnetClauseFactory.with_vlan_id(vlan_id),
-                    SubnetClauseFactory.with_fabric_id(fabric_id),
-                ]
-            )
-        )
-        return await self.subnets_repository.get_one(query=query)
 
     async def find_best_subnet_for_ip(
         self, ip: IPvAnyAddress
     ) -> Subnet | None:
-        return await self.subnets_repository.find_best_subnet_for_ip(ip)
+        return await self.repository.find_best_subnet_for_ip(ip)
 
-    async def create(self, resource: CreateOrUpdateResource) -> Subnet:
-        subnet = await self.subnets_repository.create(resource)
+    async def post_create_hook(self, resource: Subnet) -> None:
         # TODO: DNS workflow & proxy workflow
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(subnet_ids=[subnet.id]),
+            ConfigureDHCPParam(subnet_ids=[resource.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
-        return subnet
+        return
 
-    async def update(
-        self, query: QuerySpec, resource: CreateOrUpdateResource
-    ) -> Subnet:
-        subnet = await self.subnets_repository.update(query, resource)
-        if subnet:
-            # TODO: DNS workflow & proxy workflow
-            self.temporal_service.register_or_update_workflow_call(
-                CONFIGURE_DHCP_WORKFLOW_NAME,
-                ConfigureDHCPParam(subnet_ids=[subnet.id]),
-                parameter_merge_func=merge_configure_dhcp_param,
-                wait=False,
-            )
-        return subnet
-
-    async def delete(
-        self, query: QuerySpec, etag_if_match: str | None = None
+    async def post_update_hook(
+        self, old_resource: Subnet, updated_resource: Subnet
     ) -> None:
-        if etag_if_match:
-            subnet = await self.subnets_repository.get_one(query)
-            if not subnet:
-                return None
-            self.etag_check(subnet, etag_if_match)
+        # TODO: DNS workflow & proxy workflow
+        self.temporal_service.register_or_update_workflow_call(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(subnet_ids=[updated_resource.id]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+        return
 
-        subnet = await self.subnets_repository.delete(query)
-        if subnet:
-            # cascade delete
-            await self.staticipaddress_service.delete(
-                QuerySpec(
-                    where=StaticIPAddressClauseFactory.with_subnet_id(
-                        subnet.id
-                    )
+    async def post_update_many_hook(self, resources: List[Subnet]) -> None:
+        raise NotImplementedError("Not implemented yet.")
+
+    async def post_delete_hook(self, resource: Subnet) -> None:
+        # cascade delete
+        await self.staticipaddress_service.delete_many(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.with_subnet_id(resource.id)
+            )
+        )
+        await self.ipranges_service.delete_many(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.with_subnet_id(resource.id)
+            )
+        )
+        await self.staticroutes_service.delete_many(
+            query=QuerySpec(
+                where=StaticRoutesClauseFactory.or_clauses(
+                    [
+                        StaticRoutesClauseFactory.with_source_id(resource.id),
+                        StaticRoutesClauseFactory.with_destination_id(
+                            resource.id
+                        ),
+                    ]
                 )
             )
-            await self.ipranges_service.delete(
-                QuerySpec(where=IPRangeClauseFactory.with_subnet_id(subnet.id))
+        )
+        await self.reservedips_service.delete_many(
+            query=QuerySpec(
+                where=ReservedIPsClauseFactory.with_subnet_id(resource.id)
             )
-            await self.staticroutes_service.delete(
-                QuerySpec(
-                    where=StaticRoutesClauseFactory.or_clauses(
-                        [
-                            StaticRoutesClauseFactory.with_source_id(
-                                subnet.id
-                            ),
-                            StaticRoutesClauseFactory.with_destination_id(
-                                subnet.id
-                            ),
-                        ]
-                    )
+        )
+        await self.dhcpsnippets_service.delete_many(
+            query=QuerySpec(
+                where=DhcpSnippetsClauseFactory.with_subnet_id(resource.id)
+            )
+        )
+        await self.nodegrouptorackcontrollers.delete_many(
+            query=QuerySpec(
+                where=NodeGroupToRackControllersClauseFactory.with_subnet_id(
+                    resource.id
                 )
             )
-            await self.reservedips_service.delete(
-                QuerySpec(
-                    where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
-                )
-            )
-            await self.dhcpsnippets_service.delete(
-                QuerySpec(
-                    where=DhcpSnippetsClauseFactory.with_subnet_id(subnet.id)
-                )
-            )
-            await self.nodegrouptorackcontrollers.delete(
-                QuerySpec(
-                    where=NodeGroupToRackControllersClauseFactory.with_subnet_id(
-                        subnet.id
-                    )
-                )
-            )
-            # TODO: DNS workflow & proxy workflow
-            self.temporal_service.register_or_update_workflow_call(
-                CONFIGURE_DHCP_WORKFLOW_NAME,
-                ConfigureDHCPParam(
-                    vlan_ids=[subnet.vlan_id]
-                ),  # use parent when object is deleted
-                parameter_merge_func=merge_configure_dhcp_param,
-                wait=False,
-            )
+        )
+        # TODO: DNS workflow & proxy workflow
+        self.temporal_service.register_or_update_workflow_call(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(
+                vlan_ids=[resource.vlan_id]
+            ),  # use parent when object is deleted
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+
+    async def post_delete_many_hook(self, resources: List[Subnet]) -> None:
+        raise NotImplementedError("Not implemented yet.")

@@ -8,10 +8,48 @@ from maasservicelayer.db.repositories.domains import (
     DomainResourceBuilder,
     DomainsRepository,
 )
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.domains import Domain
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonDomainsService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return DomainsService(
+            context=Context(),
+            dnspublications_service=Mock(DNSPublicationsService),
+            domains_repository=Mock(DomainsRepository),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return Domain(
+            id=1,
+            name="example.com",
+            authoritative=True,
+            ttl=30,
+            created=now,
+            updated=now,
+        )
+
+    async def test_update_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_update_many(service_instance, test_instance)
+
+    async def test_delete_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_delete_many(service_instance, test_instance)
 
 
 @pytest.mark.asyncio
@@ -51,7 +89,7 @@ class TestDomainsService:
 
         await service.create(resource)
 
-        domains_repository.create.assert_called_once_with(resource)
+        domains_repository.create.assert_called_once_with(resource=resource)
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="added zone example.com",
             action=DnsUpdateAction.RELOAD,
@@ -102,7 +140,7 @@ class TestDomainsService:
         await service.update_by_id(old_domain.id, resource)
 
         domains_repository.update_by_id.assert_called_once_with(
-            old_domain.id, resource
+            id=old_domain.id, resource=resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="removed zone example.com",
@@ -154,7 +192,7 @@ class TestDomainsService:
         await service.update_by_id(old_domain.id, resource)
 
         domains_repository.update_by_id.assert_called_once_with(
-            old_domain.id, resource
+            id=old_domain.id, resource=resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone example.com renamed to example2.com",
@@ -206,7 +244,7 @@ class TestDomainsService:
         await service.update_by_id(old_domain.id, resource)
 
         domains_repository.update_by_id.assert_called_once_with(
-            old_domain.id, resource
+            id=old_domain.id, resource=resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone example.com ttl changed to 31",
@@ -258,7 +296,7 @@ class TestDomainsService:
         await service.update_by_id(old_domain.id, resource)
 
         domains_repository.update_by_id.assert_called_once_with(
-            old_domain.id, resource
+            id=old_domain.id, resource=resource
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone example.com renamed to example2.com and ttl changed to 31",
@@ -279,6 +317,7 @@ class TestDomainsService:
         )
 
         domains_repository.get_by_id.return_value = domain
+        domains_repository.delete_by_id.return_value = domain
 
         dnspublications_service = Mock(DNSPublicationsService)
 
@@ -290,7 +329,7 @@ class TestDomainsService:
 
         await service.delete_by_id(domain.id)
 
-        domains_repository.delete_by_id.assert_called_once_with(domain.id)
+        domains_repository.delete_by_id.assert_called_once_with(id=domain.id)
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="removed zone example.com",
             action=DnsUpdateAction.RELOAD,

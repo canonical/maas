@@ -157,7 +157,7 @@ class TestNodesRepository:
             .with_status(status=NodeStatus.DEPLOYED)
             .build()
         )
-        await nodes_repository.update(
+        await nodes_repository.update_one(
             query=QuerySpec(
                 where=NodeClauseFactory.with_system_id(machine.system_id)
             ),
@@ -189,7 +189,7 @@ class TestNodesRepository:
             .build()
         )
         with pytest.raises(NotFoundException):
-            await nodes_repository.update(
+            await nodes_repository.update_one(
                 query=QuerySpec(NodeClauseFactory.with_system_id("mario")),
                 resource=resource,
             )

@@ -1,11 +1,9 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-
-from typing import Optional
+from dataclasses import dataclass
+from typing import List
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -14,58 +12,44 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
-from maasservicelayer.services._base import Service
+from maasservicelayer.services._base import BaseService, Service, ServiceCache
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.vmcluster import VmClustersService
 
 
-class ZonesService(Service):
+@dataclass(slots=True)
+class ZonesServiceCache(ServiceCache):
+    default_zone: Zone | None = None
+
+
+class ZonesService(BaseService[Zone, ZonesRepository]):
     def __init__(
         self,
         context: Context,
         nodes_service: NodesService,
         vmcluster_service: VmClustersService,
         zones_repository: ZonesRepository,
+        cache: ZonesServiceCache | None = None,
     ):
-        super().__init__(context)
+        super().__init__(context, zones_repository, cache)
         self.nodes_service = nodes_service
-        self.zones_repository = zones_repository
         self.vmcluster_service = vmcluster_service
 
-    async def create(self, resource: CreateOrUpdateResource) -> Zone:
-        return await self.zones_repository.create(resource)
+    @staticmethod
+    def build_cache_object() -> ZonesServiceCache:
+        return ZonesServiceCache()
 
-    async def get_by_id(self, id: int) -> Optional[Zone]:
-        return await self.zones_repository.get_by_id(id)
+    @Service.from_cache_or_execute(attr="default_zone")
+    async def get_default_zone(self) -> Zone:
+        return await self.repository.get_default_zone()
 
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec
-    ) -> ListResult[Zone]:
-        return await self.zones_repository.list(
-            token=token, size=size, query=query
-        )
+    async def post_delete_many_hook(self, resources: List[Zone]) -> None:
+        raise NotImplementedError("Not implemented yet.")
 
-    async def update_by_id(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> Zone:
-        return await self.zones_repository.update_by_id(id, resource)
-
-    async def delete_by_id(
-        self, zone_id: int, etag_if_match: str | None = None
-    ) -> None:
-        """
-        Delete a zone. All the resources in the zone will be moved to the default zone.
-        """
-        zone = await self.get_by_id(zone_id)
-        if not zone:
-            return None
-
-        self.etag_check(zone, etag_if_match)
-        default_zone = await self.zones_repository.get_default_zone()
-
-        if default_zone.id == zone.id:
+    async def pre_delete_hook(self, resource_to_be_deleted: Zone) -> None:
+        default_zone = await self.get_default_zone()
+        if default_zone.id == resource_to_be_deleted.id:
             raise BadRequestException(
                 details=[
                     BaseExceptionDetail(
@@ -74,9 +58,12 @@ class ZonesService(Service):
                     )
                 ]
             )
-        await self.zones_repository.delete_by_id(zone_id)
 
+    async def post_delete_hook(self, resource: Zone) -> None:
+        default_zone = await self.get_default_zone()
         # Cascade deletion to the related models and move the resources from the deleted zone to the default zone
-        await self.nodes_service.move_to_zone(zone_id, default_zone.id)
-        await self.nodes_service.move_bmcs_to_zone(zone_id, default_zone.id)
-        await self.vmcluster_service.move_to_zone(zone_id, default_zone.id)
+        await self.nodes_service.move_to_zone(resource.id, default_zone.id)
+        await self.nodes_service.move_bmcs_to_zone(
+            resource.id, default_zone.id
+        )
+        await self.vmcluster_service.move_to_zone(resource.id, default_zone.id)

@@ -10,50 +10,35 @@ from maasservicelayer.db.repositories.fabrics import (
     FabricsRepository,
     FabricsResourceBuilder,
 )
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.fabrics import Fabric
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonFabricsService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return FabricsService(
+            context=Context(),
+            vlans_service=Mock(VlansService),
+            fabrics_repository=Mock(FabricsRepository),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return Fabric(
+            id=0, name="test", description="descr", created=now, updated=now
+        )
 
 
 @pytest.mark.asyncio
 class TestFabricsService:
-    async def test_list(self) -> None:
-        vlans_service_mock = Mock(VlansService)
-        fabrics_repository_mock = Mock(FabricsRepository)
-        fabrics_repository_mock.list.return_value = ListResult[Fabric](
-            items=[], next_token=None
-        )
-        fabrics_service = FabricsService(
-            context=Context(),
-            vlans_service=vlans_service_mock,
-            fabrics_repository=fabrics_repository_mock,
-        )
-        fabrics_list = await fabrics_service.list(token=None, size=1)
-        fabrics_repository_mock.list.assert_called_once_with(
-            token=None, size=1
-        )
-        assert fabrics_list.next_token is None
-        assert fabrics_list.items == []
-
-    async def test_get_by_id(self) -> None:
-        now = utcnow()
-        expected_fabric = Fabric(
-            id=0, name="test", description="descr", created=now, updated=now
-        )
-        vlans_service_mock = Mock(VlansService)
-        fabrics_repository_mock = Mock(FabricsRepository)
-        fabrics_repository_mock.get_by_id.return_value = expected_fabric
-        fabrics_service = FabricsService(
-            context=Context(),
-            vlans_service=vlans_service_mock,
-            fabrics_repository=fabrics_repository_mock,
-        )
-        fabric = await fabrics_service.get_by_id(id=1)
-        fabrics_repository_mock.get_by_id.assert_called_once_with(id=1)
-        assert expected_fabric == fabric
-
     async def test_create(self) -> None:
         now = utcnow()
         expected_fabric = Fabric(
@@ -94,39 +79,3 @@ class TestFabricsService:
         assert create_vlan_args["name"] == "Default VLAN"
         assert create_vlan_args["mtu"] == 1500
         assert create_vlan_args["dhcp_on"] is False
-
-    async def test_update_by_id(self) -> None:
-        now = utcnow()
-        fabric = Fabric(
-            id=1,
-            name="fabric",
-            description="description",
-            class_type="class",
-            created=now,
-            updated=now,
-        )
-
-        vlans_service_mock = Mock(VlansService)
-        fabrics_repository_mock = Mock(FabricsRepository)
-        fabrics_repository_mock.update_by_id.return_value = fabric
-        fabrics_service = FabricsService(
-            context=Context(),
-            vlans_service=vlans_service_mock,
-            fabrics_repository=fabrics_repository_mock,
-        )
-
-        resource = (
-            FabricsResourceBuilder()
-            .with_name(fabric.name)
-            .with_description(fabric.description)
-            .with_class_type(fabric.class_type)
-            .with_created(fabric.created)
-            .with_updated(fabric.updated)
-            .build()
-        )
-
-        await fabrics_service.update_by_id(id=fabric.id, resource=resource)
-
-        fabrics_repository_mock.update_by_id.assert_called_once_with(
-            id=fabric.id, resource=resource
-        )

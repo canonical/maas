@@ -13,36 +13,29 @@ from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
     DNSPublicationResourceBuilder,
 )
+from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.dnspublications import DNSPublication
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 
 @pytest.mark.asyncio
-class TestDNSPublicationsService:
-    async def test_create(self):
-        now = utcnow()
-        resource = (
-            DNSPublicationResourceBuilder()
-            .with_serial(1)
-            .with_source("")
-            .with_update("")
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
+class TestDNSPublicationsService(ServiceCommonTests):
 
-        dnspublication_repository = Mock(DNSPublicationRepository)
-
-        service = DNSPublicationsService(
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return DNSPublicationsService(
             context=Context(),
             temporal_service=Mock(TemporalService),
-            dnspublication_repository=dnspublication_repository,
+            dnspublication_repository=Mock(DNSPublicationRepository),
         )
 
-        await service.create(resource)
-
-        dnspublication_repository.create.assert_called_once_with(resource)
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        return DNSPublication(id=0, serial=1, source="source", update="update")
 
     async def test_create_for_config_update_reload(self):
         now = utcnow()
@@ -70,7 +63,7 @@ class TestDNSPublicationsService:
         )
 
         dnspublication_repository.create.assert_called_once_with(
-            DNSPublicationResourceBuilder()
+            resource=DNSPublicationResourceBuilder()
             .with_serial(2)
             .with_source("")
             .with_update(DnsUpdateAction.RELOAD)
@@ -112,7 +105,7 @@ class TestDNSPublicationsService:
         )
 
         dnspublication_repository.create.assert_called_once_with(
-            DNSPublicationResourceBuilder()
+            resource=DNSPublicationResourceBuilder()
             .with_serial(2)
             .with_source("")
             .with_update("INSERT example.com test A 30 1.1.1.1")

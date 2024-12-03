@@ -4,9 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dnsresources import (
-    DNSResourceClauseFactory,
     DNSResourceRepository,
     DNSResourceResourceBuilder,
 )
@@ -71,26 +69,6 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
         self, repository_instance, instance_builder
     ):
         pass
-
-    async def test_get_one(
-        self,
-        repository_instance: DNSResourceRepository,
-        created_instance: DNSResource,
-    ) -> None:
-        query = QuerySpec(
-            where=DNSResourceClauseFactory.and_clauses(
-                [
-                    DNSResourceClauseFactory.with_name(created_instance.name),
-                    DNSResourceClauseFactory.with_domain_id(
-                        created_instance.domain_id
-                    ),
-                ]
-            ),
-        )
-
-        result = await repository_instance.get_one(query)
-        assert result is not None
-        assert result.id == created_instance.id
 
     async def test_get_dnsresources_in_domain_for_ip(
         self, repository_instance: DNSResourceRepository, fixture: Fixture

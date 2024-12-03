@@ -21,40 +21,59 @@ from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     PreconditionFailedException,
 )
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonVlansService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return VlansService(
+            context=Context(),
+            vlans_repository=Mock(VlansRepository),
+            temporal_service=Mock(TemporalService),
+            nodes_service=Mock(NodesService),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return Vlan(
+            id=0,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=1500,
+            dhcp_on=True,
+            fabric_id=0,
+            created=now,
+            updated=now,
+        )
+
+    async def test_update_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_update_many(service_instance, test_instance)
+
+    async def test_delete_many(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        with pytest.raises(NotImplementedError):
+            await super().test_delete_many(service_instance, test_instance)
 
 
 @pytest.mark.asyncio
 class TestVlansService:
-    async def test_list(self) -> None:
-        nodes_service_mock = Mock(NodesService)
-        vlans_repository_mock = Mock(VlansRepository)
-        vlans_repository_mock.list.return_value = ListResult[Vlan](
-            items=[], next_token=None
-        )
-        vlans_service = VlansService(
-            context=Context(),
-            temporal_service=Mock(TemporalService),
-            nodes_service=nodes_service_mock,
-            vlans_repository=vlans_repository_mock,
-        )
-        query = QuerySpec(where=VlansClauseFactory.with_fabric_id(fabric_id=0))
-        vlans_list = await vlans_service.list(token=None, size=1, query=query)
-        vlans_repository_mock.list.assert_called_once_with(
-            token=None,
-            size=1,
-            query=query,
-        )
-        assert vlans_list.next_token is None
-        assert vlans_list.items == []
-
     async def test_get_node_vlans(self) -> None:
         now = utcnow()
         expected_vlan = Vlan(
@@ -125,7 +144,7 @@ class TestVlansService:
 
         await vlans_service.create(resource)
 
-        vlans_repository_mock.create.assert_called_once_with(resource)
+        vlans_repository_mock.create.assert_called_once_with(resource=resource)
         mock_temporal.register_or_update_workflow_call.assert_not_called()
 
     async def test_update(self) -> None:
@@ -144,6 +163,7 @@ class TestVlansService:
 
         nodes_service_mock = Mock(NodesService)
         vlans_repository_mock = Mock(VlansRepository)
+        vlans_repository_mock.get_by_id.return_value = vlan
         vlans_repository_mock.update_by_id.return_value = vlan
 
         mock_temporal = Mock(TemporalService)
@@ -171,7 +191,7 @@ class TestVlansService:
         await vlans_service.update_by_id(vlan.id, resource)
 
         vlans_repository_mock.update_by_id.assert_called_once_with(
-            vlan.id, resource
+            id=vlan.id, resource=resource
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -210,6 +230,7 @@ class TestVlansService:
 
         vlans_repository_mock = Mock(VlansRepository)
         vlans_repository_mock.get_one.return_value = vlan
+        vlans_repository_mock.delete_by_id.return_value = vlan
         vlans_repository_mock.get_fabric_default_vlan.return_value = (
             default_vlan
         )
@@ -231,9 +252,9 @@ class TestVlansService:
                 ]
             )
         )
-        await vlans_service.delete(query=query)
+        await vlans_service.delete_one(query=query)
 
-        vlans_repository_mock.delete_by_id.assert_called_once_with(vlan.id)
+        vlans_repository_mock.delete_by_id.assert_called_once_with(id=vlan.id)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(system_ids=[primary_rack.system_id]),
@@ -260,6 +281,7 @@ class TestVlansService:
 
         vlans_repository_mock = Mock(VlansRepository)
         vlans_repository_mock.get_by_id.return_value = vlan
+        vlans_repository_mock.delete_by_id.return_value = vlan
         vlans_repository_mock.get_fabric_default_vlan.return_value = (
             default_vlan
         )
@@ -275,7 +297,7 @@ class TestVlansService:
 
         await vlans_service.delete_by_id(vlan.id)
 
-        vlans_repository_mock.delete_by_id.assert_called_once_with(vlan.id)
+        vlans_repository_mock.delete_by_id.assert_called_once_with(id=vlan.id)
         mock_temporal.register_or_update_workflow_call.assert_not_called()
 
     async def test_delete_etag_not_matching(self) -> None:
@@ -311,7 +333,7 @@ class TestVlansService:
         with pytest.raises(PreconditionFailedException):
             await vlans_service.delete_by_id(vlan.id, "wrong-etag")
 
-        vlans_repository_mock.delete.assert_not_called()
+        vlans_repository_mock.delete_by_id.assert_not_called()
 
     async def test_delete_etag_matching(self) -> None:
         now = utcnow()
@@ -344,7 +366,7 @@ class TestVlansService:
         )
 
         await vlans_service.delete_by_id(vlan.id, vlan.etag())
-        vlans_repository_mock.delete_by_id.assert_called_once_with(vlan.id)
+        vlans_repository_mock.delete_by_id.assert_called_once_with(id=vlan.id)
 
     async def test_delete_default_vlan(self) -> None:
         now = utcnow()

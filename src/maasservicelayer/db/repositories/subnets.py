@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Type
+from typing import List, Type
 
 from netaddr import IPAddress
 from pydantic import IPvAnyAddress
@@ -14,6 +14,7 @@ from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ResourceBuilder,
+    T,
 )
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.exceptions.catalog import (
@@ -205,6 +206,13 @@ class SubnetsRepository(BaseRepository[Subnet]):
                 ]
             )
 
-    async def delete(self, query: QuerySpec) -> Subnet | None:
+    async def delete_one(self, query: QuerySpec) -> Subnet | None:
         await self._pre_delete_checks(query)
-        return await super().delete(query)
+        return await super().delete_one(query)
+
+    async def delete_by_id(self, id: int) -> Subnet | None:
+        query = QuerySpec(where=Clause(eq(SubnetTable.c.id, id)))
+        return await self.delete_one(query)
+
+    async def delete_many(self, query: QuerySpec) -> List[T]:
+        raise NotImplementedError("delete_many is not implemented yet.")

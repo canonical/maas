@@ -11,21 +11,42 @@ from maasservicelayer.db.repositories.users import (
     UserResourceBuilder,
     UsersRepository,
 )
+from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.users import User
 from maasservicelayer.services import UsersService
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestCommonUsersService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return UsersService(
+            context=Context(), users_repository=Mock(UsersRepository)
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return User(
+            id=1,
+            username="test_username",
+            password="test_password",
+            first_name="test_first_name",
+            last_name="test_last_name",
+            is_superuser=False,
+            is_active=False,
+            is_staff=False,
+            email="email@example.com",
+            date_joined=now,
+            last_login=now,
+        )
 
 
 @pytest.mark.asyncio
 class TestUsersService:
-    async def test_get(self) -> None:
-        users_repository_mock = Mock(UsersRepository)
-        users_service = UsersService(
-            context=Context(), users_repository=users_repository_mock
-        )
-        await users_service.get("test")
-        users_repository_mock.find_by_username.assert_called_once_with("test")
-
     async def test_get_by_session_id(self) -> None:
         users_repository_mock = Mock(UsersRepository)
         users_service = UsersService(
@@ -44,18 +65,6 @@ class TestUsersService:
         await users_service.get_user_profile(username="username")
         users_repository_mock.get_user_profile.assert_called_once_with(
             "username"
-        )
-
-    async def test_update(self) -> None:
-        users_repository_mock = Mock(UsersRepository)
-        users_service = UsersService(
-            context=Context(), users_repository=users_repository_mock
-        )
-        builder = UserResourceBuilder()
-        builder.with_last_name("test")
-        await users_service.update_by_id(user_id=1, resource=builder.build())
-        users_repository_mock.update_by_id.assert_called_once_with(
-            id=1, resource=builder.build()
         )
 
     async def test_create_profile(self) -> None:

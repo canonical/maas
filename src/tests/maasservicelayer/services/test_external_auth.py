@@ -19,10 +19,12 @@ from maasservicelayer.auth.macaroons.checker import (
 from maasservicelayer.auth.macaroons.locator import AsyncThirdPartyLocator
 from maasservicelayer.auth.macaroons.oven import AsyncOven
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
 from maasservicelayer.db.repositories.users import (
+    UserClauseFactory,
     UserProfileResourceBuilder,
     UserResourceBuilder,
 )
@@ -422,7 +424,7 @@ class TestExternalAuthService:
         )
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get.return_value = fake_user
+        users_service_mock.get_one.return_value = fake_user
 
         external_auth_service = ExternalAuthService(
             context=Context(),
@@ -436,7 +438,9 @@ class TestExternalAuthService:
             [[Mock(Macaroon)]], macaroon_bakery_mock
         )
         assert user == fake_user
-        users_service_mock.get.assert_called_once_with(username="admin")
+        users_service_mock.get_one.assert_called_once_with(
+            query=QuerySpec(UserClauseFactory.with_username("admin"))
+        )
 
     async def test_login_external_auth_user_not_in_db(self) -> None:
         checker_mock = Mock(AsyncAuthChecker)
@@ -487,7 +491,7 @@ class TestExternalAuthService:
         ).build()
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get.return_value = None
+        users_service_mock.get_one.return_value = None
         users_service_mock.create.return_value = fake_user
         users_service_mock.create_profile.return_value = fake_profile
 
@@ -507,8 +511,10 @@ class TestExternalAuthService:
                 [[Mock(Macaroon)]], macaroon_bakery_mock
             )
         assert user == fake_user
-        users_service_mock.get.assert_called_once_with(
-            username=fake_user.username
+        users_service_mock.get_one.assert_called_once_with(
+            query=QuerySpec(
+                UserClauseFactory.with_username(fake_user.username)
+            )
         )
         users_service_mock.create.assert_called_once_with(user_builder)
         users_service_mock.create_profile.assert_called_once_with(

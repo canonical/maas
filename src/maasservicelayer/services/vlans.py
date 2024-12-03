@@ -10,7 +10,6 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -19,14 +18,13 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
-from maasservicelayer.services._base import Service
+from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
 
 
-class VlansService(Service):
+class VlansService(BaseService[Vlan, VlansRepository]):
     def __init__(
         self,
         context: Context,
@@ -34,99 +32,57 @@ class VlansService(Service):
         nodes_service: NodesService,
         vlans_repository: VlansRepository,
     ):
-        super().__init__(context)
+        super().__init__(context, vlans_repository)
         self.temporal_service = temporal_service
         self.nodes_service = nodes_service
-        self.vlans_repository = vlans_repository
-
-    async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[Vlan]:
-        return await self.vlans_repository.list(
-            token=token,
-            size=size,
-            query=query,
-        )
-
-    async def get_by_id(self, vlan_id: int) -> Vlan | None:
-        return await self.vlans_repository.get_by_id(vlan_id)
-
-    async def get_one(self, query: QuerySpec) -> Vlan | None:
-        return await self.vlans_repository.get_one(query=query)
 
     async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
-        return await self.vlans_repository.get_node_vlans(query=query)
+        return await self.repository.get_node_vlans(query=query)
 
     async def get_fabric_default_vlan(self, fabric_id: int) -> Vlan:
-        return await self.vlans_repository.get_fabric_default_vlan(fabric_id)
+        return await self.repository.get_fabric_default_vlan(fabric_id)
 
-    async def create(self, resource: CreateOrUpdateResource) -> Vlan:
-        # When the VLAN is created it has no related IPRanges. For this reason it's not possible to enable DHCP
-        # at creation time and we don't have to start the temporal workflow.
-        return await self.vlans_repository.create(resource)
+    # When the VLAN is created it has no related IPRanges. For this reason it's not possible to enable DHCP
+    # at creation time and we don't have to start the temporal workflow. For this reason, we don't have to override the create
+    # method of the BaseService
 
-    async def update(
-        self, query: QuerySpec, resource: CreateOrUpdateResource
-    ) -> Vlan:
-        vlan = await self.vlans_repository.update(query, resource)
-        return await self._post_update(vlan)
-
-    async def update_by_id(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> Vlan:
-        vlan = await self.vlans_repository.update_by_id(id, resource)
-        return await self._post_update(vlan)
-
-    async def _post_update(self, vlan: Vlan) -> Vlan:
-        # dhcp_on could've been true prior to update or updated to true,
-        # so always register configure-dhcp on update
+    async def post_update_hook(
+        self, old_resource: Vlan, updated_resource: Vlan
+    ) -> None:
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            ConfigureDHCPParam(vlan_ids=[updated_resource.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
-        return vlan
+        return
 
-    async def delete_by_id(self, id: int, etag_if_match: str | None = None):
-        vlan = await self.vlans_repository.get_by_id(id=id)
-        return await self._delete(vlan, etag_if_match)
+    async def post_update_many_hook(self, resources: List[Vlan]) -> None:
+        raise NotImplementedError("Not implemented yet.")
 
-    async def delete(self, query: QuerySpec, etag_if_match: str | None = None):
-        vlan = await self.vlans_repository.get_one(query=query)
-        return await self._delete(vlan, etag_if_match)
-
-    async def _delete(
-        self, vlan: Vlan | None, etag_if_match: str | None = None
-    ) -> None:
-        if not vlan:
-            return None
-
-        self.etag_check(vlan, etag_if_match)
-
+    async def pre_delete_hook(self, resource_to_be_deleted: Vlan) -> None:
         default_fabric_vlan = await self.get_fabric_default_vlan(
-            vlan.fabric_id
+            resource_to_be_deleted.fabric_id
         )
-        if default_fabric_vlan == vlan:
+        if default_fabric_vlan == resource_to_be_deleted:
             raise BadRequestException(
                 details=[
                     BaseExceptionDetail(
                         type=CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
-                        message=f"The VLAN {vlan.id} is the default VLAN for the fabric {vlan.fabric_id} and can't be deleted.",
+                        message=f"The VLAN {resource_to_be_deleted.id} is the default VLAN for the fabric {resource_to_be_deleted.fabric_id} and can't be deleted.",
                     )
                 ]
             )
 
-        await self.vlans_repository.delete_by_id(vlan.id)
-
-        if vlan.dhcp_on or vlan.relay_vlan_id is not None:
+    async def post_delete_hook(self, resource: Vlan) -> None:
+        if resource.dhcp_on or resource.relay_vlan_id is not None:
             primary_rack = await self.nodes_service.get_by_id(
-                vlan.primary_rack_id
+                resource.primary_rack_id
             )
             system_ids = [primary_rack.system_id]
-            if vlan.secondary_rack_id is not None:
+            if resource.secondary_rack_id is not None:
                 secondary_rack = await self.nodes_service.get_by_id(
-                    vlan.secondary_rack_id
+                    resource.secondary_rack_id
                 )
                 system_ids.append(secondary_rack.system_id)
 
@@ -136,3 +92,6 @@ class VlansService(Service):
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
             )
+
+    async def post_delete_many_hook(self, resources: List[Vlan]) -> None:
+        raise NotImplementedError("Not implemented yet.")

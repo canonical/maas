@@ -119,8 +119,16 @@ class SubnetsHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        subnet = await services.subnets.get_by_id(
-            fabric_id, vlan_id, subnet_id
+        subnet = await services.subnets.get_one(
+            query=QuerySpec(
+                where=SubnetClauseFactory.and_clauses(
+                    [
+                        SubnetClauseFactory.with_id(subnet_id),
+                        SubnetClauseFactory.with_vlan_id(vlan_id),
+                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                    ]
+                )
+            )
         )
         if not subnet:
             return NotFoundResponse()
@@ -166,7 +174,16 @@ class SubnetsHandler(Handler):
             .with_created(now)
             .with_updated(now)
         )
-        vlan = await services.vlans.get_by_id(fabric_id, vlan_id)
+        vlan = await services.vlans.get_one(
+            QuerySpec(
+                where=SubnetClauseFactory.and_clauses(
+                    [
+                        SubnetClauseFactory.with_vlan_id(vlan_id),
+                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                    ]
+                )
+            )
+        )
         if vlan is None:
             raise NotFoundException(
                 details=[
@@ -225,7 +242,7 @@ class SubnetsHandler(Handler):
                 ]
             )
         )
-        subnet = await services.subnets.update(
+        subnet = await services.subnets.update_one(
             query=query, resource=builder.build()
         )
 
@@ -268,5 +285,7 @@ class SubnetsHandler(Handler):
                 ]
             )
         )
-        await services.subnets.delete(query=query, etag_if_match=etag_if_match)
+        await services.subnets.delete_one(
+            query=query, etag_if_match=etag_if_match
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)

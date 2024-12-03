@@ -3,20 +3,18 @@
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
-from maasservicelayer.services._base import Service
+from maasservicelayer.models.vmcluster import VmCluster
+from maasservicelayer.services._base import BaseService
 
 
-class VmClustersService(Service):
+class VmClustersService(BaseService[VmCluster, VmClustersRepository]):
     def __init__(
         self, context: Context, vmcluster_repository: VmClustersRepository
     ):
-        super().__init__(context)
-        self.vmcluster_repository = vmcluster_repository
+        super().__init__(context, vmcluster_repository)
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         """
         Move all the VMClusters from 'old_zone_id' to 'new_zone_id'.
         """
-        return await self.vmcluster_repository.move_to_zone(
-            old_zone_id, new_zone_id
-        )
+        return await self.repository.move_to_zone(old_zone_id, new_zone_id)

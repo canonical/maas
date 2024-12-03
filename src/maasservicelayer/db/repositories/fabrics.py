@@ -18,7 +18,11 @@ class FabricsResourceBuilder(ResourceBuilder):
         self._request.set_value(FabricTable.c.name.name, value)
         return self
 
-    def with_description(self, value: str) -> "FabricsResourceBuilder":
+    def with_description(
+        self, value: str | None = None
+    ) -> "FabricsResourceBuilder":
+        if not value:
+            value = ""
         self._request.set_value(FabricTable.c.description.name, value)
         return self
 

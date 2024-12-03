@@ -96,7 +96,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get.return_value = User(
+        services_mock.users.get_one.return_value = User(
             id=1,
             username="username",
             password="pass",
@@ -125,7 +125,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get.return_value = User(
+        services_mock.users.get_one.return_value = User(
             id=1,
             username="admin",
             password="pass",
@@ -229,7 +229,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.find_by_id.return_value = USER_1
+        services_mock.users.get_by_id.return_value = USER_1
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/1",
         )
@@ -245,7 +245,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.find_by_id.return_value = None
+        services_mock.users.get_by_id.return_value = None
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/99",
         )
@@ -262,8 +262,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.find_by_id.return_value = None
-        services_mock.users.find_by_id.side_effect = RequestValidationError(
+        services_mock.users.get_one.side_effect = RequestValidationError(
             errors=[]
         )
         response = await mocked_api_client_user.get(
