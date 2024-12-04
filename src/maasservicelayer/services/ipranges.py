@@ -33,6 +33,7 @@ class IPRangesService(BaseService[IPRange, IPRangesRepository]):
         super().__init__(context, ipranges_repository)
         self.temporal_service = temporal_service
         self.dhcpsnippets_service = dhcpsnippets_service
+        self.ipranges_repository = ipranges_repository
 
     async def get_dynamic_range_for_ip(
         self, subnet: Subnet, ip: IPvAnyAddress

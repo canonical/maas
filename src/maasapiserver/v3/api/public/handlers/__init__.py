@@ -6,6 +6,7 @@ from maasapiserver.v3.api.public.handlers.auth import AuthHandler
 from maasapiserver.v3.api.public.handlers.events import EventsHandler
 from maasapiserver.v3.api.public.handlers.fabrics import FabricsHandler
 from maasapiserver.v3.api.public.handlers.interfaces import InterfacesHandler
+from maasapiserver.v3.api.public.handlers.ipranges import IPRangesHandler
 from maasapiserver.v3.api.public.handlers.machines import MachinesHandler
 from maasapiserver.v3.api.public.handlers.reservedips import ReservedIPsHandler
 from maasapiserver.v3.api.public.handlers.resource_pools import (
@@ -26,6 +27,7 @@ APIv3 = API(
         EventsHandler(),
         FabricsHandler(),
         InterfacesHandler(),
+        IPRangesHandler(),
         MachinesHandler(),
         ReservedIPsHandler(),
         ResourcePoolHandler(),

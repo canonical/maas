@@ -6,7 +6,7 @@ from typing import Type
 
 import netaddr
 from pydantic import IPvAnyAddress
-from sqlalchemy import select, Table
+from sqlalchemy import join, select, Table
 
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db.filters import Clause, ClauseFactory
@@ -14,7 +14,7 @@ from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ResourceBuilder,
 )
-from maasservicelayer.db.tables import IPRangeTable, SubnetTable
+from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
 
@@ -28,8 +28,47 @@ class IPRangeClauseFactory(ClauseFactory):
     def with_subnet_ids(cls, ids: list[int]) -> Clause:
         return Clause(condition=IPRangeTable.c.subnet_id.in_(ids))
 
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(IPRangeTable.c.id, id))
+
+    @classmethod
+    def with_vlan_id(cls, vlan_id: int) -> Clause:
+        return Clause(
+            condition=eq(SubnetTable.c.vlan_id, vlan_id),
+            joins=[
+                join(
+                    IPRangeTable,
+                    SubnetTable,
+                    eq(SubnetTable.c.id, IPRangeTable.c.subnet_id),
+                )
+            ],
+        )
+
+    @classmethod
+    def with_fabric_id(cls, fabric_id: int) -> Clause:
+        return Clause(
+            condition=eq(VlanTable.c.fabric_id, fabric_id),
+            joins=[
+                join(
+                    IPRangeTable,
+                    SubnetTable,
+                    eq(SubnetTable.c.id, IPRangeTable.c.subnet_id),
+                ),
+                join(
+                    SubnetTable,
+                    VlanTable,
+                    eq(SubnetTable.c.vlan_id, VlanTable.c.id),
+                ),
+            ],
+        )
+
 
 class IPRangeResourceBuilder(ResourceBuilder):
+    def with_id(self, id: int) -> "IPRangeResourceBuilder":
+        self._request.set_value(IPRangeTable.c.id.name, id)
+        return self
+
     def with_type(self, type: IPRangeType) -> "IPRangeResourceBuilder":
         self._request.set_value(IPRangeTable.c.type.name, type)
         return self
