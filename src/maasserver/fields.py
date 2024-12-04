@@ -738,3 +738,29 @@ class LXDAddressField(forms.CharField):
 
     def clean(self, value):
         return super().clean(value)
+
+
+class IPWithOptionalPort(forms.CharField):
+    def validate(self, value):
+        # try ipv4/ipv6 address without port
+        try:
+            GenericIPAddressField().clean(value, model_instance=None)
+            return value
+        except ValidationError:
+            pass
+
+        # if it fails, try with port
+        try:
+            ip, port = value.rsplit(":", maxsplit=1)
+            GenericIPAddressField().clean(ip, model_instance=None)
+            port = int(port)
+            if port < 0 or port > 65535:
+                raise ValueError()
+            return value
+        except (ValueError, ValidationError):
+            raise ValidationError(
+                message="Invalid IPv4/IPv6 address with optional port."
+            )
+
+    def clean(self, value):
+        return super().clean(value)

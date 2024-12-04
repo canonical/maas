@@ -2728,7 +2728,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 http.client.BAD_REQUEST,
                 {
                     "power_parameters": [
-                        "IP address: Enter a valid IPv4 or IPv6 address."
+                        "IP address: Invalid IPv4/IPv6 address with optional port."
                     ]
                 },
             ),

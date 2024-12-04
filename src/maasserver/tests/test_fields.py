@@ -12,6 +12,7 @@ from maasserver.fields import (
     HostListFormField,
     IPListFormField,
     IPPortListFormField,
+    IPWithOptionalPort,
     LargeObjectField,
     LargeObjectFile,
     LXDAddressField,
@@ -940,3 +941,67 @@ class TestLXDAddressField(MAASTestCase):
             ValidationError, LXDAddressField().clean, uri
         )
         self.assertEqual("Enter a valid LXD address.", error.message)
+
+
+class TestIPWithOptionalPort(MAASTestCase):
+    def test_accepts_ipv4(self):
+        ip = factory.make_ip_address(ipv6=False)
+        self.assertEqual(ip, IPWithOptionalPort().clean(ip))
+
+    def test_accepts_ipv6(self):
+        ips = [
+            "::1",
+            "ff06::c3",
+            "0:0:0:0:0:ffff:192.1.56.10",
+            "::ffff:12.12.12.12",
+            factory.make_ip_address(ipv6=True),
+        ]
+        for ip in ips:
+            self.assertEqual(ip, IPWithOptionalPort().clean(ip))
+
+    def test_accepts_ipv4_with_port(self):
+        ip = factory.make_ip_address(ipv6=False)
+        ip_port = f"{ip}:5000"
+        self.assertEqual(ip_port, IPWithOptionalPort().clean(ip_port))
+
+    def test_accepts_ipv6_with_port(self):
+        ips = [
+            "::1",
+            "ff06::c3",
+            "0:0:0:0:0:ffff:192.1.56.10",
+            "::ffff:12.12.12.12",
+            factory.make_ip_address(ipv6=True),
+        ]
+        for ip in ips:
+            ip_port = f"{ip}:5000"
+            self.assertEqual(ip_port, IPWithOptionalPort().clean(ip_port))
+
+    def test_rejects_invalid_ipv4_address(self):
+        ip = "12.34.56.999"
+        error = self.assertRaises(
+            ValidationError, IPWithOptionalPort().clean, ip
+        )
+        self.assertEqual(
+            "Invalid IPv4/IPv6 address with optional port.", error.message
+        )
+
+    def test_rejects_invalid_ipv6_address(self):
+        ips = ["fe80::abcde", "fe800:0:0:0:abcdfe:0"]
+        for ip in ips:
+            error = self.assertRaises(
+                ValidationError, IPWithOptionalPort().clean, ip
+            )
+            self.assertEqual(
+                "Invalid IPv4/IPv6 address with optional port.", error.message
+            )
+
+    def test_rejects_invalid_port(self):
+        ip = "12.34.56.78"
+        ports = [-1, 65536, 99999]
+        for port in ports:
+            error = self.assertRaises(
+                ValidationError, IPWithOptionalPort().clean, f"{ip}:{port}"
+            )
+            self.assertEqual(
+                "Invalid IPv4/IPv6 address with optional port.", error.message
+            )

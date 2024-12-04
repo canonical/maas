@@ -37,6 +37,7 @@ from jsonschema import validate
 
 from maasserver.config_forms import DictCharField
 from maasserver.fields import (
+    IPWithOptionalPort,
     LXDAddressField,
     MACAddressFormField,
     VirshAddressField,
@@ -56,7 +57,7 @@ FIELD_TYPE_MAPPINGS = {
     "multiple_choice": forms.MultipleChoiceField,
     # This is used on the API so a password field is just a char field.
     "password": forms.CharField,
-    "ip_address": forms.GenericIPAddressField,
+    "ip_address": IPWithOptionalPort,
     "virsh_address": VirshAddressField,
     "lxd_address": LXDAddressField,
 }

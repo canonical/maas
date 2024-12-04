@@ -2534,8 +2534,16 @@ class TestMachineHandler(MAASServerTestCase):
                 {"power_id": factory.make_name()},
                 "Address: Enter a valid virsh address.",
             ),
-            ("ipmi", {}, "IP address: Enter a valid IPv4 or IPv6 address."),
-            ("amt", {}, "Power address: Enter a valid IPv4 or IPv6 address."),
+            (
+                "ipmi",
+                {},
+                "IP address: Invalid IPv4/IPv6 address with optional port.",
+            ),
+            (
+                "amt",
+                {},
+                "Power address: Invalid IPv4/IPv6 address with optional port.",
+            ),
         ]
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
@@ -2549,16 +2557,13 @@ class TestMachineHandler(MAASServerTestCase):
             arch = make_usable_architecture(self)
             power_address = "123"
             node_data["architecture"] = arch
-            node_data["power_parameters"] = {
-                "power_address": power_address,
-            }
+            node_data["power_parameters"] = {"power_address": power_address}
 
             error = self.assertRaises(
                 HandlerValidationError, handler.update, node_data
             )
             self.assertEqual(
-                error.message_dict,
-                {"power_parameters": [error_msg]},
+                error.message_dict, {"power_parameters": [error_msg]}
             )
 
     def test_update_updates_node(self):
@@ -3599,8 +3604,7 @@ class TestMachineHandler(MAASServerTestCase):
         )
         factory.make_PhysicalBlockDevice(node=node, size=20 * 1024**3)
         storage_layout = factory.pick_choice(
-            STORAGE_LAYOUT_CHOICES,
-            but_not=("blank", "custom"),
+            STORAGE_LAYOUT_CHOICES, but_not=("blank", "custom")
         )
         self.addDetail("storage_layout", text_content(storage_layout))
         params = {
@@ -3717,10 +3721,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "request": request,
                 "system_id": node.system_id,
                 "action": "deploy",
-                "extra": {
-                    "osystem": osystem,
-                    "distro_series": releases[0],
-                },
+                "extra": {"osystem": osystem, "distro_series": releases[0]},
             }
         )
         node = reload_object(node)
@@ -3750,10 +3751,7 @@ class TestMachineHandler(MAASServerTestCase):
             json.loads(errors),
             {
                 "destinations": [
-                    {
-                        "message": "This field is required.",
-                        "code": "required",
-                    }
+                    {"message": "This field is required.", "code": "required"}
                 ],
                 "__all__": [
                     {
@@ -3779,8 +3777,7 @@ class TestMachineHandler(MAASServerTestCase):
             node=destination1, size=1024**3, name="sda"
         )
         destination2 = factory.make_Machine(
-            status=NODE_STATUS.FAILED_TESTING,
-            with_boot_disk=False,
+            status=NODE_STATUS.FAILED_TESTING, with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(
             node=destination2, size=1024**3, name="sda"
@@ -3818,7 +3815,7 @@ class TestMachineHandler(MAASServerTestCase):
                         "code": "storage",
                         "system_id": destination2.system_id,
                     },
-                ],
+                ]
             },
         )
 
@@ -3863,11 +3860,9 @@ class TestMachineHandler(MAASServerTestCase):
                 "extra": {
                     "storage": True,
                     "interfaces": False,
-                    "destinations": [
-                        destination.system_id,
-                    ],
+                    "destinations": [destination.system_id],
                 },
-            },
+            }
         )
         pt = (
             destination.current_config.blockdevice_set.first().get_partitiontable()
@@ -3912,12 +3907,9 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "system_id": source.system_id,
                 "action": "clone",
-                "extra": {
-                    "storage": True,
-                    "interfaces": False,
-                },
+                "extra": {"storage": True, "interfaces": False},
                 "filter": {"id": destination.system_id},
-            },
+            }
         )
         pt = (
             destination.current_config.blockdevice_set.first().get_partitiontable()
@@ -3954,8 +3946,7 @@ class TestMachineHandler(MAASServerTestCase):
             node=destination1, size=1024**3, name="sda"
         )
         destination2 = factory.make_Machine(
-            status=NODE_STATUS.FAILED_TESTING,
-            with_boot_disk=False,
+            status=NODE_STATUS.FAILED_TESTING, with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(
             node=destination2, size=8 * 1024**3, name="sda"
@@ -3987,8 +3978,8 @@ class TestMachineHandler(MAASServerTestCase):
                         "message": f"{destination1} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
                         "code": "storage",
                         "system_id": destination1.system_id,
-                    },
-                ],
+                    }
+                ]
             },
         )
         partition_table = (
@@ -4622,16 +4613,8 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             handler.get_grouped_storages([ssd, hdd, rotary]),
             [
-                {
-                    "count": 1,
-                    "size": ssd.size,
-                    "disk_type": "ssd",
-                },
-                {
-                    "count": 2,
-                    "size": hdd.size,
-                    "disk_type": "hdd",
-                },
+                {"count": 1, "size": ssd.size, "disk_type": "ssd"},
+                {"count": 2, "size": hdd.size, "disk_type": "hdd"},
             ],
         )
 
@@ -5678,11 +5661,7 @@ class TestMachineHandlerWorkloadAnnotations(MAASServerTestCase):
         )
         self.assertEqual(
             workload_annotations,
-            handler.get_workload_annotations(
-                {
-                    "system_id": node.system_id,
-                }
-            ),
+            handler.get_workload_annotations({"system_id": node.system_id}),
         )
 
 
@@ -5706,11 +5685,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             for _ in range(2)
         ]
         handler = MachineHandler(user, {}, None)
-        params = {
-            "action": "acquire",
-            "extra": {},
-            "filter": {"zone": zone1},
-        }
+        params = {"action": "acquire", "extra": {}, "filter": {"zone": zone1}}
         response = handler.action(params)
         self.assertEqual(
             response,
@@ -6473,10 +6448,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             for idx in range(2)
         ]
         handler = MachineHandler(owner, {}, None)
-        self.assertEqual(
-            len(nodes),
-            handler.count({})["count"],
-        )
+        self.assertEqual(len(nodes), handler.count({})["count"])
         self.assertEqual(
             1,
             handler.count({"filter": {"simple_status": "allocated"}})["count"],
