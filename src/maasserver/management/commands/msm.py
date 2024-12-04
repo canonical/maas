@@ -111,17 +111,18 @@ class Command(BaseCommand):
                 )
         base_url = decoded["service-url"]
 
-        # check if we've previously been enroled
-        status = msm_status()
-        previous_url = ""
-        if status and status["running"] == MSM_STATUS.NOT_CONNECTED:
-            # if the URL is different, warn user
-            if status["sm-url"] != base_url:
-                previous_url = status["sm-url"]
+        if not options["non_interactive"]:
+            # check if we've previously been enroled
+            status = msm_status()
+            previous_url = ""
+            if status and status["running"] == MSM_STATUS.NOT_CONNECTED:
+                # if the URL is different, warn user
+                if status["sm-url"] != base_url:
+                    previous_url = status["sm-url"]
+            msg = get_cert_verify_msg(base_url, previous_url=previous_url)
+            if not prompt_yes_no(msg):
+                return
 
-        msg = get_cert_verify_msg(base_url, previous_url=previous_url)
-        if not prompt_yes_no(msg):
-            return
         try:
             name = msm_enrol(options["enrolment_token"], metainfo=config)
         except Exception as ex:
@@ -141,6 +142,13 @@ class Command(BaseCommand):
             self.ENROL_COMMAND,
             help="Enrol to a Site Manager instance.",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
+        enrol_subparser.add_argument(
+            "--yes",
+            action="store_true",
+            dest="non_interactive",
+            default=False,
+            help="Enable non-interactive mode.",
         )
         enrol_subparser.add_argument(
             "enrolment_token",

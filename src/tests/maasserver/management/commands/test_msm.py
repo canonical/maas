@@ -56,28 +56,50 @@ def msm_mock(mocker):
 @pytest.mark.usefixtures("maasdb")
 class TestMSM:
     def _configure_kwargs(
-        self, command=msm.Command.ENROL_COMMAND, token=SAMPLE_JWT_TOKEN
+        self,
+        command=msm.Command.ENROL_COMMAND,
+        token=SAMPLE_JWT_TOKEN,
+        non_interactive=False,
     ) -> dict:
         return {
             "command": command,
             "enrolment_token": token,
+            "non_interactive": non_interactive,
             "config_file": io.TextIOWrapper(
                 io.BytesIO(YAML_CONFIG.encode("utf-8")), encoding="utf-8"
             ),
         }
 
     def test_enrol_no(self, mocker, msm_mock):
-        mocker.patch.object(msm, "prompt_yes_no", return_value=False)
+        mock_prompt = mocker.patch.object(
+            msm, "prompt_yes_no", return_value=False
+        )
         mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
         opts = self._configure_kwargs()
         msm.Command().handle(**opts)
+        mock_prompt.assert_called_once()
         msm_mock.assert_not_called()
 
     def test_enrol_yes(self, mocker, msm_mock):
-        mocker.patch.object(msm, "prompt_yes_no", return_value=True)
+        mock_prompt = mocker.patch.object(
+            msm, "prompt_yes_no", return_value=True
+        )
         mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
         opts = self._configure_kwargs()
         msm.Command().handle(**opts)
+        mock_prompt.assert_called_once()
+        msm_mock.assert_called_once_with(
+            opts["enrolment_token"], metainfo=YAML_CONFIG
+        )
+
+    def test_enrol_non_interactive(self, mocker, msm_mock):
+        mock_prompt = mocker.patch.object(
+            msm, "prompt_yes_no", return_value=True
+        )
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        opts = self._configure_kwargs(non_interactive=True)
+        msm.Command().handle(**opts)
+        mock_prompt.assert_not_called()
         msm_mock.assert_called_once_with(
             opts["enrolment_token"], metainfo=YAML_CONFIG
         )
