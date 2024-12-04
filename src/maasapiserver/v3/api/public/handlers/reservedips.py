@@ -17,9 +17,6 @@ from maasapiserver.v3.api.public.models.responses.reservedips import (
     ReservedIPResponse,
     ReservedIPsListResponse,
 )
-from maasapiserver.v3.api.public.models.responses.resource_pools import (
-    ResourcePoolsListResponse,
-)
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
@@ -41,7 +38,7 @@ class ReservedIPsHandler(Handler):
         tags=TAGS,
         responses={
             200: {
-                "model": ResourcePoolsListResponse,
+                "model": ReservedIPsListResponse,
             },
             422: {"model": ValidationErrorBodyResponse},
         },

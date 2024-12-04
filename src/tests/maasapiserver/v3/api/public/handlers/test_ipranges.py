@@ -9,8 +9,17 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.query import (
+    TokenPaginationParams,
+)
+from maasapiserver.v3.api.public.models.responses.ipranges import (
+    IPRangeListResponse,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.ipranges import IPRangeType
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.ipranges import IPRangesService
@@ -32,6 +41,16 @@ TEST_IPRANGE = IPRange(
     subnet_id=1,
 )
 
+TEST_IPRANGE_2 = IPRange(
+    id=2,
+    created=now,
+    updated=now,
+    type=IPRangeType.RESERVED,
+    start_ip=IPv4Address("10.10.0.5"),
+    end_ip=IPv4Address("10.10.0.7"),
+    subnet_id=1,
+)
+
 
 class TestIPRangesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/fabrics/1/vlans/1/subnets/1/ipranges"
@@ -43,6 +62,65 @@ class TestIPRangesApi(ApiCommonTests):
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
         return []
+
+    async def test_list_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.list.return_value = ListResult[IPRange](
+            items=[TEST_IPRANGE], next_token=None
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        ipranges_response = IPRangeListResponse(**response.json())
+        assert len(ipranges_response.items) == 1
+        assert ipranges_response.next is None
+        services_mock.ipranges.list.assert_called_once_with(
+            token=None,
+            size=1,
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_subnet_id(1),
+                        IPRangeClauseFactory.with_vlan_id(1),
+                        IPRangeClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.list.return_value = ListResult[IPRange](
+            items=[TEST_IPRANGE_2], next_token=str(TEST_IPRANGE.id)
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        ipranges_response = IPRangeListResponse(**response.json())
+        assert len(ipranges_response.items) == 1
+        assert (
+            ipranges_response.next
+            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_IPRANGE.id), size='1')}"
+        )
+        services_mock.ipranges.list.assert_called_once_with(
+            token=None,
+            size=1,
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_subnet_id(1),
+                        IPRangeClauseFactory.with_vlan_id(1),
+                        IPRangeClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+        )
 
     # GET /ipranges/{ipranges_id}
     async def test_get_200(
@@ -71,6 +149,18 @@ class TestIPRangesApi(ApiCommonTests):
                 "self": {"href": f"{self.BASE_PATH}/{TEST_IPRANGE.id}"}
             },
         }
+        services_mock.ipranges.get_one.assert_called_once_with(
+            QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_id(TEST_IPRANGE.id),
+                        IPRangeClauseFactory.with_subnet_id(1),
+                        IPRangeClauseFactory.with_vlan_id(1),
+                        IPRangeClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+        )
 
     async def test_get_404(
         self,

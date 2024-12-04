@@ -9,6 +9,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
     HalResponse,
+    TokenPaginatedResponse,
 )
 from maasservicelayer.models.ipranges import IPRange
 
@@ -36,3 +37,7 @@ class IPRangeResponse(HalResponse[BaseHal]):
                 )
             ),
         )
+
+
+class IPRangeListResponse(TokenPaginatedResponse[IPRangeResponse]):
+    kind = "IPRangesList"
