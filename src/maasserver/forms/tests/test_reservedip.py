@@ -119,7 +119,7 @@ class TestReservedIPForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "subnet": [
-                    "Could not find a sutable subnet for 10.0.0.1. Please create the subnet first."
+                    "There is no subnet for 10.0.0.1. Create the subnet and try again."
                 ]
             },
             form.errors,
@@ -160,7 +160,7 @@ class TestReservedIPForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "ip": [
-                    "The ip 192.168.0.100 must be outside the dynamic range 192.168.0.100 - 192.168.0.200."
+                    "The reserved IP 192.168.0.100 must be outside the dynamic range 192.168.0.100 - 192.168.0.200."
                 ]
             },
             form.errors,
@@ -261,7 +261,7 @@ class TestReservedIPForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "__all__": [
-                    "The ip, mac_address and the subnet of a reserved ip are immutable. Please delete the entry and recreate it."
+                    "The ip, mac_address and the subnet of a reserved IP are immutable. Delete the entry and recreate it."
                 ]
             },
             form.errors,
@@ -279,7 +279,7 @@ class TestReservedIPForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "__all__": [
-                    "The ip, mac_address and the subnet of a reserved ip are immutable. Please delete the entry and recreate it."
+                    "The ip, mac_address and the subnet of a reserved IP are immutable. Delete the entry and recreate it."
                 ]
             },
             form.errors,
@@ -299,9 +299,9 @@ class TestReservedIPForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual(
             {
-                "ip": ["The provided IP is not part of the subnet."],
+                "ip": ["10.0.0.121 is not part of the subnet."],
                 "__all__": [
-                    "The ip, mac_address and the subnet of a reserved ip are immutable. Please delete the entry and recreate it."
+                    "The ip, mac_address and the subnet of a reserved IP are immutable. Delete the entry and recreate it."
                 ],
             },
             form.errors,

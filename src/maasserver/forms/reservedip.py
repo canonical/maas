@@ -42,7 +42,7 @@ class ReservedIPForm(MAASModelForm):
                 or self.data["subnet"] != self.instance.subnet.id
             ):
                 raise ValidationError(
-                    "The ip, mac_address and the subnet of a reserved ip are immutable. Please delete the entry and recreate it."
+                    "The ip, mac_address and the subnet of a reserved IP are immutable. Delete the entry and recreate it."
                 )
 
         cleaned_data = super().clean()
@@ -56,7 +56,7 @@ class ReservedIPForm(MAASModelForm):
             set_form_error(
                 self,
                 "ip",
-                f"The ip {ip} must be outside the dynamic range {dynamic_range.start_ip} - {dynamic_range.end_ip}.",
+                f"The reserved IP {ip} must be outside the dynamic range {dynamic_range.start_ip} - {dynamic_range.end_ip}.",
             )
         return cleaned_data
 
@@ -70,7 +70,7 @@ class ReservedIPForm(MAASModelForm):
             subnet = Subnet.objects.get_best_subnet_for_ip(ip)
             if not subnet:
                 raise ValidationError(
-                    f"Could not find a sutable subnet for {ip}. Please create the subnet first."
+                    f"There is no subnet for {ip}. Create the subnet and try again."
                 )
 
         subnet_network = ip_network(subnet.cidr)
@@ -78,7 +78,7 @@ class ReservedIPForm(MAASModelForm):
             set_form_error(
                 self,
                 "ip",
-                "The provided IP is not part of the subnet.",
+                f"{ip} is not part of the subnet.",
             )
         if ip_address(ip) == subnet_network.network_address:
             set_form_error(

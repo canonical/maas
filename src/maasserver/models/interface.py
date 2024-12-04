@@ -1080,7 +1080,7 @@ class Interface(CleanSave, TimestampedModel):
                     # address.
                     if len(reserved_ips) > 1:
                         raise StaticIPAddressReservedIPConflict(
-                            "The MAC address %s or the static IP %s are associated to reserved IP and can't be used."
+                            "The MAC address %s or the static IP %s are associated with a reserved IP and cannot be used."
                             % (self.mac_address, ip_address)
                         )
                     reserved_ip = reserved_ips[0]
@@ -1091,7 +1091,7 @@ class Interface(CleanSave, TimestampedModel):
                         )
                     if reserved_ip.mac_address != self.mac_address:
                         raise StaticIPAddressReservedIPConflict(
-                            "The static IP %s is already reserved for the mac address %s."
+                            "The static IP %s is already reserved for the MAC address %s."
                             % (ip_address, reserved_ip.mac_address)
                         )
 

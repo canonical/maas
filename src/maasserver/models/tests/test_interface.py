@@ -2852,7 +2852,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             ip_address=reserved_ip2.ip,
         )
         self.assertEqual(
-            "The MAC address %s or the static IP %s are associated to reserved IP and can't be used."
+            "The MAC address %s or the static IP %s are associated with a reserved IP and cannot be used."
             % (interface.mac_address, reserved_ip2.ip),
             str(error),
         )
@@ -2879,7 +2879,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             ip_address=reserved_ip.ip,
         )
         self.assertEqual(
-            "The static IP %s is already reserved for the mac address %s."
+            "The static IP %s is already reserved for the MAC address %s."
             % (reserved_ip.ip, interface.mac_address),
             str(error),
         )

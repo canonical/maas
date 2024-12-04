@@ -163,7 +163,7 @@ class TestIPRangeForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertEqual(
-            {"__all__": ["The dynamic IP range can't include reserved IPs"]},
+            {"__all__": ["The dynamic IP range cannot include reserved IPs."]},
             form.errors,
         )
 

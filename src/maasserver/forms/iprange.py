@@ -62,6 +62,6 @@ class IPRangeForm(MAASModelForm):
                 for reserved_ip in ReservedIP.objects.filter(subnet=subnet)
             ):
                 raise ValidationError(
-                    "The dynamic IP range can't include reserved IPs"
+                    "The dynamic IP range cannot include reserved IPs."
                 )
         return cleaned_data
