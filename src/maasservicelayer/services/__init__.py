@@ -10,6 +10,7 @@ from maasservicelayer.db.repositories.configurations import (
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsRepository,
 )
+from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
 )
@@ -51,6 +52,7 @@ from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
+from maasservicelayer.services.dnsdata import DNSDataService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService
@@ -289,6 +291,13 @@ class ServiceCollectionV3:
             domains_service=services.domains,
             dnspublications_service=services.dnspublications,
             dnsresource_repository=DNSResourceRepository(context),
+        )
+        services.dnsdata = DNSDataService(
+            context=context,
+            dnspublications_service=services.dnspublications,
+            domains_service=services.domains,
+            dnsresources_service=services.dnsresources,
+            dnsdata_repository=DNSDataRepository(context),
         )
         services.leases = LeasesService(
             context=context,

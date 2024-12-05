@@ -26,12 +26,10 @@ class DomainsService(BaseService[Domain, DomainsRepository]):
                 source=f"added zone {resource.name}",
                 action=DnsUpdateAction.RELOAD,
             )
-        return
 
     async def post_update_hook(
         self, old_resource: Domain, updated_resource: Domain
-    ) -> Domain:
-
+    ) -> None:
         source = None
         if old_resource.authoritative and not updated_resource.authoritative:
             source = f"removed zone {updated_resource.name}"
@@ -51,8 +49,6 @@ class DomainsService(BaseService[Domain, DomainsRepository]):
                 source=source,
                 action=DnsUpdateAction.RELOAD,
             )
-
-        return updated_resource
 
     async def post_update_many_hook(self, resources: List[Domain]) -> None:
         raise NotImplementedError("Not implemented yet.")

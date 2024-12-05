@@ -23,6 +23,14 @@ class DomainsClauseFactory(ClauseFactory):
     def with_name(cls, name: str) -> Clause:
         return Clause(condition=eq(DomainTable.c.name, name))
 
+    @classmethod
+    def with_authoritative(cls, authoritative: bool) -> Clause:
+        return Clause(condition=eq(DomainTable.c.authoritative, authoritative))
+
+    @classmethod
+    def with_ttl(cls, ttl: int) -> Clause:
+        return Clause(condition=eq(DomainTable.c.ttl, ttl))
+
 
 class DomainResourceBuilder(ResourceBuilder):
     def with_authoritative(

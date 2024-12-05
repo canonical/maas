@@ -21,6 +21,10 @@ from maasservicelayer.models.staticipaddress import StaticIPAddress
 
 class DNSResourceClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(DNSResourceTable.c.id, id))
+
+    @classmethod
     def with_name(cls, name: str) -> Clause:
         return Clause(condition=eq(DNSResourceTable.c.name, name))
 

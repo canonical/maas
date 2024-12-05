@@ -147,6 +147,23 @@ DHCPSnippetTable = Table(
     ),
 )
 
+DNSDataTable = Table(
+    "maasserver_dnsdata",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column(
+        "dnsresource_id",
+        BigInteger,
+        ForeignKey("maasserver_dnsresource.id"),
+        nullable=False,
+    ),
+    Column("ttl", Integer, nullable=True),
+    Column("rrtype", String(8), nullable=False),
+    Column("rrdata", Text, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+)
+
 DNSPublicationTable = Table(
     "maasserver_dnspublication",
     METADATA,
@@ -155,17 +172,6 @@ DNSPublicationTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("source", String(255), nullable=False),
     Column("update", String(255), nullable=False, key="update_str"),
-)
-
-DomainTable = Table(
-    "maasserver_domain",
-    METADATA,
-    Column("id", Integer, primary_key=True, unique=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(256), primary_key=True),
-    Column("authoritative", Boolean, nullable=True),
-    Column("ttl", Integer, nullable=True),
 )
 
 DNSResourceTable = Table(
@@ -202,6 +208,17 @@ DNSResourceIPAddressTable = Table(
         ForeignKey("maasserver_staticipaddress.id"),
         nullable=False,
     ),
+)
+
+DomainTable = Table(
+    "maasserver_domain",
+    METADATA,
+    Column("id", Integer, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(256), nullable=False, unique=True),
+    Column("authoritative", Boolean, nullable=True),
+    Column("ttl", Integer, nullable=True),
 )
 
 EventTable = Table(
