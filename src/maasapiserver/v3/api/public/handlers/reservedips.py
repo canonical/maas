@@ -13,6 +13,9 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.reservedips import (
+    ReservedIPCreateRequest,
+)
 from maasapiserver.v3.api.public.models.responses.reservedips import (
     ReservedIPResponse,
     ReservedIPsListResponse,
@@ -23,6 +26,14 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.reservedips import (
     ReservedIPsClauseFactory,
+)
+from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -134,6 +145,64 @@ class ReservedIPsHandler(Handler):
 
         if not reservedip:
             return NotFoundResponse()
+
+        response.headers["ETag"] = reservedip.etag()
+        return ReservedIPResponse.from_model(
+            reservedip=reservedip,
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/reserved_ips",
+        )
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/reserved_ips",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {
+                "model": ReservedIPResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def create_fabric_vlan_subnet_reserved_ip(
+        self,
+        fabric_id: int,
+        vlan_id: int,
+        subnet_id: int,
+        reservedip_request: ReservedIPCreateRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        subnet = await services.subnets.get_one(
+            query=QuerySpec(
+                where=SubnetClauseFactory.and_clauses(
+                    [
+                        SubnetClauseFactory.with_id(subnet_id),
+                        SubnetClauseFactory.with_vlan_id(vlan_id),
+                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                    ]
+                )
+            )
+        )
+        if not subnet:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message="Could not find subnet {subnet_id} in VLAN {vlan_id} in fabric {fabric_id}",
+                    )
+                ]
+            )
+        builder = await reservedip_request.to_builder(subnet, services)
+        reservedip = await services.reservedips.create(builder.build())
 
         response.headers["ETag"] = reservedip.etag()
         return ReservedIPResponse.from_model(

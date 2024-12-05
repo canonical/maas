@@ -196,10 +196,10 @@ class SubnetsHandler(Handler):
         )
         vlan = await services.vlans.get_one(
             QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=VlansClauseFactory.and_clauses(
                     [
-                        SubnetClauseFactory.with_vlan_id(vlan_id),
-                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                        VlansClauseFactory.with_id(vlan_id),
+                        VlansClauseFactory.with_fabric_id(fabric_id),
                     ]
                 )
             )

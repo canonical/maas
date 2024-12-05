@@ -27,6 +27,7 @@ from piston3.models import Token
 from piston3.utils import rc
 import yaml
 
+from maascommon.fields import MAC_FIELD_RE
 from maasserver import locks
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
@@ -62,7 +63,6 @@ from maasserver.exceptions import (
     NodeStateViolation,
     Unauthorized,
 )
-from maasserver.fields import MAC_FIELD_RE
 from maasserver.forms import (
     AdminMachineForm,
     get_machine_create_form,

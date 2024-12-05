@@ -6,11 +6,11 @@ from typing import Optional
 from pydantic import IPvAnyAddress
 
 from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.models.fields import MacAddress
 
 
 class ReservedIP(MaasTimestampedBaseModel):
     ip: IPvAnyAddress
-    # TODO: validate
-    mac_address: str
+    mac_address: MacAddress
     comment: Optional[str] = None
     subnet_id: int

@@ -3,7 +3,6 @@
 
 """Custom model and form fields."""
 
-from itertools import chain
 import re
 import urllib
 
@@ -23,6 +22,7 @@ from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_str
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
+from maascommon.fields import MAC_FIELD_RE, MAC_RE, normalise_macaddress
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.converters import parse_systemd_interval
 from maasserver.utils.dns import validate_domain_name, validate_hostname
@@ -37,16 +37,6 @@ IPV6_RE = (
     rf"((?:\[)?([a-f0-9:]{{1,4}}:+)+(([a-f0-9]{{1,4}}(?:\])?)|{IPV4_RE}))"
 )
 
-# supported input MAC formats
-MAC_FIELD_RE = re.compile(
-    r"^"
-    r"([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}|"  # aa:bb:cc:dd:ee:ff
-    r"([0-9a-fA-F]{1,2}-){5}[0-9a-fA-F]{1,2}|"  # aa-bb-cc-dd-ee-ff
-    r"([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}"  # aabb.ccdd.eeff
-    r"$"
-)
-# MAC format for DB storage
-MAC_RE = re.compile(r"^([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}$")
 
 MAC_FIELD_VALIDATOR = RegexValidator(
     regex=MAC_FIELD_RE, message="'%(value)s' is not a valid MAC address."
@@ -56,7 +46,6 @@ MAC_FIELD_VALIDATOR = RegexValidator(
 MAC_VALIDATOR = RegexValidator(
     regex=MAC_RE, message="'%(value)s' is not a valid MAC address."
 )
-MAC_SPLIT_RE = re.compile(r"[-:.]")
 
 # Remote virsh uris general form:
 # driver[+transport]://[username@][hostname][:port]/[path][?extraparameters]
@@ -95,27 +84,6 @@ LXD_ADDR_RE = re.compile(
 LXD_ADDR_FIELD_VALIDATOR = RegexValidator(
     regex=LXD_ADDR_RE, message="Enter a valid LXD address."
 )
-
-
-def normalise_macaddress(mac: str) -> str:
-    """Return a colon-separated format for the specified MAC.
-
-    This supports converting from input formats matching the MAC_FIELD_RE
-    regexp.
-
-    """
-
-    tokens = MAC_SPLIT_RE.split(mac.lower())
-    match len(tokens):
-        case 1:  # no separator
-            tokens = re.findall("..", tokens[0])
-        case 3:  # each token is two bytes
-            tokens = chain(
-                *(re.findall("..", token.zfill(4)) for token in tokens)
-            )
-        case _:  # single-byte tokens
-            tokens = (token.zfill(2) for token in tokens)
-    return ":".join(tokens)
 
 
 class MACAddressFormField(forms.CharField):

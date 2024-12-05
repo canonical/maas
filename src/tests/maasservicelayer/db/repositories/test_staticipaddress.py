@@ -13,6 +13,7 @@ from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
     StaticIPAddressResourceBuilder,
 )
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.interface import create_test_interface_entry
@@ -27,13 +28,58 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestStaticIPAddressClauseFactory:
-    def test_builder(self) -> None:
+    def test_with_id(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticipaddress.id = 1")
+
+    def test_with_node_type(self) -> None:
         clause = StaticIPAddressClauseFactory.with_node_type(
             type=NodeTypeEnum.RACK_CONTROLLER
         )
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_node.node_type = 2")
+
+    def test_with_subnet_id(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_subnet_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticipaddress.subnet_id = 1")
+
+    def test_with_ip(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_ip(IPv4Address("10.10.0.2"))
+        # NOTE: compile with literal_binds can't render IPv4Address
+        assert str(clause.condition.compile()) == (
+            "maasserver_staticipaddress.ip = :ip_1"
+        )
+
+
+class TestStaticIPAddressResourceBuilder:
+    def test_builder(self) -> None:
+        now = utcnow()
+        resource = (
+            StaticIPAddressResourceBuilder()
+            .with_ip(IPv4Address("10.10.0.2"))
+            .with_alloc_type(IpAddressType.AUTO)
+            .with_lease_time(200)
+            .with_temp_expires_on(now)
+            .with_subnet_id(1)
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
+
+        assert resource.get_values() == {
+            "ip": IPv4Address("10.10.0.2"),
+            "alloc_type": IpAddressType.AUTO,
+            "lease_time": 200,
+            "temp_expires_on": now,
+            "subnet_id": 1,
+            "created": now,
+            "updated": now,
+        }
 
 
 @pytest.mark.asyncio
@@ -212,3 +258,27 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         assert len(result) == 2
         assert any(ip1["ip"] == ip.ip for ip in result)
         assert any(ip2["ip"] == ip.ip for ip in result)
+
+    async def test_get_mac_addresses(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        v4_subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=v4_subnet,
+                alloc_type=IpAddressType.DISCOVERED.value,
+            )
+        )[0]
+        ipv4 = IPv4Address(ip["ip"])
+        interfaces = [
+            await create_test_interface_entry(fixture, ips=[ip])
+            for _ in range(3)
+        ]
+        result = await repository_instance.get_mac_addresses(
+            query=QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ipv4))
+        )
+        expected_mac_addresses = sorted(
+            [MacAddress(i.mac_address) for i in interfaces]
+        )
+        assert sorted(result) == expected_mac_addresses

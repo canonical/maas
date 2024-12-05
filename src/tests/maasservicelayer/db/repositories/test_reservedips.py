@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -10,9 +12,12 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.reservedips import (
     ReservedIPsClauseFactory,
     ReservedIPsRepository,
+    ReservedIPsResourceBuilder,
 )
 from maasservicelayer.db.tables import ReservedIPTable
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.reserved_ips import create_test_reserved_ip_entry
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -104,6 +109,29 @@ class TestReservedIPsClauseFactory:
             str(stmt.compile(compile_kwargs={"literal_binds": True}))
             == expected_query
         )
+
+
+class TestReservedIPsResourceBuilder:
+    def test_builder(self) -> None:
+        now = utcnow()
+        resource = (
+            ReservedIPsResourceBuilder()
+            .with_ip(IPv4Address("10.0.0.0"))
+            .with_mac_address(MacAddress("00:00:00:00:00:00"))
+            .with_subnet_id(1)
+            .with_comment("comment")
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
+        assert resource.get_values() == {
+            "ip": IPv4Address("10.0.0.0"),
+            "mac_address": "00:00:00:00:00:00",
+            "subnet_id": 1,
+            "comment": "comment",
+            "created": now,
+            "updated": now,
+        }
 
 
 class TestReservedIPsRepository(RepositoryCommonTests[ReservedIP]):

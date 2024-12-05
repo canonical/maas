@@ -8,7 +8,7 @@ import pytest
 
 from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
 from maascommon.enums.subnet import RdnsMode
-from maasservicelayer.utils.validators import IPv4v6Network
+from maasservicelayer.models.fields import IPv4v6Network
 
 
 class TestSubnetRequest:

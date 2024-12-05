@@ -1,8 +1,10 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address, IPv4Network
 from unittest.mock import Mock
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
@@ -11,17 +13,26 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.reservedips import (
+    ReservedIPCreateRequest,
+)
 from maasapiserver.v3.api.public.models.responses.reservedips import (
     ReservedIPsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.reservedips import (
     ReservedIPsClauseFactory,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
+from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ReservedIPsService, ServiceCollectionV3
+from maasservicelayer.services.ipranges import IPRangesService
+from maasservicelayer.services.staticipaddress import StaticIPAddressService
+from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -32,8 +43,8 @@ TEST_RESERVEDIP = ReservedIP(
     id=1,
     created=utcnow(),
     updated=utcnow(),
-    ip="10.0.0.1",
-    mac_address="01:02:03:04:05:06",
+    ip=IPv4Address("10.0.0.1"),
+    mac_address=MacAddress("01:02:03:04:05:06"),
     comment="test_comment",
     subnet_id=1,
 )
@@ -42,8 +53,8 @@ TEST_RESERVEDIP_2 = ReservedIP(
     id=2,
     created=utcnow(),
     updated=utcnow(),
-    ip="10.0.0.2",
-    mac_address="02:02:03:04:05:06",
+    ip=IPv4Address("10.0.0.2"),
+    mac_address=MacAddress("02:02:03:04:05:06"),
     comment="test_comment_2",
     subnet_id=1,
 )
@@ -61,7 +72,7 @@ class TestReservedIPsApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [Endpoint(method="POST", path=self.BASE_PATH)]
 
     async def test_list_no_other_page(
         self,
@@ -191,3 +202,43 @@ class TestReservedIPsApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_post_201(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.create.return_value = TEST_RESERVEDIP
+        subnet_mock = Mock(Subnet)
+        subnet_mock.ip = 1
+        subnet_mock.cidr = IPv4Network(
+            f"{TEST_RESERVEDIP.ip}/24", strict=False
+        )
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network(f"{TEST_RESERVEDIP.ip}/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+        # we test the validation logic in the builder test
+        services_mock.staticipaddress = Mock(StaticIPAddressService)
+        services_mock.staticipaddress.get_one.return_value = None
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_dynamic_range_for_ip.return_value = None
+        reservedip_request = ReservedIPCreateRequest(
+            ip=TEST_RESERVEDIP.ip,
+            mac_address=TEST_RESERVEDIP.mac_address,
+        )
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=jsonable_encoder(reservedip_request)
+        )
+        assert response.status_code == 201
+        assert "ETag" in response.headers
+        assert len(response.headers["ETag"]) > 0

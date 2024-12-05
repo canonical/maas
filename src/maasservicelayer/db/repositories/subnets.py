@@ -25,8 +25,8 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     PRECONDITION_FAILED,
 )
+from maasservicelayer.models.fields import IPv4v6Network
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.utils.validators import IPv4v6Network
 
 
 class SubnetClauseFactory(ClauseFactory):

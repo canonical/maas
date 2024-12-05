@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasservicelayer.models.base import MaasTimestampedBaseModel
-from maasservicelayer.utils.validators import IPv4v6Network
+from maasservicelayer.models.fields import IPv4v6Network
 
 
 class StaticRoute(MaasTimestampedBaseModel):

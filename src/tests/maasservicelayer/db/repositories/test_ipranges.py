@@ -209,6 +209,8 @@ class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
             Context(connection=db_connection)
         )
 
-        result = await ipranges_repository.get_dynamic_range_for_ip(subnet, ip)
+        result = await ipranges_repository.get_dynamic_range_for_ip(
+            subnet.id, ip
+        )
 
         assert result.id == dynamic_range["id"]

@@ -7,7 +7,7 @@ from pydantic import IPvAnyAddress
 
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.base import MaasTimestampedBaseModel
-from maasservicelayer.utils.validators import IPv4v6Network
+from maasservicelayer.models.fields import IPv4v6Network
 
 
 class Subnet(MaasTimestampedBaseModel):

@@ -16,6 +16,7 @@ from django.http import HttpResponse
 from formencode.validators import Int, StringBool
 from piston3.utils import rc
 
+from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -41,7 +42,6 @@ from maasserver.exceptions import (
     NoScriptsFound,
     StaticIPAddressExhaustion,
 )
-from maasserver.fields import MAC_FIELD_RE, normalise_macaddress
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
 from maasserver.models import Filesystem, Interface, Node, OwnerData

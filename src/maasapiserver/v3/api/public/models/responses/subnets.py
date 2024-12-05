@@ -12,8 +12,8 @@ from maasapiserver.v3.api.public.models.responses.base import (
     TokenPaginatedResponse,
 )
 from maascommon.enums.subnet import RdnsMode
+from maasservicelayer.models.fields import IPv4v6Network
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.utils.validators import IPv4v6Network
 
 
 class SubnetResponse(HalResponse[BaseHal]):

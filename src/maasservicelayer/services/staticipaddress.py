@@ -12,6 +12,7 @@ from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
@@ -111,3 +112,6 @@ class StaticIPAddressService(
 
     async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
         return await self.repository.get_for_nodes(query=query)
+
+    async def get_mac_addresses(self, query: QuerySpec) -> list[MacAddress]:
+        return await self.repository.get_mac_addresses(query=query)

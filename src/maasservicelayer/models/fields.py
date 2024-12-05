@@ -2,9 +2,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import _BaseNetwork, IPv4Network, IPv6Network
+import re
 from typing import Any, Union
 
 from pydantic.networks import NetworkType
+
+from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
 
 
 class IPv4v6Network(_BaseNetwork):
@@ -42,3 +45,24 @@ class IPv4v6Network(_BaseNetwork):
                     "The prefix length of the CIDR must be greater than 0."
                 )
             return ip
+
+
+class MacAddress(str):
+    def __new__(cls, content):
+        content = cls.validate(content)
+        return str.__new__(cls, content)
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(pattern=MAC_FIELD_RE)
+
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, value: str) -> str:
+        match = re.fullmatch(MAC_FIELD_RE, value)
+        if match is None:
+            raise ValueError("Value is not a valid MAC address.")
+        return normalise_macaddress(value)

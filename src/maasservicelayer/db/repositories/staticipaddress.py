@@ -22,6 +22,7 @@ from maasservicelayer.db.tables import (
     StaticIPAddressTable,
     SubnetTable,
 )
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
@@ -69,6 +70,10 @@ class StaticIPAddressResourceBuilder(ResourceBuilder):
 
 class StaticIPAddressClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(StaticIPAddressTable.c.id, id))
+
+    @classmethod
     def with_node_type(cls, type: NodeTypeEnum) -> Clause:
         return Clause(condition=eq(NodeTable.c.node_type, type))
 
@@ -77,6 +82,10 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         return Clause(
             condition=eq(StaticIPAddressTable.c.subnet_id, subnet_id)
         )
+
+    @classmethod
+    def with_ip(cls, ip: IPvAnyAddress) -> Clause:
+        return Clause(condition=eq(StaticIPAddressTable.c.ip, ip))
 
 
 class StaticIPAddressRepository(BaseRepository):
@@ -211,3 +220,21 @@ class StaticIPAddressRepository(BaseRepository):
         )
         results = (await self.connection.execute(stmt)).all()
         return [StaticIPAddress(**row._asdict()) for row in results]
+
+    async def get_mac_addresses(self, query: QuerySpec) -> list[MacAddress]:
+        stmt = (
+            select(InterfaceTable.c.mac_address)
+            .select_from(InterfaceTable)
+            .join(
+                InterfaceIPAddressTable,
+                InterfaceIPAddressTable.c.interface_id == InterfaceTable.c.id,
+            )
+            .join(
+                StaticIPAddressTable,
+                StaticIPAddressTable.c.id
+                == InterfaceIPAddressTable.c.staticipaddress_id,
+            )
+        )
+        stmt = query.enrich_stmt(stmt)
+        results = (await self.connection.execute(stmt)).all()
+        return [MacAddress(row._asdict()["mac_address"]) for row in results]

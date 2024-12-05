@@ -16,7 +16,6 @@ from maasservicelayer.db.repositories.dhcpsnippets import (
 )
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.models.ipranges import IPRange
-from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.temporal import TemporalService
@@ -36,9 +35,9 @@ class IPRangesService(BaseService[IPRange, IPRangesRepository]):
         self.ipranges_repository = ipranges_repository
 
     async def get_dynamic_range_for_ip(
-        self, subnet: Subnet, ip: IPvAnyAddress
+        self, subnet_id: int, ip: IPvAnyAddress
     ) -> IPRange | None:
-        return await self.repository.get_dynamic_range_for_ip(subnet, ip)
+        return await self.repository.get_dynamic_range_for_ip(subnet_id, ip)
 
     async def post_create_hook(self, resource: IPRange) -> None:
         self.temporal_service.register_or_update_workflow_call(

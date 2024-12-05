@@ -229,6 +229,7 @@ class ServiceCollectionV3:
         )
         services.reservedips = ReservedIPsService(
             context=context,
+            temporal_service=services.temporal,
             reservedips_repository=ReservedIPsRepository(context),
         )
         services.staticroutes = StaticRoutesService(

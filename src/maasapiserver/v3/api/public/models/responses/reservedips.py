@@ -1,6 +1,8 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Optional
+
 from pydantic import IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
@@ -9,6 +11,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     TokenPaginatedResponse,
 )
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
 
 
@@ -17,8 +20,8 @@ class ReservedIPResponse(HalResponse[BaseHal]):
     id: int
     subnet_id: int
     ip: IPvAnyAddress
-    mac_address: str
-    comment: str
+    mac_address: MacAddress
+    comment: Optional[str]
 
     @classmethod
     def from_model(cls, reservedip: ReservedIP, self_base_hyperlink: str):

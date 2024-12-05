@@ -10,7 +10,7 @@ from maasapiserver.v3.api.public.models.requests.base import (
 )
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.repositories.subnets import SubnetResourceBuilder
-from maasservicelayer.utils.validators import IPv4v6Network
+from maasservicelayer.models.fields import IPv4v6Network
 
 
 class SubnetRequest(OptionalNamedBaseModel):

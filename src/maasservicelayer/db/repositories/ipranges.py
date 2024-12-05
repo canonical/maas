@@ -16,7 +16,6 @@ from maasservicelayer.db.repositories.base import (
 )
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.models.ipranges import IPRange
-from maasservicelayer.models.subnets import Subnet
 
 
 class IPRangeClauseFactory(ClauseFactory):
@@ -94,7 +93,7 @@ class IPRangesRepository(BaseRepository[IPRange]):
         return IPRange
 
     async def get_dynamic_range_for_ip(
-        self, subnet: Subnet, ip: IPvAnyAddress
+        self, subnet_id: int, ip: IPvAnyAddress
     ) -> IPRange | None:
         stmt = (
             select(IPRangeTable)
@@ -103,7 +102,7 @@ class IPRangesRepository(BaseRepository[IPRange]):
                 SubnetTable,
                 SubnetTable.c.id == IPRangeTable.c.subnet_id,
             )
-            .filter(SubnetTable.c.id == subnet.id)
+            .filter(SubnetTable.c.id == subnet_id)
         )
 
         result = (await self.connection.execute(stmt)).all()
