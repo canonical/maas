@@ -10,9 +10,28 @@ from maasserver.models import Notification
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.version import MAASVersion
 
 
 class TestGetDeprecations(MAASServerTestCase):
+    def test_dhcp_snippets_not_included(self):
+        self.patch(deprecations, "get_maas_version").return_value = (
+            MAASVersion.from_string("3.5.0")
+        )
+        self.assertNotIn(DEPRECATIONS["DHCP_SNIPPETS"], get_deprecations())
+
+    def test_dhcp_snippets_not_included_MAAS_4(self):
+        self.patch(deprecations, "get_maas_version").return_value = (
+            MAASVersion.from_string("4.0.0")
+        )
+        self.assertNotIn(DEPRECATIONS["DHCP_SNIPPETS"], get_deprecations())
+
+    def test_dhcp_snippets_included(self):
+        self.patch(deprecations, "get_maas_version").return_value = (
+            MAASVersion.from_string("3.6.0")
+        )
+        self.assertIn(DEPRECATIONS["DHCP_SNIPPETS"], get_deprecations())
+
     def test_old_postgres_version(self):
         self.patch(deprecations, "postgresql_major_version").return_value = 14
         self.assertIn(
