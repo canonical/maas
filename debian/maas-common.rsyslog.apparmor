@@ -1,0 +1,5 @@
+/var/lib/maas/rsyslog.conf r,
+/var/lib/maas/rsyslog.pid rwk,
+/var/lib/maas/rsyslog.pid.tmp rwk,
+/var/lib/maas/rsyslog.d/ r,
+/var/lib/maas/rsyslog.d/** rwk,

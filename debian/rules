@@ -41,6 +41,9 @@ override_dh_auto_install:
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d
 	install -m 644 $(CURDIR)/debian/maas-dhcp.apparmor \
 		$(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d/maas
+	install -d -m 755 $(CURDIR)/debian/tmp/etc/apparmor.d/rsyslog.d
+	install -m 644 $(CURDIR)/debian/maas-common.rsyslog.apparmor \
+		$(CURDIR)/debian/tmp/etc/apparmor.d/rsyslog.d/maas
 
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/maas/certificates
 

@@ -23,3 +23,6 @@ package-files/usr/share/maas/promtail usr/share/maas
 
 # Install maascommon that contains all the common definitions
 debian/tmp/usr/lib/python3*/dist-packages/maascommon
+
+# apparmor addition for rsyslog
+debian/tmp/etc/apparmor.d/rsyslog.d/maas

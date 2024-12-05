@@ -44,10 +44,20 @@ add_user_group(){
     adduser --quiet --system --group --home "$home" "$user" || true
 }
 
+configure_maas_syslog(){
+    local rsyslog_prof="/etc/apparmor.d/usr.sbin.rsyslogd"
+
+    if [ -f "${rsyslog_prof}" ] && command -v apparmor_parser >/dev/null 2>&1
+    then
+        apparmor_parser --replace --write-cache --skip-read-cache "${rsyslog_prof}" || true
+    fi
+}
+
 disable_nginx
 add_user_group
 configure_logging
 configure_conf_dir
 configure_lib_dir
+configure_maas_syslog
 
 #DEBHELPER#
