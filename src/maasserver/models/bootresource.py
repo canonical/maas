@@ -625,11 +625,16 @@ class BootResource(CleanSave, TimestampedModel):
         # Ignore subarch/platform/supported_platforms
         arch, _ = self.split_arch()
         deploy_msg_prefix = f"deployed {self.name}/{arch}/"
-        if event := Event.objects.filter(
-            type__name=EVENT_TYPES.IMAGE_DEPLOYED,
-            description__startswith=deploy_msg_prefix,
+        if (
+            event := Event.objects.filter(
+                type__name=EVENT_TYPES.IMAGE_DEPLOYED,
+                description__startswith=deploy_msg_prefix,
+            )
+            .only("created")
+            .order_by("-created")[:1]
+            .first()
         ):
-            return event.latest("created").created
+            return event.created
         return None
 
     def split_arch(self) -> tuple[str, str]:

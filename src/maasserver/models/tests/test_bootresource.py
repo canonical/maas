@@ -15,12 +15,13 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
 )
-from maasserver.models import bootresource
+from maasserver.models import bootresource, EventType
 from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.testing.os import make_osystem
 
 
@@ -847,3 +848,44 @@ class TestBootResource(MAASServerTestCase):
             (cfg["commissioning_osystem"], cfg["commissioning_distro_series"]),
             resource.split_base_image(),
         )
+
+    def test_get_last_deploy(self):
+        os = factory.make_name("os")
+        series = factory.make_name("series")
+        name = f"{os}/{series}"
+        arch = factory.make_name("arch")
+        subarch = factory.make_name("subarch")
+        architecture = f"{arch}/{subarch}"
+
+        event_description_str = f"deployed {name}/{arch}"
+        event_one = factory.make_Event(
+            type=factory.make_EventType(name=EVENT_TYPES.IMAGE_DEPLOYED),
+            description=f"{event_description_str}/one",
+        )
+        event_two = factory.make_Event(
+            type=EventType.objects.get(name=EVENT_TYPES.IMAGE_DEPLOYED),
+            description=f"{event_description_str}/two",
+        )
+
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name,
+            architecture=architecture,
+        )
+        self.assertNotEqual(resource.get_last_deploy(), event_one.created)
+        self.assertEqual(resource.get_last_deploy(), event_two.created)
+
+    def test_get_last_deploy_returns_None_if_no_deployments(self):
+        os = factory.make_name("os")
+        series = factory.make_name("series")
+        name = f"{os}/{series}"
+        arch = factory.make_name("arch")
+        subarch = factory.make_name("subarch")
+        architecture = f"{arch}/{subarch}"
+
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name,
+            architecture=architecture,
+        )
+        self.assertIsNone(resource.get_last_deploy())
