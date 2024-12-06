@@ -8,14 +8,22 @@ import pytest
 
 from maasapiserver.v3.api.public.models.requests.reservedips import (
     ReservedIPCreateRequest,
+    ReservedIPUpdateRequest,
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
 )
-from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.ipranges import IPRange
+from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
@@ -170,3 +178,56 @@ class TestReservedIPCreateRequest:
         services_mock.staticipaddress.get_one.assert_called_once_with(
             QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
         )
+
+
+class TestReservedIPUpdateRequest:
+    def test_to_builder_reserved_ip_wrong_ip(self):
+        ip = IPv4Address("10.10.0.3")
+        wrong_ip = IPv4Address("10.10.0.4")
+        mac_address = MacAddress("00:00:00:00:00:00")
+        request = ReservedIPUpdateRequest(
+            ip=wrong_ip, mac_address=mac_address, comment="comment"
+        )
+        mock_reservedip = Mock(ReservedIP)
+        mock_reservedip.ip = ip
+        mock_reservedip.mac_address = mac_address
+        with pytest.raises(ValidationException) as e:
+            request.to_builder(mock_reservedip).build()
+
+        assert len(e.value.details) == 1
+        assert e.value.details[0] == BaseExceptionDetail(
+            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+            message="The ip and mac_address of a reserved IP are immutable. Delete the entry and recreate it.",
+        )
+
+    def test_to_builder_reserved_ip_wrong_mac_address(self):
+        ip = IPv4Address("10.10.0.3")
+        mac_address = MacAddress("00:00:00:00:00:00")
+        wrong_mac_address = MacAddress("00:00:00:00:00:01")
+        request = ReservedIPUpdateRequest(
+            ip=ip, mac_address=wrong_mac_address, comment="comment"
+        )
+        mock_reservedip = Mock(ReservedIP)
+        mock_reservedip.ip = ip
+        mock_reservedip.mac_address = mac_address
+        with pytest.raises(ValidationException) as e:
+            request.to_builder(mock_reservedip).build()
+
+        assert len(e.value.details) == 1
+        assert e.value.details[0] == BaseExceptionDetail(
+            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+            message="The ip and mac_address of a reserved IP are immutable. Delete the entry and recreate it.",
+        )
+
+    def test_to_builder(self):
+        ip = IPv4Address("10.10.0.3")
+        mac_address = MacAddress("00:00:00:00:00:00")
+        request = ReservedIPUpdateRequest(
+            ip=ip, mac_address=mac_address, comment="comment"
+        )
+        mock_reservedip = Mock(ReservedIP)
+        mock_reservedip.ip = ip
+        mock_reservedip.mac_address = mac_address
+        resource = request.to_builder(mock_reservedip).build()
+        assert resource.get_values()["comment"] == "comment"
+        assert resource.get_values()["updated"] is not None

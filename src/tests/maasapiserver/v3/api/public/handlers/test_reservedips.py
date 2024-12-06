@@ -15,6 +15,7 @@ from maasapiserver.v3.api.public.models.requests.query import (
 )
 from maasapiserver.v3.api.public.models.requests.reservedips import (
     ReservedIPCreateRequest,
+    ReservedIPUpdateRequest,
 )
 from maasapiserver.v3.api.public.models.responses.reservedips import (
     ReservedIPsListResponse,
@@ -72,7 +73,10 @@ class TestReservedIPsApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return [Endpoint(method="POST", path=self.BASE_PATH)]
+        return [
+            Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+        ]
 
     async def test_list_no_other_page(
         self,
@@ -242,3 +246,70 @@ class TestReservedIPsApi(ApiCommonTests):
         assert response.status_code == 201
         assert "ETag" in response.headers
         assert len(response.headers["ETag"]) > 0
+
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        mocker,
+    ) -> None:
+        now = utcnow()
+        mocker.patch(
+            "maasapiserver.v3.api.public.models.requests.reservedips.utcnow",
+            lambda: now,
+        )
+        updated_reservedip = TEST_RESERVEDIP
+        updated_reservedip.comment = "updated comment"
+        updated_reservedip.updated = now
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.get_one.return_value = TEST_RESERVEDIP
+        services_mock.reservedips.update_one.return_value = updated_reservedip
+        reservedip_request = ReservedIPUpdateRequest(
+            ip=TEST_RESERVEDIP.ip,
+            mac_address=TEST_RESERVEDIP.mac_address,
+            comment="updated comment",
+        )
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}",
+            json=jsonable_encoder(reservedip_request),
+        )
+        assert response.status_code == 200
+        assert "ETag" in response.headers
+        assert len(response.headers["ETag"]) > 0
+        assert response.json()["comment"] == "updated comment"
+
+        query = QuerySpec(
+            where=ReservedIPsClauseFactory.and_clauses(
+                [
+                    ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
+                    ReservedIPsClauseFactory.with_subnet_id(1),
+                    ReservedIPsClauseFactory.with_vlan_id(1),
+                    ReservedIPsClauseFactory.with_fabric_id(1),
+                ]
+            )
+        )
+        services_mock.reservedips.get_one.assert_called_once_with(query=query)
+
+        services_mock.reservedips.update_one.assert_called_once_with(
+            query=query,
+            resource=reservedip_request.to_builder(TEST_RESERVEDIP).build(),
+            etag_if_match=None,
+        )
+
+    async def test_put_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.get_one.return_value = None
+        reservedip_request = ReservedIPUpdateRequest(
+            ip=TEST_RESERVEDIP.ip,
+            mac_address=TEST_RESERVEDIP.mac_address,
+            comment="updated comment",
+        )
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}",
+            json=jsonable_encoder(reservedip_request),
+        )
+        assert response.status_code == 404

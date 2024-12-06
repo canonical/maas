@@ -1,7 +1,9 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -15,6 +17,7 @@ from maasapiserver.v3.api.public.models.requests.query import (
 )
 from maasapiserver.v3.api.public.models.requests.reservedips import (
     ReservedIPCreateRequest,
+    ReservedIPUpdateRequest,
 )
 from maasapiserver.v3.api.public.models.responses.reservedips import (
     ReservedIPResponse,
@@ -203,6 +206,64 @@ class ReservedIPsHandler(Handler):
             )
         builder = await reservedip_request.to_builder(subnet, services)
         reservedip = await services.reservedips.create(builder.build())
+
+        response.headers["ETag"] = reservedip.etag()
+        return ReservedIPResponse.from_model(
+            reservedip=reservedip,
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/reserved_ips",
+        )
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/reserved_ips/{id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": ReservedIPResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_fabric_vlan_subnet_reserved_ip(
+        self,
+        fabric_id: int,
+        vlan_id: int,
+        subnet_id: int,
+        id: int,
+        reservedip_request: ReservedIPUpdateRequest,
+        response: Response,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        query = QuerySpec(
+            where=ReservedIPsClauseFactory.and_clauses(
+                [
+                    ReservedIPsClauseFactory.with_id(id),
+                    ReservedIPsClauseFactory.with_subnet_id(subnet_id),
+                    ReservedIPsClauseFactory.with_vlan_id(vlan_id),
+                    ReservedIPsClauseFactory.with_fabric_id(fabric_id),
+                ]
+            )
+        )
+        existing_reservedip = await services.reservedips.get_one(query=query)
+        if not existing_reservedip:
+            return NotFoundResponse()
+
+        builder = reservedip_request.to_builder(existing_reservedip)
+        reservedip = await services.reservedips.update_one(
+            query=query, resource=builder.build(), etag_if_match=etag_if_match
+        )
 
         response.headers["ETag"] = reservedip.etag()
         return ReservedIPResponse.from_model(

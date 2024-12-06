@@ -10,14 +10,21 @@ from maasservicelayer.db.repositories.reservedips import (
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
 )
-from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.fields import MacAddress
+from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
 
-class ReservedIPCreateRequest(BaseModel):
+class ReservedIPBaseRequest(BaseModel):
     ip: IPvAnyAddress = Field(description="The IP to be reserved.")
     mac_address: MacAddress = Field(
         description="The MAC address that should be linked to the reserved IP."
@@ -26,6 +33,8 @@ class ReservedIPCreateRequest(BaseModel):
         description="A description of this reserved IP.", default=None
     )
 
+
+class ReservedIPCreateRequest(ReservedIPBaseRequest):
     async def to_builder(
         self, subnet: Subnet, services: ServiceCollectionV3
     ) -> ReservedIPsResourceBuilder:
@@ -72,6 +81,31 @@ class ReservedIPCreateRequest(BaseModel):
             .with_subnet_id(subnet.id)
             .with_comment(self.comment)
             .with_created(now)
+            .with_updated(now)
+        )
+        return builder
+
+
+class ReservedIPUpdateRequest(ReservedIPBaseRequest):
+    def to_builder(
+        self, existing_reservedip: ReservedIP
+    ) -> ReservedIPsResourceBuilder:
+        if (
+            self.ip != existing_reservedip.ip
+            or self.mac_address != existing_reservedip.mac_address
+        ):
+            raise ValidationException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message="The ip and mac_address of a reserved IP are immutable. Delete the entry and recreate it.",
+                    )
+                ]
+            )
+        now = utcnow()
+        builder = (
+            ReservedIPsResourceBuilder()
+            .with_comment(self.comment)
             .with_updated(now)
         )
         return builder
