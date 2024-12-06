@@ -54,7 +54,7 @@ class MacAddress(str):
 
     @classmethod
     def __modify_schema__(cls, field_schema):
-        field_schema.update(pattern=MAC_FIELD_RE)
+        field_schema.update(pattern=MAC_FIELD_RE.pattern)
 
     @classmethod
     def __get_validators__(cls):
