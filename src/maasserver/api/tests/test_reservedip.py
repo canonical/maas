@@ -16,7 +16,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 
 
-class TestReservedIPsAPI(APITestCase.ForUserAndAdmin):
+class TestReservedIPsAPI(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
         d = defer.succeed(None)
@@ -54,6 +54,7 @@ class TestReservedIPsAPI(APITestCase.ForUserAndAdmin):
         self.assertEqual(json_load_bytes(response.content), [])
 
     def test_create_reserved_ip(self):
+        self.become_admin()
         uri = reverse("reservedips_handler")
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
 
@@ -79,8 +80,25 @@ class TestReservedIPsAPI(APITestCase.ForUserAndAdmin):
             configure_dhcp_on_agents, reserved_ip_ids=[content["id"]]
         )
 
+    def test_create_requires_admin(self):
+        uri = reverse("reservedips_handler")
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
 
-class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
+        response = self.client.post(
+            uri,
+            {
+                "ip": "10.0.0.70",
+                "subnet": subnet.id,
+                "mac_address": "01:02:03:04:05:06",
+            },
+        )
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+
+class TestReservedIPAPI(APITestCase.ForUser):
 
     def setUp(self):
         super().setUp()
@@ -118,6 +136,7 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
         self.assertEqual(status_code, http.client.NOT_FOUND)
 
     def test_update(self):
+        self.become_admin()
         reserved_ip = factory.make_ReservedIP()
         uri = reverse("reservedip_handler", args=[reserved_ip.id])
 
@@ -142,6 +161,7 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
         reservedip_module.post_commit_do.assert_not_called()
 
     def test_update_return_400_with_ip_in_different_subnet(self):
+        self.become_admin()
         factory.make_Subnet(cidr="192.168.0.0/24")
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         reserved_ip = factory.make_ReservedIP(ip="10.0.0.121", subnet=subnet)
@@ -157,6 +177,7 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
         reservedip_module.post_commit_do.assert_not_called()
 
     def test_update_returns_404_with_invalid_id(self):
+        self.become_admin()
         uri = reverse("reservedip_handler", args=[101])
 
         response = self.client.put(
@@ -171,7 +192,25 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
         status_code = response.status_code
         self.assertEqual(status_code, http.client.NOT_FOUND)
 
+    def test_update_requires_admin(self):
+        reserved_ip = factory.make_ReservedIP()
+        uri = reverse("reservedip_handler", args=[reserved_ip.id])
+
+        response = self.client.put(
+            uri,
+            {
+                "ip": reserved_ip.ip,
+                "mac_address": reserved_ip.mac_address,
+                "comment": "updated comment",
+            },
+        )
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
     def test_delete(self):
+        self.become_admin()
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         reserved_ip = factory.make_ReservedIP(ip="10.0.0.121", subnet=subnet)
         uri = reverse("reservedip_handler", args=[reserved_ip.id])
@@ -185,9 +224,21 @@ class TestReservedIPAPI(APITestCase.ForUserAndAdmin):
         )
 
     def test_delete_return_404_when_no_id_matches_the_request(self):
+        self.become_admin()
         uri = reverse("reservedip_handler", args=[101])
         response = self.client.delete(uri)
 
         status_code = response.status_code
         self.assertEqual(status_code, http.client.NOT_FOUND)
         reservedip_module.post_commit_do.assert_not_called()
+
+    def test_delete_requires_admin(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        reserved_ip = factory.make_ReservedIP(ip="10.0.0.121", subnet=subnet)
+        uri = reverse("reservedip_handler", args=[reserved_ip.id])
+
+        response = self.client.delete(uri)
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )

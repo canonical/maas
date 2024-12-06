@@ -10,7 +10,10 @@ from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.models import Interface
 from maasserver.models.reservedip import ReservedIP
 from maasserver.utils.orm import post_commit_do
-from maasserver.websockets.base import HandlerValidationError
+from maasserver.websockets.base import (
+    HandlerPermissionError,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -61,6 +64,9 @@ class ReservedIPHandler(TimestampedModelHandler):
         return data
 
     def create(self, params: dict) -> dict:
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         reserved_ip = super().create(params)
         post_commit_do(
             configure_dhcp_on_agents, reserved_ip_ids=[reserved_ip["id"]]
@@ -68,6 +74,9 @@ class ReservedIPHandler(TimestampedModelHandler):
         return reserved_ip
 
     def update(self, params: dict):
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         entry_id = params.get("id", None)
 
         if entry_id is None:
@@ -79,6 +88,9 @@ class ReservedIPHandler(TimestampedModelHandler):
         return updated_reserved_ip
 
     def delete(self, params: dict) -> None:
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         reserved_ip = self.get_object(params)
         post_commit_do(
             configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]

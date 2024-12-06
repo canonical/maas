@@ -12,6 +12,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
+    HandlerPermissionError,
     HandlerValidationError,
 )
 import maasserver.websockets.handlers.reservedip as reservedip_module
@@ -27,7 +28,7 @@ class TestReservedIPHandler(MAASServerTestCase):
         self.patch(reservedip_module, "post_commit_do").return_value = d
 
     def test_create(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
         reserved_ip = handler.create(
@@ -49,7 +50,7 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
 
     def test_create_mandatory_fields(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         handler = ReservedIPHandler(user, {}, None)
 
         # - IP must be provided, and subnet and VLAN must exist for the given IP
@@ -65,7 +66,7 @@ class TestReservedIPHandler(MAASServerTestCase):
         reservedip_module.post_commit_do.assert_not_called()
 
     def test_create_invalid_mac(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
 
@@ -79,7 +80,7 @@ class TestReservedIPHandler(MAASServerTestCase):
         reservedip_module.post_commit_do.assert_not_called()
 
     def test_create_duplicate(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
 
@@ -112,11 +113,28 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
         reservedip_module.post_commit_do.assert_not_called()
 
-    def test_get(self):
+    def test_create_requires_admin(self):
         user = factory.make_User()
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
-        reserved_ip_id = handler.create(
+
+        create_data = {
+            "ip": "10.0.0.55",
+            "subnet": subnet.id,
+            "mac_address": "00:11:22:33:44:55",
+            "comment": "this is a comment",
+        }
+
+        self.assertRaises(HandlerPermissionError, handler.create, create_data)
+
+    def test_get(self):
+        admin = factory.make_admin()
+        admin_handler = ReservedIPHandler(admin, {}, None)
+
+        user = factory.make_User()
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        handler = ReservedIPHandler(user, {}, None)
+        reserved_ip_id = admin_handler.create(
             {"ip": "10.0.0.16", "mac_address": "00:11:22:33:44:55"}
         )["id"]
 
@@ -143,7 +161,7 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
 
     def test_update(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
         reserved_ip_id = handler.create(
@@ -167,8 +185,20 @@ class TestReservedIPHandler(MAASServerTestCase):
 
         reservedip_module.post_commit_do.assert_not_called()
 
-    def test_delete(self):
+    def test_update_requires_admin(self):
         user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+
+        update_data = {
+            "id": "10.0.0.16",
+            "mac_address": "00:11:22:33:44:55",
+            "comment": "test update",
+        }
+
+        self.assertRaises(HandlerPermissionError, handler.update, update_data)
+
+    def test_delete(self):
+        user = factory.make_admin()
         factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
         reserved_ip = handler.create(
@@ -187,7 +217,7 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
 
     def test_delete_with_invalid_params(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
         reserved_ip_id = handler.create(
@@ -205,7 +235,20 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
         reservedip_module.post_commit_do.assert_not_called()
 
+    def test_delete_requires_admin(self):
+        user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+
+        delete_data = {
+            "id": 1,
+        }
+
+        self.assertRaises(HandlerPermissionError, handler.delete, delete_data)
+
     def test_list(self):
+        admin = factory.make_admin()
+        admin_handler = ReservedIPHandler(admin, {}, None)
+
         user = factory.make_User()
         factory.make_Subnet(cidr="10.0.0.0/24")
         handler = ReservedIPHandler(user, {}, None)
@@ -213,8 +256,12 @@ class TestReservedIPHandler(MAASServerTestCase):
         reserved_ips = handler.list({})
         self.assertEqual(len(reserved_ips), 0)
 
-        handler.create({"ip": "10.0.0.16", "mac_address": "00:11:22:33:44:55"})
-        handler.create({"ip": "10.0.0.25", "mac_address": "00:11:22:33:44:56"})
+        admin_handler.create(
+            {"ip": "10.0.0.16", "mac_address": "00:11:22:33:44:55"}
+        )
+        admin_handler.create(
+            {"ip": "10.0.0.25", "mac_address": "00:11:22:33:44:56"}
+        )
         reserved_ips = handler.list({})
         self.assertEqual(len(reserved_ips), 2)
         self.assertEqual(

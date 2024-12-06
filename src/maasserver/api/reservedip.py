@@ -4,7 +4,7 @@
 from django.core.handlers.wsgi import WSGIRequest
 from piston3.utils import rc
 
-from maasserver.api.support import OperationsHandler
+from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.reservedip import ReservedIPForm
@@ -42,6 +42,7 @@ class ReservedIpsHandler(OperationsHandler):
         """
         return ReservedIP.objects.all()
 
+    @admin_method
     def create(self, request: WSGIRequest):
         """@description-title Create a Reserved IP
         @description Create a new Reserved IP.
@@ -66,6 +67,10 @@ class ReservedIpsHandler(OperationsHandler):
         null or reserved. MAC address and VLAN need to be a unique together. IP
         needs to be within the subnet range. Subnet and VLAN for the reserved
         IP needs to be defined in MAAS.
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        create the reserved IP.
         """
         form = ReservedIPForm(data=request.data)
         if form.is_valid():
@@ -110,6 +115,7 @@ class ReservedIpHandler(OperationsHandler):
         reserved_ip = ReservedIP.objects.get_reserved_ip_or_404(id)
         return reserved_ip
 
+    @admin_method
     def update(self, request: WSGIRequest, id: int):
         """@description-title Update a reserved IP
         @description Update a reserved IP given its ID.
@@ -128,6 +134,10 @@ class ReservedIpHandler(OperationsHandler):
         @error (content) "bad-params" IP is updated to a value belonging to
         another subnet. IP is updated to an IP already reserved.
 
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        update the reserved IP.
+
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested reserved IP range is not found.
         """
@@ -139,6 +149,7 @@ class ReservedIpHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
+    @admin_method
     def delete(self, request: WSGIRequest, id: int):
         """@description-title Delete a reserved IP
         @description Delete a reserved IP given its ID.
@@ -147,6 +158,10 @@ class ReservedIpHandler(OperationsHandler):
         deleted.
 
         @success (http-status-code) "server-success" 204
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to
+        delete the reserved IP.
 
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested reserved IP is not found.
