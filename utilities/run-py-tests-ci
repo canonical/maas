@@ -22,6 +22,6 @@ bin/test.parallel --emit-subunit --subprocesses="${MAX_PROCESSES}" | \
     bin/subunit2junitxml --no-passthrough -f -o junit.xml | \
     bin/subunit2pyunit --no-passthrough
 res1=$?
-bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=loadscope --junit-xml=junit-pytest.xml
+bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load --junit-xml=junit-pytest.xml
 res2=$?
 exit $((res1 + res2))
