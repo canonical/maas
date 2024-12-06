@@ -984,6 +984,14 @@ class TestInterface(MAASServerTestCase):
             name="invalid*name",
         )
 
+    def test_rejects_name_too_long(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Interface,
+            INTERFACE_TYPE.PHYSICAL,
+            name=factory.make_hex_string(size=16),
+        )
+
     def test_rejects_invalid_mac_address(self):
         exception = self.assertRaises(
             ValidationError,

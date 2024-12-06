@@ -1807,6 +1807,10 @@ class Factory(maastesting.factory.Factory):
                     name = self.make_name("vlan")
         if None not in (parents, name) and iftype == INTERFACE_TYPE.VLAN:
             name = "%s.%d" % (parents[0].name, vlan.vid)
+            if len(name) > 15:
+                # In some tests we try to generate incompatible combinations of interface types hierarchy and this would
+                # result in very long names. So it's reasonable to shrink the name assuming that the suffix is unique.
+                name = name[-15:]
         if mac_address is None and iftype in [
             INTERFACE_TYPE.PHYSICAL,
             INTERFACE_TYPE.BOND,
