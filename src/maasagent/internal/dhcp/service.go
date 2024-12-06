@@ -521,7 +521,7 @@ func (s *DHCPService) getConfig(ctx context.Context) (*dhcpConfig, error) {
 func (s *DHCPService) writeConfigFile(path string, data []byte) error {
 	path = s.dataPathFactory(path)
 
-	return atomicfile.WriteFile(path, data, 0o640)
+	return atomicfile.WriteFile(path, data, 0o644)
 }
 
 func (s *DHCPService) Error() error {
