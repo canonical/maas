@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.4 (Ubuntu 16.4-0ubuntu0.24.04.2)
--- Dumped by pg_dump version 16.4 (Ubuntu 16.4-0ubuntu0.24.04.2)
+-- Dumped from database version 16.6 (Ubuntu 16.6-0ubuntu0.24.04.1)
+-- Dumped by pg_dump version 16.6 (Ubuntu 16.6-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12114,6 +12114,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 390	maasserver	0334_dnspublication_update	2024-10-19 03:30:09.373532+00
 391	maasserver	0335_reservedip_remove_vlan_update_mac	2024-10-23 03:29:40.217669+00
 392	maasserver	0336_remove_bmc_name_unique	2024-10-24 03:30:13.161462+00
+393	maasserver	0337_alter_interface_name	2024-12-07 03:29:56.132482+00
 \.
 
 
@@ -13292,7 +13293,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 392, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 393, true);
 
 
 --
