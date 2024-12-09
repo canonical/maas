@@ -53,22 +53,21 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 2     | how-to-request-features                 | [Request features](/t/how-to-request-features/4447)                            |
 | 2     | how-to-report-and-review-bugs           | [Report and review bugs](/t/how-to-report-and-review-bugs/4446)                |
 | 2     | how-to-contribute-to-maas-documentation | [Contribute to doc](/t/how-to-contribute-to-maas-documentation/6949)           |
-| 2     | how-to-contact-us                       | [How to contact us](/t/how-to-contact-us/5448)            |
-| 0     |                                         |                                                                                                |
-| 1     | maas-in-thirty-minutes | [MAAS in thirty minutes](/t/-/5360)                                             |
-| 0     |                                         |                                                                                                 |
-| 1     | how-to-guides                           | [How-to guides](/t/-/6663)                                              |
-| 2     | how-to-install-maas                     | [Install or upgrade MAAS](/t/-/5128)                           |
-| 2     | how-to-customise-maas-networks            | [Customise networks](/t/-/5164)                    |
-| 2     | how-to-customise-dhcp                      | [Customise DHCP](/t/-/5132)                                |
-| 2     | how-to-choose-os-images              | [Choose OS images](/t/-/5124)                                               |
-| 2     | how-to-provision-machines            | [Provision machines](/t/-/5172)                                             |
+| 2     | how-to-contact-us                       | [How to contact us](/t/how-to-contact-us/5448)                                 |
+| 0     |                                         |                                                                                |
+| 1     | maas-in-thirty-minutes                  | [MAAS in thirty minutes](/t/-/5360)                                            |
+| 0     |                                         |                                                                                |
+| 1     | how-to-guides                           | [How-to guides](/t/-/6663)                                                     |
+| 2     | how-to-install-maas                     | [Install or upgrade MAAS](/t/-/5128)                                           |
+| 2     | how-to-customise-maas-networks          | [Customise networks](/t/-/5164)                                                |
+| 2     | how-to-customise-dhcp                   | [Customise DHCP](/t/-/5132)                                                    |
+| 2     | how-to-choose-os-images                 | [Choose OS images](/t/-/5124)                                                  |
+| 2     | how-to-provision-machines               | [Provision machines](/t/-/5172)                                                |
 | 2     | how-to-customise-machines               | [Customise machines](/t/-/5108)                                                |
-| 2     | how-to-use-lxd-vms             | [Use virtual LXD VMs](/t/-/6500)                                              |
+| 2     | how-to-use-lxd-vms                      | [Use virtual LXD VMs](/t/-/6500)                                               |
 | 2     | how-to-locate-machines                  | [Locate machines](/t/how-to-locate-machines/5192)                              |
 | 2     | how-to-monitor-maas                     | [Monitor MAAS](/t/how-to-monitor-maas/5204)                                    |
 | 2     | how-to-enable-high-availability         | [Enable high availability](/t/-/5120)                                          |
-| 2     | how-to-adjust-maas-settings             | [Adjust MAAS settings](/t/how-to-change-maas-settings/8035)                    |
 | 2     | how-to-set-up-power-drivers             | [Set up power drivers](/t/-/5246)                                              |
 | 2     | how-to-configure-an-air-gapped-maas     | [Set up air-gapped MAAS](/t/how-to-configure-an-air-gapped-maas/5212)          |
 | 2     | how-to-deploy-vms-on-ibm-z              | [Deploy VMs on IBM Z](/t/how-to-deploy-vms-on-ibm-z/7885)                      |
@@ -100,18 +99,13 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 2     | how-to-customise-images                 | [Customise images](/t/-/5104)                                                  |
 | 2     | how-to-build-maas-images                | [Build MAAS images](/t/-/7872)                                                 |
 | 2     | how-to-build-an-ubuntu-image            | [Build Ubuntu](/t/-/7873)                                                      |
-| 2     | how-to-build-a-rhel-7-image             | [Build RHEL 7](/t/-/7874)                                                      |
-| 2     | how-to-build-a-rhel-8-image             | [Build RHEL 8](/t/-/7875)                                                      |
-| 2     | how-to-build-a-centos-7-image           | [Build CentOS 7](/t/-/7876)                                                    |
-| 2     | how-to-build-an-oracle-linux-8-image    | [Build Oracle Linux 8](/t/-/8078)                                              |
-| 2     | how-to-build-an-oracle-linux-9-image    | [Build Oracle Linux 9](/t/-/8079)                                              |
-| 2     | how-to-build-an-esxi-image              | [Build ESXi](/t/-/7877)                                                        |
-| 2     | how-to-build-a-windows-image            | [Build Windows](/t/-/7878)                                                     |
 | 2     | how-to-back-up-maas                     | [Back up MAAS](/t/-/5096)                                                      |
 | 2     | how-to-upgrade-maas                     | [Upgrade MAAS](/t/-/5436)                                                      |
 | 0     |                                         |                                                                                |
 | 1     | reference                               | [Reference](/t/-/6143)                                                         |
 | 2     | reference-installation-requirements     | [Installation requirements](/t/reference-installation-requirements/6233)       |
+| 2     | maas-configuration-guide             | [Configuring MAAS settings](/t/how-to-change-maas-settings/8035)                    |
+| 2     | maas-troubleshooting-guide              | [Troubleshooting guide](/t/-/5333)                                             |
 | 2     | reference-maas-source-code              | [MAAS source code](https://launchpad.net/maas)                                 |
 | 2     | reference-documentation-style-guide     | [Documentation style guide](/t/reference-documentation-style-guide/4186)       |
 | 2     | reference-maas-glossary                 | [MAAS glossary](/t/reference-maas-glossary/5416)                               |
@@ -138,7 +132,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 1     | explanation                             | [Explanation](/t/-/6141)                                                       |
 | 2     | about-maas                              | [MAAS](/t/about-maas/6678)                                                     |
 | 2     | about-machine-basics                    | [Machine basics](/t/about-machine-basics/7917)                                 |
-| 2 | about-maas-networking | [Networking](/t/about-maas-networking/9620) |
+| 2     | about-maas-networking                   | [Networking](/t/about-maas-networking/9620)                                    |
 | 2     | about-commissioning-machines            | [Commissioning machines](/t/about-commissioning-machines/7853)                 |
 | 2     | about-the-machine-life-cycle            | [The machine life-cycle](/t/about-the-machine-life-cycle/7847)                 |
 | 2     | about-deploying-machines                | [Deploying machines](/t/about-deploying-machines/7901)                         |
