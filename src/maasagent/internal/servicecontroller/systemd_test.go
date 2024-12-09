@@ -19,45 +19,58 @@ import (
 	"context"
 	"testing"
 
-	"github.com/snapcore/snapd/systemd"
 	"github.com/stretchr/testify/assert"
 )
 
 type mockSystemdClient struct {
-	systemd.Systemd
-	StartCalls    [][]string
-	StopCalls     [][]string
-	RestartCalls  [][]string
-	StatusCalls   [][]string
-	StatusReturns [][]*systemd.UnitStatus
+	outputCalls         [][]string
+	combinedOutputCalls [][]string
+	outputReturnValues  []struct {
+		out string
+		err error
+	}
+	combinedOutputReturnValues []struct {
+		out string
+		err error
+	}
 }
 
-func (m *mockSystemdClient) Start(args []string) error {
-	m.StartCalls = append(m.StartCalls, args)
-	return nil
-}
+func (m *mockSystemdClient) OutputSystemctlCommand(_ context.Context, args ...string) (string, error) {
+	m.outputCalls = append(m.outputCalls, args)
 
-func (m *mockSystemdClient) Stop(args []string) error {
-	m.StopCalls = append(m.StopCalls, args)
-	return nil
-}
+	if len(m.outputReturnValues) > 0 {
+		out := m.outputReturnValues[0].out
+		err := m.outputReturnValues[0].err
 
-func (m *mockSystemdClient) Restart(args []string) error {
-	m.RestartCalls = append(m.RestartCalls, args)
-	return nil
-}
+		if len(m.outputReturnValues) > 1 {
+			m.outputReturnValues = m.outputReturnValues[1:]
+		} else {
+			m.outputReturnValues = nil
+		}
 
-func (m *mockSystemdClient) Status(args []string) ([]*systemd.UnitStatus, error) {
-	m.StatusCalls = append(m.StatusCalls, args)
-	result := m.StatusReturns[0]
-
-	if len(m.StatusReturns) > 1 {
-		m.StatusReturns = m.StatusReturns[1:]
-	} else {
-		m.StatusReturns = [][]*systemd.UnitStatus{}
+		return out, err
 	}
 
-	return result, nil
+	return "", nil
+}
+
+func (m *mockSystemdClient) CombinedOutputSystemctlCommand(_ context.Context, args ...string) (string, error) {
+	m.combinedOutputCalls = append(m.combinedOutputCalls, args)
+
+	if len(m.combinedOutputReturnValues) > 0 {
+		out := m.combinedOutputReturnValues[0].out
+		err := m.combinedOutputReturnValues[0].err
+
+		if len(m.combinedOutputReturnValues) > 1 {
+			m.combinedOutputReturnValues = m.combinedOutputReturnValues[1:]
+		} else {
+			m.combinedOutputReturnValues = nil
+		}
+
+		return out, err
+	}
+
+	return "", nil
 }
 
 func TestSystemdControllerStart(t *testing.T) {
@@ -72,7 +85,7 @@ func TestSystemdControllerStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, [][]string{{"test-unit.service"}}, client.StartCalls)
+	assert.Equal(t, [][]string{{"start", "test-unit.service"}}, client.combinedOutputCalls)
 }
 
 func TestSystemdControllerStop(t *testing.T) {
@@ -87,7 +100,7 @@ func TestSystemdControllerStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, [][]string{{"test-unit.service"}}, client.StopCalls)
+	assert.Equal(t, [][]string{{"stop", "test-unit.service"}}, client.combinedOutputCalls)
 }
 
 func TestSystemdControllerRestart(t *testing.T) {
@@ -102,22 +115,21 @@ func TestSystemdControllerRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, [][]string{{"test-unit.service"}}, client.RestartCalls)
+	assert.Equal(t, [][]string{{"restart", "test-unit.service"}}, client.combinedOutputCalls)
 }
 
 func TestSystemdControllerStatus(t *testing.T) {
 	expectedout := []ServiceStatus{StatusRunning, StatusStopped}
 	client := &mockSystemdClient{
-		StatusReturns: [][]*systemd.UnitStatus{
+		outputReturnValues: []struct {
+			out string
+			err error
+		}{
 			{
-				{
-					Active: true,
-				},
+				out: "ActiveState=active",
 			},
 			{
-				{
-					Active: false,
-				},
+				out: "ActiveState=inactive",
 			},
 		},
 	}
@@ -135,5 +147,5 @@ func TestSystemdControllerStatus(t *testing.T) {
 		assert.Equal(t, expected, result)
 	}
 
-	assert.Equal(t, len(expectedout), len(client.StatusCalls))
+	assert.Equal(t, len(expectedout), len(client.outputCalls))
 }

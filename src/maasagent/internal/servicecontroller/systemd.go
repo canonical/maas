@@ -17,53 +17,95 @@ package servicecontroller
 
 import (
 	"context"
-
-	"github.com/rs/zerolog/log"
-	"github.com/snapcore/snapd/systemd"
+	"fmt"
+	"os/exec"
+	"strings"
 )
 
-type systemdReporter struct{}
+const systemctlBin = "/bin/systemctl"
 
-func (s systemdReporter) Notify(n string) {
-	log.Debug().Msg(n)
+type client interface {
+	OutputSystemctlCommand(context.Context, ...string) (string, error)
+	CombinedOutputSystemctlCommand(context.Context, ...string) (string, error)
+}
+
+type systemdClient struct{}
+
+func (s *systemdClient) OutputSystemctlCommand(ctx context.Context, args ...string) (string, error) {
+	args = append([]string{systemctlBin}, args...)
+	cmd := exec.CommandContext(ctx, "sudo", args...)
+
+	out, err := cmd.Output()
+
+	return string(out), err
+}
+
+func (s *systemdClient) CombinedOutputSystemctlCommand(ctx context.Context, args ...string) (string, error) {
+	args = append([]string{systemctlBin}, args...)
+	cmd := exec.CommandContext(ctx, "sudo", args...)
+
+	out, err := cmd.CombinedOutput()
+
+	return string(out), err
 }
 
 type SystemdController struct {
-	client systemd.Systemd
+	client client
 	unit   string
 }
 
 func NewSystemdController(service string) *SystemdController {
-	client := systemd.New(systemd.SystemMode, systemdReporter{})
-
 	return &SystemdController{
+		client: &systemdClient{},
 		unit:   service,
-		client: client,
 	}
 }
 
-func (c *SystemdController) Start(_ context.Context) error {
-	return c.client.Start([]string{c.unit})
-}
-
-func (c *SystemdController) Stop(_ context.Context) error {
-	return c.client.Stop([]string{c.unit})
-}
-
-func (c *SystemdController) Restart(_ context.Context) error {
-	return c.client.Restart([]string{c.unit})
-}
-
-func (c *SystemdController) Status(_ context.Context) (ServiceStatus, error) {
-	info, err := c.client.Status([]string{c.unit})
+func (c *SystemdController) Start(ctx context.Context) error {
+	out, err := c.client.CombinedOutputSystemctlCommand(ctx, "start", c.unit)
 	if err != nil {
-		return StatusError, err
+		return fmt.Errorf("failed to start %s, out: %s, err: %w", c.unit, string(out), err)
 	}
 
-	// only one unit requested, so accessed via [0]
-	if info[0].Active {
-		return StatusRunning, nil
+	return nil
+}
+
+func (c *SystemdController) Stop(ctx context.Context) error {
+	out, err := c.client.CombinedOutputSystemctlCommand(ctx, "stop", c.unit)
+	if err != nil {
+		return fmt.Errorf("failed to stop %s, out: %s, err: %w", c.unit, string(out), err)
 	}
 
-	return StatusStopped, nil
+	return nil
+}
+
+func (c *SystemdController) Restart(ctx context.Context) error {
+	out, err := c.client.CombinedOutputSystemctlCommand(ctx, "restart", c.unit)
+	if err != nil {
+		return fmt.Errorf("failed to restart %s, out: %s, err: %w", c.unit, string(out), err)
+	}
+
+	return nil
+}
+
+func (c *SystemdController) Status(ctx context.Context) (ServiceStatus, error) {
+	out, err := c.client.OutputSystemctlCommand(ctx, "show", c.unit)
+	if err != nil {
+		return StatusError, fmt.Errorf("failed to fetch service %s status, out: %s, err: %w", c.unit, out, err)
+	}
+
+	for _, line := range strings.Split(out, "\n") {
+		lineKV := strings.Split(line, "=")
+		k, v := lineKV[0], lineKV[1]
+
+		if k == "ActiveState" {
+			if v == "active" {
+				return StatusRunning, nil
+			}
+
+			return StatusStopped, nil
+		}
+	}
+
+	return StatusUnknown, nil
 }

@@ -11,7 +11,6 @@ require (
 	github.com/packetcap/go-pcap v0.0.0-20230509084824-080a85fb093e
 	github.com/prometheus/client_golang v1.19.1
 	github.com/rs/zerolog v1.29.1
-	github.com/snapcore/snapd v0.0.0-20240809001815-e5ab8c2c8bae
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/otel v1.29.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.29.0
@@ -88,6 +87,5 @@ require (
 	gopkg.in/httprequest.v1 v1.2.1 // indirect
 	gopkg.in/macaroon.v2 v2.1.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
-	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
