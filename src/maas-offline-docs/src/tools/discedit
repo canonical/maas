@@ -1,5 +1,17 @@
 #!/usr/bin/python3
-
+#
+# discedit: discourse editing program for MAAS source docs in maas repo
+# last edited: 7 dec 2024
+# by: bill wear
+# changelog
+# |   date   | summary of change                                      |
+# +----------|--------------------------------------------------------|
+# | 7 dec 24 | converted discedit to finish by creating a launchpad   |
+# |          |  merge request when edits are complete, using a unique |
+# |          |  branch name ("update-<discourse topic number>-<epoch> |
+# |          |  at user discretion (y/n question) once editing done   |
+# +----------|--------------------------------------------------------|
+#
 import argparse
 import glob
 import os
@@ -8,45 +20,44 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import yaml
 
 from discourse_api import DiscourseAPI
 
 
 def main():
-    # did the user enter one of the required args?
+    # parse args and reject malformed command lines, with usage message
     parser, args = parse_args()
-
-    # since the arg wasn't "-h", was it a topic number OR "-a"?
     if not args.topic_number and not args.a:
         parser.print_usage()
         sys.exit(1)
 
-    # can we read the config file?
+    # read the config file, erroring out in function if there's a problem
     config = read_config()
 
-    # does the specified git root dir exist?
+    # locate & mark the git repo, or error if it's not reachable
     git_root = config.get("git_root")
     if not os.path.exists(git_root):
         sys.exit(f"{git_root}: no such repository")
     elif args.d:
         print(f"Root dir of github doc repo (git_root): {git_root}")
 
-    # does the specified markdown source dir exist?
+    # locate & mark the markdown dir, or error if it's not reachable
     markdown_dir = config.get("markdown_src")
     if not os.path.exists(markdown_dir):
         sys.exit(f"{markdown_dir}: no such file or directory")
     elif args.d:
         print(f"markdown source dir (markdown_dir): {markdown_dir}")
 
-    # what are the html directories?
+    # mark the desired html directories
     deb_dir = f"{git_root}/production-html-deb"
     snap_dir = f"{git_root}/production-html-snap"
 
-    # what api object should we use to connect with the discourse server?
+    # connect with Discourse server or error out if not possible
     api = DiscourseAPI(config)
 
-    # did they ask to autogenerate the complete doc set?
+    # special case (-a): run an html docset from the github repo & exit
     if args.a:
         shutil.copy(
             f"{git_root}/html-support/stylesheet.css",
@@ -151,19 +162,30 @@ def main():
             print(f"{html_filename} processed")
         sys.exit(0)
 
-    # is the entered topic number a valid markdown file?
+    # if not a bulk html run, does the provided topic exist in the repo?
     mdfile = glob.glob(os.path.join(markdown_dir, f"*{args.topic_number}*.md"))
     if not mdfile:
         sys.exit(f"{args.topic_number}: no such topic")
     elif args.d:
         print(f"markdown filename (mdfile): {mdfile}")
 
-    # what is the fully qualified path to the git markdown file?
+    # assign a branch name for the launchpad branch for this edit
+    unix_epoch = int(time.time())
+    branch_name = f"update-{args.topic_number}-{unix_epoch}"
+
+    # create the launchpad branch for this change
+    command = ['git', 'checkout', '-b', branch_name]
+    target_directory = git_root
+    result = subprocess.run(command, cwd=target_directory, capture_output=True, text=True)
+    if args.d:
+        print(f"switched to {branch_name}")
+        
+    # mark the fully qualified pathname to the markdown file 
     markdown_file = mdfile[0]
     if args.d:
         print(f"markdown file FQPN (markdown_file): {markdown_file}")
 
-    # can we create a temp working directory?
+    # create a temporary working directory with random name, or error out
     try:
         twd = tempfile.mkdtemp()
     except IOError as e:
@@ -171,7 +193,7 @@ def main():
     if args.d:
         print(f"temp working directory (twd): {twd}")
 
-    # can we copy the git markdown to the twd?
+    # copy git markdown to the twd, with error paths
     try:
         repo_md_copy = os.path.join(twd, os.path.basename(markdown_file))
         shutil.copy(markdown_file, repo_md_copy)
@@ -182,21 +204,29 @@ def main():
     if args.d:
         print(f"wkg copy of git markdown vsn (repo_md_copy): {repo_md_copy}")
 
-    # can we find the topic number in discourse?
+    # get the markdown for this topic in Discourse & write to repo discourse file
     discourse_md = api.get_markdown(args.topic_number)
-
-    # can we write the current discourse version to the repo?
     with open(markdown_file, "w", encoding="utf-8") as f:
         f.write(discourse_md)
-
-    # can we commit the updated content (if any) to the repo?
+        
+    # commit the discourse version to the branch, linking origin to new branch
     os.chdir(git_root)
+    if args.d:
+        print(f"git root is {git_root}")
     subprocess.run(["git", "add", "."])
+    if args.d:
+        print("just did a git add")
     commit_message = "doc: updating file with discourse changes"
-    subprocess.run(["git", "commit", "-m", commit_message])
-    subprocess.run(["git", "push"])
+    if args.d:
+        print(f"commit_message is {commit_message}")
+    result = subprocess.run(["git", "commit", "-m", commit_message])
+    if args.d:
+        print(f"just did a git commit to branch {branch_name}")
+    result = subprocess.run(["git", "push", "-u", "origin", branch_name])
+    if args.d:
+        print(f"just did a git push -u origin {branch_name}")
 
-    # can we copy the discourse version to the twd?
+    # copy the discourse version to the twd as a separate document
     try:
         discourse_md_copy = os.path.join(twd, os.path.basename(markdown_file))
         discourse_md_copy += ".disc"
@@ -210,7 +240,7 @@ def main():
             f"wkg copy of discourse vsn (discourse_md_copy): {discourse_md_copy}"
         )
 
-    # can we edit the file with emacs? (todo: make this generic)
+    # edit both discourse and main repo versions with an autodiff as well
     emacs_command = [
         "emacs",
         "-eval",
@@ -220,140 +250,17 @@ def main():
     ]
     subprocess.run(emacs_command)
 
+    # ask to commit change to the new launchpad branch; do so if "yes"
     if ask_yes_no_question("commit changes to launchpad?"):
         shutil.copy(repo_md_copy, markdown_file)
         os.chdir(git_root)
-        scoping_levels = {
-            "s": "structural",
-            "c": "content",
-            "l": "linting",
-            "u": "urls",
-        }
-        while True:
-            scoping_level = (
-                input(
-                    "Scoping level: (s)tructural, (c)ontent, (l)inting, (u)rls: "
-                )
-                .strip()
-                .lower()
-            )
-            if scoping_level in scoping_levels:
-                scoping = scoping_levels[scoping_level]
-                break
-            else:
-                print("Invalid input. Please try again.")
-        commit_description = input(f"docs({scoping}): ")
-        commit_message = f"docs({scoping}): {commit_description}"
+        commit_description = input(f"fix(docs): ")
+        commit_message = f"fix(docs): {commit_description}"
         subprocess.run(["git", "add", "."])
         subprocess.run(["git", "commit", "-m", commit_message])
         subprocess.run(["git", "push"])
     else:
         print("no changes committed to launchpad")
-
-    if ask_yes_no_question("publish changes to discourse?"):
-        with open(markdown_file, "r") as f:
-            markdown_content = f.read()
-        api.update_topic_content(args.topic_number, markdown_content)
-        print(f"discourse topic {args.topic_number} updated.")
-    else:
-        print("no changes published to discourse")
-
-    if ask_yes_no_question("publish changes to html?"):
-        #       html_filename = re.sub(r'-\d+', '', markdown_file.split('/')[-1]).replace('.md', '.html')
-        html_filename = re.sub(
-            r"-(\d+)\.md$", ".html", markdown_file.split("/")[-1]
-        )
-        if args.d:
-            print(f"markdown filename (markdown_file): {markdown_file}")
-            print(f"html filename (html_filename): {html_filename}")
-        with open(markdown_file, "r") as f:
-            markdown_content = f.read()
-        new_content = re.sub(
-            r"/t/([\w-]+)(?:/[\d]+)", r"\1.html", markdown_content
-        )
-        temp_markdown_file = twd + "/" + html_filename + ".tmp.md"
-        with open(temp_markdown_file, "w") as file:
-            file.write(new_content)
-        topic_title = api.get_title(args.topic_number)
-        subprocess.run(
-            [
-                "pandoc",
-                "-s",
-                temp_markdown_file,
-                "-o",
-                f"{deb_dir}/ui/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={deb_dir}/images",
-                "-M",
-                "ui",
-            ]
-        )
-        subprocess.run(
-            [
-                "pandoc",
-                "-s",
-                temp_markdown_file,
-                "-o",
-                f"{deb_dir}/cli/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={deb_dir}/images",
-                "-M",
-                "ui",
-            ]
-        )
-        subprocess.run(
-            [
-                "pandoc",
-                "-s",
-                temp_markdown_file,
-                "-o",
-                f"{snap_dir}/ui/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={snap_dir}/images",
-                "-M",
-                "ui",
-            ]
-        )
-        subprocess.run(
-            [
-                "pandoc",
-                "-s",
-                temp_markdown_file,
-                "-o",
-                f"{snap_dir}/cli/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={snap_dir}/images",
-                "-M",
-                "ui",
-            ]
-        )
-        shutil.copy(
-            f"{git_root}/html-support/stylesheet.css",
-            f"{deb_dir}/ui/css/stylesheet.css",
-        )
-        shutil.copy(
-            f"{git_root}/html-support/stylesheet.css",
-            f"{deb_dir}/cli/css/stylesheet.css",
-        )
-        shutil.copy(
-            f"{git_root}/html-support/stylesheet.css",
-            f"{snap_dir}/ui/css/stylesheet.css",
-        )
-        shutil.copy(
-            f"{git_root}/html-support/stylesheet.css",
-            f"{snap_dir}/cli/css/stylesheet.css",
-        )
-    else:
-        print("html docs not updated")
-
 
 def ask_yes_no_question(prompt):
     while True:
