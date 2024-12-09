@@ -87,15 +87,6 @@ class ProvisioningServiceMaker:
 
         return tftp_service
 
-    def _makeLeaseSocketService(self, rpc_service):
-        from provisioningserver.rackdservices.lease_socket_service import (
-            LeaseSocketService,
-        )
-
-        lease_socket_service = LeaseSocketService(rpc_service, reactor)
-        lease_socket_service.setName("lease_socket_service")
-        return lease_socket_service
-
     def _makeNodePowerMonitorService(self):
         from provisioningserver.rackdservices.node_power_monitor_service import (
             NodePowerMonitorService,
@@ -187,7 +178,6 @@ class ProvisioningServiceMaker:
         yield self._makeRPCPingService(rpc_service, clock=clock)
         yield self._makeNetworksMonitoringService(rpc_service, clock=clock)
         yield self._makeDHCPProbeService(rpc_service)
-        yield self._makeLeaseSocketService(rpc_service)
         yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService(rpc_service)
         yield self._makeRackHTTPService(tftp_root, rpc_service)

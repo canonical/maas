@@ -29,9 +29,6 @@ from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
 from provisioningserver.rackdservices.external import RackExternalService
-from provisioningserver.rackdservices.lease_socket_service import (
-    LeaseSocketService,
-)
 from provisioningserver.rackdservices.networks_monitoring_service import (
     RackNetworksMonitoringService,
 )
@@ -156,7 +153,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = {
             "dhcp_probe",
             "networks_monitor",
-            "lease_socket_service",
             "node_monitor",
             "external",
             "rpc",
@@ -192,7 +188,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = {
             "dhcp_probe",
             "networks_monitor",
-            "lease_socket_service",
             "node_monitor",
             "external",
             "rpc",
@@ -308,10 +303,3 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(tftp_service.backend, TFTPBackend)
         self.assertEqual(tftp_service.backend.base.path, tftp_root)
         self.assertTrue(os.path.exists(tftp_root))
-
-    def test_lease_socket_service(self):
-        options = Options()
-        service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options, clock=None)
-        lease_socket_service = service.getServiceNamed("lease_socket_service")
-        self.assertIsInstance(lease_socket_service, LeaseSocketService)
