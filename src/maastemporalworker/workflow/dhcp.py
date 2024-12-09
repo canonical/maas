@@ -9,6 +9,7 @@ from typing import Optional
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import workflow
+from temporalio.api.enums.v1 import WorkflowIdConflictPolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from maascommon.workflows.dhcp import (
@@ -467,24 +468,19 @@ class ConfigureDHCPWorkflow:
                     ),
                     id=f"configure-dhcp:{system_id}",
                 )
-                children.append(cfg_child)
             # If there is already something running, we have to fallback and turn the request into a full reload and terminate
             # the running workflow.
             # This is because only temporal signals are guaranteed to be processed in sequence as they arrive.
             except WorkflowAlreadyStartedError:
-                pass
-                # TODO BEFORE THE 3.6 RELEASE: uncomment this when we bump to the temporal sdk 1.7.0 and we can use the
-                #  workflow_id_conflict_policy.
-                #  Until that day, we just skip this workflow but we know this might lead to inconsistent statuses in DHCPD.
-                # cfg_child = await workflow.start_child_workflow(
-                #     CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
-                #     ConfigureDHCPForAgentParam(
-                #         system_id=system_id,
-                #         full_reload=True,
-                #     ),
-                #     id=f"configure-dhcp:{system_id}",
-                #     workflow_id_conflict_policy=WorkflowIdConflictPolicy.WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING
-                # )
-            # children.append(cfg_child)
+                cfg_child = await workflow.start_child_workflow(
+                    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
+                    ConfigureDHCPForAgentParam(
+                        system_id=system_id,
+                        full_reload=True,
+                    ),
+                    id=f"configure-dhcp:{system_id}",
+                    id_reuse_policy=WorkflowIdConflictPolicy.WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING,
+                )
+            children.append(cfg_child)
 
         await asyncio.gather(*children)
