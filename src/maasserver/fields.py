@@ -720,6 +720,7 @@ class IPWithOptionalPort(forms.CharField):
         # if it fails, try with port
         try:
             ip, port = value.rsplit(":", maxsplit=1)
+            ip = ip.strip("[]")
             GenericIPAddressField().clean(ip, model_instance=None)
             port = int(port)
             if port < 0 or port > 65535:

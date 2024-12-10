@@ -973,7 +973,10 @@ class TestIPWithOptionalPort(MAASTestCase):
             factory.make_ip_address(ipv6=True),
         ]
         for ip in ips:
+            # test ipv6 with and without square brackets
             ip_port = f"{ip}:5000"
+            self.assertEqual(ip_port, IPWithOptionalPort().clean(ip_port))
+            ip_port = f"[{ip}]:5000"
             self.assertEqual(ip_port, IPWithOptionalPort().clean(ip_port))
 
     def test_rejects_invalid_ipv4_address(self):
