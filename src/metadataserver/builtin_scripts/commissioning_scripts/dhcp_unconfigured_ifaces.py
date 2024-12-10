@@ -31,6 +31,7 @@
 # parser will be able to connect these NICs and the networks
 # MAAS knows about.
 
+from shutil import which
 from subprocess import call, check_output, Popen
 from time import sleep
 
@@ -97,19 +98,42 @@ def dhcp_explore():
     # running dhclient -6 in a loop that only tries 10 times.  Per RFC 5227,
     # conflict-detection could take as long as 9 seconds, so we sleep 10.
     # See https://launchpad.net/bugs/1447715
+
+    # Determine whether to use dhclient or dhcpcd
+    # Bug: https://bugs.launchpad.net/maas/+bug/2058496
+    dhclient_available = False
+    if which("dhclient") is not None:
+        dhclient_available = True
+
     for iface in unconfigured_ifaces_4:
-        print("INFO: Running dhclient -4 on %s..." % iface)
-        call(["dhclient", "-nw", "-4", iface])
+        if dhclient_available:
+            print("INFO: Running dhclient -4 on %s..." % iface)
+            call(["dhclient", "-nw", "-4", iface])
+        else:
+            print("INFO: Running dhcpcd -4 on %s..." % iface)
+            call(["dhcpcd", "-t", "60", "-4", iface])
+
     for iface in unconfigured_ifaces_6:
-        print("INFO: Running dhclient -6 on %s..." % iface)
-        Popen(
-            [
-                "sh",
-                "-c",
-                "for idx in $(seq 10); do"
-                " dhclient -6 %s && break || sleep 10; done" % iface,
-            ]
-        )
+        if dhclient_available:
+            print("INFO: Running dhclient -6 on %s..." % iface)
+            Popen(
+                [
+                    "sh",
+                    "-c",
+                    "for idx in $(seq 10); do"
+                    " dhclient -6 %s && break || sleep 10; done" % iface,
+                ]
+            )
+        else:
+            print("INFO: Running dhcpcd -6 on %s..." % iface)
+            Popen(
+                [
+                    "sh",
+                    "-c",
+                    "for idx in $(seq 10); do"
+                    " dhcpcd -t 60 -6 %s && break || sleep 10; done" % iface,
+                ]
+            )
         # Ignore return value and continue running dhclient on the
         # other interfaces.
 

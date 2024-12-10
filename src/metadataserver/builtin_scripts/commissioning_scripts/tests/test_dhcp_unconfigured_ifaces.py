@@ -130,6 +130,9 @@ ip_wlan0 = b"""\
 DHCP6_TEMPLATE = (
     "for idx in $(seq 10); do dhclient -6 %s && break || sleep 10; done"
 )
+DHCPCD6_TEMPLATE = (
+    "for idx in $(seq 10); do dhcpcd -t 60 -6 %s && break || sleep 10; done"
+)
 
 
 class TestDHCPExplore(MAASTestCase):
@@ -139,6 +142,9 @@ class TestDHCPExplore(MAASTestCase):
         self.patch(dhcp_unconfigured_ifaces, "sleep")
 
     def test_calls_dhclient_on_unconfigured_interfaces(self):
+        self.patch(
+            dhcp_unconfigured_ifaces, "which"
+        ).return_value = "/usr/sbin/dhclient"
         check_output = self.patch(dhcp_unconfigured_ifaces, "check_output")
         check_output.side_effect = [
             ip_link_show_all,
@@ -183,5 +189,54 @@ class TestDHCPExplore(MAASTestCase):
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth1"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth2"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth5"]),
+            ],
+        )
+
+    def test_calls_dhcpcd_on_unconfigured_interfaces(self):
+        self.patch(dhcp_unconfigured_ifaces, "which").return_value = None
+        check_output = self.patch(dhcp_unconfigured_ifaces, "check_output")
+        check_output.side_effect = [
+            ip_link_show_all,
+            ip_link_show,
+            ip_eth0,
+            ip_eth4,
+            ip_eth5,
+            ip_eth6,
+            ip_lo,
+            ip_virbr0,
+            ip_wlan0,
+            ip_eth0,
+            ip_eth4,
+            ip_eth5,
+            ip_eth6,
+            ip_lo,
+            ip_virbr0,
+            ip_wlan0,
+            # Return interfaces with IPs so there isn't a sleep
+            ip_wlan0,
+            ip_wlan0,
+            ip_wlan0,
+            ip_eth0,
+            ip_eth0,
+            ip_eth0,
+            ip_eth0,
+            ip_eth0,
+        ]
+        mock_call = self.patch(dhcp_unconfigured_ifaces, "call")
+        mock_popen = self.patch(dhcp_unconfigured_ifaces, "Popen")
+        dhcp_unconfigured_ifaces.dhcp_explore()
+        mock_call.assert_has_calls(
+            [
+                call(["dhcpcd", "-t", "60", "-4", "eth1"]),
+                call(["dhcpcd", "-t", "60", "-4", "eth2"]),
+                call(["dhcpcd", "-t", "60", "-4", "eth6"]),
+            ]
+        )
+        mock_popen.assert_has_calls(
+            [
+                call(["sh", "-c", DHCPCD6_TEMPLATE % "eth0"]),
+                call(["sh", "-c", DHCPCD6_TEMPLATE % "eth1"]),
+                call(["sh", "-c", DHCPCD6_TEMPLATE % "eth2"]),
+                call(["sh", "-c", DHCPCD6_TEMPLATE % "eth5"]),
             ],
         )
