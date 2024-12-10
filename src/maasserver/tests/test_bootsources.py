@@ -108,12 +108,12 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertEqual({"jammy"}, by_release.keys())
-        jammy = by_release["jammy"]
-        self.assertEqual(jammy.release, "jammy")
-        self.assertEqual(jammy.arches, [arch, "amd64"])
-        self.assertEqual(jammy.subarches, ["*"])
-        self.assertEqual(jammy.labels, ["*"])
+        self.assertEqual({"noble"}, by_release.keys())
+        noble = by_release["noble"]
+        self.assertEqual(noble.release, "noble")
+        self.assertEqual(noble.arches, [arch, "amd64"])
+        self.assertEqual(noble.subarches, ["*"])
+        self.assertEqual(noble.labels, ["*"])
 
     def test_ensure_boot_source_definition_updates_default_source_snap(self):
         BootSource.objects.all().delete()
@@ -156,12 +156,12 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertEqual({"jammy"}, by_release.keys())
-        jammy = by_release["jammy"]
-        self.assertEqual(jammy.release, "jammy")
-        self.assertEqual(jammy.arches, ["amd64"])
-        self.assertEqual(jammy.subarches, ["*"])
-        self.assertEqual(jammy.labels, ["*"])
+        self.assertEqual({"noble"}, by_release.keys())
+        noble = by_release["noble"]
+        self.assertEqual(noble.release, "noble")
+        self.assertEqual(noble.arches, ["amd64"])
+        self.assertEqual(noble.subarches, ["*"])
+        self.assertEqual(noble.labels, ["*"])
 
     def test_ensure_boot_source_definition_skips_if_already_present(self):
         sources = [factory.make_BootSource() for _ in range(3)]

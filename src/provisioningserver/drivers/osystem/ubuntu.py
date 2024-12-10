@@ -37,7 +37,7 @@ class UbuntuOS(OperatingSystem):
 
     def get_lts_release(self):
         """Return the latest Ubuntu LTS release."""
-        return "jammy"
+        return "noble"
 
     def get_default_release(self):
         """Gets the default release to use when a release is not

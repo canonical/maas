@@ -161,7 +161,7 @@ class TestGeneralHandler(MAASServerTestCase):
             "osystems": [(osystem, osystem)],
             "releases": releases,
             "kernels": {
-                "ubuntu": {"jammy": [("hwe-22.04", "jammy (hwe-22.04)")]}
+                "ubuntu": {"noble": [("hwe-24.04", "noble (hwe-24.04)")]}
             },
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(

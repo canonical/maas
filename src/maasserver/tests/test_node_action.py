@@ -822,7 +822,7 @@ class TestDeployAction(MAASServerTestCase):
         self.patch(node, "start")
 
         osystem, releases = make_usable_osystem(
-            self, osystem_name="ubuntu", releases=["jammy"]
+            self, osystem_name="ubuntu", releases=["noble"]
         )
         os_name = osystem
         release_name = releases[0]
@@ -878,7 +878,7 @@ class TestDeployAction(MAASServerTestCase):
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
         osystem, releases = make_usable_osystem(
-            self, osystem_name="ubuntu", releases=["jammy"]
+            self, osystem_name="ubuntu", releases=["noble"]
         )
         os_name = osystem
         release_name = releases[0]

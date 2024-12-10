@@ -650,7 +650,7 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         expected_arch = tuple(
             make_usable_architecture(
-                self, arch_name="i386", subarch_name="hwe-22.04"
+                self, arch_name="i386", subarch_name="hwe-24.04"
             ).split("/")
         )
         self.patch_autospec(boot_module, "event_log_pxe_request")
@@ -812,7 +812,7 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, arch=arch
         )
-        self.assertEqual("hwe-22.04", observed_config["subarch"])
+        self.assertEqual("hwe-24.04", observed_config["subarch"])
 
     def test_enlistment_return_generic_when_none(self):
         rack_controller = factory.make_RackController()
@@ -1352,7 +1352,7 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-22.04"
+            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-24.04"
         )
         arch = node.split_arch()[0]
         factory.make_default_ubuntu_release_bootable(arch)
@@ -1361,7 +1361,7 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual("hwe-22.04", observed_config["subarch"])
+        self.assertEqual("hwe-24.04", observed_config["subarch"])
 
     def test_commissioning_node_uses_min_hwe_kernel_converted(self):
         rack_controller = factory.make_RackController()
@@ -1376,7 +1376,7 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual("hwe-22.04", observed_config["subarch"])
+        self.assertEqual("hwe-24.04", observed_config["subarch"])
 
     def test_machine_boots_from_another_vlan_and_gets_updated_when_mac_is_unknown(
         self,
@@ -1474,16 +1474,16 @@ class TestGetConfig(MAASServerTestCase):
 
     def test_commissioning_node_uses_min_hwe_kernel_reports_missing(self):
         factory.make_BootSourceCache(
-            release="22.10",
-            subarch="hwe-22.10",
-            release_title="22.10 Kinetic Kudu",
-            release_codename="Kinetic Kudu",
+            release="24.10",
+            subarch="hwe-24.10",
+            release_title="24.10 Oracular Oriole",
+            release_codename="Oracular Oriole",
         )
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = self.make_node(
-            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-22.10"
+            status=NODE_STATUS.COMMISSIONING, min_hwe_kernel="hwe-24.10"
         )
         mac = node.get_boot_interface().mac_address
         self.patch_autospec(boot_module, "event_log_pxe_request")
@@ -1601,7 +1601,7 @@ class TestGetConfig(MAASServerTestCase):
         )
         arch, platform = node.split_arch()
         factory.make_usable_boot_resource(
-            name="ubuntu/jammy",
+            name="ubuntu/noble",
             architecture=f"{arch}/{subarch}",
             supported_platforms=f"generic,{platform}",
         )
@@ -2123,9 +2123,9 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self.assertEqual(subarch, config_arch)
 
     def test_get_boot_config_for_machine_legacy_custom_image(self):
-        subarch = "hwe-22.04"
+        subarch = "hwe-24.04"
         factory.make_usable_boot_resource(
-            name="ubuntu/jammy", architecture=f"amd64/{subarch}"
+            name="ubuntu/noble", architecture=f"amd64/{subarch}"
         )
         boot_resource = factory.make_BootResource(
             base_image="", architecture="amd64/generic"
@@ -2151,7 +2151,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self,
     ):
         # See LP:2013529
-        subarch = "ga-24.04"
+        subarch = "ga-noble"
         machine_hwe_kernel = "hwe-22.04"  # Should be ignored
 
         # We need a base image to be present. In fact, we always
@@ -2209,7 +2209,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self,
     ):
         # See LP:2013529
-        subarch = "ga-24.04"
+        subarch = "ga-noble"
         machine_hwe_kernel = "hwe-22.04"  # Should be ignored
 
         factory.make_usable_boot_resource(
@@ -2342,7 +2342,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self.assertEqual(legacy_subarch, config_arch)
 
     def test_get_boot_config_for_machine_centos(self):
-        subarch = "ga-22.04"
+        subarch = "ga-24.04"
         # We need a base image to be present. In fact, we always
         # needed that for the new image to boot.
         factory.make_default_ubuntu_release_bootable(arch=f"amd64/{subarch}")

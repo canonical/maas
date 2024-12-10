@@ -9264,7 +9264,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         admin = factory.make_admin()
         with transaction.atomic():
             factory.make_usable_boot_resource(
-                name="ubuntu/jammy",
+                name="ubuntu/noble",
                 architecture="amd64/generic",
             )
             factory.make_custom_boot_resource(
@@ -9339,7 +9339,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             power_type="manual",
         )
         factory.make_usable_boot_resource(
-            name="ubuntu/jammy", architecture=node.architecture
+            name="ubuntu/noble", architecture=node.architecture
         )
         get_task_queue = self.patch(
             node_module, "get_temporal_task_queue_for_bmc"

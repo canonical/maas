@@ -76,15 +76,15 @@ class TestOsystems(MAASServerTestCase):
 
         self.assertEqual("ubuntu", ubuntu.name)
         self.assertEqual("Ubuntu", ubuntu.title)
-        self.assertEqual("jammy", ubuntu.default_commissioning_release)
-        self.assertEqual("jammy", ubuntu.default_release)
-        self.assertEqual(["jammy"], list(ubuntu.releases.keys()))
+        self.assertEqual("noble", ubuntu.default_commissioning_release)
+        self.assertEqual("noble", ubuntu.default_release)
+        self.assertEqual(["noble"], list(ubuntu.releases.keys()))
         self.assertEqual(
-            'Ubuntu 22.04 LTS "Jammy Jellyfish"',
-            ubuntu.releases["jammy"].title,
+            'Ubuntu 24.04 LTS "Noble Numbat"',
+            ubuntu.releases["noble"].title,
         )
-        self.assertTrue(ubuntu.releases["jammy"].can_commission)
-        self.assertFalse(ubuntu.releases["jammy"].requires_license_key)
+        self.assertTrue(ubuntu.releases["noble"].can_commission)
+        self.assertFalse(ubuntu.releases["noble"].requires_license_key)
 
     def test_list_osystem_choices_includes_default(self):
         self.assertEqual(
@@ -386,23 +386,23 @@ class TestOsystems(MAASServerTestCase):
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
         )
         self.assertEqual(
-            [("jammy", 'Ubuntu 22.04 LTS "Jammy Jellyfish"')],
+            [("noble", 'Ubuntu 24.04 LTS "Noble Numbat"')],
             list_commissioning_choices(list_all_usable_osystems()),
         )
 
     def test_list_commissioning_choices_returns_sorted(self):
         factory.make_BootResource(
-            name="ubuntu/focal",
+            name="ubuntu/jammy",
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
         )
         factory.make_BootResource(
-            name="ubuntu/jammy",
+            name="ubuntu/noble",
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
         )
         self.assertEqual(
             [
-                ("focal", 'Ubuntu 20.04 LTS "Focal Fossa"'),
                 ("jammy", 'Ubuntu 22.04 LTS "Jammy Jellyfish"'),
+                ("noble", 'Ubuntu 24.04 LTS "Noble Numbat"'),
             ],
             list_commissioning_choices(list_all_usable_osystems()),
         )

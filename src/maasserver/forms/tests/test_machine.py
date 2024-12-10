@@ -244,8 +244,8 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        release = "jammy"
-        alias = "22.04"
+        release = "noble"
+        alias = "24.04"
         make_usable_osystem(
             self,
             osystem_name="ubuntu",
@@ -330,7 +330,7 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         machine = factory.make_Machine(owner=user)
-        release_names = ("jammy", "8", "8", "my-custom")
+        release_names = ("noble", "8", "8", "my-custom")
         osystem_names = ("ubuntu", "centos", "rhel", "custom")
         for osystem_name, release_name in zip(osystem_names, release_names):
             make_usable_osystem(
