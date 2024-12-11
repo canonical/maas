@@ -2,13 +2,14 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Optional
 import uuid
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
+from maascommon.enums.power import PowerState
 from maascommon.workflows.power import (
     POWER_CYCLE_WORKFLOW_NAME,
     POWER_MANY_WORKFLOW_NAME,
@@ -23,6 +24,10 @@ from maascommon.workflows.power import (
     PowerQueryParam,
 )
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
+from maasservicelayer.db.repositories.nodes import NodeResourceBuilder
+from maasservicelayer.utils.date import utcnow
+from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.utils import activity_defn_with_context
 
 # Maximum power activity duration (to cope with broken BMCs)
 POWER_ACTION_ACTIVITY_TIMEOUT = timedelta(minutes=5)
@@ -32,6 +37,7 @@ POWER_ON_ACTIVITY_NAME = "power-on"
 POWER_OFF_ACTIVITY_NAME = "power-off"
 POWER_CYCLE_ACTIVITY_NAME = "power-cycle"
 POWER_QUERY_ACTIVITY_NAME = "power-query"
+SET_POWER_STATE_ACTIVITY_NAME = "set-power-state"
 
 
 # Activities parameters
@@ -69,6 +75,36 @@ class PowerQueryResult:
     """
 
     state: str
+
+
+@dataclass
+class SetPowerStateParam:
+    """
+    Parameters to set the power state of a machine
+    """
+
+    system_id: str
+    state: PowerState
+    timestamp: Optional[datetime] = None
+
+
+class PowerActivity(ActivityBase):
+
+    @activity_defn_with_context(name=SET_POWER_STATE_ACTIVITY_NAME)
+    async def set_power_state(self, params: SetPowerStateParam) -> None:
+        async with self.start_transaction() as services:
+            resource = (
+                NodeResourceBuilder()
+                .with_power_state(params.state)
+                .with_power_state_updated(
+                    params.timestamp if params.timestamp else utcnow()
+                )
+                .build()
+            )
+
+            await services.nodes.update_by_system_id(
+                params.system_id, resource
+            )
 
 
 @workflow.defn(name=POWER_ON_WORKFLOW_NAME, sandboxed=False)

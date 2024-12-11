@@ -5,7 +5,12 @@ from collections import namedtuple
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncConnection
+from temporalio.testing import ActivityEnvironment
 
+from maascommon.enums.node import NodeStatus
+from maascommon.enums.power import PowerState
 from maascommon.workflows.power import (
     PowerCycleParam,
     PowerOffParam,
@@ -13,13 +18,21 @@ from maascommon.workflows.power import (
     PowerQueryParam,
 )
 from maasserver.models import bmc as model_bmc
+from maasservicelayer.db import Database
+from maasservicelayer.db.tables import NodeTable
+from maasservicelayer.services import CacheForServices
+from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow import power as power_workflow
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
     get_temporal_task_queue_for_bmc,
+    PowerActivity,
+    SetPowerStateParam,
     UnknownPowerActionException,
     UnroutablePowerWorkflowException,
 )
+from tests.fixtures.factories.node import create_test_machine_entry
+from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.mark.usefixtures("maasdb")
@@ -132,3 +145,39 @@ class TestGetTemporalQueueForMachine:
             convert_power_action_to_power_workflow(
                 power_action, machine, params
             )
+
+
+@pytest.mark.asyncio
+class TestPowerActivity:
+    async def test_set_power_state(
+        self,
+        fixture: Fixture,
+        db_connection: AsyncConnection,
+        db: Database,
+    ):
+        node = await create_test_machine_entry(
+            fixture, status=NodeStatus.DEPLOYING
+        )
+        env = ActivityEnvironment()
+        services_cache = CacheForServices()
+        power_activity = PowerActivity(
+            db, services_cache, connection=db_connection
+        )
+        now = utcnow()
+        await env.run(
+            power_activity.set_power_state,
+            SetPowerStateParam(
+                system_id=node["system_id"], state=PowerState.ON, timestamp=now
+            ),
+        )
+
+        stmt = (
+            select(NodeTable.c.power_state, NodeTable.c.power_state_updated)
+            .select_from(NodeTable)
+            .filter(NodeTable.c.system_id == node["system_id"])
+        )
+
+        result = (await db_connection.execute(stmt)).one()
+
+        assert result[0] == PowerState.ON
+        assert result[1] == now

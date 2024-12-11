@@ -1,12 +1,14 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from abc import ABC
+from datetime import datetime
 from typing import Any, Type, TypeVar
 
 from sqlalchemy import Select, select, Table, update
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
+from maascommon.enums.power import PowerState
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
@@ -20,6 +22,18 @@ from maasservicelayer.models.nodes import Node
 class NodeResourceBuilder(ResourceBuilder):
     def with_status(self, status: NodeStatus) -> "NodeResourceBuilder":
         self._request.set_value(NodeTable.c.status.name, status)
+        return self
+
+    def with_power_state(self, state: PowerState) -> "NodeResourceBuilder":
+        self._request.set_value(NodeTable.c.power_state.name, state)
+        return self
+
+    def with_power_state_updated(
+        self, timestamp: datetime
+    ) -> "NodeResourceBuilder":
+        self._request.set_value(
+            NodeTable.c.power_state_updated.name, timestamp
+        )
         return self
 
 
