@@ -53,6 +53,8 @@ from maastemporalworker.workflow.power import (
     PowerOffResult,
     PowerOnResult,
     PowerQueryResult,
+    SET_POWER_STATE_ACTIVITY_NAME,
+    SetPowerStateParam,
 )
 from tests.fixtures.factories.block_device import create_test_blockdevice_entry
 from tests.fixtures.factories.bmc import create_test_bmc_entry
@@ -254,6 +256,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -262,6 +269,7 @@ class TestDeployManyWorkflow:
                 activities=[
                     set_node_status,
                     get_boot_order,
+                    set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
@@ -314,6 +322,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 1
 
     async def test_deploy_n_workflow_handles_aborted_deployment(
         self,
@@ -372,6 +381,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -384,6 +398,7 @@ class TestDeployManyWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    set_power_state,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -506,6 +521,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -514,6 +534,7 @@ class TestDeployManyWorkflow:
                 activities=[
                     set_node_status,
                     get_boot_order,
+                    set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
@@ -572,6 +593,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_query"]) == 3
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 3
 
     async def test_one_set_boot_order(
         self,
@@ -656,6 +678,11 @@ class TestDeployManyWorkflow:
         async def set_boot_order(params: SetBootOrderParam) -> None:
             calls["set_boot_order"].append(True)
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -665,6 +692,7 @@ class TestDeployManyWorkflow:
                     set_node_status,
                     get_boot_order,
                     set_boot_order,
+                    set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
@@ -720,6 +748,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_query"]) == 3
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 3
 
     async def test_one_ephemeral(
         self,
@@ -802,6 +831,11 @@ class TestDeployManyWorkflow:
             calls["set_boot_order"].append(True)
             return
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -811,6 +845,7 @@ class TestDeployManyWorkflow:
                     set_node_status,
                     get_boot_order,
                     set_boot_order,
+                    set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
@@ -866,6 +901,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_query"]) == 3
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 3
 
 
 @pytest.mark.asyncio
@@ -926,6 +962,11 @@ class TestDeployWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -934,6 +975,7 @@ class TestDeployWorkflow:
                 activities=[
                     set_node_status,
                     get_boot_order,
+                    set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
@@ -976,6 +1018,7 @@ class TestDeployWorkflow:
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 1
 
     async def test_deploy_workflow_timeout(
         self,
@@ -1083,6 +1126,11 @@ class TestDeployWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -1091,6 +1139,7 @@ class TestDeployWorkflow:
                 activities=[
                     set_node_status,
                     get_boot_order,
+                    set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
@@ -1132,6 +1181,7 @@ class TestDeployWorkflow:
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 1
 
     async def test_deploy_workflow_set_boot_order(
         self,
@@ -1196,6 +1246,11 @@ class TestDeployWorkflow:
             calls["set_boot_order"].append(True)
             return
 
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -1205,6 +1260,7 @@ class TestDeployWorkflow:
                     set_node_status,
                     get_boot_order,
                     set_boot_order,
+                    set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
@@ -1248,3 +1304,4 @@ class TestDeployWorkflow:
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 1

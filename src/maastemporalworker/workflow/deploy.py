@@ -15,6 +15,7 @@ from temporalio.exceptions import CancelledError, ChildWorkflowError
 
 from maascommon.constants import NODE_TIMEOUT
 from maascommon.enums.node import NodeStatus
+from maascommon.enums.power import PowerState
 from maascommon.workflows.deploy import (
     DEPLOY_MANY_WORKFLOW_NAME,
     DEPLOY_WORKFLOW_NAME,
@@ -43,6 +44,8 @@ from maastemporalworker.workflow.power import (
     POWER_CYCLE_ACTIVITY_NAME,
     POWER_ON_ACTIVITY_NAME,
     POWER_QUERY_ACTIVITY_NAME,
+    SET_POWER_STATE_ACTIVITY_NAME,
+    SetPowerStateParam,
 )
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -354,8 +357,8 @@ class DeployWorkflow:
             ),
         )
 
-        if result["state"] == "on":
-            await workflow.execute_activity(
+        if result["state"] == PowerState.ON:
+            new_result = await workflow.execute_activity(
                 POWER_CYCLE_ACTIVITY_NAME,
                 PowerCycleParam(
                     system_id=params.power_params.system_id,
@@ -370,7 +373,7 @@ class DeployWorkflow:
                 ),
             )
         else:
-            await workflow.execute_activity(
+            new_result = await workflow.execute_activity(
                 POWER_ON_ACTIVITY_NAME,
                 PowerOnParam(
                     system_id=params.power_params.system_id,
@@ -379,6 +382,19 @@ class DeployWorkflow:
                     task_queue=params.power_params.task_queue,
                 ),
                 task_queue=params.power_params.task_queue,
+                start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+                retry_policy=RetryPolicy(
+                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
+                ),
+            )
+        if new_result["state"] != result["state"]:
+            await workflow.execute_activity(
+                SET_POWER_STATE_ACTIVITY_NAME,
+                SetPowerStateParam(
+                    system_id=params.power_params.system_id,
+                    state=new_result["state"],
+                ),
+                task_queue="region",
                 start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
                     maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,

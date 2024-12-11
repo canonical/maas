@@ -39,6 +39,7 @@ from maastemporalworker.workflow.msm import (
     MSMWithdrawWorkflow,
 )
 from maastemporalworker.workflow.power import (
+    PowerActivity,
     PowerCycleWorkflow,
     PowerManyWorkflow,
     PowerOffWorkflow,
@@ -90,6 +91,7 @@ async def main() -> None:
     deploy_activity = DeployActivity(db, services_cache)
     dhcp_activity = DHCPConfigActivity(db, services_cache)
     dns_activity = DNSConfigActivity(db, services_cache)
+    power_activity = PowerActivity(db, services_cache)
 
     temporal_workers = [
         # All regions listen to a shared task queue. The first to pick up a task will execute it.
@@ -144,6 +146,8 @@ async def main() -> None:
                 msm_activity.verify_token,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
+                # Power state activities
+                power_activity.set_power_state,
             ],
         ),
         # Individual region controller worker
