@@ -74,6 +74,7 @@ def make_context():
         "system_id": factory.make_name("system_id"),
         "power_address": factory.make_name("power_address"),
         "ip_address": factory.make_ipv4_address(),
+        "power_user": factory.make_name("power_user"),
         "power_pass": factory.make_name("power_pass"),
         "port": factory.pick_port(),
     }
@@ -158,11 +159,12 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         amt_power_driver.env = None
         command = (factory.make_name("command"),)
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         stdin = factory.make_name("stdin").encode("utf-8")
         run_command_mock = self.patch_run_command(stdout=b"stdout")
 
-        result = amt_power_driver._run(command, power_pass, stdin)
+        result = amt_power_driver._run(command, power_user, power_pass, stdin)
 
         run_command_mock.assert_called_once_with(
             *command,
@@ -186,6 +188,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_set_pxe_boot_sets_pxe(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         wsman_pxe_options = {
@@ -216,7 +219,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "--hostname",
             ip_address,
             "--username",
-            "admin",
+            power_user,
             "--password",
             power_pass,
             "--noverifypeer",
@@ -225,7 +228,9 @@ class TestAMTPowerDriver(MAASTestCase):
             "-",
         )
         _run_mock = self.patch(amt_power_driver, "_run")
-        amt_power_driver._set_pxe_boot(ip_address, power_pass, port)
+        amt_power_driver._set_pxe_boot(
+            ip_address, power_user, power_pass, port
+        )
 
         commands = []
         stdins = []
@@ -237,14 +242,15 @@ class TestAMTPowerDriver(MAASTestCase):
                 stdins.append(fd.read())
         _run_mock.assert_has_calls(
             [
-                call(commands[0], power_pass, stdin=stdins[0]),
-                call(commands[1], power_pass, stdin=stdins[1]),
+                call(commands[0], power_user, power_pass, stdin=stdins[0]),
+                call(commands[1], power_user, power_pass, stdin=stdins[1]),
             ]
         )
 
     def test_issue_amttool_command_calls__run(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         stdin = factory.make_name("stdin").encode("utf-8")
@@ -256,18 +262,22 @@ class TestAMTPowerDriver(MAASTestCase):
         result = amt_power_driver._issue_amttool_command(
             cmd,
             ip_address,
+            power_user,
             power_pass,
             port,
             stdin=stdin,
         )
 
-        _run_mock.assert_called_once_with(command, power_pass, stdin=stdin)
+        _run_mock.assert_called_once_with(
+            command, power_user, power_pass, stdin=stdin
+        )
         self.assertEqual(result, b"output")
 
     def test_issue_wsman_command_calls__run_for_power(self):
         amt_power_driver = AMTPowerDriver()
         power_change = choice(["on", "off", "restart"])
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         wsman_power_schema_uri = (
@@ -286,7 +296,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "--hostname",
             ip_address,
             "--username",
-            "admin",
+            power_user,
             "--password",
             power_pass,
             "--noverifypeer",
@@ -306,15 +316,18 @@ class TestAMTPowerDriver(MAASTestCase):
         _run_mock.return_value = b"output"
 
         result = amt_power_driver._issue_wsman_command(
-            power_change, ip_address, power_pass, port
+            power_change, ip_address, power_user, power_pass, port
         )
 
-        _run_mock.assert_called_once_with(command, power_pass, stdin=b"stdin")
+        _run_mock.assert_called_once_with(
+            command, power_user, power_pass, stdin=b"stdin"
+        )
         self.assertEqual(result, b"output")
 
     def test_issue_wsman_command_calls__run_for_query(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         wsman_query_schema_uri = (
@@ -329,7 +342,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "--hostname",
             ip_address,
             "--username",
-            "admin",
+            power_user,
             "--password",
             power_pass,
             "--noverifypeer",
@@ -342,22 +355,25 @@ class TestAMTPowerDriver(MAASTestCase):
         _run_mock.return_value = b"ignored"
 
         amt_power_driver._issue_wsman_command(
-            "query", ip_address, power_pass, port
+            "query", ip_address, power_user, power_pass, port
         )
 
-        _run_mock.assert_called_once_with(command, power_pass, stdin=None)
+        _run_mock.assert_called_once_with(
+            command, power_user, power_pass, stdin=None
+        )
 
     def test_issue_wsman_has_config_file_from_snap(self):
         self.patch(amt_module.snap.SnapPaths, "from_environ").return_value = (
             SnapPaths(snap=Path("/snap/maas/current"))
         )
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         amt_power_driver = AMTPowerDriver()
         _run_mock = self.patch(amt_power_driver, "_run")
         amt_power_driver._issue_wsman_command(
-            "query", ip_address, power_pass, port
+            "query", ip_address, power_user, power_pass, port
         )
         [call] = _run_mock.mock_calls
         self.assertEqual(
@@ -372,6 +388,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_amttool_query_state_queries_on(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         _issue_amttool_command_mock = self.patch(
@@ -383,17 +400,18 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         result = amt_power_driver.amttool_query_state(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_pass, port
+            "info", ip_address, power_user, power_pass, port
         )
         self.assertEqual(result, "on")
 
     def test_amttool_query_state_queries_off(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         _issue_amttool_command_mock = self.patch(
@@ -405,17 +423,18 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         result = amt_power_driver.amttool_query_state(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_pass, port
+            "info", ip_address, power_user, power_pass, port
         )
         self.assertEqual(result, "off")
 
     def test_amttool_query_state_queries_unknown(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         amt_power_driver.ip_address = factory.make_name("ip_address")
@@ -431,16 +450,18 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.amttool_query_state,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_pass, port
+            "info", ip_address, power_user, power_pass, port
         )
 
     def test_amttool_query_state_runs_query_loop(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         self.patch(amt_power_driver, "_issue_amttool_command").return_value = (
@@ -450,6 +471,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.amttool_query_state,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
@@ -457,17 +479,21 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_amttool_restart_power_cycles(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, "_issue_amttool_command"
         )
 
-        amt_power_driver.amttool_restart(ip_address, power_pass, port)
+        amt_power_driver.amttool_restart(
+            ip_address, power_user, power_pass, port
+        )
 
         _issue_amttool_command_mock.assert_called_once_with(
             "power_cycle",
             ip_address,
+            power_user,
             power_pass,
             port,
             stdin=b"yes",
@@ -476,6 +502,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_amttool_power_on_powers_on(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         _issue_amttool_command_mock = self.patch(
@@ -486,22 +513,26 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         amttool_query_state_mock.return_value = "on"
 
-        amt_power_driver.amttool_power_on(ip_address, power_pass, port)
+        amt_power_driver.amttool_power_on(
+            ip_address, power_user, power_pass, port
+        )
 
         _issue_amttool_command_mock.assert_called_once_with(
             "powerup",
             ip_address,
+            power_user,
             power_pass,
             port,
             stdin=b"yes",
         )
         amttool_query_state_mock.assert_called_once_with(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
     def test_amttool_power_on_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         self.patch(amt_power_driver, "_issue_amttool_command")
@@ -514,6 +545,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.amttool_power_on,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
@@ -521,6 +553,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_amttool_power_off_powers_off(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         amttool_query_state_mock = self.patch(
@@ -528,15 +561,18 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         amttool_query_state_mock.return_value = "off"
 
-        amt_power_driver.amttool_power_off(ip_address, power_pass, port)
+        amt_power_driver.amttool_power_off(
+            ip_address, power_user, power_pass, port
+        )
 
         amttool_query_state_mock.assert_called_once_with(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
     def test_amttool_power_off_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         amttool_query_state_mock = self.patch(
@@ -549,6 +585,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.amttool_power_off,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
@@ -556,6 +593,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_wsman_query_state_queries_on(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         get_power_state_mock = self.patch(amt_power_driver, "get_power_state")
@@ -566,17 +604,18 @@ class TestAMTPowerDriver(MAASTestCase):
         _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % b"2"
 
         result = amt_power_driver.wsman_query_state(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
         _issue_wsman_command_mock.assert_called_once_with(
-            "query", ip_address, power_pass, port
+            "query", ip_address, power_user, power_pass, port
         )
         self.assertEqual(result, "on")
 
     def test_wsman_query_state_queries_off(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         get_power_state_mock = self.patch(amt_power_driver, "get_power_state")
@@ -587,17 +626,18 @@ class TestAMTPowerDriver(MAASTestCase):
         _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % b"6"
 
         result = amt_power_driver.wsman_query_state(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
         _issue_wsman_command_mock.assert_called_once_with(
-            "query", ip_address, power_pass, port
+            "query", ip_address, power_user, power_pass, port
         )
         self.assertEqual(result, "off")
 
     def test_wsman_query_state_queries_unknown(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         get_power_state_mock = self.patch(amt_power_driver, "get_power_state")
@@ -611,16 +651,18 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.wsman_query_state,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
         _issue_wsman_command_mock.assert_called_once_with(
-            "query", ip_address, power_pass, port
+            "query", ip_address, power_user, power_pass, port
         )
 
     def test_wsman_query_state_runs_query_loop(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         self.patch(amt_power_driver, "_issue_wsman_command").return_value = b""
@@ -629,6 +671,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.wsman_query_state,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
@@ -636,32 +679,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_wsman_power_on_powers_on(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
-        power_pass = factory.make_name("power_pass")
-        port = factory.pick_port()
-        _set_pxe_boot_mock = self.patch(amt_power_driver, "_set_pxe_boot")
-        _issue_wsman_command_mock = self.patch(
-            amt_power_driver, "_issue_wsman_command"
-        )
-        wsman_query_state_mock = self.patch(
-            amt_power_driver, "wsman_query_state"
-        )
-        wsman_query_state_mock.return_value = "on"
-
-        amt_power_driver.wsman_power_on(ip_address, power_pass, port)
-
-        _set_pxe_boot_mock.assert_called_once_with(
-            ip_address, power_pass, port
-        )
-        _issue_wsman_command_mock.assert_called_once_with(
-            "on", ip_address, power_pass, port
-        )
-        wsman_query_state_mock.assert_called_once_with(
-            ip_address, power_pass, port
-        )
-
-    def test_wsman_power_on_powers_restart(self):
-        amt_power_driver = AMTPowerDriver()
-        ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         _set_pxe_boot_mock = self.patch(amt_power_driver, "_set_pxe_boot")
@@ -674,22 +692,52 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_query_state_mock.return_value = "on"
 
         amt_power_driver.wsman_power_on(
-            ip_address, power_pass, port, restart=True
+            ip_address, power_user, power_pass, port
         )
 
         _set_pxe_boot_mock.assert_called_once_with(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
         _issue_wsman_command_mock.assert_called_once_with(
-            "restart", ip_address, power_pass, port
+            "on", ip_address, power_user, power_pass, port
         )
         wsman_query_state_mock.assert_called_once_with(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
+        )
+
+    def test_wsman_power_on_powers_restart(self):
+        amt_power_driver = AMTPowerDriver()
+        ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
+        power_pass = factory.make_name("power_pass")
+        port = factory.pick_port()
+        _set_pxe_boot_mock = self.patch(amt_power_driver, "_set_pxe_boot")
+        _issue_wsman_command_mock = self.patch(
+            amt_power_driver, "_issue_wsman_command"
+        )
+        wsman_query_state_mock = self.patch(
+            amt_power_driver, "wsman_query_state"
+        )
+        wsman_query_state_mock.return_value = "on"
+
+        amt_power_driver.wsman_power_on(
+            ip_address, power_user, power_pass, port, restart=True
+        )
+
+        _set_pxe_boot_mock.assert_called_once_with(
+            ip_address, power_user, power_pass, port
+        )
+        _issue_wsman_command_mock.assert_called_once_with(
+            "restart", ip_address, power_user, power_pass, port
+        )
+        wsman_query_state_mock.assert_called_once_with(
+            ip_address, power_user, power_pass, port
         )
 
     def test_wsman_power_on_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         self.patch(amt_power_driver, "_set_pxe_boot")
@@ -703,6 +751,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.wsman_power_on,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
@@ -710,6 +759,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_wsman_power_on_powers_off(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         _issue_wsman_command_mock = self.patch(
@@ -720,18 +770,21 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         wsman_query_state_mock.return_value = "off"
 
-        amt_power_driver.wsman_power_off(ip_address, power_pass, port)
+        amt_power_driver.wsman_power_off(
+            ip_address, power_user, power_pass, port
+        )
 
         _issue_wsman_command_mock.assert_called_once_with(
-            "off", ip_address, power_pass, port
+            "off", ip_address, power_user, power_pass, port
         )
         wsman_query_state_mock.assert_called_once_with(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
     def test_wsman_power_off_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         self.patch(amt_power_driver, "_issue_wsman_command")
@@ -744,6 +797,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver.wsman_power_off,
             ip_address,
+            power_user,
             power_pass,
             port,
         )
@@ -751,6 +805,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_get_amt_command_returns_amttool(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         mock_run_command = self.patch_run_command(
@@ -760,7 +815,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         result = amt_power_driver._get_amt_command(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
         mock_run_command.assert_called_once_with(
             "wsman",
@@ -772,7 +827,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "--hostname",
             ip_address,
             "--username",
-            "admin",
+            power_user,
             "--password",
             power_pass,
         )
@@ -781,6 +836,7 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_get_amt_command_returns_wsman(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
         mock_run_command = self.patch_run_command(
@@ -789,7 +845,7 @@ class TestAMTPowerDriver(MAASTestCase):
             decode=True,
         )
         result = amt_power_driver._get_amt_command(
-            ip_address, power_pass, port
+            ip_address, power_user, power_pass, port
         )
 
         mock_run_command.assert_called_once_with(
@@ -802,7 +858,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "--hostname",
             ip_address,
             "--username",
-            "admin",
+            power_user,
             "--password",
             power_pass,
         )
@@ -815,6 +871,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerConnError,
             amt_power_driver._get_amt_command,
             sentinel.ip_address,
+            sentinel.power_user,
             sentinel.power_pass,
             sentinel.port,
         )
@@ -826,6 +883,7 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError,
             amt_power_driver._get_amt_command,
             sentinel.ip_address,
+            sentinel.power_user,
             sentinel.power_pass,
             sentinel.port,
         )
@@ -838,6 +896,7 @@ class TestAMTPowerDriver(MAASTestCase):
                 error_info.get("exception"),
                 amt_power_driver._get_amt_command,
                 factory.make_ipv4_address(),
+                factory.make_name("power_user"),
                 factory.make_name("power_pass"),
                 factory.pick_port(),
             )
@@ -877,13 +936,20 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver.power_on(context["system_id"], context)
 
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         amttool_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         amttool_restart_mock.assert_called_once_with(
             context["ip_address"],
+            context["power_user"],
             context["power_pass"],
             context["port"],
         )
@@ -906,13 +972,20 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver.power_on(context["system_id"], context)
 
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         amttool_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         amttool_power_on_mock.assert_called_once_with(
             context["ip_address"],
+            context["power_user"],
             context["power_pass"],
             context["port"],
         )
@@ -933,13 +1006,20 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver.power_on(context["system_id"], context)
 
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         wsman_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         wsman_power_on_mock.assert_called_once_with(
             context["ip_address"],
+            context["power_user"],
             context["power_pass"],
             context["port"],
             restart=True,
@@ -961,13 +1041,22 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver.power_on(context["system_id"], context)
 
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         wsman_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         wsman_power_on_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
 
     def test_power_off_powers_off_with_amttool(self):
@@ -987,13 +1076,22 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.power_off(context["system_id"], context)
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         amttool_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         amttool_power_off_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
 
     def test_power_off_powers_off_with_wsman(self):
@@ -1011,13 +1109,22 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.power_off(context["system_id"], context)
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         wsman_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         wsman_power_off_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
 
     def test_power_query_queries_with_amttool(self):
@@ -1035,10 +1142,16 @@ class TestAMTPowerDriver(MAASTestCase):
         state = amt_power_driver.power_query(context["system_id"], context)
 
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         amttool_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         self.assertEqual(state, "off")
 
@@ -1057,9 +1170,15 @@ class TestAMTPowerDriver(MAASTestCase):
         state = amt_power_driver.power_query(context["system_id"], context)
 
         _get_amt_command_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         wsman_query_state_mock.assert_called_once_with(
-            context["ip_address"], context["power_pass"], context["port"]
+            context["ip_address"],
+            context["power_user"],
+            context["power_pass"],
+            context["port"],
         )
         self.assertEqual(state, "on")

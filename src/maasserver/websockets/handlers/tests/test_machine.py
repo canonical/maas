@@ -2541,7 +2541,7 @@ class TestMachineHandler(MAASServerTestCase):
             ),
             (
                 "amt",
-                {},
+                {"power_user": factory.make_name()},
                 "Power address: Invalid IPv4/IPv6 address with optional port.",
             ),
         ]
