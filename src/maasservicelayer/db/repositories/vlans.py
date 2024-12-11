@@ -146,7 +146,7 @@ class VlansRepository(BaseRepository[Vlan]):
         stmt = (
             self.select_all_statement()
             .where(eq(VlanTable.c.fabric_id, fabric_id))
-            .order_by(VlanTable.c.fabric_id)
+            .order_by(VlanTable.c.id)
             .limit(1)
         )
         result = (await self.connection.execute(stmt)).one()
