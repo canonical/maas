@@ -72,12 +72,6 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 2     | how-to-configure-an-air-gapped-maas     | [Set up air-gapped MAAS](/t/how-to-configure-an-air-gapped-maas/5212)          |
 | 2     | how-to-deploy-vms-on-ibm-z              | [Deploy VMs on IBM Z](/t/how-to-deploy-vms-on-ibm-z/7885)                      |
 | 2     | how-to-use-logging                      | [Use logging](/t/how-to-use-logging/6956)                                      |
-| 2     | how-to-use-maas-systemd-logs            | [Use MAAS systemd logs](/t/how-to-use-maas-systemd-logs/8103)                  |
-| 2     | how-to-read-event-logs                  | [Read event logs](/t/how-to-read-event-logs/5252)                              |
-| 2     | how-to-read-commissioning-logs          | [Read commissioning logs](/t/how-to-read-commissioning-logs/5248)              |
-| 2     | how-to-interpret-testing-logs           | [Interpret testing logs](/t/how-to-interpret-testing-logs/5314)                |
-| 2     | how-to-audit-maas                       | [Audit MAAS](/t/how-to-audit-maas/5987)                                        |
-| 2     | how-to-review-audit-logs                | [Review audit logs](/t/how-to-review-audit-logs/5256)                          |
 | 2     | how-to-use-availability-zones           | [Use availability zones](/t/-/5152)                                            |
 | 2     | how-to-use-resource-pools               | [Use resource pools](/t/-/7845)                                                |
 | 2     | how-to-annotate-machines                | [Annotate machines](/t/how-to-annotate-machines/5929)                          |
@@ -104,8 +98,9 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 0     |                                         |                                                                                |
 | 1     | reference                               | [Reference](/t/-/6143)                                                         |
 | 2     | reference-installation-requirements     | [Installation requirements](/t/reference-installation-requirements/6233)       |
-| 2     | maas-configuration-guide             | [Configuring MAAS settings](/t/how-to-change-maas-settings/8035)                    |
+| 2     | maas-configuration-guide                | [Configuring MAAS settings](/t/how-to-change-maas-settings/8035)               |
 | 2     | maas-troubleshooting-guide              | [Troubleshooting guide](/t/-/5333)                                             |
+| 2     | maas-logging-reference                  | [MAAS logging reference](/t/maas-logging-reference/10405                       |
 | 2     | reference-maas-source-code              | [MAAS source code](https://launchpad.net/maas)                                 |
 | 2     | reference-documentation-style-guide     | [Documentation style guide](/t/reference-documentation-style-guide/4186)       |
 | 2     | reference-maas-glossary                 | [MAAS glossary](/t/reference-maas-glossary/5416)                               |
@@ -147,8 +142,6 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 2     | about-dhcp-in-maas                      | [DHCP in MAAS](/t/about-dhcp-in-maas/6682)                                     |
 | 2     | about-cloud-networking                  | [Cloud networking](/t/about-cloud-networking/6684)                             |
 | 2     | about-maas-performance                  | [MAAS performance](/t/about-maas-performance/6178)                             |
-| 2     | about-maas-events                       | [MAAS events](/t/about-maas-events/6510)                                       |
-| 2     | about-audit-events                      | [Audit events](/t/about-audit-events/6372)                                     |
 | 2     | about-maas-logging                      | [MAAS logging](/t/about-maas-logging/5240)                                     |
 | 2     | about-maas-security                     | [MAAS security](/t/about-maas-security/6719)                                   |
 |       | postgresql-deprecation-notices          | [PostgreSQL deprecation notices](/t/-/8089)                                    |

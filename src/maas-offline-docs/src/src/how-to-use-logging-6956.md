@@ -1,13 +1,99 @@
 > *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/logging-and-auditing" target = "_blank">Let us know.</a>*
 
-MAAS logging and auditing capabilities are powerful assets for administrators, developers, and auditors alike. The platform provides comprehensive logging facilities that span various functional aspects, from events and auditing to hardware commissioning and testing. MAAS logs serve as invaluable diagnostic and monitoring tools for your provisioning environment:
+## Checking Logs in Systemd (MAAS 3.5 and Newer)
 
-- [Event logs](/t/how-to-read-event-logs/5252): The cornerstone for debugging, event logs offer deep insights that can help you troubleshoot a wide array of MAAS-related challenges.
-  
-- [Audit event logs](/t/how-to-review-audit-logs/5256): For governance and accountability, audit event logs keep a meticulous record of who did what within the MAAS ecosystem, aiding in traceability and compliance.
+Starting with version 3.5, MAAS logs are saved in systemd. Use these commands to view the logs based on how you installed MAAS (snap or Debian packages):
 
-- [Commissioning logs](/t/how-to-read-commissioning-logs/5248): When commissioning a machine, these logs become your go-to source for understanding each action, test, and result that occurred during the process, offering a granular look into your infrastructure.
+### Region Controller Logs
 
-- [Testing logs](/t/how-to-interpret-testing-logs/5314): These logs specialise in hardware diagnostics, providing detailed reports that help you identify and rectify hardware anomalies and issues.
+ - Snap: `journalctl -u snap.maas.pebble -t maas-regiond`
 
-Each log type serves a unique purpose and, when used collectively, they make it easier to manage your MAAS instance.
+ - Debian: `journalctl -u maas-regiond`
+
+### Rack Controller Logs
+
+ - `Snap: journalctl -u snap.maas.pebble -t maas-rackd`
+
+ - `Debian: journalctl -u maas-rackd`
+
+### Agent Logs
+
+ - Snap: `journalctl -u snap.maas.pebble -t maas-agent`
+
+ - Debian: `journalctl -u maas-agent`
+
+### API Server Logs
+
+ - Snap: `journalctl -u snap.maas.pebble -t maas-apiserver`
+
+ - Debian: `journalctl -u maas-apiserver`
+
+### Filtering Logs by Machine Name
+
+To search for logs by machine name (hostname):
+
+```
+journalctl -u snap.maas.pebble -t maas-machine --since "-15m" MAAS_MACHINE_HOSTNAME=ace-cougar
+```
+
+## Checking Logs Before MAAS 3.5
+
+Before version 3.5, MAAS saved logs in custom files. Here are some examples:
+
+ - Region Controller: `/var/snap/maas/common/log/regiond.log` or `/var/log/maas/regiond.log`
+
+ - Rack Controller: `/var/snap/maas/common/log/rackd.log` or `/var/log/maas/rackd.log`
+
+ - Proxy: `/var/snap/maas/common/log/proxy/access.log`
+
+### Using the less Command to Read Logs
+
+```
+less /var/snap/maas/common/log/regiond.log
+```
+
+## How to Read Event Logs
+
+### Using the UI
+
+ 1. Go to the Machines list in the UI.
+
+ 2. Click on a machine and select the Events tab.
+
+To see more details, click *View full history*.
+
+### Using the Command Line
+
+```
+maas $PROFILE events query
+```
+
+### Formatting Event Logs with jq
+
+To format the output neatly with jq:
+
+```
+maas admin events query | jq -r '(["HOSTNAME","TIMESTAMP","TYPE","DESCRIPTION"] | (., map(length*"-"))), (.events[] | [.hostname, .created, .type, .description // "-"]) | @tsv' | column -t -s $'\t'
+```
+
+## How to Read Commissioning Logs
+
+### Using the UI
+
+ 1. Go to the Commissioning tab of a machine.
+
+ 2. Click the links to see the detailed logs.
+
+### Using the Command Line
+
+```
+maas $PROFILE node-script-result read $SYSTEM_ID $RESULTS
+```
+
+## How to Read Testing Logs
+
+Example Command:
+
+```
+maas $PROFILE node-script-result read $SYSTEM_ID type=smartctl-validate
+```
