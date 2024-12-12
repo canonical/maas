@@ -62,6 +62,7 @@ from django.utils import timezone
 from netaddr import IPAddress, IPNetwork
 import petname
 from temporalio.client import WorkflowFailureError
+from temporalio.common import WorkflowIDReusePolicy
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
@@ -5932,6 +5933,7 @@ class Node(CleanSave, TimestampedModel):
             ),
             execution_timeout=timedelta(minutes=wf_timeout),
             task_queue="region",
+            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
         )
         if not dd.called:
             return dd
