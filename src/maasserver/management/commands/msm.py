@@ -32,8 +32,13 @@ class Command(BaseCommand):
             "metadata": {
                 "type": "object",
                 "properties": {
-                    "latitude": {"type": "number"},
-                    "longitude": {"type": "number"},
+                    "coordinates": {
+                        "type": "object",
+                        "properties": {
+                            "latitude": {"type": "number"},
+                            "longitude": {"type": "number"},
+                        },
+                    },
                     "country": {"type": "string"},
                     "note": {"type": "string"},
                     "city": {"type": "string"},

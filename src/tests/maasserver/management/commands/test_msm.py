@@ -35,8 +35,9 @@ SAMPLE_JWT_PAYLOAD = {
 
 YAML_CONFIG = """
 metadata:
-  latitude: 40.05275079137782
-  longitude: -107.17401328725524
+  coordinates:
+    latitude: 40.05275079137782
+    longitude: -107.17401328725524
   note: 'super awesome site'
   country: US
   city: Town
