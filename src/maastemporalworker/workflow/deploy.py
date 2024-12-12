@@ -392,7 +392,7 @@ class DeployWorkflow:
                 SET_POWER_STATE_ACTIVITY_NAME,
                 SetPowerStateParam(
                     system_id=params.power_params.system_id,
-                    state=new_result["state"],
+                    state=PowerState(new_result["state"]),
                 ),
                 task_queue="region",
                 start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,

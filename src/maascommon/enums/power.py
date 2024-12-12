@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class PowerState(str, Enum):
+class PowerState(StrEnum):
     ON = "on"
     OFF = "off"
     UNKNOWN = "unknown"
