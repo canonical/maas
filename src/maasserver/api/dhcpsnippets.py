@@ -8,7 +8,13 @@ from email.utils import format_datetime
 
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.reservedip import ReservedIpHandler, ReservedIpsHandler
+from maasserver.api.support import (
+    admin_method,
+    deprecated,
+    operation,
+    OperationsHandler,
+)
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
@@ -29,6 +35,7 @@ DISPLAYED_DHCP_SNIPPET_FIELDS = (
 )
 
 
+@deprecated(use=ReservedIpHandler)
 class DHCPSnippetHandler(OperationsHandler):
     """
     Manage an individual DHCP snippet.
@@ -216,6 +223,7 @@ class DHCPSnippetHandler(OperationsHandler):
             raise MAASAPIValidationError(e.args[0])
 
 
+@deprecated(use=ReservedIpsHandler)
 class DHCPSnippetsHandler(OperationsHandler):
     """Manage the collection of all DHCP snippets in MAAS."""
 
