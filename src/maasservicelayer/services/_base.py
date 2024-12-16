@@ -219,6 +219,8 @@ class BaseService(Service, ABC, Generic[T, R]):
         """
         Override this function in your Service to perform pre-hooks with the object to be deleted.
         This can be used for example to implement extra checks on the objects to be deleted.
+
+        This function is NOT executed when the deletion of objects is forced with the `force` parameter.
         """
         return None
 
@@ -230,25 +232,44 @@ class BaseService(Service, ABC, Generic[T, R]):
         return None
 
     async def delete_one(
-        self, query: QuerySpec, etag_if_match: str | None = None
+        self,
+        query: QuerySpec,
+        etag_if_match: str | None = None,
+        force: bool = False,
     ) -> T | None:
+        """
+        Deletes a single resource matching the specified query.
+
+        If `force` is `True`, then the `pre_delete_hook` is bypassed. This mechanism is used for example when cascading the
+        deletion of resources
+        """
         resource = await self.get_one(query=query)
-        return await self._delete_resource(resource, etag_if_match)
+        return await self._delete_resource(resource, etag_if_match, force)
 
     async def delete_by_id(
-        self, id: int, etag_if_match: str | None = None
+        self, id: int, etag_if_match: str | None = None, force: bool = False
     ) -> T | None:
+        """
+        Deletes a resource identified by its ID.
+
+        If `force` is `True`, then the `pre_delete_hook` is bypassed. This mechanism is used for example when cascading the
+        deletion of resources
+        """
         resource = await self.get_by_id(id=id)
-        return await self._delete_resource(resource, etag_if_match)
+        return await self._delete_resource(resource, etag_if_match, force)
 
     async def _delete_resource(
-        self, resource: T | None, etag_if_match: str | None = None
+        self,
+        resource: T | None,
+        etag_if_match: str | None = None,
+        force: bool = False,
     ) -> T | None:
         if not resource:
             return None
 
         self.etag_check(resource, etag_if_match)
-        await self.pre_delete_hook(resource)
+        if not force:
+            await self.pre_delete_hook(resource)
 
         deleted_resource = await self.repository.delete_by_id(id=resource.id)
         if deleted_resource:

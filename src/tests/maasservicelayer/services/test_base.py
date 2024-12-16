@@ -223,6 +223,36 @@ class TestBaseService:
         repository_mock.delete_by_id.assert_awaited_once_with(id=0)
         assert result == resource
 
+    async def test_delete_one_force(self, repository_mock, service):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_one.return_value = resource
+        repository_mock.delete_by_id.return_value = resource
+        query = QuerySpec()
+
+        async def _mock_pre_delete_hook(_):
+            raise Exception("BOOM")
+
+        service.pre_delete_hook = _mock_pre_delete_hook
+
+        result = await service.delete_one(query, force=True)
+        repository_mock.get_one.assert_awaited_once_with(query=query)
+        repository_mock.delete_by_id.assert_awaited_once_with(id=0)
+        assert result == resource
+
+    async def test_delete_one_without_force(self, repository_mock, service):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_one.return_value = resource
+        repository_mock.delete_by_id.return_value = resource
+        query = QuerySpec()
+
+        async def _mock_pre_delete_hook(_):
+            raise Exception("BOOM")
+
+        service.pre_delete_hook = _mock_pre_delete_hook
+
+        with pytest.raises(Exception):
+            await service.delete_one(query)
+
     async def test_delete_one_not_found(self, repository_mock, service):
         resource = DummyMaasBaseModel(id=0)
         repository_mock.get_one.return_value = None
@@ -263,6 +293,34 @@ class TestBaseService:
         repository_mock.get_by_id.assert_awaited_once_with(id=0)
         repository_mock.delete_by_id.assert_awaited_once_with(id=0)
         assert result == resource
+
+    async def test_delete_by_id_force(self, repository_mock, service):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_by_id.return_value = resource
+        repository_mock.delete_by_id.return_value = resource
+
+        async def _mock_pre_delete_hook(_):
+            raise Exception("BOOM")
+
+        service.pre_delete_hook = _mock_pre_delete_hook
+
+        result = await service.delete_by_id(id=0, force=True)
+        repository_mock.get_by_id.assert_awaited_once_with(id=0)
+        repository_mock.delete_by_id.assert_awaited_once_with(id=0)
+        assert result == resource
+
+    async def test_delete_by_id_without_force(self, repository_mock, service):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_by_id.return_value = resource
+        repository_mock.delete_by_id.return_value = resource
+
+        async def _mock_pre_delete_hook(_):
+            raise Exception("BOOM")
+
+        service.pre_delete_hook = _mock_pre_delete_hook
+
+        with pytest.raises(Exception):
+            await service.delete_by_id(0)
 
     async def test_delete_by_id_not_found(self, repository_mock, service):
         resource = DummyMaasBaseModel(id=0)
