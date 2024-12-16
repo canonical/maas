@@ -114,6 +114,7 @@ class TestMachinesAPI(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
         self.machines_url = reverse("machines_handler")
+        self.patch(node_module, "stop_workflow")
 
     def get_json(self, *args, **kwargs):
         """Call the handler, and get the JSON response"""

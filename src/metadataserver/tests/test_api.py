@@ -1214,6 +1214,7 @@ class TestCurtinMetadataUserData(MAASServerTestCase):
 class TestInstallingAPI(MAASServerTestCase):
     def setUp(self):
         super().setUp()
+        self.patch(node_module, "stop_workflow")
         self.useFixture(SignalsDisabled("power"))
 
     def test_other_user_than_node_cannot_signal_installation_result(self):

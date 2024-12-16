@@ -4040,6 +4040,10 @@ class TestRestoreDefaultConfiguration(APITestCase.ForUser):
 
 
 class TestMarkBroken(APITestCase.ForUser):
+    def setUp(self):
+        super().setUp()
+        self.patch(node_module, "stop_workflow")
+
     def get_node_uri(self, machine):
         """Get the API URI for `machine`."""
         return reverse("machine_handler", args=[machine.system_id])

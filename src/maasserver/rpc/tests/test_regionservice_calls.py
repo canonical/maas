@@ -18,6 +18,7 @@ from maasserver import eventloop
 from maasserver.dns.config import get_trusted_networks
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
 from maasserver.models import Config, Event, EventType, Node
+from maasserver.models import node as node_module
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc import events as events_module
@@ -285,6 +286,7 @@ class TestRegionProtocol_MarkNodeFailed(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_mark_node_failed_changes_status_and_updates_error_msg(self):
         self.useFixture(SignalsDisabled("power"))
+        self.patch(node_module, "stop_workflow")
         system_id = yield deferToDatabase(self.create_deploying_node)
 
         error_description = factory.make_name("error-description")

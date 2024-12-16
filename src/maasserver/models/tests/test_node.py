@@ -2677,6 +2677,7 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_set_status_expires")
         self.patch(node_module, "post_commit_do")
         self.patch(node, "_power_control_node")
+        self.patch(node_module, "stop_workflow")
         node.power_state = POWER_STATE.ON
         with post_commit_hooks:
             node.release()
@@ -2837,6 +2838,15 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release()
         self.assertIsNone(node.sync_interval)
+
+    def test_release_cancels_deploy_workflow(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        self.patch(node, "_stop")
+        self.patch(node, "_set_status_expires")
+        stop_workflow = self.patch(node_module, "stop_workflow")
+        with post_commit_hooks:
+            node.release()
+        stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
 
     def test_sync_interval_is_set_when_enable_hw_sync_is_True(self):
         node = factory.make_Node(
@@ -4352,6 +4362,7 @@ class TestNode(MAASServerTestCase):
             status: factory.make_Node(status=status)
             for status in NODE_FAILURE_STATUS_TRANSITIONS
         }
+        self.patch(node_module, "stop_workflow")
         for node in nodes_mapping.values():
             node.mark_failed(None, factory.make_name("error-description"))
         self.assertEqual(
@@ -4446,6 +4457,14 @@ class TestNode(MAASServerTestCase):
         description = factory.make_name("error-description")
         node.mark_failed(None, description)
         self.assertEqual(NODE_STATUS.NEW, node.status)
+
+    def test_mark_failed_stops_deploy_workflow(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        description = factory.make_name("error-description")
+        stop_workflow = self.patch(node_module, "stop_workflow")
+        with post_commit_hooks:
+            node.mark_failed(None, description)
+        stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
 
     def test_mark_broken_changes_status_to_broken(self):
         user = factory.make_User()

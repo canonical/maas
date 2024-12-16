@@ -13,6 +13,7 @@ from twisted.internet.task import Clock
 from maasserver import status_monitor
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Config, Node
+from maasserver.models import node as node_module
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import (
@@ -36,6 +37,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
     def test_marks_all_possible_failed_status_as_failed(self):
         maaslog = self.patch(status_monitor.maaslog, "info")
         self.useFixture(SignalsDisabled("power"))
+        self.patch(node_module, "stop_workflow")
         current_time = now()
         expired_time = current_time - timedelta(minutes=1)
         nodes = [

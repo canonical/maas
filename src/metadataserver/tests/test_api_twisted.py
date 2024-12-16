@@ -18,7 +18,9 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
-from maasserver.models import Event, NodeKey, Pod
+from maasserver.models import Event
+from maasserver.models import node as node_module
+from maasserver.models import NodeKey, Pod
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout
@@ -155,6 +157,10 @@ class TestStatusHandlerResource(MAASTestCase):
 
 class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
     assertRaises = TestCase.assertRaises
+
+    def setUp(self):
+        super().setUp()
+        self.patch(node_module, "stop_workflow")
 
     @transactional
     def make_nodes_with_tokens(self):
@@ -340,6 +346,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         super().setUp()
         self.useFixture(SignalsDisabled("power"))
         self.patch(api_twisted_module, "signal_workflow")
+        self.patch(node_module, "stop_workflow")
 
     def processMessage(self, node, payload):
         worker = StatusWorkerService(sentinel.dbtasks)
@@ -1097,6 +1104,7 @@ class TestStatusWorkerService(MAASServerTestCase):
 class TestCreateVMHostForDeployment(MAASServerTestCase):
     def setUp(self):
         super().setUp()
+        self.patch(node_module, "stop_workflow")
         self.mock_discover_and_sync = self.patch(
             api_twisted_module, "discover_and_sync_vmhost"
         )

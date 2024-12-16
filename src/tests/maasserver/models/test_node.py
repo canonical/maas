@@ -3,7 +3,8 @@ import logging
 from maasserver.enum import NODE_STATUS
 
 
-def test_node_mark_failed_deployment_logs_failure(factory, caplog):
+def test_node_mark_failed_deployment_logs_failure(factory, caplog, mocker):
+    mocker.patch("maasserver.models.node.stop_workflow")
     node = factory.make_Node(
         status=NODE_STATUS.DEPLOYING, with_boot_disk=False
     )

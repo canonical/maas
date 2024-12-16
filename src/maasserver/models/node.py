@@ -61,7 +61,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from netaddr import IPAddress, IPNetwork
 import petname
-from temporalio.client import WorkflowFailureError
+from temporalio.client import WorkflowFailureError, WorkflowQueryFailedError
 from temporalio.common import WorkflowIDReusePolicy
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -3846,6 +3846,11 @@ class Node(CleanSave, TimestampedModel):
 
         maaslog.info("%s: Releasing node", self.hostname)
 
+        if self.status == NODE_STATUS.DEPLOYING:
+            try:
+                stop_workflow(f"deploy:{self.system_id}")
+            except WorkflowQueryFailedError as e:
+                maaslog.error(f"error canceling deployment: {e}")
         # Don't perform stop the node if its already off. Doing so will
         # place an action in the power registry which is not needed and can
         # block a following deploy action. See bug 1453954 for an example of
@@ -4048,6 +4053,12 @@ class Node(CleanSave, TimestampedModel):
             maaslog.error(f"{self.hostname}: Marking node failed{log_snippet}")
             if new_status == NODE_STATUS.FAILED_DEPLOYMENT:
                 maaslog.debug(f"Node '{self.hostname}' failed deployment")
+                try:
+                    stop_workflow(f"deploy:{self.system_id}")
+                except WorkflowQueryFailedError as e:
+                    maaslog.debug(
+                        f"failed to stop deploy:{self.system_id} workflow: {e}"
+                    )
         elif self.status == NODE_STATUS.NEW:
             # Silently ignore, failing a new node makes no sense.
             pass
