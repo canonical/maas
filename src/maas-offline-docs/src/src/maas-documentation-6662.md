@@ -168,14 +168,34 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 [details=Mapping table]
 | PATH                                                    | LOCATION                                         |
 |---------------------------------------------------------|--------------------------------------------------|
-| /docs/how-to-configure-controllers            | /docs/how-to-provision-machines                                             |
-| /docs/how-to-configure-machines               | /docs/how-to-provision-machines                                                |
-| /docs/how-to-commission-machines-with-maas    | /docs/how-to-provision-machines                                               |
-| /docs/how-to-allocate-machines-with-maas      | /docs/how-to-provision-machines                                                 |
-| /docs/how-to-deploy-machines-with-maas        | /docs/how-to-provision-machines                                                   |
-| /docs/how-to-use-standard-images | /docs/how-to-choose-os-images |
-| /docs/how-to-enable-dhcp | /docs/how-to-customise-dhcp |
-| /docs/how-to-connect-maas-networks | /docs/how-to-customise-maas-networks |
+| /docs/how-to-use-maas-systemd-logs                      | /docs/how-to-use-logging                         |
+| /docs/how-to-read-event-logs                            | /docs/how-to-use-logging                         |
+| /docs/how-to-read-commissioning-logs                    | /docs/how-to-use-logging                         |
+| /docs/how-to-interpret-testing-logs                     | /docs/how-to-use-logging                         |
+| /docs/how-to-audit-maas                                 | /docs/how-to-use-logging                         |
+| /docs/how-to-review-audit-logs                          | /docs/how-to-use-logging                         |
+| /docs/how-to-use-availability-zones                     | /docs/how-to-use-group-machines                  |
+| /docs/how-to-use-resource-pools                         | /docs/how-to-use-group-machines                  |
+| /docs/how-to-annotate-machines                          | /docs/how-to-use-group-machines                  |
+| /docs/how-to-manage-tags                                | /docs/how-to-use-group-machines                  |
+| /docs/how-to-use-machine-tags                           | /docs/how-to-use-group-machines                  |
+| /docs/how-to-use-network-tags                           | /docs/how-to-use-group-machines                  |
+| /docs/how-to-use-controller-tags                        | /docs/how-to-use-group-machines                  |
+| /docs/how-to-build-a-rhel-7-image                       | /docs/how-to-build-maas-images                   |
+| /docs/how-to-build-a-rhel-8-image                       | /docs/how-to-build-maas-images                   |
+| /docs/how-to-build-a-centos-7-image                     | /docs/how-to-build-maas-images                   |
+| /docs/how-to-build-an-oracle-linux-8-image              | /docs/how-to-build-maas-images                   |
+| /docs/how-to-build-an-oracle-linux-9-image              | /docs/how-to-build-maas-images                   |
+| /docs/how-to-build-an-esxi-image                        | /docs/how-to-build-maas-images                   |
+| /docs/how-to-build-a-windows-image                      | /docs/how-to-build-maas-images                   |
+| /docs/how-to-configure-controllers                      | /docs/how-to-provision-machines                  |
+| /docs/how-to-configure-machines                         | /docs/how-to-provision-machines                  |
+| /docs/how-to-commission-machines-with-maas              | /docs/how-to-provision-machines                  |
+| /docs/how-to-allocate-machines-with-maas                | /docs/how-to-provision-machines                  |
+| /docs/how-to-deploy-machines-with-maas                  | /docs/how-to-provision-machines                  |
+| /docs/how-to-use-standard-images                        | /docs/how-to-choose-os-images                    |
+| /docs/how-to-enable-dhcp                                | /docs/how-to-customise-dhcp                      |
+| /docs/how-to-connect-maas-networks                      | /docs/how-to-customise-maas-networks             |
 | /docs/customising-machine-specifications                | /docs/how-to-customise-machines                  |
 | /docs/setting-up-power-drivers                          | /docs/how-to-set-up-power-drivers                |
 | /docs/making-machines-available-for-deployment          | /docs/how-to-commission-machines-with-maas       |
@@ -673,7 +693,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | /docs/custom images                                     | /docs/about-custom-images                        |
 | /docs/controllers-understanding-region-and-rack         | /docs/about-controllers                          |
 | /docs/labelling-devices-in-maas                         | /docs/about-device-labels                        |
-| /docs/the-role-of-maas-networks                         | /docs/about-maas-networking                       |
+| /docs/the-role-of-maas-networks                         | /docs/about-maas-networking                      |
 | /docs/the-osi-model                                     | /docs/about-the-osi-model                        |
 | /docs/a-primer-on-tcp-ip                                | /docs/about-tcp-ip                               |
 | /docs/basics-of-dhcp-in-maas                            | /docs/about-dhcp-in-maas                         |
