@@ -4089,6 +4089,55 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
         )
 
+    def test_claims_dhcp_interface_with_reserved_ip(self):
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                vlan=interface.vlan
+            )
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP,
+                ip="",
+                subnet=subnet,
+                interface=interface,
+            )
+            factory.make_ReservedIP(
+                subnet=subnet,
+                ip=factory.pick_ip_in_Subnet(subnet=subnet),
+                mac_address=interface.mac_address,
+            )
+
+        with transaction.atomic():
+            observed = interface.claim_auto_ips(
+                temp_expires_after=datetime.timedelta(minutes=5)
+            )
+        self.assertEqual([], observed)
+
+    def test_claims_static_ip_interface_with_reserved_ip(self):
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                vlan=interface.vlan
+            )
+            ip = factory.pick_ip_in_Subnet(subnet=subnet)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                ip=ip,
+                subnet=subnet,
+                interface=interface,
+            )
+            factory.make_ReservedIP(
+                subnet=subnet,
+                ip=ip,
+                mac_address=interface.mac_address,
+            )
+
+        with transaction.atomic():
+            observed = interface.claim_auto_ips(
+                temp_expires_after=datetime.timedelta(minutes=5)
+            )
+        self.assertEqual([], observed)
+
 
 class TestCreateAcquiredBridge(MAASServerTestCase):
     """Tests for `Interface.create_acquired_bridge`."""

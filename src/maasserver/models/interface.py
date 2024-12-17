@@ -1380,9 +1380,10 @@ class Interface(CleanSave, TimestampedModel):
                 )
             reserved_ip_assigned = False
 
-        for auto_ip in self.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.AUTO
-        ):
+        auto_ips = list(
+            self.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.AUTO)
+        )
+        for auto_ip in auto_ips:
             if not auto_ip.ip:
                 if (
                     reserved_ip_assigned is False
@@ -1409,7 +1410,9 @@ class Interface(CleanSave, TimestampedModel):
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
 
-        if reserved_ip_assigned is False:
+        # The interface might have a reserved ip but its configuration might be using a static ip or DHCP. For this reason
+        # here we must fail only if we failed to allocate the auto ip with the reserved ip.
+        if reserved_ip_assigned is False and auto_ips:
             raise StaticIPAddressUnavailable(
                 f"This interface {self.mac_address} has a reserved ip {reservedip.ip} but it does not have a link to that subnet"
             )
