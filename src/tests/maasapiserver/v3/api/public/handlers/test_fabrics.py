@@ -20,10 +20,14 @@ from maasapiserver.v3.api.public.models.responses.fabrics import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
+    BadRequestException,
     BaseExceptionDetail,
     NotFoundException,
+    PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_FABRIC_VIOLATION_TYPE,
+    ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
@@ -70,6 +74,7 @@ class TestFabricsApi(ApiCommonTests):
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     async def test_list_no_other_page(
@@ -376,3 +381,99 @@ class TestFabricsApi(ApiCommonTests):
 
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_delete_204(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.delete_by_id.side_effect = None
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1",
+        )
+
+        assert response.status_code == 204
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        fabric_id_to_delete = 1
+
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.delete_by_id.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{fabric_id_to_delete}",
+            headers={"if-match": "wrong_etag"},
+        )
+
+        assert response.status_code == 412
+        services_mock.fabrics.delete_by_id.assert_called_with(
+            id=fabric_id_to_delete,
+            etag_if_match="wrong_etag",
+        )
+
+    async def test_delete_not_default_fabric(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.delete_by_id.side_effect = BadRequestException(
+            details=[
+                BaseExceptionDetail(
+                    type=CANNOT_DELETE_DEFAULT_FABRIC_VIOLATION_TYPE,
+                    message="The default Fabric (id=0) cannot be deleted.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/0",
+        )
+
+        assert response.status_code == 400
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 400
+
+    async def test_delete_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.delete_by_id.side_effect = NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message="Fabric with id 99 does not exist.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/99",
+        )
+
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 404

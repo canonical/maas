@@ -23,7 +23,7 @@ async def create_test_vlan_entry(
     }
     vlan.update(extra_details)
 
-    if not vlan.get("fabric_id"):
+    if "fabric_id" not in vlan:
         fabric = await create_test_fabric_entry(fixture)
         vlan["fabric_id"] = fabric.id
 

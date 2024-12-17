@@ -94,4 +94,6 @@ class VlansService(BaseService[Vlan, VlansRepository]):
             )
 
     async def post_delete_many_hook(self, resources: List[Vlan]) -> None:
+        # TODO: When implemented, adjust FabricsService.post_delete_hook
+        #       and its associated unit tests.
         raise NotImplementedError("Not implemented yet.")

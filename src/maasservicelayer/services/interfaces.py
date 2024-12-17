@@ -39,6 +39,13 @@ class InterfacesService(Service):
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
         return await self.interface_repository.get_interfaces_for_mac(mac)
 
+    async def get_interfaces_in_fabric(
+        self, fabric_id: int
+    ) -> List[Interface]:
+        return await self.interface_repository.get_interfaces_in_fabric(
+            fabric_id=fabric_id
+        )
+
     async def bulk_link_ip(
         self, sip: StaticIPAddress, interfaces: List[Interface]
     ) -> None:

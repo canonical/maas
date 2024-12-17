@@ -325,3 +325,79 @@ class TestInterfaceRepository:
 
         for interface in created_interfaces:
             _assert_interface_in_list(interface, interfaces_result)
+
+    async def test_get_interfaces_in_fabric_has_interfaces(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        machine = (
+            await create_test_machine(fixture, bmc=bmc, user=user)
+        ).dict()
+        config = await create_test_node_config_entry(fixture, node=machine)
+        machine["current_config_id"] = config["id"]
+
+        fabric_id = 0
+
+        vlan = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=fabric_id,
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+        static_ip = await create_test_staticipaddress_entry(
+            fixture=fixture,
+            subnet=subnet,
+            alloc_type=IpAddressType.DHCP,
+        )
+        this_interface = await create_test_interface_entry(
+            fixture=fixture,
+            node=machine,
+            ips=static_ip,
+            vlan=vlan,
+            name="test_interface",
+        )
+        interfaces = [this_interface]
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+
+        retrieved_interfaces = (
+            await interfaces_repository.get_interfaces_in_fabric(
+                fabric_id=fabric_id
+            )
+        )
+
+        _assert_interfaces_match_without_links(
+            interfaces[0], retrieved_interfaces[0]
+        )
+
+    async def test_get_interfaces_in_fabric_no_interfaces(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        machine = (
+            await create_test_machine(fixture, bmc=bmc, user=user)
+        ).dict()
+        config = await create_test_node_config_entry(fixture, node=machine)
+        machine["current_config_id"] = config["id"]
+
+        fabric_id = 0
+
+        _ = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=fabric_id,
+        )
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+
+        retrieved_interfaces = (
+            await interfaces_repository.get_interfaces_in_fabric(
+                fabric_id=fabric_id
+            )
+        )
+
+        assert len(retrieved_interfaces) == 0

@@ -10,6 +10,17 @@ MISSING_PERMISSIONS_VIOLATION_TYPE = "MissingPermissionViolation"
 NOT_AUTHENTICATED_VIOLATION_TYPE = "NotAuthenticatedViolation"
 USER_EXTERNAL_VALIDATION_FAILED = "UserExternalValidationFailed"
 
+# Fabrics
+CANNOT_DELETE_DEFAULT_FABRIC_VIOLATION_TYPE = (
+    "CannotDeleteDefaultFabricViolation"
+)
+CANNOT_DELETE_FABRIC_WITH_SUBNETS_VIOLATION_TYPE = (
+    "CannotDeleteFabricWithSubnetsViolation"
+)
+CANNOT_DELETE_FABRIC_WITH_CONNECTED_INTERFACE_VIOLATION_TYPE = (
+    "CannotDeleteFabricWithConnectedInterfacesViolation"
+)
+
 # Generic
 UNIQUE_CONSTRAINT_VIOLATION_TYPE = "UniqueConstraintViolation"
 ETAG_PRECONDITION_VIOLATION_TYPE = "EtagPreconditionViolation"

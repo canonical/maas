@@ -224,11 +224,6 @@ class ServiceCollectionV3:
             vlans_service=services.vlans,
             spaces_repository=SpacesRepository(context),
         )
-        services.fabrics = FabricsService(
-            context=context,
-            vlans_service=services.vlans,
-            fabrics_repository=FabricsRepository(context),
-        )
         services.reservedips = ReservedIPsService(
             context=context,
             temporal_service=services.temporal,
@@ -269,6 +264,13 @@ class ServiceCollectionV3:
             dhcpsnippets_service=services.dhcpsnippets,
             nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
             subnets_repository=SubnetsRepository(context),
+        )
+        services.fabrics = FabricsService(
+            context=context,
+            vlans_service=services.vlans,
+            subnets_service=services.subnets,
+            interfaces_service=services.interfaces,
+            fabrics_repository=FabricsRepository(context),
         )
         services.agents = AgentsService(
             context=context,

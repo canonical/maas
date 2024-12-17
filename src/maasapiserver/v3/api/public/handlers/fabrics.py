@@ -1,10 +1,14 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response
+from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
@@ -185,3 +189,31 @@ class FabricsHandler(Handler):
         return FabricResponse.from_model(
             fabric=fabric, self_base_hyperlink=f"{V3_API_PREFIX}/fabrics"
         )
+
+    @handler(
+        path="/fabrics/{fabric_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            400: {"model": BadRequestBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_fabric(
+        self,
+        fabric_id: int,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        await services.fabrics.delete_by_id(
+            id=fabric_id,
+            etag_if_match=etag_if_match,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

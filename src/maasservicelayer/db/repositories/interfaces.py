@@ -9,12 +9,13 @@ from sqlalchemy.sql.operators import eq, le
 
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
-from maasservicelayer.db.tables import (  # TODO; VlanTable,
+from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
     NodeConfigTable,
     NodeTable,
     StaticIPAddressTable,
+    VlanTable,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
@@ -69,6 +70,31 @@ class InterfaceRepository:
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
         stmt = self._select_all_statement().filter(
             InterfaceTable.c.mac_address == mac
+        )
+
+        result = (await self.connection.execute(stmt)).all()
+        return [
+            Interface(**data)
+            for data in [
+                build_interface_links(row._asdict()) for row in result
+            ]
+        ]
+
+    async def get_interfaces_in_fabric(
+        self, fabric_id: int
+    ) -> List[Interface]:
+        # Pair the retrieved interfaces with their respective VLAN and filter
+        # out the ones corresponding to this fabric
+        # TODO: If _select_all_statement ever joins with VlanTable, remove the
+        #       join below.
+        stmt = (
+            self._select_all_statement()
+            .join(
+                VlanTable,
+                eq(VlanTable.c.id, InterfaceTable.c.vlan_id),
+                isouter=True,
+            )
+            .filter(VlanTable.c.fabric_id == fabric_id)
         )
 
         result = (await self.connection.execute(stmt)).all()
