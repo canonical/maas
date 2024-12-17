@@ -3838,8 +3838,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status
         )
 
-    def test_signaling_erasing_ok_releases_node(self):
-        self.patch(Node, "_stop")
+    def test_signaling_erasing_ok_does_not_release_the_machine(self):
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING,
             owner=factory.make_User(),
@@ -3849,7 +3848,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
+        self.assertEqual(NODE_STATUS.DISK_ERASING, reload_object(node).status)
 
 
 class TestRescueModeAPI(MAASServerTestCase):

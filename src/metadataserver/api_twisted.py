@@ -174,7 +174,18 @@ class StatusHandlerResource(Resource):
             request.setResponseCode(204)
             request.finish()
 
+        def _check_connection_closed(failure):
+            # request.finish() might raise a RuntimeError when the client has already disconnected and we can't send the
+            # response. This might happen for example when we release a machine when cloud-init reports that it has completed
+            # and the machine has already shut down in the meantime.
+            # In general, this is fine because this endpoint returns no data.
+            failure.trap(RuntimeError)
+            logger.info(
+                "The request from the node was processed but the client already closed the connection.",
+            )
+
         d.addCallback(_finish, request)
+        d.addErrback(_check_connection_closed)
         return NOT_DONE_YET
 
 
@@ -510,12 +521,20 @@ class StatusWorkerService(TimerService):
                         comment="Failed to erase disks.", commit=False
                     )
                     save_node = True
+                elif self._is_modules_final_event(message):
+                    # Cloud-init has completed. Finally, release the machine and all its resources.
+                    node.release()
+
             elif node.status == NODE_STATUS.RELEASING:
                 if failed:
                     node.mark_failed(
                         comment="Failed to release machine.", commit=False
                     )
                     save_node = True
+                elif self._is_modules_final_event(message):
+                    # Cloud-init has completed. Finally, release the machine and all its resources.
+                    node.release()
+
             # Deallocate the node if we enter any terminal state.
             if node.node_type == NODE_TYPE.MACHINE and node.status in [
                 NODE_STATUS.READY,
@@ -582,6 +601,13 @@ class StatusWorkerService(TimerService):
     def _is_top_level(self, activity_name):
         """Top-level events do not have slashes in their names."""
         return "/" not in activity_name
+
+    def _is_modules_final_event(self, message) -> bool:
+        """Determines if the given message is the final event sent by cloud-init."""
+        return (
+            message["event_type"] == "finish"
+            and message["name"] == "modules-final"
+        )
 
     def _processMessageNow(self, authorization, message):
         # This should be called in a non-reactor thread with a pre-existing
