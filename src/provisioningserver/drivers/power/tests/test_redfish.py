@@ -21,7 +21,7 @@ from twisted.web.http_headers import Headers
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.drivers.power import PowerActionError
+from provisioningserver.drivers.power import PowerActionError, PowerAuthError
 import provisioningserver.drivers.power.redfish as redfish_module
 from provisioningserver.drivers.power.redfish import (
     REDFISH_POWER_CONTROL_ENDPOINT,
@@ -500,6 +500,58 @@ class TestRedfishPowerDriver(MAASTestCase):
             rf"^Redfish request failed with response status code: {HTTPStatus.BAD_REQUEST}\.$",
         ):
             yield driver.redfish_request(b"GET", uri, headers)
+        mock_readBody.assert_not_called()
+
+    @inlineCallbacks
+    def test_redfish_request_raises_fatal_error_on_401_responses(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        uri = join(url, b"redfish/v1/Systems")
+        headers = driver.make_auth_headers(**context)
+        mock_agent = self.patch(redfish_module, "Agent")
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.UNAUTHORIZED
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.side_effect = (
+            lambda *args, **kwargs: succeed(expected_headers)
+        )
+        mock_readBody = self.patch(redfish_module, "readBody")
+
+        with self.assertRaisesRegex(
+            PowerAuthError,
+            rf"^Redfish request failed with response status code: {HTTPStatus.UNAUTHORIZED}\.$",
+        ):
+            yield driver.redfish_request(b"GET", uri, headers)
+
+        mock_agent.assert_called_once()
+        mock_readBody.assert_not_called()
+
+    @inlineCallbacks
+    def test_redfish_request_raises_fatal_error_on_403_responses(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        uri = join(url, b"redfish/v1/Systems")
+        headers = driver.make_auth_headers(**context)
+        mock_agent = self.patch(redfish_module, "Agent")
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.FORBIDDEN
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.side_effect = (
+            lambda *args, **kwargs: succeed(expected_headers)
+        )
+        mock_readBody = self.patch(redfish_module, "readBody")
+
+        with self.assertRaisesRegex(
+            PowerAuthError,
+            rf"^Redfish request failed with response status code: {HTTPStatus.FORBIDDEN}\.$",
+        ):
+            yield driver.redfish_request(b"GET", uri, headers)
+
+        mock_agent.assert_called_once()
         mock_readBody.assert_not_called()
 
     @inlineCallbacks
