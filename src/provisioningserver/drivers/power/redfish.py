@@ -30,6 +30,7 @@ from provisioningserver.drivers import (
 )
 from provisioningserver.drivers.power import (
     PowerActionError,
+    PowerAuthError,
     PowerDriver,
     PowerFatalError,
 )
@@ -90,9 +91,8 @@ class RedfishPowerDriverBase(PowerDriver):
         get_etag: Callable = lambda: succeed(None),
     ):
         retries = 0
+        sleep_time = 0
         while True:
-            # Exponential backoff
-            sleep_time = ((2**retries) - 1) / 2
             yield pause(sleep_time)
             try:
                 etag = yield get_etag()
@@ -106,18 +106,33 @@ class RedfishPowerDriverBase(PowerDriver):
                         method, uri, headers, get_bodyProducer
                     )
                 )
+            except PowerFatalError as e:
+                # Do not retry on fatal errors such as authentication failures.
+                maaslog.error(
+                    "Power action fatal error for method '%s' on URI '%s'",
+                    method.decode("utf-8"),
+                    uri.decode("utf-8"),
+                )
+                raise e
             except Exception as e:
                 if retries == MAX_REQUEST_RETRIES:
                     maaslog.error(
-                        "Maximum number of retries reached. Giving up!"
+                        "Maximum number of retries (%d) reached for method '%s' on URI '%s'. Giving up!",
+                        MAX_REQUEST_RETRIES,
+                        method.decode("utf-8"),
+                        uri.decode("utf-8"),
                     )
                     raise e
-                maaslog.info(
-                    "Power action failure: %s. This is the try number %d out of 6.",
-                    e,
-                    retries,
-                )
+
+                # Exponential backoff
                 retries += 1
+                sleep_time = ((2**retries) - 1) / 2
+                maaslog.warning(
+                    "Power action failure for method '%s' on URI '%s'. Retrying after %f seconds.",
+                    method.decode("utf-8"),
+                    uri.decode("utf-8"),
+                    sleep_time,
+                )
 
     @asynchronous
     def _redfish_request(
@@ -181,6 +196,13 @@ class RedfishPowerDriverBase(PowerDriver):
                             uri + b"/",
                             headers=headers,
                             bodyProducer=get_bodyProducer(),
+                        )
+                    elif (
+                        response.code == HTTPStatus.UNAUTHORIZED
+                        or response.code == HTTPStatus.FORBIDDEN
+                    ):
+                        raise PowerAuthError(
+                            f"Redfish request failed with response status code: {response.code}."
                         )
                     else:
                         raise PowerActionError(
