@@ -3,7 +3,7 @@
 
 from typing import Union
 
-from fastapi import Depends, Header, Response
+from fastapi import Depends, Header, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -270,3 +270,44 @@ class ReservedIPsHandler(Handler):
             reservedip=reservedip,
             self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/reserved_ips",
         )
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/reserved_ips/{id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_fabric_vlan_subnet_reserved_ip(
+        self,
+        fabric_id: int,
+        vlan_id: int,
+        subnet_id: int,
+        id: int,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        query = QuerySpec(
+            where=ReservedIPsClauseFactory.and_clauses(
+                [
+                    ReservedIPsClauseFactory.with_id(id),
+                    ReservedIPsClauseFactory.with_subnet_id(subnet_id),
+                    ReservedIPsClauseFactory.with_vlan_id(vlan_id),
+                    ReservedIPsClauseFactory.with_fabric_id(fabric_id),
+                ]
+            )
+        )
+        await services.reservedips.delete_one(
+            query=query, etag_if_match=etag_if_match
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
