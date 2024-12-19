@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import List
+
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -31,3 +33,15 @@ class ReservedIPsService(BaseService[ReservedIP, ReservedIPsRepository]):
             wait=False,
         )
         return
+
+    async def post_delete_hook(self, resource: ReservedIP) -> None:
+        self.temporal_service.register_or_update_workflow_call(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(reserved_ip_ids=[resource.id]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+        return
+
+    async def post_delete_many_hook(self, resources: List[ReservedIP]) -> None:
+        raise NotImplementedError("Not implemented yet.")

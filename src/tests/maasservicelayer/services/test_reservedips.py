@@ -53,6 +53,10 @@ class TestCommonReservedIPsService(ServiceCommonTests):
             subnet_id=1,
         )
 
+    @pytest.mark.skip(reason="Not implemented yet.")
+    async def test_delete_many(self, service_instance, test_instance):
+        pass
+
 
 @pytest.mark.asyncio
 class TestReservedIPsService:
@@ -81,6 +85,30 @@ class TestReservedIPsService:
 
         reservedips_repository_mock.create.assert_called_once_with(
             resource=resource
+        )
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(reserved_ip_ids=[TEST_RESERVEDIP.id]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+
+    async def test_delete(self) -> None:
+        reservedips_repository_mock = Mock(ReservedIPsRepository)
+        reservedips_repository_mock.get_by_id.return_value = TEST_RESERVEDIP
+        reservedips_repository_mock.delete_by_id.return_value = TEST_RESERVEDIP
+        mock_temporal = Mock(TemporalService)
+
+        reservedips_service = ReservedIPsService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            reservedips_repository=reservedips_repository_mock,
+        )
+
+        await reservedips_service.delete_by_id(TEST_RESERVEDIP.id)
+
+        reservedips_repository_mock.delete_by_id.assert_called_once_with(
+            id=TEST_RESERVEDIP.id
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,

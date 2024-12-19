@@ -18,7 +18,6 @@ from maasservicelayer.models.reservedips import ReservedIP
 class ReservedIPResponse(HalResponse[BaseHal]):
     kind = "ReservedIP"
     id: int
-    subnet_id: int
     ip: IPvAnyAddress
     mac_address: MacAddress
     comment: Optional[str]
@@ -27,7 +26,6 @@ class ReservedIPResponse(HalResponse[BaseHal]):
     def from_model(cls, reservedip: ReservedIP, self_base_hyperlink: str):
         return cls(
             id=reservedip.id,
-            subnet_id=reservedip.subnet_id,
             ip=reservedip.ip,
             mac_address=reservedip.mac_address,
             comment=reservedip.comment,

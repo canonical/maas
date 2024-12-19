@@ -26,6 +26,13 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.reservedips import (
     ReservedIPsClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
@@ -76,6 +83,7 @@ class TestReservedIPsApi(ApiCommonTests):
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     async def test_list_no_other_page(
@@ -155,7 +163,6 @@ class TestReservedIPsApi(ApiCommonTests):
             "ip": "10.0.0.1",
             "mac_address": "01:02:03:04:05:06",
             "comment": "test_comment",
-            "subnet_id": 1,
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
             "_links": {
@@ -313,3 +320,62 @@ class TestReservedIPsApi(ApiCommonTests):
             json=jsonable_encoder(reservedip_request),
         )
         assert response.status_code == 404
+
+    async def test_delete(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.delete_one.return_value = TEST_RESERVEDIP
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}"
+        )
+        assert response.status_code == 204
+        services_mock.reservedips.delete_one.assert_called_with(
+            query=QuerySpec(
+                where=ReservedIPsClauseFactory.and_clauses(
+                    [
+                        ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
+                        ReservedIPsClauseFactory.with_subnet_id(1),
+                        ReservedIPsClauseFactory.with_vlan_id(1),
+                        ReservedIPsClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+            etag_if_match=None,
+        )
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.delete_one.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}",
+            headers={"if-match": "wrong_etag"},
+        )
+        assert response.status_code == 412
+        services_mock.reservedips.delete_one.assert_called_with(
+            query=QuerySpec(
+                where=ReservedIPsClauseFactory.and_clauses(
+                    [
+                        ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
+                        ReservedIPsClauseFactory.with_subnet_id(1),
+                        ReservedIPsClauseFactory.with_vlan_id(1),
+                        ReservedIPsClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            ),
+            etag_if_match="wrong_etag",
+        )
