@@ -1,6 +1,8 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Self
+
 from macaroonbakery.bakery import Macaroon
 from pydantic import BaseModel
 
@@ -64,10 +66,8 @@ class ValidationException(BaseException):
         super().__init__("Invalid value.", details)
 
     @classmethod
-    def build_for_field(
-        self, field: str, message: str
-    ) -> "ValidationException":
-        return ValidationException(
+    def build_for_field(cls, field: str, message: str) -> Self:
+        return cls(
             details=[
                 BaseExceptionDetail(
                     type=INVALID_ARGUMENT_VIOLATION_TYPE,

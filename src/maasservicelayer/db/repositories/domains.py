@@ -1,6 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from typing import Type
+from typing import Self, Type
 
 from sqlalchemy import select, Table
 from sqlalchemy.sql.operators import eq
@@ -33,19 +33,17 @@ class DomainsClauseFactory(ClauseFactory):
 
 
 class DomainResourceBuilder(ResourceBuilder):
-    def with_authoritative(
-        self, authoritative: bool
-    ) -> "DomainResourceBuilder":
+    def with_authoritative(self, authoritative: bool) -> Self:
         self._request.set_value(
             DomainTable.c.authoritative.name, authoritative
         )
         return self
 
-    def with_ttl(self, ttl: int) -> "DomainResourceBuilder":
+    def with_ttl(self, ttl: int) -> Self:
         self._request.set_value(DomainTable.c.ttl.name, ttl)
         return self
 
-    def with_name(self, name: str) -> "DomainResourceBuilder":
+    def with_name(self, name: str) -> Self:
         self._request.set_value(DomainTable.c.name.name, name)
         return self
 

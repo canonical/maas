@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Type
+from typing import Self, Type
 
 import netaddr
 from pydantic import IPvAnyAddress
@@ -64,31 +64,31 @@ class IPRangeClauseFactory(ClauseFactory):
 
 
 class IPRangeResourceBuilder(ResourceBuilder):
-    def with_id(self, id: int) -> "IPRangeResourceBuilder":
+    def with_id(self, id: int) -> Self:
         self._request.set_value(IPRangeTable.c.id.name, id)
         return self
 
-    def with_type(self, type: IPRangeType) -> "IPRangeResourceBuilder":
+    def with_type(self, type: IPRangeType) -> Self:
         self._request.set_value(IPRangeTable.c.type.name, type)
         return self
 
-    def with_start_ip(self, ip: IPvAnyAddress) -> "IPRangeResourceBuilder":
+    def with_start_ip(self, ip: IPvAnyAddress) -> Self:
         self._request.set_value(IPRangeTable.c.start_ip.name, ip)
         return self
 
-    def with_end_ip(self, ip: IPvAnyAddress) -> "IPRangeResourceBuilder":
+    def with_end_ip(self, ip: IPvAnyAddress) -> Self:
         self._request.set_value(IPRangeTable.c.end_ip.name, ip)
         return self
 
-    def with_comment(self, comment: str | None) -> "IPRangeResourceBuilder":
+    def with_comment(self, comment: str | None) -> Self:
         self._request.set_value(IPRangeTable.c.comment.name, comment)
         return self
 
-    def with_subnet_id(self, id: int) -> "IPRangeResourceBuilder":
+    def with_subnet_id(self, id: int) -> Self:
         self._request.set_value(IPRangeTable.c.subnet_id.name, id)
         return self
 
-    def with_user_id(self, id: int) -> "IPRangeResourceBuilder":
+    def with_user_id(self, id: int) -> Self:
         self._request.set_value(IPRangeTable.c.user_id.name, id)
         return self
 

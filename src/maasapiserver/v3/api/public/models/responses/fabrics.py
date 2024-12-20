@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
+from typing import Optional, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -22,9 +22,7 @@ class FabricResponse(HalResponse[BaseHal]):
     vlans: BaseHref
 
     @classmethod
-    def from_model(
-        cls, fabric: Fabric, self_base_hyperlink: str
-    ) -> "FabricResponse":
+    def from_model(cls, fabric: Fabric, self_base_hyperlink: str) -> Self:
         return cls(
             id=fabric.id,
             name=fabric.name,

@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Type
+from typing import Optional, Self, Type
 
 from sqlalchemy import select, Table
 
@@ -15,11 +15,11 @@ from maasservicelayer.models.resource_pools import ResourcePool
 
 
 class ResourcePoolResourceBuilder(ResourceBuilder):
-    def with_name(self, value: str) -> "ResourcePoolResourceBuilder":
+    def with_name(self, value: str) -> Self:
         self._request.set_value(ResourcePoolTable.c.name.name, value)
         return self
 
-    def with_description(self, value: str) -> "ResourcePoolResourceBuilder":
+    def with_description(self, value: str) -> Self:
         self._request.set_value(ResourcePoolTable.c.description.name, value)
         return self
 

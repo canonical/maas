@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from functools import cached_property
-from typing import Any, cast, Sequence
+from typing import Any, cast, Self, Sequence
 
 from jose import jwt, JWTError
 
@@ -73,7 +73,7 @@ class JWT:
     @classmethod
     def create(
         cls, key: str, subject: str, user_id: int, roles: Sequence[UserRole]
-    ) -> "JWT":
+    ) -> Self:
         issued = utcnow()
         expiration = issued + cls.TOKEN_DURATION
 
@@ -94,7 +94,7 @@ class JWT:
         )
 
     @classmethod
-    def decode(cls, key: str, encoded: str) -> "JWT":
+    def decode(cls, key: str, encoded: str) -> Self:
         """Decode a token string."""
         try:
             payload = jwt.decode(

@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Type
+from typing import Self, Type
 
 from sqlalchemy import select, Table
 from sqlalchemy.sql.operators import eq
@@ -16,11 +16,11 @@ from maasservicelayer.models.zones import Zone
 
 
 class ZoneResourceBuilder(ResourceBuilder):
-    def with_name(self, value: str) -> "ZoneResourceBuilder":
+    def with_name(self, value: str) -> Self:
         self._request.set_value(ZoneTable.c.name.name, value)
         return self
 
-    def with_description(self, value: str) -> "ZoneResourceBuilder":
+    def with_description(self, value: str) -> Self:
         self._request.set_value(ZoneTable.c.description.name, value)
         return self
 

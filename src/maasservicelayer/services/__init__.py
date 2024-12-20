@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Callable
+from typing import Callable, Self
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.configurations import (
@@ -147,7 +147,7 @@ class ServiceCollectionV3:
         cls,
         context: Context,
         cache: CacheForServices,
-    ) -> "ServiceCollectionV3":
+    ) -> Self:
         services = cls()
         services.configurations = ConfigurationsService(
             context=context,

@@ -3,7 +3,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Self
 
 from pydantic import BaseModel, IPvAnyAddress
 
@@ -44,7 +44,7 @@ class EventTypeResponse(BaseModel):
     level: EventTypeLevelEnum
 
     @classmethod
-    def from_model(cls, event_type: EventType) -> "EventTypeResponse":
+    def from_model(cls, event_type: EventType) -> Self:
         return cls(
             name=event_type.name,
             description=event_type.description,
@@ -68,9 +68,7 @@ class EventResponse(HalResponse[BaseHal]):
     action: str
 
     @classmethod
-    def from_model(
-        cls, event: Event, self_base_hyperlink: str
-    ) -> "EventResponse":
+    def from_model(cls, event: Event, self_base_hyperlink: str) -> Self:
         return cls(
             id=event.id,
             created=event.created,

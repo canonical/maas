@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
+from typing import Optional, Self
 
 from pydantic import BaseModel, Field, IPvAnyAddress
 
@@ -21,7 +21,7 @@ class LinkResponse(BaseModel):
     ip_address: Optional[IPvAnyAddress]
 
     @classmethod
-    def from_model(cls, link: Link) -> "LinkResponse":
+    def from_model(cls, link: Link) -> Self:
         return cls(id=link.id, mode=link.mode, ip_address=link.ip_address)
 
 
@@ -46,7 +46,7 @@ class InterfaceResponse(HalResponse[BaseHal]):
     @classmethod
     def from_model(
         cls, interface: Interface, self_base_hyperlink: str
-    ) -> "InterfaceResponse":
+    ) -> Self:
         return cls(
             id=interface.id,
             name=interface.name,

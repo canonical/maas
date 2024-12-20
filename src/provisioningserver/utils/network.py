@@ -21,7 +21,7 @@ from socket import (
     IPPROTO_TCP,
 )
 import struct
-from typing import Iterable, List, Optional, TypeVar
+from typing import Iterable, List, Optional, Self, TypeVar
 from zlib import crc32
 
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
@@ -523,7 +523,7 @@ class MAASIPSet(set):
 
     def get_unused_ranges(
         self, outer_range: OuterRange, purpose=IPRANGE_TYPE.UNUSED
-    ) -> "MAASIPSet":
+    ) -> Self:
         """Calculates and returns a list of unused IP ranges, based on
         the supplied range of desired addresses.
 

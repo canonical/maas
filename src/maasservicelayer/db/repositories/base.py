@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from operator import eq, le
-from typing import Any, Generic, List, Sequence, Type, TypeVar
+from typing import Any, Generic, List, Self, Sequence, Type, TypeVar
 
 from sqlalchemy import delete, desc, insert, Row, select, Select, Table, update
 from sqlalchemy.exc import IntegrityError
@@ -46,11 +46,11 @@ class ResourceBuilder(ABC):
     def __init__(self):
         self._request = CreateOrUpdateResource()
 
-    def with_created(self, value: datetime) -> "ResourceBuilder":
+    def with_created(self, value: datetime) -> Self:
         self._request.set_value("created", value)
         return self
 
-    def with_updated(self, value: datetime) -> "ResourceBuilder":
+    def with_updated(self, value: datetime) -> Self:
         self._request.set_value("updated", value)
         return self
 

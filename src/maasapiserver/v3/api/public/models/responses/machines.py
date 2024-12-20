@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
+from typing import Optional, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -40,9 +40,7 @@ class MachineResponse(HalResponse[BaseHal]):
     fqdn: str
 
     @classmethod
-    def from_model(
-        cls, machine: Machine, self_base_hyperlink: str
-    ) -> "MachineResponse":
+    def from_model(cls, machine: Machine, self_base_hyperlink: str) -> Self:
         return cls(
             id=machine.id,
             system_id=machine.system_id,
@@ -86,7 +84,7 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
     @classmethod
     def from_model(
         cls, usb_device: UsbDevice, self_base_hyperlink: str
-    ) -> "UsbDeviceResponse":
+    ) -> Self:
         return cls(
             id=usb_device.id,
             type=usb_device.hardware_type,
@@ -125,7 +123,7 @@ class PciDeviceResponse(HalResponse[BaseHal]):
     @classmethod
     def from_model(
         cls, pci_device: PciDevice, self_base_hyperlink: str
-    ) -> "PciDeviceResponse":
+    ) -> Self:
         return cls(
             id=pci_device.id,
             type=pci_device.hardware_type,
@@ -155,9 +153,7 @@ class PowerDriverResponse(HalResponse[BaseHal]):
     power_parameters: dict
 
     @classmethod
-    def from_model(
-        cls, bmc: Bmc, self_base_hyperlink: str
-    ) -> "PowerDriverResponse":
+    def from_model(cls, bmc: Bmc, self_base_hyperlink: str) -> Self:
         return cls(
             power_type=bmc.power_type,
             power_parameters=bmc.power_parameters,
