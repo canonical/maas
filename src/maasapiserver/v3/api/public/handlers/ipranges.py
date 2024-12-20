@@ -1,7 +1,9 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -31,9 +33,11 @@ from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
+    ForbiddenException,
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
@@ -147,7 +151,7 @@ class IPRangesHandler(Handler):
                 details=[
                     BaseExceptionDetail(
                         type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message="Could not find subnet {subnet_id} in VLAN {vlan_id} in fabric {fabric_id}",
+                        message=f"Could not find subnet {subnet_id} in VLAN {vlan_id} in fabric {fabric_id}",
                     )
                 ]
             )
@@ -211,3 +215,63 @@ class IPRangesHandler(Handler):
             iprange=iprange,
             self_base_hyperlink=f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/ipranges/",
         )
+
+    @handler(
+        path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/ipranges/{iprange_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def delete_fabric_vlan_subnet_iprange(
+        self,
+        fabric_id: int,
+        vlan_id: int,
+        subnet_id: int,
+        iprange_id: int,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+        authenticated_user: AuthenticatedUser = Depends(
+            get_authenticated_user
+        ),
+    ) -> Response:
+        iprange = await services.ipranges.get_one(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_id(iprange_id),
+                        IPRangeClauseFactory.with_subnet_id(subnet_id),
+                        IPRangeClauseFactory.with_vlan_id(vlan_id),
+                        IPRangeClauseFactory.with_fabric_id(fabric_id),
+                    ]
+                )
+            )
+        )
+        if iprange:
+            if (
+                iprange.user_id != authenticated_user.id
+                and not authenticated_user.is_admin()
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message="Only the owner of the iprange or an admin can delete the iprange.",
+                        )
+                    ]
+                )
+            await services.ipranges.delete_by_id(
+                iprange.id, etag_if_match=etag_if_match
+            )
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -21,6 +21,13 @@ from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
@@ -69,6 +76,7 @@ class TestIPRangesApi(ApiCommonTests):
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     @pytest.fixture
@@ -372,3 +380,99 @@ class TestIPRangesApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 403
+
+    async def test_delete(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_one.return_value = TEST_IPRANGE
+        services_mock.ipranges.delete_by_id.return_value = TEST_IPRANGE
+        response = await mocked_api_client_user.delete(
+            f"{self.BASE_PATH}/{TEST_IPRANGE.id}"
+        )
+
+        assert response.status_code == 204
+
+        services_mock.ipranges.get_one.assert_called_once_with(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_id(TEST_IPRANGE.id),
+                        IPRangeClauseFactory.with_subnet_id(1),
+                        IPRangeClauseFactory.with_vlan_id(1),
+                        IPRangeClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            )
+        )
+        services_mock.ipranges.delete_by_id.assert_called_once_with(
+            TEST_IPRANGE.id, etag_if_match=None
+        )
+
+    async def test_delete_not_owner(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        iprange = TEST_IPRANGE.copy()
+        iprange.user_id = 3
+        services_mock.ipranges.get_one.return_value = iprange
+        services_mock.ipranges.delete_by_id.return_value = iprange
+        response = await mocked_api_client_user.delete(
+            f"{self.BASE_PATH}/{iprange.id}"
+        )
+        assert response.status_code == 403
+
+        services_mock.ipranges.get_one.assert_called_once_with(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_id(iprange.id),
+                        IPRangeClauseFactory.with_subnet_id(1),
+                        IPRangeClauseFactory.with_vlan_id(1),
+                        IPRangeClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            )
+        )
+        services_mock.ipranges.delete_by_id.assert_not_called()
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_one.return_value = TEST_IPRANGE
+        services_mock.ipranges.delete_by_id.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_user.delete(
+            f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
+        )
+        assert response.status_code == 412
+        services_mock.ipranges.get_one.assert_called_with(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_id(1),
+                        IPRangeClauseFactory.with_subnet_id(1),
+                        IPRangeClauseFactory.with_vlan_id(1),
+                        IPRangeClauseFactory.with_fabric_id(1),
+                    ]
+                )
+            )
+        )
+        services_mock.ipranges.delete_by_id.assert_called_with(
+            TEST_IPRANGE.id,
+            etag_if_match="wrong_etag",
+        )
