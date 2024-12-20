@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv6Address
 
 import pytest
 from sqlalchemy import select
@@ -216,3 +216,59 @@ class TestReservedIPsRepository(RepositoryCommonTests[ReservedIP]):
     @pytest.mark.skip(reason="Not implemented yet")
     async def test_update_many(self, repository_instance, instance_builder):
         pass
+
+    @pytest.mark.parametrize(
+        "ip, expected_result",
+        [
+            ("10.0.0.99", False),
+            ("10.0.0.100", True),
+            ("10.0.0.150", True),
+            ("10.0.0.200", True),
+            ("10.0.0.201", False),
+        ],
+    )
+    async def test_exists_within_subnet_ipv4_range(
+        self,
+        repository_instance: ReservedIPsRepository,
+        fixture: Fixture,
+        ip: str,
+        expected_result: bool,
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        await create_test_reserved_ip_entry(
+            fixture, subnet=subnet, mac_address="01:02:03:04:05:06", ip=ip
+        )
+        exists = await repository_instance.exists_within_subnet_ip_range(
+            subnet_id=subnet["id"],
+            start_ip=IPv4Address("10.0.0.100"),
+            end_ip=IPv4Address("10.0.0.200"),
+        )
+        assert exists == expected_result
+
+    @pytest.mark.parametrize(
+        "ip, expected_result",
+        [
+            ("fd00::1", False),
+            ("fd00::100", True),
+            ("fd00::150", True),
+            ("fd00::200", True),
+            ("fd00::201", False),
+        ],
+    )
+    async def test_exists_within_subnet_ipv6_range(
+        self,
+        repository_instance: ReservedIPsRepository,
+        fixture: Fixture,
+        ip: str,
+        expected_result: bool,
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="fd00::/64")
+        await create_test_reserved_ip_entry(
+            fixture, subnet=subnet, mac_address="01:02:03:04:05:06", ip=ip
+        )
+        exists = await repository_instance.exists_within_subnet_ip_range(
+            subnet_id=subnet["id"],
+            start_ip=IPv6Address("fd00::100"),
+            end_ip=IPv6Address("fd00::200"),
+        )
+        assert exists == expected_result

@@ -287,6 +287,7 @@ class TestVlanUpdateRequest:
                 start_ip="10.0.0.100",
                 end_ip="10.0.0.105",
                 subnet_id=0,
+                user_id=0,
             )
         ]
         services_mock.vlans = Mock(VlansService)

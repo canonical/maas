@@ -12,4 +12,4 @@ class IPRange(MaasTimestampedBaseModel):
     end_ip: IPvAnyAddress
     comment: Optional[str] = None
     subnet_id: int
-    # TODO: user_id?
+    user_id: Optional[int] = None

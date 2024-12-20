@@ -80,8 +80,16 @@ class IPRangeResourceBuilder(ResourceBuilder):
         self._request.set_value(IPRangeTable.c.end_ip.name, ip)
         return self
 
+    def with_comment(self, comment: str | None) -> "IPRangeResourceBuilder":
+        self._request.set_value(IPRangeTable.c.comment.name, comment)
+        return self
+
     def with_subnet_id(self, id: int) -> "IPRangeResourceBuilder":
         self._request.set_value(IPRangeTable.c.subnet_id.name, id)
+        return self
+
+    def with_user_id(self, id: int) -> "IPRangeResourceBuilder":
+        self._request.set_value(IPRangeTable.c.user_id.name, id)
         return self
 
 

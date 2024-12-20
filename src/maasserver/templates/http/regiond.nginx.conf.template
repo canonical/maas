@@ -66,6 +66,16 @@ server {
         return 404;
     }
 
+    # block remote access to POST/PUT V3 ipranges endpoints as they do not validate overlapping ipranges yet.
+    location ~ ^/MAAS/a/v3/fabrics/\d+/vlans/\d+/subnets/\d+/ipranges$ {
+        if ($request_method = POST) {
+            return 405;
+        }
+        if ($request_method = PUT) {
+            return 405;
+        }
+        proxy_pass http://apiserver;
+    }
 
     location /MAAS/a/ {
         proxy_pass http://apiserver;

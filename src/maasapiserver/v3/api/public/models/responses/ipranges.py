@@ -11,17 +11,18 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     TokenPaginatedResponse,
 )
+from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.models.ipranges import IPRange
 
 
 class IPRangeResponse(HalResponse[BaseHal]):
     kind = "IPRange"
     id: int
-    type: str
+    type: IPRangeType
     start_ip: IPvAnyAddress
     end_ip: IPvAnyAddress
     comment: Optional[str]
-    # TODO: user_id?
+    owner_id: int
 
     @classmethod
     def from_model(cls, iprange: IPRange, self_base_hyperlink: str):
@@ -31,6 +32,7 @@ class IPRangeResponse(HalResponse[BaseHal]):
             start_ip=iprange.start_ip,
             end_ip=iprange.end_ip,
             comment=iprange.comment,
+            owner_id=iprange.user_id,
             hal_links=BaseHal(
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{iprange.id}"

@@ -81,6 +81,7 @@ class DjangoSessionAuthenticationProvider(AuthenticationProvider):
                 ]
             )
         return AuthenticatedUser(
+            id=user.id,
             username=user.username,
             roles=(
                 {UserRole.ADMIN, UserRole.USER}
@@ -120,7 +121,9 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
                 ]
             )
         return AuthenticatedUser(
-            username=jwt_token.subject, roles=jwt_token.roles
+            id=jwt_token.user_id,
+            username=jwt_token.subject,
+            roles=jwt_token.roles,
         )
 
     @classmethod
@@ -174,6 +177,7 @@ class MacaroonAuthenticationProvider:
             )
 
         return AuthenticatedUser(
+            id=user.id,
             username=user.username,
             roles=(
                 {UserRole.ADMIN, UserRole.USER}

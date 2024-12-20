@@ -24,6 +24,7 @@ class TestIPrangeResponse:
             end_ip=IPv4Address("10.10.0.3"),
             comment="comment",
             subnet_id=1,
+            user_id=0,
         )
         iprange_response = IPRangeResponse.from_model(
             iprange=iprange, self_base_hyperlink=f"{V3_API_PREFIX}/ipranges"
@@ -33,3 +34,4 @@ class TestIPrangeResponse:
         assert iprange.start_ip == iprange_response.start_ip
         assert iprange.end_ip == iprange_response.end_ip
         assert iprange.comment == iprange_response.comment
+        assert iprange.user_id == iprange_response.owner_id

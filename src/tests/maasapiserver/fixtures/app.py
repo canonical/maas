@@ -76,7 +76,7 @@ def create_app_with_mocks(
         ) -> Response:
             if roles:
                 request.state.authenticated_user = AuthenticatedUser(
-                    username="username", roles=roles
+                    id=0, username="username", roles=roles
                 )
             else:
                 request.state.authenticated_user = None

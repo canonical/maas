@@ -167,10 +167,11 @@ class TestAuthService:
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
-        jwt = JWT.create("123", "sub", [UserRole.ADMIN])
+        jwt = JWT.create("123", "sub", 0, [UserRole.ADMIN])
         decoded_jwt = await auth_service.decode_and_verify_token(jwt.encoded)
         assert jwt.issuer == decoded_jwt.issuer
         assert decoded_jwt.subject == "sub"
+        assert decoded_jwt.user_id == 0
         assert decoded_jwt.roles == [UserRole.ADMIN]
 
     @pytest.mark.parametrize(
@@ -214,7 +215,7 @@ class TestAuthService:
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
         )
-        token = JWT.create("not_the_same_key", "test", []).encoded
+        token = JWT.create("not_the_same_key", "test", 0, []).encoded
         with pytest.raises(InvalidToken):
             await auth_service.decode_and_verify_token(token)
 
@@ -230,7 +231,7 @@ class TestAuthService:
             users_service=users_service_mock,
         )
         authenticated_user = AuthenticatedUser(
-            username=user.username, roles={UserRole.USER}
+            id=user.id, username=user.username, roles={UserRole.USER}
         )
         token = await auth_service.access_token(authenticated_user)
         assert len(token.encoded) > 0
@@ -249,7 +250,9 @@ class TestAuthService:
             users_service=users_service_mock,
         )
         authenticated_user = AuthenticatedUser(
-            username=admin.username, roles={UserRole.USER, UserRole.ADMIN}
+            id=admin.id,
+            username=admin.username,
+            roles={UserRole.USER, UserRole.ADMIN},
         )
         token = await auth_service.access_token(authenticated_user)
         assert len(token.encoded) > 0

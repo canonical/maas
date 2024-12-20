@@ -41,7 +41,7 @@ class TestAuthApi:
     ) -> None:
         services_mock.auth = Mock(AuthService)
         services_mock.auth.login.return_value = JWT.create(
-            "key", "username", [UserRole.USER]
+            "key", "username", 0, [UserRole.USER]
         )
         response = await mocked_api_client.post(
             f"{self.BASE_PATH}/login",
@@ -127,7 +127,7 @@ class TestAuthApi:
     ) -> None:
         services_mock.auth = Mock(AuthService)
         services_mock.auth.access_token.return_value = JWT.create(
-            "key", "username", [UserRole.USER]
+            "key", "username", 0, [UserRole.USER]
         )
 
         response = await mocked_api_client_user.get(
@@ -138,10 +138,9 @@ class TestAuthApi:
         token_response = AccessTokenResponse(**response.json())
         assert token_response.kind == "AccessToken"
         assert token_response.token_type == "bearer"
-        assert (
-            jwt.get_unverified_claims(token_response.access_token)["sub"]
-            == "username"
-        )
+        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        assert decoded_token["sub"] == "username"
+        assert decoded_token["user_id"] == 0
 
     async def test_get_access_token_with_session_id(
         self,
@@ -150,7 +149,7 @@ class TestAuthApi:
     ) -> None:
         services_mock.auth = Mock(AuthService)
         services_mock.auth.access_token.return_value = JWT.create(
-            "key", "username", [UserRole.USER]
+            "key", "username", 0, [UserRole.USER]
         )
         response = await mocked_api_client_session_id.get(
             f"{self.BASE_PATH}/access_token",
@@ -160,10 +159,9 @@ class TestAuthApi:
         token_response = AccessTokenResponse(**response.json())
         assert token_response.kind == "AccessToken"
         assert token_response.token_type == "bearer"
-        assert (
-            jwt.get_unverified_claims(token_response.access_token)["sub"]
-            == "username"
-        )
+        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        assert decoded_token["sub"] == "username"
+        assert decoded_token["user_id"] == 0
 
     @pytest.mark.skip
     async def test_get_access_token_with_macaroon(self):

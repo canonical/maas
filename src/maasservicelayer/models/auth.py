@@ -38,12 +38,17 @@ class AuthenticatedUser(BaseModel):
     """Represents the currently logged-in user with their permissions.
 
     Attributes:
+        id (int): the user ID
         username (str): the username of the user
         roles (UserRole): local roles that the user has, i.e. user or admin
         rbac_permissions (Optional[RBACPermissionsPools]): Contains the RBAC permissions for the user if RBAC
             is enabled. If RBAC is disabled, this attribute is set to `None`.
     """
 
+    id: int
     username: str
     roles: set[UserRole]
     rbac_permissions: Optional[RBACPermissionsPools] = Field(default=None)
+
+    def is_admin(self) -> bool:
+        return UserRole.ADMIN in self.roles
