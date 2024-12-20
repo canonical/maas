@@ -1,7 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
 from typing import List
+
+from pydantic import IPvAnyAddress
 
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -45,3 +46,10 @@ class ReservedIPsService(BaseService[ReservedIP, ReservedIPsRepository]):
 
     async def post_delete_many_hook(self, resources: List[ReservedIP]) -> None:
         raise NotImplementedError("Not implemented yet.")
+
+    async def exists_within_subnet_iprange(
+        self, subnet_id: int, start_ip: IPvAnyAddress, end_ip: IPvAnyAddress
+    ) -> bool:
+        return await self.repository.exists_within_subnet_ip_range(
+            subnet_id=subnet_id, start_ip=start_ip, end_ip=end_ip
+        )

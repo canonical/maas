@@ -125,7 +125,7 @@ def auth_app(
         return AccessTokenResponse(
             token_type="bearer",
             access_token=JWT.create(
-                jwt_key, username, [UserRole.USER]
+                jwt_key, username, 0, [UserRole.USER]
             ).encoded,
         )
 
@@ -136,7 +136,7 @@ def auth_app(
         return AccessTokenResponse(
             token_type="bearer",
             access_token=JWT.create(
-                "definitely_not_the_key", username, [UserRole.USER]
+                "definitely_not_the_key", username, 0, [UserRole.USER]
             ).encoded,
         )
 
@@ -145,6 +145,7 @@ def auth_app(
         # V3 endpoints have authenticated_user == None if no bearer tokens was provided
         if request.state.authenticated_user:
             return AuthenticatedUser(
+                id=request.state.authenticated_user.id,
                 username=request.state.authenticated_user.username,
                 roles=request.state.authenticated_user.roles,
             )
@@ -268,7 +269,7 @@ class TestV3AuthenticationMiddleware:
             macaroons_mock
         )
         authenticated_user = AuthenticatedUser(
-            username="admin", roles={UserRole.USER, UserRole.ADMIN}
+            id=0, username="admin", roles={UserRole.USER, UserRole.ADMIN}
         )
         macaroon_auth_provider_mock.authenticate.return_value = (
             authenticated_user
@@ -380,7 +381,7 @@ class TestDjangoSessionAuthenticationProvider:
 class TestLocalAuthenticationProvider:
 
     async def test_dispatch(self) -> None:
-        jwt = JWT.create("123", "test", [UserRole.USER])
+        jwt = JWT.create("123", "test", 0, [UserRole.USER])
         request = Mock(Request)
         request.state.services.auth = Mock(AuthService)
         request.state.services.auth.decode_and_verify_token.return_value = jwt
@@ -390,6 +391,7 @@ class TestLocalAuthenticationProvider:
 
         assert user.username == "test"
         assert user.roles == {UserRole.USER}
+        assert user.id == 0
 
     async def test_dispatch_unauthenticated(self) -> None:
         request = Mock(Request)

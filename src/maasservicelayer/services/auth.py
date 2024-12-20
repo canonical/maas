@@ -57,13 +57,14 @@ class AuthService(Service):
             else [UserRole.USER]
         )
         jwt_key = await self._get_or_create_cached_jwt_key()
-        return JWT.create(jwt_key, user.username, roles)
+        return JWT.create(jwt_key, user.username, user.id, roles)
 
     async def access_token(self, authenticated_user: AuthenticatedUser) -> JWT:
         jwt_key = await self._get_or_create_cached_jwt_key()
         return JWT.create(
             jwt_key,
             authenticated_user.username,
+            authenticated_user.id,
             list(authenticated_user.roles),
         )
 

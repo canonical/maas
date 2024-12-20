@@ -4,7 +4,9 @@
 from typing import Type
 
 from pydantic import IPvAnyAddress
-from sqlalchemy import join, Table
+from sqlalchemy import and_, cast, join, select, Table
+from sqlalchemy.dialects.postgresql import INET
+from sqlalchemy.sql.expression import exists
 from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
@@ -88,3 +90,15 @@ class ReservedIPsRepository(BaseRepository[ReservedIP]):
 
     def get_model_factory(self) -> Type[ReservedIP]:
         return ReservedIP
+
+    async def exists_within_subnet_ip_range(
+        self, subnet_id: int, start_ip: IPvAnyAddress, end_ip: IPvAnyAddress
+    ) -> bool:
+        stmt = select(1).where(
+            and_(
+                eq(ReservedIPTable.c.subnet_id, subnet_id),
+                cast(ReservedIPTable.c.ip, INET).between(start_ip, end_ip),
+            )
+        )
+        stmt = exists(stmt).select()
+        return (await self.connection.execute(stmt)).scalar()

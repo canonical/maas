@@ -221,11 +221,6 @@ class TestReservedIPsApi(ApiCommonTests):
     ) -> None:
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.create.return_value = TEST_RESERVEDIP
-        subnet_mock = Mock(Subnet)
-        subnet_mock.ip = 1
-        subnet_mock.cidr = IPv4Network(
-            f"{TEST_RESERVEDIP.ip}/24", strict=False
-        )
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,

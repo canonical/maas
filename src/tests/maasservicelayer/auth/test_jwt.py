@@ -12,33 +12,37 @@ from maasservicelayer.utils.date import utcnow
 
 class TestJWT:
     @pytest.mark.parametrize(
-        "key, subject, roles",
+        "key, subject, user_id, roles",
         [
-            ("123", "aa", []),
+            ("123", "aa", 0, []),
             (
                 "mykey",
                 "myusername",
+                0,
                 [UserRole.USER],
             ),
             (
                 "abcdfig",
                 "test",
+                1,
                 [UserRole.USER, UserRole.ADMIN],
             ),
             (
                 "",
                 "",
+                3,
                 [UserRole.USER, UserRole.ADMIN],
             ),
         ],
     )
     def test_create_and_decode(
-        self, key: str, subject: str, roles: Sequence[UserRole]
+        self, key: str, subject: str, user_id: int, roles: Sequence[UserRole]
     ) -> None:
         now = utcnow()
-        token = JWT.create(key, subject, roles)
+        token = JWT.create(key, subject, user_id, roles)
         assert token.subject == subject
         assert token.roles == roles
+        assert token.user_id == user_id
         assert token.issued >= now
         assert token.expiration == token.issued + timedelta(minutes=10)
         assert token.issuer == "MAAS"

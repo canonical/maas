@@ -344,6 +344,7 @@ IPRangeTable = Table(
     Column("start_ip", INET, nullable=False, unique=False),
     Column("end_ip", INET, nullable=False, unique=False),
     Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=True),
+    Column("comment", String(255), nullable=True, unique=False),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
 )

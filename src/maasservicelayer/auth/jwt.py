@@ -66,9 +66,13 @@ class JWT:
     def roles(self) -> list[UserRole]:
         return self.payload["roles"]
 
+    @cached_property
+    def user_id(self) -> int:
+        return self.payload["user_id"]
+
     @classmethod
     def create(
-        cls, key: str, subject: str, roles: Sequence[UserRole]
+        cls, key: str, subject: str, user_id: int, roles: Sequence[UserRole]
     ) -> "JWT":
         issued = utcnow()
         expiration = issued + cls.TOKEN_DURATION
@@ -80,6 +84,7 @@ class JWT:
             "exp": expiration.timestamp(),
             "aud": cls.AUDIENCE,
             # private claims
+            "user_id": user_id,
             "roles": roles,
         }
         encoded = jwt.encode(payload, key, algorithm=cls.TOKEN_ALGORITHM)

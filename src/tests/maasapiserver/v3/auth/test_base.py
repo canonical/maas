@@ -171,7 +171,7 @@ async def auth_client(
 class TestPermissionsFunctions:
     def _build_request(self, username: str, roles: set[UserRole]) -> str:
         return jsonable_encoder(
-            AuthenticatedUser(username=username, roles=roles)
+            AuthenticatedUser(id=0, username=username, roles=roles)
         )
 
     async def test_get_user(self, auth_client: AsyncClient) -> None:
