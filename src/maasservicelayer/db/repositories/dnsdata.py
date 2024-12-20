@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Self, Type
 
 from sqlalchemy import Table
 
@@ -11,19 +11,19 @@ from maasservicelayer.models.dnsdata import DNSData
 
 
 class DNSDataResourceBuilder(ResourceBuilder):
-    def with_rrtype(self, value: str) -> "DNSDataResourceBuilder":
+    def with_rrtype(self, value: str) -> Self:
         self._request.set_value(DNSDataTable.c.rrtype.name, value)
         return self
 
-    def with_rrdata(self, value: str) -> "DNSDataResourceBuilder":
+    def with_rrdata(self, value: str) -> Self:
         self._request.set_value(DNSDataTable.c.rrdata.name, value)
         return self
 
-    def with_dnsresource_id(self, id: int) -> "DNSDataResourceBuilder":
+    def with_dnsresource_id(self, id: int) -> Self:
         self._request.set_value(DNSDataTable.c.dnsresource_id.name, id)
         return self
 
-    def with_ttl(self, value: int) -> "DNSDataResourceBuilder":
+    def with_ttl(self, value: int) -> Self:
         self._request.set_value(DNSDataTable.c.ttl.name, value)
         return self
 

@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import List, Type
+from typing import List, Self, Type
 
 from django.core import signing
 from sqlalchemy import func, insert, select, Table, update
@@ -34,61 +34,57 @@ from maasservicelayer.utils.date import utcnow
 
 
 class UserResourceBuilder(ResourceBuilder):
-    def with_username(self, value: str) -> "UserResourceBuilder":
+    def with_username(self, value: str) -> Self:
         self._request.set_value(UserTable.c.username.name, value)
         return self
 
-    def with_first_name(self, value: str) -> "UserResourceBuilder":
+    def with_first_name(self, value: str) -> Self:
         self._request.set_value(UserTable.c.first_name.name, value)
         return self
 
-    def with_last_name(self, value: str) -> "UserResourceBuilder":
+    def with_last_name(self, value: str) -> Self:
         self._request.set_value(UserTable.c.last_name.name, value)
         return self
 
-    def with_is_active(self, value: bool) -> "UserResourceBuilder":
+    def with_is_active(self, value: bool) -> Self:
         self._request.set_value(UserTable.c.is_active.name, value)
         return self
 
-    def with_is_staff(self, value: bool) -> "UserResourceBuilder":
+    def with_is_staff(self, value: bool) -> Self:
         self._request.set_value(UserTable.c.is_staff.name, value)
         return self
 
-    def with_is_superuser(self, value: bool) -> "UserResourceBuilder":
+    def with_is_superuser(self, value: bool) -> Self:
         self._request.set_value(UserTable.c.is_superuser.name, value)
         return self
 
-    def with_email(self, value: str) -> "UserResourceBuilder":
+    def with_email(self, value: str) -> Self:
         self._request.set_value(UserTable.c.email.name, value)
         return self
 
-    def with_password(self, value: str) -> "UserResourceBuilder":
+    def with_password(self, value: str) -> Self:
         self._request.set_value(UserTable.c.password.name, value)
         return self
 
-    def with_date_joined(self, value: datetime) -> "UserResourceBuilder":
+    def with_date_joined(self, value: datetime) -> Self:
         self._request.set_value(UserTable.c.date_joined.name, value)
         return self
 
-    def with_last_login(self, value: datetime) -> "UserResourceBuilder":
+    def with_last_login(self, value: datetime) -> Self:
         self._request.set_value(UserTable.c.last_login.name, value)
         return self
 
 
 class UserProfileResourceBuilder(ResourceBuilder):
-    def with_auth_last_check(
-        self, value: datetime | None
-    ) -> "UserProfileResourceBuilder":
+    def with_auth_last_check(self, value: datetime | None) -> Self:
         self._request.set_value(UserProfileTable.c.auth_last_check.name, value)
         return self
 
-    def with_completed_intro(
-        self, value: bool
-    ) -> "UserProfileResourceBuilder":
+    def with_completed_intro(self, value: bool) -> Self:
         self._request.set_value(UserProfileTable.c.completed_intro.name, value)
         return self
 
-    def with_is_local(self, value: bool) -> "UserProfileResourceBuilder":
+    def with_is_local(self, value: bool) -> Self:
         self._request.set_value(UserProfileTable.c.is_local.name, value)
         return self
 

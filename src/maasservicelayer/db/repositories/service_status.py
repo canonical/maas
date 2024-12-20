@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from operator import eq
-from typing import Type
+from typing import Self, Type
 
 from sqlalchemy import Table
 
@@ -16,23 +16,19 @@ from maasservicelayer.models.service_status import ServiceStatus
 
 
 class ServiceStatusResourceBuilder(ResourceBuilder):
-    def with_name(self, value: ServiceName) -> "ServiceStatusResourceBuilder":
+    def with_name(self, value: ServiceName) -> Self:
         self._request.set_value(ServiceStatusTable.c.name.name, value)
         return self
 
-    def with_status(
-        self, value: ServiceStatusEnum
-    ) -> "ServiceStatusResourceBuilder":
+    def with_status(self, value: ServiceStatusEnum) -> Self:
         self._request.set_value(ServiceStatusTable.c.status.name, value)
         return self
 
-    def with_status_info(
-        self, value: str = ""
-    ) -> "ServiceStatusResourceBuilder":
+    def with_status_info(self, value: str = "") -> Self:
         self._request.set_value(ServiceStatusTable.c.status_info.name, value)
         return self
 
-    def with_node_id(self, value: int) -> "ServiceStatusResourceBuilder":
+    def with_node_id(self, value: int) -> Self:
         self._request.set_value(ServiceStatusTable.c.node_id.name, value)
         return self
 

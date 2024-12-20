@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Self
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -17,7 +19,7 @@ class ZoneResponse(HalResponse[BaseHal]):
     description: str
 
     @classmethod
-    def from_model(cls, zone: Zone, self_base_hyperlink: str):
+    def from_model(cls, zone: Zone, self_base_hyperlink: str) -> Self:
         return cls(
             id=zone.id,
             name=zone.name,

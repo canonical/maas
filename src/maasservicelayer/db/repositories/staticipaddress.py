@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional, Type
+from typing import List, Optional, Self, Type
 
 from pydantic import IPvAnyAddress
 from sqlalchemy import and_, func, select, Table
@@ -29,39 +29,29 @@ from maasservicelayer.models.subnets import Subnet
 
 
 class StaticIPAddressResourceBuilder(ResourceBuilder):
-    def with_ip(
-        self, ip: IPvAnyAddress | None
-    ) -> "StaticIPAddressResourceBuilder":
+    def with_ip(self, ip: IPvAnyAddress | None) -> Self:
         self._request.set_value(StaticIPAddressTable.c.ip.name, ip)
         return self
 
-    def with_alloc_type(
-        self, alloc_type: IpAddressType
-    ) -> "StaticIPAddressResourceBuilder":
+    def with_alloc_type(self, alloc_type: IpAddressType) -> Self:
         self._request.set_value(
             StaticIPAddressTable.c.alloc_type.name, alloc_type.value
         )
         return self
 
-    def with_lease_time(
-        self, lease_time: int
-    ) -> "StaticIPAddressResourceBuilder":
+    def with_lease_time(self, lease_time: int) -> Self:
         self._request.set_value(
             StaticIPAddressTable.c.lease_time.name, lease_time
         )
         return self
 
-    def with_temp_expires_on(
-        self, temp_expires_on: datetime.datetime
-    ) -> "StaticIPAddressResourceBuilder":
+    def with_temp_expires_on(self, temp_expires_on: datetime.datetime) -> Self:
         self._request.set_value(
             StaticIPAddressTable.c.temp_expires_on.name, temp_expires_on
         )
         return self
 
-    def with_subnet_id(
-        self, subnet_id: int
-    ) -> "StaticIPAddressResourceBuilder":
+    def with_subnet_id(self, subnet_id: int) -> Self:
         self._request.set_value(
             StaticIPAddressTable.c.subnet_id.name, subnet_id
         )

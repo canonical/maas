@@ -7,7 +7,7 @@ import dataclasses
 from functools import lru_cache, total_ordering
 from importlib.metadata import distribution
 import re
-from typing import Optional
+from typing import Optional, Self
 
 from packaging.version import Version
 
@@ -54,7 +54,7 @@ class MAASVersion:
         )
 
     @property
-    def main_version(self) -> "MAASVersion":
+    def main_version(self) -> Self:
         """Return a MAASVersion up to the qualifier."""
         return MAASVersion(
             self.major,

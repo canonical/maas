@@ -1,4 +1,4 @@
-from typing import List, Optional, Type
+from typing import List, Optional, Self, Type
 
 from sqlalchemy import delete, insert, select, Table
 from sqlalchemy.sql.operators import eq
@@ -34,15 +34,15 @@ class DNSResourceClauseFactory(ClauseFactory):
 
 
 class DNSResourceResourceBuilder(ResourceBuilder):
-    def with_name(self, value: str) -> "DNSResourceResourceBuilder":
+    def with_name(self, value: str) -> Self:
         self._request.set_value(DNSResourceTable.c.name.name, value)
         return self
 
-    def with_domain_id(self, value: int) -> "DNSResourceResourceBuilder":
+    def with_domain_id(self, value: int) -> Self:
         self._request.set_value(DNSResourceTable.c.domain_id.name, value)
         return self
 
-    def with_address_ttl(self, value: int) -> "DNSResourceResourceBuilder":
+    def with_address_ttl(self, value: int) -> Self:
         self._request.set_value(DNSResourceTable.c.address_ttl.name, value)
         return self
 

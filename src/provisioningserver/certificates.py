@@ -10,7 +10,7 @@ import random
 import re
 import secrets
 from tempfile import mkstemp
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional, Self, Tuple
 
 from OpenSSL import crypto
 
@@ -77,9 +77,7 @@ class Certificate(NamedTuple):
     ca_certs: Tuple[crypto.X509]
 
     @classmethod
-    def from_pem(
-        cls, *materials: str, ca_certs_material: str = ""
-    ) -> "Certificate":
+    def from_pem(cls, *materials: str, ca_certs_material: str = "") -> Self:
         """Return a Certificate from PEM encoded material.
 
         The `materials` items are concatened and they are expected to contain a
@@ -128,7 +126,7 @@ class Certificate(NamedTuple):
         organizational_unit_name: Optional[str] = None,
         key_bits: int = 4096,
         validity: timedelta = timedelta(days=3650),
-    ) -> "Certificate":
+    ) -> Self:
         """Low-level method for generating an X509 certificate.
 
         This should only be used in test and in cases where you don't have
@@ -163,7 +161,7 @@ class Certificate(NamedTuple):
         organizational_unit_name: Optional[str] = None,
         key_bits: int = 4096,
         validity: timedelta = timedelta(days=3650),
-    ) -> "Certificate":
+    ) -> Self:
         """Low-level method for generating a root X509 certificate.
 
         This should only be used in test and in cases where you don't have
@@ -195,7 +193,7 @@ class Certificate(NamedTuple):
         self,
         certificate_request: CertificateRequest,
         validity: timedelta = timedelta(days=3650),
-    ) -> "Certificate":
+    ) -> Self:
         """
         Sign a certificate request with the CA's private key.
 

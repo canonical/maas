@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Type
+from typing import Self, Type
 
 from sqlalchemy import Table
 
@@ -14,11 +14,11 @@ from maasservicelayer.models.spaces import Space
 
 
 class SpaceResourceBuilder(ResourceBuilder):
-    def with_name(self, name: str) -> "SpaceResourceBuilder":
+    def with_name(self, name: str) -> Self:
         self._request.set_value(SpaceTable.c.name.name, name)
         return self
 
-    def with_description(self, description: str) -> "SpaceResourceBuilder":
+    def with_description(self, description: str) -> Self:
         self._request.set_value(SpaceTable.c.description.name, description)
         return self
 

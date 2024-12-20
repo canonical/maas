@@ -8,7 +8,7 @@ from functools import total_ordering
 import os
 from pathlib import Path
 import re
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Self
 
 import yaml
 
@@ -61,7 +61,7 @@ class SnapChannel:
     _release_branch = re.compile("ubuntu-[0-9]{2}.[0-9]{2}$")
 
     @classmethod
-    def from_string(cls, string) -> "SnapChannel":
+    def from_string(cls, string) -> Self:
         """Return a SnapChannel from a Channel string."""
         return cls(*string.split("/"))
 

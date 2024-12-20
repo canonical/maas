@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
+from typing import Optional, Self
 
 from pydantic import IPvAnyAddress
 
@@ -32,7 +32,7 @@ class SubnetResponse(HalResponse[BaseHal]):
     disabled_boot_architectures: list[str]
 
     @classmethod
-    def from_model(cls, subnet: Subnet, self_base_hyperlink: str):
+    def from_model(cls, subnet: Subnet, self_base_hyperlink: str) -> Self:
         return cls(
             id=subnet.id,
             name=subnet.name,

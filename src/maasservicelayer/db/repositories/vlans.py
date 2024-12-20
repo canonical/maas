@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import List, Type
+from typing import List, Self, Type
 
 from sqlalchemy import select, Table
 from sqlalchemy.sql.operators import eq, or_
@@ -58,7 +58,7 @@ class VlansClauseFactory(ClauseFactory):
 
 
 class VlanResourceBuilder(ResourceBuilder):
-    def with_vid(self, vid: int | None = None) -> "VlanResourceBuilder":
+    def with_vid(self, vid: int | None = None) -> Self:
         if vid is not None and (vid < 0 or vid > 4094):
             raise ValidationException(
                 details=[
@@ -71,20 +71,18 @@ class VlanResourceBuilder(ResourceBuilder):
         self._request.set_value(VlanTable.c.vid.name, vid or DEFAULT_VID)
         return self
 
-    def with_name(self, name: str | None = None) -> "VlanResourceBuilder":
+    def with_name(self, name: str | None = None) -> Self:
         self._request.set_value(VlanTable.c.name.name, name)
         return self
 
-    def with_description(
-        self, description: str | None = None
-    ) -> "VlanResourceBuilder":
+    def with_description(self, description: str | None = None) -> Self:
         if not description:
             # inherited from the django model where it's optional in the request and empty by default.
             description = ""
         self._request.set_value(VlanTable.c.description.name, description)
         return self
 
-    def with_mtu(self, mtu: int | None = None) -> "VlanResourceBuilder":
+    def with_mtu(self, mtu: int | None = None) -> Self:
         if mtu is not None and (mtu < 552 or mtu > 65535):
             raise ValidationException(
                 details=[
@@ -97,39 +95,31 @@ class VlanResourceBuilder(ResourceBuilder):
         self._request.set_value(VlanTable.c.mtu.name, mtu or DEFAULT_MTU)
         return self
 
-    def with_dhcp_on(self, dhcp_on: bool) -> "VlanResourceBuilder":
+    def with_dhcp_on(self, dhcp_on: bool) -> Self:
         self._request.set_value(VlanTable.c.dhcp_on.name, dhcp_on)
         return self
 
-    def with_fabric_id(self, fabric_id: int) -> "VlanResourceBuilder":
+    def with_fabric_id(self, fabric_id: int) -> Self:
         self._request.set_value(VlanTable.c.fabric_id.name, fabric_id)
         return self
 
-    def with_space_id(
-        self, space_id: int | None = None
-    ) -> "VlanResourceBuilder":
+    def with_space_id(self, space_id: int | None = None) -> Self:
         self._request.set_value(VlanTable.c.space_id.name, space_id)
         return self
 
-    def with_primary_rack_id(
-        self, primary_rack_id: int | None
-    ) -> "VlanResourceBuilder":
+    def with_primary_rack_id(self, primary_rack_id: int | None) -> Self:
         self._request.set_value(
             VlanTable.c.primary_rack_id.name, primary_rack_id
         )
         return self
 
-    def with_secondary_rack_id(
-        self, secondary_rack_id: int | None
-    ) -> "VlanResourceBuilder":
+    def with_secondary_rack_id(self, secondary_rack_id: int | None) -> Self:
         self._request.set_value(
             VlanTable.c.secondary_rack_id.name, secondary_rack_id
         )
         return self
 
-    def with_relay_vlan_id(
-        self, relay_vlan_id: int | None
-    ) -> "VlanResourceBuilder":
+    def with_relay_vlan_id(self, relay_vlan_id: int | None) -> Self:
         self._request.set_value(VlanTable.c.relay_vlan_id.name, relay_vlan_id)
         return self
 

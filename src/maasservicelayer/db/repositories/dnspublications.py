@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Type
+from typing import Self, Type
 
 from sqlalchemy import desc, select, Table
 
@@ -14,15 +14,15 @@ from maasservicelayer.models.dnspublications import DNSPublication
 
 
 class DNSPublicationResourceBuilder(ResourceBuilder):
-    def with_serial(self, serial: int) -> "DNSPublicationResourceBuilder":
+    def with_serial(self, serial: int) -> Self:
         self._request.set_value(DNSPublicationTable.c.serial.name, serial)
         return self
 
-    def with_source(self, source: str) -> "DNSPublicationResourceBuilder":
+    def with_source(self, source: str) -> Self:
         self._request.set_value(DNSPublicationTable.c.source.name, source)
         return self
 
-    def with_update(self, update: str) -> "DNSPublicationResourceBuilder":
+    def with_update(self, update: str) -> Self:
         self._request.set_value(DNSPublicationTable.c.update_str.name, update)
         return self
 

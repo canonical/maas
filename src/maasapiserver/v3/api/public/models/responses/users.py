@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Self
 
 from pydantic import BaseModel
 
@@ -36,7 +36,7 @@ class UserResponse(HalResponse[BaseHal]):
     last_login: Optional[datetime]
 
     @classmethod
-    def from_model(cls, user: User, self_base_hyperlink: str):
+    def from_model(cls, user: User, self_base_hyperlink: str) -> Self:
         return cls(
             id=user.id,
             username=user.username,

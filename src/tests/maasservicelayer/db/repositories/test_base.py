@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Type
+from typing import Self, Type
 
 import pytest
 from sqlalchemy import (
@@ -79,7 +79,7 @@ class AModel(MaasTimestampedBaseModel):
 
 
 class AResourceBuilder(ResourceBuilder):
-    def with_data(self, data: str) -> "AResourceBuilder":
+    def with_data(self, data: str) -> Self:
         self._request.set_value("data", data)
         return self
 
