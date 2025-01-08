@@ -1,9 +1,11 @@
+from ssl import SSLSocket
 from unittest.mock import Mock
 from uuid import uuid4
 
 from OpenSSL import crypto
 
 from maasserver.models import Config
+from maasserver.testing import get_binary_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 import maasserver.utils.certificates as certificates
@@ -112,10 +114,14 @@ class TestGetSLLCertificate(MAASServerTestCase):
 
     def test_get_certificate(self):
         # fingerprint will eventually change due to certs changing
+        launchpad_crt = get_binary_data("data/launchpad.crt")
+        mock_getpeercert = self.patch(SSLSocket, "getpeercert")
+        mock_getpeercert.return_value = launchpad_crt
         (cert, _) = get_ssl_certificate("https://launchpad.net")
         self.assertEqual("launchpad.net", cert.get_subject().CN)
         self.assertEqual(
-            "R10",
+            "R11",
             cert.get_issuer().CN,
         )
         self.assertEqual("Let's Encrypt", cert.get_issuer().O)
+        mock_getpeercert.assert_called_once_with(True)

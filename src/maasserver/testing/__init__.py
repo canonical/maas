@@ -56,12 +56,32 @@ def get_data(filename):
 
     :param filename: A file path relative to `src/maasserver/tests` in
         this branch.
+    :return: the content of the file as `str`.
+    """
+    return _get_data(filename, "r")
+
+
+def get_binary_data(filename):
+    """Read the content of a file in `src/maasserver/tests`.
+
+    Some tests use this to read fixed data stored in files in
+    `src/maasserver/tests/data/`.
+
+    Where possible, provide data in-line in tests, or use fakes, to keep the
+    information close to the tests that rely on it.
+
+    :param filename: A file path relative to `src/maasserver/tests` in
+        this branch.
     :return: Binary contents of the file, as `bytes`.
     """
+    return _get_data(filename, "rb")
+
+
+def _get_data(filename: str, mode: str = "r"):
     path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "tests", filename
     )
-    with open(path) as fd:
+    with open(path, mode) as fd:
         return fd.read()
 
 
