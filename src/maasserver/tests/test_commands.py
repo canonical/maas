@@ -16,7 +16,7 @@ from requests.exceptions import RequestException
 from apiclient.creds import convert_tuple_to_string
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.management.commands import changepasswords, createadmin
-import maasserver.models.keysource as keysource_module
+import maasserver.models.sshkey as sshkey_module
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.user import get_creds_tuple
 from maasserver.secrets import SecretManager
@@ -69,7 +69,7 @@ class TestCommands(MAASServerTestCase):
         )
         email = factory.make_email_address()
         self.patch(createadmin, "prompt_for_password").return_value = password
-        self.patch(keysource_module.KeySource, "import_keys")
+        self.patch(SSHKey.objects, "from_keysource")
 
         call_command(
             "createadmin",
@@ -99,7 +99,7 @@ class TestCommands(MAASServerTestCase):
         email = factory.make_email_address()
         prompt_for_password = self.patch(createadmin, "prompt_for_password")
         prompt_for_password.return_value = factory.make_string()
-        self.patch(keysource_module.KeySource, "import_keys")
+        self.patch(SSHKey.objects, "from_keysource")
 
         call_command(
             "createadmin",
@@ -126,7 +126,7 @@ class TestCommands(MAASServerTestCase):
             factory.make_name("user-id"),
         )
         self.patch(createadmin, "prompt_for_username").return_value = username
-        self.patch(keysource_module.KeySource, "import_keys")
+        self.patch(SSHKey.objects, "from_keysource")
 
         call_command(
             "createadmin",
@@ -153,7 +153,7 @@ class TestCommands(MAASServerTestCase):
             factory.make_name("user-id"),
         )
         self.patch(createadmin, "prompt_for_email").return_value = email
-        self.patch(keysource_module.KeySource, "import_keys")
+        self.patch(SSHKey.objects, "from_keysource")
 
         call_command(
             "createadmin",
@@ -202,7 +202,7 @@ class TestCommands(MAASServerTestCase):
         self.patch(createadmin, "prompt_for_ssh_import").return_value = (
             ssh_import
         )
-        self.patch(keysource_module.KeySource, "import_keys")
+        self.patch(SSHKey.objects, "from_keysource")
 
         call_command(
             "createadmin",
@@ -231,9 +231,7 @@ class TestCommands(MAASServerTestCase):
         user_id = factory.make_name("user-id")
         ssh_import = f"{protocol}:{user_id}"
         key_string = get_data("data/test_rsa0.pub")
-        mock_get_protocol_keys = self.patch(
-            keysource_module, "get_protocol_keys"
-        )
+        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
         mock_get_protocol_keys.return_value = [key_string]
         call_command(
             "createadmin",
@@ -246,7 +244,6 @@ class TestCommands(MAASServerTestCase):
         )
         user = get_one(User.objects.filter(username=username))
         sshkey = get_one(SSHKey.objects.filter(user=user))
-
         self.assertEqual(stderr.getvalue().strip(), "")
         self.assertEqual(stdout.getvalue().strip(), "")
 
@@ -265,9 +262,9 @@ class TestCommands(MAASServerTestCase):
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
-        self.patch(
-            keysource_module.KeySource.objects, "save_keys_for_user"
-        ).side_effect = RequestException("error")
+        self.patch(SSHKey.objects, "from_keysource").side_effect = (
+            RequestException("error")
+        )
         self.assertRaises(
             createadmin.SSHKeysError,
             call_command,

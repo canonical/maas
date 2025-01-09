@@ -8,6 +8,7 @@ from django.utils.safestring import SafeString
 
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models import SSHKey, sshkey
+import maasserver.models.sshkey as sshkey_module
 from maasserver.models.sshkey import (
     get_html_display_for_key,
     HELLIPSIS,
@@ -267,12 +268,15 @@ class TestSSHKey(MAASServerTestCase):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         auth_id = factory.make_name("auth_id")
-        keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
-        key = SSHKey(key=key_string, user=user, keysource=keysource)
+        key = SSHKey(
+            key=key_string, user=user, protocol=protocol, auth_id=auth_id
+        )
         key.save()
-        key2 = SSHKey(key=key_string, user=user, keysource=keysource)
+        key2 = SSHKey(
+            key=key_string, user=user, protocol=protocol, auth_id=auth_id
+        )
         self.assertRaises(ValidationError, key2.full_clean)
 
     def test_sshkey_user_and_key_unique_together_change_key(self):
@@ -280,30 +284,37 @@ class TestSSHKey(MAASServerTestCase):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         auth_id = factory.make_name("auth_id")
-        keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         key_string1 = get_data("data/test_rsa1.pub")
         key_string2 = get_data("data/test_rsa2.pub")
         user = factory.make_User()
-        key1 = SSHKey(key=key_string1, user=user, keysource=keysource)
+        key1 = SSHKey(
+            key=key_string1, user=user, protocol=protocol, auth_id=auth_id
+        )
         key1.save()
-        key2 = SSHKey(key=key_string2, user=user, keysource=keysource)
+        key2 = SSHKey(
+            key=key_string2, user=user, protocol=protocol, auth_id=auth_id
+        )
         key2.save()
         key2.key = key1.key
         self.assertRaises(ValidationError, key2.full_clean)
 
     def test_sshkey_same_key_can_be_used_by_different_sources(self):
         auth_id = factory.make_name("auth_id")
-        keysource1 = factory.make_KeySource(
-            protocol=KEYS_PROTOCOL_TYPE.LP, auth_id=auth_id
-        )
-        keysource2 = factory.make_KeySource(
-            protocol=KEYS_PROTOCOL_TYPE.GH, auth_id=auth_id
-        )
         key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
-        key1 = SSHKey(key=key_string, user=user, keysource=keysource1)
+        key1 = SSHKey(
+            key=key_string,
+            user=user,
+            protocol=KEYS_PROTOCOL_TYPE.LP,
+            auth_id=auth_id,
+        )
         key1.save()
-        key2 = SSHKey(key=key_string, user=user, keysource=keysource2)
+        key2 = SSHKey(
+            key=key_string,
+            user=user,
+            protocol=KEYS_PROTOCOL_TYPE.GH,
+            auth_id=auth_id,
+        )
         key2.save()
         self.assertIsNone(key2.full_clean())
 
@@ -332,3 +343,57 @@ class TestSSHKeyManager(MAASServerTestCase):
         factory.make_user_with_keys(n_keys=2)
         keys = SSHKey.objects.get_keys_for_user(user1)
         self.assertCountEqual([key.key for key in created_keys], keys)
+
+    def test_import_keys_with_no_keys(self):
+        user = factory.make_User()
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+        )
+        auth_id = factory.make_name("auth_id")
+        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
+        mock_get_protocol_keys.return_value = []
+        SSHKey.objects.from_keysource(user, protocol, auth_id)
+        mock_get_protocol_keys.assert_called_once_with(protocol, auth_id)
+        self.assertFalse(SSHKey.objects.all().exists())
+
+    def test_import_keys_with_keys(self):
+        user = factory.make_User()
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+        )
+        auth_id = factory.make_name("auth_id")
+        keys = get_data("data/test_rsa0.pub") + get_data("data/test_rsa1.pub")
+        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
+        mock_get_protocol_keys.return_value = keys.strip().split("\n")
+        returned_sshkeys = SSHKey.objects.from_keysource(
+            user, protocol, auth_id
+        )
+        mock_get_protocol_keys.assert_called_once_with(protocol, auth_id)
+        self.assertEqual(SSHKey.objects.count(), 2)
+        self.assertCountEqual(
+            returned_sshkeys,
+            SSHKey.objects.filter(protocol=protocol, auth_id=auth_id),
+        )
+
+    def test_import_keys_source_exists_doesnt_remove_keys(self):
+        user = factory.make_User()
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+        )
+        auth_id = factory.make_name("auth_id")
+        keys = get_data("data/test_rsa0.pub") + get_data("data/test_rsa1.pub")
+        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
+        mock_get_protocol_keys.return_value = keys.strip().split("\n")
+        returned_sshkeys = SSHKey.objects.from_keysource(
+            user, protocol, auth_id
+        )
+        # only return one key
+        keys = get_data("data/test_rsa0.pub")
+        mock_get_protocol_keys.return_value = keys.strip().split("\n")
+        SSHKey.objects.from_keysource(user, protocol, auth_id)
+        # no key is removed
+        self.assertEqual(2, SSHKey.objects.count())
+        self.assertCountEqual(
+            returned_sshkeys,
+            SSHKey.objects.filter(protocol=protocol, auth_id=auth_id),
+        )

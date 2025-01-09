@@ -21,7 +21,7 @@ from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT, KEYS_PROTOCOL_TYPE
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
-from maasserver.models import KeySource, SSHKey
+from maasserver.models import SSHKey
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from provisioningserver.events import EVENT_TYPES
@@ -131,7 +131,7 @@ class SSHKeysHandler(OperationsHandler):
                 protocol = KEYS_PROTOCOL_TYPE.LP
                 auth_id = keysource
             try:
-                keysource = KeySource.objects.save_keys_for_user(
+                keysource = SSHKey.objects.from_keysource(
                     user=request.user, protocol=protocol, auth_id=auth_id
                 )
                 create_audit_event(
@@ -227,8 +227,8 @@ class SSHKeyHandler(OperationsHandler):
     @classmethod
     def keysource(cls, sshkey):
         keysource = ""
-        if sshkey.keysource is not None:
-            keysource = str(sshkey.keysource)
+        if sshkey.protocol is not None and sshkey.auth_id is not None:
+            keysource = f"{sshkey.protocol}:{sshkey.auth_id}"
         return keysource
 
     @classmethod
