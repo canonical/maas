@@ -3,6 +3,8 @@ from typing import Any
 
 from django.core import signing
 
+from maascommon.enums.sshkeys import SshKeysProtocolType
+from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.models.users import Consumer, Token, User, UserProfile
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
@@ -108,3 +110,25 @@ async def create_test_user_token(
 
     [created_token] = await fixture.create("piston3_token", [token])
     return Token(**created_token)
+
+
+async def create_test_user_sshkey(
+    fixture: Fixture,
+    key: str,
+    user_id: int,
+    protocol: SshKeysProtocolType | None = None,
+    auth_id: str | None = None,
+    **extra_details: Any
+) -> SshKey:
+    now = utcnow()
+    ssh_key = {
+        "key": key,
+        "protocol": protocol,
+        "auth_id": auth_id,
+        "created": now,
+        "updated": now,
+        "user_id": user_id,
+    }
+    ssh_key.update(extra_details)
+    [created_sshkey] = await fixture.create("maasserver_sshkey", [ssh_key])
+    return SshKey(**created_sshkey)

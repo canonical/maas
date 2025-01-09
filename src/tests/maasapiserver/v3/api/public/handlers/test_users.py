@@ -17,11 +17,13 @@ from maasapiserver.v3.api.public.models.requests.query import (
 )
 from maasapiserver.v3.api.public.models.requests.users import UserRequest
 from maasapiserver.v3.api.public.models.responses.users import (
+    SshKeysListResponse,
     UserInfoResponse,
     UserResponse,
     UsersListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.sshkeys import SshKeysProtocolType
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -31,9 +33,11 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.models.users import User
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -67,6 +71,16 @@ USER_2 = User(
     date_joined=utcnow(),
     email="bob@company.com",
     last_login=None,
+)
+
+SSHKEY_1 = SshKey(id=1, key="ssh-rsa randomkey comment", user_id=1)
+
+SSHKEY_2 = SshKey(
+    id=1,
+    key="ssh-ed25519 randomkey comment",
+    user_id=1,
+    protocol=SshKeysProtocolType.LP,
+    auth_id="foo",
 )
 
 
@@ -506,3 +520,56 @@ class TestUsersApi(ApiCommonTests):
 
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+
+class TestSshKeyApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/users/me/sshkeys"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_user_sshkeys_has_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.sshkeys = Mock(SshKeysService)
+        services_mock.sshkeys.list.return_value = ListResult[SshKey](
+            items=[SSHKEY_1], next_token=str(SSHKEY_2.id)
+        )
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?size=1",
+        )
+
+        assert response.status_code == 200
+        sshkeys_response = SshKeysListResponse(**response.json())
+        assert len(sshkeys_response.items) == 1
+        assert (
+            sshkeys_response.next
+            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(SSHKEY_2.id), size='1')}"
+        )
+
+    async def test_list_user_sshkeys_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.sshkeys = Mock(SshKeysService)
+        services_mock.sshkeys.list.return_value = ListResult[SshKey](
+            items=[SSHKEY_1, SSHKEY_2]
+        )
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?size=2",
+        )
+
+        assert response.status_code == 200
+        sshkeys_response = SshKeysListResponse(**response.json())
+        assert len(sshkeys_response.items) == 2
+        assert sshkeys_response.next is None
