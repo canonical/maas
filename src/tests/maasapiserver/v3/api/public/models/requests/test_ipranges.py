@@ -9,6 +9,7 @@ import pytest
 
 from maasapiserver.v3.api.public.models.requests.ipranges import (
     IPRangeCreateRequest,
+    IPRangeUpdateRequest,
 )
 from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.subnet import RdnsMode
@@ -169,19 +170,6 @@ class TestIPRangeCreateRequest:
 
     async def test_reserved_range_user_with_owner(self):
         user = AuthenticatedUser(id=0, username="test", roles={UserRole.USER})
-        with pytest.raises(ForbiddenException):
-            iprange = IPRangeCreateRequest(
-                type=IPRangeType.RESERVED,
-                start_ip=IPv4Address("10.0.0.1"),
-                end_ip=IPv4Address("10.0.0.2"),
-                owner_id=1,
-            )
-            await iprange.to_builder(
-                self.TEST_IPV4_SUBNET, user, Mock(ServiceCollectionV3)
-            )
-
-    async def test_reserved_range_user_with_owner_forbidden(self):
-        user = AuthenticatedUser(id=0, username="test", roles={UserRole.USER})
         iprange = IPRangeCreateRequest(
             type=IPRangeType.RESERVED,
             start_ip=IPv4Address("10.0.0.1"),
@@ -245,4 +233,15 @@ class TestIPRangeCreateRequest:
         assert (
             e.value.details[0].message
             == "IPv6 dynamic range must be at least 256 addresses in size."
+        )
+
+
+class TestIPRangeUpdateRequest:
+    def test_mandatory_params(self):
+        with pytest.raises(ValidationError) as e:
+            IPRangeUpdateRequest()
+
+        assert len(e.value.errors()) == 4
+        assert {"type", "start_ip", "end_ip", "owner_id"} == set(
+            [f["loc"][0] for f in e.value.errors()]
         )
