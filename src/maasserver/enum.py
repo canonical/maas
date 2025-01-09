@@ -56,6 +56,7 @@ from maascommon.enums.node import (
     NodeTypeEnum,
     SimplifiedNodeStatusEnum,
 )
+from maascommon.enums.sshkeys import SshKeysProtocolType
 from maascommon.enums.subnet import RdnsMode
 from provisioningserver.enum import enum_choices
 
@@ -878,10 +879,10 @@ class KEYS_PROTOCOL_TYPE:
     """The vocabulary of possible protocol types for `KeySource`."""
 
     # Launchpad
-    LP = "lp"
+    LP = SshKeysProtocolType.LP.value
 
     # Github
-    GH = "gh"
+    GH = SshKeysProtocolType.GH.value
 
 
 KEYS_PROTOCOL_TYPE_CHOICES = (
