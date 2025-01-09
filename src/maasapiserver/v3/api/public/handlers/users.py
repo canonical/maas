@@ -58,6 +58,7 @@ class UsersHandler(Handler):
         return [
             "get_user_info",
             "list_user_sshkeys",
+            "get_user_sshkey",
             "list_users",
             "get_user",
             "create_user",
@@ -303,4 +304,53 @@ class UsersHandler(Handler):
                 if ssh_keys.next_token
                 else None
             ),
+        )
+
+    @handler(
+        path="/users/me/sshkeys/{sshkey_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": SshKeyResponse,
+            },
+            401: {"model": UnauthorizedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_user_sshkey(
+        self,
+        sshkey_id: int,
+        response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        assert authenticated_user is not None
+        ssh_key = await services.sshkeys.get_one(
+            query=QuerySpec(
+                where=SshKeyClauseFactory.and_clauses(
+                    [
+                        SshKeyClauseFactory.with_id(sshkey_id),
+                        SshKeyClauseFactory.with_user_id(
+                            authenticated_user.id
+                        ),
+                    ]
+                )
+            ),
+        )
+
+        if not ssh_key:
+            return NotFoundResponse()
+
+        response.headers["ETag"] = ssh_key.etag()
+
+        return SshKeyResponse.from_model(
+            ssh_key,
+            self_base_hyperlink=f"{V3_API_PREFIX}/users/me/sshkeys",
         )

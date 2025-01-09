@@ -14,6 +14,10 @@ from maasservicelayer.models.sshkeys import SshKey
 
 class SshKeyClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(SshKeyTable.c.id, id))
+
+    @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(SshKeyTable.c.user_id, user_id))
 

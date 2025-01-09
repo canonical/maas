@@ -20,6 +20,17 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestSshKeyClauseFactory:
+    def test_with_id(self) -> None:
+        clause = SshKeyClauseFactory.with_id(1)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_sshkey.id = 1"
+        )
+
     def test_with_user_id(self) -> None:
         clause = SshKeyClauseFactory.with_user_id(1)
         assert (
