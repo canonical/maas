@@ -10,7 +10,6 @@ from django.http import HttpRequest
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.forms import SSHKeyForm
-from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.websockets.base import HandlerError, HandlerValidationError
@@ -25,6 +24,7 @@ class SSHKeyHandler(TimestampedModelHandler):
         queryset = SSHKey.objects.all()
         allowed_methods = ["list", "get", "create", "delete", "import_keys"]
         listen_channels = ["sshkey"]
+        exclude = ["protocol", "auth_id"]
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for SSH keys owned by `user`."""
@@ -34,19 +34,16 @@ class SSHKeyHandler(TimestampedModelHandler):
         """Only allow getting keys owned by the user."""
         return super().get_own_object(params, permission=permission)
 
-    def dehydrate_keysource(self, keysource):
-        """Dehydrate the keysource to include protocol and auth_id."""
-        if keysource is None:
-            return None
-        else:
-            return {
-                "protocol": keysource.protocol,
-                "auth_id": keysource.auth_id,
-            }
-
     def dehydrate(self, obj, data, for_list=False):
-        """Add display to the SSH key."""
+        """Add display and keysource to the SSH key."""
         data["display"] = obj.display_html(70)
+        if obj.protocol is not None and obj.auth_id is not None:
+            data["keysource"] = {
+                "protocol": obj.protocol,
+                "auth_id": obj.auth_id,
+            }
+        else:
+            data["keysource"] = None
         return data
 
     def create(self, params):
@@ -74,7 +71,7 @@ class SSHKeyHandler(TimestampedModelHandler):
         protocol:auth_id format.
         """
         try:
-            KeySource.objects.save_keys_for_user(
+            SSHKey.objects.from_keysource(
                 user=self.user,
                 protocol=params["protocol"],
                 auth_id=params["auth_id"],

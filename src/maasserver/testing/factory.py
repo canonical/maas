@@ -66,7 +66,6 @@ from maasserver.models import (
     FilesystemGroup,
     ForwardDNSServer,
     IPRange,
-    KeySource,
     LicenseKey,
     MDNS,
     Neighbour,
@@ -1383,29 +1382,18 @@ class Factory(maastesting.factory.Factory):
                 node.save()
         return pool
 
-    def make_KeySource(self, protocol=None, auth_id=None, auto_update=False):
+    def make_SSHKey(self, user, key_string=None, protocol=None, auth_id=None):
+        if key_string is None:
+            key_string = get_data("data/test_rsa0.pub")
         if protocol is None:
             protocol = random.choice(
                 [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
             )
         if auth_id is None:
             auth_id = factory.make_name("auth_id")
-        keysource = KeySource(
-            protocol=protocol, auth_id=auth_id, auto_update=auto_update
+        key = SSHKey(
+            key=key_string, user=user, protocol=protocol, auth_id=auth_id
         )
-        keysource.save()
-        return keysource
-
-    def make_SSHKey(self, user, key_string=None, keysource=None):
-        if key_string is None:
-            key_string = get_data("data/test_rsa0.pub")
-        if keysource is None:
-            keysource = self.make_KeySource(
-                protocol=random.choice(
-                    [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
-                )
-            )
-        key = SSHKey(key=key_string, user=user, keysource=keysource)
         key.save()
         return key
 
@@ -2097,11 +2085,11 @@ class Factory(maastesting.factory.Factory):
         return tag
 
     def make_user_with_keys(
-        self, n_keys=2, user=None, keysource=None, **kwargs
+        self, n_keys=2, user=None, protocol=None, auth_id=None, **kwargs
     ):
         """Create a user with n `SSHKey`.  If user is not None, use this user
-        instead of creating one.  If keysource is not None, use this keysource
-        instaed of creating one.
+        instead of creating one.  If protocol is not None, use this protocol
+        instead of creating one. If auth_id is not None, use this auth_id instead of creating one.
 
         Additional keyword arguments are passed to `make_user()`.
         """
@@ -2113,12 +2101,18 @@ class Factory(maastesting.factory.Factory):
             )
         if user is None:
             user = self.make_User(**kwargs)
-        if keysource is None:
-            keysource = self.make_KeySource()
+        if protocol is None:
+            protocol = random.choice(
+                [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
+            )
+        if auth_id is None:
+            auth_id = factory.make_name("auth_id")
         keys = []
         for i in range(n_keys):
             key_string = get_data("data/test_rsa%d.pub" % i)
-            key = SSHKey(user=user, key=key_string, keysource=keysource)
+            key = SSHKey(
+                user=user, key=key_string, protocol=protocol, auth_id=auth_id
+            )
             key.save()
             keys.append(key)
         return user, keys

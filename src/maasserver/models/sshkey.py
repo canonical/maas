@@ -8,12 +8,13 @@ from html import escape
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db.models import CASCADE, ForeignKey, Manager, TextField
+from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 from django.utils.safestring import mark_safe
 
+from maasserver.enum import KEYS_PROTOCOL_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.keysource import KeySource
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.keys import get_protocol_keys
 from provisioningserver.utils.sshkey import normalise_openssh_public_key
 
 
@@ -23,6 +24,23 @@ class SSHKeyManager(Manager):
     def get_keys_for_user(self, user):
         """Return the text of the ssh keys associated with a user."""
         return SSHKey.objects.filter(user=user).values_list("key", flat=True)
+
+    def from_keysource(self, user: User, protocol: str, auth_id: str):
+        """Save SSH Keys for user's protocol and auth_id.
+
+        :param user: The user to save the SSH keys for.
+        :param protocol: The protocol 'source'.
+        :param auth_id: The protocol username.
+        :return: List of imported `SSHKey`s.
+        """
+
+        keys = get_protocol_keys(protocol, auth_id)
+        return [
+            self.get_or_create(
+                key=key, user=user, protocol=protocol, auth_id=auth_id
+            )[0]
+            for key in keys
+        ]
 
 
 def validate_ssh_public_key(value):
@@ -94,7 +112,8 @@ class SSHKey(CleanSave, TimestampedModel):
 
     :ivar user: The user which owns the key.
     :ivar key: The SSH public key.
-    :ivar keysource: The KeySource that this SSH key belongs to.
+    :ivar protocol: The source protocol from which the SSH key is pulled.
+    :ivar auth_id: The username associated with the protocol.
     """
 
     objects = SSHKeyManager()
@@ -105,9 +124,15 @@ class SSHKey(CleanSave, TimestampedModel):
         null=False, editable=True, validators=[validate_ssh_public_key]
     )
 
-    keysource = ForeignKey(
-        KeySource, null=True, blank=True, editable=False, on_delete=CASCADE
+    protocol = CharField(
+        max_length=64,
+        null=True,
+        editable=True,
+        choices=KEYS_PROTOCOL_TYPE_CHOICES,
+        blank=True,
     )
+
+    auth_id = CharField(max_length=255, null=True, editable=True, blank=True)
 
     class Meta:
         verbose_name = "SSH key"
@@ -134,7 +159,10 @@ class SSHKey(CleanSave, TimestampedModel):
         """
         super().clean(*args, **kwargs)
         duplicated_key = SSHKey.objects.filter(
-            keysource=self.keysource, user=self.user, key=self.key
+            user=self.user,
+            key=self.key,
+            protocol=self.protocol,
+            auth_id=self.auth_id,
         ).exclude(id=self.id)
         if duplicated_key.exists():
             raise ValidationError(

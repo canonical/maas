@@ -14,7 +14,7 @@ import requests
 from maascli.init import read_input
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.macaroon_auth import external_auth_enabled
-from maasserver.models.keysource import KeySource
+from maasserver.models import SSHKey
 from maasserver.utils.keys import ImportSSHKeysError
 
 
@@ -173,7 +173,7 @@ class Command(BaseCommand):
                 protocol, auth_id = validate_ssh_import(ssh_import)
                 user = User.objects.get(username=username)
                 try:
-                    KeySource.objects.save_keys_for_user(
+                    SSHKey.objects.from_keysource(
                         user=user, protocol=protocol, auth_id=auth_id
                     )
                 except (

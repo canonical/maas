@@ -5,7 +5,6 @@
 
 
 from maasserver.models.event import Event
-from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
@@ -21,10 +20,10 @@ from provisioningserver.events import AUDIT
 class TestSSHKeyHandler(MAASServerTestCase):
     def dehydrate_sshkey(self, sshkey):
         keysource = None
-        if sshkey.keysource is not None:
+        if sshkey.protocol is not None and sshkey.auth_id is not None:
             keysource = {
-                "protocol": sshkey.keysource.protocol,
-                "auth_id": sshkey.keysource.auth_id,
+                "protocol": sshkey.protocol,
+                "auth_id": sshkey.auth_id,
             }
         data = {
             "id": sshkey.id,
@@ -82,7 +81,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
         handler = SSHKeyHandler(user, {}, None)
         protocol = factory.make_name("protocol")
         auth_id = factory.make_name("auth")
-        mock_save_keys = self.patch(KeySource.objects, "save_keys_for_user")
+        mock_save_keys = self.patch(SSHKey.objects, "from_keysource")
         handler.import_keys({"protocol": protocol, "auth_id": auth_id})
         mock_save_keys.assert_called_once_with(
             user=user, protocol=protocol, auth_id=auth_id
@@ -96,7 +95,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
         handler = SSHKeyHandler(user, {}, None)
         protocol = factory.make_name("protocol")
         auth_id = factory.make_name("auth")
-        mock_save_keys = self.patch(KeySource.objects, "save_keys_for_user")
+        mock_save_keys = self.patch(SSHKey.objects, "from_keysource")
         mock_save_keys.side_effect = ImportSSHKeysError()
         self.assertRaises(
             HandlerError,
