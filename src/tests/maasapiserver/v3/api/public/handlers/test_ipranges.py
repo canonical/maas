@@ -77,6 +77,7 @@ class TestIPRangesApi(ApiCommonTests):
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=self.BASE_PATH),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
         ]
 
     @pytest.fixture
@@ -217,7 +218,7 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_201(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
@@ -240,13 +241,13 @@ class TestIPRangesApi(ApiCommonTests):
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.create.return_value = TEST_IPRANGE
 
-        reservedip_request = {
+        iprange_request = {
             "type": "reserved",
             "start_ip": "10.10.0.1",
             "end_ip": "10.10.0.3",
         }
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}", json=reservedip_request
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}", json=iprange_request
         )
         assert response.status_code == 201
         assert "ETag" in response.headers
@@ -261,20 +262,92 @@ class TestIPRangesApi(ApiCommonTests):
         )  # The user_id for the requests in these tests is always 0
         services_mock.ipranges.create.assert_called_once()
 
-    async def test_post_404(
+    async def test_post_201_dynamic_iprange(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.exists_within_subnet_iprange.return_value = (
+            False
+        )
+
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.10.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+
+        dynamic_iprange = TEST_IPRANGE.copy()
+        dynamic_iprange.type = IPRangeType.DYNAMIC
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.create.return_value = dynamic_iprange
+
+        iprange_request = {
+            "type": "dynamic",
+            "start_ip": "10.10.0.1",
+            "end_ip": "10.10.0.3",
+        }
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=iprange_request
+        )
+        assert response.status_code == 201
+        assert "ETag" in response.headers
+        assert len(response.headers["ETag"]) > 0
+        iprange_response = IPRangeResponse(**response.json())
+        assert iprange_response.start_ip == IPv4Address("10.10.0.1")
+        assert iprange_response.end_ip == IPv4Address("10.10.0.3")
+        assert iprange_response.type == IPRangeType.DYNAMIC
+        assert iprange_response.comment is None
+        assert iprange_response.owner_id == 0
+        services_mock.ipranges.create.assert_called_once()
+
+    async def test_post_400(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = None
-        reservedip_request = {
+        iprange_request = {
+            "type": "reserved",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.1",
+            "owner_id": 99,
+        }
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 400
+        assert error_response.details is not None
+        assert (
+            error_response.details[0].message
+            == "Only admins can create IP ranges on behalf of other users."
+        )
+
+    async def test_post_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = None
+        iprange_request = {
             "type": "reserved",
             "start_ip": "10.0.0.1",
             "end_ip": "10.0.0.1",
         }
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}", json=reservedip_request
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}", json=iprange_request
         )
         assert response.status_code == 404
 
@@ -339,20 +412,20 @@ class TestIPRangesApi(ApiCommonTests):
             disabled_boot_architectures=[],
             vlan_id=1,
         )
-        reservedip_request = {
+        iprange_request = {
             "type": "dynamic",
             "start_ip": start_ip,
             "end_ip": end_ip,
         }
         response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}", json=reservedip_request
+            f"{self.BASE_PATH}", json=iprange_request
         )
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
         assert error_response.details[0].message == message
 
-    async def test_post_403(
+    async def test_post_403_dynamic_iprange(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
@@ -369,17 +442,57 @@ class TestIPRangesApi(ApiCommonTests):
             disabled_boot_architectures=[],
             vlan_id=1,
         )
-        reservedip_request = {
+        iprange_request = {
             "type": "dynamic",
             "start_ip": "10.0.0.1",
             "end_ip": "10.0.0.1",
         }
         response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}", json=reservedip_request
+            f"{self.BASE_PATH}", json=iprange_request
         )
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 403
+        assert error_response.details is not None
+        assert (
+            error_response.details[0].message
+            == "Only admins can create/update dynamic IP ranges."
+        )
+
+    async def test_post_403_iprange_owned_by_another_user(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+        iprange_request = {
+            "type": "reserved",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.1",
+            "owner_id": 99,
+        }
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 400
+        assert error_response.details is not None
+        assert (
+            error_response.details[0].message
+            == "Only admins can create IP ranges on behalf of other users."
+        )
 
     async def test_delete(
         self,
@@ -476,3 +589,191 @@ class TestIPRangesApi(ApiCommonTests):
             TEST_IPRANGE.id,
             etag_if_match="wrong_etag",
         )
+
+    async def test_update_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_one.return_value = TEST_IPRANGE
+        updated_iprange = TEST_IPRANGE.copy()
+        updated_iprange.comment = "comment"
+        services_mock.ipranges.update_one.return_value = updated_iprange
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+
+        iprange_request = {
+            "type": "reserved",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.3",
+            "comment": "comment",
+            "owner_id": 0,
+        }
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/1", json=iprange_request
+        )
+        assert response.status_code == 200
+
+    async def test_update_400(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_one.return_value = TEST_IPRANGE
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+
+        iprange_request = {
+            "type": "reserved",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.3",
+            "comment": "comment",
+            "owner_id": 99,
+        }
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/1", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 400
+        assert error_response.details is not None
+        assert (
+            error_response.details[0].message
+            == "Only admins can update IP ranges for other users."
+        )
+
+    async def test_update_403(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        iprange = TEST_IPRANGE.copy()
+        iprange.user_id = 99
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_one.return_value = iprange
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+
+        iprange_request = {
+            "type": "reserved",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.3",
+            "comment": "comment",
+            "owner_id": 0,
+        }
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/1", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 403
+        assert error_response.details is not None
+        assert (
+            error_response.details[0].message
+            == "Only admins can update IP ranges for other users."
+        )
+
+    async def test_update_403_dynamic_iprange(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_one.return_value = TEST_IPRANGE
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+
+        iprange_request = {
+            "type": "dynamic",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.3",
+            "comment": "comment",
+            "owner_id": 0,
+        }
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/1", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 403
+        assert error_response.details is not None
+        assert (
+            error_response.details[0].message
+            == "Only admins can create/update dynamic IP ranges."
+        )
+
+    async def test_update_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.get_one.return_value = None
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+
+        iprange_request = {
+            "type": "reserved",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.3",
+            "comment": "comment",
+            "owner_id": 0,
+        }
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/1", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404

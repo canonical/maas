@@ -22,7 +22,7 @@ from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
 
-class IPRangeBaseRequest(BaseModel):
+class IPRangeCreateRequest(BaseModel):
     type: IPRangeType = Field(description="Type of this range.")
     start_ip: IPvAnyAddress = Field(
         description="Start IP address of this range (inclusive)."
@@ -37,8 +37,6 @@ class IPRangeBaseRequest(BaseModel):
         description="The owner of this range.", default=None
     )
 
-
-class IPRangeCreateRequest(IPRangeBaseRequest):
     def _validate_addresses_in_subnet(self, subnet: Subnet):
         if self.start_ip.version != self.end_ip.version:
             raise ValidationException.build_for_field(
@@ -97,7 +95,7 @@ class IPRangeCreateRequest(IPRangeBaseRequest):
                     details=[
                         BaseExceptionDetail(
                             type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                            message="Only admins can create dynamic IP ranges.",
+                            message="Only admins can create/update dynamic IP ranges.",
                         )
                     ]
                 )
@@ -118,22 +116,6 @@ class IPRangeCreateRequest(IPRangeBaseRequest):
                     ]
                 )
 
-        else:
-            if not authenticated_user.is_admin():
-                # Users can only create ranges for themselves
-                if (
-                    self.owner_id is not None
-                    and self.owner_id != authenticated_user.id
-                ):
-                    raise ForbiddenException(
-                        details=[
-                            BaseExceptionDetail(
-                                type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                                message="Only admins can create ranges for other users.",
-                            )
-                        ]
-                    )
-
         # TODO: check that there is no overlap with existing ranges and allocated IPs.
 
         now = utcnow()
@@ -153,3 +135,7 @@ class IPRangeCreateRequest(IPRangeBaseRequest):
             .with_updated(now)
         )
         return builder
+
+
+class IPRangeUpdateRequest(IPRangeCreateRequest):
+    owner_id: int = Field(description="The owner of this range.")  # type: ignore
