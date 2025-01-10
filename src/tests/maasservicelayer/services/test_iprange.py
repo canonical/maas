@@ -1,5 +1,5 @@
 from ipaddress import IPv4Address
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -16,9 +16,11 @@ from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsClauseFactory,
 )
 from maasservicelayer.db.repositories.ipranges import (
+    IPRangeClauseFactory,
     IPRangeResourceBuilder,
     IPRangesRepository,
 )
+from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -45,15 +47,20 @@ class TestCommonIPRangesService(ServiceCommonTests):
 
     @pytest.fixture
     def test_instance(self) -> MaasBaseModel:
-        return StaticIPAddress(
-            id=2,
-            ip="10.0.0.1",
-            subnet_id=0,
-            lease_time=600,
+        return IPRange(
+            id=1,
+            type=IPRangeType.DYNAMIC,
+            start_ip=IPv4Address("10.0.0.1"),
+            end_ip=IPv4Address("10.0.0.20"),
+            subnet_id=2,
             created=utcnow(),
             updated=utcnow(),
-            alloc_type=IpAddressType.DISCOVERED,
         )
+
+    async def test_create(self, service_instance, test_instance):
+        # pre_create_hook tested in the next tests
+        service_instance.pre_create_hook = AsyncMock()
+        return await super().test_create(service_instance, test_instance)
 
     async def test_update_many(
         self, service_instance, test_instance: MaasBaseModel
@@ -122,6 +129,7 @@ class TestIPRangesService:
 
         mock_ipranges_repository = Mock(IPRangesRepository)
         mock_ipranges_repository.create.return_value = iprange
+        mock_ipranges_repository.get_one.return_value = None
 
         mock_temporal = Mock(TemporalService)
 
@@ -139,6 +147,7 @@ class TestIPRangesService:
             .with_end_ip(iprange.end_ip)
             .with_created(iprange.created)
             .with_updated(iprange.updated)
+            .with_subnet_id(2)
             .build()
         )
 
@@ -152,6 +161,55 @@ class TestIPRangesService:
             ConfigureDHCPParam(ip_range_ids=[iprange.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
+        )
+
+    async def test_create_already_existing(self):
+        iprange = IPRange(
+            id=1,
+            type=IPRangeType.DYNAMIC,
+            start_ip="10.0.0.1",
+            end_ip="10.0.0.20",
+            subnet_id=2,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        mock_ipranges_repository = Mock(IPRangesRepository)
+        mock_ipranges_repository.create.return_value = iprange
+        mock_ipranges_repository.get_one.return_value = iprange
+
+        mock_temporal = Mock(TemporalService)
+
+        ipranges_service = IPRangesService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            dhcpsnippets_service=Mock(DhcpSnippetsService),
+            ipranges_repository=mock_ipranges_repository,
+        )
+        resource = (
+            IPRangeResourceBuilder()
+            .with_type(iprange.type)
+            .with_start_ip(iprange.start_ip)
+            .with_end_ip(iprange.end_ip)
+            .with_created(iprange.created)
+            .with_updated(iprange.updated)
+            .with_subnet_id(2)
+            .build()
+        )
+
+        with pytest.raises(AlreadyExistsException):
+            await ipranges_service.create(resource)
+        mock_ipranges_repository.get_one.assert_called_once_with(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_type(iprange.type),
+                        IPRangeClauseFactory.with_start_ip(iprange.start_ip),
+                        IPRangeClauseFactory.with_start_ip(iprange.end_ip),
+                        IPRangeClauseFactory.with_subnet_id(iprange.subnet_id),
+                    ]
+                )
+            )
         )
 
     async def test_update(self):

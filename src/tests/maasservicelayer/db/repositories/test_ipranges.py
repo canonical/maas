@@ -179,8 +179,8 @@ class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
             .with_subnet_id(0)
         )
 
-    # TODO: ip ranges contraints are not defined at DB level. We must check them
-    # manually before creating the ip range.
+    # IP ranges constraints are not defined at DB level. We do a manual check
+    # before creating the IP range in the pre_create_hook at the service level.
     @pytest.mark.skip
     async def test_create_duplicated(
         self,

@@ -123,10 +123,14 @@ class BaseService(Service, ABC, Generic[T, R]):
     async def get_by_id(self, id: int) -> T | None:
         return await self.repository.get_by_id(id=id)
 
+    async def pre_create_hook(self, resource: CreateOrUpdateResource) -> None:
+        return None
+
     async def post_create_hook(self, resource: T) -> None:
         return None
 
     async def create(self, resource: CreateOrUpdateResource) -> T:
+        await self.pre_create_hook(resource)
         created_resource = await self.repository.create(resource=resource)
         await self.post_create_hook(created_resource)
         return created_resource
