@@ -11,10 +11,22 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsClauseFactory,
 )
-from maasservicelayer.db.repositories.ipranges import IPRangesRepository
+from maasservicelayer.db.repositories.ipranges import (
+    IPRangeClauseFactory,
+    IPRangesRepository,
+)
+from maasservicelayer.db.tables import IPRangeTable
+from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
@@ -38,6 +50,39 @@ class IPRangesService(BaseService[IPRange, IPRangesRepository]):
         self, subnet_id: int, ip: IPvAnyAddress
     ) -> IPRange | None:
         return await self.repository.get_dynamic_range_for_ip(subnet_id, ip)
+
+    # TODO: refactor this when we refactor the builder's abstraction
+    async def pre_create_hook(self, resource: CreateOrUpdateResource) -> None:
+        values = resource.get_values()
+        iprange = await self.get_one(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.and_clauses(
+                    [
+                        IPRangeClauseFactory.with_type(
+                            values[IPRangeTable.c.type.name]
+                        ),
+                        IPRangeClauseFactory.with_start_ip(
+                            values[IPRangeTable.c.start_ip.name]
+                        ),
+                        IPRangeClauseFactory.with_start_ip(
+                            values[IPRangeTable.c.end_ip.name]
+                        ),
+                        IPRangeClauseFactory.with_subnet_id(
+                            values[IPRangeTable.c.subnet_id.name]
+                        ),
+                    ]
+                )
+            )
+        )
+        if iprange is not None:
+            raise AlreadyExistsException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                        message="An IP range with such identifiers already exist.",
+                    )
+                ]
+            )
 
     async def post_create_hook(self, resource: IPRange) -> None:
         self.temporal_service.register_or_update_workflow_call(

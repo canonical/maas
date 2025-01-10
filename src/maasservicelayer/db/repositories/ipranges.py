@@ -62,6 +62,18 @@ class IPRangeClauseFactory(ClauseFactory):
             ],
         )
 
+    @classmethod
+    def with_start_ip(cls, ip: IPvAnyAddress) -> Clause:
+        return Clause(condition=eq(IPRangeTable.c.start_ip, ip))
+
+    @classmethod
+    def with_end_ip(cls, ip: IPvAnyAddress) -> Clause:
+        return Clause(condition=eq(IPRangeTable.c.end_ip, ip))
+
+    @classmethod
+    def with_type(cls, type: IPRangeType) -> Clause:
+        return Clause(condition=eq(IPRangeTable.c.type, type))
+
 
 class IPRangeResourceBuilder(ResourceBuilder):
     def with_id(self, id: int) -> Self:
