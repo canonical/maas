@@ -6424,7 +6424,8 @@ CREATE TABLE public.maasserver_sshkey (
     updated timestamp with time zone NOT NULL,
     key text NOT NULL,
     user_id integer NOT NULL,
-    keysource_id bigint
+    auth_id character varying(255),
+    protocol character varying(64)
 );
 
 
@@ -7685,39 +7686,6 @@ CREATE SEQUENCE public.maasserver_iprange_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_iprange_id_seq OWNED BY public.maasserver_iprange.id;
-
-
---
--- Name: maasserver_keysource; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_keysource (
-    id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    protocol character varying(64) NOT NULL,
-    auth_id character varying(255) NOT NULL,
-    auto_update boolean NOT NULL
-);
-
-
---
--- Name: maasserver_keysource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_keysource_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_keysource_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_keysource_id_seq OWNED BY public.maasserver_keysource.id;
 
 
 --
@@ -10654,13 +10622,6 @@ ALTER TABLE ONLY public.maasserver_iprange ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
--- Name: maasserver_keysource id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_keysource ALTER COLUMN id SET DEFAULT nextval('public.maasserver_keysource_id_seq'::regclass);
-
-
---
 -- Name: maasserver_largefile id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -12115,6 +12076,9 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 391	maasserver	0335_reservedip_remove_vlan_update_mac	2024-10-23 03:29:40.217669+00
 392	maasserver	0336_remove_bmc_name_unique	2024-10-24 03:30:13.161462+00
 393	maasserver	0337_alter_interface_name	2024-12-07 03:29:56.132482+00
+394	maasserver	0338_add_protocol_sshkey	2025-01-10 03:30:39.961001+00
+395	maasserver	0339_migrate_keysource_table	2025-01-10 03:30:40.046038+00
+396	maasserver	0340_drop_keysource_table	2025-01-10 03:30:40.140181+00
 \.
 
 
@@ -12400,14 +12364,6 @@ COPY public.maasserver_interfacerelationship (id, created, updated, child_id, pa
 --
 
 COPY public.maasserver_iprange (id, created, updated, type, start_ip, end_ip, comment, subnet_id, user_id) FROM stdin;
-\.
-
-
---
--- Data for Name: maasserver_keysource; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.maasserver_keysource (id, created, updated, protocol, auth_id, auto_update) FROM stdin;
 \.
 
 
@@ -12738,7 +12694,7 @@ COPY public.maasserver_space (id, created, updated, name, description) FROM stdi
 -- Data for Name: maasserver_sshkey; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_sshkey (id, created, updated, key, user_id, keysource_id) FROM stdin;
+COPY public.maasserver_sshkey (id, created, updated, key, user_id, auth_id, protocol) FROM stdin;
 \.
 
 
@@ -13293,7 +13249,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 393, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 396, true);
 
 
 --
@@ -13525,13 +13481,6 @@ SELECT pg_catalog.setval('public.maasserver_interfacerelationship_id_seq', 1, fa
 --
 
 SELECT pg_catalog.setval('public.maasserver_iprange_id_seq', 1, false);
-
-
---
--- Name: maasserver_keysource_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_keysource_id_seq', 1, false);
 
 
 --
@@ -14556,14 +14505,6 @@ ALTER TABLE ONLY public.maasserver_interfacerelationship
 
 ALTER TABLE ONLY public.maasserver_iprange
     ADD CONSTRAINT maasserver_iprange_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_keysource maasserver_keysource_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_keysource
-    ADD CONSTRAINT maasserver_keysource_pkey PRIMARY KEY (id);
 
 
 --
@@ -16716,13 +16657,6 @@ CREATE INDEX maasserver_space_name_38f1b4f5_like ON public.maasserver_space USIN
 
 
 --
--- Name: maasserver_sshkey_keysource_id_701e0769; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_sshkey_keysource_id_701e0769 ON public.maasserver_sshkey USING btree (keysource_id);
-
-
---
 -- Name: maasserver_sshkey_user_id_84b68559; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -18358,14 +18292,6 @@ ALTER TABLE ONLY public.maasserver_scriptset
 
 ALTER TABLE ONLY public.maasserver_service
     ADD CONSTRAINT maasserver_service_node_id_891637d4_fk FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_sshkey maasserver_sshkey_keysource_id_701e0769_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_sshkey
-    ADD CONSTRAINT maasserver_sshkey_keysource_id_701e0769_fk FOREIGN KEY (keysource_id) REFERENCES public.maasserver_keysource(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
