@@ -35,6 +35,7 @@
 #     - nvme-cli
 # --- End MAAS 1.0 script metadata --
 
+from contextlib import closing
 import mmap
 import os
 import re
@@ -64,6 +65,31 @@ def list_disks():
     return disks
 
 
+def list_raids():
+    """Return list of software RAID to wipe."""
+    raids = []
+    output = subprocess.check_output(["lsblk", "-n", "-oKNAME,TYPE,RO"])
+    for line in output.splitlines():
+        kname, blk_type, readonly = line.split()
+        # to match all types of RAID possible without enumerating all of them
+        if b"raid" in blk_type and readonly == b"0" and kname not in raids:
+            raids.append(kname)
+    return raids
+
+
+def list_partitions(disk):
+    """Return list of partitions on a disk to wipe."""
+    partitions = []
+    output = subprocess.check_output(
+        ["lsblk", "-n", "-oKNAME,TYPE,RO", f"/dev/{disk}"]
+    )
+    for line in output.splitlines():
+        kname, blk_type, readonly = line.split()
+        if blk_type == b"part" and readonly == b"0":
+            partitions.append(kname)
+    return partitions
+
+
 def get_nvme_security_info(disk):
     """Gather NVMe information from the NVMe disks using the
     nvme-cli tool. Info from id-ctrl and id-ns is needed for
@@ -88,10 +114,10 @@ def get_nvme_security_info(disk):
     try:
         output = subprocess.check_output(["nvme", "id-ctrl", DEV_PATH % disk])
     except subprocess.CalledProcessError as exc:
-        print_flush("Error on nvme id-ctrl (%s)" % exc.returncode)
+        print_flush(f"Error on nvme id-ctrl ({exc.returncode})")
         return security_info
     except OSError as exc:
-        print_flush("OS error when running nvme-cli (%s)" % exc.strerror)
+        print_flush(f"OS error when running nvme-cli ({exc.strerror})")
         return security_info
 
     output = output.decode()
@@ -119,12 +145,12 @@ def get_nvme_security_info(disk):
     try:
         output = subprocess.check_output(["nvme", "id-ns", DEV_PATH % disk])
     except subprocess.CalledProcessError as exc:
-        print_flush("Error on nvme id-ns (%s)" % exc.returncode)
+        print_flush(f"Error on nvme id-ns ({exc.returncode})")
         security_info["format_supported"] = False
         security_info["writez_supported"] = False
         return security_info
     except OSError as exc:
-        print_flush("OS error when running nvme-cli (%s)" % exc.strerror)
+        print_flush(f"OS error when running nvme-cli ({exc.strerror})")
         security_info["format_supported"] = False
         security_info["writez_supported"] = False
         return security_info
@@ -217,8 +243,8 @@ def secure_erase_hdparm(kname):
     # Before secure erase can be performed on a device a user password must
     # be set. The password will automatically be removed once the drive has
     # been securely erased.
-    print_flush("%s: performing secure erase process." % kname.decode("ascii"))
-    print_flush("%s: setting user password to 'maas'." % kname.decode("ascii"))
+    print_flush(f"{kname.decode("ascii")}: performing secure erase process.")
+    print_flush(f"{kname.decode("ascii")}: setting user password to 'maas'.")
     try:
         subprocess.check_output(
             [
@@ -243,7 +269,7 @@ def secure_erase_hdparm(kname):
 
     # Perform the actual secure erase. This will clear the set user password.
     failed_exc = None
-    print_flush("%s: calling secure erase on device." % kname.decode("ascii"))
+    print_flush(f"{kname.decode("ascii")}: calling secure erase on device.")
     try:
         subprocess.check_call(
             [
@@ -290,20 +316,20 @@ def try_secure_erase_hdparm(kname, info):
     if info[b"supported"]:
         if info[b"frozen"]:
             print_flush(
-                "%s: not using secure erase; "
-                "drive is currently frozen." % kname.decode("ascii")
+                f"{kname.decode("ascii")}: not using secure erase; "
+                "drive is currently frozen."
             )
             return False
         elif info[b"locked"]:
             print_flush(
-                "%s: not using secure erase; "
-                "drive is currently locked." % kname.decode("ascii")
+                f"{kname.decode("ascii")}: not using secure erase; "
+                "drive is currently locked."
             )
             return False
         elif info[b"enabled"]:
             print_flush(
-                "%s: not using secure erase; "
-                "drive security is already enabled." % kname.decode("ascii")
+                f"{kname.decode("ascii")}: not using secure erase; "
+                "drive security is already enabled."
             )
             return False
         else:
@@ -312,20 +338,17 @@ def try_secure_erase_hdparm(kname, info):
                 secure_erase_hdparm(kname)
             except Exception as e:
                 print_flush(
-                    "%s: failed to be securely erased: %s"
-                    % (kname.decode("ascii"), e)
+                    f"{kname.decode("ascii")}: failed to be securely erased: {e}"
                 )
                 return False
             else:
                 print_flush(
-                    "%s: successfully securely erased."
-                    % (kname.decode("ascii"))
+                    f"{kname.decode("ascii")}: successfully securely erased."
                 )
                 return True
     else:
         print_flush(
-            "%s: drive does not support secure erase."
-            % (kname.decode("ascii"))
+            f"{kname.decode("ascii")}: drive does not support secure erase."
         )
         return False
 
@@ -336,7 +359,7 @@ def try_secure_erase_nvme(kname, info):
 
     if not info["format_supported"]:
         print_flush(
-            "Device %s does not support formatting" % kname.decode("ascii")
+            f"Device {kname.decode("ascii")} does not support formatting"
         )
         return False
 
@@ -360,14 +383,14 @@ def try_secure_erase_nvme(kname, info):
             ]
         )
     except subprocess.CalledProcessError as exc:
-        print_flush("Error with format command (%s)" % exc.returncode)
+        print_flush(f"Error with format command ({exc.returncode})")
         return False
     except OSError as exc:
-        print_flush("OS error when running nvme-cli (%s)" % exc.strerror)
+        print_flush(f"OS error when running nvme-cli ({exc.strerror})")
         return False
 
     print_flush(
-        "Secure erase was successful on NVMe drive %s" % kname.decode("ascii")
+        f"Secure erase was successful on NVMe drive {kname.decode("ascii")}"
     )
     return True
 
@@ -382,21 +405,35 @@ def try_secure_erase(kname, info):
 
 
 def wipe_quickly(kname):
-    """Quickly wipe the disk by using wipefs and zeroing the beginning
-    and end of the disk. This is not a secure erase but does make it
-    harder to get the data from the device and also clears previous layouts.
+    """Quickly wipe the disk by using wipefs on each partition to erase all
+    potential signature and then zeroing the beginning and end of the disk.
+    This is not a secure erase but does make it harder to get the data from
+    the device and also clears previous layouts.
     """
 
     wipe_error = 0
-    print_flush("%s: starting quick wipe." % kname.decode("ascii"))
+    print_flush(f"{kname.decode("ascii")}: starting quick wipe.")
+
+    # First clean each partition individually
+    partitions = list_partitions(kname.decode("ascii"))
+    for part in partitions:
+        try:
+            subprocess.check_output(["wipefs", "-f", "-a", DEV_PATH % part])
+            print_flush(
+                f"{part.decode("ascii")}: partition was wiped successfully"
+            )
+        except subprocess.CalledProcessError as exc:
+            print_flush(
+                f"{part.decode("ascii")}: partition wipefs failed ({exc.returncode})"
+            )
+
+    # Then it is sufficient to clean the partition table or direct filesystem
     try:
         subprocess.check_output(["wipefs", "-f", "-a", DEV_PATH % kname])
         wipe_error -= 1
     except subprocess.CalledProcessError as exc:
         print_flush(
-            "{}: wipefs failed ({})".format(
-                kname.decode("ascii"), exc.returncode
-            )
+            f"{kname.decode("ascii")}: wipefs failed ({exc.returncode})"
         )
         wipe_error += 1
 
@@ -409,15 +446,14 @@ def wipe_quickly(kname):
         wipe_error -= 1
     except OSError as exc:
         print_flush(
-            "%s: OS error while wiping beginning/end of disk (%s)"
-            % (kname.decode("ascii"), exc.strerror)
+            f"{kname.decode("ascii")}: OS error while wiping beginning/end of disk ({exc.strerror})"
         )
         wipe_error += 1
 
     if wipe_error > 0:
-        print_flush("%s: failed to be quickly wiped." % kname.decode("ascii"))
+        print_flush(f"{kname.decode("ascii")}: failed to be quickly wiped.")
     else:
-        print_flush("%s: successfully quickly wiped." % kname.decode("ascii"))
+        print_flush(f"{kname.decode("ascii")}: successfully quickly wiped.")
 
 
 def nvme_write_zeroes(kname, info):
@@ -429,15 +465,13 @@ def nvme_write_zeroes(kname, info):
 
     if not info["writez_supported"]:
         print(
-            "NVMe drive %s does not support write-zeroes"
-            % kname.decode("ascii")
+            f"NVMe drive {kname.decode("ascii")} does not support write-zeroes"
         )
         fallback = True
 
     if info["nsze"] <= 0:
         print(
-            "Bad namespace information collected on NVMe drive %s"
-            % kname.decode("ascii")
+            f"Bad namespace information collected on NVMe drive {kname.decode("ascii")}"
         )
         fallback = True
 
@@ -459,14 +493,14 @@ def nvme_write_zeroes(kname, info):
             ]
         )
     except subprocess.CalledProcessError as exc:
-        print_flush("Error with write-zeroes command (%s)" % exc.returncode)
+        print_flush(f"Error with write-zeroes command ({exc.returncode})")
         return False
     except OSError as exc:
-        print_flush("OS error when running nvme-cli (%s)" % exc.strerror)
+        print_flush(f"OS error when running nvme-cli ({exc.strerror})")
         return False
 
     print_flush(
-        "%s: successfully zeroed (using write-zeroes)." % kname.decode("ascii")
+        f"{kname.decode("ascii")}: successfully zeroed (using write-zeroes)."
     )
     return True
 
@@ -484,7 +518,7 @@ def zero_disk(kname, info):
         fp.seek(0, 2)
         size = fp.tell()
 
-    print_flush("%s: started zeroing." % kname.decode("ascii"))
+    print_flush(f"{kname.decode("ascii")}: started zeroing.")
 
     # Write 1MiB at a time.
     buf = b"\0" * 1024 * 1024
@@ -500,7 +534,78 @@ def zero_disk(kname, info):
             buf = b"\0" * remaining
             fp.write(buf)
 
-    print_flush("%s: successfully zeroed." % kname.decode("ascii"))
+    print_flush(f"{kname.decode("ascii")}: successfully zeroed.")
+
+
+def stop_bcache():
+    """Stop all active bcache filesystems before wipefs attempts anything and
+    and then fail to clean silently the partition, disk or software raid"""
+
+    BCACHE_SYSFS = "/sys/fs/bcache/"
+
+    # All block devices partitions are listed in /sys/class/block
+    bcache_list = []
+    if os.path.exists(BCACHE_SYSFS):
+        for f in os.listdir(BCACHE_SYSFS):
+            path = BCACHE_SYSFS + f
+            if os.path.isdir(path):
+                print_flush(f"{path} : bcache detected")
+                bcache_list.append(path)
+
+        for bcache in bcache_list:
+            with closing(open(f"{bcache}/stop", "w")) as stop:
+                print_flush(f"Stopping bcache in {bcache}")
+                stop.write(str("1"))
+    else:
+        print_flush("No bcache detected, skipping")
+
+
+def stop_lvm():
+    """Stop all active LVM before cleaning any partition"""
+
+    try:
+        subprocess.check_output(["vgchange", "-a", "n"])
+    except subprocess.CalledProcessError as exc:
+        print_flush(f"Disabling LVM failed ({exc.returncode})")
+
+
+def clean_mdadm():
+    """Clean any filesystem signature above mdadm and then stop the raid"""
+
+    wipe_error = 0
+
+    raids = list_raids()
+    for raid in raids:
+        # Quite important when dealing with bcache or lvm signatures
+        print_flush(f"Cleaning filesystem above raid {raid.decode("ascii")}")
+        try:
+            subprocess.check_output(["wipefs", "-f", "-a", DEV_PATH % raid])
+            wipe_error = 0
+        except subprocess.CalledProcessError as exc:
+            print_flush(
+                f"{raid.decode("ascii")}: wipefs failed ({exc.returncode})"
+            )
+            wipe_error = 1
+
+        if wipe_error > 0:
+            print_flush(
+                f"raid {raid.decode("ascii")}: filesystem failed to be quickly wiped."
+            )
+        else:
+            print_flush(
+                f"raid {raid.decode("ascii")}: filesystem successfully quickly wiped."
+            )
+            # It is safe to deactivate the raid
+            try:
+                subprocess.check_output(["mdadm", "--stop", raid])
+                print_flush(
+                    f"raid {raid.decode("ascii")}: successfully deactivated."
+                )
+            # If this happens, most likely a filesystem is still active above
+            except subprocess.CalledProcessError as exc:
+                print_flush(
+                    f"{raid.decode("ascii")}: mdadm --stop failed ({exc.returncode})"
+                )
 
 
 def main():
@@ -553,9 +658,15 @@ def main():
 
     # Gather disk information.
     disk_info = get_disk_info()
-    print_flush(
-        "%s to be wiped." % (b", ".join(disk_info.keys())).decode("ascii")
-    )
+    disk_info_str = (b", ".join(disk_info.keys())).decode("ascii")
+    print_flush(f"{disk_info_str} to be wiped.")
+
+    # If doing a quick erase, it is best to stop any special filesystem like
+    # bcache, lvm, and mdadm before using wipefs on every disks individually
+    if args.quick_erase:
+        stop_bcache()
+        stop_lvm()
+        clean_mdadm()
 
     # Wipe all disks.
     for kname, info in disk_info.items():

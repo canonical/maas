@@ -20,7 +20,6 @@ from snippets.maas_wipe import (
     nvme_write_zeroes,
     secure_erase_hdparm,
     try_secure_erase,
-    wipe_quickly,
     WipeError,
     zero_disk,
 )
@@ -857,97 +856,6 @@ class TestMAASWipe(MAASTestCase):
         # No error should be raised.
         secure_erase_hdparm(dev_name)
 
-    def test_wipe_quickly_successful(self):
-        tmp_dir = self.make_dir()
-        dev_path = (tmp_dir + "/%s").encode("ascii")
-        self.patch(maas_wipe, "DEV_PATH", dev_path)
-        dev_name = factory.make_name("disk").encode("ascii")
-        file_path = dev_path % dev_name
-        self.make_empty_file(file_path, content=b"T")
-
-        mock_check_output = self.patch(subprocess, "check_output")
-        wipe_quickly(dev_name)
-        mock_check_output.assert_called_once_with(
-            ["wipefs", "-f", "-a", maas_wipe.DEV_PATH % dev_name]
-        )
-
-        buf_size = 1024 * 1024
-        with open(file_path, "rb") as fp:
-            first_buf = fp.read(buf_size)
-            fp.seek(-buf_size, 2)
-            last_buf = fp.read(buf_size)
-
-        zero_buf = b"\0" * 1024 * 1024
-        self.assertEqual(zero_buf, first_buf, "First 1 MiB was not wiped.")
-        self.assertEqual(zero_buf, last_buf, "Last 1 MiB was not wiped.")
-        self.print_flush.assert_has_calls(
-            [
-                call(f"{dev_name.decode('ascii')}: starting quick wipe."),
-                call(
-                    f"{dev_name.decode('ascii')}: successfully quickly wiped."
-                ),
-            ]
-        )
-
-    def test_wipe_quickly_successful_but_wipefs_failed(self):
-        tmp_dir = self.make_dir()
-        dev_path = (tmp_dir + "/%s").encode("ascii")
-        self.patch(maas_wipe, "DEV_PATH", dev_path)
-        dev_name = factory.make_name("disk").encode("ascii")
-        file_path = dev_path % dev_name
-        self.make_empty_file(file_path, content=b"T")
-
-        mock_check_output = self.patch(subprocess, "check_output")
-        mock_check_output.side_effect = subprocess.CalledProcessError(
-            1, "wipefs"
-        )
-        wipe_quickly(dev_name)
-
-        buf_size = 1024 * 1024
-        with open(file_path, "rb") as fp:
-            first_buf = fp.read(buf_size)
-            fp.seek(-buf_size, 2)
-            last_buf = fp.read(buf_size)
-
-        zero_buf = b"\0" * 1024 * 1024
-        self.assertEqual(zero_buf, first_buf, "First 1 MiB was not wiped.")
-        self.assertEqual(zero_buf, last_buf, "Last 1 MiB was not wiped.")
-        self.print_flush.assert_has_calls(
-            [
-                call(f"{dev_name.decode('ascii')}: starting quick wipe."),
-                call(f"{dev_name.decode('ascii')}: wipefs failed (1)"),
-                call(
-                    f"{dev_name.decode('ascii')}: successfully quickly wiped."
-                ),
-            ]
-        )
-
-    def test_wipe_quickly_failed(self):
-        dev_name = factory.make_name("disk").encode("ascii")
-
-        mock_check_output = self.patch(subprocess, "check_output")
-        mock_check_output.side_effect = subprocess.CalledProcessError(
-            1, "wipefs"
-        )
-
-        mock_os_open = self.patch(builtins, "open")
-        mock_os_open.side_effect = OSError(-2, "No such file or directory")
-
-        wipe_quickly(dev_name)
-
-        self.print_flush.assert_has_calls(
-            [
-                call(f"{dev_name.decode('ascii')}: starting quick wipe."),
-                call(f"{dev_name.decode('ascii')}: wipefs failed (1)"),
-                call(
-                    f"{dev_name.decode('ascii')}: OS error while wiping beginning/end of disk (No such file or directory)"
-                ),
-                call(
-                    f"{dev_name.decode('ascii')}: failed to be quickly wiped."
-                ),
-            ]
-        )
-
     def test_zero_disk_hdd(self):
         tmp_dir = self.make_dir()
         dev_path = (tmp_dir + "/%s").encode("ascii")
@@ -1033,6 +941,10 @@ class TestMAASWipe(MAASTestCase):
         }
         self.patch(maas_wipe, "get_disk_info").return_value = disks
 
+        mock_stop_bcache = self.patch(maas_wipe, "stop_bcache")
+        mock_stop_lvm = self.patch(maas_wipe, "stop_lvm")
+        mock_clean_mdadm = self.patch(maas_wipe, "clean_mdadm")
+
         wipe_quickly = self.patch(maas_wipe, "wipe_quickly")
         mock_try = self.patch(maas_wipe, "try_secure_erase")
         mock_try.return_value = False
@@ -1043,12 +955,20 @@ class TestMAASWipe(MAASTestCase):
         mock_try.assert_has_calls(try_calls)
         wipe_quickly.assert_has_calls(wipe_calls)
 
+        mock_stop_bcache.assert_called_once()
+        mock_stop_lvm.assert_called_once()
+        mock_clean_mdadm.assert_called_once()
+
     def test_main_calls_wipe_quickly(self):
         self.patch_args(False, True)
         disks = {
             factory.make_name("disk").encode("ascii"): {} for _ in range(3)
         }
         self.patch(maas_wipe, "get_disk_info").return_value = disks
+
+        mock_stop_bcache = self.patch(maas_wipe, "stop_bcache")
+        mock_stop_lvm = self.patch(maas_wipe, "stop_lvm")
+        mock_clean_mdadm = self.patch(maas_wipe, "clean_mdadm")
 
         wipe_quickly = self.patch(maas_wipe, "wipe_quickly")
         mock_try = self.patch(maas_wipe, "try_secure_erase")
@@ -1058,6 +978,10 @@ class TestMAASWipe(MAASTestCase):
         wipe_calls = [call(disk) for disk in disks.keys()]
         mock_try.assert_not_called()
         wipe_quickly.assert_has_calls(wipe_calls)
+
+        mock_stop_bcache.assert_called_once()
+        mock_stop_lvm.assert_called_once()
+        mock_clean_mdadm.assert_called_once()
 
     def test_main_calls_zero_disk(self):
         self.patch_args(False, False)
