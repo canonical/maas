@@ -765,6 +765,16 @@ SpaceTable = Table(
     Column("description", Text, nullable=False),
 )
 
+SSLKeyTable = Table(
+    "maasserver_sslkey",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("key", Text, nullable=False),
+    Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=False),
+)
+
 StaticIPAddressTable = Table(
     "maasserver_staticipaddress",
     METADATA,
