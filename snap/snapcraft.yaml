@@ -90,6 +90,9 @@ parts:
       - libxslt1-dev
       - python3-setuptools
     stage-packages:
+      - libpython3-stdlib
+      - libpython3.12-stdlib
+      - libpython3.12-minimal
       - amtterm # AMT
       - avahi-utils
       - bind9
@@ -179,6 +182,7 @@ parts:
       - python3-tz
       - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
+      - python3-wheel
       - python3-yaml
       - python3-zhmcclient
       - python3-zope.interface
