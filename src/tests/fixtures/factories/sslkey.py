@@ -14,6 +14,7 @@ async def create_test_sslkey(fixture: Fixture, **extra_details: Any) -> SSLKey:
 
     created_at = datetime.now(timezone.utc).astimezone()
     updated_at = datetime.now(timezone.utc).astimezone()
+
     sslkey = {
         "key": key,
         "created": created_at,

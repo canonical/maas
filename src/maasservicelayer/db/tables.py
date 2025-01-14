@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB
 
@@ -773,6 +774,7 @@ SSLKeyTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("key", Text, nullable=False),
     Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=False),
+    UniqueConstraint("key", "user_id", name="unique_id_sslkey"),
 )
 
 StaticIPAddressTable = Table(

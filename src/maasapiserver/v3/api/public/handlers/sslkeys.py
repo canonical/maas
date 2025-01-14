@@ -1,16 +1,19 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends
+from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     UnauthorizedBodyResponse,
+    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.requests.sslkeys import SSLKeyRequest
 from maasapiserver.v3.api.public.models.responses.sslkey import (
     SSLKeyListResponse,
     SSLKeyResponse,
@@ -80,3 +83,43 @@ class SSLKeysHandler(Handler):
                 else None
             ),
         )
+
+    @handler(
+        path="/users/me/sslkeys",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {
+                "model": SSLKeyResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            409: {"model": ConflictBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        status_code=201,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def create_user_sslkey(
+        self,
+        sslkey_request: SSLKeyRequest,
+        response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> SSLKeyResponse:
+        assert authenticated_user is not None
+
+        new_sslkey = await services.sslkeys.create(
+            sslkey_request.to_builder()
+            .with_user_id(authenticated_user.id)
+            .build()
+        )
+
+        response.headers["ETag"] = new_sslkey.etag()
+        return SSLKeyResponse.from_model(sslkey=new_sslkey)

@@ -234,6 +234,7 @@ CommonRule = Rule(
     Allow(StandardLibraries),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
+    Allow("OpenSSL|OpenSSL.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")
@@ -434,7 +435,6 @@ ServiceLayerRule = Rule(
     Allow("metadataserver.enum.*"),
     Allow("netaddr"),
     Allow("netaddr.**"),
-    Allow("OpenSSL|OpenSSL.**"),
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.security.**"),
     Allow("provisioningserver.utils.network.**"),
