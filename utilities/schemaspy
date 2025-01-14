@@ -22,10 +22,16 @@ make syncdb
 
 cat <<EOF >${DEPS_DIR}/run
 set -ex
-socat -v tcp-l:${PORT},bind=localhost,reuseaddr,fork unix:db/.s.PGSQL.5432 &
-sleep 5
-java -jar ${DEPS_DIR}/${SCHEMASPY_JAR} -t pgsql -dp ${PGJDBC_JAR} -host localhost -port ${PORT} -vizjs -imageformat svg -nopages -hq -o ${OUT_DIR} -u $USER -db maas
+socat -L./${DEPS_DIR}/.lock -v tcp-l:${PORT},bind=127.0.0.1,reuseaddr,fork unix:db/.s.PGSQL.5432 &
+SOCAT_PID=\$!
+while [ ! -f ${DEPS_DIR}/.lock ]; do 
+    sleep 5; \
+done
+trap 'kill -15 \$SOCAT_PID' EXIT INT
+java -jar ${DEPS_DIR}/${SCHEMASPY_JAR} \
+    -t pgsql11 -dp ${PGJDBC_JAR} -host 127.0.0.1 -port ${PORT} \
+    -vizjs -imageformat svg -nopages -hq \
+    -o ${OUT_DIR} -u $USER -db maas
 EOF
 
-trap '$(jobs -p) | xargs -r kill' EXIT
 bin/database --preserve run -- bash ${DEPS_DIR}/run
