@@ -9,6 +9,7 @@
 /.tox
 /.ve
 /.vscode
+/build
 /bin
 /dev-snap
 /build_pkg
