@@ -7,9 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.sslkeys import (
     SSLKeyClauseFactory,
+    SSLKeyResourceBuilder,
     SSLKeysRepository,
 )
 from maasservicelayer.models.sslkeys import SSLKey
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures import get_test_data_file
 from tests.fixtures.factories.sslkey import create_test_sslkey
 from tests.maasapiserver.fixtures.db import Fixture
@@ -22,6 +24,28 @@ class TestSSLKeyClauseFactory:
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_sslkey.user_id = 1")
+
+
+class TestSSLKeyResourceBuilder:
+    def test_builder(self) -> None:
+        now = utcnow()
+        key = get_test_data_file("test_x509_0.pem")
+
+        resource = (
+            SSLKeyResourceBuilder()
+            .with_key(key)
+            .with_created(now)
+            .with_updated(now)
+            .with_user_id(0)
+            .build()
+        )
+
+        assert resource.get_values() == {
+            "key": key,
+            "created": now,
+            "updated": now,
+            "user_id": 0,
+        }
 
 
 class TestSSLKeyRepository(RepositoryCommonTests[SSLKey]):
