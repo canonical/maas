@@ -17,6 +17,10 @@ from maasservicelayer.models.sslkeys import SSLKey
 
 class SSLKeyClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(SSLKeyTable.c.id, id))
+
+    @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(SSLKeyTable.c.user_id, user_id))
 

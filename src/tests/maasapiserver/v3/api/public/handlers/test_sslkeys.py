@@ -17,11 +17,17 @@ from maasapiserver.v3.api.public.models.responses.sslkey import (
     SSLKeyResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    NotFoundException,
+    PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -56,6 +62,7 @@ class TestSSLKeysApi(ApiCommonTests):
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}"),
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     @pytest.fixture
@@ -212,3 +219,108 @@ class TestSSLKeysApi(ApiCommonTests):
 
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    # DELETE /users/me/sslkeys/{sslkey_id}
+    async def test_delete_user_sslkey_204(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.sslkeys = Mock(SSLKeysService)
+        services_mock.sslkeys.delete_one.side_effect = None
+
+        response = await mocked_api_client_user.delete(
+            f"{self.BASE_PATH}/1",
+        )
+
+        assert response.status_code == 204
+
+        services_mock.sslkeys.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=SSLKeyClauseFactory.and_clauses(
+                    [
+                        SSLKeyClauseFactory.with_id(1),
+                        SSLKeyClauseFactory.with_user_id(0),
+                    ]
+                )
+            ),
+            etag_if_match=None,
+        )
+
+    async def test_delete_user_sslkey_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        sslkey_id_to_delete = 1
+        wrong_etag = "wrong_tag"
+
+        services_mock.sslkeys = Mock(SSLKeysService)
+        services_mock.sslkeys.delete_one.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message=f"The resource etag '{wrong_etag}' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_user.delete(
+            f"{self.BASE_PATH}/{sslkey_id_to_delete}",
+            headers={"if-match": wrong_etag},
+        )
+
+        assert response.status_code == 412
+
+        services_mock.sslkeys.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=SSLKeyClauseFactory.and_clauses(
+                    [
+                        SSLKeyClauseFactory.with_id(sslkey_id_to_delete),
+                        SSLKeyClauseFactory.with_user_id(0),
+                    ]
+                )
+            ),
+            etag_if_match=wrong_etag,
+        )
+
+    async def test_delete_user_sslkey_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        sslkey_id_to_delete = 99
+
+        services_mock.sslkeys = Mock(SSLKeysService)
+        services_mock.sslkeys.delete_one.side_effect = NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message=f"SSL key with id {sslkey_id_to_delete} does not exist.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_user.delete(
+            f"{self.BASE_PATH}/{sslkey_id_to_delete}",
+        )
+
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+        services_mock.sslkeys.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=SSLKeyClauseFactory.and_clauses(
+                    [
+                        SSLKeyClauseFactory.with_id(sslkey_id_to_delete),
+                        SSLKeyClauseFactory.with_user_id(0),
+                    ]
+                )
+            ),
+            etag_if_match=None,
+        )

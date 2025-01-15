@@ -1,11 +1,15 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response
+from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
+    NotFoundBodyResponse,
     UnauthorizedBodyResponse,
     ValidationErrorBodyResponse,
 )
@@ -123,3 +127,45 @@ class SSLKeysHandler(Handler):
 
         response.headers["ETag"] = new_sslkey.etag()
         return SSLKeyResponse.from_model(sslkey=new_sslkey)
+
+    @handler(
+        path="/users/me/sslkeys/{sslkey_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def delete_user_sslkey(
+        self,
+        sslkey_id: int,
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        assert authenticated_user is not None
+
+        await services.sslkeys.delete_one(
+            query=QuerySpec(
+                where=SSLKeyClauseFactory.and_clauses(
+                    [
+                        SSLKeyClauseFactory.with_id(sslkey_id),
+                        SSLKeyClauseFactory.with_user_id(
+                            authenticated_user.id
+                        ),
+                    ]
+                )
+            ),
+            etag_if_match=etag_if_match,
+        )
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
