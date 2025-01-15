@@ -39,8 +39,8 @@ AMT_ERRORS = {
 }
 
 HTTP_OR_HTTPS = [
-    ["http", "16692"],
-    ["https", "16693"],
+    ["16692", "http"],
+    ["16693", "https"],
 ]
 
 REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
@@ -68,7 +68,7 @@ class AMTPowerDriver(PowerDriver):
             "HTTP or HTTPS",
             field_type="choice",
             choices=HTTP_OR_HTTPS,
-            default="http",
+            default="16692",
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")
