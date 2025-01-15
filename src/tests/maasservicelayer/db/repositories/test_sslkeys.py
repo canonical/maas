@@ -25,6 +25,11 @@ class TestSSLKeyClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_sslkey.user_id = 1")
 
+        clause = SSLKeyClauseFactory.with_id(id=1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_sslkey.id = 1")
+
 
 class TestSSLKeyResourceBuilder:
     def test_builder(self) -> None:
