@@ -26,6 +26,8 @@ def handler(**config):
     """Decorator for API handlers inside a Handler class."""
 
     def register_handler(func):
+        # Use the name of the python function as operationId in the openapi spec.
+        config["operation_id"] = func.__name__
         func.__handler_config = config
         return func
 
