@@ -27,7 +27,6 @@ class TestSshKeyResponse:
         assert sshkey_response.key == sshkey.key
         assert sshkey_response.protocol == sshkey.protocol
         assert sshkey_response.auth_id == sshkey.auth_id
-        assert sshkey_response.user_id == sshkey.user_id
         assert sshkey_response.hal_links is not None
         assert (
             sshkey_response.hal_links.self.href

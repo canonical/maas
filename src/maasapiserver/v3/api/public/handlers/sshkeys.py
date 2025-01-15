@@ -1,7 +1,9 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -44,9 +46,7 @@ class SshKeysHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {
-                "model": SshKeysListResponse,
-            },
+            200: {"model": SshKeysListResponse},
             401: {"model": UnauthorizedBodyResponse},
         },
         response_model_exclude_none=True,
@@ -93,9 +93,7 @@ class SshKeysHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {
-                "model": SshKeyResponse,
-            },
+            200: {"model": SshKeyResponse},
             401: {"model": UnauthorizedBodyResponse},
         },
         response_model_exclude_none=True,
@@ -124,7 +122,7 @@ class SshKeysHandler(Handler):
                         ),
                     ]
                 )
-            ),
+            )
         )
 
         if not ssh_key:
@@ -133,8 +131,7 @@ class SshKeysHandler(Handler):
         response.headers["ETag"] = ssh_key.etag()
 
         return SshKeyResponse.from_model(
-            ssh_key,
-            self_base_hyperlink=f"{V3_API_PREFIX}/users/me/sshkeys",
+            ssh_key, self_base_hyperlink=f"{V3_API_PREFIX}/users/me/sshkeys"
         )
 
     @handler(
@@ -142,10 +139,9 @@ class SshKeysHandler(Handler):
         methods=["POST"],
         tags=TAGS,
         responses={
-            201: {
-                "model": SshKeyResponse,
-            },
+            201: {"model": SshKeyResponse},
             401: {"model": UnauthorizedBodyResponse},
+            409: {"model": ConflictBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
@@ -182,11 +178,8 @@ class SshKeysHandler(Handler):
         methods=["POST"],
         tags=TAGS,
         responses={
-            201: {
-                "model": SshKeysListResponse,
-            },
+            201: {"model": SshKeysListResponse},
             401: {"model": UnauthorizedBodyResponse},
-            409: {"model": ConflictBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
@@ -210,3 +203,48 @@ class SshKeysHandler(Handler):
             authenticated_user.id,
         )
         return SshKeysListResponse(items=imported_sshkeys)
+
+    @handler(
+        path="/users/me/sshkeys/{id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={204: {}, 401: {"model": UnauthorizedBodyResponse}},
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def delete_user_sshkey(
+        self,
+        id: int,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        assert authenticated_user is not None
+        sshkey = await services.sshkeys.get_one(
+            query=QuerySpec(
+                where=SshKeyClauseFactory.and_clauses(
+                    [
+                        SshKeyClauseFactory.with_id(id),
+                        SshKeyClauseFactory.with_user_id(
+                            authenticated_user.id
+                        ),
+                    ]
+                )
+            )
+        )
+
+        if sshkey is None:
+            return NotFoundResponse()
+
+        await services.sshkeys.delete_by_id(
+            sshkey.id, etag_if_match=etag_if_match
+        )
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
