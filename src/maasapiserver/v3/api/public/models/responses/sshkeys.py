@@ -1,0 +1,41 @@
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from typing import Optional, Self
+
+from maasapiserver.v3.api.public.models.responses.base import (
+    BaseHal,
+    BaseHref,
+    HalResponse,
+    TokenPaginatedResponse,
+)
+from maascommon.enums.sshkeys import SshKeysProtocolType
+from maasservicelayer.models.sshkeys import SshKey
+
+
+class SshKeyResponse(HalResponse[BaseHal]):
+    kind = "SshKey"
+    id: int
+    key: str
+    protocol: Optional[SshKeysProtocolType] = None
+    auth_id: Optional[str] = None
+    user_id: int
+
+    @classmethod
+    def from_model(cls, sshkey: SshKey, self_base_hyperlink: str) -> Self:
+        return cls(
+            id=sshkey.id,
+            key=sshkey.key,
+            protocol=sshkey.protocol,
+            auth_id=sshkey.auth_id,
+            user_id=sshkey.user_id,
+            hal_links=BaseHal(
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{sshkey.id}"
+                )
+            ),
+        )
+
+
+class SshKeysListResponse(TokenPaginatedResponse[SshKeyResponse]):
+    kind = "SshKeysList"
