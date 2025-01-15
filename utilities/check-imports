@@ -419,6 +419,7 @@ ServiceLayer = files("src/maasservicelayer/**/*.py")
 ServiceLayerRule = Rule(
     Allow("asyncpg|asyncpg.**"),
     Allow("aiohttp|aiohttp.**"),
+    Allow("aiofiles|aiofiles.**"),
     Allow(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),

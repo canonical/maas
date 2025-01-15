@@ -317,7 +317,9 @@ class ServiceCollectionV3:
             iprange_service=services.ipranges,
         )
         services.sshkeys = SshKeysService(
-            context=context, sshkeys_repository=SshKeysRepository(context)
+            context=context,
+            sshkeys_repository=SshKeysRepository(context),
+            cache=cache.get(SshKeysService.__name__, SshKeysService.build_cache_object),  # type: ignore
         )
         services.sslkeys = SSLKeysService(
             context=context,

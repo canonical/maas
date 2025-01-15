@@ -17,8 +17,6 @@ from maasapiserver.v3.api.public.models.requests.query import (
 )
 from maasapiserver.v3.api.public.models.requests.users import UserRequest
 from maasapiserver.v3.api.public.models.responses.users import (
-    SshKeyResponse,
-    SshKeysListResponse,
     UserInfoResponse,
     UserResponse,
     UsersListResponse,
@@ -30,7 +28,6 @@ from maasapiserver.v3.auth.base import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -57,8 +54,6 @@ class UsersHandler(Handler):
         # order to disambiguate these paths.
         return [
             "get_user_info",
-            "list_user_sshkeys",
-            "get_user_sshkey",
             "list_users",
             "get_user",
             "create_user",
@@ -255,102 +250,4 @@ class UsersHandler(Handler):
         return UserResponse.from_model(
             user=user,
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
-        )
-
-    @handler(
-        path="/users/me/sshkeys",
-        methods=["GET"],
-        tags=TAGS,
-        responses={
-            200: {
-                "model": SshKeysListResponse,
-            },
-            401: {"model": UnauthorizedBodyResponse},
-        },
-        response_model_exclude_none=True,
-        status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
-    )
-    async def list_user_sshkeys(
-        self,
-        token_pagination_params: TokenPaginationParams = Depends(),
-        authenticated_user: AuthenticatedUser | None = Depends(
-            get_authenticated_user
-        ),
-        services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
-        assert authenticated_user is not None
-        ssh_keys = await services.sshkeys.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
-            query=QuerySpec(
-                where=SshKeyClauseFactory.with_user_id(authenticated_user.id)
-            ),
-        )
-
-        return SshKeysListResponse(
-            items=[
-                SshKeyResponse.from_model(
-                    ssh_key,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/users/me/sshkeys",
-                )
-                for ssh_key in ssh_keys.items
-            ],
-            next=(
-                f"{V3_API_PREFIX}/users/me/sshkeys?"
-                f"{TokenPaginationParams.to_href_format(ssh_keys.next_token, token_pagination_params.size)}"
-                if ssh_keys.next_token
-                else None
-            ),
-        )
-
-    @handler(
-        path="/users/me/sshkeys/{sshkey_id}",
-        methods=["GET"],
-        tags=TAGS,
-        responses={
-            200: {
-                "model": SshKeyResponse,
-            },
-            401: {"model": UnauthorizedBodyResponse},
-        },
-        response_model_exclude_none=True,
-        status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
-    )
-    async def get_user_sshkey(
-        self,
-        sshkey_id: int,
-        response: Response,
-        authenticated_user: AuthenticatedUser | None = Depends(
-            get_authenticated_user
-        ),
-        services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
-        assert authenticated_user is not None
-        ssh_key = await services.sshkeys.get_one(
-            query=QuerySpec(
-                where=SshKeyClauseFactory.and_clauses(
-                    [
-                        SshKeyClauseFactory.with_id(sshkey_id),
-                        SshKeyClauseFactory.with_user_id(
-                            authenticated_user.id
-                        ),
-                    ]
-                )
-            ),
-        )
-
-        if not ssh_key:
-            return NotFoundResponse()
-
-        response.headers["ETag"] = ssh_key.etag()
-
-        return SshKeyResponse.from_model(
-            ssh_key,
-            self_base_hyperlink=f"{V3_API_PREFIX}/users/me/sshkeys",
         )

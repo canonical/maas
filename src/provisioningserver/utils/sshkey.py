@@ -11,18 +11,8 @@ import shlex
 from subprocess import CalledProcessError, check_output, PIPE
 from tempfile import TemporaryDirectory
 
+from maascommon.enums.sshkeys import OPENSSH_PROTOCOL2_KEY_TYPES
 from provisioningserver.utils.shell import get_env_with_locale
-
-OPENSSH_PROTOCOL2_KEY_TYPES = frozenset(
-    (
-        "ecdsa-sha2-nistp256",
-        "ecdsa-sha2-nistp384",
-        "ecdsa-sha2-nistp521",
-        "ssh-dss",
-        "ssh-ed25519",
-        "ssh-rsa",
-    )
-)
 
 
 class OpenSSHKeyError(ValueError):
