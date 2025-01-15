@@ -16,6 +16,15 @@ from maasapiserver.v3.api.public.models.responses.sshkeys import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.sshkeys import SshKeysProtocolType
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.services import ServiceCollectionV3
@@ -51,6 +60,7 @@ class TestSshKeyApi(ApiCommonTests):
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=self.BASE_PATH),
             Endpoint(method="POST", path=f"{self.BASE_PATH}:import"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     @pytest.fixture
@@ -116,7 +126,6 @@ class TestSshKeyApi(ApiCommonTests):
             "key": SSHKEY_1.key,
             "auth_id": SSHKEY_1.auth_id,
             "protocol": SSHKEY_1.protocol,
-            "user_id": SSHKEY_1.user_id,
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
             "_links": {"self": {"href": f"{self.BASE_PATH}/{SSHKEY_1.id}"}},
@@ -158,7 +167,6 @@ class TestSshKeyApi(ApiCommonTests):
         assert sshkey_response.key == SSHKEY_1.key
         assert sshkey_response.protocol == SSHKEY_1.protocol
         assert sshkey_response.auth_id == SSHKEY_1.auth_id
-        assert sshkey_response.user_id == SSHKEY_1.user_id
 
     async def test_import_201(
         self,
@@ -214,3 +222,50 @@ class TestSshKeyApi(ApiCommonTests):
         assert error_response.code == 422
         assert error_response.details is not None
         assert error_response.details[0].message == message
+
+    async def test_delete_204(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.sshkeys = Mock(SshKeysService)
+        services_mock.sshkeys.get_one.return_value = SSHKEY_1
+        services_mock.sshkeys.delete_by_id.return_value = SSHKEY_1
+
+        response = await mocked_api_client_user.delete(f"{self.BASE_PATH}/1")
+        assert response.status_code == 204
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.sshkeys = Mock(SshKeysService)
+        services_mock.sshkeys.get_one.return_value = SSHKEY_1
+        services_mock.sshkeys.delete_by_id.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_user.delete(
+            f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
+        )
+        assert response.status_code == 412
+        services_mock.sshkeys.get_one.assert_called_with(
+            query=QuerySpec(
+                where=SshKeyClauseFactory.and_clauses(
+                    [
+                        SshKeyClauseFactory.with_id(1),
+                        SshKeyClauseFactory.with_user_id(0),
+                    ]
+                )
+            )
+        )
+        services_mock.sshkeys.delete_by_id.assert_called_with(
+            SSHKEY_1.id,
+            etag_if_match="wrong_etag",
+        )

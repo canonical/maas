@@ -19,7 +19,6 @@ class SshKeyResponse(HalResponse[BaseHal]):
     key: str
     protocol: Optional[SshKeysProtocolType] = None
     auth_id: Optional[str] = None
-    user_id: int
 
     @classmethod
     def from_model(cls, sshkey: SshKey, self_base_hyperlink: str) -> Self:
@@ -28,7 +27,6 @@ class SshKeyResponse(HalResponse[BaseHal]):
             key=sshkey.key,
             protocol=sshkey.protocol,
             auth_id=sshkey.auth_id,
-            user_id=sshkey.user_id,
             hal_links=BaseHal(
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{sshkey.id}"
