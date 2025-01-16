@@ -16,16 +16,19 @@
 package httpproxy
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"regexp"
+	"sync"
 	"syscall"
 	"time"
 
 	tworkflow "go.temporal.io/sdk/workflow"
+	"maas.io/core/src/maasagent/internal/workflow"
 	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 )
 
@@ -89,19 +92,25 @@ func (s *HTTPProxyService) ConfigurationActivities() map[string]interface{} {
 
 func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) error {
 	log := tworkflow.GetLogger(ctx)
+	log.Info("Configuring httpproxy-service")
 
 	// We will close existing listener without graceful shutdown, because it
 	// make no sense in case of endpoints reconfiguration.
-	if s.listener != nil {
-		if err := s.listener.Close(); err != nil {
-			return err
+	if err := workflow.RunAsLocalActivity(ctx, func(_ context.Context) error {
+		if s.listener != nil {
+			if err := s.listener.Close(); err != nil {
+				return err
+			}
 		}
-	}
 
-	if err := syscall.Unlink(s.socketPath); err != nil {
-		if !os.IsNotExist(err) {
-			return err
+		if err := syscall.Unlink(s.socketPath); err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	var endpointsResult getRegionEndpointsResult
@@ -119,79 +128,73 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 
 	var targets []*url.URL
 
-	counter := len(endpointsResult.Endpoints)
+	if err := workflow.RunAsLocalActivity(ctx, func(_ context.Context) error {
+		var wg sync.WaitGroup
 
-	for _, endpoint := range endpointsResult.Endpoints {
-		u, err := url.Parse(endpoint)
-		// Normally this error should not happen, as we should always receive
-		// valid endpoint from the Region Controller
-		if err != nil {
-			log.Warn("Invalid endpoint", tag.Builder().
-				KV("endpoint", endpoint).
-				KV("error", err))
+		for _, endpoint := range endpointsResult.Endpoints {
+			wg.Add(1)
+
+			go func(endpoint string) {
+				defer wg.Done()
+
+				u, err := url.Parse(endpoint)
+				// Normally this error should not happen, as we should always receive
+				// valid endpoint from the Region Controller
+				if err != nil {
+					log.Warn("Invalid endpoint", tag.Builder().
+						KV("endpoint", endpoint).
+						KV("error", err))
+				}
+
+				// We might receive endpoints that we cannot reach, so before applying
+				// proxy settings we need to check which are actually reachable.
+				conn, err := net.DialTimeout("tcp", u.Host, 500*time.Millisecond)
+				if err != nil {
+					return
+				}
+
+				targets = append(targets, u)
+
+				if err := conn.Close(); err != nil {
+					// We cannot do anything here and this is not critical, but not good.
+					// So we just log it as a Warning.
+					log.Warn("Failed to close connection", tag.Builder().KV("error", err))
+				}
+			}(endpoint)
 		}
 
-		tworkflow.Go(ctx, func(_ tworkflow.Context) {
-			defer func() {
-				counter--
-			}()
-			// We might receive endpoints that we cannot reach, so before applying
-			// proxy settings we need to check which are actually reachable.
-			// Temporal has deadlock detection functionality and normally you should
-			// not do any I/O inside the workflow, but keeping blocking I/O under
-			// 1 second should work. Also we know what we are doing here and this
-			// workflow will never be executed on a different worker.
-			conn, err := net.DialTimeout("tcp", u.Host, 500*time.Millisecond)
-			if err != nil {
-				return
-			}
+		wg.Wait()
 
-			// Because only one coroutine runs at a time in a workflow it is safe
-			// to append items to a slice.
-			// https://community.temporal.io/t/is-workflow-go-safe-for-concurrency/6722
-			targets = append(targets, u)
+		var err error
+		s.proxy, err = NewProxy(targets,
+			WithRewriter(NewRewriter(rewriteRules)),
+			WithCacher(NewCacher(cacheRules, s.cache)),
+		)
+		if err != nil {
+			return err
+		}
 
-			err = conn.Close()
-			if err != nil {
-				// We cannot do anything here and this is not critical, but not good.
-				// So we just log it as a Warning.
-				log.Warn("Failed to close connection", tag.Builder().KV("error", err))
-			}
-		})
-	}
+		s.listener, err = net.Listen("unix", s.socketPath)
+		if err != nil {
+			return err
+		}
 
-	// Wait for workflow Goroutines to complete. Await blocks until the condition
-	// function returns true. The function is evaluated on every workflow state change.
-	//nolint:errcheck // nothing to check here
-	_ = tworkflow.Await(ctx, func() bool { return counter == 0 })
+		//nolint:gosec // we know what we are doing here and we need 0660
+		if err := os.Chmod(s.socketPath, 0660); err != nil {
+			return err
+		}
 
-	var err error
+		// XXX: While httpproxy-service service is consumed through socket via NGINX
+		// there is nothing bad about not setting the timeout on the listener/server
+		//nolint:gosec // this is okay in the current situation
+		go func() { s.fatal <- http.Serve(s.listener, s.proxy) }()
 
-	s.proxy, err = NewProxy(targets,
-		WithRewriter(NewRewriter(rewriteRules)),
-		WithCacher(NewCacher(cacheRules, s.cache)),
-	)
-	if err != nil {
+		return nil
+	}); err != nil {
 		return err
 	}
 
-	s.listener, err = net.Listen("unix", s.socketPath)
-	if err != nil {
-		return err
-	}
-
-	//nolint:gosec // we know what we are doing here and we need 0660
-	if err := os.Chmod(s.socketPath, 0660); err != nil {
-		return err
-	}
-
-	// XXX: While httpproxy-service service is consumed through socket via NGINX
-	// there is nothing bad about not setting the timeout on the listener/server
-
-	//nolint:gosec // this is okay in the current situation
-	go func() { s.fatal <- http.Serve(s.listener, s.proxy) }()
-
-	log.Info("Starting httpproxy-service", tag.Builder().KV("targets", targets).KeyVals...)
+	log.Info("Started httpproxy-service", tag.Builder().KV("targets", targets).KeyVals...)
 	// We consider this workflow to be successful without checking if the service
 	// is up & running after a call to http.Serve().
 	// If there will be any error, it should be captured via HTTPProxyService.Error()

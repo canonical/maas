@@ -38,6 +38,8 @@ import (
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
 	"maas.io/core/src/maasagent/internal/pathutil"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
+	"maas.io/core/src/maasagent/internal/workflow"
+	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 )
 
 const (
@@ -172,17 +174,6 @@ type DHCPServiceConfigParam struct {
 	Enabled bool `json:"enabled"`
 }
 
-// run is a wrapper to run local activities (which are not registered)
-func run(ctx tworkflow.Context, fn any, args ...any) error {
-	options := tworkflow.LocalActivityOptions{
-		ScheduleToCloseTimeout: 30 * time.Second,
-	}
-
-	return tworkflow.ExecuteLocalActivity(
-		tworkflow.WithLocalActivityOptions(ctx, options),
-		fn, args...).Get(ctx, nil)
-}
-
 type ConfigureDHCPForAgentParam struct {
 	SystemID        string `json:"system_id"`
 	VlanIDs         []int  `json:"vlan_ids"`           // for parity with python definition, agent should never assign this
@@ -194,18 +185,23 @@ type ConfigureDHCPForAgentParam struct {
 }
 
 func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigParam) error {
-	if err := syscall.Unlink(s.dataPathFactory(dhcpdNotificationSocketName)); err != nil {
-		if !os.IsNotExist(err) {
+	log := tworkflow.GetLogger(ctx)
+	log.Info("Configuring dhcp-service")
+
+	if err := workflow.RunAsLocalActivity(ctx, func(ctx context.Context) error {
+		if !config.Enabled {
+			log.Info("Stopping dhcp-service", tag.Builder().KV("enabled", config.Enabled))
+			return s.stop(ctx)
+		}
+
+		if err := s.start(ctx); err != nil {
 			return err
 		}
-	}
 
-	if !config.Enabled {
-		return run(ctx, s.stop)
-	}
+		log.Info("Started dhcp-service")
 
-	err := run(ctx, s.start)
-	if err != nil {
+		return nil
+	}); err != nil {
 		return err
 	}
 
@@ -226,9 +222,13 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 }
 
 func (s *DHCPService) start(ctx context.Context) error {
-	var err error
-
 	sockPath := s.dataPathFactory(dhcpdNotificationSocketName)
+
+	if err := syscall.Unlink(sockPath); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
 
 	addr, err := net.ResolveUnixAddr("unixgram", sockPath)
 	if err != nil {
