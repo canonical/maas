@@ -10,6 +10,7 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
     NotFoundBodyResponse,
+    NotFoundResponse,
     UnauthorizedBodyResponse,
     ValidationErrorBodyResponse,
 )
@@ -86,6 +87,56 @@ class SSLKeysHandler(Handler):
                 if sslkeys.next_token
                 else None
             ),
+        )
+
+    @handler(
+        path="/users/me/sslkeys/{sslkey_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": SSLKeyResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_user_sslkey(
+        self,
+        sslkey_id: int,
+        response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> SSLKeyResponse:
+        assert authenticated_user is not None
+
+        sslkey = await services.sslkeys.get_one(
+            query=QuerySpec(
+                where=SSLKeyClauseFactory.and_clauses(
+                    [
+                        SSLKeyClauseFactory.with_id(sslkey_id),
+                        SSLKeyClauseFactory.with_user_id(
+                            authenticated_user.id
+                        ),
+                    ]
+                )
+            ),
+        )
+        if not sslkey:
+            return NotFoundResponse()
+
+        response.headers["ETag"] = sslkey.etag()
+        return SSLKeyResponse.from_model(
+            sslkey=sslkey,
         )
 
     @handler(
