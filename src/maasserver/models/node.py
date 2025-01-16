@@ -3717,6 +3717,15 @@ class Node(CleanSave, TimestampedModel):
 
         if config.get("enable_disk_erasing_on_release"):
             scripts.append("wipe-disks")
+            if script_input is None:
+                script_input = {}
+            script_input["wipe-disks"] = {}
+            script_input["wipe-disks"]["secure_erase"] = config.get(
+                "disk_erase_with_secure_erase"
+            )
+            script_input["wipe-disks"]["quick_erase"] = config.get(
+                "disk_erase_with_quick_erase"
+            )
 
         if not scripts:
             self.release(user, comment)
