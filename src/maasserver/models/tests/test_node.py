@@ -7425,6 +7425,35 @@ class TestNodeErase(MAASServerTestCase):
         node.start_releasing(owner)
         release_mock.assert_not_called()
 
+    def test_start_releasing_erases_when_enabled_with_global_parameters(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        factory.make_Script(  # different tag
+            name="wipe-disks",
+            tags=["wipe", "disk", "storage"],
+            script_type=SCRIPT_TYPE.RELEASE,
+            parameters={
+                "quick_erase": {"type": "boolean"},
+                "secure_erase": {"type": "boolean"},
+            },
+        )
+        Config.objects.set_config("enable_disk_erasing_on_release", True)
+        Config.objects.set_config("disk_erase_with_secure_erase", True)
+        Config.objects.set_config("disk_erase_with_quick_erase", True)
+        self.patch(node, "_start").return_value = succeed(None)
+        node.start_releasing(owner)
+        self.assertIsNotNone(node.current_release_script_set)
+        script_results = node.current_release_script_set.scriptresult_set.all()
+        self.assertEqual(1, len(script_results))
+        self.assertEqual("wipe-disks", script_results.first().script.name)
+        self.assertEqual(
+            {
+                "quick_erase": {"type": "boolean", "value": True},
+                "secure_erase": {"type": "boolean", "value": True},
+            },
+            script_results[0].parameters,
+        )
+
     def test_start_releasing_erases_when_disabled_and_erase_param(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
