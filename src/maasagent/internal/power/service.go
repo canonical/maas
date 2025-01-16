@@ -30,6 +30,7 @@ import (
 	"go.temporal.io/sdk/activity"
 	tworker "go.temporal.io/sdk/worker"
 	tworkflow "go.temporal.io/sdk/workflow"
+	"maas.io/core/src/maasagent/internal/workflow"
 	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
 )
@@ -64,10 +65,16 @@ func (s *PowerService) ConfigurationActivities() map[string]interface{} {
 
 func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 	log := tworkflow.GetLogger(ctx)
+	log.Info("Configuring power-service")
 
 	// Because we don't support partial updates, we always start configuration
 	// with a clean "state" by removing all previously configured workers.
-	s.pool.RemoveWorkers(powerServiceWorkerPoolGroup)
+	if err := workflow.RunAsLocalActivity(ctx, func(_ context.Context) error {
+		s.pool.RemoveWorkers(powerServiceWorkerPoolGroup)
+		return nil
+	}); err != nil {
+		return err
+	}
 
 	type getAgentVLANsParam struct {
 		SystemID string `json:"system_id"`
@@ -106,25 +113,30 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 
 	// Register workers listening VLAN specific task queue and a common one
 	// for fallback scenario for routable access.
-	for _, vlan := range vlansResult.VLANs {
-		taskQueue := fmt.Sprintf("agent:power@vlan-%d", vlan)
-		if err := s.pool.AddWorker(powerServiceWorkerPoolGroup, taskQueue,
-			workflows, activities, tworker.Options{}); err != nil {
-			s.pool.RemoveWorkers(powerServiceWorkerPoolGroup)
-			return err
-		}
-	}
+	return workflow.RunAsLocalActivity(ctx,
+		func(_ context.Context) error {
+			for _, vlan := range vlansResult.VLANs {
+				taskQueue := fmt.Sprintf("agent:power@vlan-%d", vlan)
+				if err := s.pool.AddWorker(powerServiceWorkerPoolGroup, taskQueue,
+					workflows, activities, tworker.Options{}); err != nil {
+					s.pool.RemoveWorkers(powerServiceWorkerPoolGroup)
 
-	taskQueue := fmt.Sprintf("%s@agent:power", systemID)
-	if err := s.pool.AddWorker(powerServiceWorkerPoolGroup, taskQueue,
-		nil, activities, tworker.Options{}); err != nil {
-		s.pool.RemoveWorkers(powerServiceWorkerPoolGroup)
-		return err
-	}
+					return err
+				}
+			}
 
-	log.Info("Starting power-service")
+			taskQueue := fmt.Sprintf("%s@agent:power", systemID)
+			if err := s.pool.AddWorker(powerServiceWorkerPoolGroup, taskQueue,
+				nil, activities, tworker.Options{}); err != nil {
+				s.pool.RemoveWorkers(powerServiceWorkerPoolGroup)
 
-	return nil
+				return err
+			}
+
+			log.Info("Started power-service")
+
+			return nil
+		})
 }
 
 // PowerParam is a generic activity parameter for power management of a host
