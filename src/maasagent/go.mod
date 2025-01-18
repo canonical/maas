@@ -1,6 +1,6 @@
 module maas.io/core/src/maasagent
 
-go 1.21
+go 1.22
 
 require (
 	github.com/canonical/lxd v0.0.0-20231212113931-6b2c9592e968
