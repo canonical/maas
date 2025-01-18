@@ -19,7 +19,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from temporalio.common import RetryPolicy
+from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.workflows.configure import CONFIGURE_AGENT_WORKFLOW_NAME
 from maasserver.enum import (
@@ -1233,13 +1233,13 @@ def process_lxd_results(node, output, exit_status):
         )
         if new_vlans != old_vlans:
             start_workflow(
-                CONFIGURE_AGENT_WORKFLOW_NAME,
+                workflow_name=CONFIGURE_AGENT_WORKFLOW_NAME,
+                workflow_id=f"configure-agent:{node.system_id}",
+                task_queue="region",
+                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                 param={
                     "system_id": node.system_id,
-                    "task_queue": f"{node.system_id}@agent:main",
                 },
-                task_queue="region",
-                retry_policy=RetryPolicy(maximum_attempts=1),
                 execution_timeout=timedelta(seconds=120),
             )
 
