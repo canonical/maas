@@ -4386,6 +4386,7 @@ class TestNode(MAASServerTestCase):
 
     def test_mark_failed_updates_all_pending_and_running_script_statuses(self):
         self.disable_node_query()
+        self.patch(node_module, "stop_workflow")
         node = factory.make_Node(
             status=random.choice(
                 list(NODE_FAILURE_MONITORED_STATUS_TRANSITIONS)
