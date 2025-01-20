@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
@@ -8,7 +8,7 @@ from typing import Optional
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from pydantic import Field
 
-from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.base import MaasBaseModel, make_builder
 from maasservicelayer.utils.date import utcnow
 
 
@@ -34,6 +34,9 @@ class User(MaasBaseModel):
         return PBKDF2PasswordHasher().verify(password, self.password)
 
 
+UserBuilder = make_builder(User)
+
+
 class UserProfile(MaasBaseModel):
     completed_intro: bool
     auth_last_check: Optional[datetime]
@@ -42,6 +45,9 @@ class UserProfile(MaasBaseModel):
 
     def etag(self) -> str:
         pass
+
+
+UserProfileBuilder = make_builder(UserProfile)
 
 
 class Consumer(MaasBaseModel):

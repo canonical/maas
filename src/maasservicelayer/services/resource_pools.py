@@ -1,15 +1,20 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
 )
-from maasservicelayer.models.resource_pools import ResourcePool
+from maasservicelayer.models.resource_pools import (
+    ResourcePool,
+    ResourcePoolBuilder,
+)
 from maasservicelayer.services._base import BaseService
 
 
-class ResourcePoolsService(BaseService[ResourcePool, ResourcePoolRepository]):
+class ResourcePoolsService(
+    BaseService[ResourcePool, ResourcePoolRepository, ResourcePoolBuilder]
+):
     def __init__(
         self,
         context: Context,

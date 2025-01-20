@@ -4,7 +4,7 @@
 from typing import Optional
 
 from maascommon.enums.sshkeys import SshKeysProtocolType
-from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
 
 
 class SshKey(MaasTimestampedBaseModel):
@@ -12,3 +12,6 @@ class SshKey(MaasTimestampedBaseModel):
     protocol: Optional[SshKeysProtocolType] = None
     auth_id: Optional[str] = None
     user_id: int
+
+
+SshKeyBuilder = make_builder(SshKey)

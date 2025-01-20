@@ -1,20 +1,19 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.nodes import (
     AbstractNodesRepository,
     NodeClauseFactory,
 )
 from maasservicelayer.models.bmc import Bmc
-from maasservicelayer.models.nodes import Node
+from maasservicelayer.models.nodes import Node, NodeBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.secrets import SecretsService
 
 
-class NodesService(BaseService[Node, AbstractNodesRepository]):
+class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
     def __init__(
         self,
         context: Context,
@@ -25,11 +24,11 @@ class NodesService(BaseService[Node, AbstractNodesRepository]):
         self.secrets_service = secrets_service
 
     async def update_by_system_id(
-        self, system_id: str, resource: CreateOrUpdateResource
+        self, system_id: str, builder: NodeBuilder
     ) -> Node:
         return await self.repository.update_one(
             query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id)),
-            resource=resource,
+            builder=builder,
         )
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:

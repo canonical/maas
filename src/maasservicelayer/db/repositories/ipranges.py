@@ -1,8 +1,8 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Self, Type
+from typing import Type
 
 import netaddr
 from pydantic import IPvAnyAddress
@@ -10,10 +10,7 @@ from sqlalchemy import join, select, Table
 
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.models.ipranges import IPRange
 
@@ -73,36 +70,6 @@ class IPRangeClauseFactory(ClauseFactory):
     @classmethod
     def with_type(cls, type: IPRangeType) -> Clause:
         return Clause(condition=eq(IPRangeTable.c.type, type))
-
-
-class IPRangeResourceBuilder(ResourceBuilder):
-    def with_id(self, id: int) -> Self:
-        self._request.set_value(IPRangeTable.c.id.name, id)
-        return self
-
-    def with_type(self, type: IPRangeType) -> Self:
-        self._request.set_value(IPRangeTable.c.type.name, type)
-        return self
-
-    def with_start_ip(self, ip: IPvAnyAddress) -> Self:
-        self._request.set_value(IPRangeTable.c.start_ip.name, ip)
-        return self
-
-    def with_end_ip(self, ip: IPvAnyAddress) -> Self:
-        self._request.set_value(IPRangeTable.c.end_ip.name, ip)
-        return self
-
-    def with_comment(self, comment: str | None) -> Self:
-        self._request.set_value(IPRangeTable.c.comment.name, comment)
-        return self
-
-    def with_subnet_id(self, id: int) -> Self:
-        self._request.set_value(IPRangeTable.c.subnet_id.name, id)
-        return self
-
-    def with_user_id(self, id: int) -> Self:
-        self._request.set_value(IPRangeTable.c.user_id.name, id)
-        return self
 
 
 class IPRangesRepository(BaseRepository[IPRange]):

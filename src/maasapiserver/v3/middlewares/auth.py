@@ -1,3 +1,6 @@
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 import abc
 from datetime import timedelta
 import json
@@ -31,10 +34,6 @@ from maasservicelayer.auth.macaroons.models.responses import (
     ValidateUserResponse,
 )
 from maasservicelayer.constants import SYSTEM_USERS
-from maasservicelayer.db.repositories.users import (
-    UserProfileResourceBuilder,
-    UserResourceBuilder,
-)
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -49,7 +48,7 @@ from maasservicelayer.exceptions.constants import (
     USER_EXTERNAL_VALIDATION_FAILED,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
-from maasservicelayer.models.users import User
+from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
 from maasservicelayer.utils.date import utcnow
 
 EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
@@ -273,23 +272,23 @@ class MacaroonAuthenticationProvider:
         except MacaroonApiException:
             return None
 
-        user_builder = UserResourceBuilder()
+        user_builder = UserBuilder()
         if validate_user_response.active ^ user.is_active:
-            user_builder.with_is_active(validate_user_response.active)
+            user_builder.is_active = validate_user_response.active
         if validate_user_response.fullname is not None:
-            user_builder.with_last_name(validate_user_response.fullname)
+            user_builder.last_name = validate_user_response.fullname
         if validate_user_response.email is not None:
-            user_builder.with_email(validate_user_response.email)
+            user_builder.email = validate_user_response.email
 
-        user_builder.with_is_superuser(validate_user_response.superuser)
+        user_builder.is_superuser = validate_user_response.superuser
         user = await request.state.services.users.update_by_id(
-            user.id, user_builder.build()
+            user.id, user_builder
         )
 
-        profile_builder = UserProfileResourceBuilder()
-        profile_builder.with_auth_last_check(now)
+        profile_builder = UserProfileBuilder()
+        profile_builder.auth_last_check = now
         await request.state.services.users.update_profile(
-            user.id, profile_builder.build()
+            user.id, profile_builder
         )
         return user
 

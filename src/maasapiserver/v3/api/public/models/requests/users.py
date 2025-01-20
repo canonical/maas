@@ -1,11 +1,11 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import re
 from typing import Optional
 
 from pydantic import BaseModel, validator
 
-from maasservicelayer.db.repositories.users import UserResourceBuilder
+from maasservicelayer.models.users import UserBuilder
 
 
 class UserRequest(BaseModel):
@@ -23,14 +23,12 @@ class UserRequest(BaseModel):
             raise ValueError("A valid email address must be provided.")
         return v.lower()
 
-    def to_builder(self) -> UserResourceBuilder:
-        resource_builder = (
-            UserResourceBuilder()
-            .with_username(self.username)
-            .with_password(self.password)
-            .with_is_superuser(self.is_superuser)
-            .with_first_name(self.first_name)
-            .with_last_name(self.last_name)
-            .with_email(self.email)
+    def to_builder(self) -> UserBuilder:
+        return UserBuilder(
+            username=self.username,
+            password=self.password,
+            is_superuser=self.is_superuser,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            email=self.email,
         )
-        return resource_builder

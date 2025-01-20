@@ -4,8 +4,7 @@
 from pydantic import BaseModel, Field, validator
 
 from maascommon.sslkey import is_valid_ssl_key
-from maasservicelayer.db.repositories.sslkeys import SSLKeyResourceBuilder
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.sslkeys import SSLKeyBuilder
 
 
 class SSLKeyRequest(BaseModel):
@@ -19,12 +18,5 @@ class SSLKeyRequest(BaseModel):
 
         return key
 
-    def to_builder(self) -> SSLKeyResourceBuilder:
-        now = utcnow()
-        resource_builder = (
-            SSLKeyResourceBuilder()
-            .with_key(self.key)
-            .with_created(now)
-            .with_updated(now)
-        )
-        return resource_builder
+    def to_builder(self) -> SSLKeyBuilder:
+        return SSLKeyBuilder(key=self.key)

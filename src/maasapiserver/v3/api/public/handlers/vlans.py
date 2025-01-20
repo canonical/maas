@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from typing import Union
 
@@ -30,7 +30,6 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class VlansHandler(Handler):
@@ -64,14 +63,9 @@ class VlansHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        now = utcnow()
-        vlan_builder = (
-            (await vlan_request.to_builder(services))
-            .with_fabric_id(fabric_id)
-            .with_created(now)
-            .with_updated(now)
-        )
-        vlan = await services.vlans.create(resource=vlan_builder.build())
+        vlan_builder = await vlan_request.to_builder(services)
+        vlan_builder.fabric_id = fabric_id
+        vlan = await services.vlans.create(builder=vlan_builder)
         response.headers["ETag"] = vlan.etag()
         return VlanResponse.from_model(
             vlan=vlan,
@@ -196,7 +190,6 @@ class VlansHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         resource_builder = await vlan_request.to_builder(services, vlan_id)
-        resource = resource_builder.with_updated(utcnow()).build()
         vlan = await services.vlans.update_one(
             query=QuerySpec(
                 ClauseFactory.and_clauses(
@@ -206,7 +199,7 @@ class VlansHandler(Handler):
                     ]
                 )
             ),
-            resource=resource,
+            builder=resource_builder,
         )
         response.headers["ETag"] = vlan.etag()
         return VlanResponse.from_model(

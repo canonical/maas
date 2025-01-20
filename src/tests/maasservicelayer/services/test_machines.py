@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.node import NodeStatus
+from maascommon.enums.power import PowerState
 from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.machines import MachinesRepository
@@ -50,6 +51,7 @@ class TestCommonMachinesService(ServiceCommonTests):
             power_type=None,
             fqdn="maas.local",
             hostname="hostname",
+            power_state=PowerState.ON,
         )
 
 

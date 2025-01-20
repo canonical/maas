@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from dataclasses import dataclass
 from typing import List
@@ -12,7 +12,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.zones import Zone
+from maasservicelayer.models.zones import Zone, ZoneBuilder
 from maasservicelayer.services._base import BaseService, Service, ServiceCache
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.vmcluster import VmClustersService
@@ -23,7 +23,7 @@ class ZonesServiceCache(ServiceCache):
     default_zone: Zone | None = None
 
 
-class ZonesService(BaseService[Zone, ZonesRepository]):
+class ZonesService(BaseService[Zone, ZonesRepository, ZoneBuilder]):
     def __init__(
         self,
         context: Context,

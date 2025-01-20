@@ -53,14 +53,16 @@ class TestAsyncVaultApiClient:
             "mount_type": "",
         }
         mock_aioresponse.post(
-            "/v1/auth/approle/login", status=200, payload=expected_response
+            "http://test:5200/v1/auth/approle/login",
+            status=200,
+            payload=expected_response,
         )
 
         request = AppRoleLoginRequest(role_id="role_id", secret_id="secret_id")
         response = await client.auth_approle_login("approle", request=request)
         assert response == AppRoleLoginResponse.parse_obj(expected_response)
         mock_aioresponse.assert_called_with(
-            url="/v1/auth/approle/login",
+            url="http://test:5200/v1/auth/approle/login",
             data='{"role_id": "role_id", "secret_id": "secret_id"}',
             headers=None,
             allow_redirects=True,
@@ -83,7 +85,9 @@ class TestAsyncVaultApiClient:
         client = AsyncVaultApiClient(base_url="http://test:5200/")
         expected_response = {"errors": ["permission denied"]}
         mock_aioresponse.post(
-            "/v1/auth/approle/login", status=status, payload=expected_response
+            "http://test:5200/v1/auth/approle/login",
+            status=status,
+            payload=expected_response,
         )
 
         request = AppRoleLoginRequest(role_id="wrong", secret_id="wrong")
@@ -123,14 +127,16 @@ class TestAsyncVaultApiClient:
             "mount_type": "token",
         }
         mock_aioresponse.get(
-            "/v1/auth/token/lookup-self", status=200, payload=expected_response
+            "http://test:5200/v1/auth/token/lookup-self",
+            status=200,
+            payload=expected_response,
         )
 
         headers = {"X-Vault-Token": "mytoken"}
         response = await client.token_lookup_self(headers=headers)
         assert response == TokenLookupSelfResponse.parse_obj(expected_response)
         mock_aioresponse.assert_called_with(
-            url="/v1/auth/token/lookup-self",
+            url="http://test:5200/v1/auth/token/lookup-self",
             headers=headers,
             allow_redirects=True,
             method="GET",
@@ -153,7 +159,7 @@ class TestAsyncVaultApiClient:
         expected_response = {"errors": ["permission denied"]}
 
         mock_aioresponse.get(
-            "/v1/auth/token/lookup-self",
+            "http://test:5200/v1/auth/token/lookup-self",
             status=status,
             payload=expected_response,
         )
@@ -171,7 +177,7 @@ class TestAsyncVaultApiClient:
         client = AsyncVaultApiClient(base_url="http://test:5200/")
         expected_response = None
         mock_aioresponse.delete(
-            "/v1/secret/metadata/test/dummy",
+            "http://test:5200/v1/secret/metadata/test/dummy",
             status=204,
             payload=expected_response,
         )
@@ -182,7 +188,7 @@ class TestAsyncVaultApiClient:
         )
         assert response is None
         mock_aioresponse.assert_called_with(
-            url="/v1/secret/metadata/test/dummy",
+            url="http://test:5200/v1/secret/metadata/test/dummy",
             headers=headers,
             allow_redirects=True,
             method="DELETE",
@@ -205,7 +211,7 @@ class TestAsyncVaultApiClient:
         expected_response = None
 
         mock_aioresponse.delete(
-            "/v1/secret/metadata/test/dummy",
+            "http://test:5200/v1/secret/metadata/test/dummy",
             status=status,
             payload=expected_response,
         )
@@ -240,7 +246,9 @@ class TestAsyncVaultApiClient:
             "mount_type": "kv",
         }
         mock_aioresponse.get(
-            "/v1/secret/data/test/dummy", status=200, payload=expected_response
+            "http://test:5200/v1/secret/data/test/dummy",
+            status=200,
+            payload=expected_response,
         )
 
         headers = {"X-Vault-Token": "mytoken"}
@@ -249,7 +257,7 @@ class TestAsyncVaultApiClient:
         )
         assert response == KvV2ReadResponse.parse_obj(expected_response)
         mock_aioresponse.assert_called_with(
-            url="/v1/secret/data/test/dummy",
+            url="http://test:5200/v1/secret/data/test/dummy",
             headers=headers,
             allow_redirects=True,
             method="GET",
@@ -272,7 +280,7 @@ class TestAsyncVaultApiClient:
         expected_response = {"errors": []}
 
         mock_aioresponse.get(
-            "/v1/secret/data/test/dummy",
+            "http://test:5200/v1/secret/data/test/dummy",
             status=status,
             payload=expected_response,
         )
@@ -304,7 +312,9 @@ class TestAsyncVaultApiClient:
             "mount_type": "kv",
         }
         mock_aioresponse.post(
-            "/v1/secret/data/test/dummy", status=200, payload=expected_response
+            "http://test:5200/v1/secret/data/test/dummy",
+            status=200,
+            payload=expected_response,
         )
 
         headers = {"X-Vault-Token": "mytoken"}
@@ -316,7 +326,7 @@ class TestAsyncVaultApiClient:
         )
         assert response == KvV2WriteResponse.parse_obj(expected_response)
         mock_aioresponse.assert_called_with(
-            url="/v1/secret/data/test/dummy",
+            url="http://test:5200/v1/secret/data/test/dummy",
             data='{"options": null, "data": {"test_key": "test_value"}}',
             headers=headers,
             allow_redirects=True,
@@ -340,7 +350,7 @@ class TestAsyncVaultApiClient:
         expected_response = {"errors": []}
 
         mock_aioresponse.post(
-            "/v1/secret/data/test/dummy",
+            "http://test:5200/v1/secret/data/test/dummy",
             status=status,
             payload=expected_response,
         )

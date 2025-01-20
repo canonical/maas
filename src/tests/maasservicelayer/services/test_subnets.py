@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
@@ -29,13 +29,10 @@ from maasservicelayer.db.repositories.staticipaddress import (
 from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
-from maasservicelayer.db.repositories.subnets import (
-    SubnetResourceBuilder,
-    SubnetsRepository,
-)
+from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.exceptions.catalog import PreconditionFailedException
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.models.subnets import Subnet, SubnetBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService
@@ -145,27 +142,19 @@ class TestSubnetsService:
             subnets_repository=subnets_repository_mock,
         )
 
-        resource = (
-            SubnetResourceBuilder()
-            .with_cidr(subnet.cidr)
-            .with_rdns_mode(subnet.rdns_mode)
-            .with_allow_dns(subnet.allow_dns)
-            .with_allow_proxy(subnet.allow_proxy)
-            .with_active_discovery(subnet.active_discovery)
-            .with_managed(subnet.managed)
-            .with_disabled_boot_architectures(
-                subnet.disabled_boot_architectures
-            )
-            .with_created(subnet.created)
-            .with_updated(subnet.updated)
-            .build()
+        builder = SubnetBuilder(
+            cidr=subnet.cidr,
+            rdns_mode=subnet.rdns_mode,
+            allow_dns=subnet.allow_dns,
+            allow_proxy=subnet.allow_proxy,
+            active_discovery=subnet.active_discovery,
+            managed=subnet.managed,
+            disabled_boot_architectures=subnet.disabled_boot_architectures,
         )
 
-        await subnets_service.create(resource)
+        await subnets_service.create(builder)
 
-        subnets_repository_mock.create.assert_called_once_with(
-            resource=resource
-        )
+        subnets_repository_mock.create.assert_called_once_with(builder=builder)
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[subnet.id]),
@@ -213,26 +202,20 @@ class TestSubnetsService:
             subnets_repository=subnets_repository_mock,
         )
 
-        resource = (
-            SubnetResourceBuilder()
-            .with_cidr(subnet.cidr)
-            .with_rdns_mode(subnet.rdns_mode)
-            .with_allow_dns(subnet.allow_dns)
-            .with_allow_proxy(subnet.allow_proxy)
-            .with_active_discovery(subnet.active_discovery)
-            .with_managed(subnet.managed)
-            .with_disabled_boot_architectures(
-                subnet.disabled_boot_architectures
-            )
-            .with_created(subnet.created)
-            .with_updated(subnet.updated)
-            .build()
+        builder = SubnetBuilder(
+            cidr=subnet.cidr,
+            rdns_mode=subnet.rdns_mode,
+            allow_dns=subnet.allow_dns,
+            allow_proxy=subnet.allow_proxy,
+            active_discovery=subnet.active_discovery,
+            managed=subnet.managed,
+            disabled_boot_architectures=subnet.disabled_boot_architectures,
         )
         query = Mock(QuerySpec)
-        await subnets_service.update_one(query, resource)
+        await subnets_service.update_one(query, builder)
 
         subnets_repository_mock.update_by_id.assert_called_once_with(
-            id=subnet.id, resource=resource
+            id=subnet.id, builder=builder
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,

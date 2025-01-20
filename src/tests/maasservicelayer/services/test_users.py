@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -6,13 +6,9 @@ from unittest.mock import Mock
 import pytest
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.users import (
-    UserProfileResourceBuilder,
-    UserResourceBuilder,
-    UsersRepository,
-)
+from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.users import User
+from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
 from maasservicelayer.services import UsersService
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.utils.date import utcnow
@@ -72,15 +68,12 @@ class TestUsersService:
         users_service = UsersService(
             context=Context(), users_repository=users_repository_mock
         )
-        builder = (
-            UserProfileResourceBuilder()
-            .with_is_local(True)
-            .with_completed_intro(True)
-            .with_auth_last_check(utcnow())
+        builder = UserProfileBuilder(
+            is_local=True, completed_intro=True, auth_last_check=utcnow()
         )
-        await users_service.create_profile(user_id=1, resource=builder.build())
+        await users_service.create_profile(user_id=1, builder=builder)
         users_repository_mock.create_profile.assert_called_once_with(
-            user_id=1, resource=builder.build()
+            user_id=1, builder=builder
         )
 
     async def test_update_profile(self) -> None:
@@ -88,11 +81,11 @@ class TestUsersService:
         users_service = UsersService(
             context=Context(), users_repository=users_repository_mock
         )
-        builder = UserProfileResourceBuilder()
-        builder.with_auth_last_check(utcnow())
-        await users_service.update_profile(user_id=1, resource=builder.build())
+        builder = UserProfileBuilder()
+        builder.auth_last_check = utcnow()
+        await users_service.update_profile(user_id=1, builder=builder)
         users_repository_mock.update_profile.assert_called_once_with(
-            user_id=1, resource=builder.build()
+            user_id=1, builder=builder
         )
 
     async def test_get_user_apikeys(self) -> None:
@@ -121,7 +114,7 @@ class TestUsersService:
             last_login=now,
         )
 
-        blank_create_resource = UserResourceBuilder().build()
+        blank_create_resource = UserBuilder()
 
         users_repository_mock = Mock(UsersRepository)
         users_repository_mock.create.return_value = test_user
@@ -136,9 +129,7 @@ class TestUsersService:
         # Ensure a new user profile is created each time also
         users_repository_mock.create_profile.assert_called_once_with(
             user_id=1,
-            resource={
-                "auth_last_check": None,
-                "is_local": True,
-                "completed_intro": False,
-            },
+            builder=UserProfileBuilder(
+                auth_last_check=None, is_local=True, completed_intro=False
+            ),
         )

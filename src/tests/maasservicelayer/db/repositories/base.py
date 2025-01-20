@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
@@ -14,11 +14,13 @@ from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     MultipleResultsException,
-    ResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
-from maasservicelayer.models.base import MaasTimestampedBaseModel
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.base import (
+    MaasTimestampedBaseModel,
+    ResourceBuilder,
+    Unset,
+)
 from tests.maasapiserver.fixtures.db import Fixture
 
 T = TypeVar("T", bound=MaasTimestampedBaseModel)
@@ -68,6 +70,14 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
             ResourceBuilder: builder to be used for create/update methods.
         """
 
+    @pytest.fixture
+    async def instance_builder_model(self) -> type[ResourceBuilder]:
+        """Fixture used to provide the resource builder model.
+
+        Returns:
+            ResourceBuilder: builder class to be used to instantiate builders in tests.
+        """
+
     @pytest.mark.parametrize("num_objects", [10])
     @pytest.mark.parametrize("page_size", range(1, 12))
     async def test_list(
@@ -104,24 +114,26 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
         repository_instance: BaseRepository,
         instance_builder: ResourceBuilder,
     ):
-        now = utcnow()
-        resource = instance_builder.with_created(now).with_updated(now).build()
-        created_resource = await repository_instance.create(resource)
+        created_resource = await repository_instance.create(instance_builder)
         assert created_resource is not None
         created_resource = created_resource.dict()
-        for key, value in resource.get_values().items():
-            assert created_resource[key] == value
+        if repository_instance.has_timestamped_fields:
+            # We can expect these fields to be populated
+            assert created_resource["created"] is not None
+            assert created_resource["updated"] is not None
+
+        for key, value in instance_builder.dict().items():
+            if not isinstance(value, Unset):
+                assert created_resource[key] == value
 
     async def test_create_duplicated(
         self,
         repository_instance: BaseRepository,
         instance_builder: ResourceBuilder,
     ):
-        now = utcnow()
-        resource = instance_builder.with_created(now).with_updated(now).build()
-        await repository_instance.create(resource)
+        await repository_instance.create(instance_builder)
         with pytest.raises(AlreadyExistsException):
-            await repository_instance.create(resource)
+            await repository_instance.create(instance_builder)
 
     async def test_get_by_id_not_found(
         self, repository_instance: BaseRepository
@@ -235,26 +247,18 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
         repository_instance: BaseRepository,
         instance_builder: ResourceBuilder,
     ):
-        now = utcnow()
-        builder = instance_builder.with_created(now).with_updated(now)
-        created_resource = await repository_instance.create(builder.build())
-        updated_time = utcnow()
-        builder = builder.with_updated(updated_time)
+        created_resource = await repository_instance.create(instance_builder)
         updated_resource = await repository_instance.update_by_id(
-            created_resource.id, builder.build()
+            created_resource.id, instance_builder
         )
-        assert updated_resource.updated == updated_time
+        assert updated_resource.updated > created_resource.updated
 
     async def test_update_one(
         self,
         repository_instance: BaseRepository,
         instance_builder: ResourceBuilder,
     ):
-        now = utcnow()
-        builder = instance_builder.with_created(now).with_updated(now)
-        created_resource = await repository_instance.create(builder.build())
-        updated_time = utcnow()
-        builder = builder.with_updated(updated_time)
+        created_resource = await repository_instance.create(instance_builder)
         updated_resource = await repository_instance.update_one(
             QuerySpec(
                 where=Clause(
@@ -264,31 +268,33 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
                     )
                 )
             ),
-            builder.build(),
+            instance_builder,
         )
-        assert updated_resource.updated == updated_time
+        assert updated_resource.updated > created_resource.updated
 
     @pytest.mark.parametrize("num_objects", [2])
     async def test_update_one_multiple_results(
         self,
         repository_instance: BaseRepository,
+        instance_builder_model: type[ResourceBuilder],
         _setup_test_list: Sequence[T],
         num_objects: int,
     ):
-        builder = ResourceBuilder().with_updated(utcnow())
+        builder = instance_builder_model()
         with pytest.raises(MultipleResultsException):
-            await repository_instance.update_one(QuerySpec(), builder.build())
+            await repository_instance.update_one(QuerySpec(), builder)
 
     @pytest.mark.parametrize("num_objects", [2])
     async def test_update_many(
         self,
         repository_instance: BaseRepository,
+        instance_builder_model: type[ResourceBuilder],
         _setup_test_list: Sequence[T],
         num_objects: int,
     ):
-        builder = ResourceBuilder().with_updated(utcnow())
+        builder = instance_builder_model()
         updated_resources = await repository_instance.update_many(
-            QuerySpec(), builder.build()
+            QuerySpec(), builder
         )
         assert len(updated_resources) == 2
         assert all(resource.updated for resource in updated_resources)

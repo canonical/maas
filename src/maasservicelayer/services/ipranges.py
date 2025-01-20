@@ -1,5 +1,6 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import List
 
 from pydantic import IPvAnyAddress
@@ -11,7 +12,6 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsClauseFactory,
 )
@@ -19,7 +19,6 @@ from maasservicelayer.db.repositories.ipranges import (
     IPRangeClauseFactory,
     IPRangesRepository,
 )
-from maasservicelayer.db.tables import IPRangeTable
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -27,13 +26,15 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.ipranges import IPRange
+from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.temporal import TemporalService
 
 
-class IPRangesService(BaseService[IPRange, IPRangesRepository]):
+class IPRangesService(
+    BaseService[IPRange, IPRangesRepository, IPRangeBuilder]
+):
     def __init__(
         self,
         context: Context,
@@ -51,25 +52,15 @@ class IPRangesService(BaseService[IPRange, IPRangesRepository]):
     ) -> IPRange | None:
         return await self.repository.get_dynamic_range_for_ip(subnet_id, ip)
 
-    # TODO: refactor this when we refactor the builder's abstraction
-    async def pre_create_hook(self, resource: CreateOrUpdateResource) -> None:
-        values = resource.get_values()
+    async def pre_create_hook(self, builder: IPRangeBuilder) -> None:
         iprange = await self.get_one(
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
                     [
-                        IPRangeClauseFactory.with_type(
-                            values[IPRangeTable.c.type.name]
-                        ),
-                        IPRangeClauseFactory.with_start_ip(
-                            values[IPRangeTable.c.start_ip.name]
-                        ),
-                        IPRangeClauseFactory.with_start_ip(
-                            values[IPRangeTable.c.end_ip.name]
-                        ),
-                        IPRangeClauseFactory.with_subnet_id(
-                            values[IPRangeTable.c.subnet_id.name]
-                        ),
+                        IPRangeClauseFactory.with_type(builder.type),
+                        IPRangeClauseFactory.with_start_ip(builder.start_ip),
+                        IPRangeClauseFactory.with_start_ip(builder.end_ip),
+                        IPRangeClauseFactory.with_subnet_id(builder.subnet_id),
                     ]
                 )
             )

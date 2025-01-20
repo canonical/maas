@@ -1,31 +1,21 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import List, Self, Type
+from typing import List, Type
 
 from netaddr import IPAddress
 from pydantic import IPvAnyAddress
 from sqlalchemy import desc, func, join, select, Table
 
-from maascommon.bootmethods import find_boot_method_by_arch_or_octet
-from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-    T,
-)
+from maasservicelayer.db.repositories.base import BaseRepository, T
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
 )
-from maasservicelayer.exceptions.constants import (
-    INVALID_ARGUMENT_VIOLATION_TYPE,
-    PRECONDITION_FAILED,
-)
-from maasservicelayer.models.fields import IPv4v6Network
+from maasservicelayer.exceptions.constants import PRECONDITION_FAILED
 from maasservicelayer.models.subnets import Subnet
 
 
@@ -50,84 +40,6 @@ class SubnetClauseFactory(ClauseFactory):
                 )
             ],
         )
-
-
-class SubnetResourceBuilder(ResourceBuilder):
-    def with_cidr(self, cidr: IPv4v6Network) -> Self:
-        self._request.set_value(SubnetTable.c.cidr.name, cidr)
-        return self
-
-    def with_name(self, name: str) -> Self:
-        self._request.set_value(SubnetTable.c.name.name, name)
-        return self
-
-    def with_description(self, description: str | None) -> Self:
-        # inherited from the django model where it's empty by default.
-        if description is None:
-            description = ""
-        self._request.set_value(SubnetTable.c.description.name, description)
-        return self
-
-    def with_allow_dns(self, allow_dns: bool) -> Self:
-        self._request.set_value(SubnetTable.c.allow_dns.name, allow_dns)
-        return self
-
-    def with_allow_proxy(self, allow_proxy: bool) -> Self:
-        self._request.set_value(SubnetTable.c.allow_proxy.name, allow_proxy)
-        return self
-
-    def with_rdns_mode(self, rdns_mode: RdnsMode) -> Self:
-        self._request.set_value(SubnetTable.c.rdns_mode.name, rdns_mode)
-        return self
-
-    def with_active_discovery(self, active_discovery: bool) -> Self:
-        self._request.set_value(
-            SubnetTable.c.active_discovery.name, active_discovery
-        )
-        return self
-
-    def with_managed(self, managed: bool) -> Self:
-        self._request.set_value(SubnetTable.c.managed.name, managed)
-        return self
-
-    def with_disabled_boot_architectures(
-        self, disabled_boot_architectures: list[str]
-    ) -> Self:
-        disabled_boot_method_names = []
-        for disabled_arch in disabled_boot_architectures:
-            boot_method = find_boot_method_by_arch_or_octet(
-                disabled_arch, disabled_arch.replace("0x", "00:")
-            )
-            if boot_method is None or (
-                not boot_method.arch_octet and not boot_method.path_prefix_http
-            ):
-                raise ValidationException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                            message=f"Unkown boot architecture {disabled_arch}",
-                        )
-                    ]
-                )
-            disabled_boot_method_names.append(boot_method.name)
-        self._request.set_value(
-            SubnetTable.c.disabled_boot_architectures.name,
-            disabled_boot_method_names,
-        )
-        return self
-
-    def with_gateway_ip(self, gateway_ip: IPvAnyAddress | None) -> Self:
-        self._request.set_value(SubnetTable.c.gateway_ip.name, gateway_ip)
-        return self
-
-    def with_dns_servers(self, dns_servers: list[IPvAnyAddress]) -> Self:
-        values = [str(server) for server in dns_servers]
-        self._request.set_value(SubnetTable.c.dns_servers.name, values)
-        return self
-
-    def with_vlan_id(self, vlan_id: int) -> Self:
-        self._request.set_value(SubnetTable.c.vlan_id.name, vlan_id)
-        return self
 
 
 class SubnetsRepository(BaseRepository[Subnet]):

@@ -1,36 +1,15 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from operator import eq
-from typing import Self, Type
+from typing import Type
 
 from sqlalchemy import Table
 
-from maascommon.enums.service import ServiceName, ServiceStatusEnum
+from maascommon.enums.service import ServiceName
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import ServiceStatusTable
 from maasservicelayer.models.service_status import ServiceStatus
-
-
-class ServiceStatusResourceBuilder(ResourceBuilder):
-    def with_name(self, value: ServiceName) -> Self:
-        self._request.set_value(ServiceStatusTable.c.name.name, value)
-        return self
-
-    def with_status(self, value: ServiceStatusEnum) -> Self:
-        self._request.set_value(ServiceStatusTable.c.status.name, value)
-        return self
-
-    def with_status_info(self, value: str = "") -> Self:
-        self._request.set_value(ServiceStatusTable.c.status_info.name, value)
-        return self
-
-    def with_node_id(self, value: int) -> Self:
-        self._request.set_value(ServiceStatusTable.c.node_id.name, value)
-        return self
 
 
 class ServiceStatusClauseFactory(ClauseFactory):

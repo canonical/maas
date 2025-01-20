@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional
@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, validator
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.zones import ZonesClauseFactory
+from maasservicelayer.models.zones import ZoneBuilder
 
 
 class ZonesFiltersParams(BaseModel):
@@ -40,3 +41,6 @@ class ZoneRequest(NamedBaseModel):
     @validator("description")
     def set_default(cls, v: str) -> str:
         return v if v else ""
+
+    def to_builder(self) -> ZoneBuilder:
+        return ZoneBuilder(name=self.name, description=self.description)

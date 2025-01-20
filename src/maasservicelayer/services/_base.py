@@ -1,4 +1,4 @@
-#  Copyright 2023-2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC
@@ -7,10 +7,7 @@ from typing import Generic, List, TypeVar
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    CreateOrUpdateResource,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -20,7 +17,11 @@ from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult, MaasBaseModel
+from maasservicelayer.models.base import (
+    ListResult,
+    MaasBaseModel,
+    ResourceBuilder,
+)
 
 
 @dataclass(slots=True)
@@ -80,11 +81,17 @@ class Service(ABC):
         return inner_decorator
 
 
-T = TypeVar("T", bound=MaasBaseModel)
+# M Model
+M = TypeVar("M", bound=MaasBaseModel)
+
+# R Repository
 R = TypeVar("R", bound=BaseRepository)
 
+# B Builder
+B = TypeVar("B", bound=ResourceBuilder)
 
-class BaseService(Service, ABC, Generic[T, R]):
+
+class BaseService(Service, ABC, Generic[M, R, B]):
     """
     The base class for all the services that have a BaseRepository.
     The `get`, `get_one`, `get_by_id` and all the other methods of the BaseRepository are just pass-through methods in the Service
@@ -100,7 +107,7 @@ class BaseService(Service, ABC, Generic[T, R]):
         super().__init__(context, cache)
         self.repository = repository
 
-    def etag_check(self, model: T, etag_if_match: str | None = None):
+    def etag_check(self, model: M, etag_if_match: str | None = None):
         """
         Raises a PreconditionFailedException if the etag does not match.
         """
@@ -114,49 +121,47 @@ class BaseService(Service, ABC, Generic[T, R]):
                 ]
             )
 
-    async def get_many(self, query: QuerySpec) -> List[T]:
+    async def get_many(self, query: QuerySpec) -> List[M]:
         return await self.repository.get_many(query=query)
 
-    async def get_one(self, query: QuerySpec) -> T | None:
+    async def get_one(self, query: QuerySpec) -> M | None:
         return await self.repository.get_one(query=query)
 
-    async def get_by_id(self, id: int) -> T | None:
+    async def get_by_id(self, id: int) -> M | None:
         return await self.repository.get_by_id(id=id)
 
-    async def pre_create_hook(self, resource: CreateOrUpdateResource) -> None:
+    async def pre_create_hook(self, builder: B) -> None:
         return None
 
-    async def post_create_hook(self, resource: T) -> None:
+    async def post_create_hook(self, resource: M) -> None:
         return None
 
-    async def create(self, resource: CreateOrUpdateResource) -> T:
-        await self.pre_create_hook(resource)
-        created_resource = await self.repository.create(resource=resource)
+    async def create(self, builder: B) -> M:
+        await self.pre_create_hook(builder)
+        created_resource = await self.repository.create(builder=builder)
         await self.post_create_hook(created_resource)
         return created_resource
 
     async def list(
         self, token: str | None, size: int, query: QuerySpec | None = None
-    ) -> ListResult[T]:
+    ) -> ListResult[M]:
         return await self.repository.list(token=token, size=size, query=query)
 
-    async def post_update_many_hook(self, resources: List[T]) -> None:
+    async def post_update_many_hook(self, resources: List[M]) -> None:
         """
         Override this function in your Service to perform post-hooks with the updated objects
         """
         return None
 
-    async def update_many(
-        self, query: QuerySpec, resource: CreateOrUpdateResource
-    ) -> List[T]:
+    async def update_many(self, query: QuerySpec, builder: B) -> List[M]:
         updated_resources = await self.repository.update_many(
-            query=query, resource=resource
+            query=query, builder=builder
         )
         await self.post_update_many_hook(updated_resources)
         return updated_resources
 
     async def post_update_hook(
-        self, old_resource: T, updated_resource: T
+        self, old_resource: M, updated_resource: M
     ) -> None:
         """
         Override this function in your Service to perform post-hooks with the updated object
@@ -166,31 +171,31 @@ class BaseService(Service, ABC, Generic[T, R]):
     async def update_one(
         self,
         query: QuerySpec,
-        resource: CreateOrUpdateResource,
+        builder: B,
         etag_if_match: str | None = None,
-    ) -> T:
+    ) -> M:
         existing_resource = await self.get_one(query=query)
         return await self._update_resource(
-            existing_resource, resource, etag_if_match
+            existing_resource, builder, etag_if_match
         )
 
     async def update_by_id(
         self,
         id: int,
-        resource: CreateOrUpdateResource,
+        builder: B,
         etag_if_match: str | None = None,
-    ) -> T:
+    ) -> M:
         existing_resource = await self.get_by_id(id=id)
         return await self._update_resource(
-            existing_resource, resource, etag_if_match
+            existing_resource, builder, etag_if_match
         )
 
     async def _update_resource(
         self,
-        existing_resource: T | None,
-        resource: CreateOrUpdateResource,
+        existing_resource: M | None,
+        builder: B,
         etag_if_match: str | None = None,
-    ) -> T:
+    ) -> M:
         if not existing_resource:
             raise NotFoundException(
                 details=[
@@ -203,23 +208,23 @@ class BaseService(Service, ABC, Generic[T, R]):
 
         self.etag_check(existing_resource, etag_if_match)
         updated_resource = await self.repository.update_by_id(
-            id=existing_resource.id, resource=resource
+            id=existing_resource.id, builder=builder
         )
         await self.post_update_hook(existing_resource, updated_resource)
         return updated_resource
 
-    async def post_delete_many_hook(self, resources: List[T]) -> None:
+    async def post_delete_many_hook(self, resources: List[M]) -> None:
         """
         Override this function in your Service to perform post-hooks with the deleted objects
         """
         return None
 
-    async def delete_many(self, query: QuerySpec) -> List[T]:
+    async def delete_many(self, query: QuerySpec) -> List[M]:
         resources = await self.repository.delete_many(query=query)
         await self.post_delete_many_hook(resources)
         return resources
 
-    async def pre_delete_hook(self, resource_to_be_deleted: T) -> None:
+    async def pre_delete_hook(self, resource_to_be_deleted: M) -> None:
         """
         Override this function in your Service to perform pre-hooks with the object to be deleted.
         This can be used for example to implement extra checks on the objects to be deleted.
@@ -228,7 +233,7 @@ class BaseService(Service, ABC, Generic[T, R]):
         """
         return None
 
-    async def post_delete_hook(self, resource: T) -> None:
+    async def post_delete_hook(self, resource: M) -> None:
         """
         Override this function in your Service to perform post-hooks with the deleted object.
         This is called only if the delete query matched a target, so you are sure the `resource` is not None.
@@ -240,7 +245,7 @@ class BaseService(Service, ABC, Generic[T, R]):
         query: QuerySpec,
         etag_if_match: str | None = None,
         force: bool = False,
-    ) -> T | None:
+    ) -> M | None:
         """
         Deletes a single resource matching the specified query.
 
@@ -252,7 +257,7 @@ class BaseService(Service, ABC, Generic[T, R]):
 
     async def delete_by_id(
         self, id: int, etag_if_match: str | None = None, force: bool = False
-    ) -> T | None:
+    ) -> M | None:
         """
         Deletes a resource identified by its ID.
 
@@ -264,10 +269,10 @@ class BaseService(Service, ABC, Generic[T, R]):
 
     async def _delete_resource(
         self,
-        resource: T | None,
+        resource: M | None,
         etag_if_match: str | None = None,
         force: bool = False,
-    ) -> T | None:
+    ) -> M | None:
         if not resource:
             return None
 

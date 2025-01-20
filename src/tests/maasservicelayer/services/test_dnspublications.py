@@ -1,3 +1,6 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from unittest.mock import Mock
 
 import pytest
@@ -11,10 +14,12 @@ from maascommon.workflows.dns import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
-    DNSPublicationResourceBuilder,
 )
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.dnspublications import DNSPublication
+from maasservicelayer.models.dnspublications import (
+    DNSPublication,
+    DNSPublicationBuilder,
+)
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.temporal import TemporalService
@@ -63,13 +68,13 @@ class TestDNSPublicationsService(ServiceCommonTests):
         )
 
         dnspublication_repository.create.assert_called_once_with(
-            resource=DNSPublicationResourceBuilder()
-            .with_serial(2)
-            .with_source("")
-            .with_update(DnsUpdateAction.RELOAD)
-            .with_created(now)
-            .with_updated(now)
-            .build()
+            builder=DNSPublicationBuilder(
+                serial=2,
+                source="",
+                update=DnsUpdateAction.RELOAD,
+                created=now,
+                updated=now,
+            )
         )
 
     async def test_create_for_config_update_non_reload(self):
@@ -105,13 +110,13 @@ class TestDNSPublicationsService(ServiceCommonTests):
         )
 
         dnspublication_repository.create.assert_called_once_with(
-            resource=DNSPublicationResourceBuilder()
-            .with_serial(2)
-            .with_source("")
-            .with_update("INSERT example.com test A 30 1.1.1.1")
-            .with_created(now)
-            .with_updated(now)
-            .build()
+            builder=DNSPublicationBuilder(
+                serial=2,
+                source="",
+                update="INSERT example.com test A 30 1.1.1.1",
+                created=now,
+                updated=now,
+            )
         )
 
     async def test_get_publications_since_serial(self):

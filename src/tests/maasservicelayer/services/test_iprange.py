@@ -1,3 +1,6 @@
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from ipaddress import IPv4Address
 from unittest.mock import AsyncMock, Mock
 
@@ -17,12 +20,11 @@ from maasservicelayer.db.repositories.dhcpsnippets import (
 )
 from maasservicelayer.db.repositories.ipranges import (
     IPRangeClauseFactory,
-    IPRangeResourceBuilder,
     IPRangesRepository,
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.ipranges import IPRange
+from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services._base import BaseService
@@ -140,21 +142,17 @@ class TestIPRangesService:
             ipranges_repository=mock_ipranges_repository,
         )
 
-        resource = (
-            IPRangeResourceBuilder()
-            .with_type(iprange.type)
-            .with_start_ip(iprange.start_ip)
-            .with_end_ip(iprange.end_ip)
-            .with_created(iprange.created)
-            .with_updated(iprange.updated)
-            .with_subnet_id(2)
-            .build()
+        builder = IPRangeBuilder(
+            type=iprange.type,
+            start_ip=iprange.start_ip,
+            end_ip=iprange.end_ip,
+            subnet_id=2,
         )
 
-        await ipranges_service.create(resource)
+        await ipranges_service.create(builder)
 
         mock_ipranges_repository.create.assert_called_once_with(
-            resource=resource
+            builder=builder
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -186,19 +184,15 @@ class TestIPRangesService:
             dhcpsnippets_service=Mock(DhcpSnippetsService),
             ipranges_repository=mock_ipranges_repository,
         )
-        resource = (
-            IPRangeResourceBuilder()
-            .with_type(iprange.type)
-            .with_start_ip(iprange.start_ip)
-            .with_end_ip(iprange.end_ip)
-            .with_created(iprange.created)
-            .with_updated(iprange.updated)
-            .with_subnet_id(2)
-            .build()
+        builder = IPRangeBuilder(
+            type=iprange.type,
+            start_ip=iprange.start_ip,
+            end_ip=iprange.end_ip,
+            subnet_id=2,
         )
 
         with pytest.raises(AlreadyExistsException):
-            await ipranges_service.create(resource)
+            await ipranges_service.create(builder)
         mock_ipranges_repository.get_one.assert_called_once_with(
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
@@ -236,20 +230,17 @@ class TestIPRangesService:
             ipranges_repository=mock_ipranges_repository,
         )
 
-        resource = (
-            IPRangeResourceBuilder()
-            .with_type(iprange.type)
-            .with_start_ip(iprange.start_ip)
-            .with_end_ip(iprange.end_ip)
-            .with_created(iprange.created)
-            .with_updated(iprange.updated)
-            .build()
+        builder = IPRangeBuilder(
+            type=iprange.type,
+            start_ip=iprange.start_ip,
+            end_ip=iprange.end_ip,
+            subnet_id=2,
         )
 
-        await ipranges_service.update_by_id(iprange.id, resource)
+        await ipranges_service.update_by_id(iprange.id, builder)
 
         mock_ipranges_repository.update_by_id.assert_called_once_with(
-            id=iprange.id, resource=resource
+            id=iprange.id, builder=builder
         )
 
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(

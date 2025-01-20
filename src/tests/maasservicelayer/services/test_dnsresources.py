@@ -1,3 +1,6 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from unittest.mock import call, Mock
 
 import pytest
@@ -5,12 +8,12 @@ import pytest
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.dnsresources import (
-    DNSResourceRepository,
-    DNSResourceResourceBuilder,
-)
+from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.dnsresources import DNSResource
+from maasservicelayer.models.dnsresources import (
+    DNSResource,
+    DNSResourceBuilder,
+)
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services._base import BaseService
@@ -95,19 +98,14 @@ class TestDNSResourcesService:
             dnsresource_repository=mock_dnsresource_repository,
         )
 
-        resource = (
-            DNSResourceResourceBuilder()
-            .with_name(dnsresource.name)
-            .with_domain_id(domain.id)
-            .with_created(dnsresource.created)
-            .with_updated(dnsresource.updated)
-            .build()
+        builder = DNSResourceBuilder(
+            name=dnsresource.name,
+            domain_id=domain.id,
         )
-
-        await service.create(resource)
+        await service.create(builder)
 
         mock_dnsresource_repository.create.assert_called_once_with(
-            resource=resource
+            builder=builder
         )
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone test_domain added resource example",
@@ -152,13 +150,8 @@ class TestDNSResourcesService:
         )
         domain_list = [old_domain, new_domain]
 
-        resource = (
-            DNSResourceResourceBuilder()
-            .with_name(new_dnsresource.name)
-            .with_domain_id(new_domain.id)
-            .with_created(new_dnsresource.created)
-            .with_updated(new_dnsresource.updated)
-            .build()
+        builder = DNSResourceBuilder(
+            name=new_dnsresource.name, domain_id=new_domain.id
         )
 
         mock_domains_service.get_one.side_effect = domain_list
@@ -172,10 +165,10 @@ class TestDNSResourcesService:
             dnsresource_repository=mock_dnsresource_repository,
         )
 
-        await service.update_by_id(old_dnsresource.id, resource)
+        await service.update_by_id(old_dnsresource.id, builder)
 
         mock_dnsresource_repository.update_by_id.assert_called_once_with(
-            id=old_dnsresource.id, resource=resource
+            id=old_dnsresource.id, builder=builder
         )
         mock_dnspublications_service.create_for_config_update.assert_has_calls(
             [
@@ -224,14 +217,8 @@ class TestDNSResourcesService:
             address_ttl=45,
         )
 
-        resource = (
-            DNSResourceResourceBuilder()
-            .with_name(dnsresource.name)
-            .with_domain_id(domain.id)
-            .with_address_ttl(45)
-            .with_created(dnsresource.created)
-            .with_updated(dnsresource.updated)
-            .build()
+        builder = DNSResourceBuilder(
+            name=dnsresource.name, domain_id=domain.id, address_ttl=45
         )
 
         mock_domains_service.get_one.return_value = domain
@@ -245,10 +232,10 @@ class TestDNSResourcesService:
             dnsresource_repository=mock_dnsresource_repository,
         )
 
-        await service.update_by_id(old_dnsresource.id, resource)
+        await service.update_by_id(old_dnsresource.id, builder)
 
         mock_dnsresource_repository.update_by_id.assert_called_once_with(
-            id=old_dnsresource.id, resource=resource
+            id=old_dnsresource.id, builder=builder
         )
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone test_domain updated resource example",

@@ -9,12 +9,12 @@ from sqlalchemy.sql.operators import eq
 from maasservicelayer.context import Context
 from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import ResourceBuilder
 from maasservicelayer.db.repositories.events import (
     EventsClauseFactory,
     EventsRepository,
 )
 from maasservicelayer.db.tables import EventTable, NodeTable
+from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.events import Event
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.events import (

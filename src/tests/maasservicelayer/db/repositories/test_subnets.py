@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
@@ -6,18 +6,15 @@ from ipaddress import IPv4Address, IPv4Network
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maascommon.bootmethods import BOOT_METHODS_METADATA
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.subnets import (
     SubnetClauseFactory,
-    SubnetResourceBuilder,
     SubnetsRepository,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
-from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.subnets import Subnet, SubnetBuilder
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
@@ -47,70 +44,6 @@ class TestSubnetClauseFactory:
         ) == (
             "maasserver_subnet JOIN maasserver_vlan ON maasserver_subnet.vlan_id = maasserver_vlan.id"
         )
-
-
-class TestSubnetResourceBuilder:
-    def test_builder(self) -> None:
-        now = utcnow()
-        net = IPv4Network("10.0.0.0/24", strict=False)
-        resource = (
-            SubnetResourceBuilder()
-            .with_cidr(net)
-            .with_name("name")
-            .with_description("description")
-            .with_allow_dns(True)
-            .with_allow_proxy(True)
-            .with_rdns_mode(RdnsMode.DEFAULT)
-            .with_active_discovery(True)
-            .with_managed(True)
-            .with_disabled_boot_architectures(["ipxe"])
-            .with_vlan_id(0)
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        assert resource.get_values() == {
-            "cidr": net,
-            "name": "name",
-            "description": "description",
-            "allow_dns": True,
-            "allow_proxy": True,
-            "rdns_mode": RdnsMode.DEFAULT,
-            "active_discovery": True,
-            "managed": True,
-            "disabled_boot_architectures": ["ipxe"],
-            "vlan_id": 0,
-            "created": now,
-            "updated": now,
-        }
-
-    @pytest.mark.parametrize(
-        "arch, is_valid,",
-        [
-            *[
-                (method.arch_octet, True)
-                for method in BOOT_METHODS_METADATA
-                if method.arch_octet is not None
-            ],
-            *[
-                (method.name, True)
-                for method in BOOT_METHODS_METADATA
-                if method.name not in [None, "windows"]
-            ],
-            ("test", False),
-        ],
-    )
-    def test_disabled_boot_architectures(
-        self, arch: str, is_valid: bool
-    ) -> None:
-        if is_valid:
-            SubnetResourceBuilder().with_disabled_boot_architectures([arch])
-        else:
-            with pytest.raises(ValidationException):
-                SubnetResourceBuilder().with_disabled_boot_architectures(
-                    [arch]
-                )
 
 
 class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
@@ -147,20 +80,23 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
         )
 
     @pytest.fixture
-    async def instance_builder(self) -> SubnetResourceBuilder:
-        return (
-            SubnetResourceBuilder()
-            .with_cidr(IPv4Network("10.10.10.1"))
-            .with_name("name")
-            .with_description("description")
-            .with_allow_dns(True)
-            .with_allow_proxy(True)
-            .with_rdns_mode(RdnsMode.DEFAULT)
-            .with_active_discovery(True)
-            .with_managed(True)
-            .with_disabled_boot_architectures(["ipxe"])
-            .with_gateway_ip(IPv4Address("10.0.0.1"))
-            .with_vlan_id(0)
+    async def instance_builder_model(self) -> type[SubnetBuilder]:
+        return SubnetBuilder
+
+    @pytest.fixture
+    async def instance_builder(self) -> SubnetBuilder:
+        return SubnetBuilder(
+            cidr=IPv4Network("10.10.10.1"),
+            name="name",
+            description="description",
+            allow_dns=True,
+            allow_proxy=True,
+            rdns_mode=RdnsMode.DEFAULT,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=["ipxe"],
+            gateway_ip=IPv4Address("10.0.0.1"),
+            vlan_id=0,
         )
 
     @pytest.mark.skip(reason="Not implemented yet")

@@ -1,16 +1,12 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.base import ResourceBuilder
-from maasservicelayer.db.repositories.fabrics import (
-    FabricsRepository,
-    FabricsResourceBuilder,
-)
-from maasservicelayer.models.fabrics import Fabric
+from maasservicelayer.db.repositories.fabrics import FabricsRepository
+from maasservicelayer.models.fabrics import Fabric, FabricBuilder
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
@@ -42,8 +38,12 @@ class TestFabricsRepository(RepositoryCommonTests[Fabric]):
         )
 
     @pytest.fixture
-    async def instance_builder(self) -> ResourceBuilder:
-        return FabricsResourceBuilder().with_description("")
+    async def instance_builder_model(self) -> type[FabricBuilder]:
+        return FabricBuilder
+
+    @pytest.fixture
+    async def instance_builder(self) -> FabricBuilder:
+        return FabricBuilder(description="")
 
     @pytest.mark.skip(reason="Does not apply to fabrics.")
     async def test_create_duplicated(

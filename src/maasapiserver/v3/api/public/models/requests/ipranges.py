@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional
@@ -6,7 +6,6 @@ from typing import Optional
 from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maascommon.enums.ipranges import IPRangeType
-from maasservicelayer.db.repositories.ipranges import IPRangeResourceBuilder
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ForbiddenException,
@@ -17,9 +16,9 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.ipranges import IPRangeBuilder
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class IPRangeCreateRequest(BaseModel):
@@ -87,7 +86,7 @@ class IPRangeCreateRequest(BaseModel):
         subnet: Subnet,
         authenticated_user: AuthenticatedUser,
         services: ServiceCollectionV3,
-    ) -> IPRangeResourceBuilder:
+    ) -> IPRangeBuilder:
         self._validate_addresses_in_subnet(subnet)
         if self.type == IPRangeType.DYNAMIC:
             if not authenticated_user.is_admin():
@@ -117,24 +116,18 @@ class IPRangeCreateRequest(BaseModel):
                 )
 
         # TODO: check that there is no overlap with existing ranges and allocated IPs.
-
-        now = utcnow()
-        builder = (
-            IPRangeResourceBuilder()
-            .with_type(self.type)
-            .with_start_ip(self.start_ip)
-            .with_end_ip(self.end_ip)
-            .with_comment(self.comment)
-            .with_subnet_id(subnet.id)
-            .with_user_id(
+        return IPRangeBuilder(
+            type=self.type,
+            start_ip=self.start_ip,
+            end_ip=self.end_ip,
+            comment=self.comment,
+            subnet_id=subnet.id,
+            user_id=(
                 self.owner_id
                 if self.owner_id is not None
                 else authenticated_user.id
-            )
-            .with_created(now)
-            .with_updated(now)
+            ),
         )
-        return builder
 
 
 class IPRangeUpdateRequest(IPRangeCreateRequest):

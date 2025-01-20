@@ -63,6 +63,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
                 NodeTable.c.cpu_count,
                 NodeTable.c.status,
                 NodeTable.c.hostname,
+                NodeTable.c.power_state,
                 BMCTable.c.power_type,
                 func.concat(
                     NodeTable.c.hostname, ".", DomainTable.c.name

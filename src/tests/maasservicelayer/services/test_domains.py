@@ -1,15 +1,15 @@
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from unittest.mock import Mock
 
 import pytest
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.domains import (
-    DomainResourceBuilder,
-    DomainsRepository,
-)
+from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.domains import Domain
+from maasservicelayer.models.domains import Domain, DomainBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
@@ -77,19 +77,15 @@ class TestDomainsService:
             domains_repository=domains_repository,
         )
 
-        resource = (
-            DomainResourceBuilder()
-            .with_name(domain.name)
-            .with_authoritative(domain.authoritative)
-            .with_ttl(domain.ttl)
-            .with_created(domain.created)
-            .with_updated(domain.updated)
-            .build()
+        builder = DomainBuilder(
+            name=domain.name,
+            authoritative=domain.authoritative,
+            ttl=domain.ttl,
         )
 
-        await service.create(resource)
+        await service.create(builder)
 
-        domains_repository.create.assert_called_once_with(resource=resource)
+        domains_repository.create.assert_called_once_with(builder=builder)
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="added zone example.com",
             action=DnsUpdateAction.RELOAD,
@@ -127,20 +123,16 @@ class TestDomainsService:
             domains_repository=domains_repository,
         )
 
-        resource = (
-            DomainResourceBuilder()
-            .with_name(new_domain.name)
-            .with_authoritative(new_domain.authoritative)
-            .with_ttl(new_domain.ttl)
-            .with_created(new_domain.created)
-            .with_updated(new_domain.updated)
-            .build()
+        builder = DomainBuilder(
+            name=new_domain.name,
+            authoritative=new_domain.authoritative,
+            ttl=new_domain.ttl,
         )
 
-        await service.update_by_id(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, builder)
 
         domains_repository.update_by_id.assert_called_once_with(
-            id=old_domain.id, resource=resource
+            id=old_domain.id, builder=builder
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="removed zone example.com",
@@ -179,20 +171,16 @@ class TestDomainsService:
             domains_repository=domains_repository,
         )
 
-        resource = (
-            DomainResourceBuilder()
-            .with_name(new_domain.name)
-            .with_authoritative(new_domain.authoritative)
-            .with_ttl(new_domain.ttl)
-            .with_created(new_domain.created)
-            .with_updated(new_domain.updated)
-            .build()
+        builder = DomainBuilder(
+            name=new_domain.name,
+            authoritative=new_domain.authoritative,
+            ttl=new_domain.ttl,
         )
 
-        await service.update_by_id(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, builder)
 
         domains_repository.update_by_id.assert_called_once_with(
-            id=old_domain.id, resource=resource
+            id=old_domain.id, builder=builder
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone example.com renamed to example2.com",
@@ -231,20 +219,16 @@ class TestDomainsService:
             domains_repository=domains_repository,
         )
 
-        resource = (
-            DomainResourceBuilder()
-            .with_name(new_domain.name)
-            .with_authoritative(new_domain.authoritative)
-            .with_ttl(new_domain.ttl)
-            .with_created(new_domain.created)
-            .with_updated(new_domain.updated)
-            .build()
+        builder = DomainBuilder(
+            name=new_domain.name,
+            authoritative=new_domain.authoritative,
+            ttl=new_domain.ttl,
         )
 
-        await service.update_by_id(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, builder)
 
         domains_repository.update_by_id.assert_called_once_with(
-            id=old_domain.id, resource=resource
+            id=old_domain.id, builder=builder
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone example.com ttl changed to 31",
@@ -283,20 +267,16 @@ class TestDomainsService:
             domains_repository=domains_repository,
         )
 
-        resource = (
-            DomainResourceBuilder()
-            .with_name(new_domain.name)
-            .with_authoritative(new_domain.authoritative)
-            .with_ttl(new_domain.ttl)
-            .with_created(new_domain.created)
-            .with_updated(new_domain.updated)
-            .build()
+        builder = DomainBuilder(
+            name=new_domain.name,
+            authoritative=new_domain.authoritative,
+            ttl=new_domain.ttl,
         )
 
-        await service.update_by_id(old_domain.id, resource)
+        await service.update_by_id(old_domain.id, builder)
 
         domains_repository.update_by_id.assert_called_once_with(
-            id=old_domain.id, resource=resource
+            id=old_domain.id, builder=builder
         )
         dnspublications_service.create_for_config_update.assert_called_once_with(
             source="zone example.com renamed to example2.com and ttl changed to 31",

@@ -1,16 +1,17 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 from operator import eq, le
-from typing import Any, Generic, List, Self, Sequence, Type, TypeVar
+from typing import Any, Generic, List, Sequence, TypeVar
 
 from sqlalchemy import delete, desc, insert, Row, select, Select, Table, update
 from sqlalchemy.exc import IntegrityError
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import Clause, QuerySpec
+from maasservicelayer.db.mappers.base import BaseDomainDataMapper
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -20,7 +21,13 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult, MaasBaseModel
+from maasservicelayer.models.base import (
+    ListResult,
+    MaasBaseModel,
+    MaasTimestampedBaseModel,
+    ResourceBuilder,
+)
+from maasservicelayer.utils.date import utcnow
 
 
 class MultipleResultsException(Exception):
@@ -30,46 +37,28 @@ class MultipleResultsException(Exception):
 T = TypeVar("T", bound=MaasBaseModel)
 
 
-class CreateOrUpdateResource(dict):
-    def get_values(self) -> dict[str, Any]:
-        return self
-
-    def set_value(self, key: str, value: Any) -> None:
-        self[key] = value
-
-
-class ResourceBuilder(ABC):
-    """
-    Every repository should provide a builder for their entity objects.
-    """
-
-    def __init__(self):
-        self._request = CreateOrUpdateResource()
-
-    def with_created(self, value: datetime) -> Self:
-        self._request.set_value("created", value)
-        return self
-
-    def with_updated(self, value: datetime) -> Self:
-        self._request.set_value("updated", value)
-        return self
-
-    def build(self) -> CreateOrUpdateResource:
-        return self._request
-
-
 class BaseRepository(ABC, Generic[T]):
     def __init__(self, context: Context):
         self.context = context
         self.connection = context.get_connection()
+        self.mapper = self.get_mapper()
+        self.has_timestamped_fields = issubclass(
+            self.get_model_factory(), MaasTimestampedBaseModel
+        )
 
     @abstractmethod
     def get_repository_table(self) -> Table:
         pass
 
     @abstractmethod
-    def get_model_factory(self) -> Type[T]:
+    def get_model_factory(self) -> type[T]:
         pass
+
+    def get_mapper(self) -> BaseDomainDataMapper:
+        """
+        How this repository should convert the domain model into the data model.
+        """
+        return DefaultDomainDataMapper(self.get_repository_table())
 
     def select_all_statement(self) -> Select[Any]:
         return select(self.get_repository_table()).select_from(
@@ -102,7 +91,13 @@ class BaseRepository(ABC, Generic[T]):
         result = (await self.connection.execute(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
 
-    async def create(self, resource: CreateOrUpdateResource) -> T:
+    async def create(self, builder: ResourceBuilder) -> T:
+        resource = self.mapper.build_resource(builder)
+        if self.has_timestamped_fields:
+            # Populate the fields only if the caller did not set them.
+            now = utcnow()
+            resource["created"] = resource.get("created", now)
+            resource["updated"] = resource.get("updated", now)
         stmt = (
             insert(self.get_repository_table())
             .returning(self.get_repository_table())
@@ -141,28 +136,26 @@ class BaseRepository(ABC, Generic[T]):
         )
 
     async def update_many(
-        self, query: QuerySpec, resource: CreateOrUpdateResource
+        self, query: QuerySpec, builder: ResourceBuilder
     ) -> List[T]:
-        updated_resources = await self._update(query, resource)
+        updated_resources = await self._update(query, builder)
         return [
             self.get_model_factory()(**row._asdict())
             for row in updated_resources
         ]
 
-    async def update_by_id(
-        self, id: int, resource: CreateOrUpdateResource
-    ) -> T:
+    async def update_by_id(self, id: int, builder: ResourceBuilder) -> T:
         return await self.update_one(
             query=QuerySpec(
                 where=Clause(eq(self.get_repository_table().c.id, id))
             ),
-            resource=resource,
+            builder=builder,
         )
 
     async def update_one(
-        self, query: QuerySpec, resource: CreateOrUpdateResource
+        self, query: QuerySpec, builder: ResourceBuilder
     ) -> T:
-        updated_resources = await self._update(query, resource)
+        updated_resources = await self._update(query, builder)
         if not updated_resources:
             self._raise_not_found_exception()
         if len(updated_resources) > 1:
@@ -170,8 +163,13 @@ class BaseRepository(ABC, Generic[T]):
         return self.get_model_factory()(**updated_resources[0]._asdict())
 
     async def _update(
-        self, query: QuerySpec, resource: CreateOrUpdateResource
+        self, query: QuerySpec, builder: ResourceBuilder
     ) -> Sequence[Row]:
+        resource = self.mapper.build_resource(builder)
+        # Populate the updated field only if the caller did not set it.
+        if self.has_timestamped_fields:
+            now = utcnow()
+            resource["updated"] = resource.get("updated", now)
         stmt = (
             update(self.get_repository_table())
             .returning(self.get_repository_table())

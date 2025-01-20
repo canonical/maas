@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any, Optional
@@ -8,14 +8,22 @@ from pydantic import Field, IPvAnyAddress, validator
 from maasapiserver.v3.api.public.models.requests.base import (
     OptionalNamedBaseModel,
 )
+from maascommon.bootmethods import find_boot_method_by_arch_or_octet
 from maascommon.enums.subnet import RdnsMode
-from maasservicelayer.db.repositories.subnets import SubnetResourceBuilder
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.fields import IPv4v6Network
+from maasservicelayer.models.subnets import SubnetBuilder
 
 
 class SubnetRequest(OptionalNamedBaseModel):
     description: Optional[str] = Field(
-        description="The description of the subnet.", default=None
+        description="The description of the subnet.", default=""
     )
     cidr: IPv4v6Network = Field(
         description="The network CIDR for this subnet."
@@ -74,19 +82,42 @@ class SubnetRequest(OptionalNamedBaseModel):
         else:
             raise ValueError("gateway IP must be within CIDR range.")
 
-    def to_builder(self) -> SubnetResourceBuilder:
-        builder = (
-            SubnetResourceBuilder()
-            .with_name(self.name if self.name else str(self.cidr))
-            .with_description(self.description)
-            .with_cidr(self.cidr)
-            .with_rdns_mode(self.rdns_mode)
-            .with_gateway_ip(self.gateway_ip)
-            .with_dns_servers(self.dns_servers)
-            .with_allow_dns(self.allow_dns)
-            .with_allow_proxy(self.allow_proxy)
-            .with_active_discovery(self.active_discovery)
-            .with_managed(self.managed)
-            .with_disabled_boot_architectures(self.disabled_boot_architectures)
+    def _validate_boot_architectures(
+        self, disabled_boot_architectures: list[str]
+    ):
+        disabled_boot_method_names = []
+        for disabled_arch in disabled_boot_architectures:
+            boot_method = find_boot_method_by_arch_or_octet(
+                disabled_arch, disabled_arch.replace("0x", "00:")
+            )
+            if boot_method is None or (
+                not boot_method.arch_octet and not boot_method.path_prefix_http
+            ):
+                raise ValidationException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message=f"Unkown boot architecture {disabled_arch}",
+                        )
+                    ]
+                )
+            disabled_boot_method_names.append(boot_method.name)
+        return disabled_boot_method_names
+
+    def to_builder(self, vlan_id: int) -> SubnetBuilder:
+        return SubnetBuilder(
+            name=self.name if self.name else str(self.cidr),
+            description=self.description,
+            cidr=self.cidr,
+            rdns_mode=self.rdns_mode,
+            gateway_ip=self.gateway_ip,
+            dns_servers=[str(dns_server) for dns_server in self.dns_servers],
+            allow_dns=self.allow_dns,
+            allow_proxy=self.allow_proxy,
+            active_discovery=self.active_discovery,
+            managed=self.managed,
+            disabled_boot_architectures=self._validate_boot_architectures(
+                self.disabled_boot_architectures
+            ),
+            vlan_id=vlan_id,
         )
-        return builder

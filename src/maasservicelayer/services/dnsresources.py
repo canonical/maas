@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import List, Optional
@@ -10,22 +10,25 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceClauseFactory,
     DNSResourceRepository,
-    DNSResourceResourceBuilder,
 )
 from maasservicelayer.db.repositories.domains import DomainsClauseFactory
-from maasservicelayer.models.dnsresources import DNSResource
+from maasservicelayer.models.dnsresources import (
+    DNSResource,
+    DNSResourceBuilder,
+)
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
-from maasservicelayer.utils.date import utcnow
 from provisioningserver.utils.network import coerce_to_valid_hostname
 
 DEFAULT_DNSRESOURCE_TTL = 30
 
 
-class DNSResourcesService(BaseService[DNSResource, DNSResourceRepository]):
+class DNSResourcesService(
+    BaseService[DNSResource, DNSResourceRepository, DNSResourceBuilder]
+):
     def __init__(
         self,
         context: Context,
@@ -185,16 +188,12 @@ class DNSResourcesService(BaseService[DNSResource, DNSResourceRepository]):
             query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
         )
         if not dnsrr:
-            now = utcnow()
-            resource = (
-                DNSResourceResourceBuilder()
-                .with_name(hostname)
-                .with_domain_id(domain.id)
-                .with_created(now)
-                .with_updated(now)
-                .build()
+            dnsrr = await self.create(
+                builder=DNSResourceBuilder(
+                    name=hostname,
+                    domain_id=domain.id,
+                )
             )
-            dnsrr = await self.create(resource=resource)
             await self.repository.link_ip(dnsrr, ip)
             # Here we link an IP after the dnsresource was create,
             # so we create the DNSPublication here instead of in create()

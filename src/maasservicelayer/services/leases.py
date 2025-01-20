@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
@@ -12,12 +12,12 @@ from maascommon.enums.ipaddress import (
     LeaseAction,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressResourceBuilder,
-)
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.leases import Lease
-from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.models.staticipaddress import (
+    StaticIPAddress,
+    StaticIPAddressBuilder,
+)
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services._base import Service
 from maasservicelayer.services.dnsresources import DNSResourcesService
@@ -26,7 +26,6 @@ from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.subnets import SubnetsService
-from maasservicelayer.utils.date import utcnow
 
 
 class LeaseUpdateError(Exception):
@@ -138,14 +137,12 @@ class LeasesService(Service):
             sip_hostname = hostname
 
         sip = await self.staticipaddress_service.create_or_update(
-            StaticIPAddressResourceBuilder()
-            .with_ip(ip)
-            .with_lease_time(lease_time)
-            .with_alloc_type(IpAddressType.DISCOVERED)
-            .with_subnet_id(subnet.id)
-            .with_created(created)
-            .with_updated(created)
-            .build(),
+            StaticIPAddressBuilder(
+                ip=ip,
+                lease_time=lease_time,
+                alloc_type=IpAddressType.DISCOVERED,
+                subnet_id=subnet.id,
+            )
         )
 
         for interface in interfaces:
@@ -164,7 +161,6 @@ class LeasesService(Service):
     async def _release_lease_info(
         self, sip: StaticIPAddress, interfaces: list[Interface], subnet: Subnet
     ) -> None:
-        now = utcnow()
         if sip is None:
             sip = await self.staticipaddress_service.get_for_interfaces(
                 interfaces,
@@ -175,26 +171,23 @@ class LeasesService(Service):
 
             if sip is None:
                 sip = await self.staticipaddress_service.create(
-                    StaticIPAddressResourceBuilder()
-                    .with_ip(None)
-                    .with_lease_time(0)
-                    .with_alloc_type(IpAddressType.DISCOVERED)
-                    .with_subnet_id(subnet.id)
-                    .with_created(now)
-                    .with_updated(now)
-                    .build()
+                    StaticIPAddressBuilder(
+                        ip=None,
+                        lease_time=0,
+                        alloc_type=IpAddressType.DISCOVERED,
+                        subnet_id=subnet.id,
+                    )
                 )
         else:
             await self.staticipaddress_service.update_by_id(
                 sip.id,
-                StaticIPAddressResourceBuilder()
-                .with_ip(sip.ip)
-                .with_lease_time(sip.lease_time)
-                .with_alloc_type(sip.alloc_type)
-                .with_subnet_id(sip.subnet_id)
-                .with_created(sip.created)
-                .with_updated(now)
-                .build(),
+                StaticIPAddressBuilder(
+                    ip=sip.ip,
+                    lease_time=sip.lease_time,
+                    alloc_type=sip.alloc_type,
+                    subnet_id=sip.subnet_id,
+                    created=sip.created,
+                ),
             )
 
         await self.interface_service.bulk_link_ip(sip, interfaces)

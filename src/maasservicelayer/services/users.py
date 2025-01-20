@@ -1,17 +1,18 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
-from maasservicelayer.db.repositories.users import (
-    UserProfileResourceBuilder,
-    UsersRepository,
+from maasservicelayer.db.repositories.users import UsersRepository
+from maasservicelayer.models.users import (
+    User,
+    UserBuilder,
+    UserProfile,
+    UserProfileBuilder,
 )
-from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services._base import BaseService
 
 
-class UsersService(BaseService[User, UsersRepository]):
+class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     def __init__(
         self,
         context: Context,
@@ -20,16 +21,11 @@ class UsersService(BaseService[User, UsersRepository]):
         super().__init__(context, users_repository)
 
     async def post_create_hook(self, resource: User) -> None:
-        user_profile_resource = (
-            UserProfileResourceBuilder()
-            .with_completed_intro(False)
-            .with_auth_last_check(None)
-            .with_is_local(True)
-            .build()
-        )
         await self.create_profile(
             resource.id,
-            user_profile_resource,
+            UserProfileBuilder(
+                completed_intro=False, auth_last_check=None, is_local=True
+            ),
         )
         return
 
@@ -43,15 +39,15 @@ class UsersService(BaseService[User, UsersRepository]):
         return await self.repository.get_user_apikeys(username)
 
     async def create_profile(
-        self, user_id: int, resource: CreateOrUpdateResource
+        self, user_id: int, builder: UserProfileBuilder
     ) -> UserProfile:
         return await self.repository.create_profile(
-            user_id=user_id, resource=resource
+            user_id=user_id, builder=builder
         )
 
     async def update_profile(
-        self, user_id: int, resource: CreateOrUpdateResource
+        self, user_id: int, builder: UserProfileBuilder
     ) -> UserProfile:
         return await self.repository.update_profile(
-            user_id=user_id, resource=resource
+            user_id=user_id, builder=builder
         )

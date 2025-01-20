@@ -1,3 +1,6 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from collections.abc import Sequence
 from ipaddress import IPv4Address
 
@@ -11,11 +14,12 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
     StaticIPAddressRepository,
-    StaticIPAddressResourceBuilder,
 )
 from maasservicelayer.models.fields import MacAddress
-from maasservicelayer.models.staticipaddress import StaticIPAddress
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.staticipaddress import (
+    StaticIPAddress,
+    StaticIPAddressBuilder,
+)
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.fixtures.factories.node_config import create_test_node_config_entry
@@ -54,32 +58,6 @@ class TestStaticIPAddressClauseFactory:
         assert str(clause.condition.compile()) == (
             "maasserver_staticipaddress.ip = :ip_1"
         )
-
-
-class TestStaticIPAddressResourceBuilder:
-    def test_builder(self) -> None:
-        now = utcnow()
-        resource = (
-            StaticIPAddressResourceBuilder()
-            .with_ip(IPv4Address("10.10.0.2"))
-            .with_alloc_type(IpAddressType.AUTO)
-            .with_lease_time(200)
-            .with_temp_expires_on(now)
-            .with_subnet_id(1)
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        assert resource.get_values() == {
-            "ip": IPv4Address("10.10.0.2"),
-            "alloc_type": IpAddressType.AUTO,
-            "lease_time": 200,
-            "temp_expires_on": now,
-            "subnet_id": 1,
-            "created": now,
-            "updated": now,
-        }
 
 
 @pytest.mark.asyncio
@@ -123,16 +101,19 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         return StaticIPAddress(**sip)
 
     @pytest.fixture
+    async def instance_builder_model(self) -> type[StaticIPAddressBuilder]:
+        return StaticIPAddressBuilder
+
+    @pytest.fixture
     async def instance_builder(
         self, fixture: Fixture
-    ) -> StaticIPAddressResourceBuilder:
+    ) -> StaticIPAddressBuilder:
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
-        return (
-            StaticIPAddressResourceBuilder()
-            .with_ip(IPv4Address("10.0.0.1"))
-            .with_alloc_type(IpAddressType.DISCOVERED)
-            .with_subnet_id(subnet["id"])
-            .with_lease_time(30)
+        return StaticIPAddressBuilder(
+            ip=IPv4Address("10.0.0.1"),
+            alloc_type=IpAddressType.DISCOVERED,
+            subnet_id=subnet["id"],
+            lease_time=30,
         )
 
     async def test_create_or_update(
@@ -149,18 +130,14 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         assert sip["lease_time"] == 600  # default value
 
-        resource = (
-            StaticIPAddressResourceBuilder()
-            .with_ip(sip["ip"])
-            .with_subnet_id(subnet["id"])
-            .with_alloc_type(IpAddressType(sip["alloc_type"]))
-            .with_lease_time(30)
-            .with_created(utcnow())
-            .with_updated(utcnow())
-            .build()
+        builder = StaticIPAddressBuilder(
+            ip=sip["ip"],
+            subnet_id=subnet["id"],
+            alloc_type=IpAddressType(sip["alloc_type"]),
+            lease_time=30,
         )
 
-        await repository_instance.create_or_update(resource)
+        await repository_instance.create_or_update(builder)
 
         result = await repository_instance.get_by_id(sip["id"])
         assert result is not None

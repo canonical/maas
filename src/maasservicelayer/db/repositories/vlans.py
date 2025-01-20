@@ -1,17 +1,14 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import List, Self, Type
+from typing import List, Type
 
 from sqlalchemy import select, Table
 from sqlalchemy.sql.operators import eq, or_
 
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -21,17 +18,7 @@ from maasservicelayer.db.tables import (
     SubnetTable,
     VlanTable,
 )
-from maasservicelayer.exceptions.catalog import (
-    BaseExceptionDetail,
-    ValidationException,
-)
-from maasservicelayer.exceptions.constants import (
-    INVALID_ARGUMENT_VIOLATION_TYPE,
-)
 from maasservicelayer.models.vlans import Vlan
-
-DEFAULT_VID = 0
-DEFAULT_MTU = 1500
 
 
 class VlansClauseFactory(ClauseFactory):
@@ -55,73 +42,6 @@ class VlansClauseFactory(ClauseFactory):
     @classmethod
     def with_node_type(cls, type: NodeTypeEnum) -> Clause:
         return Clause(condition=eq(NodeTable.c.node_type, type))
-
-
-class VlanResourceBuilder(ResourceBuilder):
-    def with_vid(self, vid: int | None = None) -> Self:
-        if vid is not None and (vid < 0 or vid > 4094):
-            raise ValidationException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                        message="The VLAN VID must be within the range [0, 4094].",
-                    )
-                ]
-            )
-        self._request.set_value(VlanTable.c.vid.name, vid or DEFAULT_VID)
-        return self
-
-    def with_name(self, name: str | None = None) -> Self:
-        self._request.set_value(VlanTable.c.name.name, name)
-        return self
-
-    def with_description(self, description: str | None = None) -> Self:
-        if not description:
-            # inherited from the django model where it's optional in the request and empty by default.
-            description = ""
-        self._request.set_value(VlanTable.c.description.name, description)
-        return self
-
-    def with_mtu(self, mtu: int | None = None) -> Self:
-        if mtu is not None and (mtu < 552 or mtu > 65535):
-            raise ValidationException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                        message="The MTU must be within the range [552,65535].",
-                    )
-                ]
-            )
-        self._request.set_value(VlanTable.c.mtu.name, mtu or DEFAULT_MTU)
-        return self
-
-    def with_dhcp_on(self, dhcp_on: bool) -> Self:
-        self._request.set_value(VlanTable.c.dhcp_on.name, dhcp_on)
-        return self
-
-    def with_fabric_id(self, fabric_id: int) -> Self:
-        self._request.set_value(VlanTable.c.fabric_id.name, fabric_id)
-        return self
-
-    def with_space_id(self, space_id: int | None = None) -> Self:
-        self._request.set_value(VlanTable.c.space_id.name, space_id)
-        return self
-
-    def with_primary_rack_id(self, primary_rack_id: int | None) -> Self:
-        self._request.set_value(
-            VlanTable.c.primary_rack_id.name, primary_rack_id
-        )
-        return self
-
-    def with_secondary_rack_id(self, secondary_rack_id: int | None) -> Self:
-        self._request.set_value(
-            VlanTable.c.secondary_rack_id.name, secondary_rack_id
-        )
-        return self
-
-    def with_relay_vlan_id(self, relay_vlan_id: int | None) -> Self:
-        self._request.set_value(VlanTable.c.relay_vlan_id.name, relay_vlan_id)
-        return self
 
 
 class VlansRepository(BaseRepository[Vlan]):

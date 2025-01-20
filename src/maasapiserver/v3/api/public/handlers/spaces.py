@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -27,7 +27,6 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class SpacesHandler(Handler):
@@ -134,12 +133,8 @@ class SpacesHandler(Handler):
         space_request: SpaceRequest,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        now = utcnow()
         space = await services.spaces.create(
-            resource=space_request.to_builder()
-            .with_created(now)
-            .with_updated(now)
-            .build()
+            builder=space_request.to_builder()
         )
         response.headers["ETag"] = space.etag()
         return SpaceResponse.from_model(
@@ -173,10 +168,9 @@ class SpacesHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        now = utcnow()
         space = await services.spaces.update_by_id(
             id=space_id,
-            resource=space_request.to_builder().with_updated(now).build(),
+            builder=space_request.to_builder(),
         )
 
         response.headers["ETag"] = space.etag()

@@ -1,20 +1,17 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
-from typing import List, Self, Type
+from typing import List, Type
 
 from django.core import signing
 from sqlalchemy import func, insert, select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    CreateOrUpdateResource,
-    ResourceBuilder,
-)
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     ConsumerTable,
     SessionTable,
@@ -29,64 +26,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.users import User, UserProfile
+from maasservicelayer.models.users import User, UserProfile, UserProfileBuilder
 from maasservicelayer.utils.date import utcnow
-
-
-class UserResourceBuilder(ResourceBuilder):
-    def with_username(self, value: str) -> Self:
-        self._request.set_value(UserTable.c.username.name, value)
-        return self
-
-    def with_first_name(self, value: str) -> Self:
-        self._request.set_value(UserTable.c.first_name.name, value)
-        return self
-
-    def with_last_name(self, value: str) -> Self:
-        self._request.set_value(UserTable.c.last_name.name, value)
-        return self
-
-    def with_is_active(self, value: bool) -> Self:
-        self._request.set_value(UserTable.c.is_active.name, value)
-        return self
-
-    def with_is_staff(self, value: bool) -> Self:
-        self._request.set_value(UserTable.c.is_staff.name, value)
-        return self
-
-    def with_is_superuser(self, value: bool) -> Self:
-        self._request.set_value(UserTable.c.is_superuser.name, value)
-        return self
-
-    def with_email(self, value: str) -> Self:
-        self._request.set_value(UserTable.c.email.name, value)
-        return self
-
-    def with_password(self, value: str) -> Self:
-        self._request.set_value(UserTable.c.password.name, value)
-        return self
-
-    def with_date_joined(self, value: datetime) -> Self:
-        self._request.set_value(UserTable.c.date_joined.name, value)
-        return self
-
-    def with_last_login(self, value: datetime) -> Self:
-        self._request.set_value(UserTable.c.last_login.name, value)
-        return self
-
-
-class UserProfileResourceBuilder(ResourceBuilder):
-    def with_auth_last_check(self, value: datetime | None) -> Self:
-        self._request.set_value(UserProfileTable.c.auth_last_check.name, value)
-        return self
-
-    def with_completed_intro(self, value: bool) -> Self:
-        self._request.set_value(UserProfileTable.c.completed_intro.name, value)
-        return self
-
-    def with_is_local(self, value: bool) -> Self:
-        self._request.set_value(UserProfileTable.c.is_local.name, value)
-        return self
 
 
 class UserClauseFactory(ClauseFactory):
@@ -96,6 +37,9 @@ class UserClauseFactory(ClauseFactory):
 
 
 class UsersRepository(BaseRepository[User]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.userprofile_mapper = DefaultDomainDataMapper(UserProfileTable)
 
     def get_repository_table(self) -> Table:
         return UserTable
@@ -171,8 +115,9 @@ class UsersRepository(BaseRepository[User]):
         return UserProfile(**row._asdict())
 
     async def create_profile(
-        self, user_id: int, resource: CreateOrUpdateResource
+        self, user_id: int, builder: UserProfileBuilder
     ) -> UserProfile:
+        resource = self.userprofile_mapper.build_resource(builder)
         stmt = (
             insert(UserProfileTable)
             .returning(UserProfileTable)
@@ -185,8 +130,9 @@ class UsersRepository(BaseRepository[User]):
         return UserProfile(**profile._asdict())
 
     async def update_profile(
-        self, user_id: int, resource: CreateOrUpdateResource
+        self, user_id: int, builder: UserProfileBuilder
     ) -> UserProfile:
+        resource = self.userprofile_mapper.build_resource(builder)
         stmt = (
             update(UserProfileTable)
             .where(eq(UserProfileTable.c.user_id, user_id))

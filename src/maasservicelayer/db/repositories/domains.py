@@ -1,15 +1,13 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from typing import Self, Type
+
+from typing import Type
 
 from sqlalchemy import select, Table
 from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import DomainTable, GlobalDefaultTable
 from maasservicelayer.models.domains import Domain
 
@@ -30,22 +28,6 @@ class DomainsClauseFactory(ClauseFactory):
     @classmethod
     def with_ttl(cls, ttl: int) -> Clause:
         return Clause(condition=eq(DomainTable.c.ttl, ttl))
-
-
-class DomainResourceBuilder(ResourceBuilder):
-    def with_authoritative(self, authoritative: bool) -> Self:
-        self._request.set_value(
-            DomainTable.c.authoritative.name, authoritative
-        )
-        return self
-
-    def with_ttl(self, ttl: int) -> Self:
-        self._request.set_value(DomainTable.c.ttl.name, ttl)
-        return self
-
-    def with_name(self, name: str) -> Self:
-        self._request.set_value(DomainTable.c.name.name, name)
-        return self
 
 
 class DomainsRepository(BaseRepository[Domain]):

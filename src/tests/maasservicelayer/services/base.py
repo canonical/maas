@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
@@ -7,12 +7,11 @@ from typing import TypeVar
 import pytest
 
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import ResourceBuilder
 from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     PreconditionFailedException,
 )
-from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.services._base import BaseService
 
 T = TypeVar("T", bound=BaseService)
@@ -54,11 +53,11 @@ class ServiceCommonTests(abc.ABC):
 
     async def test_create(self, service_instance, test_instance):
         service_instance.repository.create.return_value = test_instance
-        resource = ResourceBuilder().build()
-        obj = await service_instance.create(resource)
+        builder = ResourceBuilder()
+        obj = await service_instance.create(builder)
         assert obj == test_instance
         service_instance.repository.create.assert_awaited_once_with(
-            resource=resource
+            builder=builder
         )
 
     async def test_list(self, service_instance):
@@ -75,12 +74,12 @@ class ServiceCommonTests(abc.ABC):
         self, service_instance, test_instance: MaasBaseModel
     ):
         service_instance.repository.update_many.return_value = []
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         query = QuerySpec()
-        objs = await service_instance.update_many(query, resource)
+        objs = await service_instance.update_many(query, builder)
         assert objs == []
         service_instance.repository.update_many.assert_awaited_once_with(
-            query=query, resource=resource
+            query=query, builder=builder
         )
 
     async def test_update_one(
@@ -88,85 +87,85 @@ class ServiceCommonTests(abc.ABC):
     ):
         service_instance.repository.get_one.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         query = QuerySpec()
-        objs = await service_instance.update_one(query, resource)
+        objs = await service_instance.update_one(query, builder)
         assert objs == test_instance
         service_instance.repository.update_by_id.assert_awaited_once_with(
-            id=test_instance.id, resource=resource
+            id=test_instance.id, builder=builder
         )
 
     async def test_update_one_not_found(self, service_instance):
         service_instance.repository.get_one.return_value = None
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         query = QuerySpec()
         with pytest.raises(NotFoundException):
-            await service_instance.update_one(query, resource)
+            await service_instance.update_one(query, builder)
 
     async def test_update_one_etag_match(
         self, service_instance, test_instance: MaasBaseModel
     ):
         service_instance.repository.get_one.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         query = QuerySpec()
         objs = await service_instance.update_one(
-            query, resource, test_instance.etag()
+            query, builder, test_instance.etag()
         )
         assert objs == test_instance
         service_instance.repository.update_by_id.assert_awaited_once_with(
-            id=test_instance.id, resource=resource
+            id=test_instance.id, builder=builder
         )
 
     async def test_update_one_etag_not_matching(
         self, service_instance, test_instance: MaasBaseModel
     ):
         service_instance.repository.get_one.return_value = test_instance
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         query = QuerySpec()
         with pytest.raises(PreconditionFailedException):
-            await service_instance.update_one(query, resource, "not_a_match")
+            await service_instance.update_one(query, builder, "not_a_match")
 
     async def test_update_by_id(
         self, service_instance, test_instance: MaasBaseModel
     ):
         service_instance.repository.get_by_id.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        resource = ResourceBuilder().build()
-        objs = await service_instance.update_by_id(test_instance.id, resource)
+        builder = ResourceBuilder()
+        objs = await service_instance.update_by_id(test_instance.id, builder)
         assert objs == test_instance
         service_instance.repository.update_by_id.assert_awaited_once_with(
-            id=test_instance.id, resource=resource
+            id=test_instance.id, builder=builder
         )
 
     async def test_update_by_id_not_found(self, service_instance):
         service_instance.repository.get_by_id.return_value = None
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         with pytest.raises(NotFoundException):
-            await service_instance.update_by_id(-1, resource)
+            await service_instance.update_by_id(-1, builder)
 
     async def test_update_by_id_etag_match(
         self, service_instance, test_instance: MaasBaseModel
     ):
         service_instance.repository.get_by_id.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         objs = await service_instance.update_by_id(
-            test_instance.id, resource, test_instance.etag()
+            test_instance.id, builder, test_instance.etag()
         )
         assert objs == test_instance
         service_instance.repository.update_by_id.assert_awaited_once_with(
-            id=test_instance.id, resource=resource
+            id=test_instance.id, builder=builder
         )
 
     async def test_update_by_id_etag_not_matching(
         self, service_instance, test_instance: MaasBaseModel
     ):
         service_instance.repository.get_by_id.return_value = test_instance
-        resource = ResourceBuilder().build()
+        builder = ResourceBuilder()
         with pytest.raises(PreconditionFailedException):
             await service_instance.update_by_id(
-                test_instance.id, resource, "not_a_match"
+                test_instance.id, builder, "not_a_match"
             )
 
     async def test_delete_many(

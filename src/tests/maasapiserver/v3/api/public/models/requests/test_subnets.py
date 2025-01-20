@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network, IPv6Address
@@ -7,7 +7,9 @@ from pydantic import IPvAnyAddress, ValidationError
 import pytest
 
 from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
+from maascommon.bootmethods import BOOT_METHODS_METADATA
 from maascommon.enums.subnet import RdnsMode
+from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.fields import IPv4v6Network
 
 
@@ -60,7 +62,7 @@ class TestSubnetRequest:
     def test_defaults(self):
         request = SubnetRequest(cidr=IPv4Network("10.0.0.1"))
         assert request.name is None
-        assert request.description is None
+        assert request.description == ""
         assert request.rdns_mode == RdnsMode.DEFAULT
         assert request.gateway_ip is None
         assert request.dns_servers == []
@@ -71,9 +73,38 @@ class TestSubnetRequest:
         assert request.disabled_boot_architectures == []
 
     def test_to_builder(self) -> None:
-        resource = (
-            SubnetRequest(cidr=IPv4Network("10.0.0.1")).to_builder().build()
-        )
-        assert resource.get_values()["name"] == "10.0.0.1/32"
-        assert resource.get_values()["description"] == ""
-        assert resource.get_values()["cidr"] == IPv4Network("10.0.0.1")
+        builder = SubnetRequest(cidr=IPv4Network("10.0.0.1")).to_builder(0)
+        assert builder.name == "10.0.0.1/32"
+        assert builder.description == ""
+        assert builder.cidr == IPv4Network("10.0.0.1")
+
+    @pytest.mark.parametrize(
+        "arch, is_valid,",
+        [
+            *[
+                (method.arch_octet, True)
+                for method in BOOT_METHODS_METADATA
+                if method.arch_octet is not None
+            ],
+            *[
+                (method.name, True)
+                for method in BOOT_METHODS_METADATA
+                if method.name not in [None, "windows"]
+            ],
+            ("test", False),
+        ],
+    )
+    def test_disabled_boot_architectures(
+        self, arch: str, is_valid: bool
+    ) -> None:
+        if is_valid:
+            SubnetRequest(
+                cidr=IPv4Network("10.0.0.1"),
+                disabled_boot_architectures=[arch],
+            ).to_builder(0)
+        else:
+            with pytest.raises(ValidationException):
+                SubnetRequest(
+                    cidr=IPv4Network("10.0.0.1"),
+                    disabled_boot_architectures=[arch],
+                ).to_builder(0)

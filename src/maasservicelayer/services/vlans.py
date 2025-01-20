@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import List
@@ -18,13 +18,16 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
 )
-from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.models.vlans import Vlan, VlanBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
 
+DEFAULT_VID = 0
+DEFAULT_MTU = 1500
 
-class VlansService(BaseService[Vlan, VlansRepository]):
+
+class VlansService(BaseService[Vlan, VlansRepository, VlanBuilder]):
     def __init__(
         self,
         context: Context,
