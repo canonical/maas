@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional
@@ -17,10 +17,7 @@ from maasservicelayer.db.repositories.service_status import (
     ServiceStatusClauseFactory,
 )
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import (
-    VlanResourceBuilder,
-    VlansClauseFactory,
-)
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
@@ -28,21 +25,29 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     MISSING_DYNAMIC_RANGE_VIOLATION_TYPE,
 )
+from maasservicelayer.models.vlans import VlanBuilder
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.vlans import DEFAULT_MTU, DEFAULT_VID
 
 
 class VlanCreateRequest(OptionalNamedBaseModel):
-    description: Optional[str] = Field(
-        description="The description of the VLAN.", default=None
+    description: str = Field(
+        description="The description of the VLAN.", default=""
     )
     vid: int = Field(
-        description="The VLAN ID of the VLAN. Valid values are within the range [0, 4094]."
+        description="The VLAN ID of the VLAN. Valid values are within the range [0, 4094].",
+        default=DEFAULT_VID,
+        ge=0,
+        le=4094,
     )
     # Linux doesn't allow lower than 552 for the MTU.
-    mtu: Optional[int] = Field(
+    mtu: int = Field(
         description="The MTU to use on the VLAN. Valid values are within the range [552, 65535].",
-        default=None,
+        default=DEFAULT_MTU,
+        ge=552,
+        le=65535,
     )
+
     space_id: Optional[int] = Field(
         description="The space this VLAN should be placed in. If not specified, the VLAN will be "
         "placed in the 'undefined' space."
@@ -50,15 +55,14 @@ class VlanCreateRequest(OptionalNamedBaseModel):
 
     async def to_builder(
         self, services: ServiceCollectionV3, vlan_id: int | None = None
-    ) -> VlanResourceBuilder:
-        return (
-            VlanResourceBuilder()
-            .with_name(self.name)
-            .with_description(self.description)
-            .with_vid(self.vid)
-            .with_mtu(self.mtu)
-            .with_dhcp_on(False)
-            .with_space_id(self.space_id)
+    ) -> VlanBuilder:
+        return VlanBuilder(
+            name=self.name,
+            description=self.description,
+            vid=self.vid,
+            mtu=self.mtu,
+            dhcp_on=False,
+            space_id=self.space_id,
         )
 
 
@@ -88,7 +92,7 @@ class VlanUpdateRequest(VlanCreateRequest):
 
     async def to_builder(
         self, services: ServiceCollectionV3, vlan_id: int | None = None
-    ) -> VlanResourceBuilder:
+    ) -> VlanBuilder:
         # Validate the fields first.
         if self.dhcp_on:
             if self.relay_vlan_id:
@@ -226,9 +230,8 @@ class VlanUpdateRequest(VlanCreateRequest):
                 )
 
         builder = await super().to_builder(services)
-        return (
-            builder.with_dhcp_on(self.dhcp_on)
-            .with_primary_rack_id(self.primary_rack_id)
-            .with_secondary_rack_id(self.secondary_rack_id)
-            .with_relay_vlan_id(self.relay_vlan_id)
-        )
+        builder.dhcp_on = self.dhcp_on
+        builder.primary_rack_id = self.primary_rack_id
+        builder.secondary_rack_id = self.secondary_rack_id
+        builder.relay_vlan_id = self.relay_vlan_id
+        return builder

@@ -1,13 +1,14 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Self, Type
+from typing import Type
 
 import pytest
 from sqlalchemy import (
     BigInteger,
     Column,
+    DateTime,
     ForeignKey,
     join,
     MetaData,
@@ -22,10 +23,10 @@ from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     MultipleResultsException,
-    ResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.utils.date import utcnow
 
 METADATA = MetaData()
 
@@ -35,6 +36,8 @@ A = Table(
     Column("id", BigInteger, primary_key=True),
     Column("data", Text),
     Column("b_id", BigInteger, ForeignKey("test_table_b.id"), nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
 )
 
 B = Table(
@@ -56,7 +59,15 @@ async def setup(db: Database):
     async with db.engine.begin() as conn:
         await conn.run_sync(METADATA.drop_all)
         await conn.run_sync(METADATA.create_all)
-        await conn.execute(C.insert(), [{"id": 1}, {"id": 2}, {"id": 3}])
+        now = utcnow()
+        await conn.execute(
+            C.insert(),
+            [
+                {"id": 1, "created": now, "updated": now},
+                {"id": 2, "created": now, "updated": now},
+                {"id": 3, "created": now, "updated": now},
+            ],
+        )
         await conn.execute(
             B.insert(),
             [{"id": 1, "c_id": 1}, {"id": 2, "c_id": 2}, {"id": 3, "c_id": 3}],
@@ -64,8 +75,20 @@ async def setup(db: Database):
         await conn.execute(
             A.insert(),
             [
-                {"id": 1, "data": "foo", "b_id": 1},
-                {"id": 2, "data": "boo", "b_id": 1},
+                {
+                    "id": 1,
+                    "data": "foo",
+                    "b_id": 1,
+                    "created": now,
+                    "updated": now,
+                },
+                {
+                    "id": 2,
+                    "data": "boo",
+                    "b_id": 1,
+                    "created": now,
+                    "updated": now,
+                },
             ],
         )
     yield
@@ -78,10 +101,7 @@ class AModel(MaasTimestampedBaseModel):
     data: str
 
 
-class AResourceBuilder(ResourceBuilder):
-    def with_data(self, data: str) -> Self:
-        self._request.set_value("data", data)
-        return self
+AResourceBuilder = make_builder(AModel)
 
 
 class MyRepository(BaseRepository[AModel]):
@@ -166,16 +186,14 @@ class TestMyRepository:
 
     async def test_update_one(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        builder = AResourceBuilder().with_data("test")
+        builder = AResourceBuilder(data="test")
         query = QuerySpec(
             where=Clause(
                 condition=eq(A.c.data, "foo"),
                 joins=[join(A, B, eq(A.c.b_id, B.c.id))],
             )
         )
-        updated_obj = await repo.update_one(
-            query=query, resource=builder.build()
-        )
+        updated_obj = await repo.update_one(query=query, builder=builder)
         assert updated_obj is not None
         assert updated_obj.data == "test"
 
@@ -183,35 +201,35 @@ class TestMyRepository:
         self, db_connection: AsyncConnection
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        builder = AResourceBuilder().with_data("test")
+        builder = AResourceBuilder(data="test")
         query = QuerySpec()
         with pytest.raises(MultipleResultsException):
-            await repo.update_one(query=query, resource=builder.build())
+            await repo.update_one(query=query, builder=builder)
 
     async def test_update_one_no_matches(
         self, db_connection: AsyncConnection
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        builder = AResourceBuilder().with_data("test")
+        builder = AResourceBuilder(data="test")
         query = QuerySpec(
             where=Clause(condition=eq(A.c.data, "definitely_not_a_match"))
         )
         with pytest.raises(NotFoundException):
-            await repo.update_one(query=query, resource=builder.build())
+            await repo.update_one(query=query, builder=builder)
 
     async def test_update_by_id_no_matches(
         self, db_connection: AsyncConnection
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        builder = AResourceBuilder().with_data("test")
+        builder = AResourceBuilder(data="test")
         with pytest.raises(NotFoundException):
-            await repo.update_by_id(0, resource=builder.build())
+            await repo.update_by_id(0, builder=builder)
 
     async def test_update_one_multiple_joins(
         self, db_connection: AsyncConnection
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        builder = AResourceBuilder().with_data("test")
+        builder = AResourceBuilder(data="test")
         query = QuerySpec(
             where=ClauseFactory.and_clauses(
                 [
@@ -226,18 +244,14 @@ class TestMyRepository:
                 ]
             )
         )
-        updated_obj = await repo.update_one(
-            query=query, resource=builder.build()
-        )
+        updated_obj = await repo.update_one(query=query, builder=builder)
         assert updated_obj is not None
         assert updated_obj.data == "test"
 
     async def test_update_many(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        builder = AResourceBuilder().with_data("test")
-        resources = await repo.update_many(
-            QuerySpec(), resource=builder.build()
-        )
+        builder = AResourceBuilder(data="test")
+        resources = await repo.update_many(QuerySpec(), builder=builder)
         assert len(resources) == 2
         assert all(resource.data == "test" for resource in resources)
 

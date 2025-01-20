@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -34,7 +34,6 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class SubnetsHandler(Handler):
@@ -187,13 +186,6 @@ class SubnetsHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        now = utcnow()
-        builder = (
-            subnet_request.to_builder()
-            .with_vlan_id(vlan_id)
-            .with_created(now)
-            .with_updated(now)
-        )
         vlan = await services.vlans.get_one(
             QuerySpec(
                 where=VlansClauseFactory.and_clauses(
@@ -213,7 +205,8 @@ class SubnetsHandler(Handler):
                     )
                 ]
             )
-        subnet = await services.subnets.create(builder.build())
+        builder = subnet_request.to_builder(vlan_id=vlan_id)
+        subnet = await services.subnets.create(builder=builder)
         response.headers["ETag"] = subnet.etag()
         return SubnetResponse.from_model(
             subnet=subnet,
@@ -249,10 +242,6 @@ class SubnetsHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        now = utcnow()
-        builder = (
-            subnet_request.to_builder().with_vlan_id(vlan_id).with_updated(now)
-        )
         query = QuerySpec(
             where=SubnetClauseFactory.and_clauses(
                 [
@@ -262,8 +251,9 @@ class SubnetsHandler(Handler):
                 ]
             )
         )
+        builder = subnet_request.to_builder(vlan_id=vlan_id)
         subnet = await services.subnets.update_one(
-            query=query, resource=builder.build()
+            query=query, builder=builder
         )
 
         response.headers["ETag"] = subnet.etag()

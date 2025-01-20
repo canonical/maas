@@ -1,5 +1,6 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import List
 
 from pydantic import IPvAnyAddress
@@ -28,7 +29,7 @@ from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
-from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.models.subnets import Subnet, SubnetBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService
@@ -41,7 +42,7 @@ from maasservicelayer.services.staticroutes import StaticRoutesService
 from maasservicelayer.services.temporal import TemporalService
 
 
-class SubnetsService(BaseService[Subnet, SubnetsRepository]):
+class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
     def __init__(
         self,
         context: Context,

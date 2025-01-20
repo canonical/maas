@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address
@@ -12,12 +12,9 @@ from maascommon.workflows.dhcp import (
     merge_configure_dhcp_param,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsRepository,
-    ReservedIPsResourceBuilder,
-)
+from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.models.fields import MacAddress
-from maasservicelayer.models.reservedips import ReservedIP
+from maasservicelayer.models.reservedips import ReservedIP, ReservedIPBuilder
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
@@ -71,20 +68,16 @@ class TestReservedIPsService:
             reservedips_repository=reservedips_repository_mock,
         )
 
-        resource = (
-            ReservedIPsResourceBuilder()
-            .with_ip(TEST_RESERVEDIP.ip)
-            .with_mac_address(TEST_RESERVEDIP.mac_address)
-            .with_subnet_id(TEST_RESERVEDIP.subnet_id)
-            .with_created(TEST_RESERVEDIP.created)
-            .with_updated(TEST_RESERVEDIP.updated)
-            .build()
+        builder = ReservedIPBuilder(
+            ip=TEST_RESERVEDIP.ip,
+            mac_address=TEST_RESERVEDIP.mac_address,
+            subnet_id=TEST_RESERVEDIP.subnet_id,
         )
 
-        await reservedips_service.create(resource)
+        await reservedips_service.create(builder)
 
         reservedips_repository_mock.create.assert_called_once_with(
-            resource=resource
+            builder=builder
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,

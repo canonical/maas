@@ -1,16 +1,16 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from typing import List
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import DomainsRepository
-from maasservicelayer.models.domains import Domain
+from maasservicelayer.models.domains import Domain, DomainBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 
 
-class DomainsService(BaseService[Domain, DomainsRepository]):
+class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
     def __init__(
         self,
         context: Context,

@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional
@@ -6,7 +6,7 @@ from typing import Optional
 from pydantic import Field, validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
-from maasservicelayer.db.repositories.fabrics import FabricsResourceBuilder
+from maasservicelayer.models.fabrics import FabricBuilder
 
 
 class FabricRequest(NamedBaseModel):
@@ -16,12 +16,11 @@ class FabricRequest(NamedBaseModel):
     )
     class_type: Optional[str]
 
-    def to_builder(self) -> FabricsResourceBuilder:
-        return (
-            FabricsResourceBuilder()
-            .with_name(self.name)
-            .with_description(self.description)
-            .with_class_type(self.class_type)
+    def to_builder(self) -> FabricBuilder:
+        return FabricBuilder(
+            name=self.name,
+            description=self.description,
+            class_type=self.class_type,
         )
 
     # TODO: move to @field_validator when we migrate to pydantic 2.x

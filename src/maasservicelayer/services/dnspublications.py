@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
@@ -13,9 +13,11 @@ from maascommon.workflows.dns import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
-    DNSPublicationResourceBuilder,
 )
-from maasservicelayer.models.dnspublications import DNSPublication
+from maasservicelayer.models.dnspublications import (
+    DNSPublication,
+    DNSPublicationBuilder,
+)
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
@@ -26,7 +28,9 @@ class MaxSerialException(Exception):
 
 
 class DNSPublicationsService(
-    BaseService[DNSPublication, DNSPublicationRepository]
+    BaseService[
+        DNSPublication, DNSPublicationRepository, DNSPublicationBuilder
+    ]
 ):
     def __init__(
         self,
@@ -79,13 +83,13 @@ class DNSPublicationsService(
         )
 
         return await self.create(
-            DNSPublicationResourceBuilder()
-            .with_source(source)
-            .with_update(update)
-            .with_serial(next_serial)
-            .with_created(timestamp)
-            .with_updated(timestamp)
-            .build()
+            DNSPublicationBuilder(
+                source=source,
+                update=update,
+                serial=next_serial,
+                created=timestamp,
+                updated=timestamp,
+            )
         )
 
     async def get_publications_since_serial(

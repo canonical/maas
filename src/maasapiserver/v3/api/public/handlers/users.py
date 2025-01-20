@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends, Response
@@ -205,9 +205,10 @@ class UsersHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> UserResponse:
-        new_user = await services.users.create(
-            user_request.to_builder().with_date_joined(utcnow()).build()
-        )
+        builder = user_request.to_builder()
+        builder.date_joined = utcnow()
+
+        new_user = await services.users.create(builder)
 
         response.headers["ETag"] = new_user.etag()
         return UserResponse.from_model(
@@ -241,8 +242,9 @@ class UsersHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> UserResponse:
-        resource = user_request.to_builder().build()
-        user = await services.users.update_by_id(user_id, resource)
+        user = await services.users.update_by_id(
+            user_id, user_request.to_builder()
+        )
         if not user:
             return NotFoundResponse()
 

@@ -1,5 +1,7 @@
-import datetime
-from typing import List, Optional, Self, Type
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
+from typing import List, Optional, Type
 
 from pydantic import IPvAnyAddress
 from sqlalchemy import and_, func, select, Table
@@ -9,11 +11,7 @@ from sqlalchemy.sql.operators import eq
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    CreateOrUpdateResource,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -24,38 +22,12 @@ from maasservicelayer.db.tables import (
 )
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
-from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.models.staticipaddress import (
+    StaticIPAddress,
+    StaticIPAddressBuilder,
+)
 from maasservicelayer.models.subnets import Subnet
-
-
-class StaticIPAddressResourceBuilder(ResourceBuilder):
-    def with_ip(self, ip: IPvAnyAddress | None) -> Self:
-        self._request.set_value(StaticIPAddressTable.c.ip.name, ip)
-        return self
-
-    def with_alloc_type(self, alloc_type: IpAddressType) -> Self:
-        self._request.set_value(
-            StaticIPAddressTable.c.alloc_type.name, alloc_type.value
-        )
-        return self
-
-    def with_lease_time(self, lease_time: int) -> Self:
-        self._request.set_value(
-            StaticIPAddressTable.c.lease_time.name, lease_time
-        )
-        return self
-
-    def with_temp_expires_on(self, temp_expires_on: datetime.datetime) -> Self:
-        self._request.set_value(
-            StaticIPAddressTable.c.temp_expires_on.name, temp_expires_on
-        )
-        return self
-
-    def with_subnet_id(self, subnet_id: int) -> Self:
-        self._request.set_value(
-            StaticIPAddressTable.c.subnet_id.name, subnet_id
-        )
-        return self
+from maasservicelayer.utils.date import utcnow
 
 
 class StaticIPAddressClauseFactory(ClauseFactory):
@@ -86,8 +58,12 @@ class StaticIPAddressRepository(BaseRepository):
         return StaticIPAddress
 
     async def create_or_update(
-        self, resource: CreateOrUpdateResource
+        self, builder: StaticIPAddressBuilder
     ) -> StaticIPAddress:
+        now = utcnow()
+        builder.created = now
+        builder.updated = now
+        resource = self.mapper.build_resource(builder)
         stmt = insert(StaticIPAddressTable).values(**resource.get_values())
         upsert_stmt = stmt.on_conflict_do_update(
             index_elements=[

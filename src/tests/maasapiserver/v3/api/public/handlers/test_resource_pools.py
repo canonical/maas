@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -14,7 +14,6 @@ from maasapiserver.v3.api.public.models.requests.query import (
 )
 from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
-    ResourcePoolUpdateRequest,
 )
 from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolResponse,
@@ -394,7 +393,7 @@ class TestResourcePoolApi(ApiCommonTests):
         updated_rp.description = "new description"
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.update_by_id.return_value = updated_rp
-        update_resource_pool_request = ResourcePoolUpdateRequest(
+        update_resource_pool_request = ResourcePoolRequest(
             name="newname", description="new description"
         )
         response = await mocked_api_client_admin.put(
@@ -427,7 +426,7 @@ class TestResourcePoolApi(ApiCommonTests):
                 ]
             )
         )
-        update_resource_pool_request = ResourcePoolUpdateRequest(
+        update_resource_pool_request = ResourcePoolRequest(
             name="newname", description="new description"
         )
         response = await mocked_api_client_admin.put(
@@ -490,7 +489,7 @@ class TestResourcePoolApi(ApiCommonTests):
         services_mock.resource_pools = Mock(ResourcePoolsService)
 
         services_mock.resource_pools.update_by_id.return_value = updated_rp
-        update_resource_pool_request = ResourcePoolUpdateRequest(
+        update_resource_pool_request = ResourcePoolRequest(
             name="newname", description="new description"
         )
         response = await mocked_api_client_admin_rbac.put(

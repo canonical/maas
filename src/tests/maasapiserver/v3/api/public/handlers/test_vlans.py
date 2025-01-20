@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -22,10 +22,7 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.vlans import (
-    VlanResourceBuilder,
-    VlansClauseFactory,
-)
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -34,7 +31,7 @@ from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.models.vlans import Vlan, VlanBuilder
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
@@ -100,13 +97,7 @@ class TestVlanApi(ApiCommonTests):
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
-        mocker,
     ) -> None:
-        now = utcnow()
-        mocker.patch(
-            "maasapiserver.v3.api.public.handlers.vlans.utcnow",
-            lambda: now,
-        )
         vlan_request = VlanCreateRequest(
             name=TEST_VLAN.name,
             description=TEST_VLAN.description,
@@ -136,39 +127,37 @@ class TestVlanApi(ApiCommonTests):
             == f"{self.BASE_PATH}/{vlan_response.id}"
         )
         services_mock.vlans.create.assert_called_with(
-            resource=VlanResourceBuilder()
-            .with_name(TEST_VLAN.name)
-            .with_description(TEST_VLAN.description)
-            .with_vid(TEST_VLAN.vid)
-            .with_mtu(TEST_VLAN.mtu)
-            .with_dhcp_on(False)
-            .with_space_id(TEST_VLAN.space_id)
-            .with_fabric_id(TEST_VLAN.fabric_id)
-            .with_created(now)
-            .with_updated(now)
-            .build()
+            builder=VlanBuilder(
+                name=TEST_VLAN.name,
+                description=TEST_VLAN.description,
+                vid=TEST_VLAN.vid,
+                mtu=TEST_VLAN.mtu,
+                dhcp_on=False,
+                space_id=TEST_VLAN.space_id,
+                fabric_id=TEST_VLAN.fabric_id,
+            )
         )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "vlan_request",
         [
-            VlanCreateRequest(vid=-1),
-            VlanCreateRequest(vid=4097),
-            VlanCreateRequest(vid=0, mtu=551),
-            VlanCreateRequest(vid=0, mtu=65536),
+            {"vid": -1},
+            {"vid": 4097},
+            {"vid": 0, "mtu": 551},
+            {"vid": 0, "mtu": 65536},
         ],
     )
     async def test_post_invalid_parameters(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
-        vlan_request: VlanCreateRequest,
+        vlan_request: dict,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.create.return_value = TEST_VLAN
         response = await mocked_api_client_admin.post(
-            self.BASE_PATH, json=jsonable_encoder(vlan_request)
+            self.BASE_PATH, json=vlan_request
         )
         assert response.status_code == 422
 

@@ -1,12 +1,9 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsResourceBuilder,
-)
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
 )
@@ -18,10 +15,9 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.fields import MacAddress
-from maasservicelayer.models.reservedips import ReservedIP
+from maasservicelayer.models.reservedips import ReservedIP, ReservedIPBuilder
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class ReservedIPBaseRequest(BaseModel):
@@ -37,7 +33,9 @@ class ReservedIPBaseRequest(BaseModel):
 class ReservedIPCreateRequest(ReservedIPBaseRequest):
     async def to_builder(
         self, subnet: Subnet, services: ServiceCollectionV3
-    ) -> ReservedIPsResourceBuilder:
+    ) -> ReservedIPBuilder:
+
+        # TODO: move this logic to service layer
         existing_ip = await services.staticipaddress.get_one(
             QuerySpec(where=StaticIPAddressClauseFactory.with_ip(self.ip))
         )
@@ -73,23 +71,16 @@ class ReservedIPCreateRequest(ReservedIPBaseRequest):
             raise ValidationException.build_for_field(
                 "ip", "The broadcast address cannot be a reserved IP."
             )
-        now = utcnow()
-        builder = (
-            ReservedIPsResourceBuilder()
-            .with_ip(self.ip)
-            .with_mac_address(self.mac_address)
-            .with_subnet_id(subnet.id)
-            .with_comment(self.comment)
-            .with_created(now)
-            .with_updated(now)
+        return ReservedIPBuilder(
+            ip=self.ip,
+            mac_address=self.mac_address,
+            subnet_id=subnet.id,
+            comment=self.comment,
         )
-        return builder
 
 
 class ReservedIPUpdateRequest(ReservedIPBaseRequest):
-    def to_builder(
-        self, existing_reservedip: ReservedIP
-    ) -> ReservedIPsResourceBuilder:
+    def to_builder(self, existing_reservedip: ReservedIP) -> ReservedIPBuilder:
         if (
             self.ip != existing_reservedip.ip
             or self.mac_address != existing_reservedip.mac_address
@@ -102,10 +93,6 @@ class ReservedIPUpdateRequest(ReservedIPBaseRequest):
                     )
                 ]
             )
-        now = utcnow()
-        builder = (
-            ReservedIPsResourceBuilder()
-            .with_comment(self.comment)
-            .with_updated(now)
+        return ReservedIPBuilder(
+            comment=self.comment,
         )
-        return builder

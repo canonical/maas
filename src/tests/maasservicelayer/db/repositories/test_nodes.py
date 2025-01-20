@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -11,12 +11,11 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodes import (
     NodeClauseFactory,
-    NodeResourceBuilder,
     NodesRepository,
 )
 from maasservicelayer.db.tables import BMCTable, NodeTable, ZoneTable
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.models.nodes import Node
+from maasservicelayer.models.nodes import Node, NodeBuilder
 from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
@@ -152,28 +151,20 @@ class TestNodesRepository:
         )
 
         nodes_repository = NodesRepository(Context(connection=db_connection))
-        resource = (
-            NodeResourceBuilder()
-            .with_status(status=NodeStatus.DEPLOYED)
-            .build()
-        )
+        builder = NodeBuilder(status=NodeStatus.DEPLOYED)
         await nodes_repository.update_one(
             query=QuerySpec(
                 where=NodeClauseFactory.with_system_id(machine.system_id)
             ),
-            resource=resource,
+            builder=builder,
         )
         [updated_node] = await fixture.get_typed(
             NodeTable.name, Node, eq(NodeTable.c.id, machine.id)
         )
         assert updated_node.status == NodeStatus.DEPLOYED
 
-        resource = (
-            NodeResourceBuilder()
-            .with_status(status=NodeStatus.FAILED_DEPLOYMENT)
-            .build()
-        )
-        await nodes_repository.update_by_id(id=machine.id, resource=resource)
+        builder = NodeBuilder(status=NodeStatus.FAILED_DEPLOYMENT)
+        await nodes_repository.update_by_id(id=machine.id, builder=builder)
         [updated_node] = await fixture.get_typed(
             NodeTable.name, Node, eq(NodeTable.c.id, machine.id)
         )
@@ -183,16 +174,12 @@ class TestNodesRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         nodes_repository = NodesRepository(Context(connection=db_connection))
-        resource = (
-            NodeResourceBuilder()
-            .with_status(status=NodeStatus.DEPLOYED)
-            .build()
-        )
+        builder = NodeBuilder(status=NodeStatus.DEPLOYED)
         with pytest.raises(NotFoundException):
             await nodes_repository.update_one(
                 query=QuerySpec(NodeClauseFactory.with_system_id("mario")),
-                resource=resource,
+                builder=builder,
             )
 
         with pytest.raises(NotFoundException):
-            await nodes_repository.update_by_id(id=-1, resource=resource)
+            await nodes_repository.update_by_id(id=-1, builder=builder)

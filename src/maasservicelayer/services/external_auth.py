@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
@@ -29,18 +29,14 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
-from maasservicelayer.db.repositories.users import (
-    UserClauseFactory,
-    UserProfileResourceBuilder,
-    UserResourceBuilder,
-)
+from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     DischargeRequiredException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
-from maasservicelayer.models.users import User
+from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
 from maasservicelayer.services._base import Service, ServiceCache
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.services.users import UsersService
@@ -183,26 +179,20 @@ class ExternalAuthService(Service, RootKeyStore):
             query=QuerySpec(UserClauseFactory.with_username(username))
         )
         if not user:
-            user_builder = (
-                UserResourceBuilder()
-                .with_username(username)
-                .with_first_name("")
-                .with_password("")
-                .with_is_active(True)
-                .with_is_staff(False)
-                .with_is_superuser(False)
-                .with_last_login(utcnow())
+            user_builder = UserBuilder(
+                username=username,
+                first_name="",
+                password="",
+                is_active=True,
+                is_staff=False,
+                is_superuser=False,
+                last_login=utcnow(),
             )
-            user = await self.users_service.create(user_builder.build())
-            profile_builder = (
-                UserProfileResourceBuilder()
-                .with_is_local(False)
-                .with_completed_intro(True)
-                .with_auth_last_check(utcnow())
+            user = await self.users_service.create(user_builder)
+            profile_builder = UserProfileBuilder(
+                is_local=False, completed_intro=True, auth_last_check=utcnow()
             )
-            await self.users_service.create_profile(
-                user.id, profile_builder.build()
-            )
+            await self.users_service.create_profile(user.id, profile_builder)
 
         return user
 

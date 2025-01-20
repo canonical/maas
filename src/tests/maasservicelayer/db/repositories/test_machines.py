@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -7,11 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import ResourceBuilder
 from maasservicelayer.db.repositories.machines import (
     MachineClauseFactory,
     MachinesRepository,
 )
+from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.machines import Machine
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
@@ -81,6 +81,10 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         return await create_test_machine(
             fixture, description="description", bmc=bmc, user=user
         )
+
+    @pytest.fixture
+    async def instance_builder_model(self, *args, **kwargs):
+        pass
 
     # TODO
     @pytest.fixture

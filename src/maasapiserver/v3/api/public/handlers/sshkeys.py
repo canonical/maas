@@ -160,13 +160,8 @@ class SshKeysHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         assert authenticated_user is not None
-        sshkey_request.key = (
-            await services.sshkeys.normalize_openssh_public_key(
-                sshkey_request.key
-            )
-        )
         builder = sshkey_request.to_builder(authenticated_user.id)
-        created_sshkey = await services.sshkeys.create(builder.build())
+        created_sshkey = await services.sshkeys.create(builder)
         response.headers["ETag"] = created_sshkey.etag()
         return SshKeyResponse.from_model(
             created_sshkey,

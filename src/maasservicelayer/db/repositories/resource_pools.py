@@ -1,27 +1,14 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self, Type
+from typing import Optional, Type
 
 from sqlalchemy import select, Table
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import ResourcePoolTable
 from maasservicelayer.models.resource_pools import ResourcePool
-
-
-class ResourcePoolResourceBuilder(ResourceBuilder):
-    def with_name(self, value: str) -> Self:
-        self._request.set_value(ResourcePoolTable.c.name.name, value)
-        return self
-
-    def with_description(self, value: str) -> Self:
-        self._request.set_value(ResourcePoolTable.c.description.name, value)
-        return self
 
 
 class ResourcePoolClauseFactory(ClauseFactory):

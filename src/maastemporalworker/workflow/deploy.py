@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -29,7 +29,6 @@ from maascommon.workflows.power import (
     PowerParam,
     PowerQueryParam,
 )
-from maasservicelayer.db.repositories.nodes import NodeResourceBuilder
 from maasservicelayer.db.tables import (
     BlockDeviceTable,
     InterfaceIPAddressTable,
@@ -39,6 +38,7 @@ from maasservicelayer.db.tables import (
     StaticIPAddressTable,
     VirtualBlockDeviceTable,
 )
+from maasservicelayer.models.nodes import NodeBuilder
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.power import (
     POWER_CYCLE_ACTIVITY_NAME,
@@ -97,11 +97,9 @@ class DeployActivity(ActivityBase):
     @activity_defn_with_context(name=SET_NODE_STATUS_ACTIVITY_NAME)
     async def set_node_status(self, params: SetNodeStatusParam) -> None:
         async with self.start_transaction() as services:
-            resource = (
-                NodeResourceBuilder().with_status(status=params.status).build()
-            )
+            builder = NodeBuilder(status=params.status)
             await services.nodes.update_by_system_id(
-                system_id=params.system_id, resource=resource
+                system_id=params.system_id, builder=builder
             )
 
     def _single_result_to_dict(self, result: Result) -> dict[str, Any]:

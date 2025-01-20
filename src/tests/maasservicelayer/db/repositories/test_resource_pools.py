@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timezone
 
@@ -11,40 +11,21 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
     ResourcePoolRepository,
-    ResourcePoolResourceBuilder,
 )
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     NotFoundException,
 )
-from maasservicelayer.models.resource_pools import ResourcePool
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.resource_pools import (
+    ResourcePool,
+    ResourcePoolBuilder,
+)
 from tests.fixtures.factories.resource_pools import (
     create_n_test_resource_pools,
     create_test_resource_pool,
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestResourcePoolCreateOrUpdateResourceBuilder:
-    def test_builder(self) -> None:
-        now = utcnow()
-        resource = (
-            ResourcePoolResourceBuilder()
-            .with_name("test")
-            .with_description("descr")
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        assert resource.get_values() == {
-            "name": "test",
-            "description": "descr",
-            "created": now,
-            "updated": now,
-        }
 
 
 class TestResourcePoolClauseFactory:
@@ -94,12 +75,12 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
         return await create_test_resource_pool(fixture)
 
     @pytest.fixture
-    async def instance_builder(self) -> ResourcePoolResourceBuilder:
-        return (
-            ResourcePoolResourceBuilder()
-            .with_name("test")
-            .with_description("descr")
-        )
+    async def instance_builder_model(self) -> type[ResourcePoolBuilder]:
+        return ResourcePoolBuilder
+
+    @pytest.fixture
+    async def instance_builder(self) -> ResourcePoolBuilder:
+        return ResourcePoolBuilder(name="test", description="descr")
 
     @pytest.mark.parametrize("num_objects", [10])
     async def list_ids(
@@ -141,13 +122,7 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
             fixture, name="test2"
         )
 
-        now = utcnow()
-        updated_resource = (
-            ResourcePoolResourceBuilder()
-            .with_name(created_resource_pool.name)
-            .with_updated(now)
-            .build()
-        )
+        updated_resource = ResourcePoolBuilder(name=created_resource_pool.name)
 
         with pytest.raises(AlreadyExistsException):
             await repository_instance.update_by_id(
@@ -157,13 +132,6 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
     async def test_update_nonexistent(
         self, repository_instance: ResourcePoolRepository
     ) -> None:
-        now = utcnow()
-        resource = (
-            ResourcePoolResourceBuilder()
-            .with_name("test")
-            .with_description("test")
-            .with_updated(now)
-            .build()
-        )
+        builder = ResourcePoolBuilder(name="test", description="test")
         with pytest.raises(NotFoundException):
-            await repository_instance.update_by_id(1000, resource)
+            await repository_instance.update_by_id(1000, builder)

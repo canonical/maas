@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -27,7 +27,6 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class FabricsHandler(Handler):
@@ -137,15 +136,7 @@ class FabricsHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> None:
-        now = utcnow()
-        new_fabric_resource = (
-            fabric_request.to_builder()
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        fabric = await services.fabrics.create(new_fabric_resource)
+        fabric = await services.fabrics.create(fabric_request.to_builder())
         response.headers["ETag"] = fabric.etag()
         return FabricResponse.from_model(
             fabric=fabric,
@@ -179,10 +170,9 @@ class FabricsHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        now = utcnow()
         fabric = await services.fabrics.update_by_id(
             id=fabric_id,
-            resource=fabric_request.to_builder().with_updated(now).build(),
+            builder=fabric_request.to_builder(),
         )
 
         response.headers["ETag"] = fabric.etag()

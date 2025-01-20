@@ -1,3 +1,6 @@
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import List, Optional
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
@@ -8,20 +11,24 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
-from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.models.staticipaddress import (
+    StaticIPAddress,
+    StaticIPAddressBuilder,
+)
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 
 
 class StaticIPAddressService(
-    BaseService[StaticIPAddress, StaticIPAddressRepository]
+    BaseService[
+        StaticIPAddress, StaticIPAddressRepository, StaticIPAddressBuilder
+    ]
 ):
     def __init__(
         self,
@@ -60,9 +67,9 @@ class StaticIPAddressService(
         raise NotImplementedError("Not implemented yet.")
 
     async def create_or_update(
-        self, resource: CreateOrUpdateResource
+        self, builder: StaticIPAddressBuilder
     ) -> StaticIPAddress:
-        ip = await self.repository.create_or_update(resource)
+        ip = await self.repository.create_or_update(builder)
         if ip.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,

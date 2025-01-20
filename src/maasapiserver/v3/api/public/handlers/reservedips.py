@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -205,7 +205,7 @@ class ReservedIPsHandler(Handler):
                 ]
             )
         builder = await reservedip_request.to_builder(subnet, services)
-        reservedip = await services.reservedips.create(builder.build())
+        reservedip = await services.reservedips.create(builder)
 
         response.headers["ETag"] = reservedip.etag()
         return ReservedIPResponse.from_model(
@@ -262,7 +262,7 @@ class ReservedIPsHandler(Handler):
 
         builder = reservedip_request.to_builder(existing_reservedip)
         reservedip = await services.reservedips.update_one(
-            query=query, resource=builder.build(), etag_if_match=etag_if_match
+            query=query, builder=builder, etag_if_match=etag_if_match
         )
 
         response.headers["ETag"] = reservedip.etag()

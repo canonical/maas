@@ -1,30 +1,13 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Self, Type
+from typing import Type
 
 from sqlalchemy import desc, select, Table
 
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import DNSPublicationTable
 from maasservicelayer.models.dnspublications import DNSPublication
-
-
-class DNSPublicationResourceBuilder(ResourceBuilder):
-    def with_serial(self, serial: int) -> Self:
-        self._request.set_value(DNSPublicationTable.c.serial.name, serial)
-        return self
-
-    def with_source(self, source: str) -> Self:
-        self._request.set_value(DNSPublicationTable.c.source.name, source)
-        return self
-
-    def with_update(self, update: str) -> Self:
-        self._request.set_value(DNSPublicationTable.c.update_str.name, update)
-        return self
 
 
 class DNSPublicationRepository(BaseRepository[DNSPublication]):

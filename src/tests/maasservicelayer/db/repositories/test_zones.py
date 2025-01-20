@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timezone
@@ -12,13 +12,11 @@ from maasservicelayer.context import Context
 from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import (
-    ZoneResourceBuilder,
     ZonesClauseFactory,
     ZonesRepository,
 )
 from maasservicelayer.db.tables import ZoneTable
-from maasservicelayer.models.zones import Zone
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.zones import Zone, ZoneBuilder
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
@@ -39,26 +37,6 @@ class TestZonesClauseFactory:
         )
         assert CompiledQuery(stmt).params == {
             "id_1": [1, 2],
-        }
-
-
-class TestZoneCreateOrUpdateResourceBuilder:
-    def test_builder(self) -> None:
-        now = utcnow()
-        resource = (
-            ZoneResourceBuilder()
-            .with_name("test")
-            .with_description("descr")
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        assert resource.get_values() == {
-            "name": "test",
-            "description": "descr",
-            "created": now,
-            "updated": now,
         }
 
 
@@ -105,12 +83,12 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         )
 
     @pytest.fixture
-    async def instance_builder(self) -> ZoneResourceBuilder:
-        return (
-            ZoneResourceBuilder()
-            .with_name("name")
-            .with_description("description")
-        )
+    async def instance_builder_model(self) -> type[ZoneBuilder]:
+        return ZoneBuilder
+
+    @pytest.fixture
+    async def instance_builder(self) -> ZoneBuilder:
+        return ZoneBuilder(name="name", description="description")
 
     async def test_list_with_filters(
         self, repository_instance: ZonesRepository, created_instance: Zone

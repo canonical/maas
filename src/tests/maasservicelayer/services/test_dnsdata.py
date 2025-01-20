@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -7,11 +7,8 @@ import pytest
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.dnsdata import (
-    DNSDataRepository,
-    DNSDataResourceBuilder,
-)
-from maasservicelayer.models.dnsdata import DNSData
+from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
+from maasservicelayer.models.dnsdata import DNSData, DNSDataBuilder
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services.dnsdata import DNSDataService
@@ -64,19 +61,15 @@ class TestDNSData:
             dnsdata_repository=mock_dnsdata_repository,
         )
 
-        resource = (
-            DNSDataResourceBuilder()
-            .with_dnsresource_id(dnsdata.dnsresource_id)
-            .with_rrtype(dnsdata.rrtype)
-            .with_rrdata(dnsdata.rrdata)
-            .build()
+        builder = DNSDataBuilder(
+            dnsresource_id=dnsdata.dnsresource_id,
+            rrtype=dnsdata.rrtype,
+            rrdata=dnsdata.rrdata,
         )
 
-        await service.create(resource)
+        await service.create(builder)
 
-        mock_dnsdata_repository.create.assert_called_once_with(
-            resource=resource
-        )
+        mock_dnsdata_repository.create.assert_called_once_with(builder=builder)
 
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(
             source="added TXT to resource test_resource on zone test_domain",
@@ -130,18 +123,16 @@ class TestDNSData:
             dnsdata_repository=mock_dnsdata_repository,
         )
 
-        resource = (
-            DNSDataResourceBuilder()
-            .with_dnsresource_id(dnsdata.dnsresource_id)
-            .with_rrtype(dnsdata.rrtype)
-            .with_rrdata(dnsdata.rrdata)
-            .build()
+        builder = DNSDataBuilder(
+            dnsresource_id=dnsdata.dnsresource_id,
+            rrtype=dnsdata.rrtype,
+            rrdata=dnsdata.rrdata,
         )
 
-        await service.update_by_id(dnsdata.id, resource)
+        await service.update_by_id(dnsdata.id, builder)
 
         mock_dnsdata_repository.update_by_id.assert_called_once_with(
-            id=dnsdata.id, resource=resource
+            id=dnsdata.id, builder=builder
         )
 
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(

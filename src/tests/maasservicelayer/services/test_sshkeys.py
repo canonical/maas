@@ -10,15 +10,12 @@ from maascommon.enums.sshkeys import (
     SshKeysProtocolType,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.sshkeys import (
-    SshKeyResourceBuilder,
-    SshKeysRepository,
-)
+from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     ValidationException,
 )
-from maasservicelayer.models.sshkeys import SshKey
+from maasservicelayer.models.sshkeys import SshKey, SshKeyBuilder
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
@@ -147,18 +144,33 @@ class TestSshKeysService:
             context=Context(), sshkeys_repository=repository
         )
 
-        resource = (
-            SshKeyResourceBuilder()
-            .with_key(TEST_ED25519_KEY)
-            .with_protocol(None)
-            .with_auth_id(None)
-            .with_user_id(1)
-        ).build()
+        builder = SshKeyBuilder(
+            key=TEST_ED25519_KEY, protocol=None, auth_id=None, user_id=1
+        )
 
         with pytest.raises(AlreadyExistsException):
-            await sshkeys_service.create(resource)
+            await sshkeys_service.create(builder)
 
         repository.create.assert_not_called()
+
+    async def test_create_normalize_key(self) -> None:
+        repository = Mock(SshKeysRepository)
+        repository.get_one.return_value = None
+        sshkeys_service = SshKeysService(
+            context=Context(), sshkeys_repository=repository
+        )
+        sshkeys_service.normalize_openssh_public_key = AsyncMock()
+        sshkeys_service.normalize_openssh_public_key.return_value = (
+            "normalized_key"
+        )
+
+        builder = SshKeyBuilder(
+            key=TEST_ED25519_KEY, protocol=None, auth_id=None, user_id=1
+        )
+
+        await sshkeys_service.create(builder)
+        builder.key = "normalized_key"
+        repository.create.assert_called_once_with(builder=builder)
 
     async def test_create_already_existing_imported_key(self) -> None:
         repository = Mock(SshKeysRepository)
@@ -166,15 +178,14 @@ class TestSshKeysService:
             context=Context(), sshkeys_repository=repository
         )
 
-        resource = (
-            SshKeyResourceBuilder()
-            .with_key(TEST_ED25519_KEY)
-            .with_protocol(SshKeysProtocolType.LP)
-            .with_auth_id("foo")
-            .with_user_id(1)
-        ).build()
+        builder = SshKeyBuilder(
+            key=TEST_ED25519_KEY,
+            protocol=SshKeysProtocolType.LP,
+            auth_id="foo",
+            user_id=1,
+        )
 
-        await sshkeys_service.create(resource)
+        await sshkeys_service.create(builder)
 
         repository.create.assert_called_once()
 
@@ -266,19 +277,15 @@ class TestSshKeysService:
             TEST_RSA_KEY,
         ]
 
-        resource = (
-            SshKeyResourceBuilder()
-            .with_key(TEST_RSA_KEY)
-            .with_protocol(protocol)
-            .with_auth_id("foo")
-            .with_user_id(1)
-        ).build()
+        builder = SshKeyBuilder(
+            key=TEST_RSA_KEY, protocol=protocol, auth_id="foo", user_id=1
+        )
 
         keys = await sshkeys_service.import_keys(protocol, "foo", 1)
         assert len(keys) == 2
         assert sshkey in keys
         assert sshkey_created in keys
-        repository.create.assert_called_once_with(resource=resource)
+        repository.create.assert_called_once_with(builder=builder)
 
     @pytest.mark.parametrize(
         "keys", [[], [TEST_ED25519_KEY], [TEST_ED25519_KEY, TEST_RSA_KEY]]

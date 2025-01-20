@@ -170,11 +170,9 @@ class SSLKeysHandler(Handler):
     ) -> SSLKeyResponse:
         assert authenticated_user is not None
 
-        new_sslkey = await services.sslkeys.create(
-            sslkey_request.to_builder()
-            .with_user_id(authenticated_user.id)
-            .build()
-        )
+        builder = sslkey_request.to_builder()
+        builder.user_id = authenticated_user.id
+        new_sslkey = await services.sslkeys.create(builder)
 
         response.headers["ETag"] = new_sslkey.etag()
         return SSLKeyResponse.from_model(sslkey=new_sslkey)

@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
@@ -9,14 +9,11 @@ from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.vlans import (
-    VlanResourceBuilder,
     VlansClauseFactory,
     VlansRepository,
 )
 from maasservicelayer.db.tables import VlanTable
-from maasservicelayer.exceptions.catalog import ValidationException
-from maasservicelayer.models.vlans import Vlan
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.vlans import Vlan, VlanBuilder
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import create_test_rack_controller_entry
@@ -43,79 +40,6 @@ class TestVlansClauseFactory:
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_node.node_type = 2")
-
-
-class TestVlansResourceBuilder:
-    def test_builder(self) -> None:
-        now = utcnow()
-        resource = (
-            VlanResourceBuilder()
-            .with_name("myvlan")
-            .with_description("mydesc")
-            .with_mtu(1500)
-            .with_vid(0)
-            .with_dhcp_on(True)
-            .with_fabric_id(0)
-            .with_space_id(0)
-            .with_primary_rack_id(0)
-            .with_secondary_rack_id(0)
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        assert resource.get_values() == {
-            "name": "myvlan",
-            "description": "mydesc",
-            "mtu": 1500,
-            "vid": 0,
-            "dhcp_on": True,
-            "fabric_id": 0,
-            "space_id": 0,
-            "primary_rack_id": 0,
-            "secondary_rack_id": 0,
-            "created": now,
-            "updated": now,
-        }
-
-    @pytest.mark.parametrize(
-        "mtu, is_valid",
-        [
-            (0, False),
-            (551, False),
-            (552, True),
-            (1000, True),
-            (65535, True),
-            (65536, False),
-        ],
-    )
-    def test_mtu_validation(self, mtu: int, is_valid: bool) -> None:
-        if is_valid:
-            VlanResourceBuilder().with_mtu(mtu).build()
-        else:
-            with pytest.raises(ValidationException):
-                VlanResourceBuilder().with_mtu(mtu).build()
-
-    @pytest.mark.parametrize(
-        "vid, is_valid",
-        [
-            (-1, False),
-            (0, True),
-            (1000, True),
-            (4094, True),
-            (4095, False),
-        ],
-    )
-    def test_vid_validation(self, vid: int, is_valid: bool) -> None:
-        if is_valid:
-            VlanResourceBuilder().with_vid(vid).build()
-        else:
-            with pytest.raises(ValidationException):
-                VlanResourceBuilder().with_vid(vid).build()
-
-    def test_defaults(self) -> None:
-        resource = VlanResourceBuilder().with_mtu(None).build()
-        assert resource.get_values() == {"mtu": 1500}
 
 
 class TestVlansRepository(RepositoryCommonTests[Vlan]):
@@ -146,18 +70,21 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         )
 
     @pytest.fixture
-    async def instance_builder(self) -> VlanResourceBuilder:
-        return (
-            VlanResourceBuilder()
-            .with_name("myvlan")
-            .with_description("mydesc")
-            .with_mtu(1500)
-            .with_vid(1)
-            .with_dhcp_on(True)
-            .with_fabric_id(1)
-            .with_space_id(1)
-            .with_primary_rack_id(1)
-            .with_secondary_rack_id(1)
+    async def instance_builder_model(self) -> type[VlanBuilder]:
+        return VlanBuilder
+
+    @pytest.fixture
+    async def instance_builder(self) -> VlanBuilder:
+        return VlanBuilder(
+            name="myvlan",
+            description="mydesc",
+            mtu=1500,
+            vid=1,
+            dhcp_on=True,
+            fabric_id=1,
+            space_id=1,
+            primary_rack_id=1,
+            secondary_rack_id=1,
         )
 
     async def test_get_node_vlans_no_system_id(

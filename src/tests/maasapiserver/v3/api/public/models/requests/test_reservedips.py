@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
@@ -192,7 +192,7 @@ class TestReservedIPUpdateRequest:
         mock_reservedip.ip = ip
         mock_reservedip.mac_address = mac_address
         with pytest.raises(ValidationException) as e:
-            request.to_builder(mock_reservedip).build()
+            request.to_builder(mock_reservedip)
 
         assert len(e.value.details) == 1
         assert e.value.details[0] == BaseExceptionDetail(
@@ -211,7 +211,7 @@ class TestReservedIPUpdateRequest:
         mock_reservedip.ip = ip
         mock_reservedip.mac_address = mac_address
         with pytest.raises(ValidationException) as e:
-            request.to_builder(mock_reservedip).build()
+            request.to_builder(mock_reservedip)
 
         assert len(e.value.details) == 1
         assert e.value.details[0] == BaseExceptionDetail(
@@ -228,6 +228,5 @@ class TestReservedIPUpdateRequest:
         mock_reservedip = Mock(ReservedIP)
         mock_reservedip.ip = ip
         mock_reservedip.mac_address = mac_address
-        resource = request.to_builder(mock_reservedip).build()
-        assert resource.get_values()["comment"] == "comment"
-        assert resource.get_values()["updated"] is not None
+        builder = request.to_builder(mock_reservedip)
+        assert builder.comment == "comment"

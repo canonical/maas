@@ -1,12 +1,12 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.base import ResourceBuilder
 from maasservicelayer.db.repositories.spaces import SpacesRepository
+from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.spaces import Space
 from tests.fixtures.factories.spaces import create_test_space_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -37,6 +37,10 @@ class TestSpacesRepository(RepositoryCommonTests[Space]):
         return await create_test_space_entry(
             fixture, name="name", description="description"
         )
+
+    @pytest.fixture
+    async def instance_builder_model(self, *args, **kwargs):
+        pass
 
     # TODO
     @pytest.fixture

@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from enum import IntEnum
@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import IPvAnyAddress
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
 
 
 class EndpointChoicesEnum(IntEnum):
@@ -41,3 +41,6 @@ class Event(MaasTimestampedBaseModel):
     user_agent: str
     description: str
     action: str
+
+
+EventBuilder = make_builder(Event)

@@ -10,6 +10,7 @@ from maasapiserver.v3.api.public.models.responses.machines import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.node import NodeStatus
+from maascommon.enums.power import PowerState
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
@@ -38,6 +39,7 @@ class TestMachineResponse:
             power_type=None,
             fqdn="maas.local",
             hostname="hostname",
+            power_state=PowerState.ON,
         )
 
         response = MachineResponse.from_model(

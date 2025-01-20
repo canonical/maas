@@ -1,7 +1,7 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Self, Type
+from typing import Type
 
 from pydantic import IPvAnyAddress
 from sqlalchemy import and_, cast, join, select, Table
@@ -10,12 +10,8 @@ from sqlalchemy.sql.expression import exists
 from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import ReservedIPTable, SubnetTable, VlanTable
-from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
 
 
@@ -58,26 +54,6 @@ class ReservedIPsClauseFactory(ClauseFactory):
                 ),
             ],
         )
-
-
-class ReservedIPsResourceBuilder(ResourceBuilder):
-    def with_ip(self, ip: IPvAnyAddress) -> Self:
-        self._request.set_value(ReservedIPTable.c.ip.name, ip)
-        return self
-
-    def with_mac_address(self, mac_address: MacAddress) -> Self:
-        self._request.set_value(
-            ReservedIPTable.c.mac_address.name, mac_address
-        )
-        return self
-
-    def with_comment(self, comment: str | None) -> Self:
-        self._request.set_value(ReservedIPTable.c.comment.name, comment)
-        return self
-
-    def with_subnet_id(self, subnet_id: int) -> Self:
-        self._request.set_value(ReservedIPTable.c.subnet_id.name, subnet_id)
-        return self
 
 
 class ReservedIPsRepository(BaseRepository[ReservedIP]):

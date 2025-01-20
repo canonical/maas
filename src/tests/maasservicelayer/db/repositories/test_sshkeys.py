@@ -5,11 +5,11 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.base import ResourceBuilder
 from maasservicelayer.db.repositories.sshkeys import (
     SshKeyClauseFactory,
     SshKeysRepository,
 )
+from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.sshkeys import SshKey
 from tests.fixtures.factories.user import (
     create_test_user,
@@ -73,6 +73,10 @@ class TestSshKeysRepository(RepositoryCommonTests[SshKey]):
         return await create_test_user_sshkey(
             fixture, key="ssh-ed25519 randomkey comment", user_id=user.id
         )
+
+    @pytest.fixture
+    async def instance_builder_model(self, *args, **kwargs):
+        pass
 
     @pytest.fixture
     async def instance_builder(self, *args, **kwargs) -> ResourceBuilder:

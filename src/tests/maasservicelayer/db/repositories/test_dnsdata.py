@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
@@ -6,12 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.dnsdata import (
-    DNSDataRepository,
-    DNSDataResourceBuilder,
-)
+from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
 from maasservicelayer.db.tables import DNSDataTable
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.dnsdata import DNSDataBuilder
 from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
@@ -30,19 +27,11 @@ class TestDNSDataRepository:
             Context(connection=db_connection)
         )
 
-        now = utcnow()
-
-        resource = (
-            DNSDataResourceBuilder()
-            .with_rrtype("TXT")
-            .with_rrdata("Hello, World!")
-            .with_dnsresource_id(dnsresource.id)
-            .with_created(now)
-            .with_updated(now)
-            .build()
+        builder = DNSDataBuilder(
+            rrtype="TXT", rrdata="Hello, World!", dnsresource_id=dnsresource.id
         )
 
-        dnsdata = await dnsdata_repository.create(resource)
+        dnsdata = await dnsdata_repository.create(builder)
 
         assert dnsdata.rrtype == "TXT"
         assert dnsdata.rrdata == "Hello, World!"
@@ -61,11 +50,9 @@ class TestDNSDataRepository:
             Context(connection=db_connection)
         )
 
-        resource = (
-            DNSDataResourceBuilder().with_rrdata("Hello, World!").build()
-        )
+        builder = DNSDataBuilder(rrdata="Hello, World!")
 
-        dnsdata = await dnsdata_repository.update_by_id(dnsdata.id, resource)
+        dnsdata = await dnsdata_repository.update_by_id(dnsdata.id, builder)
 
         assert dnsdata.rrdata == "Hello, World!"
 

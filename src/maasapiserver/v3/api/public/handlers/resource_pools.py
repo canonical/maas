@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends, Response
@@ -16,7 +16,6 @@ from maasapiserver.v3.api.public.models.requests.query import (
 )
 from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
-    ResourcePoolUpdateRequest,
 )
 from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolResponse,
@@ -31,7 +30,6 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
-    ResourcePoolResourceBuilder,
 )
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
@@ -42,7 +40,6 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
 )
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class ResourcePoolHandler(Handler):
@@ -157,16 +154,9 @@ class ResourcePoolHandler(Handler):
                     )
                 ]
             )
-        now = utcnow()
-        resource = (
-            ResourcePoolResourceBuilder()
-            .with_name(resource_pool_request.name)
-            .with_description(resource_pool_request.description)
-            .with_created(now)
-            .with_updated(now)
-            .build()
+        resource_pool = await services.resource_pools.create(
+            resource_pool_request.to_builder()
         )
-        resource_pool = await services.resource_pools.create(resource)
         response.headers["ETag"] = resource_pool.etag()
         return ResourcePoolResponse.from_model(
             resource_pool=resource_pool,
@@ -261,7 +251,7 @@ class ResourcePoolHandler(Handler):
         self,
         resource_pool_id: int,
         response: Response,
-        resource_pool_request: ResourcePoolUpdateRequest,
+        resource_pool_request: ResourcePoolRequest,
         authenticated_user=Depends(get_authenticated_user),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
@@ -278,15 +268,8 @@ class ResourcePoolHandler(Handler):
                     )
                 ]
             )
-        resource = (
-            ResourcePoolResourceBuilder()
-            .with_name(resource_pool_request.name)
-            .with_description(resource_pool_request.description)
-            .with_updated(utcnow())
-            .build()
-        )
         resource_pool = await services.resource_pools.update_by_id(
-            resource_pool_id, resource
+            resource_pool_id, resource_pool_request.to_builder()
         )
         response.headers["ETag"] = resource_pool.etag()
         return ResourcePoolResponse.from_model(

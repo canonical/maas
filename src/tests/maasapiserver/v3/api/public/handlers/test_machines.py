@@ -19,6 +19,7 @@ from maasapiserver.v3.api.public.models.responses.machines import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.node import NodeStatus
+from maascommon.enums.power import PowerState
 from maasservicelayer.auth.macaroons.macaroon_client import RbacAsyncClient
 from maasservicelayer.auth.macaroons.models.responses import (
     PermissionResourcesMapping,
@@ -58,6 +59,7 @@ TEST_MACHINE = Machine(
     power_type=None,
     fqdn="maas.local",
     hostname="hostname",
+    power_state=PowerState.ON,
 )
 
 TEST_MACHINE_2 = Machine(
@@ -79,6 +81,7 @@ TEST_MACHINE_2 = Machine(
     power_type=None,
     fqdn="maas.local",
     hostname="hostname",
+    power_state=PowerState.ON,
 )
 
 TEST_USB_DEVICE = UsbDevice(

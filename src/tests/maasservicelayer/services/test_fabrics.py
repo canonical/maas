@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -9,17 +9,14 @@ from maascommon.enums.interface import InterfaceType
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.fabrics import (
-    FabricsRepository,
-    FabricsResourceBuilder,
-)
+from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import BadRequestException
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.fabrics import Fabric
+from maasservicelayer.models.fabrics import Fabric, FabricBuilder
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.models.vlans import Vlan, VlanBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.interfaces import InterfacesService
@@ -80,29 +77,28 @@ class TestFabricsService:
             fabrics_repository=fabrics_repository_mock,
         )
 
-        resource = (
-            FabricsResourceBuilder()
-            .with_name("test")
-            .with_description("descr")
-            .with_created(now)
-            .with_updated(now)
-            .build()
+        builder = FabricBuilder(
+            name="test",
+            description="descr",
         )
 
-        actual_fabric = await fabrics_service.create(resource)
+        actual_fabric = await fabrics_service.create(builder)
         assert expected_fabric == actual_fabric
         fabrics_repository_mock.create.assert_called_once()
 
         # Check Default VLAN created on Fabric creation
         vlans_service_mock.create.assert_called_once()
         create_vlan_args = vlans_service_mock.create.call_args.kwargs[
-            "resource"
-        ].get_values()
-        assert create_vlan_args["fabric_id"] == expected_fabric.id
-        assert create_vlan_args["vid"] == 0
-        assert create_vlan_args["name"] == "Default VLAN"
-        assert create_vlan_args["mtu"] == 1500
-        assert create_vlan_args["dhcp_on"] is False
+            "builder"
+        ]
+        assert create_vlan_args == VlanBuilder(
+            fabric_id=expected_fabric.id,
+            vid=0,
+            name="Default VLAN",
+            description="",
+            mtu=1500,
+            dhcp_on=False,
+        )
 
     async def test_delete_by_id(self) -> None:
         fabric_to_delete = Fabric(

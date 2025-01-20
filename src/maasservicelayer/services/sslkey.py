@@ -3,11 +3,11 @@
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
-from maasservicelayer.models.sslkeys import SSLKey
+from maasservicelayer.models.sslkeys import SSLKey, SSLKeyBuilder
 from maasservicelayer.services._base import BaseService
 
 
-class SSLKeysService(BaseService[SSLKey, SSLKeysRepository]):
+class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):
     def __init__(
         self,
         context: Context,

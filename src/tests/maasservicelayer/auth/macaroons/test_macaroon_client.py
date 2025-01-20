@@ -77,6 +77,7 @@ class TestCandidAsyncClient:
         mock_aioresponse.assert_called_with(
             method="GET",
             url="https://auth.example.com/v1/u/foo/groups",
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
     async def test_get_groups_user_not_found(
@@ -97,6 +98,7 @@ class TestCandidAsyncClient:
         mock_aioresponse.assert_called_with(
             method="GET",
             url="https://auth.example.com/v1/u/foo/groups",
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
 
@@ -116,6 +118,7 @@ class TestRbacAsyncClient:
         mock_aioresponse.assert_called_once_with(
             method="GET",
             url=f"{RBAC_BASE_URL}/user/user",
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
     async def test_get_resources(self, rbac_client, mock_aioresponse):
@@ -134,6 +137,7 @@ class TestRbacAsyncClient:
         mock_aioresponse.assert_called_once_with(
             method="GET",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
     async def test_update_resources(self, rbac_client, mock_aioresponse):
@@ -160,6 +164,7 @@ class TestRbacAsyncClient:
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
             json=req.json(),
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
     async def test_update_resources_no_sync_id(
@@ -188,6 +193,7 @@ class TestRbacAsyncClient:
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
             json=req.json(),
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
     async def test_update_resources_sync_conflict(
@@ -217,6 +223,7 @@ class TestRbacAsyncClient:
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
             json=req.json(),
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
     async def test_allowed_for_user_all_resources(
@@ -245,6 +252,7 @@ class TestRbacAsyncClient:
             method="GET",
             url=f"{RBAC_BASE_URL}/resources/resource-pool/allowed-for-user",
             params=[("u", "user"), ("p", "admin")],
+            headers={"Bakery-Protocol-Version": "3"},
         )
 
     async def test_allowed_for_user_resource_ids(
@@ -272,4 +280,5 @@ class TestRbacAsyncClient:
             method="GET",
             url=f"{RBAC_BASE_URL}/resources/resource-pool/allowed-for-user",
             params=[("u", "user"), ("p", "admin")],
+            headers={"Bakery-Protocol-Version": "3"},
         )

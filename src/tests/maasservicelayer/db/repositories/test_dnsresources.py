@@ -1,14 +1,17 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from collections.abc import Sequence
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.dnsresources import (
-    DNSResourceRepository,
-    DNSResourceResourceBuilder,
+from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
+from maasservicelayer.models.dnsresources import (
+    DNSResource,
+    DNSResourceBuilder,
 )
-from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
@@ -54,15 +57,13 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
         return dnsresource
 
     @pytest.fixture
-    async def instance_builder(
-        self, fixture: Fixture
-    ) -> DNSResourceResourceBuilder:
+    async def instance_builder(self, fixture: Fixture) -> DNSResourceBuilder:
         domain = await create_test_domain_entry(fixture)
-        return (
-            DNSResourceResourceBuilder()
-            .with_name("test_name")
-            .with_domain_id(domain.id)
-        )
+        return DNSResourceBuilder(name="test_name", domain_id=domain.id)
+
+    @pytest.fixture
+    async def instance_builder_model(self) -> type[DNSResourceBuilder]:
+        return DNSResourceBuilder
 
     @pytest.mark.skip(reason="Not applicable")
     async def test_create_duplicated(

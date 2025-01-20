@@ -1,14 +1,14 @@
-from typing import List, Optional, Self, Type
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
+from typing import List, Optional, Type
 
 from sqlalchemy import delete, insert, select, Table
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DNSResourceIPAddressTable,
     DNSResourceTable,
@@ -31,20 +31,6 @@ class DNSResourceClauseFactory(ClauseFactory):
     @classmethod
     def with_domain_id(cls, id: int) -> Clause:
         return Clause(condition=eq(DNSResourceTable.c.domain_id, id))
-
-
-class DNSResourceResourceBuilder(ResourceBuilder):
-    def with_name(self, value: str) -> Self:
-        self._request.set_value(DNSResourceTable.c.name.name, value)
-        return self
-
-    def with_domain_id(self, value: int) -> Self:
-        self._request.set_value(DNSResourceTable.c.domain_id.name, value)
-        return self
-
-    def with_address_ttl(self, value: int) -> Self:
-        self._request.set_value(DNSResourceTable.c.address_ttl.name, value)
-        return self
 
 
 class DNSResourceRepository(BaseRepository[DNSResource]):

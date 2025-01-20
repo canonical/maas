@@ -1,3 +1,6 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from ipaddress import IPv4Address
 
 import pytest
@@ -9,13 +12,11 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import (
     IPRangeClauseFactory,
-    IPRangeResourceBuilder,
     IPRangesRepository,
 )
 from maasservicelayer.db.tables import IPRangeTable
-from maasservicelayer.models.ipranges import IPRange
+from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -109,30 +110,6 @@ class TestIPRangeClauseFactory:
         )
 
 
-class TestIPRangesResourceBuilder:
-    def test_builder(self) -> None:
-        now = utcnow()
-        resource = (
-            IPRangeResourceBuilder()
-            .with_type(IPRangeType.RESERVED)
-            .with_start_ip(IPv4Address("10.0.0.1"))
-            .with_end_ip(IPv4Address("10.0.0.1"))
-            .with_subnet_id(0)
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-
-        assert resource.get_values() == {
-            "type": IPRangeType.RESERVED,
-            "start_ip": IPv4Address("10.0.0.1"),
-            "end_ip": IPv4Address("10.0.0.1"),
-            "subnet_id": 0,
-            "created": now,
-            "updated": now,
-        }
-
-
 @pytest.mark.asyncio
 class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
     @pytest.fixture
@@ -170,13 +147,16 @@ class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
         )
 
     @pytest.fixture
-    async def instance_builder(self) -> IPRangeResourceBuilder:
-        return (
-            IPRangeResourceBuilder()
-            .with_type(IPRangeType.RESERVED)
-            .with_start_ip(IPv4Address("10.0.0.1"))
-            .with_end_ip(IPv4Address("10.0.0.2"))
-            .with_subnet_id(0)
+    async def instance_builder_model(self) -> type[IPRangeBuilder]:
+        return IPRangeBuilder
+
+    @pytest.fixture
+    async def instance_builder(self) -> IPRangeBuilder:
+        return IPRangeBuilder(
+            type=IPRangeType.RESERVED,
+            start_ip=IPv4Address("10.0.0.1"),
+            end_ip=IPv4Address("10.0.0.2"),
+            subnet_id=0,
         )
 
     # IP ranges constraints are not defined at DB level. We do a manual check
@@ -185,7 +165,7 @@ class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
     async def test_create_duplicated(
         self,
         repository_instance: IPRangesRepository,
-        instance_builder: IPRangeResourceBuilder,
+        instance_builder: IPRangeBuilder,
     ):
         pass
 

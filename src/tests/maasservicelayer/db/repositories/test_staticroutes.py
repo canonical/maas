@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -29,6 +29,10 @@ class TestStaticRoutesRepository(RepositoryCommonTests[StaticRoute]):
 
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> StaticRoute:
+        pass
+
+    @pytest.fixture
+    async def instance_builder_model(self, *args, **kwargs):
         pass
 
     @pytest.fixture

@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
@@ -23,17 +23,18 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
-from maasservicelayer.db.repositories.users import (
-    UserClauseFactory,
-    UserProfileResourceBuilder,
-    UserResourceBuilder,
-)
+from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     DischargeRequiredException,
     UnauthorizedException,
 )
 from maasservicelayer.models.external_auth import RootKey
-from maasservicelayer.models.users import User, UserProfile
+from maasservicelayer.models.users import (
+    User,
+    UserBuilder,
+    UserProfile,
+    UserProfileBuilder,
+)
 from maasservicelayer.services import SecretsService, UsersService
 from maasservicelayer.services.external_auth import (
     ExternalAuthService,
@@ -472,24 +473,19 @@ class TestExternalAuthService:
             user_id=fake_user.id,
         )
 
-        user_builder = (
-            UserResourceBuilder()
-            .with_username("admin")
-            .with_first_name("")
-            .with_password("")
-            .with_is_active(True)
-            .with_is_staff(False)
-            .with_is_superuser(False)
-            .with_last_login(now)
-        ).build()
+        user_builder = UserBuilder(
+            username="admin",
+            first_name="",
+            password="",
+            is_active=True,
+            is_staff=False,
+            is_superuser=False,
+            last_login=now,
+        )
 
-        profile_builder = (
-            UserProfileResourceBuilder()
-            .with_is_local(False)
-            .with_completed_intro(True)
-            .with_auth_last_check(now)
-        ).build()
-
+        profile_builder = UserProfileBuilder(
+            is_local=False, completed_intro=True, auth_last_check=now
+        )
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = None
         users_service_mock.create.return_value = fake_user

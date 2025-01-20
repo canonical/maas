@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -30,9 +30,7 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.zones import ZoneResourceBuilder
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.utils.date import utcnow
 
 
 class ZonesHandler(Handler):
@@ -109,16 +107,7 @@ class ZonesHandler(Handler):
         zone_request: ZoneRequest,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        now = utcnow()
-        resource = (
-            ZoneResourceBuilder()
-            .with_name(zone_request.name)
-            .with_description(zone_request.description)
-            .with_created(now)
-            .with_updated(now)
-            .build()
-        )
-        zone = await services.zones.create(resource)
+        zone = await services.zones.create(zone_request.to_builder())
         response.headers["ETag"] = zone.etag()
         return ZoneResponse.from_model(
             zone=zone, self_base_hyperlink=f"{V3_API_PREFIX}/zones"
@@ -186,14 +175,9 @@ class ZonesHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        resource = (
-            ZoneResourceBuilder()
-            .with_name(zone_request.name)
-            .with_description(zone_request.description)
-            .build()
+        zone = await services.zones.update_by_id(
+            zone_id, zone_request.to_builder()
         )
-
-        zone = await services.zones.update_by_id(zone_id, resource)
         if not zone:
             return NotFoundResponse()
 

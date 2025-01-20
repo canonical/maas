@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -175,7 +175,7 @@ class IPRangesHandler(Handler):
         builder = await iprange_request.to_builder(
             subnet, authenticated_user, services
         )
-        iprange = await services.ipranges.create(builder.build())
+        iprange = await services.ipranges.create(builder)
 
         response.headers["ETag"] = iprange.etag()
         return IPRangeResponse.from_model(
@@ -405,7 +405,7 @@ class IPRangesHandler(Handler):
                     ]
                 )
             ),
-            resource=builder.build(),
+            builder=builder,
         )
 
         response.headers["ETag"] = iprange.etag()

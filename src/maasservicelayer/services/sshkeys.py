@@ -18,13 +18,10 @@ from maascommon.enums.sshkeys import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.sshkeys import (
     SshKeyClauseFactory,
-    SshKeyResourceBuilder,
     SshKeysRepository,
 )
-from maasservicelayer.db.tables import SshKeyTable
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -33,7 +30,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.sshkeys import SshKey
+from maasservicelayer.models.sshkeys import SshKey, SshKeyBuilder
 from maasservicelayer.services._base import BaseService, Service, ServiceCache
 
 
@@ -46,7 +43,7 @@ class SshKeysServiceCache(ServiceCache):
             await self.session.close()
 
 
-class SshKeysService(BaseService[SshKey, SshKeysRepository]):
+class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
     def __init__(
         self,
         context: Context,
@@ -70,23 +67,19 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository]):
     ):
         raise NotImplementedError("Update is not supported for ssh keys")
 
-    # TODO: refactor this when we refactor the builder's abstraction
-    async def pre_create_hook(self, resource: CreateOrUpdateResource) -> None:
-        values = resource.get_values()
+    async def pre_create_hook(self, builder: SshKeyBuilder) -> None:
+        builder.key = await self.normalize_openssh_public_key(builder.key)
+
         # skip the validation if it's a key imported by LP or GH.
-        if values[SshKeyTable.c.protocol.name] is not None:
+        if builder.protocol is not None:
             return
 
         ssh_key = await self.get_one(
             query=QuerySpec(
                 where=SshKeyClauseFactory.and_clauses(
                     [
-                        SshKeyClauseFactory.with_key(
-                            values[SshKeyTable.c.key.name]
-                        ),
-                        SshKeyClauseFactory.with_user_id(
-                            values[SshKeyTable.c.user_id.name]
-                        ),
+                        SshKeyClauseFactory.with_key(builder.key),
+                        SshKeyClauseFactory.with_user_id(builder.user_id),
                     ]
                 )
             )
@@ -120,6 +113,10 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository]):
                 keys = await self._get_ssh_key_from_launchpad(auth_id)
             case SshKeysProtocolType.GH:
                 keys = await self._get_ssh_key_from_github(auth_id)
+            case _:
+                raise ValueError(
+                    f"Unknwon protocol {protocol}. Valid protocols are 'LP' and 'GH'."
+                )
         if not keys:
             raise ValidationException.build_for_field(
                 field="auth_id",
@@ -141,14 +138,13 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository]):
         existing_keys_values = [k.key for k in existing_keys]
         for key in keys:
             if key not in existing_keys_values:
-                builder = (
-                    SshKeyResourceBuilder()
-                    .with_key(key)
-                    .with_protocol(protocol)
-                    .with_auth_id(auth_id)
-                    .with_user_id(user_id)
+                builder = SshKeyBuilder(
+                    key=key,
+                    protocol=protocol,
+                    auth_id=auth_id,
+                    user_id=user_id,
                 )
-                imported_keys.append(await self.create(builder.build()))
+                imported_keys.append(await self.create(builder))
 
         imported_keys.extend(existing_keys)
         return imported_keys

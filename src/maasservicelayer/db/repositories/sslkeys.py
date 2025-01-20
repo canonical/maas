@@ -2,15 +2,12 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Self, Type
+from typing import Type
 
 from sqlalchemy import Table
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import (
-    BaseRepository,
-    ResourceBuilder,
-)
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import SSLKeyTable
 from maasservicelayer.models.sslkeys import SSLKey
 
@@ -23,16 +20,6 @@ class SSLKeyClauseFactory(ClauseFactory):
     @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(SSLKeyTable.c.user_id, user_id))
-
-
-class SSLKeyResourceBuilder(ResourceBuilder):
-    def with_key(self, key: str) -> Self:
-        self._request.set_value(SSLKeyTable.c.key.name, key)
-        return self
-
-    def with_user_id(self, user_id: int) -> Self:
-        self._request.set_value(SSLKeyTable.c.user_id.name, user_id)
-        return self
 
 
 class SSLKeysRepository(BaseRepository[SSLKey]):

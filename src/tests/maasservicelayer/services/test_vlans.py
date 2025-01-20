@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from maascommon.enums.node import NodeStatus
+from maascommon.enums.power import PowerState
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
@@ -13,7 +14,6 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.vlans import (
-    VlanResourceBuilder,
     VlansClauseFactory,
     VlansRepository,
 )
@@ -23,7 +23,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.nodes import Node
-from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.models.vlans import Vlan, VlanBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
@@ -129,22 +129,18 @@ class TestVlansService:
             vlans_repository=vlans_repository_mock,
         )
 
-        resource = (
-            VlanResourceBuilder()
-            .with_vid(vlan.vid)
-            .with_name(vlan.name)
-            .with_description(vlan.description)
-            .with_mtu(vlan.mtu)
-            .with_dhcp_on(vlan.dhcp_on)
-            .with_fabric_id(vlan.fabric_id)
-            .with_created(vlan.created)
-            .with_updated(vlan.updated)
-            .build()
+        builder = VlanBuilder(
+            vid=vlan.vid,
+            name=vlan.name,
+            description=vlan.description,
+            mtu=vlan.mtu,
+            dhcp_on=vlan.dhcp_on,
+            fabric_id=vlan.fabric_id,
         )
 
-        await vlans_service.create(resource)
+        await vlans_service.create(builder)
 
-        vlans_repository_mock.create.assert_called_once_with(resource=resource)
+        vlans_repository_mock.create.assert_called_once_with(builder=builder)
         mock_temporal.register_or_update_workflow_call.assert_not_called()
 
     async def test_update(self) -> None:
@@ -175,23 +171,18 @@ class TestVlansService:
             vlans_repository=vlans_repository_mock,
         )
 
-        resource = (
-            VlanResourceBuilder()
-            .with_vid(vlan.vid)
-            .with_name(vlan.name)
-            .with_description(vlan.description)
-            .with_mtu(vlan.mtu)
-            .with_dhcp_on(vlan.dhcp_on)
-            .with_fabric_id(vlan.fabric_id)
-            .with_created(vlan.created)
-            .with_updated(vlan.updated)
-            .build()
+        builder = VlanBuilder(
+            vid=vlan.vid,
+            name=vlan.name,
+            description=vlan.description,
+            mtu=vlan.mtu,
+            dhcp_on=vlan.dhcp_on,
+            fabric_id=vlan.fabric_id,
         )
-
-        await vlans_service.update_by_id(vlan.id, resource)
+        await vlans_service.update_by_id(vlan.id, builder)
 
         vlans_repository_mock.update_by_id.assert_called_once_with(
-            id=vlan.id, resource=resource
+            id=vlan.id, builder=builder
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -221,6 +212,7 @@ class TestVlansService:
             id=2,
             system_id="abc",
             status=NodeStatus.DEPLOYED,
+            power_state=PowerState.ON,
             created=now,
             updated=now,
         )
