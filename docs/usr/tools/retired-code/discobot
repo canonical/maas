@@ -1,0 +1,454 @@
+#!/usr/bin/python3
+
+import argparse
+import glob
+import json
+import markdown
+import os
+# import psycopg2
+import re
+import requests
+import shutil
+import subprocess
+import sys
+import tempfile
+import yaml
+
+from bs4 import BeautifulSoup
+from discourse_api import DiscourseAPI
+from jinja2 import Environment, FileSystemLoader
+
+
+def main():
+    parser,args = parse_args()
+
+    if args.tags:
+        load_dstats()
+        sys.exit(0)
+
+    if not args.topic_number:
+        parser.print_usage()
+        print("error: topic_number is required unless --tags option is specified")
+        sys.exit(0)
+
+    html_version = args.html_version
+    config = read_config()
+    api = DiscourseAPI(config)
+    git_root, markdown_dir = config.get("git_root"), config.get("markdown_src")
+    check_markdown_dir(markdown_dir)
+        
+    if not args.override:
+        topic_file = find_topic_file(markdown_dir, args.topic_number, args.debug)
+        git_markdown_path = stage_markdown_file(topic_file)
+        
+    if args.printraw:
+        print_raw(api,args)
+        sys.exit(0)
+
+    if args.prettyraw:
+        pretty_print_raw(api,args)
+        sys.exit(0)
+        
+    if not args.html_version:
+        handle_markdown(api, git_markdown_path, git_root, args, markdown_dir)
+    if not args.nohtml:
+        handle_html(api, git_markdown_path, git_root, args, topic_file)
+
+
+def ask_yes_no_question(prompt):
+    while True:
+        response = input(prompt).lower()
+        if response == "yes":
+            return True
+        elif response == "no":
+            return False
+        else:
+            print("Please enter yes or no.")
+
+
+def check_markdown_dir(markdown_dir):
+    if not os.path.exists(markdown_dir):
+        exit(f"Markdown directory {markdown_dir} not found. Exiting.")
+
+
+def commit_and_publish(api, git_markdown_path, git_root, args):
+    destination_path = f"{git_root}/src/{git_markdown_path.split('/')[-1]}"
+    shutil.copy(git_markdown_path, destination_path)
+    commit_message = input("Enter commit message: ") + f" (topic {args.topic_number})"
+    commit_and_push(git_root, commit_message)
+    markdown_content = read_file(git_markdown_path)
+    api.update_topic_content(args.topic_number, markdown_content)
+    print(f"Discourse topic {args.topic_number} updated.")
+
+
+def commit_and_push(git_directory, commit_message):
+    orig_dir = os.getcwd()
+    os.chdir(git_directory)
+    subprocess.run(["git", "add", "."])
+    subprocess.run(["git", "commit", "-m", commit_message])
+    subprocess.run(["git", "push"])
+    os.chdir(orig_dir)
+
+
+def debug_print(debug_flag, message):
+    if debug_flag:
+        print(message)
+
+
+def find_topic_file(mdir, tnum, dbug):
+    mdfiles = glob.glob(os.path.join(mdir, f"*{tnum}*.md"))
+
+    if mdfiles:
+        debug_print(
+            dbug,
+            f"File matching topic number {tnum} found: {mdfiles[0]}",
+        )
+        return mdfiles[0]
+    else:
+        sys.exit(f"No files matching topic number {tnum} found.")
+
+
+def get_tabbed_content(markdown, version, view):
+    """
+    Retrieve specific content from the markdown document based on version and view.
+
+    Parameters:
+    - markdown (str): The input markdown document.
+    - version (str): The version string, e.g. "v3.4 Snap".
+    - view (str): The view type, e.g. "UI" or "CLI".
+
+    Returns:
+    - str: The filtered content of the markdown document.
+    """
+
+    buffer = ""
+    copytab = False
+    intab = False
+
+    for line in markdown.splitlines():
+        if "[tabs]" in line:
+            pass
+        elif "[/tabs]" in line:
+            pass
+        elif "[/tab]" in line:
+            copytab = False
+            intab = False
+        elif "[tab " in line:
+            intab = True
+            if "view=" in line:
+                if version in line and view in line:
+                    copytab = True
+            elif version in line:
+                copytab = True
+        elif copytab == True:
+            buffer += line + "\n"
+        elif intab == False:
+            buffer += line + "\n"
+
+    return buffer
+
+
+def handle_html(api, git_markdown_path, git_root, args, topic_file):
+    if not args.html_version:
+        if not ask_yes_no_question("Build & publish an HTML version (yes/no) "):
+            exit("Discobot operations complete. Exiting.")
+        else:
+            html_version = input("Enter HTML version to generate (e.g., 'v3.4'): ")
+    else:
+        html_version = args.html_version
+    html_filename = "-".join(os.path.basename(topic_file).split("-")[:-1]) + ".html"
+    with open(git_markdown_path, "r") as file:
+        markdown_content = file.read()
+    vSnap = html_version + " Snap"
+    vDebs = html_version + " Packages"
+    topic_title = api.get_title(args.topic_number)
+    updated_markdown_content = ""
+    lines = markdown_content.split("\n")
+    for line in lines:
+        if "<img" in line:
+            url = line.split('"')[1]
+            image_name = url.split("/")[-1]
+
+            save_path_1 = os.path.join(git_root, "production-html-snap/images")
+            image_filename_1 = os.path.join(save_path_1, image_name)
+            save_path_2 = os.path.join(git_root, "production-html-deb/images")
+            image_filename_2 = os.path.join(save_path_1, image_name)
+
+            os.makedirs(os.path.dirname(save_path_1), exist_ok=True)
+            os.makedirs(os.path.dirname(save_path_2), exist_ok=True)
+
+            if not os.path.exists(image_filename_1) and not os.path.exists(
+                image_filename_2
+            ):
+                response = requests.get(url)
+                if response.status_code == 200:
+                    with open(image_filename_1, "wb") as f:
+                        f.write(response.content)
+                        shutil.copy(image_filename_1, image_filename_2)
+                else:
+                    print(f"Failed to download {url}")
+            elif os.path.exists(image_filename_1) and not os.path.exists(
+                image_filename_2
+            ):
+                shutil.copy(image_filename_1, image_filename_2)
+            elif not os.path.exists(image_filename_1) and os.path.exists(
+                image_filename_2
+            ):
+                shutil.copy(image_filename_2, image_filename_1)
+
+            # Generate the new line with updated paths
+            new_line = (
+                f'<a href="../images/{image_name}" target="_blank">'
+                f'<img src="../images/{image_name}"></a>\n'
+            )
+            updated_markdown_content += new_line
+        elif "[note]" in line:
+            pass
+        elif "[/note]" in line:
+            pass
+        else:
+            updated_markdown_content += line + "\n"
+
+    # write vN.N Snap CLI
+    vsnap_cli_markdown = get_tabbed_content(updated_markdown_content, vSnap, "CLI")
+    vsnap_cli_html = make_html(
+        vsnap_cli_markdown, topic_title, git_root, html_filename, False
+    )
+    html_dir = os.path.join(git_root, "production-html-snap/cli")
+    os.makedirs(html_dir, exist_ok=True)
+    html_pathname = os.path.join(html_dir, html_filename)
+    with open(html_pathname, "w") as file:
+        file.write(vsnap_cli_html)
+
+    # write vN.N Snap UI
+    vsnap_ui_markdown = get_tabbed_content(updated_markdown_content, vSnap, "UI")
+    vsnap_ui_html = make_html(
+        vsnap_ui_markdown, topic_title, git_root, html_filename, True
+    )
+    html_dir = os.path.join(git_root, "production-html-snap/ui")
+    os.makedirs(html_dir, exist_ok=True)
+    html_pathname = os.path.join(html_dir, html_filename)
+    with open(html_pathname, "w") as file:
+        file.write(vsnap_ui_html)
+
+    # write vN.N Package UI
+    vdeb_ui_markdown = get_tabbed_content(updated_markdown_content, vDebs, "UI")
+    vdeb_ui_html = make_html(
+        vdeb_ui_markdown, topic_title, git_root, html_filename, True
+    )
+    html_dir = os.path.join(git_root, "production-html-deb/ui")
+    os.makedirs(html_dir, exist_ok=True)
+    html_pathname = os.path.join(html_dir, html_filename)
+    with open(html_pathname, "w") as file:
+        file.write(vdeb_ui_html)
+
+    # write vN.N Package CLI
+    vdeb_cli_markdown = get_tabbed_content(updated_markdown_content, vDebs, "CLI")
+    vdeb_cli_html = make_html(
+        vdeb_cli_markdown, topic_title, git_root, html_filename, False
+    )
+    html_dir = os.path.join(git_root, "production-html-deb/cli")
+    os.makedirs(html_dir, exist_ok=True)
+    html_pathname = os.path.join(html_dir, html_filename)
+    with open(html_pathname, "w") as file:
+        file.write(vdeb_cli_html)
+
+
+def handle_markdown(api, git_markdown_path, git_root, args, markdown_dir):
+    discourse_md = api.get_markdown(args.topic_number)
+    stage_and_commit_discourse_md(
+        discourse_md, git_markdown_path, git_root, args, markdown_dir
+    )
+    run_emacs(git_markdown_path)
+
+    if ask_yes_no_question("Publish changes back to Discourse? (yes/no) "):
+        commit_and_publish(api, git_markdown_path, git_root, args)
+
+
+def load_dstats():
+    url = "https://discourse.maas.io/tags"
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "lxml")
+        tags_divs = soup.find_all("div", class_="tag-box")
+        tags_list = []
+        for tag_div in tags_divs:
+            tag_name = tag_div.find("a", class_="discourse-tag").text.strip()
+            tag_count = int(tag_div.find("span", class_="tag-count").text.strip().replace('x ', ''))
+            tags_list.append((tag_name, tag_count))
+        column_counts = {
+            "networking": 0,
+            "storage": 0,
+            "life_cycle": 0,
+            "images_booting": 0,
+            "upgrade_install": 0,
+            "closed": 0,
+            "solved": 0,
+            "bug_filed": 0,
+            "waiting_on_user": 0,
+            "user_waiting_for_us": 0
+        }
+
+        for tag, count in tags_list:
+            tag_column = tag.replace('-', '_')  # Replace hyphens with underscores to match column names
+            if tag_column in column_counts:
+                column_counts[tag_column] += count
+
+        insert_query = f"""
+        INSERT INTO dstats (networking, storage, life_cycle, images_booting, upgrade_install, closed, solved, bug_filed, waiting_on_user, user_waiting_for_us) 
+VALUES (%(networking)s, %(storage)s, %(life_cycle)s, %(images_booting)s, %(upgrade_install)s, %(closed)s, %(solved)s, %(bug_filed)s, %(waiting_on_user)s, %(user_waiting_for_us)s);
+        """
+
+        conn = psycopg2.connect(dbname="stormrider", user="stormrider", password="stormrider", host="localhost")
+        cur = conn.cursor()
+        try:
+            cur.execute(insert_query, column_counts)
+            conn.commit()
+            print("Record inserted successfully.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            conn.rollback()
+        finally:
+            cur.close()
+            conn.close()
+            return response.status_code
+
+def load_sidebar_content(directory):
+    sidebar_content_file = os.path.join(directory, "sidebar-content.html")
+    if os.path.exists(sidebar_content_file):
+        with open(sidebar_content_file, "r") as file:
+            sidebar_content = file.read()
+            return sidebar_content
+
+
+def make_html(markdown_content, title, git_root, html_filename, is_ui_view):
+    markdown_content = re.sub(
+        r'<!-- "nohtml begin-nohtml" -->.*?<!-- "nohtml end-nohtml" -->',
+        "",
+        markdown_content,
+        flags=re.DOTALL,
+    )
+    markdown_content = re.sub(
+        r"\(/t/([\w-]+)/\d+\)",
+        r"(\1)",
+        markdown_content,
+    )
+    html_content = markdown.markdown(
+        markdown_content, extensions=["tables", "fenced_code", "sane_lists"]
+    )
+    css_filename = "css/stylesheet.css"
+    custom_css_path = os.path.join(git_root, "html-support/css/custom.css")
+    with open(custom_css_path, "r") as custom_css_file:
+        custom_css = custom_css_file.read()
+    custom_html_path = os.path.join(git_root, "html-support/templates/custom.html")
+    with open(custom_html_path, "r") as custom_html_file:
+        custom_html = custom_html_file.read()
+    jinja2_template_path = os.path.join(git_root, "html-support/templates")
+    env = Environment(loader=FileSystemLoader(jinja2_template_path))
+    template = env.get_template("template.html")
+    sidebar_content_path = os.path.join(git_root, "html-support/templates/")
+    sidebar_content = load_sidebar_content(sidebar_content_path)
+
+    # Render the template with the data
+    rendered_html = template.render(
+        title=title,
+        css_filename=css_filename,
+        custom_css=custom_css,
+        custom_html=custom_html,
+        is_ui_view=is_ui_view,
+        sidebar_content=sidebar_content,
+        html_content=html_content,
+        html_filename=html_filename,
+    )
+
+    return rendered_html
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="discobot automated editing tool")
+    parser.add_argument("topic_number", type=int, nargs='?')
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("-s", action="store_true", help="Enable stormrider mode")
+    parser.add_argument("--html-version", type=str, default=None)
+    parser.add_argument("--nohtml", action="store_true", help="Skip creating HTML")
+    parser.add_argument("--printraw", action="store_true", help="Print raw topic and exit")
+    parser.add_argument("--prettyraw", action="store_true", help="Pretty print raw topic and exit")
+    parser.add_argument("--override",action="store_true",help="Override rqmt that topic be a doc category")
+    parser.add_argument("--tags",action="store_true",help="Get tags summary, not individual topic")
+    return parser,parser.parse_args()
+
+def print_raw(api,args):
+    topic_json = api.get_raw(args.topic_number)
+    print(topic_json)
+
+def pretty_print_raw(api,args):
+    topic_json = api.get_raw(args.topic_number)
+    formatted_json = json.dumps(topic_json, indent=3, sort_keys=True)
+    print(formatted_json)
+
+def run_emacs(git_markdown_path):
+    discourse_path = f"{os.path.splitext(git_markdown_path)[0]}.disc{os.path.splitext(git_markdown_path)[1]}"
+    emacs_command = [
+        "emacs",
+        "-eval",
+        f'(progn (find-file "{git_markdown_path}") (split-window-right) '
+        f'(find-file "{discourse_path}") (other-window 2) '
+        f'(ediff-files "{git_markdown_path}" "{discourse_path}"))',
+    ]
+    subprocess.run(emacs_command)
+
+
+def read_config():
+    home = os.path.expanduser("~")
+    config_path = os.path.join(home, ".config", "disced.conf")
+
+    if not os.path.exists(config_path):
+        sys.exit(f"Config file {config_path} not found.")
+
+    with open(config_path, "r") as f:
+        try:
+            config = yaml.safe_load(f)
+            return config
+        except yaml.YAMLError as e:
+            sys.exit(f"Error parsing YAML config file: {e}")
+
+
+def read_file(file_path):
+    with open(file_path, "r") as f:
+        return f.read()
+
+
+def stage_and_commit_discourse_md(
+    discourse_md, git_markdown_path, git_root, args, markdown_dir
+):
+    dir, filename = os.path.split(git_markdown_path)
+    new_filename = (
+        f"{os.path.splitext(filename)[0]}.disc{os.path.splitext(filename)[1]}"
+    )
+    discourse_path = os.path.join(dir, new_filename)
+    write_file(discourse_path, discourse_md)
+    shutil.copy(discourse_path, os.path.join(markdown_dir, filename))
+    commit_and_push(
+        git_root, f"discobot automated commit (topic {args.topic_number})"
+    )
+
+
+def stage_markdown_file(path):
+    try:
+        tdir = tempfile.mkdtemp()
+        spath = os.path.join(tdir, os.path.basename(path))
+        shutil.copy(path, spath)
+        return spath  # Return the path to the staged (copied) file
+    except FileNotFoundError:
+        sys.exit(f"File {path} not found.")
+    except IOError as e:
+        sys.exit(f"An error occurred while staging {path}: {e}")
+
+
+def write_file(file_path, content):
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+if __name__ == "__main__":
+    main()

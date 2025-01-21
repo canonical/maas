@@ -1,0 +1,7 @@
+> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/controller-configuration" target = "_blank">Let us know.</a>*
+
+MAAS controllers manage provisioning. They can be configured and replicated to adapt to your environment:
+
+- [Configuration](/t/how-to-configure-controllers/5172): Controllers are the cornerstone of a MAAS deployment, responsible for managing and orchestrating the automated provisioning of machines. A typical setup includes a single rack and a single region controller that work in tandem to keep your infrastructure operational. It's vital to get these settings right from the start to ensure your MAAS environment is scalable and efficient.
+
+- [Replication](/t/-ensuring-high-availability-for-controllers/5120): For critical environments where downtime is not an option, setting up high availability is crucial. By adding additional rack and region controllers, you can distribute the load and pave the way for a resilient HA system. Specialised configurations allow for a high-availability setup tailored to your organisation's needs, making your MAAS infrastructure not just operational but resilient and reliable.

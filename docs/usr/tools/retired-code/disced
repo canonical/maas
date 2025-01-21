@@ -1,0 +1,534 @@
+#!/usr/bin/python3
+
+import argparse
+import os
+import filecmp
+import markdown
+import re
+import shutil
+import subprocess
+import sys
+import yaml
+
+from collections import OrderedDict
+from git import Repo
+from jinja2 import Environment, FileSystemLoader
+from pathlib import Path
+from discourse_api import DiscourseAPI  # Import the DiscourseAPI class
+
+
+def are_files_different(file1_path, file2_path):
+    return not filecmp.cmp(file1_path, file2_path)
+
+
+def ask_yes_no_question(prompt):
+    while True:
+        response = input(prompt).lower()
+        if response == "yes":
+            return True
+        elif response == "no":
+            return False
+        else:
+            print("Please enter yes or no.")
+
+
+def commit_and_push(git_directory, commit_message):
+    orig_dir = os.getcwd()
+    os.chdir(git_directory)
+    subprocess.run(["git", "add", "."])
+    subprocess.run(["git", "commit", "-m", commit_message])
+    subprocess.run(["git", "push"])
+    os.chdir(orig_dir)
+
+
+def copy_file(source_path, destination_path):
+    shutil.copy2(source_path, destination_path)
+
+
+def execute_shell_command(command_string):
+    try:
+        result = subprocess.run(
+            command_string, shell=True, capture_output=True, text=True
+        )
+        return result.returncode, result.stdout, result.stderr
+    except Exception as e:
+        return 1, "", str(e)
+
+
+def extract_sections(file_content, version, view):
+    # extract matching tab sections and untabbed sections
+    continuous_buffer = ""
+    current_section = ""
+    inside_tab = False
+    inside_version = False
+
+    for line in file_content.split("\n"):
+        if "[tabs]" in line:
+            pass
+        elif "[/tabs]" in line:
+            pass
+        elif '[tab version="' in line:
+            inside_tab = True
+            if version in line:
+                if "view" in line:
+                    if view in line:
+                        inside_version = True
+                else:
+                    inside_version = True
+        elif "[/tab]" in line:
+            inside_tab = False
+            if inside_version:
+                continuous_buffer += current_section
+                current_section = ""
+                inside_version = False
+        elif inside_tab:
+            if inside_version:
+                current_section += line + "\n"
+            else:
+                pass
+        else:
+            current_section += line + "\n"
+    if current_section:
+        continuous_buffer += current_section
+
+    return continuous_buffer
+
+
+def extract_tab_versions(markdown_content):
+    # Regular expression pattern to match the tab versions label
+    version_pattern = r'\[tab version="([^"]+)"(?:[^]]+)?\]'
+
+    # Find all matches using regex
+    matches = re.findall(version_pattern, markdown_content)
+
+    # Initialize an empty list to hold all versions
+    all_versions = []
+
+    # Iterate through matches and split by commas
+    for match in matches:
+        versions = match.split(",")
+        for version in versions:
+            # Remove optional "Snap" or "Packages" labels
+            clean_version = version.split()[0]
+            all_versions.append(clean_version)
+
+    # Remove duplicates and sort
+    unique_versions = list(set(all_versions))
+    sorted_versions = sorted(unique_versions, reverse=True)
+
+    return sorted_versions
+
+
+def find_file(directory, topic_number):
+    for filename in os.listdir(directory):
+        if str(topic_number) in filename:
+            return filename
+    return None
+
+
+def generate_html_from_markdown_with_title(
+    markdown_content,
+    title,
+    css_filename,
+    version,
+    is_ui_view,
+    repo_base,
+    html_filename,
+):
+    # Clean out <!-- nohtml .... --> sections
+    markdown_content = re.sub(
+        r'<!-- "nohtml begin-nohtml" -->.*?<!-- "nohtml end-nohtml" -->',
+        "",
+        markdown_content,
+        flags=re.DOTALL,
+    )
+
+    # Convert specific links from (/t/some-title-slug/nnnn) to (some-title-slug.html)
+    markdown_content = re.sub(
+        r"\(/t/([\w-]+)/\d+\)",
+        r"(\1.html)",
+        markdown_content,
+    )
+
+    # Convert Markdown to HTML
+    html_content = markdown.markdown(markdown_content)
+
+    # Read the custom CSS and HTML content from your files
+    custom_css_path = os.path.join(repo_base, "html-support/css/custom.css")
+    with open(custom_css_path, "r") as css_file:
+        custom_css = css_file.read()
+
+    custom_html_path = os.path.join(repo_base, "html-support/templates/custom.html")
+    with open(custom_html_path, "r") as custom_html_file:
+        custom_html = custom_html_file.read()
+
+    # Load the Jinja2 template
+    jinja2_template_path = os.path.join(repo_base, "html-support/templates")
+    env = Environment(loader=FileSystemLoader(jinja2_template_path))
+    template = env.get_template("template.html")
+
+    # Load sidebar content from files in a known directory structure
+    sidebar_content_path = os.path.join(repo_base, "html-support/templates/")
+    sidebar_content = load_sidebar_content(sidebar_content_path)
+
+    # Render the template with the data
+    rendered_html = template.render(
+        title=title,
+        css_filename=css_filename,
+        custom_css=custom_css,
+        custom_html=custom_html,
+        version=version,
+        is_ui_view=is_ui_view,
+        sidebar_content=sidebar_content,
+        default_sidebar_content="Default sidebar content",
+        html_content=html_content,
+        html_filename=html_filename,
+    )
+
+    return rendered_html
+
+
+def load_config(config_file):
+    with config_file.open() as f:
+        return yaml.safe_load(f)
+
+
+def load_sidebar_content(directory):
+    sidebar_content_file = os.path.join(directory, "sidebar-content.html")
+    if os.path.exists(sidebar_content_file):
+        with open(sidebar_content_file, "r") as file:
+            sidebar_content = file.read()
+            return sidebar_content
+
+
+def make_html(
+    markdown_content,
+    version,
+    packaging_format,
+    view,
+    topic_title,
+    css_filename,
+    repo_base,
+    filename,
+):
+    if "Packages" in packaging_format:
+        package_format = "deb"
+    else:
+        package_format = "snap"
+
+    extracted_sections = extract_sections(
+        markdown_content, "v" + version + " " + packaging_format, view
+    )
+    if "UI" in view:
+        is_ui_view = True
+    else:
+        is_ui_view = False
+    html_dir = os.path.join(
+        repo_base, f"production-html-{package_format}/{view.lower()}"
+    )
+    os.makedirs(html_dir, exist_ok=True)
+    filename_without_extension = os.path.splitext(filename)[0]
+
+    # Remove the last hyphen and the digits after it, if present
+    filename_without_extension = "-".join(filename_without_extension.split("-")[:-1])
+
+    html_filename = os.path.join(html_dir, f"{filename_without_extension}.html")
+
+    html_template_filename = f"{filename_without_extension}.html"
+
+    html_content = generate_html_from_markdown_with_title(
+        extracted_sections,
+        topic_title,
+        css_filename,
+        version,
+        is_ui_view,
+        repo_base,
+        html_template_filename,
+    )
+
+    with open(html_filename, "w") as file:
+        file.write(html_content)
+        print(f"Created HTML version: {version} {view}")
+
+
+def parse_sections(file_content):
+    sections = {}
+    current_version = None
+    current_section = ""
+
+    for line in file_content.split("\n"):
+        version_match = re.match(r'\[tab version="(.+)"', line)
+        if version_match:
+            current_version = version_match.group(1)
+            current_section = ""
+        elif line == "[/tab]":
+            if current_version:
+                if current_version not in sections:
+                    sections[current_version] = []
+                sections[current_version].append(current_section.strip())
+                current_section = ""
+        else:
+            current_section += line + "\n"
+
+    return sections
+
+
+def print_config(config):
+    for key, value in config.items():
+        print(f"Key: {key}, Value: {value}")
+
+
+def pull_file_from_repo(file_url, destination_path):
+    response = requests.get(file_url)
+
+    if response.status_code == 200:
+        with open(destination_path, "wb") as f:
+            f.write(response.content)
+        print("File pulled from repository and written to the specified path.")
+    else:
+        print("Failed to pull the file from the repository.")
+
+
+def replace_custom_links(html_content):
+    # Regular expression pattern to match specific link format
+    link_pattern = r"/t/([^/]+)/(\d+)"
+
+    # Replace links in the HTML content using regex substitution
+    modified_content = re.sub(link_pattern, r"\1-\2.html", html_content)
+
+    return modified_content
+
+
+def main():
+    # set presets
+    cfgfile = Path.home() / ".config/maas-doc/maas-doc.yaml"
+    config = load_config(cfgfile)
+    staging = config.get("staging_repo")
+    master = config.get("master_repo")
+    staging_topic = config.get("staging_topic")
+    sdocs = staging + "/src/"
+    mdocs = master + "/src/"
+    wip = staging + "/maas-discourse/"
+
+    # parse args
+    parser = argparse.ArgumentParser(description="Discourse topic number")
+    parser.add_argument(
+        "--html-generation-only",
+        action="store_true",
+        help="Generate html versions only",
+    )
+    parser.add_argument("--version", type=str, help="Version to be used for HTML")
+    parser.add_argument(
+        "-t",
+        "--topic_number",
+        type=int,
+        required=True,
+        help="The Discourse topic number to be edited",
+    )
+    parser.add_argument(
+        "-m",
+        "--commit_message",
+        type=ascii,
+        help="A commit message which overrides all hardcoded commit messages",
+    )
+    parser.add_argument(
+        "-a",
+        "--append_galley",
+        action="store_true",
+        default=False,
+        help="Append new galley to existing galley post",
+    )
+    parser.add_argument("--debug", action="store_true", help="Print debug information")
+    args = parser.parse_args()
+
+    # validate topic number, otherwise halt
+    md_file = find_file(sdocs, args.topic_number)
+    if not md_file:
+        print(f"Topic {args.topic_number} not found; aborting")
+        sys.exit()
+    staging_file = sdocs + md_file
+
+    if not args.html_generation_only:
+        # commit staging branch to launchpad, warts and all
+        commit_and_push(staging, "updating staging dir with latest drafts")
+
+    # pull topic from discourse to staging/wip
+    base_url = config.get("base_url")
+    api = DiscourseAPI(base_url, config)
+    topic_json = api.get_topic(args.topic_number)
+    post_id = topic_json["post_stream"]["posts"][0]["id"]
+    post_json = api.get_post(post_id)
+    topic_title = api.get_title(topic_json)
+
+    # locate master version of this file
+    master_file = mdocs + md_file
+
+    if not args.html_generation_only:
+        disc_content = post_json["raw"]
+        discourse_file = wip + md_file
+        with open(discourse_file, "w") as f:
+            f.write(disc_content)
+        # locate staging version of this file
+        staging_file = sdocs + md_file
+        # diff master and discourse versions
+        result = are_files_different(master_file, discourse_file)
+
+        # if they don't match, commit discourse changes to master
+        if result:
+            copy_file(discourse_file, master_file)
+            commit_string = "commit discourse changes for topic "
+            commit_string += str(args.topic_number)
+            commit_and_push(master, commit_string)
+
+            # diff staging and discourse files
+            result = are_files_different(staging_file, discourse_file)
+
+    if args.html_generation_only:
+        choice_number = 1
+        chosen_version = args.version
+        with open(master_file, "r") as file:
+            markdown_content = file.read()
+    else:
+        # set editor command based on whether they match or not
+        emacs = "emacs --no-splash --maximized -q -l ~/.emacs2 "
+        if result:
+            diff_file = wip + md_file + ".diff"
+            diffcmd = "diff " + staging_file + " " + discourse_file + " > " + diff_file
+            execute_shell_command(diffcmd)
+
+            edcmd = emacs
+            edcmd += "--eval " + '"(custom-open-files-layout ' + "\\" + '"'
+            edcmd += diff_file + "\\" + '"' + " \\" + '"'
+            edcmd += staging_file + "\\" + '"' + " \\" + '"'
+            edcmd += discourse_file + "\\" + '")"'
+        else:
+            edcmd = emacs + staging_file
+
+        # run the editor
+        return_code, stdout, stderr = execute_shell_command(edcmd)
+        if return_code != 0:
+            print(stderr)
+            print(edcmd + " failed: aborting")
+            sys.exit()
+
+        # stage the results to the staging discourse topic
+        with open(staging_file, "r") as file:
+            markdown_content = file.read()
+            api = DiscourseAPI(base_url, config)
+            # you can either add it to the end of the galley, or just replace
+            # the first post in the galley; this allows comparing edits
+            if args.append_galley:
+                api.post_to_topic(staging_topic, markdown_content)
+            else:
+                api.update_topic_content(staging_topic, markdown_content)
+
+        if ask_yes_no_question(
+            "Do you want to publish the staging file to Discourse? (yes/no): "
+        ):
+            # Publish content of the staging_file to args.topic_number
+            api.update_topic_content(args.topic_number, markdown_content)
+
+            # Copy the staging file over the master file
+            copy_file(staging_file, master_file)
+
+            # Commit the master repo with a user-entered message
+            commit_message = input("Enter a commit message for the master repo: ")
+            commit_and_push(master, commit_message)
+        else:
+            print("Discourse not updated.")
+
+        if ask_yes_no_question("Do you want to build an HTML version? (yes/no): "):
+            # extract tab and view versions for section extraction
+            tab_versions = extract_tab_versions(markdown_content) or [
+                "no tabs in document"
+            ]
+
+            # Present available tab versions
+            print("Available tab versions:")
+            num_versions = len(tab_versions)
+            half_num_versions = (num_versions + 1) // 2  # Round up division
+
+            for i in range(half_num_versions):
+                left_idx = i
+                right_idx = i + half_num_versions
+                left_version = tab_versions[left_idx]
+                right_version = (
+                    tab_versions[right_idx] if right_idx < num_versions else ""
+                )
+                print(f"{left_idx + 1}. {left_version:<30}", end="")
+                if right_version:
+                    print(f"{right_idx + 1}. {right_version}")
+                else:
+                    print()
+
+            print(f"{num_versions + 1}. None")
+
+            # Get user's choice as a number
+            while True:
+                try:
+                    choice_number = int(
+                        input(
+                            "Choose a number for the desired tab version (or '0' for None): "
+                        )
+                    )
+                    if 0 <= choice_number <= len(tab_versions) + 1:
+                        if choice_number == 0:
+                            print("No HTML version will be generated.")
+                            break
+                        chosen_version = tab_versions[choice_number - 1]
+                        print("chosen_version:", chosen_version)
+                        break
+                    else:
+                        print("Invalid choice. Please enter a valid number.")
+                except ValueError:
+                    print("Invalid input. Please enter a number.")
+
+    if choice_number != 0:
+        # generate HTML versions based on chosen tab version
+        css_filename = os.path.join(master, "html-support/css/stylesheet.css")
+        make_html(
+            markdown_content,
+            chosen_version,
+            "Snap",
+            "UI",
+            topic_title,
+            css_filename,
+            master,
+            md_file,
+        )
+        make_html(
+            markdown_content,
+            chosen_version,
+            "Packages",
+            "UI",
+            topic_title,
+            css_filename,
+            master,
+            md_file,
+        )
+        make_html(
+            markdown_content,
+            chosen_version,
+            "Snap",
+            "CLI",
+            topic_title,
+            css_filename,
+            master,
+            md_file,
+        )
+        make_html(
+            markdown_content,
+            chosen_version,
+            "Packages",
+            "CLI",
+            topic_title,
+            css_filename,
+            master,
+            md_file,
+        )
+    else:
+        print("No HTML version built.")
+
+
+if __name__ == "__main__":
+    main()

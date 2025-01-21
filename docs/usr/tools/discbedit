@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for file in *.md; do
+  if [[ $file =~ -([0-9]+)\.md ]]; then
+    number="${BASH_REMATCH[1]}"
+    discedit $number
+  fi	
+done
