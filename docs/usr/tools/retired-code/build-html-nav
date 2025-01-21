@@ -1,0 +1,118 @@
+#!/usr/bin/python3
+
+def make_link(page_link,page_title):
+    return "<a href=\""+page_link+"\">"+page_title+"</a>"
+
+# line = "| 1 | how-to-guides | [How-to guides](https://maas.io/docs) |"
+html_nav = ""
+# page_link = []
+# page_title = []
+# menu_level = []
+# open_level = 0
+# file_flag = 0
+
+# with open('/home/stormrider/git/maas-doc/src/maas-documentation-6662.md', 'r') as file:
+#     for line in file:
+#         if "details=Navigation items" in line:
+#             file_flag = -1
+#             continue
+#         if "|-----" in line and file_flag == -1:
+#             file_flag = 1
+#             continue
+#         if file_flag == 1:
+#             items = line.split("|")
+#             try:
+#                 menu_level.append(int(items[1]))
+#             except:
+#                 continue
+#             try:
+#                 page_link.append(items[2].strip())
+#                 page_title.append((items[3].split("[")[1].split("]")[0]).strip())
+#             except:
+#                 page_link.append("hrline")
+#                 page_title.append("hrline")
+#             continue
+#         if file_flag == 1 and "[/details]" in line:
+#             file_flag = 0
+#             continue
+
+# Define lists to hold extracted data
+page_link, page_title, menu_level = [], [], []
+processing = False  # Flag to indicate if we're in the right section
+
+with open('/home/stormrider/git/maas-doc/src/maas-documentation-6662.md', 'r') as file:
+    for line in file:
+        # Check for the start marker
+        if "details=Navigation items" in line:
+            processing = True
+            continue  # Skip to next line
+
+        # If processing, look for the end marker
+        if processing and "[/details]" in line:
+            processing = False  # Stop processing
+            break  # Assuming no need to process file further
+
+        # Process lines if within the marked section
+        if processing:
+            # Skip lines that don't contain data of interest
+            if "|-----" in line or not line.strip() or line.count("|") < 4:
+                continue
+
+            # Extract and clean data
+            try:
+                parts = line.split("|")
+                menu_lvl = int(parts[1].strip())
+                menu_level.append(menu_lvl)
+                link_text = parts[2].strip()
+                title_text = (parts[3].split("[")[1]).split("]")[0]
+                page_link_text = link_text
+                if not page_link_text:
+                    page_link_text = "<hr>"
+                page_title.append(title_text)
+                page_link.append(page_link_text)
+            except Exception as e:
+                pass
+                # Optionally handle malformed lines or log the error
+
+for level, url, title in zip(menu_level, page_link, page_title):
+    print(level, url, title)
+    
+#     if level == 0:
+#         print(title)
+#     if level == 1:
+#         print(title)
+#     if level == 2:
+#         print("\t",title)
+#     if level == 3:
+#         print("\t\t",title)
+# #     else:
+#         html_nav += "<hr>\n"
+#     # if open_level == 3:
+#     # if open_level == 2:
+#     if open_level == 1:
+#         html_nav += "\t</ul>\n"
+#         html_nav += "</details>\n"
+# elif menu_level[0] == 1:
+#     html_nav += "<details class=\"cascading-menu\">\n"
+#     html_nav += "\t<summary><a hef=\"" + page_link[0] + ".html\">"+page_title[0]+"</a></summary>\n"
+#     html_nav += "\t<ul>\n"
+# elif menu_level[0] == 2:
+#     html_nav
+# elif menu_level[0] == 3:
+#     pass
+# else:
+#     pass
+
+print(html_nav)
+# ### otherwise, level 0 are <hr>
+# ## how do i convert a level 1?
+# ### capture the url, which is second column
+# ### capture the text, with is [...] in third column
+# ### when do i make it a detail block and when not?
+# ### how do i properly indent the level 1?
+# ### how do i make a suitable ul level?
+# ### how do i make a suitable link?
+# ## how do i convert a level 2?
+# ## how do i convert a level 3?
+# # write html into correct template file
+
