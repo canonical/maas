@@ -3,6 +3,8 @@
 
 from typing import Any, Dict, Generic, Optional, Sequence, TypeVar
 
+from fastapi.openapi.models import Header as OpenApiHeader
+from fastapi.openapi.models import Schema
 from pydantic import BaseModel, Field
 from pydantic.generics import GenericModel
 
@@ -54,3 +56,8 @@ class TokenPaginatedResponse(GenericModel, Generic[T]):
 
     items: Sequence[T]
     next: Optional[str] = None
+
+
+OPENAPI_ETAG_HEADER = OpenApiHeader(
+    description="The ETag for the resource", schema=Schema(type="string")
+)

@@ -19,6 +19,9 @@ from maasapiserver.v3.api.public.models.requests.reservedips import (
     ReservedIPCreateRequest,
     ReservedIPUpdateRequest,
 )
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
+)
 from maasapiserver.v3.api.public.models.responses.reservedips import (
     ReservedIPResponse,
     ReservedIPsListResponse,
@@ -112,7 +115,7 @@ class ReservedIPsHandler(Handler):
             200: {
                 "model": ReservedIPResponse,
                 "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
+                    "ETag": OPENAPI_ETAG_HEADER,
                 },
             },
             404: {"model": NotFoundBodyResponse},
@@ -162,9 +165,7 @@ class ReservedIPsHandler(Handler):
         responses={
             201: {
                 "model": ReservedIPResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -220,9 +221,7 @@ class ReservedIPsHandler(Handler):
         responses={
             200: {
                 "model": ReservedIPResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},

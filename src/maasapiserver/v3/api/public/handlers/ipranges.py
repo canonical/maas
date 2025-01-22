@@ -19,6 +19,9 @@ from maasapiserver.v3.api.public.models.requests.ipranges import (
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
+)
 from maasapiserver.v3.api.public.models.responses.ipranges import (
     IPRangeListResponse,
     IPRangeResponse,
@@ -112,9 +115,7 @@ class IPRangesHandler(Handler):
         responses={
             201: {
                 "model": IPRangeResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -190,9 +191,7 @@ class IPRangesHandler(Handler):
         responses={
             200: {
                 "model": IPRangeResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -300,9 +299,7 @@ class IPRangesHandler(Handler):
         responses={
             200: {
                 "model": IPRangeResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},

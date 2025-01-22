@@ -22,6 +22,9 @@ from maasapiserver.v3.api.public.models.requests.zones import (
     ZoneRequest,
     ZonesFiltersParams,
 )
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
+)
 from maasapiserver.v3.api.public.models.responses.zones import (
     ZoneResponse,
     ZonesListResponse,
@@ -88,9 +91,7 @@ class ZonesHandler(Handler):
         responses={
             201: {
                 "model": ZoneResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -120,9 +121,7 @@ class ZonesHandler(Handler):
         responses={
             200: {
                 "model": ZoneResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -155,9 +154,7 @@ class ZonesHandler(Handler):
         responses={
             200: {
                 "model": ZoneResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},

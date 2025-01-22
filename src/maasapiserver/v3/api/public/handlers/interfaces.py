@@ -24,7 +24,7 @@ from maasservicelayer.services import ServiceCollectionV3
 class InterfacesHandler(Handler):
     """Interface API handler."""
 
-    TAGS = ["Machine"]
+    TAGS = ["Interfaces"]
 
     @handler(
         path="/machines/{node_id}/interfaces",
