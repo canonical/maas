@@ -19,6 +19,9 @@ from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
 from maasapiserver.v3.api.public.models.requests.spaces import SpaceRequest
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
+)
 from maasapiserver.v3.api.public.models.responses.spaces import (
     SpaceResponse,
     SpacesListResponse,
@@ -79,9 +82,7 @@ class SpacesHandler(Handler):
         responses={
             200: {
                 "model": SpaceResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -114,9 +115,7 @@ class SpacesHandler(Handler):
         responses={
             201: {
                 "model": SpaceResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -148,9 +147,7 @@ class SpacesHandler(Handler):
         responses={
             200: {
                 "model": SpaceResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},

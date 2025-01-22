@@ -17,6 +17,9 @@ from maasapiserver.v3.api.public.models.requests.query import (
 from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
 )
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
+)
 from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolResponse,
     ResourcePoolsListResponse,
@@ -115,9 +118,7 @@ class ResourcePoolHandler(Handler):
         responses={
             201: {
                 "model": ResourcePoolResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -170,9 +171,7 @@ class ResourcePoolHandler(Handler):
         responses={
             200: {
                 "model": ResourcePoolResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -227,9 +226,7 @@ class ResourcePoolHandler(Handler):
         responses={
             200: {
                 "model": ResourcePoolResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},

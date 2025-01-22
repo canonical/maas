@@ -20,6 +20,9 @@ from maasapiserver.v3.api.public.models.requests.vlans import (
     VlanCreateRequest,
     VlanUpdateRequest,
 )
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
+)
 from maasapiserver.v3.api.public.models.responses.vlans import (
     VlanResponse,
     VlansListResponse,
@@ -44,9 +47,7 @@ class VlansHandler(Handler):
         responses={
             200: {
                 "model": VlanResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             422: {"model": ValidationErrorBodyResponse},
         },
@@ -122,9 +123,7 @@ class VlansHandler(Handler):
         responses={
             200: {
                 "model": VlanResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
@@ -168,9 +167,7 @@ class VlansHandler(Handler):
         responses={
             200: {
                 "model": VlanResponse,
-                "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
-                },
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
             422: {"model": ValidationErrorBodyResponse},
