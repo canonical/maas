@@ -5,7 +5,18 @@ from abc import ABC, abstractmethod
 from operator import eq, le
 from typing import Any, Generic, List, Sequence, TypeVar
 
-from sqlalchemy import delete, desc, insert, Row, select, Select, Table, update
+from sqlalchemy import (
+    Connection,
+    CursorResult,
+    delete,
+    desc,
+    insert,
+    Row,
+    select,
+    Select,
+    Table,
+    update,
+)
 from sqlalchemy.exc import IntegrityError
 
 from maasservicelayer.context import Context
@@ -54,6 +65,16 @@ class BaseRepository(ABC, Generic[T]):
     def get_model_factory(self) -> type[T]:
         pass
 
+    # TODO: remove this when the connection in context is changed back to the
+    # AsyncConnection type only.
+    async def execute_stmt(self, stmt) -> CursorResult[Any]:
+        """Execute the statement synchronously or asynchronously based on the
+        type of the connection."""
+        if isinstance(self.connection, Connection):
+            return self.connection.execute(stmt)
+        else:
+            return await self.connection.execute(stmt)
+
     def get_mapper(self) -> BaseDomainDataMapper:
         """
         How this repository should convert the domain model into the data model.
@@ -88,7 +109,7 @@ class BaseRepository(ABC, Generic[T]):
         stmt = self.select_all_statement()
         stmt = query.enrich_stmt(stmt)
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
 
     async def create(self, builder: ResourceBuilder) -> T:
@@ -104,7 +125,7 @@ class BaseRepository(ABC, Generic[T]):
             .values(**resource.get_values())
         )
         try:
-            result = (await self.connection.execute(stmt)).one()
+            result = (await self.execute_stmt(stmt)).one()
             return self.get_model_factory()(**result._asdict())
         except IntegrityError:
             self._raise_already_existing_exception()
@@ -123,7 +144,7 @@ class BaseRepository(ABC, Generic[T]):
         if token is not None:
             stmt = stmt.where(le(self.get_repository_table().c.id, int(token)))
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         next_token = None
         if len(result) > size:  # There is another page
             next_token = result.pop().id
@@ -177,7 +198,7 @@ class BaseRepository(ABC, Generic[T]):
         )
         stmt = query.enrich_stmt(stmt)
         try:
-            updated_resources = (await self.connection.execute(stmt)).all()
+            updated_resources = (await self.execute_stmt(stmt)).all()
         except IntegrityError:
             self._raise_already_existing_exception()
         return updated_resources
@@ -211,7 +232,7 @@ class BaseRepository(ABC, Generic[T]):
             self.get_repository_table()
         )
         stmt = query.enrich_stmt(stmt)
-        results = (await self.connection.execute(stmt)).all()
+        results = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in results]
 
     def _raise_already_existing_exception(self):

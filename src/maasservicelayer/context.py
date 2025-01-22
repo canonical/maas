@@ -5,14 +5,18 @@ import time
 from typing import Callable
 from uuid import uuid4
 
+from sqlalchemy import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 
+# TODO: make connection an AsyncConnection only.
+# For now it holds also the Connection type in order to be compatible with the
+# db connection we obtain from django. See maasserver/sqlalchemy.py
 class Context:
     def __init__(
         self,
         context_id: str | None = None,
-        connection: AsyncConnection | None = None,
+        connection: AsyncConnection | Connection | None = None,
     ):
         self.context_id = context_id or self._generate_context_id()
         self._start_timestamp = time.time()
@@ -22,10 +26,10 @@ class Context:
         # the transaction has been committed.
         self._post_commit_hooks = []
 
-    def set_connection(self, connection: AsyncConnection):
+    def set_connection(self, connection: AsyncConnection | Connection):
         self._connection = connection
 
-    def get_connection(self) -> AsyncConnection:
+    def get_connection(self) -> AsyncConnection | Connection:
         if not self._connection:
             raise RuntimeError(
                 "There is no database connection in this context. This is likely to be a programming error, "

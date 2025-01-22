@@ -3,14 +3,37 @@
 See the docstring for get_sqlalchemy_django_connection() for more info.
 """
 
+import asyncio
+from typing import Any, Coroutine, TypeVar
+
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.pool import PoolProxiedConnection
 from sqlalchemy.pool.base import Pool
 
+T = TypeVar("T")
 
-def get_sqlalchemy_django_connection():
+
+def exec_async(coro: Coroutine[Any, Any, T]) -> T:
+    """Executes the coroutine `coro` in a synchronous way.
+
+    Use only for the ServiceCollectionV3, example:
+
+        from maasservicelayer.services import ServiceCollectionV3
+
+        services = exec_async(ServiceCollectionV3.produce(context, cache))
+        machine = exec_async(services.machines.get_by_id(1))
+    """
+    try:
+        return asyncio.run(coro)
+    except RuntimeError:
+        # this should never happen as we are using it inside database threads
+        # that do not have an async event loop.
+        raise
+
+
+def get_sqlalchemy_django_connection() -> Connection:
     """Get a SQLAlchemy connection sharing the Django connection.
 
     This returns the same kind of connection you would get if you called
