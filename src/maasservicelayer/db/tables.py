@@ -270,6 +270,17 @@ FabricTable = Table(
     Column("description", Text, nullable=False),
 )
 
+FileStorageTable = Table(
+    "maasserver_filestorage",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("filename", String(255), nullable=False),
+    Column("content", Text, nullable=False),
+    Column("key", String(36), nullable=False, unique=True),
+    Column("owner_id", BigInteger, ForeignKey("auth_user.id"), nullable=True),
+    UniqueConstraint("filename", "owner_id"),
+)
+
 GlobalDefaultTable = Table(
     "maasserver_globaldefault",
     METADATA,
