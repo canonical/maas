@@ -21,6 +21,7 @@ from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
+from maasservicelayer.db.repositories.filestorage import FileStorageRepository
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.db.repositories.machines import MachinesRepository
@@ -67,6 +68,7 @@ from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.fabrics import FabricsService
+from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService
@@ -137,6 +139,7 @@ class ServiceCollectionV3:
     events: EventsService
     external_auth: ExternalAuthService
     fabrics: FabricsService
+    filestorage: FileStorageService
     interfaces: InterfacesService
     ipranges: IPRangesService
     leases: LeasesService
@@ -344,5 +347,8 @@ class ServiceCollectionV3:
         services.notifications_dismissal = NotificationDismissalService(
             context=context,
             repository=NotificationDismissalsRepository(context),
+        )
+        services.filestorage = FileStorageService(
+            context=context, repository=FileStorageRepository(context)
         )
         return services
