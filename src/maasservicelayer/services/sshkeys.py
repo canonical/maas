@@ -53,17 +53,17 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         super().__init__(context, sshkeys_repository, cache)
         self._session = None
 
-    async def update_by_id(self, id, resource, etag_if_match=None):
+    async def update_by_id(self, id, builder, etag_if_match=None):
         raise NotImplementedError("Update is not supported for ssh keys")
 
-    async def update_many(self, query, resource):
+    async def update_many(self, query, builder):
         raise NotImplementedError("Update is not supported for ssh keys")
 
-    async def update_one(self, query, resource, etag_if_match=None):
+    async def update_one(self, query, builder, etag_if_match=None):
         raise NotImplementedError("Update is not supported for ssh keys")
 
     async def _update_resource(
-        self, existing_resource, resource, etag_if_match=None
+        self, existing_resource, builder, etag_if_match=None
     ):
         raise NotImplementedError("Update is not supported for ssh keys")
 
