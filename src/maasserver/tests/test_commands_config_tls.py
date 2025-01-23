@@ -9,6 +9,7 @@ import tempfile
 
 from django.core.management import call_command
 
+from maascommon.events import AUDIT
 from maasserver.enum import ENDPOINT
 from maasserver.management.commands import config_tls
 from maasserver.models import Config, Event, Notification
@@ -20,7 +21,7 @@ from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.certificates import CertificateError
-from provisioningserver.events import AUDIT, EVENT_TYPES
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.testing.certificates import (
     get_sample_cert,
     get_sample_cert_with_cacerts,

@@ -4,6 +4,7 @@
 """Tests for `maasserver.websockets.handlers.token`"""
 
 
+from maascommon.events import AUDIT
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.testing.factory import factory
@@ -11,7 +12,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.token import TokenHandler
-from provisioningserver.events import AUDIT
 
 
 class TestTokenHandler(MAASServerTestCase):

@@ -8,13 +8,13 @@ from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.urls import reverse
 
+from maascommon.events import AUDIT
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
-from provisioningserver.events import AUDIT
 
 
 class TestLogin(MAASServerTestCase):

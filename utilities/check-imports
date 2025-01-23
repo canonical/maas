@@ -622,6 +622,7 @@ checks = [
             Allow(StandardLibraries),
             # XXX: The following three permissions are temporary;
             # they MUST be eliminated before MAAS 2.0 release.
+            Allow("maascommon|maascommon.**"),
             Allow("maasserver|maasserver.**"),
             Allow("metadataserver|metadataserver.**"),
             Allow("provisioningserver|provisioningserver.**"),

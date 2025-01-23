@@ -11,6 +11,7 @@ import random
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest
 
+from maascommon.events import AUDIT
 from maasserver.forms.script import (
     CommissioningScriptForm,
     ScriptForm,
@@ -27,7 +28,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
     SCRIPT_TYPE_CHOICES,
 )
-from provisioningserver.events import AUDIT
 
 
 class TestScriptForm(MAASServerTestCase):

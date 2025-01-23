@@ -9,13 +9,13 @@ import random
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
+from maascommon.events import AUDIT
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import Event, PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from provisioningserver.events import AUDIT
 
 
 class TestPackageRepositoryForm(MAASServerTestCase):

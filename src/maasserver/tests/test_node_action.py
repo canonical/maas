@@ -9,6 +9,7 @@ from django.db import transaction
 from netaddr import IPNetwork
 import pytest
 
+from maascommon.events import AUDIT
 from maasserver import locks
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
@@ -76,7 +77,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from provisioningserver.enum import POWER_STATE
-from provisioningserver.events import AUDIT
 from provisioningserver.utils.shell import ExternalProcessError
 
 ALL_STATUSES = list(NODE_STATUS_CHOICES_DICT)

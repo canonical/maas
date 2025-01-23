@@ -7,6 +7,7 @@
 from email.utils import format_datetime
 import random
 
+from maascommon.events import AUDIT
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -17,7 +18,6 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.dhcpsnippet import DHCPSnippetHandler
-from provisioningserver.events import AUDIT
 
 
 class TestDHCPSnippetHandler(MAASServerTestCase):

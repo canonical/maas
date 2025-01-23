@@ -12,6 +12,7 @@ import random
 
 from django.urls import reverse
 
+from maascommon.events import AUDIT
 from maasserver.models import Event, Script, VersionedTextFile
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -22,7 +23,6 @@ from metadataserver.enum import (
     SCRIPT_PARALLEL_CHOICES,
     SCRIPT_TYPE_CHOICES,
 )
-from provisioningserver.events import AUDIT
 
 
 class TestScriptsAPI(APITestCase.ForUser):

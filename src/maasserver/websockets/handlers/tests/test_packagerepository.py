@@ -4,6 +4,7 @@
 """Tests for `maasserver.websockets.handlers.packagerepository`"""
 
 
+from maascommon.events import AUDIT
 from maasserver.models import Event, PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -15,7 +16,6 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.packagerepository import (
     PackageRepositoryHandler,
 )
-from provisioningserver.events import AUDIT
 
 
 class TestPackageRepositoryHandler(MAASServerTestCase):

@@ -15,6 +15,7 @@ from django.urls import reverse
 from piston3.doc import generate_doc
 from requests.exceptions import RequestException
 
+from maascommon.events import AUDIT
 from maasserver import urls_api as urlconf
 from maasserver.api import account as account_module
 from maasserver.api import machines as machines_module
@@ -37,7 +38,6 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from maastesting.testcase import MAASTestCase
-from provisioningserver.events import AUDIT
 
 
 class TestResourceURIs(MAASTestCase):

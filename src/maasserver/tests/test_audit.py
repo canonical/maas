@@ -4,12 +4,13 @@
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 
+from maascommon.events import AUDIT
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Event
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.events import AUDIT, EVENT_TYPES
+from provisioningserver.events import EVENT_TYPES
 
 
 class TestCreateAuditEvent(MAASServerTestCase):

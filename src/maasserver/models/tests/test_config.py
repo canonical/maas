@@ -10,6 +10,7 @@ from django.db import IntegrityError
 from django.http import HttpRequest
 from fixtures import TestWithFixtures
 
+from maascommon.events import AUDIT
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Config, Event, signals
 import maasserver.models.config
@@ -17,7 +18,6 @@ from maasserver.models.config import ensure_uuid_in_config, get_default_config
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.events import AUDIT
 from provisioningserver.utils.testing import MAASIDFixture
 
 

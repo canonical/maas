@@ -10,6 +10,7 @@ import random
 
 from django.urls import reverse
 
+from maascommon.events import AUDIT
 from maasserver.api.packagerepositories import (
     DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
 )
@@ -17,7 +18,6 @@ from maasserver.models import Event, PackageRepository
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import reload_object
-from provisioningserver.events import AUDIT
 
 
 class TestPackageRepositoryAPI(APITestCase.ForUser):

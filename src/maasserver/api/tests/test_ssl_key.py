@@ -10,12 +10,12 @@ import json
 from django.conf import settings
 from django.urls import reverse
 
+from maascommon.events import AUDIT
 from maasserver.models import Event, SSLKey
 from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
-from provisioningserver.events import AUDIT
 
 
 class TestSSLKeyHandlers(APITestCase.ForUser):
