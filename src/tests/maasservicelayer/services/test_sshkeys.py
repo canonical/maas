@@ -84,49 +84,63 @@ class TestCommonSshKeysService(ServiceCommonTests):
             user_id=1,
         )
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_many(self, service_instance, test_instance):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_many(
+                service_instance, test_instance
+            )
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_one(self, service_instance, test_instance):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_one(
+                service_instance, test_instance
+            )
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_one_not_found(self, service_instance):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_one_not_found(service_instance)
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_one_etag_match(
         self, service_instance, test_instance
     ):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_one_etag_match(
+                service_instance, test_instance
+            )
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_one_etag_not_matching(
         self, service_instance, test_instance
     ):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_one_etag_not_matching(
+                service_instance, test_instance
+            )
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_by_id(self, service_instance, test_instance):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_by_id(
+                service_instance, test_instance
+            )
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_by_id_not_found(self, service_instance):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_by_id_not_found(service_instance)
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_by_id_etag_match(
         self, service_instance, test_instance
     ):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_by_id_etag_match(
+                service_instance, test_instance
+            )
 
-    @pytest.mark.skip(reason="Update does not apply to SSH keys.")
     async def test_update_by_id_etag_not_matching(
         self, service_instance, test_instance
     ):
-        pass
+        with pytest.raises(NotImplementedError):
+            return await super().test_update_by_id_etag_not_matching(
+                service_instance, test_instance
+            )
 
     async def test_create(self, service_instance, test_instance):
         # pre_create_hook tested in the next tests

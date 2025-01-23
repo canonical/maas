@@ -28,6 +28,12 @@ from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
 )
 from maasservicelayer.db.repositories.nodes import NodesRepository
+from maasservicelayer.db.repositories.notification_dismissal import (
+    NotificationDismissalsRepository,
+)
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsRepository,
+)
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
@@ -69,6 +75,10 @@ from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
 )
 from maasservicelayer.services.nodes import NodesService
+from maasservicelayer.services.notification_dismissal import (
+    NotificationDismissalService,
+)
+from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.services.secrets import (
@@ -120,6 +130,7 @@ class ServiceCollectionV3:
     auth: AuthService
     configurations: ConfigurationsService
     dhcpsnippets: DhcpSnippetsService
+    dnsdata: DNSDataService
     dnspublications: DNSPublicationsService
     dnsresources: DNSResourcesService
     domains: DomainsService
@@ -132,6 +143,8 @@ class ServiceCollectionV3:
     machines: MachinesService
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
+    notifications: NotificationsService
+    notifications_dismissal: NotificationDismissalService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
     secrets: SecretsService
@@ -324,5 +337,12 @@ class ServiceCollectionV3:
         services.sslkeys = SSLKeysService(
             context=context,
             sslkey_repository=SSLKeysRepository(context),
+        )
+        services.notifications = NotificationsService(
+            context=context, repository=NotificationsRepository(context)
+        )
+        services.notifications_dismissal = NotificationDismissalService(
+            context=context,
+            repository=NotificationDismissalsRepository(context),
         )
         return services
