@@ -4,7 +4,7 @@ import re
 
 from django.db import migrations
 
-from provisioningserver.events import AUDIT
+from maascommon.events import AUDIT
 
 DESCRIPTION_MAPPINGS = [
     ("Created token for", "Created token."),

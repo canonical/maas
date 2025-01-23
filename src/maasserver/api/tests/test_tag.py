@@ -10,6 +10,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from apiclient.creds import convert_tuple_to_string
+from maascommon.events import AUDIT
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Event, Tag
 from maasserver.models.node import generate_node_system_id
@@ -23,7 +24,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
-from provisioningserver.events import AUDIT, EVENT_TYPES
+from provisioningserver.events import EVENT_TYPES
 
 
 def extract_system_ids(parsed_result):

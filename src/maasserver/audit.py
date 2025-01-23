@@ -6,9 +6,10 @@
 
 from django.contrib.auth.models import AnonymousUser
 
+from maascommon.events import AUDIT
 from maasserver.models.event import Event
 from maasserver.utils import get_remote_ip
-from provisioningserver.events import AUDIT, EVENT_DETAILS
+from provisioningserver.events import EVENT_DETAILS
 
 
 def create_audit_event(

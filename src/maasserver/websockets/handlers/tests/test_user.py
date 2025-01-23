@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from testtools.testcase import TestCase
 
+from maascommon.events import AUDIT
 from maasserver.enum import NODE_STATUS
 from maasserver.models.event import Event
 from maasserver.models.user import SYSTEM_USERS
@@ -29,7 +30,6 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers.user import UserHandler
 from maastesting.djangotestcase import count_queries
-from provisioningserver.events import AUDIT
 
 # Settable attributes on User.
 user_attributes = ["email", "is_superuser", "last_name", "username"]

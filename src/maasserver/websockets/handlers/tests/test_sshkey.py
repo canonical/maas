@@ -4,6 +4,7 @@
 """Tests for `maasserver.websockets.handlers.sshkey`"""
 
 
+from maascommon.events import AUDIT
 from maasserver.models.event import Event
 from maasserver.models.sshkey import SSHKey
 from maasserver.testing import get_data
@@ -14,7 +15,6 @@ from maasserver.utils.orm import get_one
 from maasserver.websockets.base import HandlerDoesNotExistError, HandlerError
 from maasserver.websockets.handlers.sshkey import SSHKeyHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
-from provisioningserver.events import AUDIT
 
 
 class TestSSHKeyHandler(MAASServerTestCase):

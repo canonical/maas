@@ -12,6 +12,7 @@ import random
 from django.urls import reverse
 from piston3.utils import rc
 
+from maascommon.events import AUDIT
 from maasserver.models import Event, Script
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -23,7 +24,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from metadataserver.fields import Bin
-from provisioningserver.events import AUDIT
 
 
 class TestAdminCommissioningScriptsAPI(APITestCase.ForAdmin):

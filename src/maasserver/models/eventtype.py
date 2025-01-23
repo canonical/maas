@@ -8,9 +8,9 @@ import logging
 
 from django.db.models import CharField, IntegerField, Manager
 
+from maascommon.events import AUDIT
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from provisioningserver.events import AUDIT
 
 # Describes how the log levels are displayed in the UI.
 LOGGING_LEVELS = {

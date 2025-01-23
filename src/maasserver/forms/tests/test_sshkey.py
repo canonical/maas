@@ -6,13 +6,13 @@
 
 from django.http import HttpRequest
 
+from maascommon.events import AUDIT
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms import SSHKeyForm
 from maasserver.models import Event
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.events import AUDIT
 
 
 class TestSSHKeyForm(MAASServerTestCase):

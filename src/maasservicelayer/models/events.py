@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from enum import IntEnum
+import logging
 from typing import Optional
 
 from pydantic import IPvAnyAddress
@@ -17,11 +18,11 @@ class EndpointChoicesEnum(IntEnum):
 
 class LoggingLevelEnum(IntEnum):
     AUDIT = 0
-    DEBUG = 10
-    INFO = 20
-    WARNING = 30
-    ERROR = 40
-    CRITICAL = 50
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+    CRITICAL = logging.CRITICAL
 
 
 class EventType(MaasTimestampedBaseModel):

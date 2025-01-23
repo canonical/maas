@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.urls import reverse
 
+from maascommon.events import AUDIT
 import maasserver.api.auth
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models import Node, SSHKey, SSLKey, StaticIPAddress
@@ -20,7 +21,6 @@ from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
-from provisioningserver.events import AUDIT
 
 
 def get_user_uri(user):

@@ -9,13 +9,13 @@ from unittest.mock import sentinel
 
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 
+from maascommon.events import EventDetail
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
-    EventDetail,
     NodeEventHub,
     nodeEventHub,
     send_node_event,

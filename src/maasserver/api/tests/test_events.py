@@ -12,6 +12,7 @@ from urllib.parse import parse_qsl, urlparse
 from django.conf import settings
 from django.urls import reverse
 
+from maascommon.events import AUDIT
 from maasserver.api import events as events_module
 from maasserver.api.events import DATETIME_FORMAT, event_to_dict
 from maasserver.api.tests.test_nodes import RequestFixture
@@ -22,7 +23,6 @@ from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
-from provisioningserver.events import AUDIT
 
 
 def make_events(count=None, **kwargs):

@@ -6,13 +6,13 @@
 
 from django.http import HttpRequest
 
+from maascommon.events import AUDIT
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from provisioningserver.events import AUDIT
 
 
 class TestDHCPSnippetForm(MAASServerTestCase):

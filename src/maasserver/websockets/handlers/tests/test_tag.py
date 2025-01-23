@@ -1,6 +1,7 @@
 # Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maascommon.events import AUDIT
 from maasserver.enum import NODE_TYPE
 from maasserver.models import Event, Tag
 from maasserver.testing.factory import factory
@@ -12,7 +13,7 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.tag import TagHandler
-from provisioningserver.events import AUDIT, EVENT_TYPES
+from provisioningserver.events import EVENT_TYPES
 
 
 class TestTagHandler(MAASServerTestCase):
