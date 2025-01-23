@@ -21,6 +21,7 @@ __all__ = [
 ]
 
 
+from maascommon.enums.scriptresult import ScriptStatus
 from provisioningserver.enum import enum_choices
 
 
@@ -69,18 +70,18 @@ RESULT_TYPE_CHOICES = (
 
 
 class SCRIPT_STATUS:
-    PENDING = 0
-    RUNNING = 1
-    PASSED = 2
-    FAILED = 3
-    TIMEDOUT = 4
-    ABORTED = 5
-    DEGRADED = 6
-    INSTALLING = 7
-    FAILED_INSTALLING = 8
-    SKIPPED = 9
-    APPLYING_NETCONF = 10
-    FAILED_APPLYING_NETCONF = 11
+    PENDING = ScriptStatus.PENDING.value
+    RUNNING = ScriptStatus.RUNNING.value
+    PASSED = ScriptStatus.PASSED.value
+    FAILED = ScriptStatus.FAILED.value
+    TIMEDOUT = ScriptStatus.TIMEDOUT.value
+    ABORTED = ScriptStatus.ABORTED.value
+    DEGRADED = ScriptStatus.DEGRADED.value
+    INSTALLING = ScriptStatus.INSTALLING.value
+    FAILED_INSTALLING = ScriptStatus.FAILED_INSTALLING.value
+    SKIPPED = ScriptStatus.SKIPPED.value
+    APPLYING_NETCONF = ScriptStatus.APPLYING_NETCONF.value
+    FAILED_APPLYING_NETCONF = ScriptStatus.FAILED_APPLYING_NETCONF.value
 
 
 SCRIPT_STATUS_CHOICES = (
