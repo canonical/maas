@@ -3,6 +3,8 @@
 
 from typing import Optional, Self
 
+from pydantic import IPvAnyAddress
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -21,7 +23,7 @@ class VlanResponse(HalResponse[BaseHal]):
     description: str
     mtu: int
     dhcp_on: bool
-    external_dhcp: Optional[str]
+    external_dhcp: Optional[IPvAnyAddress]
     primary_rack: Optional[int]
     secondary_rack: Optional[int]
     relay_vlan_id: Optional[int]
