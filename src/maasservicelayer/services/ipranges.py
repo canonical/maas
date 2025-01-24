@@ -26,6 +26,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.models.base import Unset
 from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
@@ -113,3 +114,30 @@ class IPRangesService(
 
     async def post_delete_many_hook(self, resources: List[IPRange]) -> None:
         raise NotImplementedError("Not implemented yet.")
+
+    async def update_many(
+        self, query: QuerySpec, builder: IPRangeBuilder
+    ) -> List[IPRange]:
+        updated_resources = await self.repository.update_many(
+            query=query, builder=builder
+        )
+
+        if self._must_trigger_update_hook(builder):
+            await self.post_update_many_hook(updated_resources)
+        return updated_resources
+
+    async def _must_trigger_update_hook(self, builder: IPRangeBuilder) -> bool:
+        # TODO: change this when refactoring builders and update_many
+        if (
+            not isinstance(builder.start_ip, Unset)
+            or not isinstance(builder.end_ip, Unset)
+            or not isinstance(builder.type, Unset)
+            or not isinstance(builder.subnet_id, Unset)
+        ):
+            return True
+        return False
+
+    async def get_ipranges_for_user(self, user_id: int) -> list[IPRange]:
+        return await self.get_many(
+            query=QuerySpec(where=IPRangeClauseFactory.with_user_id(user_id))
+        )

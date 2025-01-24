@@ -291,3 +291,23 @@ class TestIPRangesService:
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
+
+    async def test_get_ipranges_for_user(self) -> None:
+        mock_ipranges_repository = Mock(IPRangesRepository)
+        mock_ipranges_repository.get_many.return_value = Mock()
+
+        mock_temporal = Mock(TemporalService)
+        dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
+
+        ipranges_service = IPRangesService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            dhcpsnippets_service=dhcpsnippets_service_mock,
+            ipranges_repository=mock_ipranges_repository,
+        )
+
+        await ipranges_service.get_ipranges_for_user(1)
+
+        mock_ipranges_repository.get_many.assert_called_once_with(
+            query=QuerySpec(where=IPRangeClauseFactory.with_user_id(1))
+        )

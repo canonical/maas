@@ -4,7 +4,7 @@
 from typing import List, Type
 
 from django.core import signing
-from sqlalchemy import func, insert, select, Table, update
+from sqlalchemy import delete, func, insert, select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
@@ -53,7 +53,7 @@ class UsersRepository(BaseRepository[User]):
             .select_from(UserTable)
             .where(eq(UserTable.c.username, username))
         )
-        user = (await self.connection.execute(stmt)).first()
+        user = (await self.execute_stmt(stmt)).first()
         if not user:
             return None
         return User(**user._asdict())
@@ -83,7 +83,7 @@ class UsersRepository(BaseRepository[User]):
                 )
             )
         )
-        row = (await self.connection.execute(stmt)).one_or_none()
+        row = (await self.execute_stmt(stmt)).one_or_none()
         if not row:
             return None
         session_data = row[0]
@@ -96,7 +96,7 @@ class UsersRepository(BaseRepository[User]):
             .select_from(UserTable)
             .filter(eq(UserTable.c.id, user_id))
         )
-        row = (await self.connection.execute(stmt)).one_or_none()
+        row = (await self.execute_stmt(stmt)).one_or_none()
         if not row:
             return None
         return User(**row._asdict())
@@ -109,7 +109,7 @@ class UsersRepository(BaseRepository[User]):
             .where(eq(UserTable.c.username, username))
             .limit(1)
         )
-        row = (await self.connection.execute(stmt)).one_or_none()
+        row = (await self.execute_stmt(stmt)).one_or_none()
         if not row:
             return None
         return UserProfile(**row._asdict())
@@ -124,7 +124,7 @@ class UsersRepository(BaseRepository[User]):
             .values(**resource.get_values(), user_id=user_id)
         )
         try:
-            profile = (await self.connection.execute(stmt)).one()
+            profile = (await self.execute_stmt(stmt)).one()
         except IntegrityError:
             self._raise_already_existing_exception()
         return UserProfile(**profile._asdict())
@@ -140,7 +140,7 @@ class UsersRepository(BaseRepository[User]):
             .values(**resource.get_values())
         )
         try:
-            updated_profile = (await self.connection.execute(stmt)).one()
+            updated_profile = (await self.execute_stmt(stmt)).one()
         except IntegrityError:
             self._raise_already_existing_exception()
         except NoResultFound:
@@ -153,6 +153,15 @@ class UsersRepository(BaseRepository[User]):
                 ]
             )
         return UserProfile(**updated_profile._asdict())
+
+    async def delete_profile(self, user_id: int) -> UserProfile:
+        stmt = (
+            delete(UserProfileTable)
+            .where(eq(UserProfileTable.c.user_id, user_id))
+            .returning(UserProfileTable)
+        )
+        deleted_profile = (await self.execute_stmt(stmt)).one()
+        return UserProfile(**deleted_profile._asdict())
 
     async def get_user_apikeys(self, username: str) -> List[str] | None:
         stmt = (
@@ -178,8 +187,22 @@ class UsersRepository(BaseRepository[User]):
             .order_by(TokenTable.c.id)
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         if not result:
             return None
 
         return [str(row[0]) for row in result]
+
+    async def delete_user_api_keys(self, user_id: int) -> None:
+        consumer_stmt = (
+            delete(ConsumerTable)
+            .where(eq(ConsumerTable.c.user_id, user_id))
+            .returning(ConsumerTable.c.id)
+        )
+        deleted_consumers_ids = (
+            (await self.execute_stmt(consumer_stmt)).scalars().all()
+        )
+        token_stmt = delete(TokenTable).where(
+            TokenTable.c.consumer_id.in_(deleted_consumers_ids)
+        )
+        await self.execute_stmt(token_stmt)

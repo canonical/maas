@@ -64,6 +64,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
                 NodeTable.c.status,
                 NodeTable.c.hostname,
                 NodeTable.c.power_state,
+                NodeTable.c.owner_id,
                 BMCTable.c.power_type,
                 func.concat(
                     NodeTable.c.hostname, ".", DomainTable.c.name

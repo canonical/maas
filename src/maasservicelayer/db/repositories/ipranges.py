@@ -71,6 +71,10 @@ class IPRangeClauseFactory(ClauseFactory):
     def with_type(cls, type: IPRangeType) -> Clause:
         return Clause(condition=eq(IPRangeTable.c.type, type))
 
+    @classmethod
+    def with_user_id(cls, user_id: int) -> Clause:
+        return Clause(condition=eq(IPRangeTable.c.user_id, user_id))
+
 
 class IPRangesRepository(BaseRepository[IPRange]):
     def get_repository_table(self) -> Table:

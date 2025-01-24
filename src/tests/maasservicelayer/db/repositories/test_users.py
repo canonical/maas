@@ -125,3 +125,23 @@ class TestUsersRepository:
         users_repository = UsersRepository(Context(connection=db_connection))
         apikeys = await users_repository.get_user_apikeys(user.username)
         assert apikeys[0] == apikey
+
+    async def test_delete_profile(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        user_profile = await create_test_user_profile(fixture, user.id)
+        users_repository = UsersRepository(Context(connection=db_connection))
+        deleted_user_profile = await users_repository.delete_profile(user.id)
+        assert deleted_user_profile == user_profile
+
+    async def test_delete_user_api_keys(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        user_consumer = await create_test_user_consumer(fixture, user.id)
+        await create_test_user_token(fixture, user.id, user_consumer.id)
+        users_repository = UsersRepository(Context(connection=db_connection))
+        await users_repository.delete_user_api_keys(user.id)
+        apikeys = await users_repository.get_user_apikeys(user.username)
+        assert apikeys is None

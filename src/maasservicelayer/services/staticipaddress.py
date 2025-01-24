@@ -12,8 +12,10 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressClauseFactory,
     StaticIPAddressRepository,
 )
+from maasservicelayer.models.base import Unset
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import (
@@ -122,3 +124,35 @@ class StaticIPAddressService(
 
     async def get_mac_addresses(self, query: QuerySpec) -> list[MacAddress]:
         return await self.repository.get_mac_addresses(query=query)
+
+    async def update_many(
+        self, query: QuerySpec, builder: StaticIPAddressBuilder
+    ) -> List[StaticIPAddress]:
+        updated_resources = await self.repository.update_many(
+            query=query, builder=builder
+        )
+
+        if self._must_trigger_update_hook(builder):
+            await self.post_update_many_hook(updated_resources)
+        return updated_resources
+
+    async def _must_trigger_update_hook(
+        self, builder: StaticIPAddressBuilder
+    ) -> bool:
+        # TODO: change this when refactoring builders and update_many
+        if (
+            not isinstance(builder.ip, Unset)
+            or not isinstance(builder.alloc_type, Unset)
+            or not isinstance(builder.subnet_id, Unset)
+        ):
+            return True
+        return False
+
+    async def get_staticips_for_user(
+        self, user_id: int
+    ) -> list[StaticIPAddress]:
+        return await self.get_many(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.with_user_id(user_id)
+            )
+        )

@@ -188,21 +188,6 @@ class ServiceCollectionV3:
                 TemporalService.__name__, TemporalService.build_cache_object
             ),
         )
-        services.users = UsersService(
-            context=context, users_repository=UsersRepository(context)
-        )
-        services.auth = AuthService(
-            context=context,
-            secrets_service=services.secrets,
-            users_service=services.users,
-        )
-        services.external_auth = ExternalAuthService(
-            context=context,
-            secrets_service=services.secrets,
-            users_service=services.users,
-            external_auth_repository=ExternalAuthRepository(context),
-            cache=cache.get(ExternalAuthService.__name__, ExternalAuthService.build_cache_object),  # type: ignore
-        )
         services.nodes = NodesService(
             context=context,
             secrets_service=services.secrets,
@@ -294,12 +279,6 @@ class ServiceCollectionV3:
             interfaces_service=services.interfaces,
             fabrics_repository=FabricsRepository(context),
         )
-        services.agents = AgentsService(
-            context=context,
-            configurations_service=services.configurations,
-            users_service=services.users,
-            cache=cache.get(AgentsService.__name__, AgentsService.build_cache_object),  # type: ignore
-        )
         services.dnspublications = DNSPublicationsService(
             context=context,
             temporal_service=services.temporal,
@@ -350,5 +329,35 @@ class ServiceCollectionV3:
         )
         services.filestorage = FileStorageService(
             context=context, repository=FileStorageRepository(context)
+        )
+        services.users = UsersService(
+            context=context,
+            users_repository=UsersRepository(context),
+            staticipaddress_service=services.staticipaddress,
+            ipranges_service=services.ipranges,
+            nodes_service=services.nodes,
+            sshkey_service=services.sshkeys,
+            sslkey_service=services.sslkeys,
+            notification_service=services.notifications,
+            notification_dismissal_service=services.notifications_dismissal,
+            filestorage_service=services.filestorage,
+        )
+        services.auth = AuthService(
+            context=context,
+            secrets_service=services.secrets,
+            users_service=services.users,
+        )
+        services.external_auth = ExternalAuthService(
+            context=context,
+            secrets_service=services.secrets,
+            users_service=services.users,
+            external_auth_repository=ExternalAuthRepository(context),
+            cache=cache.get(ExternalAuthService.__name__, ExternalAuthService.build_cache_object),  # type: ignore
+        )
+        services.agents = AgentsService(
+            context=context,
+            configurations_service=services.configurations,
+            users_service=services.users,
+            cache=cache.get(AgentsService.__name__, AgentsService.build_cache_object),  # type: ignore
         )
         return services

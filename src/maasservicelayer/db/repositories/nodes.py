@@ -32,6 +32,10 @@ class NodeClauseFactory(ClauseFactory):
     def with_type(cls, value: NodeTypeEnum) -> Clause:
         return Clause(condition=eq(NodeTable.c.node_type, value))
 
+    @classmethod
+    def with_owner_id(cls, owner_id: int) -> Clause:
+        return Clause(condition=eq(NodeTable.c.owner_id, owner_id))
+
 
 T = TypeVar("T", bound=Node)
 

@@ -7,7 +7,7 @@ from maasservicelayer.db.mappers.base import (
     BaseDomainDataMapper,
     CreateOrUpdateResource,
 )
-from maasservicelayer.models.base import ResourceBuilder, Unset
+from maasservicelayer.models.base import ResourceBuilder
 
 
 class DefaultDomainDataMapper(BaseDomainDataMapper):
@@ -22,7 +22,6 @@ class DefaultDomainDataMapper(BaseDomainDataMapper):
         self, builder: ResourceBuilder
     ) -> CreateOrUpdateResource:
         resource = CreateOrUpdateResource()
-        for name, value in builder.dict(exclude_unset=True).items():
-            if not isinstance(value, Unset):
-                resource.set_value(self.table_columns[name].name, value)
+        for name, value in builder.populated_fields().items():
+            resource.set_value(self.table_columns[name].name, value)
         return resource

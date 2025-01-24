@@ -49,6 +49,10 @@ class StaticIPAddressClauseFactory(ClauseFactory):
     def with_ip(cls, ip: IPvAnyAddress) -> Clause:
         return Clause(condition=eq(StaticIPAddressTable.c.ip, ip))
 
+    @classmethod
+    def with_user_id(cls, user_id: int) -> Clause:
+        return Clause(condition=eq(StaticIPAddressTable.c.user_id, user_id))
+
 
 class StaticIPAddressRepository(BaseRepository):
     def get_repository_table(self) -> Table:

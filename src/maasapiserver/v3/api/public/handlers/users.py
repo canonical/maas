@@ -1,13 +1,18 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Query, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
+    BadRequestResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
+    PreconditionFailedBodyResponse,
     UnauthorizedBodyResponse,
     ValidationErrorBodyResponse,
 )
@@ -37,6 +42,7 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
@@ -61,6 +67,7 @@ class UsersHandler(Handler):
             "get_user",
             "create_user",
             "update_user",
+            "delete_user",
         ]
 
     @handler(
@@ -250,3 +257,56 @@ class UsersHandler(Handler):
             user=user,
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
+
+    @handler(
+        path="/users/{user_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            400: {"model": BadRequestBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+            412: {"model": PreconditionFailedBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        status_code=204,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_user(
+        self,
+        user_id: int,
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        transfer_resources_to: int | None = Query(
+            description="The id of the user to transfer the resources to.",
+            default=None,
+        ),
+    ) -> Response:
+        assert authenticated_user is not None
+        user = await services.users.get_by_id(user_id)
+        if not user:
+            return NotFoundResponse()
+        if user.id == authenticated_user.id:
+            return BadRequestResponse(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message="An administrator cannot self-delete.",
+                    )
+                ]
+            )
+        if transfer_resources_to is not None:
+            await services.users.transfer_resources(
+                user_id, transfer_resources_to
+            )
+
+        await services.users.delete_by_id(user_id, etag_if_match=etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

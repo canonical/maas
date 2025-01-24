@@ -13,7 +13,9 @@ from maascommon.workflows.dhcp import (
     merge_configure_dhcp_param,
 )
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressClauseFactory,
     StaticIPAddressRepository,
 )
 from maasservicelayer.models.base import MaasBaseModel
@@ -370,4 +372,21 @@ class TestStaticIPAddressService:
             ),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
+        )
+
+    async def test_get_staticips_for_user(self) -> None:
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_many.return_value = Mock()
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.get_staticips_for_user(1)
+        mock_staticipaddress_repository.get_many.assert_called_once_with(
+            query=QuerySpec(where=StaticIPAddressClauseFactory.with_user_id(1))
         )

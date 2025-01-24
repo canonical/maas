@@ -24,10 +24,15 @@ from maasapiserver.v3.api.public.models.responses.users import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
+    BadRequestException,
     BaseExceptionDetail,
     DischargeRequiredException,
+    PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+    PRECONDITION_FAILED,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -87,6 +92,7 @@ class TestUsersApi(ApiCommonTests):
         return [
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     # GET /users/me
@@ -506,3 +512,122 @@ class TestUsersApi(ApiCommonTests):
 
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_delete_204(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.delete_by_id.return_value = USER_1
+
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        assert response.status_code == 204
+
+    async def test_delete_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = None
+
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        assert response.status_code == 404
+
+    async def test_delete_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                    message="The resource etag 'wrong_etag' did not match 'my_etag'.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
+        )
+        assert response.status_code == 412
+        services_mock.users.get_by_id.assert_called_with(1)
+        services_mock.users.delete_by_id.assert_called_with(
+            USER_1.id,
+            etag_if_match="wrong_etag",
+        )
+
+    async def test_delete_self(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        user = USER_1.copy()
+        # the api client we use has an authenticated user with id=0
+        user.id = 0
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = user
+
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/0")
+        assert response.status_code == 400
+
+    async def test_delete_with_resources_allocated(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
+            details=[
+                BaseExceptionDetail(
+                    type=PRECONDITION_FAILED,
+                    message="Cannot delete user. 2 node(s) are still allocated.",
+                )
+            ]
+        )
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        assert response.status_code == 412
+
+    async def test_delete_with_transfer_resources(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.transfer_resources.return_value = None
+        services_mock.users.delete_by_id.return_value = USER_1
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1", params={"transfer_resources_to": 2}
+        )
+        assert response.status_code == 204
+        services_mock.users.transfer_resources.assert_called_once_with(1, 2)
+
+    async def test_delete_with_transfer_resources_nonexistent_user(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.transfer_resources.side_effect = BadRequestException(
+            details=[
+                BaseExceptionDetail(
+                    type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                    message="Cannot transfer resources. User with id 2 doesn't exist.",
+                )
+            ]
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/1", params={"transfer_resources_to": 2}
+        )
+        assert response.status_code == 400
+        services_mock.users.transfer_resources.assert_called_once_with(1, 2)

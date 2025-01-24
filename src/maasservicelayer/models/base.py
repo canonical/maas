@@ -71,6 +71,15 @@ class ResourceBuilder(BaseModel):
             return self.dict() == other.dict()
         return False
 
+    def populated_fields(self) -> dict[str, Any]:
+        """Returns the name, value of all the fields that aren't UNSET."""
+        field_dict = self.dict(exclude_unset=True)
+        # exclude all the UNSET values
+        field_dict = {
+            k: v for k, v in field_dict.items() if not isinstance(v, Unset)
+        }
+        return field_dict
+
 
 class Unset:
     """Sentinel object"""

@@ -97,3 +97,17 @@ class TestNodesService:
         await nodes_service.get_bmc("aaaaaa")
         nodes_repository_mock.get_node_bmc.assert_called_once_with("aaaaaa")
         secrets_service_mock.get_composite_secret.assert_called_once()
+
+    async def test_get_nodes_for_user(self) -> None:
+        secrets_service_mock = Mock(SecretsService)
+        nodes_repository_mock = Mock(NodesRepository)
+        nodes_repository_mock.get_many.return_value = Mock()
+        nodes_service = NodesService(
+            context=Context(),
+            secrets_service=secrets_service_mock,
+            nodes_repository=nodes_repository_mock,
+        )
+        await nodes_service.get_nodes_for_user(1)
+        nodes_repository_mock.get_many.assert_called_once_with(
+            query=QuerySpec(where=NodeClauseFactory.with_owner_id(1))
+        )

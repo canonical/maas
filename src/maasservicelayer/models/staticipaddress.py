@@ -16,6 +16,7 @@ class StaticIPAddress(MaasTimestampedBaseModel):
     lease_time: int
     temp_expires_on: Optional[datetime.datetime]
     subnet_id: int
+    user_id: Optional[int] = None
 
 
 StaticIPAddressBuilder = make_builder(StaticIPAddress)
