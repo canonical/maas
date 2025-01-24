@@ -489,7 +489,7 @@ class TestExternalAuthService:
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = None
         users_service_mock.create.return_value = fake_user
-        users_service_mock.create_profile.return_value = fake_profile
+        users_service_mock.update_profile.return_value = fake_profile
 
         external_auth_service = ExternalAuthService(
             context=Context(),
@@ -513,7 +513,7 @@ class TestExternalAuthService:
             )
         )
         users_service_mock.create.assert_called_once_with(user_builder)
-        users_service_mock.create_profile.assert_called_once_with(
+        users_service_mock.update_profile.assert_called_once_with(
             fake_user.id, profile_builder
         )
 

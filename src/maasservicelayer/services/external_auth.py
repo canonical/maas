@@ -192,7 +192,8 @@ class ExternalAuthService(Service, RootKeyStore):
             profile_builder = UserProfileBuilder(
                 is_local=False, completed_intro=True, auth_last_check=utcnow()
             )
-            await self.users_service.create_profile(user.id, profile_builder)
+            # the users_service already create a user profile in the post create hook
+            await self.users_service.update_profile(user.id, profile_builder)
 
         return user
 
