@@ -5,13 +5,15 @@
 
 
 from base64 import b64encode
+from enum import Enum
 from http import HTTPStatus
 from io import BytesIO
 import json
 from os.path import basename, join
+from typing import Callable
 
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.web.client import (
     Agent,
     FileBodyProducer,
@@ -47,6 +49,11 @@ MAX_REQUEST_RETRIES = 5
 MAX_STATUS_REQUEST_RETRIES = 7
 
 
+class PowerChange(str, Enum):
+    OFF = "ForceOff"
+    ON = "On"
+
+
 class RedfishPowerDriverBase(PowerDriver):
     def get_url(self, context):
         """Return url for the pod."""
@@ -70,16 +77,28 @@ class RedfishPowerDriverBase(PowerDriver):
         )
 
     @inlineCallbacks
-    def redfish_request(self, method, uri, headers=None, bodyProducer=None):
+    def redfish_request(
+        self,
+        method,
+        uri,
+        headers=None,
+        get_bodyProducer: Callable = lambda: None,
+        get_etag: Callable = lambda: succeed(None),
+    ):
         retries = 0
         while True:
             # Exponential backoff
             sleep_time = ((2**retries) - 1) / 2
             yield pause(sleep_time)
             try:
+                etag = yield get_etag()
+                if etag:
+                    # previous attempts might have added this header, hence we have to replace it.
+                    headers.removeHeader(b"If-Match")
+                    headers.addRawHeader(b"If-Match", etag)
                 return (
                     yield self._redfish_request(
-                        method, uri, headers, bodyProducer
+                        method, uri, headers, get_bodyProducer
                     )
                 )
             except Exception as e:
@@ -96,13 +115,19 @@ class RedfishPowerDriverBase(PowerDriver):
                 retries += 1
 
     @asynchronous
-    def _redfish_request(self, method, uri, headers=None, bodyProducer=None):
-        """Send the redfish request and return the response."""
+    def _redfish_request(
+        self,
+        method,
+        uri,
+        headers=None,
+        get_bodyProducer: Callable = lambda: None,
+    ):
+        """Send the Redfish request and return the response."""
         agent = RedirectAgent(
             Agent(reactor, contextFactory=WebClientContextFactory())
         )
         d = agent.request(
-            method, uri, headers=headers, bodyProducer=bodyProducer
+            method, uri, headers=headers, bodyProducer=get_bodyProducer()
         )
 
         def render_response(response, uri):
@@ -150,7 +175,7 @@ class RedfishPowerDriverBase(PowerDriver):
                             method,
                             uri + b"/",
                             headers=headers,
-                            bodyProducer=bodyProducer,
+                            bodyProducer=get_bodyProducer(),
                         )
                     else:
                         raise PowerActionError(
@@ -164,7 +189,7 @@ class RedfishPowerDriverBase(PowerDriver):
                             method,
                             uri,
                             headers=headers,
-                            bodyProducer=bodyProducer,
+                            bodyProducer=get_bodyProducer(),
                         )
                     else:
                         raise PowerActionError(
@@ -259,35 +284,55 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
     def set_pxe_boot(self, url, node_id, headers):
         """Set the machine with node_id to PXE boot."""
         endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
-        payload = FileBodyProducer(
-            BytesIO(
-                json.dumps(
-                    {
-                        "Boot": {
-                            "BootSourceOverrideEnabled": "Once",
-                            "BootSourceOverrideTarget": "Pxe",
+
+        def _get_bodyProducer():
+            return FileBodyProducer(
+                BytesIO(
+                    json.dumps(
+                        {
+                            "Boot": {
+                                "BootSourceOverrideEnabled": "Once",
+                                "BootSourceOverrideTarget": "Pxe",
+                            }
                         }
-                    }
-                ).encode("utf-8")
+                    ).encode("utf-8")
+                )
             )
-        )
-        etag = yield self.get_etag(url, node_id, headers)
-        if etag:
-            headers.addRawHeader(b"If-Match", etag)
+
+        @inlineCallbacks
+        def _get_etag():
+            result = yield self.get_etag(url, node_id, headers)
+            return result
+
         yield self.redfish_request(
-            b"PATCH", join(url, endpoint), headers, payload
+            b"PATCH",
+            join(url, endpoint),
+            headers,
+            _get_bodyProducer,
+            _get_etag,
         )
 
     @inlineCallbacks
-    def power(self, power_change, url, node_id, headers):
+    def power(self, power_change: PowerChange, url, node_id, headers):
         """Issue `power` command."""
         endpoint = REDFISH_POWER_CONTROL_ENDPOINT % node_id
-        payload = FileBodyProducer(
-            BytesIO(json.dumps({"ResetType": power_change}).encode("utf-8"))
-        )
+
+        def _get_bodyProducer():
+            return FileBodyProducer(
+                BytesIO(
+                    json.dumps({"ResetType": power_change}).encode("utf-8")
+                )
+            )
+
         yield self.redfish_request(
-            b"POST", join(url, endpoint), headers, payload
+            b"POST", join(url, endpoint), headers, _get_bodyProducer
         )
+
+        # Always wait for the BMC to transition to the desired status!
+        if power_change == PowerChange.OFF:
+            yield self._wait_for_status(POWER_STATE.OFF, url, node_id, headers)
+        if power_change == PowerChange.ON:
+            yield self._wait_for_status(POWER_STATE.ON, url, node_id, headers)
 
     @asynchronous
     @inlineCallbacks
@@ -296,22 +341,22 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         url, node_id, headers = yield self.process_redfish_context(context)
         power_state = yield self._power_query(url, node_id, headers)
         # Power off the machine if currently on.
-        if power_state == "on":
-            yield self.power("ForceOff", url, node_id, headers)
+        if power_state == POWER_STATE.ON:
+            yield self.power(PowerChange.OFF, url, node_id, headers)
         # Set to PXE boot.
         yield self.set_pxe_boot(url, node_id, headers)
         # Power on the machine.
-        yield self.power("On", url, node_id, headers)
+        yield self.power(PowerChange.ON, url, node_id, headers)
 
     @asynchronous
     @inlineCallbacks
     def power_off(self, node_id, context):
         """Power off machine."""
         url, node_id, headers = yield self.process_redfish_context(context)
-        # Power off the machine if it is not already off
+        # Power off the machine if it is not already off and wait until the BMC confirms that.
         power_state = yield self._power_query(url, node_id, headers)
-        if power_state != "off":
-            yield self.power("ForceOff", url, node_id, headers)
+        if power_state != POWER_STATE.OFF:
+            yield self.power(PowerChange.OFF, url, node_id, headers)
         # Set to PXE boot.
         yield self.set_pxe_boot(url, node_id, headers)
 
@@ -384,3 +429,19 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                     node_id,
                 )
                 return POWER_STATE.ERROR
+
+    @inlineCallbacks
+    def _wait_for_status(self, desired_status, url, node_id, headers):
+        for waiting_time in self.wait_time:
+            current_status = yield self._power_query(url, node_id, headers)
+            if current_status == desired_status:
+                return
+            maaslog.debug(
+                f"Waiting for {node_id} to be {desired_status}. Current status is {current_status}."
+            )
+            yield pause(waiting_time)
+
+        raise PowerActionError(
+            f"The redfish node '{node_id.decode()}' did not transition to the state '{desired_status}'. The current status reported "
+            f"by the BMC is '{current_status}'."
+        )

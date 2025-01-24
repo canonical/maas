@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 from os.path import join
 import random
-from unittest.mock import call, Mock
+from unittest.mock import call, MagicMock, Mock
 
 from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.defer import fail, inlineCallbacks, succeed
@@ -522,9 +522,150 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_redfish_request = self.patch(driver, "redfish_request")
         expected_uri = join(url, REDFISH_POWER_CONTROL_ENDPOINT % node_id)
         yield driver.power(power_change, url, node_id, headers)
-        mock_redfish_request.assert_called_once_with(
-            b"POST", expected_uri, headers, payload
+        self.assertEqual(1, len(mock_redfish_request.mock_calls))
+        self.assertEqual(b"POST", mock_redfish_request.mock_calls[0].args[0])
+        self.assertEqual(
+            expected_uri, mock_redfish_request.mock_calls[0].args[1]
         )
+        self.assertEqual(headers, mock_redfish_request.mock_calls[0].args[2])
+        self.assertEqual(
+            payload, mock_redfish_request.mock_calls[0].args[3]()
+        )  # The 4th arg is a function that produces the payload.
+
+    @inlineCallbacks
+    def test_power_waits_for_status_on(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        power_change = "On"
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        node_id = b"1"
+        mock_file_body_producer = self.patch(
+            redfish_module, "FileBodyProducer"
+        )
+        payload = FileBodyProducer(
+            BytesIO(
+                json.dumps({"ResetType": "%s" % power_change}).encode("utf-8")
+            )
+        )
+        mock_file_body_producer.return_value = payload
+        mock_redfish_request = self.patch(driver, "redfish_request")
+        NODE_OFF = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_OFF["PowerState"] = "Off"
+        NODE_ON = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_ON["PowerState"] = "On"
+        redfish_responses = [(NODE_OFF, None)] * 2 + [(NODE_ON, None)]
+        mock_redfish_request.side_effect = redfish_responses
+
+        expected_uri = join(url, REDFISH_POWER_CONTROL_ENDPOINT % node_id)
+        yield driver.power(power_change, url, node_id, headers)
+        self.assertEqual(3, len(mock_redfish_request.mock_calls))
+
+        self.assertEqual(b"POST", mock_redfish_request.mock_calls[0].args[0])
+        self.assertEqual(
+            expected_uri, mock_redfish_request.mock_calls[0].args[1]
+        )
+        self.assertEqual(headers, mock_redfish_request.mock_calls[0].args[2])
+        self.assertEqual(
+            payload, mock_redfish_request.mock_calls[0].args[3]()
+        )  # The 4th arg is a function that produces the payload.
+
+        self.assertEqual(b"GET", mock_redfish_request.mock_calls[1].args[0])
+        self.assertTrue(
+            mock_redfish_request.mock_calls[1]
+            .args[1]
+            .endswith(b"/redfish/v1/Systems/1")
+        )
+
+        self.assertEqual(b"GET", mock_redfish_request.mock_calls[2].args[0])
+        self.assertTrue(
+            mock_redfish_request.mock_calls[2]
+            .args[1]
+            .endswith(b"/redfish/v1/Systems/1")
+        )
+
+    @inlineCallbacks
+    def test_power_waits_for_status_off(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        power_change = "ForceOff"
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        node_id = b"1"
+        mock_file_body_producer = self.patch(
+            redfish_module, "FileBodyProducer"
+        )
+        payload = FileBodyProducer(
+            BytesIO(
+                json.dumps({"ResetType": "%s" % power_change}).encode("utf-8")
+            )
+        )
+        mock_file_body_producer.return_value = payload
+        mock_redfish_request = self.patch(driver, "redfish_request")
+        NODE_OFF = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_OFF["PowerState"] = "Off"
+        NODE_ON = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_ON["PowerState"] = "On"
+        redfish_responses = [(NODE_ON, None)] * 2 + [(NODE_OFF, None)]
+        mock_redfish_request.side_effect = redfish_responses
+
+        expected_uri = join(url, REDFISH_POWER_CONTROL_ENDPOINT % node_id)
+        yield driver.power(power_change, url, node_id, headers)
+        self.assertEqual(3, len(mock_redfish_request.mock_calls))
+
+        self.assertEqual(b"POST", mock_redfish_request.mock_calls[0].args[0])
+        self.assertEqual(
+            expected_uri, mock_redfish_request.mock_calls[0].args[1]
+        )
+        self.assertEqual(headers, mock_redfish_request.mock_calls[0].args[2])
+        self.assertEqual(
+            payload, mock_redfish_request.mock_calls[0].args[3]()
+        )  # The 4th arg is a function that produces the payload.
+
+        self.assertEqual(b"GET", mock_redfish_request.mock_calls[1].args[0])
+        self.assertTrue(
+            mock_redfish_request.mock_calls[1]
+            .args[1]
+            .endswith(b"/redfish/v1/Systems/1")
+        )
+
+        self.assertEqual(b"GET", mock_redfish_request.mock_calls[2].args[0])
+        self.assertTrue(
+            mock_redfish_request.mock_calls[2]
+            .args[1]
+            .endswith(b"/redfish/v1/Systems/1")
+        )
+
+    @inlineCallbacks
+    def test_power_does_not_reach_desired_status(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        power_change = "ForceOff"
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        node_id = b"1"
+        mock_file_body_producer = self.patch(
+            redfish_module, "FileBodyProducer"
+        )
+        payload = FileBodyProducer(
+            BytesIO(
+                json.dumps({"ResetType": "%s" % power_change}).encode("utf-8")
+            )
+        )
+        mock_file_body_producer.return_value = payload
+        mock_redfish_request = self.patch(driver, "redfish_request")
+        NODE_OFF = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_OFF["PowerState"] = "Off"
+        NODE_ON = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_ON["PowerState"] = "On"
+        redfish_responses = [(NODE_ON, None)] * 10
+        mock_redfish_request.side_effect = redfish_responses
+
+        with self.assertRaisesRegex(
+            PowerActionError,
+            "^The redfish node '1' did not transition to the state 'off'",
+        ):
+            yield driver.power(power_change, url, node_id, headers)
 
     @inlineCallbacks
     def test_set_pxe_boot_no_etag(self):
@@ -553,12 +694,19 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_get_etag = self.patch(driver, "get_etag")
         mock_get_etag.return_value = None
         yield driver.set_pxe_boot(url, node_id, headers)
-        mock_redfish_request.assert_called_once_with(
-            b"PATCH",
+        self.assertEqual(1, len(mock_redfish_request.mock_calls))
+        self.assertEqual(b"PATCH", mock_redfish_request.mock_calls[0].args[0])
+        self.assertEqual(
             join(url, b"redfish/v1/Systems/%s" % node_id),
-            headers,
-            payload,
+            mock_redfish_request.mock_calls[0].args[1],
         )
+        self.assertEqual(headers, mock_redfish_request.mock_calls[0].args[2])
+        self.assertEqual(
+            payload, mock_redfish_request.mock_calls[0].args[3]()
+        )  # The 4th arg is a function that produces the payload.
+        # The 5th arg is a function that produces the etag.
+        argument_etag = yield mock_redfish_request.mock_calls[0].args[4]()
+        self.assertEqual(None, argument_etag)
 
     @inlineCallbacks
     def test_set_pxe_boot_with_etag(self):
@@ -588,11 +736,70 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_get_etag.return_value = b"1631210000"
         headers.addRawHeader(b"If-Match", mock_get_etag.return_value)
         yield driver.set_pxe_boot(url, node_id, headers)
-        mock_redfish_request.assert_called_once_with(
-            b"PATCH",
+        self.assertEqual(1, len(mock_redfish_request.mock_calls))
+        self.assertEqual(b"PATCH", mock_redfish_request.mock_calls[0].args[0])
+        self.assertEqual(
             join(url, b"redfish/v1/Systems/%s" % node_id),
-            headers,
-            payload,
+            mock_redfish_request.mock_calls[0].args[1],
+        )
+        self.assertEqual(headers, mock_redfish_request.mock_calls[0].args[2])
+        self.assertEqual(
+            payload, mock_redfish_request.mock_calls[0].args[3]()
+        )  # The 4th arg is a function that produces the payload.
+        # The 5th arg is a function that produces the etag.
+        argument_etag = yield mock_redfish_request.mock_calls[0].args[4]()
+        self.assertEqual(b"1631210000", argument_etag)
+
+    @inlineCallbacks
+    def test_redfish_request_retry_refreshed_etag(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+
+        def get_bodyProducer():
+            return FileBodyProducer(
+                BytesIO(
+                    json.dumps(
+                        {
+                            "Boot": {
+                                "BootSourceOverrideEnabled": "Once",
+                                "BootSourceOverrideTarget": "Pxe",
+                            }
+                        }
+                    ).encode("utf-8")
+                )
+            )
+
+        get_etag = MagicMock()
+        get_etag.side_effect = [succeed(b"12345"), succeed(b"67890")]
+
+        mock_redfish_request = self.patch(driver, "_redfish_request")
+        mock_redfish_request.side_effect = [
+            PowerActionError("BOOM"),
+            succeed(True),
+        ]
+        yield driver.redfish_request(
+            b"POST", url, headers, get_bodyProducer, get_etag
+        )
+        self.assertEqual(2, len(mock_redfish_request.mock_calls))
+        self.assertEqual(b"POST", mock_redfish_request.mock_calls[0].args[0])
+        self.assertEqual(url, mock_redfish_request.mock_calls[0].args[1])
+        self.assertEqual(
+            get_bodyProducer, mock_redfish_request.mock_calls[0].args[3]
+        )
+
+        self.assertEqual(b"POST", mock_redfish_request.mock_calls[1].args[0])
+        self.assertEqual(url, mock_redfish_request.mock_calls[1].args[1])
+        # Check that the retry has replaced the etag.
+        self.assertEqual(
+            [b"67890"],
+            mock_redfish_request.mock_calls[1]
+            .args[2]
+            .getRawHeaders(b"If-Match"),
+        )
+        self.assertEqual(
+            get_bodyProducer, mock_redfish_request.mock_calls[1].args[3]
         )
 
     @inlineCallbacks
