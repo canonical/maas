@@ -12,9 +12,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -62,9 +60,9 @@ class SubnetsHandler(Handler):
         self,
         fabric_id: int,
         vlan_id: int,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> SubnetsListResponse:
         vlan = await services.vlans.get_one(
             QuerySpec(
                 where=VlansClauseFactory.and_clauses(
@@ -93,8 +91,8 @@ class SubnetsHandler(Handler):
             )
         )
         subnets = await services.subnets.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=query,
         )
         return SubnetsListResponse(
@@ -105,10 +103,13 @@ class SubnetsHandler(Handler):
                 )
                 for subnet in subnets.items
             ],
+            total=subnets.total,
             next=(
                 f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets?"
-                f"{TokenPaginationParams.to_href_format(subnets.next_token, token_pagination_params.size)}"
-                if subnets.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if subnets.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

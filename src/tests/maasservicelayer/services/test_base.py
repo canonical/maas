@@ -95,14 +95,14 @@ class TestBaseService:
 
     async def test_list(self, repository_mock, service):
         resources = ListResult[DummyMaasBaseModel](
-            items=[DummyMaasBaseModel(id=0)], next_token=None
+            items=[DummyMaasBaseModel(id=0)], total=1
         )
         repository_mock.list.return_value = resources
         query = QuerySpec()
-        results = await service.list("token", 10, query)
+        results = await service.list(1, 10, query)
 
         repository_mock.list.assert_awaited_once_with(
-            token="token", size=10, query=query
+            page=1, size=10, query=query
         )
         assert results == resources
 

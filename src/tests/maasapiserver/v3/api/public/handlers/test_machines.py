@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -7,9 +7,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.responses.machines import (
     HardwareDeviceTypeEnum,
     MachinesListResponse,
@@ -178,16 +175,14 @@ class TestMachinesApi(ApiCommonTests):
     ) -> None:
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
-            items=[TEST_MACHINE_2], next_token=str(TEST_MACHINE.id)
+            items=[TEST_MACHINE_2], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 1
-        assert (
-            machines_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_MACHINE.id), size='1')}"
-        )
+        assert machines_response.total == 2
+        assert machines_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_no_other_page(
         self,
@@ -196,12 +191,13 @@ class TestMachinesApi(ApiCommonTests):
     ) -> None:
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
-            items=[TEST_MACHINE_2, TEST_MACHINE], next_token=None
+            items=[TEST_MACHINE_2, TEST_MACHINE], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 2
+        assert machines_response.total == 2
         assert machines_response.next is None
 
     async def test_list_user_perms(
@@ -211,15 +207,16 @@ class TestMachinesApi(ApiCommonTests):
     ) -> None:
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
-            items=[TEST_MACHINE], next_token=None
+            items=[TEST_MACHINE], total=1
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 1
+        assert machines_response.total == 1
         assert machines_response.next is None
         services_mock.machines.list.assert_called_once_with(
-            token=None,
+            page=1,
             size=2,
             query=QuerySpec(
                 where=MachineClauseFactory.or_clauses(
@@ -238,7 +235,7 @@ class TestMachinesApi(ApiCommonTests):
     ) -> None:
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
-            items=[TEST_MACHINE_2], next_token=None
+            items=[TEST_MACHINE_2], total=1
         )
         response = await mocked_api_client_admin.get(
             f"{self.BASE_PATH}?size=2"
@@ -246,9 +243,10 @@ class TestMachinesApi(ApiCommonTests):
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 1
+        assert machines_response.total == 1
         assert machines_response.next is None
         services_mock.machines.list.assert_called_once_with(
-            token=None, size=2, query=QuerySpec(where=None)
+            page=1, size=2, query=QuerySpec(where=None)
         )
 
     async def test_list_rbac(
@@ -276,12 +274,13 @@ class TestMachinesApi(ApiCommonTests):
         )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
-            items=[TEST_MACHINE], next_token=None
+            items=[TEST_MACHINE], total=1
         )
         response = await mocked_api_client_user_rbac.get(self.BASE_PATH)
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 1
+        assert machines_response.total == 1
         assert machines_response.next is None
         rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
             user="username",
@@ -292,7 +291,7 @@ class TestMachinesApi(ApiCommonTests):
             },
         )
         services_mock.machines.list.assert_called_once_with(
-            token=None,
+            page=1,
             size=20,
             query=QuerySpec(
                 where=MachineClauseFactory.or_clauses(
@@ -379,17 +378,15 @@ class TestUsbDevicesApi(ApiCommonTests):
         services_mock.machines.list_machine_usb_devices.return_value = (
             ListResult[UsbDevice](
                 items=[TEST_USB_DEVICE_2],
-                next_token=str(TEST_USB_DEVICE.id),
+                total=2,
             )
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         devices_response = UsbDevicesListResponse(**response.json())
         assert len(devices_response.items) == 1
-        assert (
-            devices_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_USB_DEVICE.id), size='1')}"
-        )
+        assert devices_response.total == 2
+        assert devices_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_no_other_page(
         self,
@@ -399,13 +396,14 @@ class TestUsbDevicesApi(ApiCommonTests):
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_usb_devices.return_value = (
             ListResult[UsbDevice](
-                items=[TEST_USB_DEVICE_2, TEST_USB_DEVICE], next_token=None
+                items=[TEST_USB_DEVICE_2, TEST_USB_DEVICE], total=2
             )
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         devices_response = UsbDevicesListResponse(**response.json())
         assert len(devices_response.items) == 2
+        assert devices_response.total == 2
         assert devices_response.next is None
 
 
@@ -429,18 +427,14 @@ class TestPciDevicesApi(ApiCommonTests):
     ) -> None:
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_pci_devices.return_value = (
-            ListResult[PciDevice](
-                items=[TEST_PCI_DEVICE_2], next_token=str(TEST_PCI_DEVICE.id)
-            )
+            ListResult[PciDevice](items=[TEST_PCI_DEVICE_2], total=2)
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         devices_response = PciDevicesListResponse(**response.json())
         assert len(devices_response.items) == 1
-        assert (
-            devices_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_PCI_DEVICE.id), size='1')}"
-        )
+        assert devices_response.total == 2
+        assert devices_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_no_other_page(
         self,
@@ -450,11 +444,12 @@ class TestPciDevicesApi(ApiCommonTests):
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_pci_devices.return_value = (
             ListResult[PciDevice](
-                items=[TEST_PCI_DEVICE_2, TEST_PCI_DEVICE], next_token=None
+                items=[TEST_PCI_DEVICE_2, TEST_PCI_DEVICE], total=2
             )
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         devices_response = PciDevicesListResponse(**response.json())
         assert len(devices_response.items) == 2
+        assert devices_response.total == 2
         assert devices_response.next is None

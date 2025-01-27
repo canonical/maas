@@ -1,8 +1,7 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import math
-from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import func, select
 
@@ -59,26 +58,21 @@ async def test_perf_list_machines_APIv3_endpoint_all(
     # APIv3 without any pagination.
     machine_count = await get_machine_count(db_connection)
     machine_pages = math.ceil(machine_count / MAX_PAGE_SIZE)
+    print(machine_pages)
     responses = [None] * machine_pages
     with perf.record("test_perf_list_machines_APIv3_endpoint_all"):
         # Extracted from a clean load of labmaas with empty local
         # storage
-        token = None
         for page in range(machine_pages):
             params = {
+                "page": page + 1,
                 "size": MAX_PAGE_SIZE,
             }
-            if token:
-                params["token"] = token
             response = await api_client.get(
                 f"{V3_API_PREFIX}/machines", params=params
             )
             responses[page] = response
-            if next_page := response.json()["next"]:
-                token = parse_qs(urlparse(next_page).query)["token"][0]
-            else:
-                token = None
-    assert token is None
+    assert "next" not in responses[-1].json().keys()
     assert all([r.status_code == 200 for r in responses])
     assert sum([len(r.json()["items"]) for r in responses]) == machine_count
 
@@ -100,13 +94,11 @@ async def test_perf_list_machines_APIv3_endpoint_all_local_filtering(
     ):
         # Extracted from a clean load of labmaas with empty local
         # storage
-        token = None
         for page in range(machine_pages):
             params = {
+                "page": page + 1,
                 "size": MAX_PAGE_SIZE,
             }
-            if token:
-                params["token"] = token
             response = await api_client.get(
                 f"{V3_API_PREFIX}/machines", params=params
             )
@@ -117,11 +109,7 @@ async def test_perf_list_machines_APIv3_endpoint_all_local_filtering(
                 if machine["cpu_count"] == 1 and machine["memory_MiB"] == 1024
             ]
             filtered_responses[page] = filtered_response
-            if next_page := response.json()["next"]:
-                token = parse_qs(urlparse(next_page).query)["token"][0]
-            else:
-                token = None
-    assert token is None
+    assert "next" not in responses[-1].json().keys()
     assert all([r.status_code == 200 for r in responses])
     assert sum([len(r.json()["items"]) for r in responses]) == machine_count
     assert sum([len(r) for r in filtered_responses]) == machine_count // 10
@@ -142,13 +130,11 @@ async def test_perf_list_machines_APIv3_endpoint_all_pci_devices(
     with perf.record("test_perf_list_machines_APIv3_endpoint_all_pci_devices"):
         # Extracted from a clean load of labmaas with empty local
         # storage
-        token = None
         for page in range(machine_pages):
             params = {
+                "page": page + 1,
                 "size": MAX_PAGE_SIZE,
             }
-            if token:
-                params["token"] = token
             response = await api_client.get(
                 f"{V3_API_PREFIX}/machines", params=params
             )
@@ -171,11 +157,7 @@ async def test_perf_list_machines_APIv3_endpoint_all_pci_devices(
                 devices.append(device)
             filtered_devices[page] = devices
 
-            if next_page := response.json()["next"]:
-                token = parse_qs(urlparse(next_page).query)["token"][0]
-            else:
-                token = None
-    assert token is None
+    assert "next" not in responses[-1].json().keys()
     assert all([r.status_code == 200 for r in responses])
     assert sum([len(r.json()["items"]) for r in responses]) == machine_count
     assert sum([len(r) for r in filtered_devices]) == machine_count

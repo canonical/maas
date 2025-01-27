@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional, Self
@@ -9,7 +9,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
     HalResponse,
-    TokenPaginatedResponse,
+    PaginatedResponse,
 )
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.models.ipranges import IPRange
@@ -41,5 +41,5 @@ class IPRangeResponse(HalResponse[BaseHal]):
         )
 
 
-class IPRangeListResponse(TokenPaginatedResponse[IPRangeResponse]):
+class IPRangeListResponse(PaginatedResponse[IPRangeResponse]):
     kind = "IPRangesList"

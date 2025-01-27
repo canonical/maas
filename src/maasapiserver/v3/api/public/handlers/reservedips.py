@@ -12,9 +12,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.reservedips import (
     ReservedIPCreateRequest,
     ReservedIPUpdateRequest,
@@ -74,9 +72,9 @@ class ReservedIPsHandler(Handler):
         fabric_id: int,
         vlan_id: int,
         subnet_id: int,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> ReservedIPsListResponse:
         query = QuerySpec(
             where=ReservedIPsClauseFactory.and_clauses(
                 [
@@ -87,8 +85,8 @@ class ReservedIPsHandler(Handler):
             )
         )
         reservedips = await services.reservedips.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=query,
         )
         return ReservedIPsListResponse(
@@ -99,10 +97,13 @@ class ReservedIPsHandler(Handler):
                 )
                 for reservedip in reservedips.items
             ],
+            total=reservedips.total,
             next=(
                 f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/reserved_ips?"
-                f"{TokenPaginationParams.to_href_format(reservedips.next_token, token_pagination_params.size)}"
-                if reservedips.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if reservedips.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

@@ -13,9 +13,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.sshkeys import (
     SshKeyImportFromSourceRequest,
     SshKeyManualUploadRequest,
@@ -57,16 +55,16 @@ class SshKeysHandler(Handler):
     )
     async def list_user_sshkeys(
         self,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         authenticated_user: AuthenticatedUser | None = Depends(
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> SshKeysListResponse:
         assert authenticated_user is not None
         ssh_keys = await services.sshkeys.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=QuerySpec(
                 where=SshKeyClauseFactory.with_user_id(authenticated_user.id)
             ),
@@ -80,10 +78,13 @@ class SshKeysHandler(Handler):
                 )
                 for ssh_key in ssh_keys.items
             ],
+            total=ssh_keys.total,
             next=(
                 f"{V3_API_PREFIX}/users/me/sshkeys?"
-                f"{TokenPaginationParams.to_href_format(ssh_keys.next_token, token_pagination_params.size)}"
-                if ssh_keys.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if ssh_keys.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )
@@ -190,14 +191,23 @@ class SshKeysHandler(Handler):
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> SshKeysListResponse:
         assert authenticated_user is not None
         imported_sshkeys = await services.sshkeys.import_keys(
             sshkey_request.protocol,
             sshkey_request.auth_id,
             authenticated_user.id,
         )
-        return SshKeysListResponse(items=imported_sshkeys)
+        return SshKeysListResponse(
+            items=[
+                SshKeyResponse.from_model(
+                    sshkey,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/users/me/sshkeys",
+                )
+                for sshkey in imported_sshkeys
+            ],
+            total=len(imported_sshkeys),
+        )
 
     @handler(
         path="/users/me/sshkeys/{id}",

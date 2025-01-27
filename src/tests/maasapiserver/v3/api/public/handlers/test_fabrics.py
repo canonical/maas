@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -10,9 +10,6 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.fabrics import FabricRequest
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.responses.fabrics import (
     FabricResponse,
     FabricsListResponse,
@@ -84,12 +81,13 @@ class TestFabricsApi(ApiCommonTests):
     ) -> None:
         services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.list.return_value = ListResult[Fabric](
-            items=[TEST_FABRIC], next_token=None
+            items=[TEST_FABRIC], total=1
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         fabrics_response = FabricsListResponse(**response.json())
         assert len(fabrics_response.items) == 1
+        assert fabrics_response.total == 1
         assert fabrics_response.next is None
 
     async def test_list_other_page(
@@ -99,16 +97,13 @@ class TestFabricsApi(ApiCommonTests):
     ) -> None:
         services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.list.return_value = ListResult[Fabric](
-            items=[TEST_FABRIC_2], next_token=str(TEST_FABRIC.id)
+            items=[TEST_FABRIC_2], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         fabrics_response = FabricsListResponse(**response.json())
         assert len(fabrics_response.items) == 1
-        assert (
-            fabrics_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_FABRIC.id), size='1')}"
-        )
+        assert fabrics_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     # GET /fabric/{ID}
     async def test_get_200(

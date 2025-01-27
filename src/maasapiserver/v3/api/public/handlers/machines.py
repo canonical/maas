@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends, Response
@@ -10,9 +10,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.machines import (
     MachineResponse,
     MachinesListResponse,
@@ -67,12 +65,12 @@ class MachinesHandler(Handler):
     )
     async def list_machines(
         self,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
         authenticated_user: AuthenticatedUser = Depends(
             get_authenticated_user
         ),
-    ) -> Response:
+    ) -> MachinesListResponse:
         if authenticated_user.rbac_permissions:
             where_clause = MachineClauseFactory.or_clauses(
                 [
@@ -114,8 +112,8 @@ class MachinesHandler(Handler):
         query = QuerySpec(where=where_clause)
 
         machines = await services.machines.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=query,
         )
         return MachinesListResponse(
@@ -126,10 +124,13 @@ class MachinesHandler(Handler):
                 )
                 for machine in machines.items
             ],
+            total=machines.total,
             next=(
                 f"{V3_API_PREFIX}/machines?"
-                f"{TokenPaginationParams.to_href_format(machines.next_token, token_pagination_params.size)}"
-                if machines.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if machines.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )
@@ -153,13 +154,13 @@ class MachinesHandler(Handler):
     async def list_machine_usb_devices(
         self,
         system_id: str,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         usb_devices = await services.machines.list_machine_usb_devices(
             system_id=system_id,
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
         )
         return UsbDevicesListResponse(
             items=[
@@ -169,10 +170,13 @@ class MachinesHandler(Handler):
                 )
                 for device in usb_devices.items
             ],
+            total=usb_devices.total,
             next=(
                 f"{V3_API_PREFIX}/machines/{system_id}/usb_devices?"
-                f"{TokenPaginationParams.to_href_format(usb_devices.next_token, token_pagination_params.size)}"
-                if usb_devices.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if usb_devices.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )
@@ -196,13 +200,13 @@ class MachinesHandler(Handler):
     async def list_machine_pci_devices(
         self,
         system_id: str,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         pci_devices = await services.machines.list_machine_pci_devices(
             system_id=system_id,
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
         )
         return PciDevicesListResponse(
             items=[
@@ -212,10 +216,13 @@ class MachinesHandler(Handler):
                 )
                 for device in pci_devices.items
             ],
+            total=pci_devices.total,
             next=(
                 f"{V3_API_PREFIX}/machines/{system_id}/pci_devices?"
-                f"{TokenPaginationParams.to_href_format(pci_devices.next_token, token_pagination_params.size)}"
-                if pci_devices.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if pci_devices.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

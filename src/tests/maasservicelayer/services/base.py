@@ -63,11 +63,11 @@ class ServiceCommonTests(abc.ABC):
     async def test_list(self, service_instance):
         service_instance.repository.list.return_value = []
         objects = await service_instance.list(
-            token="mytoken", size=10, query=QuerySpec()
+            page=1, size=10, query=QuerySpec()
         )
         assert objects == []
         service_instance.repository.list.assert_awaited_once_with(
-            token="mytoken", size=10, query=QuerySpec()
+            page=1, size=10, query=QuerySpec()
         )
 
     async def test_update_many(

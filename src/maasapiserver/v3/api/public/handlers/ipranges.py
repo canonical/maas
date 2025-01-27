@@ -16,9 +16,7 @@ from maasapiserver.v3.api.public.models.requests.ipranges import (
     IPRangeCreateRequest,
     IPRangeUpdateRequest,
 )
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
@@ -76,12 +74,12 @@ class IPRangesHandler(Handler):
         fabric_id: int,
         vlan_id: int,
         subnet_id: int,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> IPRangeListResponse:
         ipranges = await services.ipranges.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
                     [
@@ -100,10 +98,13 @@ class IPRangesHandler(Handler):
                 )
                 for iprange in ipranges.items
             ],
+            total=ipranges.total,
             next=(
                 f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/ipranges?"
-                f"{TokenPaginationParams.to_href_format(ipranges.next_token, token_pagination_params.size)}"
-                if ipranges.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if ipranges.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

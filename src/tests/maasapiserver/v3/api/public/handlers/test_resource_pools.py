@@ -9,9 +9,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
 )
@@ -87,11 +84,12 @@ class TestResourcePoolApi(ApiCommonTests):
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.list.return_value = ListResult[
             ResourcePool
-        ](items=[TEST_RESOURCE_POOL], next_token=None)
+        ](items=[TEST_RESOURCE_POOL], total=1)
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         resource_pools_response = ResourcePoolsListResponse(**response.json())
         assert len(resource_pools_response.items) == 1
+        assert resource_pools_response.total == 1
         assert resource_pools_response.next is None
 
     async def test_list_other_page(
@@ -104,15 +102,15 @@ class TestResourcePoolApi(ApiCommonTests):
             ResourcePool
         ](
             items=[TEST_RESOURCE_POOL_2],
-            next_token=str(TEST_RESOURCE_POOL.id),
+            total=2,
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         resource_pools_response = ResourcePoolsListResponse(**response.json())
         assert len(resource_pools_response.items) == 1
+        assert resource_pools_response.total == 2
         assert (
-            resource_pools_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_RESOURCE_POOL.id), size='1')}"
+            resource_pools_response.next == f"{self.BASE_PATH}?page=2&size=1"
         )
 
     async def test_list_with_rbac(
@@ -141,7 +139,7 @@ class TestResourcePoolApi(ApiCommonTests):
             ResourcePool
         ](
             items=[TEST_RESOURCE_POOL, TEST_RESOURCE_POOL_2],
-            next_token=None,
+            total=2,
         )
         response = await mocked_api_client_user_rbac.get(f"{self.BASE_PATH}")
         assert response.status_code == 200
@@ -153,7 +151,7 @@ class TestResourcePoolApi(ApiCommonTests):
             permissions={RbacPermission.VIEW, RbacPermission.VIEW_ALL},
         )
         services_mock.resource_pools.list.assert_called_once_with(
-            token=None,
+            page=1,
             size=20,
             query=QuerySpec(where=ResourcePoolClauseFactory.with_ids([1, 2])),
         )

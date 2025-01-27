@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
@@ -183,9 +183,9 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
             user_agent="me",
         )
 
-        events_result = await repository_instance.list(token=None, size=10)
-        assert events_result.next_token is None
+        events_result = await repository_instance.list(page=1, size=10)
         assert len(events_result.items) == 2
+        assert events_result.total == 2
 
         query = QuerySpec(
             where=EventsClauseFactory.with_system_ids(
@@ -193,17 +193,17 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
             )
         )
         events_result = await repository_instance.list(
-            token=None, size=10, query=query
+            page=1, size=10, query=query
         )
-        assert events_result.next_token is None
         assert len(events_result.items) == 1
+        assert events_result.total == 1
         assert events_result.items[0].id == event.id
 
         query = QuerySpec(
             where=EventsClauseFactory.with_system_ids(["NO MATCH"])
         )
         events_result = await repository_instance.list(
-            token=None, size=10, query=query
+            page=1, size=10, query=query
         )
-        assert events_result.next_token is None
         assert len(events_result.items) == 0
+        assert events_result.total == 0

@@ -13,9 +13,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.vlans import (
     VlanCreateRequest,
     VlanUpdateRequest,
@@ -90,12 +88,12 @@ class VlansHandler(Handler):
     async def list_fabric_vlans(
         self,
         fabric_id: int,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> VlansListResponse:
         vlans = await services.vlans.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=QuerySpec(
                 where=VlansClauseFactory.with_fabric_id(fabric_id)
             ),
@@ -108,10 +106,13 @@ class VlansHandler(Handler):
                 )
                 for vlan in vlans.items
             ],
+            total=vlans.total,
             next=(
                 f"{V3_API_PREFIX}/fabrics/{fabric_id}/vlans?"
-                f"{TokenPaginationParams.to_href_format(vlans.next_token, token_pagination_params.size)}"
-                if vlans.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if vlans.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

@@ -15,9 +15,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.sslkeys import SSLKeyRequest
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -64,14 +62,14 @@ class SSLKeysHandler(Handler):
         authenticated_user: AuthenticatedUser | None = Depends(
             get_authenticated_user
         ),
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> SSLKeyListResponse:
         assert authenticated_user is not None
 
         sslkeys = await services.sslkeys.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=QuerySpec(
                 where=SSLKeyClauseFactory.with_user_id(authenticated_user.id),
             ),
@@ -84,10 +82,13 @@ class SSLKeysHandler(Handler):
                 )
                 for sslkey in sslkeys.items
             ],
+            total=sslkeys.total,
             next=(
                 f"{V3_API_PREFIX}/users/me/sslkeys?"
-                f"{TokenPaginationParams.to_href_format(sslkeys.next_token, token_pagination_params.size)}"
-                if sslkeys.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if sslkeys.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

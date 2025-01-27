@@ -9,9 +9,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.vlans import (
     VlanCreateRequest,
     VlanUpdateRequest,
@@ -168,12 +165,13 @@ class TestVlanApi(ApiCommonTests):
     ) -> None:
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.list.return_value = ListResult[Vlan](
-            items=[TEST_VLAN], next_token=None
+            items=[TEST_VLAN], total=1
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         vlans_response = VlansListResponse(**response.json())
         assert len(vlans_response.items) == 1
+        assert vlans_response.total == 1
         assert vlans_response.next is None
 
     async def test_list_other_page(
@@ -183,16 +181,14 @@ class TestVlanApi(ApiCommonTests):
     ) -> None:
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.list.return_value = ListResult[Vlan](
-            items=[TEST_VLAN_2], next_token=str(TEST_VLAN.id)
+            items=[TEST_VLAN_2], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         vlans_response = VlansListResponse(**response.json())
         assert len(vlans_response.items) == 1
-        assert (
-            vlans_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_VLAN.id), size='1')}"
-        )
+        assert vlans_response.total == 2
+        assert vlans_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     # GET /vlans/{vlan_id}
     async def test_get_200(

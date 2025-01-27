@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional, Self
@@ -7,7 +7,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
     HalResponse,
-    TokenPaginatedResponse,
+    PaginatedResponse,
 )
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
@@ -65,7 +65,7 @@ class MachineResponse(HalResponse[BaseHal]):
         )
 
 
-class MachinesListResponse(TokenPaginatedResponse[MachineResponse]):
+class MachinesListResponse(PaginatedResponse[MachineResponse]):
     kind = "MachinesList"
 
 
@@ -103,7 +103,7 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
         )
 
 
-class UsbDevicesListResponse(TokenPaginatedResponse[UsbDeviceResponse]):
+class UsbDevicesListResponse(PaginatedResponse[UsbDeviceResponse]):
     kind = "MachineHardwareDevicesList"
 
 
@@ -143,7 +143,7 @@ class PciDeviceResponse(HalResponse[BaseHal]):
         )
 
 
-class PciDevicesListResponse(TokenPaginatedResponse[PciDeviceResponse]):
+class PciDevicesListResponse(PaginatedResponse[PciDeviceResponse]):
     kind = "MachinePciDevicesList"
 
 

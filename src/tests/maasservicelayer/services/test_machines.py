@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -61,7 +61,7 @@ class TestMachinesService:
     async def test_list_machine_usb_devices(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list_machine_usb_devices.return_value = (
-            ListResult[UsbDevice](items=[], next_token=None)
+            ListResult[UsbDevice](items=[], total=0)
         )
         machines_service = MachinesService(
             context=Context(connection=Mock(AsyncConnection)),
@@ -69,18 +69,18 @@ class TestMachinesService:
             machines_repository=machines_repository_mock,
         )
         usb_devices_list = await machines_service.list_machine_usb_devices(
-            system_id="dummy", token=None, size=1
+            system_id="dummy", page=1, size=1
         )
         machines_repository_mock.list_machine_usb_devices.assert_called_once_with(
-            system_id="dummy", token=None, size=1
+            system_id="dummy", page=1, size=1
         )
-        assert usb_devices_list.next_token is None
+        assert usb_devices_list.total == 0
         assert usb_devices_list.items == []
 
     async def test_list_machine_pci_devices(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list_machine_pci_devices.return_value = (
-            ListResult[PciDevice](items=[], next_token=None)
+            ListResult[PciDevice](items=[], total=0)
         )
         machines_service = MachinesService(
             context=Context(connection=Mock(AsyncConnection)),
@@ -88,12 +88,12 @@ class TestMachinesService:
             machines_repository=machines_repository_mock,
         )
         pci_devices_list = await machines_service.list_machine_pci_devices(
-            system_id="dummy", token=None, size=1
+            system_id="dummy", page=1, size=1
         )
         machines_repository_mock.list_machine_pci_devices.assert_called_once_with(
-            system_id="dummy", token=None, size=1
+            system_id="dummy", page=1, size=1
         )
-        assert pci_devices_list.next_token is None
+        assert pci_devices_list.total == 0
         assert pci_devices_list.items == []
 
     async def test_count_machines_by_statuses(self) -> None:

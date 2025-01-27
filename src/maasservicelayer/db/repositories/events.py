@@ -1,9 +1,9 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any, Type
 
-from sqlalchemy import case, Select, select, Table
+from sqlalchemy import case, join, Select, select, Table
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, ne, or_
 
@@ -20,7 +20,14 @@ class EventsClauseFactory(ClauseFactory):
             condition=or_(
                 EventTable.c.node_system_id.in_(system_ids),
                 NodeTable.c.system_id.in_(system_ids),
-            )
+            ),
+            joins=[
+                join(
+                    EventTable,
+                    NodeTable,
+                    eq(NodeTable.c.id, EventTable.c.node_id),
+                )
+            ],
         )
 
 

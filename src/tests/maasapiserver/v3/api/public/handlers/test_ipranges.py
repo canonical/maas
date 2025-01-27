@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
@@ -9,9 +9,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.responses.ipranges import (
     IPRangeListResponse,
     IPRangeResponse,
@@ -91,15 +88,16 @@ class TestIPRangesApi(ApiCommonTests):
     ) -> None:
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.list.return_value = ListResult[IPRange](
-            items=[TEST_IPRANGE], next_token=None
+            items=[TEST_IPRANGE], total=1
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         ipranges_response = IPRangeListResponse(**response.json())
         assert len(ipranges_response.items) == 1
+        assert ipranges_response.total == 1
         assert ipranges_response.next is None
         services_mock.ipranges.list.assert_called_once_with(
-            token=None,
+            page=1,
             size=1,
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
@@ -119,18 +117,15 @@ class TestIPRangesApi(ApiCommonTests):
     ) -> None:
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.list.return_value = ListResult[IPRange](
-            items=[TEST_IPRANGE_2], next_token=str(TEST_IPRANGE.id)
+            items=[TEST_IPRANGE_2], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         ipranges_response = IPRangeListResponse(**response.json())
         assert len(ipranges_response.items) == 1
-        assert (
-            ipranges_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_IPRANGE.id), size='1')}"
-        )
+        assert ipranges_response.next == f"{self.BASE_PATH}?page=2&size=1"
         services_mock.ipranges.list.assert_called_once_with(
-            token=None,
+            page=1,
             size=1,
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(

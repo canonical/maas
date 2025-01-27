@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Network
@@ -10,9 +10,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
 from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetsListResponse,
@@ -103,7 +100,7 @@ class TestSubnetApi(ApiCommonTests):
     ) -> None:
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.list.return_value = ListResult[Subnet](
-            items=[TEST_SUBNET], next_token=None
+            items=[TEST_SUBNET], total=1
         )
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_one.return_value = Mock(Vlan)
@@ -111,6 +108,7 @@ class TestSubnetApi(ApiCommonTests):
         assert response.status_code == 200
         subnets_response = SubnetsListResponse(**response.json())
         assert len(subnets_response.items) == 1
+        assert subnets_response.total == 1
         assert subnets_response.next is None
 
     async def test_list_other_page(
@@ -120,7 +118,7 @@ class TestSubnetApi(ApiCommonTests):
     ) -> None:
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.list.return_value = ListResult[Subnet](
-            items=[TEST_SUBNET_2], next_token=str(TEST_SUBNET.id)
+            items=[TEST_SUBNET_2], total=2
         )
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_one.return_value = Mock(Vlan)
@@ -128,10 +126,8 @@ class TestSubnetApi(ApiCommonTests):
         assert response.status_code == 200
         subnets_response = SubnetsListResponse(**response.json())
         assert len(subnets_response.items) == 1
-        assert (
-            subnets_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_SUBNET.id), size='1')}"
-        )
+        assert subnets_response.total == 2
+        assert subnets_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_vlan_not_in_fabric(
         self,

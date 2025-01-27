@@ -143,9 +143,9 @@ class BaseService(Service, ABC, Generic[M, R, B]):
         return created_resource
 
     async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
+        self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[M]:
-        return await self.repository.list(token=token, size=size, query=query)
+        return await self.repository.list(page=page, size=size, query=query)
 
     async def post_update_many_hook(self, resources: List[M]) -> None:
         """

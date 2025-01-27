@@ -7,9 +7,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.responses.sshkeys import (
     SshKeyResponse,
     SshKeysListResponse,
@@ -74,7 +71,7 @@ class TestSshKeyApi(ApiCommonTests):
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.list.return_value = ListResult[SshKey](
-            items=[SSHKEY_1], next_token=str(SSHKEY_2.id)
+            items=[SSHKEY_1], total=2
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}?size=1",
@@ -83,10 +80,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert response.status_code == 200
         sshkeys_response = SshKeysListResponse(**response.json())
         assert len(sshkeys_response.items) == 1
-        assert (
-            sshkeys_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(SSHKEY_2.id), size='1')}"
-        )
+        assert sshkeys_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_user_sshkeys_no_other_page(
         self,
@@ -95,7 +89,7 @@ class TestSshKeyApi(ApiCommonTests):
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.list.return_value = ListResult[SshKey](
-            items=[SSHKEY_1, SSHKEY_2]
+            items=[SSHKEY_1, SSHKEY_2], total=2
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}?size=2",
@@ -104,6 +98,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert response.status_code == 200
         sshkeys_response = SshKeysListResponse(**response.json())
         assert len(sshkeys_response.items) == 2
+        assert sshkeys_response.total == 2
         assert sshkeys_response.next is None
 
     async def test_get_200(

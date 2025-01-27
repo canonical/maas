@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maascommon.workflows.msm import MachinesCountByStatus
@@ -21,17 +21,17 @@ class MachinesService(NodesService):
         self.machines_repository = machines_repository
 
     async def list_machine_usb_devices(
-        self, system_id: str, token: str | None, size: int
+        self, system_id: str, page: int, size: int
     ) -> ListResult[UsbDevice]:
         return await self.machines_repository.list_machine_usb_devices(
-            system_id=system_id, token=token, size=size
+            system_id=system_id, page=page, size=size
         )
 
     async def list_machine_pci_devices(
-        self, system_id: str, token: str | None, size: int
+        self, system_id: str, page: int, size: int
     ) -> ListResult[PciDevice]:
         return await self.machines_repository.list_machine_pci_devices(
-            system_id=system_id, token=token, size=size
+            system_id=system_id, page=page, size=size
         )
 
     async def count_machines_by_statuses(self) -> MachinesCountByStatus:

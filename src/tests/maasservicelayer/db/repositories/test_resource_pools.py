@@ -100,13 +100,14 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
         resource_pools = await create_n_test_resource_pools(fixture, size=5)
         selected_ids = [resource_pools[0].id, resource_pools[1].id]
         retrieved_resource_pools = await repository_instance.list(
-            token=None,
+            page=1,
             size=20,
             query=QuerySpec(
                 where=ResourcePoolClauseFactory.with_ids(selected_ids)
             ),
         )
         assert len(retrieved_resource_pools.items) == 2
+        assert retrieved_resource_pools.total == 2
         assert all(
             resource_pool.id in selected_ids
             for resource_pool in retrieved_resource_pools.items

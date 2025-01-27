@@ -1,16 +1,16 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any, Type
 
 from sqlalchemy import and_, desc, select, Select, Table
-from sqlalchemy.sql.expression import func
+from sqlalchemy.sql.expression import func, join
 from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.operators import eq, le
+from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
 from maascommon.workflows.msm import MachinesCountByStatus
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.nodes import AbstractNodesRepository
 from maasservicelayer.db.tables import (
     BMCTable,
@@ -27,7 +27,16 @@ from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 class MachineClauseFactory(ClauseFactory):
     @classmethod
     def with_owner(cls, owner: str | None) -> Clause:
-        return Clause(condition=eq(UserTable.c.username, owner))
+        return Clause(
+            condition=eq(UserTable.c.username, owner),
+            joins=[
+                join(
+                    NodeTable,
+                    UserTable,
+                    eq(UserTable.c.id, NodeTable.c.owner_id),
+                )
+            ],
+        )
 
     @classmethod
     def with_resource_pool_ids(cls, rp_ids: set[int] | None) -> Clause:
@@ -87,48 +96,84 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
         )
 
+    async def list(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[Machine]:
+        # Override the default implementation because we have to specialize the `total_stmt` query. If we realise this is a
+        # common use case, we might think about an abstraction at BaseRepository level.
+        total_stmt = (
+            select(count())
+            .select_from(NodeTable)
+            .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
+        )
+        if query:
+            total_stmt = query.enrich_stmt(total_stmt)
+        total = (await self.connection.execute(total_stmt)).scalar()
+
+        stmt = (
+            self.select_all_statement()
+            .order_by(desc(self.get_repository_table().c.id))
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        if query:
+            stmt = query.enrich_stmt(stmt)
+        result = (await self.execute_stmt(stmt)).all()
+        return ListResult[Machine](
+            items=[
+                self.get_model_factory()(**row._asdict()) for row in result
+            ],
+            total=total,
+        )
+
     async def list_machine_usb_devices(
-        self, system_id: str, token: str | None, size: int
+        self, system_id: str, page: int, size: int
     ) -> ListResult[UsbDevice]:
+        total_stmt = (
+            select(count())
+            .select_from(NodeDeviceTable)
+            .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.USB))
+        )
+        total = (await self.connection.execute(total_stmt)).scalar()
+
         stmt = (
             self._list_devices_statement(system_id)
             .order_by(desc(NodeDeviceTable.c.id))
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.USB))
-            .limit(size + 1)
+            .offset((page - 1) * size)
+            .limit(size)
         )
-        if token is not None:
-            stmt = stmt.where(le(NodeDeviceTable.c.id, int(token)))
 
         result = (await self.connection.execute(stmt)).all()
-        next_token = None
-        if len(result) > size:  # There is another page
-            next_token = result.pop().id
 
         return ListResult[UsbDevice](
             items=[UsbDevice(**row._asdict()) for row in result],
-            next_token=next_token,
+            total=total,
         )
 
     async def list_machine_pci_devices(
-        self, system_id: str, token: str | None, size: int
+        self, system_id: str, page: int, size: int
     ) -> ListResult[PciDevice]:
+        total_stmt = (
+            select(count())
+            .select_from(NodeDeviceTable)
+            .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.PCIE))
+        )
+        total = (await self.connection.execute(total_stmt)).scalar()
+
         stmt = (
             self._list_devices_statement(system_id)
             .order_by(desc(NodeDeviceTable.c.id))
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.PCIE))
-            .limit(size + 1)
+            .offset((page - 1) * size)
+            .limit(size)
         )
-        if token is not None:
-            stmt = stmt.where(le(NodeDeviceTable.c.id, int(token)))
 
         result = (await self.connection.execute(stmt)).all()
-        next_token = None
-        if len(result) > size:  # There is another page
-            next_token = result.pop().id
 
         return ListResult[PciDevice](
             items=[PciDevice(**row._asdict()) for row in result],
-            next_token=next_token,
+            total=total,
         )
 
     async def count_machines_by_statuses(self) -> MachinesCountByStatus:

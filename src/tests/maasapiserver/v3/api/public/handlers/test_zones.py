@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -10,9 +10,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.zones import ZoneRequest
 from maasapiserver.v3.api.public.models.responses.zones import (
     ZoneResponse,
@@ -82,16 +79,14 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
-            items=[TEST_ZONE], next_token=str(DEFAULT_ZONE.id)
+            items=[TEST_ZONE], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         zones_response = ZonesListResponse(**response.json())
         assert len(zones_response.items) == 1
-        assert (
-            zones_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(DEFAULT_ZONE.id), size='1')}"
-        )
+        assert zones_response.total == 2
+        assert zones_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_no_other_page(
         self,
@@ -100,12 +95,13 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
-            items=[DEFAULT_ZONE, TEST_ZONE], next_token=None
+            items=[DEFAULT_ZONE, TEST_ZONE], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         zones_response = ZonesListResponse(**response.json())
         assert len(zones_response.items) == 2
+        assert zones_response.total == 2
         assert zones_response.next is None
 
     # GET /zones with filters
@@ -117,7 +113,7 @@ class TestZonesApi(ApiCommonTests):
 
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
-            items=[TEST_ZONE], next_token=str(DEFAULT_ZONE.id)
+            items=[TEST_ZONE], total=2
         )
 
         # Get also the default zone
@@ -135,7 +131,7 @@ class TestZonesApi(ApiCommonTests):
             str(TEST_ZONE.id),
         }
         assert next_link_params["size"][0] == "1"
-        assert next_link_params["token"][0] == str(DEFAULT_ZONE.id)
+        assert next_link_params["page"][0] == "2"
 
     # GET /zones/{zone_id}
     async def test_get_default(

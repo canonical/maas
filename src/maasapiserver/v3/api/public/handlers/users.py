@@ -17,9 +17,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.users import UserRequest
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -130,12 +128,12 @@ class UsersHandler(Handler):
     )
     async def list_users(
         self,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> UsersListResponse:
         users = await services.users.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
         )
         return UsersListResponse(
             items=[
@@ -145,10 +143,13 @@ class UsersHandler(Handler):
                 )
                 for user in users.items
             ],
+            total=users.total,
             next=(
                 f"{V3_API_PREFIX}/users?"
-                f"{TokenPaginationParams.to_href_format(users.next_token, token_pagination_params.size)}"
-                if users.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if users.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

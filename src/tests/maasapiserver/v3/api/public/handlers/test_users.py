@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import json
@@ -12,9 +12,6 @@ from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.users import UserRequest
 from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
@@ -196,7 +193,7 @@ class TestUsersApi(ApiCommonTests):
     ) -> None:
         services_mock.users = Mock(UsersService)
         services_mock.users.list.return_value = ListResult[User](
-            items=[USER_1], next_token=str(USER_2.id)
+            items=[USER_1], total=2
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}?size=1",
@@ -205,10 +202,8 @@ class TestUsersApi(ApiCommonTests):
         assert response.status_code == 200
         users_response = UsersListResponse(**response.json())
         assert len(users_response.items) == 1
-        assert (
-            users_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(USER_2.id), size='1')}"
-        )
+        assert users_response.total == 2
+        assert users_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_users_no_other_page(
         self,
@@ -217,7 +212,7 @@ class TestUsersApi(ApiCommonTests):
     ) -> None:
         services_mock.users = Mock(UsersService)
         services_mock.users.list.return_value = ListResult[User](
-            items=[USER_1, USER_2], next_token=None
+            items=[USER_1, USER_2], total=2
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}?size=2",
@@ -226,6 +221,7 @@ class TestUsersApi(ApiCommonTests):
         assert response.status_code == 200
         users_response = UsersListResponse(**response.json())
         assert len(users_response.items) == 2
+        assert users_response.total == 2
         assert users_response.next is None
 
     # GET /users/{user_id}

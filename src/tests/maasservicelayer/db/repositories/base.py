@@ -90,11 +90,8 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
         created_objects = _setup_test_list
         repository = repository_instance
         total_pages = math.ceil(num_objects / page_size)
-        current_token = None
         for page in range(1, total_pages + 1):
-            objects_results = await repository.list(
-                token=current_token, size=page_size
-            )
+            objects_results = await repository.list(page=page, size=page_size)
 
             if page == total_pages:  # last page may have fewer elements
                 elements_count = page_size - (
@@ -107,7 +104,6 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
                 assert len(objects_results.items) == page_size
                 for _ in range(page_size):
                     assert created_objects.pop() in objects_results.items
-            current_token = objects_results.next_token
 
     async def test_create(
         self,

@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -9,9 +9,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.spaces import SpaceRequest
 from maasapiserver.v3.api.public.models.responses.spaces import (
     SpaceResponse,
@@ -81,12 +78,13 @@ class TestSpaceApi(ApiCommonTests):
     ) -> None:
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.list.return_value = ListResult[Space](
-            items=[TEST_SPACE], next_token=None
+            items=[TEST_SPACE], total=1
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         spaces_response = SpacesListResponse(**response.json())
         assert len(spaces_response.items) == 1
+        assert spaces_response.total == 1
         assert spaces_response.next is None
 
     async def test_list_other_page(
@@ -96,16 +94,14 @@ class TestSpaceApi(ApiCommonTests):
     ) -> None:
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.list.return_value = ListResult[Space](
-            items=[TEST_SPACE_2], next_token=str(TEST_SPACE.id)
+            items=[TEST_SPACE_2], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         spaces_response = SpacesListResponse(**response.json())
         assert len(spaces_response.items) == 1
-        assert (
-            spaces_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_SPACE.id), size='1')}"
-        )
+        assert spaces_response.total == 2
+        assert spaces_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     # GET /spaces/{space_id}
     async def test_get_200(

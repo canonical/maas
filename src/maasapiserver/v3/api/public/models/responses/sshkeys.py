@@ -7,7 +7,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
     HalResponse,
-    TokenPaginatedResponse,
+    PaginatedResponse,
 )
 from maascommon.enums.sshkeys import SshKeysProtocolType
 from maasservicelayer.models.sshkeys import SshKey
@@ -35,5 +35,5 @@ class SshKeyResponse(HalResponse[BaseHal]):
         )
 
 
-class SshKeysListResponse(TokenPaginatedResponse[SshKeyResponse]):
+class SshKeysListResponse(PaginatedResponse[SshKeyResponse]):
     kind = "SshKeysList"

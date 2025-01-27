@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any, Dict, Generic, Optional, Sequence, TypeVar
@@ -48,14 +48,15 @@ class HalResponse(GenericModel, Generic[HAL]):
 T = TypeVar("T", bound=HalResponse)
 
 
-class TokenPaginatedResponse(GenericModel, Generic[T]):
+class PaginatedResponse(GenericModel, Generic[T]):
     """
-    Base class for token-paginated responses.
+    Base class for offset-paginated responses.
     Derived classes should overwrite the items property
     """
 
     items: Sequence[T]
-    next: Optional[str] = None
+    total: int
+    next: Optional[str] = Field(default=None)
 
 
 OPENAPI_ETAG_HEADER = OpenApiHeader(

@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import List
@@ -30,10 +30,10 @@ class InterfacesService(Service):
         self.interface_repository = interface_repository
 
     async def list(
-        self, node_id: int, token: str | None, size: int
+        self, node_id: int, page: int, size: int
     ) -> ListResult[Interface]:
         return await self.interface_repository.list(
-            node_id=node_id, token=token, size=size
+            node_id=node_id, page=page, size=size
         )
 
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:

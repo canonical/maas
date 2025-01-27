@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends, Response
@@ -8,9 +8,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.interfaces import (
     InterfaceListResponse,
     InterfaceResponse,
@@ -45,13 +43,13 @@ class InterfacesHandler(Handler):
     async def list_interfaces(
         self,
         node_id: int,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         interfaces = await services.interfaces.list(
             node_id=node_id,
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
         )
         return InterfaceListResponse(
             items=[
@@ -61,10 +59,13 @@ class InterfacesHandler(Handler):
                 )
                 for interface in interfaces.items
             ],
+            total=interfaces.total,
             next=(
                 f"{V3_API_PREFIX}/machines/{node_id}/interfaces?"
-                f"{TokenPaginationParams.to_href_format(interfaces.next_token, token_pagination_params.size)}"
-                if interfaces.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if interfaces.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

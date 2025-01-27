@@ -8,9 +8,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.sslkeys import SSLKeyRequest
 from maasapiserver.v3.api.public.models.responses.sslkey import (
     SSLKeyListResponse,
@@ -78,7 +75,7 @@ class TestSSLKeysApi(ApiCommonTests):
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.list.return_value = ListResult[SSLKey](
-            items=[SSLKEY_1], next_token=str(SSLKEY_2.id)
+            items=[SSLKEY_1], total=2
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}?size=1",
@@ -87,10 +84,8 @@ class TestSSLKeysApi(ApiCommonTests):
         assert response.status_code == 200
         sslkeys_response = SSLKeyListResponse(**response.json())
         assert len(sslkeys_response.items) == 1
-        assert (
-            sslkeys_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(SSLKEY_2.id), size='1')}"
-        )
+        assert sslkeys_response.total == 2
+        assert sslkeys_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_user_sslkeys_no_other_page(
         self,
@@ -99,7 +94,7 @@ class TestSSLKeysApi(ApiCommonTests):
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.list.return_value = ListResult[SSLKey](
-            items=[SSLKEY_1, SSLKEY_2], next_token=None
+            items=[SSLKEY_1, SSLKEY_2], total=2
         )
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}?size=2",
@@ -108,6 +103,7 @@ class TestSSLKeysApi(ApiCommonTests):
         assert response.status_code == 200
         sslkeys_response = SSLKeyListResponse(**response.json())
         assert len(sslkeys_response.items) == 2
+        assert sslkeys_response.total == 2
         assert sslkeys_response.next is None
 
     # GET /users/me/sslkeys/{id}

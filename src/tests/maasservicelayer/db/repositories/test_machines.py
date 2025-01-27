@@ -149,9 +149,9 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
             fixture, description="machine", bmc=bmc, user=user
         )
 
-        machines_result = await machines_repository.list(token=None, size=10)
-        assert machines_result.next_token is None
+        machines_result = await machines_repository.list(page=1, size=10)
         assert len(machines_result.items) == 1
+        assert machines_result.total == 1
 
     async def test_list_with_query(
         self, repository_instance: MachinesRepository, fixture: Fixture
@@ -177,22 +177,22 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
                 user=user2,
                 pool_id=rp2.id,
             )
-        machines_repository = repository_instance
-        retrieved_machines = await machines_repository.list(
-            token=None,
+        retrieved_machines = await repository_instance.list(
+            page=1,
             size=20,
             query=QuerySpec(
                 where=MachineClauseFactory.with_resource_pool_ids({rp1.id})
             ),
         )
         assert len(retrieved_machines.items) == 5
+        assert retrieved_machines.total == 5
         # Here we do the assert on the owner since we don't store info on pools yet.
         assert all(
             machine.owner == "user1" for machine in retrieved_machines.items
         )
 
-        retrieved_machines = await machines_repository.list(
-            token=None,
+        retrieved_machines = await repository_instance.list(
+            page=1,
             size=20,
             query=QuerySpec(
                 where=MachineClauseFactory.with_owner(user2.username)
@@ -200,6 +200,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         )
 
         assert len(retrieved_machines.items) == 5
+        assert retrieved_machines.total == 5
         assert all(
             machine.owner == "user2" for machine in retrieved_machines.items
         )
@@ -228,20 +229,20 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
 
         machines_repository = repository_instance
         devices_result = await machines_repository.list_machine_usb_devices(
-            system_id=machine["system_id"], token=None, size=2
+            system_id=machine["system_id"], page=1, size=2
         )
-        assert devices_result.next_token is not None
         assert len(devices_result.items) == 2
+        assert devices_result.total == 3
         assert devices.pop() in devices_result.items
         assert devices.pop() in devices_result.items
 
         devices_result = await machines_repository.list_machine_usb_devices(
             system_id=machine["system_id"],
-            token=devices_result.next_token,
+            page=2,
             size=2,
         )
-        assert devices_result.next_token is None
         assert len(devices_result.items) == 1
+        assert devices_result.total == 3
         assert devices_result.items[0] == devices.pop()
 
     async def test_list_machine_pci_devices(
@@ -268,20 +269,20 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
 
         machines_repository = repository_instance
         devices_result = await machines_repository.list_machine_pci_devices(
-            system_id=machine["system_id"], token=None, size=2
+            system_id=machine["system_id"], page=1, size=2
         )
-        assert devices_result.next_token is not None
         assert len(devices_result.items) == 2
+        assert devices_result.total == 3
         assert devices.pop() in devices_result.items
         assert devices.pop() in devices_result.items
 
         devices_result = await machines_repository.list_machine_pci_devices(
             system_id=machine["system_id"],
-            token=devices_result.next_token,
+            page=2,
             size=2,
         )
-        assert devices_result.next_token is None
         assert len(devices_result.items) == 1
+        assert devices_result.total == 3
         assert devices_result.items[0] == devices.pop()
 
     async def test_count_machines_by_statuses_no_machines(

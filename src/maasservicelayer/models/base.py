@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 import hashlib
-from typing import Any, Generic, Optional, Sequence, TypeVar, Union
+from typing import Any, Generic, Sequence, TypeVar, Union
 
 from pydantic import BaseModel, create_model, Field
 from pydantic.fields import ModelField
@@ -23,8 +23,10 @@ class ListResult(Generic[T]):
     """
 
     items: Sequence[T]
-    # None if there is no next page
-    next_token: Optional[str] = None
+    total: int
+
+    def has_next(self, page: int, size: int) -> bool:
+        return self.total and page * size < self.total
 
 
 class MaasBaseModel(BaseModel, ABC):

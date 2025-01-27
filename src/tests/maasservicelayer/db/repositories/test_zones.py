@@ -94,15 +94,17 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         self, repository_instance: ZonesRepository, created_instance: Zone
     ) -> None:
         query = QuerySpec(where=ZonesClauseFactory.with_ids([1]))
-        zones = await repository_instance.list(None, 20, query)
+        zones = await repository_instance.list(1, 20, query)
         assert len(zones.items) == 1
+        assert zones.total == 1
         assert zones.items[0].id == 1
 
         query = QuerySpec(
             where=ZonesClauseFactory.with_ids([1, created_instance.id])
         )
-        zones = await repository_instance.list(None, 20, query)
+        zones = await repository_instance.list(1, 20, query)
         assert len(zones.items) == 2
+        assert zones.total == 2
 
     async def test_get_default_zone(
         self, repository_instance: ZonesRepository

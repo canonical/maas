@@ -15,9 +15,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.spaces import SpaceRequest
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -53,12 +51,12 @@ class SpacesHandler(Handler):
     )
     async def list_spaces(
         self,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> SpacesListResponse:
         spaces = await services.spaces.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
         )
         return SpacesListResponse(
             items=[
@@ -67,10 +65,13 @@ class SpacesHandler(Handler):
                 )
                 for space in spaces.items
             ],
+            total=spaces.total,
             next=(
                 f"{V3_API_PREFIX}/spaces?"
-                f"{TokenPaginationParams.to_href_format(spaces.next_token, token_pagination_params.size)}"
-                if spaces.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if spaces.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

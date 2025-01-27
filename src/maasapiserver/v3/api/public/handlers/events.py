@@ -1,7 +1,7 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -11,9 +11,7 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.events import (
     EventsFiltersParams,
 )
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.events import (
     EventResponse,
     EventsListResponse,
@@ -48,20 +46,20 @@ class EventsHandler(Handler):
     )
     async def list_events(
         self,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         filters: EventsFiltersParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> EventsListResponse:
         events = await services.events.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
-        if events.next_token:
+        if events.has_next(pagination_params.page, pagination_params.size):
             next_link = (
                 f"{V3_API_PREFIX}/events?"
-                f"{TokenPaginationParams.to_href_format(events.next_token, token_pagination_params.size)}"
+                f"{pagination_params.to_next_href_format()}"
             )
             if query_filters := filters.to_href_format():
                 next_link += f"&{query_filters}"
@@ -70,5 +68,6 @@ class EventsHandler(Handler):
                 EventResponse.from_model(event, f"{V3_API_PREFIX}/events")
                 for event in events.items
             ],
+            total=events.total,
             next=next_link,
         )

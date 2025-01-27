@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Self
@@ -7,7 +7,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
     HalResponse,
-    TokenPaginatedResponse,
+    PaginatedResponse,
 )
 from maasservicelayer.models.zones import Zone
 
@@ -32,5 +32,5 @@ class ZoneResponse(HalResponse[BaseHal]):
         )
 
 
-class ZonesListResponse(TokenPaginatedResponse[ZoneResponse]):
+class ZonesListResponse(PaginatedResponse[ZoneResponse]):
     kind = "ZonesList"

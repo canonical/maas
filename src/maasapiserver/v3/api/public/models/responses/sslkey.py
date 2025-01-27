@@ -6,7 +6,7 @@ from typing import Self
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     HalResponse,
-    TokenPaginatedResponse,
+    PaginatedResponse,
 )
 from maasservicelayer.models.sslkeys import SSLKey
 
@@ -24,5 +24,5 @@ class SSLKeyResponse(HalResponse[BaseHal]):
         )
 
 
-class SSLKeyListResponse(TokenPaginatedResponse[SSLKeyResponse]):
+class SSLKeyListResponse(PaginatedResponse[SSLKeyResponse]):
     kind = "SSLKeys"

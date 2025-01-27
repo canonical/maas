@@ -16,9 +16,7 @@ from maasapiserver.common.api.models.responses.errors import (
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.fabrics import FabricRequest
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
@@ -55,12 +53,12 @@ class FabricsHandler(Handler):
     )
     async def list_fabrics(
         self,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> FabricsListResponse:
         fabrics = await services.fabrics.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
         )
         return FabricsListResponse(
             items=[
@@ -70,10 +68,13 @@ class FabricsHandler(Handler):
                 )
                 for fabric in fabrics.items
             ],
+            total=fabrics.total,
             next=(
                 f"{V3_API_PREFIX}/fabrics?"
-                f"{TokenPaginationParams.to_href_format(fabrics.next_token, token_pagination_params.size)}"
-                if fabrics.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if fabrics.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

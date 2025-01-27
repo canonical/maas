@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import copy
@@ -97,15 +97,14 @@ class TestInterfaceRepository:
             for i in range(0, interface_count)
         ][::-1]
 
-        next_token = None
         total_pages = ceil(interface_count / page_size)
         total_retrieved = 0
         for page in range(1, total_pages + 1):
             interfaces_result = await interfaces_repository.list(
-                node_id=machine["id"], token=next_token, size=page_size
+                node_id=machine["id"], page=page, size=page_size
             )
-            next_token = interfaces_result.next_token
             actual_page_size = len(interfaces_result.items)
+            assert interfaces_result.total == interface_count
             total_retrieved += actual_page_size
 
             if page == total_pages:
@@ -122,7 +121,6 @@ class TestInterfaceRepository:
                 ((page - 1) * page_size) : ((page * page_size))
             ]:
                 _assert_interface_in_list(interface, interfaces_result)
-        assert next_token is None
         assert total_retrieved == interface_count
 
     async def test_lists_only_on_selected_node(
@@ -179,16 +177,17 @@ class TestInterfaceRepository:
         ][::-1]
 
         interfaces1_result = await interfaces_repository.list(
-            node_id=machine1["id"], token=None, size=interface1_count
+            node_id=machine1["id"], page=1, size=20
         )
 
         interfaces2_result = await interfaces_repository.list(
-            node_id=machine2["id"], token=None, size=interface2_count
+            node_id=machine2["id"], page=1, size=20
         )
 
         assert len(interfaces1_result.items) == interface1_count
+        assert interfaces1_result.total == interface1_count
         assert len(interfaces2_result.items) == interface2_count
-
+        assert interfaces2_result.total == interface2_count
         for interface in created_interfaces1:
             _assert_interface_in_list(interface, interfaces1_result)
 
@@ -227,7 +226,7 @@ class TestInterfaceRepository:
         ][::-1]
 
         interfaces_result = await interfaces_repository.list(
-            node_id=machine["id"], token=None, size=interface_count
+            node_id=machine["id"], page=1, size=interface_count
         )
 
         for iface in interfaces_result.items:
@@ -320,7 +319,7 @@ class TestInterfaceRepository:
             created_interfaces.insert(0, this_interface)
 
         interfaces_result = await interfaces_repository.list(
-            node_id=machine["id"], token=None, size=interface_count
+            node_id=machine["id"], page=1, size=interface_count
         )
 
         for interface in created_interfaces:

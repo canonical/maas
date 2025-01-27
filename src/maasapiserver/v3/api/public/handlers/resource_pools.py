@@ -11,9 +11,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
 )
@@ -76,10 +74,10 @@ class ResourcePoolHandler(Handler):
     )
     async def list_resource_pools(
         self,
-        token_pagination_params: TokenPaginationParams = Depends(),
+        pagination_params: PaginationParams = Depends(),
         authenticated_user=Depends(get_authenticated_user),
         services: ServiceCollectionV3 = Depends(services),
-    ) -> Response:
+    ) -> ResourcePoolsListResponse:
         query = None
         if authenticated_user.rbac_permissions:
             query = QuerySpec(
@@ -91,8 +89,8 @@ class ResourcePoolHandler(Handler):
                 )
             )
         resource_pools = await services.resource_pools.list(
-            token=token_pagination_params.token,
-            size=token_pagination_params.size,
+            page=pagination_params.page,
+            size=pagination_params.size,
             query=query,
         )
         return ResourcePoolsListResponse(
@@ -103,10 +101,13 @@ class ResourcePoolHandler(Handler):
                 )
                 for resource_pools in resource_pools.items
             ],
+            total=resource_pools.total,
             next=(
                 f"{V3_API_PREFIX}/resource_pools?"
-                f"{TokenPaginationParams.to_href_format(resource_pools.next_token, token_pagination_params.size)}"
-                if resource_pools.next_token
+                f"{pagination_params.to_next_href_format()}"
+                if resource_pools.has_next(
+                    pagination_params.page, pagination_params.size
+                )
                 else None
             ),
         )

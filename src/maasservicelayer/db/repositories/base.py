@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
-from operator import eq, le
+from operator import eq
 from typing import Any, Generic, List, Sequence, TypeVar
 
 from sqlalchemy import (
@@ -18,6 +18,7 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql.functions import count
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import Clause, QuerySpec
@@ -131,29 +132,29 @@ class BaseRepository(ABC, Generic[T]):
             self._raise_already_existing_exception()
 
     async def list(
-        self, token: str | None, size: int, query: QuerySpec | None = None
+        self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[T]:
+
+        total_stmt = select(count()).select_from(self.get_repository_table())
+        if query:
+            total_stmt = query.enrich_stmt(total_stmt)
+        total = (await self.connection.execute(total_stmt)).scalar()
+
         stmt = (
             self.select_all_statement()
             .order_by(desc(self.get_repository_table().c.id))
-            .limit(size + 1)
+            .offset((page - 1) * size)
+            .limit(size)
         )
         if query:
             stmt = query.enrich_stmt(stmt)
 
-        if token is not None:
-            stmt = stmt.where(le(self.get_repository_table().c.id, int(token)))
-
         result = (await self.execute_stmt(stmt)).all()
-        next_token = None
-        if len(result) > size:  # There is another page
-            next_token = result.pop().id
-
         return ListResult[T](
             items=[
                 self.get_model_factory()(**row._asdict()) for row in result
             ],
-            next_token=next_token,
+            total=total,
         )
 
     async def update_many(

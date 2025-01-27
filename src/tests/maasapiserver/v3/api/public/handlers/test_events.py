@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
@@ -89,14 +89,10 @@ class TestEventsApi(ApiCommonTests):
 
         services_mock.events = Mock(EventsService)
         services_mock.events.list.side_effect = [
-            ListResult[Event](items=[TEST_EVENT], next_token=None),
-            ListResult[Event](items=[TEST_EVENT_2], next_token=None),
-            ListResult[Event](
-                items=[TEST_EVENT_2, TEST_EVENT], next_token=None
-            ),
-            ListResult[Event](
-                items=[TEST_EVENT_2], next_token=str(TEST_EVENT.id)
-            ),
+            ListResult[Event](items=[TEST_EVENT], total=1),
+            ListResult[Event](items=[TEST_EVENT_2], total=1),
+            ListResult[Event](items=[TEST_EVENT_2, TEST_EVENT], total=2),
+            ListResult[Event](items=[TEST_EVENT_2], total=2),
         ]
 
         response = await mocked_api_client_user.get(

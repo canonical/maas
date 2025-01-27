@@ -10,9 +10,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.query import (
-    TokenPaginationParams,
-)
 from maasapiserver.v3.api.public.models.requests.reservedips import (
     ReservedIPCreateRequest,
     ReservedIPUpdateRequest,
@@ -93,15 +90,16 @@ class TestReservedIPsApi(ApiCommonTests):
     ) -> None:
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.list.return_value = ListResult[ReservedIP](
-            items=[TEST_RESERVEDIP], next_token=None
+            items=[TEST_RESERVEDIP], total=1
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         reservedips_response = ReservedIPsListResponse(**response.json())
         assert len(reservedips_response.items) == 1
+        assert reservedips_response.total == 1
         assert reservedips_response.next is None
         services_mock.reservedips.list.assert_called_once_with(
-            token=None,
+            page=1,
             size=1,
             query=QuerySpec(
                 where=ReservedIPsClauseFactory.and_clauses(
@@ -121,18 +119,16 @@ class TestReservedIPsApi(ApiCommonTests):
     ) -> None:
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.list.return_value = ListResult[ReservedIP](
-            items=[TEST_RESERVEDIP_2], next_token=str(TEST_RESERVEDIP.id)
+            items=[TEST_RESERVEDIP_2], total=2
         )
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         reservedips_response = ReservedIPsListResponse(**response.json())
         assert len(reservedips_response.items) == 1
-        assert (
-            reservedips_response.next
-            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_RESERVEDIP.id), size='1')}"
-        )
+        assert reservedips_response.total == 2
+        assert reservedips_response.next == f"{self.BASE_PATH}?page=2&size=1"
         services_mock.reservedips.list.assert_called_once_with(
-            token=None,
+            page=1,
             size=1,
             query=QuerySpec(
                 where=ReservedIPsClauseFactory.and_clauses(

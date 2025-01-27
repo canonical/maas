@@ -1,11 +1,12 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any, List
 
 from sqlalchemy import desc, insert, select, Select
 from sqlalchemy.sql.expression import func
-from sqlalchemy.sql.operators import eq, le
+from sqlalchemy.sql.functions import count
+from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
@@ -41,30 +42,42 @@ class InterfaceRepository:
         self.connection = context.get_connection()
 
     async def list(
-        self, node_id: int, token: str | None, size: int
+        self, node_id: int, page: int, size: int
     ) -> ListResult[Interface]:
+
+        total_stmt = (
+            select(count())
+            .select_from(InterfaceTable)
+            .join(
+                NodeConfigTable,
+                eq(NodeConfigTable.c.id, InterfaceTable.c.node_config_id),
+                isouter=True,
+            )
+            .join(
+                NodeTable,
+                eq(NodeTable.c.current_config_id, NodeConfigTable.c.id),
+                isouter=True,
+            )
+            .where(eq(NodeTable.c.id, node_id))
+        )
+        total = (await self.connection.execute(total_stmt)).scalar()
+
         stmt = (
             self._select_all_statement()
             .where(eq(NodeTable.c.id, node_id))
             .order_by(desc(InterfaceTable.c.id))
-            .limit(size + 1)
+            .offset((page - 1) * size)
+            .limit(size)
         )
 
-        if token is not None:
-            stmt = stmt.where(le(InterfaceTable.c.id, int(token)))
-
         result = (await self.connection.execute(stmt)).all()
-
-        next_token = None
-        if len(result) > size:  # There is another page
-            next_token = result.pop().id
 
         interfaces = [build_interface_links(row._asdict()) for row in result]
         await self._find_discovered_ip_for_dhcp_links(interfaces, node_id)
 
         return ListResult[Interface](
             items=[Interface(**iface) for iface in interfaces],
-            next_token=next_token,
+            total=total,
         )
 
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
