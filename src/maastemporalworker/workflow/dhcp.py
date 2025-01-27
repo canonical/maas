@@ -9,7 +9,7 @@ from typing import Optional
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import workflow
-from temporalio.common import WorkflowIDConflictPolicy
+from temporalio.common import WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from maascommon.workflows.dhcp import (
@@ -479,7 +479,7 @@ class ConfigureDHCPWorkflow:
                         full_reload=True,
                     ),
                     id=f"configure-dhcp:{system_id}",
-                    id_reuse_policy=WorkflowIDConflictPolicy.TERMINATE_EXISTING,
+                    id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                 )
             children.append(cfg_child)
 
