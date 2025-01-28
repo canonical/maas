@@ -10,3 +10,9 @@ class Zone(MaasTimestampedBaseModel):
 
 
 ZoneBuilder = make_builder(Zone)
+
+
+class ZoneWithSummary(Zone):
+    devices_count: int
+    machines_count: int
+    controllers_count: int

@@ -26,6 +26,8 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.api.public.models.responses.zones import (
     ZoneResponse,
     ZonesListResponse,
+    ZonesWithSummaryListResponse,
+    ZoneWithSummaryResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -81,6 +83,53 @@ class ZonesHandler(Handler):
             ],
             total=zones.total,
             next=next_link,
+        )
+
+    @handler(
+        path="/zones_with_summary",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": ZonesWithSummaryListResponse,
+            },
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        summary="List zones with a summary. ONLY FOR INTERNAL USAGE.",
+        description="List zones with a summary. This endpoint is only for internal usage and might be changed or removed "
+        "without notice.",
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_zones_with_summary(
+        self,
+        pagination_params: PaginationParams = Depends(),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> ZonesWithSummaryListResponse:
+        zones_with_summary = await services.zones.list_with_summary(
+            page=pagination_params.page,
+            size=pagination_params.size,
+        )
+        return ZonesWithSummaryListResponse(
+            items=[
+                ZoneWithSummaryResponse.from_model(
+                    zone_with_summary=zone_with_summary,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/zones",
+                )
+                for zone_with_summary in zones_with_summary.items
+            ],
+            total=zones_with_summary.total,
+            next=(
+                f"{V3_API_PREFIX}/zones_with_summary?"
+                f"{pagination_params.to_next_href_format()}"
+                if zones_with_summary.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
         )
 
     @handler(

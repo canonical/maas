@@ -12,7 +12,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.zones import Zone, ZoneBuilder
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.zones import Zone, ZoneBuilder, ZoneWithSummary
 from maasservicelayer.services._base import BaseService, Service, ServiceCache
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.vmcluster import VmClustersService
@@ -67,3 +68,8 @@ class ZonesService(BaseService[Zone, ZonesRepository, ZoneBuilder]):
             resource.id, default_zone.id
         )
         await self.vmcluster_service.move_to_zone(resource.id, default_zone.id)
+
+    async def list_with_summary(
+        self, page: int, size: int
+    ) -> ListResult[ZoneWithSummary]:
+        return await self.repository.list_with_summary(page=page, size=size)
