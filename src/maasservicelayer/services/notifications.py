@@ -9,7 +9,7 @@ from maasservicelayer.models.notifications import (
     Notification,
     NotificationBuilder,
 )
-from maasservicelayer.services._base import BaseService, ServiceCache
+from maasservicelayer.services.base import BaseService, ServiceCache
 
 
 class NotificationsService(

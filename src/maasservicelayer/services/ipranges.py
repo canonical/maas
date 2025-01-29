@@ -28,7 +28,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import Unset
 from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.temporal import TemporalService
 

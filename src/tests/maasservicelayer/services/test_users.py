@@ -37,7 +37,7 @@ from maasservicelayer.models.staticipaddress import (
 )
 from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
 from maasservicelayer.services import UsersService
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService

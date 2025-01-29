@@ -3,7 +3,7 @@ from sqlalchemy import select
 
 from maasapiserver.v2.models.entities.user import User
 from maasservicelayer.db.tables import SessionTable, UserTable
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.base import Service
 from maasservicelayer.utils.date import utcnow
 
 

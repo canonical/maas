@@ -23,7 +23,7 @@ from maasservicelayer.models.staticipaddress import (
     StaticIPAddressBuilder,
 )
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 
 

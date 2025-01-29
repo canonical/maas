@@ -56,9 +56,9 @@ from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.db.repositories.zones import ZonesRepository
-from maasservicelayer.services._base import ServiceCache
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
+from maasservicelayer.services.base import ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.dnsdata import DNSDataService

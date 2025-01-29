@@ -9,7 +9,7 @@ from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
 from maasservicelayer.models.dnsdata import DNSData, DNSDataBuilder
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService

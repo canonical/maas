@@ -15,7 +15,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.base import Service
 from maasservicelayer.services.secrets import SecretNotFound, SecretsService
 from maasservicelayer.services.users import UsersService
 

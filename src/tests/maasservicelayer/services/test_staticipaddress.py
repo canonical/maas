@@ -25,7 +25,7 @@ from maasservicelayer.models.staticipaddress import (
     StaticIPAddressBuilder,
 )
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow

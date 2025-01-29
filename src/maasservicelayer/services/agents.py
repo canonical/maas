@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from maasservicelayer.apiclient.client import APIClient
 from maasservicelayer.context import Context
-from maasservicelayer.services._base import Service, ServiceCache
+from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.users import UsersService
 

@@ -42,6 +42,14 @@ class TestNodeGroupToRackControllersRepository(
         pass
 
     @pytest.mark.skip(reason="Not implemented yet")
+    async def test_exists_found(self, repository_instance, created_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_exists_not_found(self, repository_instance):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
     async def test_list(
         self, page_size, repository_instance, _setup_test_list, num_objects
     ):

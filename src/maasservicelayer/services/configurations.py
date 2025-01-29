@@ -7,7 +7,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.configurations import (
     ConfigurationsRepository,
 )
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.base import Service
 
 
 class ConfigurationsService(Service):

@@ -10,7 +10,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.domains import Domain, DomainBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.utils.date import utcnow

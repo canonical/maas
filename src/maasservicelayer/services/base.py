@@ -121,6 +121,9 @@ class BaseService(Service, ABC, Generic[M, R, B]):
                 ]
             )
 
+    async def exists(self, query: QuerySpec):
+        return await self.repository.exists(query=query)
+
     async def get_many(self, query: QuerySpec) -> List[M]:
         return await self.repository.get_many(query=query)
 

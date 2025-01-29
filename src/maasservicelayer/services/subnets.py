@@ -30,7 +30,7 @@ from maasservicelayer.db.repositories.staticroutes import (
 )
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.models.subnets import Subnet, SubnetBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodegrouptorackcontrollers import (

@@ -115,6 +115,16 @@ class MyRepository(BaseRepository[AModel]):
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestMyRepository:
+    async def test_exists(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        exists = await repo.exists(QuerySpec(where=Clause(eq(A.c.id, 1))))
+        assert exists is True
+
+    async def test_dont_exist(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        exists = await repo.exists(QuerySpec(where=Clause(eq(A.c.id, 0))))
+        assert exists is False
+
     async def test_get_many(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
         a_objs = await repo.get_many(QuerySpec())

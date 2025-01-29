@@ -6,7 +6,7 @@ from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.domains import Domain, DomainBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 
 

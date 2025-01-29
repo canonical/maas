@@ -28,7 +28,7 @@ from maasservicelayer.services import (
     VmClustersService,
     ZonesService,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 

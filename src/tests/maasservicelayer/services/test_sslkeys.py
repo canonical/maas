@@ -12,7 +12,7 @@ from maasservicelayer.models.base import (
     MaasTimestampedBaseModel,
 )
 from maasservicelayer.models.sslkeys import SSLKey
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.sslkey import SSLKeysService
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures import get_test_data_file

@@ -131,6 +131,31 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
         with pytest.raises(AlreadyExistsException):
             await repository_instance.create(instance_builder)
 
+    async def test_exists_found(
+        self, repository_instance, created_instance: T
+    ):
+        exists = await repository_instance.exists(
+            QuerySpec(
+                where=Clause(
+                    eq(
+                        repository_instance.get_repository_table().c.id,
+                        created_instance.id,
+                    )
+                )
+            )
+        )
+        assert exists is True
+
+    async def test_exists_not_found(self, repository_instance):
+        exists = await repository_instance.exists(
+            QuerySpec(
+                where=Clause(
+                    eq(repository_instance.get_repository_table().c.id, -1)
+                )
+            )
+        )
+        assert exists is False
+
     async def test_get_by_id_not_found(
         self, repository_instance: BaseRepository
     ):

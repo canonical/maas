@@ -37,7 +37,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
 from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
-from maasservicelayer.services._base import Service, ServiceCache
+from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow

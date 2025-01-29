@@ -19,7 +19,7 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
 )
 from maasservicelayer.models.vlans import Vlan, VlanBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
 

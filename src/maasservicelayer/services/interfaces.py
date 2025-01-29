@@ -14,7 +14,7 @@ from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.base import Service
 from maasservicelayer.services.temporal import TemporalService
 
 

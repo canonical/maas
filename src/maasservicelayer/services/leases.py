@@ -19,7 +19,7 @@ from maasservicelayer.models.staticipaddress import (
     StaticIPAddressBuilder,
 )
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.base import Service
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService

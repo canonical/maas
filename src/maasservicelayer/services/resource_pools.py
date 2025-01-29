@@ -9,7 +9,7 @@ from maasservicelayer.models.resource_pools import (
     ResourcePool,
     ResourcePoolBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class ResourcePoolsService(

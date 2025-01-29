@@ -17,7 +17,7 @@ from maasservicelayer.models.fabrics import Fabric, FabricBuilder
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan, VlanBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.subnets import SubnetsService

@@ -6,7 +6,7 @@ from typing import Any
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.secrets import SecretsRepository
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.base import Service
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
 from maasservicelayer.vault.manager import (

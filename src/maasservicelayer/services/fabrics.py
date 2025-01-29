@@ -19,7 +19,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.fabrics import Fabric, FabricBuilder
 from maasservicelayer.models.vlans import VlanBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.vlans import (

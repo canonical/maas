@@ -4,7 +4,7 @@
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
 from maasservicelayer.models.sslkeys import SSLKey, SSLKeyBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):

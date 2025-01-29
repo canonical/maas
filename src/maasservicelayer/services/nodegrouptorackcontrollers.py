@@ -9,7 +9,7 @@ from maasservicelayer.models.nodegrouptorackcontrollers import (
     NodeGroupToRackController,
     NodeGroupToRackControllerBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class NodeGroupToRackControllersService(

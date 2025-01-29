@@ -14,7 +14,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone, ZoneBuilder, ZoneWithSummary
-from maasservicelayer.services._base import BaseService, Service, ServiceCache
+from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.vmcluster import VmClustersService
 

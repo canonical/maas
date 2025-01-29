@@ -9,7 +9,7 @@ from maasservicelayer.models.dhcpsnippets import (
     DhcpSnippet,
     DhcpSnippetBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class DhcpSnippetsService(

@@ -24,7 +24,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.vlans import Vlan, VlanBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.vlans import VlansService

@@ -38,7 +38,7 @@ from maasservicelayer.models.users import (
     UserProfile,
     UserProfileBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService

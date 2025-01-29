@@ -13,7 +13,7 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.models.reservedips import ReservedIP, ReservedIPBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 
 

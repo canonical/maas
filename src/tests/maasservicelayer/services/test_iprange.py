@@ -27,7 +27,7 @@ from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.temporal import TemporalService

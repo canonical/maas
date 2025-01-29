@@ -13,7 +13,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult, MaasBaseModel
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.utils.date import utcnow

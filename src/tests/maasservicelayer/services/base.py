@@ -12,7 +12,7 @@ from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
 )
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 T = TypeVar("T", bound=BaseService)
 
@@ -28,6 +28,14 @@ class ServiceCommonTests(abc.ABC):
     @abc.abstractmethod
     def test_instance(self) -> MaasBaseModel:
         pass
+
+    async def test_exists(self, service_instance):
+        service_instance.repository.exists.return_value = True
+        exists = await service_instance.exists(query=QuerySpec())
+        assert exists is True
+        service_instance.repository.exists.assert_awaited_once_with(
+            query=QuerySpec()
+        )
 
     async def test_get_many(self, service_instance):
         service_instance.repository.get_many.return_value = []

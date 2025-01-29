@@ -48,7 +48,7 @@ from maasservicelayer.db.tables import (
     VlanTable,
     ZoneTable,
 )
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.base import Service
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
 
 

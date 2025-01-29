@@ -20,7 +20,7 @@ from maasservicelayer.models.base import (
     make_builder,
     ResourceBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class DummyMaasBaseModel(MaasBaseModel):

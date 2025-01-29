@@ -87,6 +87,14 @@ class BaseRepository(ABC, Generic[T]):
             self.get_repository_table()
         )
 
+    async def exists(self, query: QuerySpec) -> bool:
+        exists_stmt = select(self.get_repository_table().c.id).select_from(
+            self.get_repository_table()
+        )
+        exists_stmt = query.enrich_stmt(exists_stmt).exists()
+        stmt = select(exists_stmt)
+        return (await self.execute_stmt(stmt)).scalar()
+
     async def get_many(self, query: QuerySpec) -> List[T]:
         return await self._get(query)
 

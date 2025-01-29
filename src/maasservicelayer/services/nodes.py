@@ -9,7 +9,7 @@ from maasservicelayer.db.repositories.nodes import (
 )
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node, NodeBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.secrets import SecretsService
 
 

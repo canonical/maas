@@ -9,7 +9,7 @@ from maasservicelayer.models.notification_dismissal import (
     NotificationDismissal,
     NotificationDismissalBuilder,
 )
-from maasservicelayer.services._base import BaseService, ServiceCache
+from maasservicelayer.services.base import BaseService, ServiceCache
 
 
 class NotificationDismissalService(

@@ -4,7 +4,7 @@
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.filestorage import FileStorageRepository
 from maasservicelayer.models.filestorage import FileStorage, FileStorageBuilder
-from maasservicelayer.services._base import BaseService, ServiceCache
+from maasservicelayer.services.base import BaseService, ServiceCache
 
 
 class FileStorageService(

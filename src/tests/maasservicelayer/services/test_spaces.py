@@ -9,7 +9,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.spaces import Space
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.spaces import SpacesService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow

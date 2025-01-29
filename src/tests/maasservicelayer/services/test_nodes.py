@@ -16,7 +16,7 @@ from maasservicelayer.db.repositories.nodes import (
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import NodesService
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.secrets import SecretsService
 from tests.maasservicelayer.services.base import ServiceCommonTests
 

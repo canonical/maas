@@ -8,7 +8,7 @@ from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.models.spaces import Space, SpaceBuilder
 from maasservicelayer.models.vlans import VlanBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.vlans import VlansService
 
 

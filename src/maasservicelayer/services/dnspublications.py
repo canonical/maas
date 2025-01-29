@@ -18,7 +18,7 @@ from maasservicelayer.models.dnspublications import (
     DNSPublication,
     DNSPublicationBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 

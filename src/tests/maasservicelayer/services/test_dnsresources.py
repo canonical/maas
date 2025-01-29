@@ -16,7 +16,7 @@ from maasservicelayer.models.dnsresources import (
 )
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService

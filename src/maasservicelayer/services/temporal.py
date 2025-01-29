@@ -12,7 +12,7 @@ from maasserver.workflow.worker import (
     get_client_async as get_temporal_client_async,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.services._base import Service, ServiceCache
+from maasservicelayer.services.base import Service, ServiceCache
 
 
 @dataclass(slots=True)

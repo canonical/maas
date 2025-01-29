@@ -9,7 +9,7 @@ from maasservicelayer.models.service_status import (
     ServiceStatus,
     ServiceStatusBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class ServiceStatusService(

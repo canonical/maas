@@ -4,7 +4,7 @@
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.models.vmcluster import VmCluster, VmClusterBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class VmClustersService(

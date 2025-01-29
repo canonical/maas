@@ -9,7 +9,7 @@ from maasservicelayer.models.staticroutes import (
     StaticRoute,
     StaticRouteBuilder,
 )
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class StaticRoutesService(

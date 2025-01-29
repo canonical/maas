@@ -12,7 +12,7 @@ from maasservicelayer.db.repositories.resource_pools import (
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.resource_pools import ResourcePool
 from maasservicelayer.services import ResourcePoolsService
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 

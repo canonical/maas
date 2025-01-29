@@ -10,7 +10,7 @@ from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.vmcluster import VmCluster
 from maasservicelayer.services import VmClustersService
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 

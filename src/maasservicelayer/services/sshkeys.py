@@ -31,7 +31,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.sshkeys import SshKey, SshKeyBuilder
-from maasservicelayer.services._base import BaseService, Service, ServiceCache
+from maasservicelayer.services.base import BaseService, Service, ServiceCache
 
 
 @dataclass(slots=True)

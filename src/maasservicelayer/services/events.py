@@ -4,7 +4,7 @@
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.events import EventsRepository
 from maasservicelayer.models.events import Event, EventBuilder
-from maasservicelayer.services._base import BaseService
+from maasservicelayer.services.base import BaseService
 
 
 class EventsService(BaseService[Event, EventsRepository, EventBuilder]):
