@@ -20,7 +20,7 @@ from maasserver.rpc.rackcontrollers import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
@@ -358,14 +358,21 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
         vlan.dhcp_on = True
         vlan.primary_rack = rack_controller
         vlan.external_dhcp = dhcp_ip
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=dhcp_ip,
             subnet=subnet,
             interface=interface,
         )
-        update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
+
+        with post_commit_hooks:
+            update_foreign_dhcp(
+                rack_controller.system_id, interface.name, dhcp_ip
+            )
         self.assertIsNone(reload_object(interface.vlan).external_dhcp)
 
 

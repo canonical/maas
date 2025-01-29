@@ -46,6 +46,7 @@ from maasserver.models import (
 import maasserver.models.node as node_module
 from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
+import maasserver.models.vlan as vlan_module
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.testing.api import APITestCase
@@ -4006,6 +4007,10 @@ class TestNetbootOperationAPI(MAASServerTestCase):
 
 
 class TestAnonymousAPI(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
+
     def test_anonymous_netboot_off(self):
         node = factory.make_Node(netboot=True, power_type="hmcz")
         mock_power_control_node = self.patch(api.Node, "_power_control_node")

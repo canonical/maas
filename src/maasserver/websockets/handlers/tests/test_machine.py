@@ -91,7 +91,12 @@ from maasserver.utils.converters import (
     round_size_to_nearest_block,
     XMLToYAML,
 )
-from maasserver.utils.orm import get_one, reload_object, transactional
+from maasserver.utils.orm import (
+    get_one,
+    post_commit_hooks,
+    reload_object,
+    transactional,
+)
 from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
@@ -4197,15 +4202,17 @@ class TestMachineHandler(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
         new_subnet = factory.make_Subnet(vlan=vlan)
-        handler.create_vlan(
-            {
-                "system_id": node.system_id,
-                "parent": interface.id,
-                "vlan": vlan.id,
-                "mode": INTERFACE_LINK_TYPE.LINK_UP,
-                "subnet": new_subnet.id,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_vlan(
+                {
+                    "system_id": node.system_id,
+                    "parent": interface.id,
+                    "vlan": vlan.id,
+                    "mode": INTERFACE_LINK_TYPE.LINK_UP,
+                    "subnet": new_subnet.id,
+                }
+            )
         vlan_interface = get_one(
             Interface.objects.filter(
                 node_config=node.current_config,

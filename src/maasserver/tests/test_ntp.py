@@ -10,6 +10,7 @@ from maasserver.models.config import Config
 from maasserver.ntp import get_peers_for, get_servers_for
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 
 def populate_node_with_addresses(node, subnets):
@@ -159,7 +160,9 @@ class TestGetServersFor_Machine(TestGetServersFor_Common):
         vlan.primary_rack = rack_primary
         vlan.secondary_rack = rack_secondary
         vlan.dhcp_on = True
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
 
         servers = get_servers_for(machine)
         self.assertEqual(

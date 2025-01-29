@@ -124,7 +124,7 @@ from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
 from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.utils.converters import round_size_to_nearest_block
-from maasserver.utils.orm import get_one, reload_object
+from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
 import maastesting.factory
@@ -1121,12 +1121,13 @@ class Factory(maastesting.factory.Factory):
         if vlan is None and subnet is not None:
             vlan = subnet.vlan
         if vlan is None:
-            if fabric is None:
-                fabric = factory.make_Fabric()
-            vlan = fabric.get_default_vlan()
-            dhcp_on = with_dhcp_rack_primary or with_dhcp_rack_secondary
-            vlan.dhcp_on = dhcp_on
-            vlan.save()
+            with post_commit_hooks:
+                if fabric is None:
+                    fabric = factory.make_Fabric()
+                vlan = fabric.get_default_vlan()
+                dhcp_on = with_dhcp_rack_primary or with_dhcp_rack_secondary
+                vlan.dhcp_on = dhcp_on
+                vlan.save()
         if subnet is None:
             subnet = self.make_Subnet(vlan=vlan, cidr=cidr, version=ip_version)
         boot_interface = self.make_Interface(
@@ -1204,7 +1205,8 @@ class Factory(maastesting.factory.Factory):
                 else:
                     primary_rack = vlan.primary_rack
             vlan.primary_rack = primary_rack
-            vlan.save()
+            with post_commit_hooks:
+                vlan.save()
         if with_dhcp_rack_secondary:
             if secondary_rack is None:
                 if vlan.secondary_rack is None:
@@ -1214,7 +1216,8 @@ class Factory(maastesting.factory.Factory):
                 else:
                     secondary_rack = vlan.secondary_rack
             vlan.secondary_rack = secondary_rack
-            vlan.save()
+            with post_commit_hooks:
+                vlan.save()
         return reload_object(node)
 
     def make_Machine_with_Interface_on_Subnet(self, *args, **kwargs):
@@ -1496,10 +1499,12 @@ class Factory(maastesting.factory.Factory):
             disabled_boot_architectures=disabled_boot_architectures,
             **kwargs,
         )
-        subnet.save()
-        if subnet.vlan.space != space and space not in (undefined, None):
-            subnet.vlan.space = space
-            subnet.vlan.save()
+
+        with post_commit_hooks:
+            subnet.save()
+            if subnet.vlan.space != space and space not in (undefined, None):
+                subnet.vlan.space = space
+                subnet.vlan.save()
         return subnet
 
     def make_StaticRoute(
@@ -1645,8 +1650,9 @@ class Factory(maastesting.factory.Factory):
         )
 
     def make_Fabric(self, name=None, class_type=None):
-        fabric = Fabric(name=name, class_type=class_type)
-        fabric.save()
+        with post_commit_hooks:
+            fabric = Fabric(name=name, class_type=class_type)
+            fabric.save()
         return fabric
 
     def make_Service(self, node, name=None):
@@ -1699,7 +1705,8 @@ class Factory(maastesting.factory.Factory):
             relay_vlan=relay_vlan,
             mtu=mtu,
         )
-        vlan.save()
+        with post_commit_hooks:
+            vlan.save()
         for rack in [primary_rack, secondary_rack]:
             if rack is None:
                 continue
@@ -1957,14 +1964,17 @@ class Factory(maastesting.factory.Factory):
             dns_servers=dns_servers,
             **kwargs,
         )
+
         # Create a "dynamic range" for this Subnet.
         if with_dynamic_range:
             if unmanaged:
                 subnet.vlan.dhcp_on = False
-                subnet.vlan.save()
+                with post_commit_hooks:
+                    subnet.vlan.save()
             else:
                 subnet.vlan.dhcp_on = True
-                subnet.vlan.save()
+                with post_commit_hooks:
+                    subnet.vlan.save()
             self.make_IPRange(
                 subnet,
                 alloc_type=IPRANGE_TYPE.DYNAMIC,
@@ -1992,12 +2002,13 @@ class Factory(maastesting.factory.Factory):
             gateway_ip=str(router_address),
             dns_servers=dns_servers,
         )
-        if dhcp:
-            subnet.vlan.dhcp_on = True
-            subnet.vlan.save()
-        else:
-            subnet.vlan.dhcp_on = False
-            subnet.vlan.save()
+        with post_commit_hooks:
+            if dhcp:
+                subnet.vlan.dhcp_on = True
+                subnet.vlan.save()
+            else:
+                subnet.vlan.dhcp_on = False
+                subnet.vlan.save()
         return subnet
 
     def make_managed_Subnet(self, *, ipv6=None, dhcp=True):

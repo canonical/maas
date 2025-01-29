@@ -14,7 +14,10 @@ from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
 @pytest.fixture
-def controller(factory):
+def controller(factory, mocker):
+    mocker.patch("maasserver.utils.orm.post_commit_hooks")
+    mocker.patch("maasserver.utils.orm.post_commit_do")
+
     controller = factory.make_RegionRackController()
     ControllerInfo.objects.set_version(controller, "3.0.0")
     yield controller
@@ -22,7 +25,9 @@ def controller(factory):
 
 @pytest.mark.usefixtures("maasdb")
 class TestBuiltinScripts:
-    def test_creates_scripts(self, controller):
+    def test_creates_scripts(self, controller, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         load_builtin_scripts()
 
         for script in BUILTIN_SCRIPTS:

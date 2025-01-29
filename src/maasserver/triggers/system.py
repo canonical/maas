@@ -490,118 +490,6 @@ CORE_RELOAD_DNS_NOTIFICATION_FORMAT = dedent(
     """
 )
 
-# Triggered when the VLAN is modified. When DHCP is turned off/on it will alert
-# the primary/secondary rack controller to update. If the primary rack or
-# secondary rack is changed it will alert the previous and new rack controller.
-DHCP_VLAN_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_vlan_update()
-    RETURNS trigger as $$
-    DECLARE
-      relay_vlan maasserver_vlan;
-    BEGIN
-      -- DHCP was turned off.
-      IF OLD.dhcp_on AND NOT NEW.dhcp_on THEN
-        PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
-        IF OLD.secondary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
-        END IF;
-      -- DHCP was turned on.
-      ELSIF NOT OLD.dhcp_on AND NEW.dhcp_on THEN
-        PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
-        IF NEW.secondary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
-        END IF;
-      -- MTU was changed.
-      ELSIF OLD.mtu != NEW.mtu THEN
-        PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
-        IF OLD.secondary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
-        END IF;
-      -- DHCP state was not changed but the rack controllers might have been.
-      ELSIF NEW.dhcp_on AND (
-         OLD.primary_rack_id != NEW.primary_rack_id OR (
-           OLD.secondary_rack_id IS NULL AND
-           NEW.secondary_rack_id IS NOT NULL) OR (
-           OLD.secondary_rack_id IS NOT NULL AND
-           NEW.secondary_rack_id IS NULL) OR
-         OLD.secondary_rack_id != NEW.secondary_rack_id) THEN
-        -- Send the message to the old primary if no longer the primary.
-        IF OLD.primary_rack_id != NEW.primary_rack_id THEN
-          PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
-        END IF;
-        -- Always send the message to the primary as it has to be set.
-        PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
-        -- Send message to both old and new secondary rack controller if set.
-        IF OLD.secondary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
-        END IF;
-        IF NEW.secondary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
-        END IF;
-      END IF;
-
-      -- Relay VLAN was set when it was previously unset, or
-      -- the MTU has changed for a VLAN with DHCP relay enabled.
-      IF (OLD.relay_vlan_id IS NULL AND NEW.relay_vlan_id IS NOT NULL)
-         OR (OLD.mtu != NEW.mtu AND NEW.relay_vlan_id IS NOT NULL) THEN
-        SELECT maasserver_vlan.* INTO relay_vlan
-        FROM maasserver_vlan
-        WHERE maasserver_vlan.id = NEW.relay_vlan_id;
-        IF relay_vlan.primary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(
-            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-            PERFORM pg_notify(
-              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-          END IF;
-        END IF;
-      -- Relay VLAN was unset when it was previously set.
-      ELSIF OLD.relay_vlan_id IS NOT NULL AND NEW.relay_vlan_id IS NULL THEN
-        SELECT maasserver_vlan.* INTO relay_vlan
-        FROM maasserver_vlan
-        WHERE maasserver_vlan.id = OLD.relay_vlan_id;
-        IF relay_vlan.primary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(
-            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-            PERFORM pg_notify(
-              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-          END IF;
-        END IF;
-      -- Relay VLAN has changed on the VLAN.
-      ELSIF OLD.relay_vlan_id != NEW.relay_vlan_id THEN
-        -- Alert old VLAN if required.
-        SELECT maasserver_vlan.* INTO relay_vlan
-        FROM maasserver_vlan
-        WHERE maasserver_vlan.id = OLD.relay_vlan_id;
-        IF relay_vlan.primary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(
-            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-            PERFORM pg_notify(
-              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-          END IF;
-        END IF;
-        -- Alert new VLAN if required.
-        SELECT maasserver_vlan.* INTO relay_vlan
-        FROM maasserver_vlan
-        WHERE maasserver_vlan.id = NEW.relay_vlan_id;
-        IF relay_vlan.primary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(
-            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-            PERFORM pg_notify(
-              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-          END IF;
-        END IF;
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
 # Helper that alerts the primary and secondary rack controller for a VLAN.
 DHCP_ALERT = dedent(
     """\
@@ -2528,10 +2416,6 @@ def register_system_triggers():
 
     # DHCP
     register_procedure(DHCP_ALERT)
-
-    # - VLAN
-    register_procedure(DHCP_VLAN_UPDATE)
-    register_trigger("maasserver_vlan", "sys_dhcp_vlan_update", "update")
 
     # - Subnet
     register_procedure(DHCP_SUBNET_UPDATE)

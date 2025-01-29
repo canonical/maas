@@ -12,9 +12,10 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.models import Space, VLAN
+from maasserver.models import vlan as vlan_module
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory, RANDOM
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.djangotestcase import CountQueries
 
 
@@ -33,6 +34,10 @@ def get_vlan_uri(vlan, fabric=None):
 
 
 class TestVlansAPI(APITestCase.ForUser):
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
+
     def test_handler_path(self):
         fabric = factory.make_Fabric()
         self.assertEqual(
@@ -295,7 +300,10 @@ class TestVlanAPI(APITestCase.ForUser):
         vlan.dhcp_on = True
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         uri = get_vlan_uri(vlan, vlan.fabric)
         response = self.client.get(uri)
 

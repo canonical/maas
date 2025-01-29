@@ -143,7 +143,10 @@ def maasapiserver(maasdb, tmpdir):
 
 
 @pytest.fixture
-def factory(maasdb):
+def factory(maasdb, mocker):
+    mocker.patch("maasserver.utils.orm.post_commit_hooks")
+    mocker.patch("maasserver.utils.orm.post_commit_do")
+
     # Local imports from maasserver so that pytest --help works
     from maasserver.testing.factory import factory as maasserver_factory
 

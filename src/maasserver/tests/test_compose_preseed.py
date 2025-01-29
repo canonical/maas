@@ -20,6 +20,7 @@ from maasserver.models.config import Config
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.http import make_HttpRequest
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.enum import POWER_STATE
@@ -41,10 +42,12 @@ def _enable_dhcp(subnet, primary_rack, secondary_rack=None, relay_vlan=None):
     dhcp_vlan.dhcp_on = True
     dhcp_vlan.primary_rack = primary_rack
     dhcp_vlan.secondary_rack = secondary_rack
-    dhcp_vlan.save()
-    if relay_vlan:
-        subnet.vlan.relay_vlan = relay_vlan
-        subnet.vlan.save()
+
+    with post_commit_hooks:
+        dhcp_vlan.save()
+        if relay_vlan:
+            subnet.vlan.relay_vlan = relay_vlan
+            subnet.vlan.save()
 
 
 class TestAptProxyScenarios(MAASServerTestCase):
@@ -442,7 +445,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
         Config.objects.set_config("enable_http_proxy", False)
         request = make_HttpRequest()
         preseed = yaml.safe_load(
@@ -458,7 +463,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
         request = make_HttpRequest()
         apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller())
         preseed = yaml.safe_load(
@@ -493,7 +500,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
         self.assertTrue(preseed.startswith("#cloud-config\n"))
@@ -515,7 +525,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -532,7 +545,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -554,7 +570,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -578,7 +597,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -595,7 +617,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         ip_address = factory.make_ipv4_address()
         node.boot_cluster_ip = ip_address
         node.save()
@@ -616,7 +641,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -634,7 +662,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -650,7 +681,10 @@ class TestComposePreseed(MAASServerTestCase):
             nic = node.get_boot_interface()
             nic.vlan.dhcp_on = True
             nic.vlan.primary_rack = rack_controller
-            nic.vlan.save()
+
+            with post_commit_hooks:
+                nic.vlan.save()
+
             request = make_HttpRequest()
             preseed = yaml.safe_load(
                 compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -672,7 +706,10 @@ class TestComposePreseed(MAASServerTestCase):
             nic = node.get_boot_interface()
             nic.vlan.dhcp_on = True
             nic.vlan.primary_rack = rack_controller
-            nic.vlan.save()
+
+            with post_commit_hooks:
+                nic.vlan.save()
+
             request = make_HttpRequest()
             preseed = yaml.safe_load(
                 compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -689,7 +726,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         script_set = node.current_testing_script_set
         script_set.power_state_before_transition = POWER_STATE.ON
         script_set.save()
@@ -728,7 +768,10 @@ class TestComposePreseed(MAASServerTestCase):
             nic = node.get_boot_interface()
             nic.vlan.dhcp_on = True
             nic.vlan.primary_rack = rack_controller
-            nic.vlan.save()
+
+            with post_commit_hooks:
+                nic.vlan.save()
+
             request = make_HttpRequest()
             preseed = yaml.safe_load(
                 compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -752,7 +795,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -775,7 +821,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
@@ -794,7 +843,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         self.useFixture(RunningClusterRPCFixture())
         request = make_HttpRequest()
         expected_apt_proxy = get_apt_proxy(
@@ -839,7 +891,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         self.useFixture(RunningClusterRPCFixture())
         Config.objects.set_config("enable_http_proxy", False)
         request = make_HttpRequest()
@@ -862,7 +917,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         self.useFixture(RunningClusterRPCFixture())
         request = make_HttpRequest()
         apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller())
@@ -888,7 +946,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         self.useFixture(RunningClusterRPCFixture())
         request = make_HttpRequest()
         preseed = yaml.safe_load(
@@ -908,7 +969,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         self.useFixture(RunningClusterRPCFixture())
         request = make_HttpRequest()
         preseed = yaml.safe_load(
@@ -931,7 +995,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
         self.useFixture(RunningClusterRPCFixture())
         token = NodeKey.objects.get_token_for_node(node)
         request = make_HttpRequest()
@@ -958,7 +1025,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
+
+        with post_commit_hooks:
+            nic.vlan.save()
 
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(

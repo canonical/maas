@@ -4385,6 +4385,7 @@ class TestNode(MAASServerTestCase):
         )
 
     def test_mark_failed_updates_all_pending_and_running_script_statuses(self):
+        self.patch(node_module, "stop_workflow")
         self.disable_node_query()
         self.patch(node_module, "stop_workflow")
         node = factory.make_Node(
@@ -5260,10 +5261,13 @@ class TestNode(MAASServerTestCase):
             subnet=subnet,
             interface=secondary_rack_interface,
         )
-        vlan.dhcp_on = True
-        vlan.primary_rack = primary_rack
-        vlan.secondary_rack = secondary_rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.dhcp_on = True
+            vlan.primary_rack = primary_rack
+            vlan.secondary_rack = secondary_rack
+            vlan.save()
+
         node.boot_interface = boot_interface
         node.boot_cluster_ip = secondary_rack_ip.ip
         node.save()
@@ -5300,7 +5304,10 @@ class TestNode(MAASServerTestCase):
         vlan.dhcp_on = True
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         node.boot_interface = boot_interface
         node.save()
         self.assertEqual(primary_rack, node.get_boot_rack_controller())
@@ -8921,7 +8928,10 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         rack = factory.make_RegionRackController()
         vlan.primary_rack = rack
         vlan.dhcp_on = True
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         # In order to determine the correct IP address per-address-family,
         # a name lookup is performed on the hostname part of the URL.
         # We need to mock that so we can return whatever IP addresses it
@@ -11351,7 +11361,8 @@ class TestRackController(MAASTransactionServerTestCase):
         )
         new_secondary = factory.make_RackController()
         factory.make_Interface(node=new_secondary, vlan=vlan)
-        changes = rack.migrate_dhcp_from_rack()
+        with post_commit_hooks:
+            changes = rack.migrate_dhcp_from_rack()
         self.assertEqual([(vlan, secondary_rack, new_secondary)], changes)
         vlan = reload_object(vlan)
         self.assertEqual(secondary_rack, vlan.primary_rack)
@@ -11362,7 +11373,8 @@ class TestRackController(MAASTransactionServerTestCase):
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
         new_primary = factory.make_RackController()
         factory.make_Interface(node=new_primary, vlan=vlan)
-        changes = rack.migrate_dhcp_from_rack()
+        with post_commit_hooks:
+            changes = rack.migrate_dhcp_from_rack()
         self.assertEqual([(vlan, new_primary, None)], changes)
         vlan = reload_object(vlan)
         self.assertEqual(new_primary, vlan.primary_rack)
@@ -11371,7 +11383,8 @@ class TestRackController(MAASTransactionServerTestCase):
     def test_migrate_dhcp_from_rack_stops_dhcp(self):
         rack = factory.make_RackController()
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
-        changes = rack.migrate_dhcp_from_rack()
+        with post_commit_hooks:
+            changes = rack.migrate_dhcp_from_rack()
         self.assertEqual([(vlan, None, None)], changes)
         vlan = reload_object(vlan)
         self.assertFalse(vlan.dhcp_on)
@@ -11388,7 +11401,8 @@ class TestRackController(MAASTransactionServerTestCase):
         )
         new_secondary = factory.make_RackController()
         factory.make_Interface(node=new_secondary, vlan=vlan)
-        changes = secondary_rack.migrate_dhcp_from_rack()
+        with post_commit_hooks:
+            changes = secondary_rack.migrate_dhcp_from_rack()
         self.assertEqual([(vlan, primary_rack, new_secondary)], changes)
         vlan = reload_object(vlan)
         self.assertEqual(primary_rack, vlan.primary_rack)
@@ -11402,7 +11416,10 @@ class TestRackController(MAASTransactionServerTestCase):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
         )
-        changes = secondary_rack.migrate_dhcp_from_rack()
+
+        with post_commit_hooks:
+            changes = secondary_rack.migrate_dhcp_from_rack()
+
         self.assertEqual([(vlan, primary_rack, None)], changes)
         vlan = reload_object(vlan)
         self.assertEqual(primary_rack, vlan.primary_rack)
@@ -11416,7 +11433,8 @@ class TestRackController(MAASTransactionServerTestCase):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
         )
-        changes = secondary_rack.migrate_dhcp_from_rack(commit=False)
+        with post_commit_hooks:
+            changes = secondary_rack.migrate_dhcp_from_rack(commit=False)
         self.assertEqual([(vlan, primary_rack, None)], changes)
         vlan = reload_object(vlan)
         self.assertEqual(primary_rack, vlan.primary_rack)
@@ -11425,7 +11443,9 @@ class TestRackController(MAASTransactionServerTestCase):
     def test_prevents_delete_when_primary_rack(self):
         rackcontroller = factory.make_RackController()
         factory.make_VLAN(dhcp_on=True, primary_rack=rackcontroller)
-        self.assertRaises(ValidationError, rackcontroller.delete)
+
+        with post_commit_hooks:
+            self.assertRaises(ValidationError, rackcontroller.delete)
 
     def test_delete_removes_secondary_link(self):
         primary_rack = factory.make_RackController()
@@ -11435,7 +11455,10 @@ class TestRackController(MAASTransactionServerTestCase):
             primary_rack=primary_rack,
             secondary_rack=rackcontroller,
         )
-        rackcontroller.delete()
+
+        with post_commit_hooks:
+            rackcontroller.delete()
+
         self.assertIsNone(reload_object(vlan).secondary_rack)
         self.assertRaises(
             RackController.DoesNotExist,

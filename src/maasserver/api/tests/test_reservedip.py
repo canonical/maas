@@ -11,6 +11,7 @@ from twisted.internet import defer
 import maasserver.api.reservedip as reservedip_module
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.models import ReservedIP
+from maasserver.models import subnet as subnet_module
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -21,6 +22,7 @@ class TestReservedIPsAPI(APITestCase.ForUser):
         super().setUp()
         d = defer.succeed(None)
         self.patch(reservedip_module, "post_commit_do").return_value = d
+        self.patch(subnet_module, "start_workflow")
 
     def test_handler_path(self):
         self.assertEqual(
@@ -104,6 +106,7 @@ class TestReservedIPAPI(APITestCase.ForUser):
         super().setUp()
         d = defer.succeed(None)
         self.patch(reservedip_module, "post_commit_do").return_value = d
+        self.patch(subnet_module, "start_workflow")
 
     def test_handler_path(self):
         reserved_ip = factory.make_ReservedIP()

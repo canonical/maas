@@ -12,6 +12,7 @@ from netaddr import IPAddress
 
 from maasserver.enum import INTERFACE_LINK_TYPE, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import DNSResource, StaticIPAddress
+from maasserver.models import vlan as vlan_module
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -19,6 +20,10 @@ from maasserver.utils.orm import reload_object, transactional
 
 
 class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
+
     def test_handler_path(self):
         self.assertEqual(
             "/MAAS/api/2.0/ipaddresses/", reverse("ipaddresses_handler")
@@ -227,6 +232,10 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
         ("without_force", {"force": False}),
         ("with_force", {"force": True}),
     )
+
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
 
     @property
     def force_should_work(self):
@@ -446,6 +455,10 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
         ("with_ip_param", {"ip_param": "ip"}),
         ("with_ip_address_param", {"ip_param": "ip_address"}),
     )
+
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
 
     def post_reservation_request(
         self,

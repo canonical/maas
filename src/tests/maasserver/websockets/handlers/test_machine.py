@@ -66,7 +66,9 @@ class TestMachineHandler:
 
     # Prevent RBAC from making a query.
     @pytest.mark.usefixtures("force_rbac_off")
-    def test_list_ids_num_queries_is_the_expected_number(self):
+    def test_list_ids_num_queries_is_the_expected_number(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = self._populate_db_for_query_count(2)
         handler = MachineHandler(
             owner, {}, None, session_id=session.session_key
@@ -88,7 +90,11 @@ class TestMachineHandler:
 
     # Prevent RBAC from making a query.
     @pytest.mark.usefixtures("force_rbac_off")
-    def test_list_ids_num_queries_with_filter_is_the_expected_number(self):
+    def test_list_ids_num_queries_with_filter_is_the_expected_number(
+        self, mocker
+    ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = self._populate_db_for_query_count(2)
         handler = MachineHandler(
             owner, {}, None, session_id=session.session_key
@@ -123,8 +129,10 @@ class TestMachineHandler:
         ), "Number of queries has changed; make sure this is expected."
 
     def test_list_ids_num_queries_is_the_expected_number_with_rbac(
-        self, enable_rbac
+        self, enable_rbac, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
         pool = factory.make_ResourcePool()
         enable_rbac.add_pool(pool)
@@ -174,7 +182,9 @@ class TestMachineHandler:
             queries_total == expected_query_count
         ), "Number of queries has changed; make sure this is expected."
 
-    def test_cache_clears_on_reload(self):
+    def test_cache_clears_on_reload(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
         node = factory.make_Node(owner=owner)
         commissioning_script_set = factory.make_ScriptSet(
@@ -204,7 +214,9 @@ class TestMachineHandler:
         # Script results should not be loaded by the machine list action
         assert node.id not in handler._script_results
 
-    def test_list_ids_returns_nodes_only_viewable_by_user(self):
+    def test_list_ids_returns_nodes_only_viewable_by_user(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         other_user, other_user_session_id = factory.make_User_with_session()
         admin, admin_session = factory.make_admin_with_session()
@@ -242,8 +254,10 @@ class TestMachineHandler:
         }
 
     def test_secret_power_params_only_viewable_with_admin_read_permission(
-        self,
+        self, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         admin, admin_session = factory.make_admin_with_session()
 
@@ -272,8 +286,10 @@ class TestMachineHandler:
         assert node_data["power_parameters"] == sanitised_power_params
 
     def test_secret_power_params_only_viewable_with_admin_read_permission_rbac(
-        self, enable_rbac
+        self, enable_rbac, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         other_user, other_user_session = factory.make_User_with_session()
         pool = factory.make_ResourcePool()
@@ -307,7 +323,9 @@ class TestMachineHandler:
 
 @pytest.mark.usefixtures("maasdb")
 class TestMachineHandlerNewSchema:
-    def test_filter_simple(self):
+    def test_filter_simple(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         nodes = [
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
@@ -327,7 +345,9 @@ class TestMachineHandlerNewSchema:
         assert len(items) == 1
         assert items[0]["id"] == nodes[1].id
 
-    def test_filter_composed(self):
+    def test_filter_composed(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         nodes = [
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
@@ -348,7 +368,9 @@ class TestMachineHandlerNewSchema:
         assert len(items) == 1
         assert items[0]["id"] == nodes[1].id
 
-    def test_filter_no_response(self):
+    def test_filter_no_response(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         for _ in range(3):
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
@@ -364,7 +386,9 @@ class TestMachineHandlerNewSchema:
         )
         assert result["groups"][0]["count"] == 0
 
-    def test_filter_invalid(self):
+    def test_filter_invalid(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         for _ in range(3):
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
@@ -381,7 +405,9 @@ class TestMachineHandlerNewSchema:
             },
         )
 
-    def test_filter_diskless_machine(self):
+    def test_filter_diskless_machine(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         factory.make_Node(
             owner=user, status=NODE_STATUS.NEW, with_boot_disk=False
@@ -398,7 +424,9 @@ class TestMachineHandlerNewSchema:
         )
         assert result["groups"][0]["count"] == 1
 
-    def test_filter_deployment_target(self):
+    def test_filter_deployment_target(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         node_with_ephemeral_deployment = factory.make_Node(
             owner=user, status=NODE_STATUS.NEW, ephemeral_deploy=True
@@ -439,7 +467,9 @@ class TestMachineHandlerNewSchema:
             == node_with_standard_deployment.id
         )
 
-    def test_filter_counters(self):
+    def test_filter_counters(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         nodes = [factory.make_Machine(owner=user) for _ in range(2)]
         for node in nodes:
@@ -451,7 +481,9 @@ class TestMachineHandlerNewSchema:
         assert result["count"] == 2
         assert result["groups"][0]["count"] == 2
 
-    def test_filter_storage_counters(self):
+    def test_filter_storage_counters(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         node = factory.make_Machine(owner=user)
         [node.tags.add(factory.make_Tag()) for _ in range(2)]
@@ -464,7 +496,9 @@ class TestMachineHandlerNewSchema:
         assert result["count"] == 1
         assert result["groups"][0]["items"][0]["id"] == node.id
 
-    def test_group_label_dynamic(self):
+    def test_group_label_dynamic(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         factory.make_Node(
             owner=user,
@@ -487,7 +521,9 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][0]["name"] == "lxd"
         assert result["groups"][1]["name"] == "virsh"
 
-    def test_group_collapse_dynamic(self):
+    def test_group_collapse_dynamic(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         factory.make_Node(
             owner=user,
@@ -513,7 +549,9 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][1]["name"] == "virsh"
         assert not result["groups"][1]["collapsed"]
 
-    def test_group_label_static(self):
+    def test_group_label_static(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         factory.make_Node(
             owner=user,
@@ -536,7 +574,9 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][1]["name"] == "Allocated"
         assert result["groups"][1]["value"] == "allocated"
 
-    def test_group_simple_status(self):
+    def test_group_simple_status(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         statuses = [
             NODE_STATUS.ALLOCATED,
@@ -562,7 +602,9 @@ class TestMachineHandlerNewSchema:
         assert grp_fail["value"] == "failed"
         assert grp_fail["count"] == 2
 
-    def test_group_power_state(self):
+    def test_group_power_state(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         factory.make_Node(
             owner=user,
@@ -583,7 +625,9 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][0]["name"] == "Off"
         assert result["groups"][1]["name"] == "On"
 
-    def test_group_owner(self):
+    def test_group_owner(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
         user1 = factory.make_User(username="User01")
         user2 = factory.make_User(username="User02")
@@ -604,7 +648,9 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][0]["name"] == "User01"
         assert result["groups"][1]["name"] == "User02"
 
-    def test_group_parent(self):
+    def test_group_parent(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
         parent = factory.make_Machine(owner=admin)
         for _ in range(2):
@@ -624,7 +670,9 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][1]["value"] is None
         assert result["groups"][1]["count"] == 1
 
-    def test_group_parent_pages_no_parent_first_pagelast(self):
+    def test_group_parent_pages_no_parent_first_pagelast(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         # On the first page, the last machine does not have a parent.
         admin, session = factory.make_admin_with_session()
         parent = factory.make_Machine(owner=admin)
@@ -646,7 +694,11 @@ class TestMachineHandlerNewSchema:
             item["id"] for item in result["groups"][0]["items"]
         ]
 
-    def test_group_parent_pages_no_parent_previous_page_with_parent(self):
+    def test_group_parent_pages_no_parent_previous_page_with_parent(
+        self, mocker
+    ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         # On the second page, the top has no parent, previous page
         # ended with a machine with a parent
         admin, session = factory.make_admin_with_session()
@@ -668,8 +720,10 @@ class TestMachineHandlerNewSchema:
         assert parent.id == result["groups"][0]["items"][0]["id"]
 
     def test_group_parent_pages_with_parent_previous_page_with_parent_and_no_parent(
-        self,
+        self, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         # On the second page, the top of the page has a parent, but there
         # should machines with no parents included as well.
         admin, session = factory.make_admin_with_session()
@@ -696,7 +750,11 @@ class TestMachineHandlerNewSchema:
             parent2.id,
         )
 
-    def test_group_parent_pages_no_parent_previous_page_without_parent(self):
+    def test_group_parent_pages_no_parent_previous_page_without_parent(
+        self, mocker
+    ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         # On the second page, the previous page ended with a machine
         # without a parent.
         admin, session = factory.make_admin_with_session()
@@ -717,7 +775,9 @@ class TestMachineHandlerNewSchema:
         assert len(result["groups"]) == 1
         assert len(result["groups"][0]["items"]) == 2
 
-    def test_group_zone(self):
+    def test_group_zone(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         zones = sorted(
             [factory.make_Zone() for _ in range(2)], key=attrgetter("name")
@@ -741,7 +801,9 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][0]["name"] == zones[0].name
         assert result["groups"][1]["name"] == zones[1].name
 
-    def test_group_collapse_static(self):
+    def test_group_collapse_static(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         factory.make_Node(
             owner=user,
@@ -765,7 +827,10 @@ class TestMachineHandlerNewSchema:
         assert result["groups"][0]["collapsed"]
         assert not result["groups"][1]["collapsed"]
 
-    def test_filter_dynamic_options(self):
+    def test_filter_dynamic_options(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
         with transaction.atomic():
             user, session = factory.make_User_with_session()
             tag = factory.make_Tag()
@@ -793,7 +858,9 @@ class TestMachineHandlerNewSchema:
                     filter = {key: opts[0]["key"]}
                 handler.list_ids({"filter": filter})
 
-    def test_unsubscribe_prevents_further_updates_for_pk(self):
+    def test_unsubscribe_prevents_further_updates_for_pk(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
         handler = MachineHandler(
             admin, {}, None, session_id=session.session_key
@@ -807,7 +874,9 @@ class TestMachineHandlerNewSchema:
         list_result = handler.list_ids({})
         assert len(list_result["groups"][0]["items"]) == 1
 
-    def test_unsubscribe_returns_serializable_type(self):
+    def test_unsubscribe_returns_serializable_type(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
         handler = MachineHandler(
             admin, {}, None, session_id=session.session_key
@@ -819,7 +888,9 @@ class TestMachineHandlerNewSchema:
         )
         assert isinstance(resp, list)
 
-    def test_read_an_unsubscribed_object_subscribes(self):
+    def test_read_an_unsubscribed_object_subscribes(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
         handler = MachineHandler(
             admin, {}, None, session_id=session.session_key
@@ -843,7 +914,9 @@ class TestMachineHandlerNewSchema:
             handler.on_listen("machine", "update", node2.system_id) is not None
         )
 
-    def test_list_an_unsubscribed_object_subscribes(self):
+    def test_list_an_unsubscribed_object_subscribes(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
         handler = MachineHandler(
             admin, {}, None, session_id=session.session_key
@@ -894,7 +967,9 @@ class TestMachineHandlerWithMaasApiServer:
         [node_info] = list_results["groups"][0]["items"]
         assert "certificate" not in node_info
 
-    def test_list(self):
+    def test_list(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
 
@@ -922,7 +997,9 @@ class TestMachineHandlerWithMaasApiServer:
             )
         ]
 
-    def test_list_scriptresults(self):
+    def test_list_scriptresults(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         factory.make_ScriptResult(
@@ -980,7 +1057,9 @@ class TestMachineHandlerWithMaasApiServer:
             "failed": -1,
         }
 
-    def test_list_ignores_devices(self):
+    def test_list_ignores_devices(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
         handler = MachineHandler(
             owner, {}, None, session_id=session.session_key
@@ -996,7 +1075,9 @@ class TestMachineHandlerWithMaasApiServer:
             )
         ]
 
-    def test_list_ephemeral_deployment(self):
+    def test_list_ephemeral_deployment(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
         handler = MachineHandler(
             owner, {}, None, session_id=session.session_key
@@ -1015,7 +1096,9 @@ class TestMachineHandlerWithMaasApiServer:
             )
         ]
 
-    def test_list_ephemeral_deployment_when_diskless(self):
+    def test_list_ephemeral_deployment_when_diskless(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
         handler = MachineHandler(
             owner, {}, None, session_id=session.session_key
@@ -1034,7 +1117,9 @@ class TestMachineHandlerWithMaasApiServer:
             )
         ]
 
-    def test_list_includes_pod_details_when_available(self):
+    def test_list_includes_pod_details_when_available(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         pod = factory.make_Pod()
         node = factory.make_Node(owner=user, bmc=pod)
@@ -1049,7 +1134,9 @@ class TestMachineHandlerWithMaasApiServer:
             )
         ]
 
-    def test_sort_alias(self):
+    def test_sort_alias(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         user, session = factory.make_User_with_session()
         fabrics = [factory.make_Fabric() for _ in range(2)]
         subnets = [factory.make_Subnet(fabric=fabrics[i]) for i in range(2)]

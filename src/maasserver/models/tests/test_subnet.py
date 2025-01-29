@@ -32,7 +32,7 @@ from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory, RANDOM, RANDOM_OR_NONE
 from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import get_one, reload_object
+from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maastesting.djangotestcase import count_queries
 from provisioningserver.utils.network import inet_ntop, MAASIPRange
 
@@ -1848,7 +1848,9 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         )
         vlan.dhcp_on = True
         vlan.primary_rack = rack1
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
         self.assertEqual(["10.10.0.2"], get_boot_rackcontroller_ips(subnet))
 
     def test_with_secondary(self):
@@ -1863,7 +1865,9 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         vlan.dhcp_on = True
         vlan.primary_rack = rack1
         vlan.secondary_rack = rack2
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
         self.assertCountEqual(
             ["10.10.0.2", "10.10.0.3"], get_boot_rackcontroller_ips(subnet)
         )
@@ -1886,7 +1890,10 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         vlan.dhcp_on = True
         vlan.primary_rack = rack1
         vlan.secondary_rack = rack2
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         boot_ips = get_boot_rackcontroller_ips(subnet1)
         self.assertCountEqual(
             [
@@ -1920,7 +1927,10 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         )
         vlan.dhcp_on = True
         vlan.primary_rack = rack1
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         boot_ips = get_boot_rackcontroller_ips(subnet1)
         self.assertCountEqual(["10.10.1.2", "10.10.2.2"], boot_ips)
 
@@ -1944,11 +1954,14 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         rack1 = factory.make_rack_with_interfaces(
             eth0=["10.10.0.2/24", "10.10.1.2/24"], eth1=["10.30.0.2/24"]
         )
-        dhcp_vlan.dhcp_on = True
-        dhcp_vlan.primary_rack = rack1
-        dhcp_vlan.save()
-        relay_vlan.relay_vlan = dhcp_vlan
-        relay_vlan.save()
+
+        with post_commit_hooks:
+            dhcp_vlan.dhcp_on = True
+            dhcp_vlan.primary_rack = rack1
+            dhcp_vlan.save()
+            relay_vlan.relay_vlan = dhcp_vlan
+            relay_vlan.save()
+
         boot_ips = get_boot_rackcontroller_ips(relay_subnet)
         self.assertCountEqual(["10.10.0.2", "10.10.1.2"], boot_ips)
 
@@ -1973,11 +1986,14 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
             eth0=["10.10.0.2/24", "fd12:3456:789a::2/64"],
             eth1=["10.30.0.2/24"],
         )
-        dhcp_vlan.dhcp_on = True
-        dhcp_vlan.primary_rack = rack1
-        dhcp_vlan.save()
-        relay_vlan.relay_vlan = dhcp_vlan
-        relay_vlan.save()
+
+        with post_commit_hooks:
+            dhcp_vlan.dhcp_on = True
+            dhcp_vlan.primary_rack = rack1
+            dhcp_vlan.save()
+            relay_vlan.relay_vlan = dhcp_vlan
+            relay_vlan.save()
+
         boot_ips = get_boot_rackcontroller_ips(relay_subnet)
         self.assertEqual(["10.10.0.2"], boot_ips)
 
@@ -2002,10 +2018,13 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
             eth0=["10.10.0.2/24", "fd12:3456:789a::2/64"],
             eth1=["10.30.0.2/24"],
         )
-        dhcp_vlan.dhcp_on = True
-        dhcp_vlan.primary_rack = rack1
-        dhcp_vlan.save()
-        relay_vlan.relay_vlan = dhcp_vlan
-        relay_vlan.save()
+
+        with post_commit_hooks:
+            dhcp_vlan.dhcp_on = True
+            dhcp_vlan.primary_rack = rack1
+            dhcp_vlan.save()
+            relay_vlan.relay_vlan = dhcp_vlan
+            relay_vlan.save()
+
         boot_ips = get_boot_rackcontroller_ips(relay_subnet)
         self.assertEqual(["fd12:3456:789a::2"], boot_ips)

@@ -126,7 +126,6 @@ class TestTriggersUsed(MAASServerTestCase):
         "subnet_sys_proxy_subnet_delete",
         "subnet_sys_proxy_subnet_insert",
         "subnet_sys_proxy_subnet_update",
-        "vlan_sys_dhcp_vlan_update",
     }
 
     triggers_websocket = {

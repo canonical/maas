@@ -13,7 +13,7 @@ from maasserver.models.service import Service
 from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestVLANForm(MAASServerTestCase):
@@ -133,7 +133,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(instance=vlan, data={"primary_rack": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
@@ -157,7 +160,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
         vlan.secondary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(instance=vlan, data={"secondary_rack": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
@@ -169,7 +175,10 @@ class TestVLANForm(MAASServerTestCase):
         secondary_rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(
             instance=reload_object(vlan), data={"primary_rack": ""}
         )
@@ -185,7 +194,10 @@ class TestVLANForm(MAASServerTestCase):
         secondary_rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(
             instance=reload_object(vlan),
             data={"primary_rack": secondary_rack.system_id},
@@ -200,7 +212,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(
             instance=reload_object(vlan),
             data={"secondary_rack": rack.system_id},
@@ -223,7 +238,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         service = Service.objects.get(node=rack, name="rackd")
         service.status = SERVICE_STATUS.DEAD
         service.save()
@@ -237,7 +255,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         service = Service.objects.get(node=rack, name="rackd")
         service.status = SERVICE_STATUS.RUNNING
         service.save()
@@ -255,7 +276,10 @@ class TestVLANForm(MAASServerTestCase):
         factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(instance=reload_object(vlan), data={"dhcp_on": "true"})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
@@ -276,7 +300,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN(relay_vlan=relay_vlan)
         form = VLANForm(instance=vlan, data={"relay_vlan": None})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertIsNone(vlan.relay_vlan)
 
@@ -285,7 +312,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN(relay_vlan=relay_vlan)
         form = VLANForm(instance=vlan, data={"relay_vlan": ""})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertIsNone(vlan.relay_vlan)
 
@@ -294,7 +324,10 @@ class TestVLANForm(MAASServerTestCase):
         space = factory.make_Space()
         form = VLANForm(instance=vlan, data={"space": space.id})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertEqual(space.id, vlan.space.id)
 
@@ -303,7 +336,10 @@ class TestVLANForm(MAASServerTestCase):
         space = factory.make_Space()
         form = VLANForm(instance=vlan, data={"space": "name:" + space.name})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertEqual(space.id, vlan.space.id)
 
@@ -312,7 +348,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN(space=space)
         form = VLANForm(instance=vlan, data={"space": None})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertIsNone(vlan.space)
 
@@ -321,7 +360,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN(space=space)
         form = VLANForm(instance=vlan, data={"space": ""})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertIsNone(vlan.space)
 
@@ -330,7 +372,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN(space=space)
         form = VLANForm(instance=vlan, data={"space": ""})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertIsNone(vlan.space)
 
@@ -340,10 +385,16 @@ class TestVLANForm(MAASServerTestCase):
         factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(instance=reload_object(vlan), data={"dhcp_on": "true"})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertIsNone(vlan.relay_vlan)
 
@@ -356,7 +407,10 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(instance=reload_object(vlan), data={"dhcp_on": "true"})
         self.assertFalse(form.is_valid())
 
@@ -367,13 +421,19 @@ class TestVLANForm(MAASServerTestCase):
         secondary_rack = factory.make_RackController(vlan=vlan)
         vlan.primary_rack = primary_rack
         vlan.secondary_rack = secondary_rack
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         form = VLANForm(
             instance=reload_object(vlan),
             data={"primary_rack": "", "dhcp_on": "true"},
         )
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         vlan = reload_object(vlan)
         self.assertEqual(secondary_rack, vlan.primary_rack)
         self.assertIsNone(vlan.secondary_rack)

@@ -57,7 +57,7 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import post_commit, reload_object
+from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import SCRIPT_TYPE
@@ -3009,7 +3009,10 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         subnet.vlan.dhcp_on = True
         subnet.vlan.primary_rack = rack_controller
-        subnet.vlan.save()
+
+        with post_commit_hooks:
+            subnet.vlan.save()
+
         architecture = make_usable_architecture(self)
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,

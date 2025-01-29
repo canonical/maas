@@ -317,12 +317,18 @@ class TestDeleteAction(MAASServerTestCase):
         vlan = nic.vlan
         vlan.primary_rack = rack
         vlan.dhcp_on = True
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         admin = factory.make_admin()
         request = factory.make_fake_request("/")
         request.user = admin
-        action = Delete(rack, admin, request)
-        action.execute()
+
+        with post_commit_hooks:
+            action = Delete(rack, admin, request)
+            action.execute()
+
         self.assertIsNone(reload_object(rack))
 
 
@@ -1203,7 +1209,10 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
         rack_controller = factory.make_RackController()
         subnet.vlan.dhcp_on = True
         subnet.vlan.primary_rack = rack_controller
-        subnet.vlan.save()
+
+        with post_commit_hooks:
+            subnet.vlan.save()
+
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED,
             power_type="virsh",

@@ -18,7 +18,7 @@ from maasserver.enum import (
 )
 from maasserver.testing.api import APITestCase, explain_unexpected_response
 from maasserver.testing.factory import factory
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.djangotestcase import CountQueries
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils.network import inet_ntop, IPRangeStatistics
@@ -53,7 +53,9 @@ class TestSubnetsAPI(APITestCase.ForUser):
             vlan.primary_rack = primary_rack
             vlan.secondary_rack = secondary_rack
             vlan.relay_vlan = relay_vlan
-            vlan.save()
+
+            with post_commit_hooks:
+                vlan.save()
             return subnet
 
         subnets = [make_subnet()]

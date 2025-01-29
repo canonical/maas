@@ -31,7 +31,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.certificates import generate_certificate
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.certificates import Certificate
@@ -759,7 +759,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         pod_host.boot_interface.vlan.dhcp_on = False
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         pod = make_pod_with_hints(host=pod_host)
         interfaces = "eth0:subnet=%s" % (
             pod_host.boot_interface.vlan.subnet_set.first().cidr
@@ -793,7 +796,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         pod = make_pod_with_hints(host=pod_host)
         # Test with a numeric label, since that's what Juju will pass in.
         interfaces = "0:subnet=%s" % (
@@ -822,7 +828,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
         host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            host.boot_interface.vlan.save()
+
         pod = make_pod_with_hints()
         pod.ip_address = host.boot_interface.ip_addresses.first()
         pod.save()
@@ -851,7 +860,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         space = factory.make_Space("dmz")
         host.boot_interface.vlan.dhcp_on = True
         host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            host.boot_interface.vlan.save()
+
         pod = make_pod_with_hints(host=host)
 
         # Mock start_commissioning so it doesn't use post commit hooks.
@@ -899,7 +911,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         pod = make_pod_with_hints(host=pod_host)
         attach_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
         pod.default_macvlan_mode = attach_mode
@@ -930,7 +945,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         pod = make_pod_with_hints(host=pod_host)
         # We expect the macvlan mode to be the default choice...
         attach_mode = MACVLAN_MODE_CHOICES[0][1]
@@ -963,7 +981,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         pod = make_pod_with_hints(host=pod_host)
         interfaces = "eth0:space=dmz"
         form = ComposeMachineForm(
@@ -991,7 +1012,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         storage_space = factory.make_Space("storage")
         # Because PXE booting from the DMZ is /always/ a great idea. ;-)
         pod_host.boot_interface.vlan.space = dmz_space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         storage_vlan = factory.make_VLAN(space=storage_space, dhcp_on=True)
         storage_if = factory.make_Interface(node=pod_host, vlan=storage_vlan)
         pod = make_pod_with_hints(host=pod_host)
@@ -1024,7 +1048,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet(cidr=cidr1)
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
 
         # Create a bridge and non-bridge on the pod_host
         bridge = factory.make_Interface(
@@ -1064,7 +1090,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet(cidr=cidr1)
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
 
         # Create a bond and non-bond on the pod_host
         bond_if = factory.make_Interface(
@@ -1109,7 +1137,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet(cidr=cidr1)
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
 
         # Create a bond and non-bond on the pod_host
         bond_if = factory.make_Interface(
@@ -1161,7 +1191,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet(cidr=cidr1)
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         pod_host.boot_interface.sriov_max_vf = 1
         pod_host.boot_interface.save()
 
@@ -1210,7 +1243,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod_host = factory.make_Machine_with_Interface_on_Subnet(cidr=cidr1)
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         pod_host.boot_interface.sriov_max_vf = 1
         pod_host.boot_interface.save()
 
@@ -1262,7 +1298,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         space = factory.make_Space("dmz")
         pod_host.boot_interface.vlan.space = space
-        pod_host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.vlan.save()
+
         # This is just to make sure a bridge will be available for attachment.
         # We expect bridge mode to be preferred, when available.
         pod_host.acquire(factory.make_User(), bridge_all=True)
@@ -1350,7 +1389,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         space = factory.make_Space("dmz")
         host.boot_interface.vlan.dhcp_on = True
         host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            host.boot_interface.vlan.save()
+
         ip = factory.make_StaticIPAddress(
             interface=host.get_boot_interface(), subnet=subnet
         )
@@ -1394,7 +1436,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         space = factory.make_Space("dmz")
         host.boot_interface.vlan.dhcp_on = True
         host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            host.boot_interface.vlan.save()
+
         ip = factory.make_StaticIPAddress(
             interface=host.get_boot_interface(), subnet=subnet
         )

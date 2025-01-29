@@ -18,7 +18,7 @@ from maasserver.models.signals import power
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from provisioningserver.enum import POWER_STATE, POWER_STATE_CHOICES
 
 
@@ -256,14 +256,18 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
         )
-        for interface in machine.current_config.interface_set.all():
-            interface.claim_auto_ips()
+
+        with post_commit_hooks:
+            for interface in machine.current_config.interface_set.all():
+                interface.claim_auto_ips()
 
         # Hack to get around node transition model
         Node.objects.filter(id=machine.id).update(status=self.status)
         machine = reload_object(machine)
         machine.power_state = POWER_STATE.OFF
-        machine.save()
+
+        with post_commit_hooks:
+            machine.save()
 
         for ip in StaticIPAddress.objects.filter(
             interface__node_config__node=machine,
@@ -276,8 +280,10 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
         )
-        for interface in machine.current_config.interface_set.all():
-            interface.claim_auto_ips()
+
+        with post_commit_hooks:
+            for interface in machine.current_config.interface_set.all():
+                interface.claim_auto_ips()
 
         # Hack to get around node transition model
         Node.objects.filter(id=machine.id).update(status=self.status)
@@ -285,7 +291,9 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine.power_state = factory.pick_choice(
             POWER_STATE_CHOICES, but_not=[POWER_STATE.OFF]
         )
-        machine.save()
+
+        with post_commit_hooks:
+            machine.save()
 
         for ip in StaticIPAddress.objects.filter(
             interface__node_config__node=machine,
@@ -297,8 +305,10 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             status=self.status, power_state=POWER_STATE.ON
         )
-        for interface in machine.current_config.interface_set.all():
-            interface.claim_auto_ips()
+
+        with post_commit_hooks:
+            for interface in machine.current_config.interface_set.all():
+                interface.claim_auto_ips()
 
         # Hack to get around node transition model
         Node.objects.filter(id=machine.id).update(
@@ -306,7 +316,9 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         )
         machine = reload_object(machine)
         machine.power_state = POWER_STATE.OFF
-        machine.save()
+
+        with post_commit_hooks:
+            machine.save()
 
         for ip in StaticIPAddress.objects.filter(
             interface__node_config__node=machine,
@@ -322,14 +334,18 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
         )
-        for interface in node.current_config.interface_set.all():
-            interface.claim_auto_ips()
+
+        with post_commit_hooks:
+            for interface in node.current_config.interface_set.all():
+                interface.claim_auto_ips()
 
         # Hack to get around node transition model
         Node.objects.filter(id=node.id).update(status=self.status)
         node = reload_object(node)
         node.power_state = POWER_STATE.OFF
-        node.save()
+
+        with post_commit_hooks:
+            node.save()
 
         for ip in StaticIPAddress.objects.filter(
             interface__node_config__node=node, alloc_type=IPADDRESS_TYPE.AUTO

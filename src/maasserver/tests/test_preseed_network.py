@@ -26,6 +26,7 @@ from maasserver.preseed_network import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.utils.network import get_source_address
 
 
@@ -329,7 +330,8 @@ class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
                 "mtu": random.randint(600, 1400),
                 "accept_ra": factory.pick_bool(),
             }
-            iface.save()
+            with post_commit_hooks:
+                iface.save()
         extra_interface = node.current_config.interface_set.all()[1]
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
@@ -338,7 +340,10 @@ class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             interface=extra_interface,
         )
         sip.subnet = None
-        sip.save()
+
+        with post_commit_hooks:
+            sip.save()
+
         factory.make_Interface(node=node)
         net_config = self.collect_interface_config(node)
         net_config += self.collect_dns_config(
@@ -366,7 +371,10 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
                 "mtu": random.randint(600, 1400),
                 "accept-ra": factory.pick_bool(),
             }
-            iface.save()
+
+            with post_commit_hooks:
+                iface.save()
+
         extra_interface = node.current_config.interface_set.all()[1]
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
@@ -375,7 +383,9 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             interface=extra_interface,
         )
         sip.subnet = None
-        sip.save()
+
+        with post_commit_hooks:
+            sip.save()
         factory.make_Interface(node=node)
         net_config = self.collect_interface_config(node)
         net_config += self.collect_dns_config(node)

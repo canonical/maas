@@ -9,6 +9,7 @@ from django.utils.http import urlencode
 
 from maasserver.api import rackcontrollers
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
+from maasserver.models import vlan as vlan_module
 from maasserver.models.bmc import Pod
 from maasserver.testing.api import (
     APITestCase,
@@ -22,6 +23,10 @@ from maasserver.utils.orm import reload_object
 
 class TestRackControllerAPI(APITransactionTestCase.ForUser):
     """Tests for /api/2.0/rackcontrollers/<rack>/."""
+
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
 
     def test_handler_path(self):
         self.assertEqual(
@@ -232,6 +237,10 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
 
 class TestRackControllersAPI(APITestCase.ForUser):
     """Tests for /api/2.0/rackcontrollers/."""
+
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
 
     @staticmethod
     def get_rack_uri():

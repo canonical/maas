@@ -9,11 +9,12 @@ import random
 
 from django.urls import reverse
 
+from maasserver.models import vlan as vlan_module
 from maasserver.models.fabric import Fabric
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.djangotestcase import count_queries
 
 
@@ -30,21 +31,26 @@ def get_fabric_uri(fabric):
 def make_complex_fabric():
     # use a single space for all VLANs to avoid extra queries based on whether
     # other spaces are created
-    space = factory.make_Space()
-    fabric = factory.make_Fabric()
-    vlans = [fabric.get_default_vlan()]
-    for _ in range(3):
-        vlan = factory.make_VLAN(fabric=fabric, dhcp_on=True, space=space)
-        rack_controller = factory.make_RackController(vlan=vlan)
-        vlan.primary_rack = rack_controller
-        vlan.save()
-        vlans.append(vlan)
-    for vlan in vlans:
-        factory.make_VLAN(fabric=fabric, relay_vlan=vlan, space=space)
+    with post_commit_hooks:
+        space = factory.make_Space()
+        fabric = factory.make_Fabric()
+        vlans = [fabric.get_default_vlan()]
+        for _ in range(3):
+            vlan = factory.make_VLAN(fabric=fabric, dhcp_on=True, space=space)
+            rack_controller = factory.make_RackController(vlan=vlan)
+            vlan.primary_rack = rack_controller
+            vlan.save()
+            vlans.append(vlan)
+        for vlan in vlans:
+            factory.make_VLAN(fabric=fabric, relay_vlan=vlan, space=space)
     return fabric
 
 
 class TestFabricsAPI(APITestCase.ForUser):
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_module, "post_commit_do")
+
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/fabrics/", get_fabrics_uri())
 

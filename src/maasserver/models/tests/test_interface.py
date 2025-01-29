@@ -56,7 +56,12 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import get_one, reload_object, transactional
+from maasserver.utils.orm import (
+    get_one,
+    post_commit_hooks,
+    reload_object,
+    transactional,
+)
 from maastesting.djangotestcase import CountQueries
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
@@ -1789,7 +1794,10 @@ class TestInterfaceMTU(MAASServerTestCase):
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan_mtu = random.randint(552, 9100)
         nic1.vlan.mtu = vlan_mtu
-        nic1.vlan.save()
+
+        with post_commit_hooks:
+            nic1.vlan.save()
+
         self.assertEqual(vlan_mtu, nic1.get_effective_mtu())
 
     def test_get_effective_mtu_considers_jumbo_vlan_children(self):
@@ -2710,7 +2718,10 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         address = str(network.ip)
         vlan = VLAN.objects.get_default_vlan()
         vlan.dhcp_on = True
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
         other_interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         ip = factory.make_StaticIPAddress(
@@ -2738,7 +2749,10 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         address = str(network.ip)
         vlan = VLAN.objects.get_default_vlan()
         vlan.dhcp_on = True
-        vlan.save()
+
+        with post_commit_hooks:
+            vlan.save()
+
         subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
         ip1 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
@@ -2955,17 +2969,24 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         self.assertEqual(subnet.vlan, interface.vlan)
 
     def test_STATIC_not_allowed_if_ip_address_in_dynamic_range(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=interface.vlan)
-        ip_in_dynamic = IPAddress(subnet.get_dynamic_ranges().first().start_ip)
-        error = self.assertRaises(
-            StaticIPAddressOutOfRange,
-            interface.link_subnet,
-            INTERFACE_LINK_TYPE.STATIC,
-            subnet,
-            ip_address=ip_in_dynamic,
-        )
-        expected_range = subnet.get_dynamic_range_for_ip(ip_in_dynamic)
+        with post_commit_hooks:
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+
+            subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                vlan=interface.vlan
+            )
+
+            ip_in_dynamic = IPAddress(
+                subnet.get_dynamic_ranges().first().start_ip
+            )
+            error = self.assertRaises(
+                StaticIPAddressOutOfRange,
+                interface.link_subnet,
+                INTERFACE_LINK_TYPE.STATIC,
+                subnet,
+                ip_address=ip_in_dynamic,
+            )
+            expected_range = subnet.get_dynamic_range_for_ip(ip_in_dynamic)
         self.assertEqual(
             "IP address is inside a dynamic range %s-%s."
             % (expected_range.start_ip, expected_range.end_ip),
@@ -4235,7 +4256,9 @@ class TestReleaseAutoIPs(MAASServerTestCase):
                 subnet=subnet,
                 interface=interface,
             )
-        observed = interface.release_auto_ips()
+
+        with post_commit_hooks:
+            observed = interface.release_auto_ips()
 
         # Should now have 3 AUTO with no IP addresses assigned.
         interface = reload_object(interface)
@@ -4268,7 +4291,10 @@ class TestReleaseAutoIPs(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        observed = interface.release_auto_ips()
+
+        with post_commit_hooks:
+            observed = interface.release_auto_ips()
+
         self.assertEqual(
             1,
             len(observed),

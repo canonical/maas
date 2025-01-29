@@ -33,7 +33,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.djangotestcase import CountQueries
 from maastesting.testcase import MAASTestCase
 from metadataserver.enum import SCRIPT_TYPE
@@ -1290,7 +1290,10 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_compose.return_value = machine
         space = factory.make_Space()
         machine.boot_interface.vlan.space = space
-        machine.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            machine.boot_interface.vlan.save()
+
         response = self.client.post(
             self.machines_url,
             {
@@ -1345,7 +1348,10 @@ class TestMachinesAPI(APITestCase.ForUser):
         mock_compose.return_value = machine
         space = factory.make_Space()
         machine.boot_interface.vlan.space = space
-        machine.boot_interface.vlan.save()
+
+        with post_commit_hooks:
+            machine.boot_interface.vlan.save()
+
         response = self.client.post(
             self.machines_url,
             {

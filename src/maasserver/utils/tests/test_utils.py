@@ -24,6 +24,7 @@ from maasserver.utils import (
     strip_domain,
     synchronised,
 )
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.testcase import MAASTestCase
 
 
@@ -216,7 +217,10 @@ class TestFindRackController(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         subnet.vlan.dhcp_on = True
         subnet.vlan.primary_rack = rack_controller
-        subnet.vlan.save()
+
+        with post_commit_hooks:
+            subnet.vlan.save()
+
         self.assertEqual(
             rack_controller.system_id,
             find_rack_controller(
