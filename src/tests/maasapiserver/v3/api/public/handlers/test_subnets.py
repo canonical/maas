@@ -135,7 +135,7 @@ class TestSubnetApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.get_one.return_value = None
+        services_mock.vlans.exists.return_value = False
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 404
 
@@ -239,7 +239,7 @@ class TestSubnetApi(ApiCommonTests):
     ) -> None:
         services_mock.subnets = Mock(SubnetsService)
         services_mock.vlans = Mock(VlansService)
-        services_mock.vlans.get_one.return_value = None
+        services_mock.vlans.exists.return_value = False
         request = SubnetRequest(cidr=TEST_SUBNET_2.cidr)
         response = await mocked_api_client_admin.post(
             self.BASE_PATH, json=jsonable_encoder(request)

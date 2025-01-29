@@ -250,8 +250,6 @@ class UsersHandler(Handler):
         user = await services.users.update_by_id(
             user_id, user_request.to_builder()
         )
-        if not user:
-            return NotFoundResponse()
 
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
@@ -292,10 +290,12 @@ class UsersHandler(Handler):
         ),
     ) -> Response:
         assert authenticated_user is not None
-        user = await services.users.get_by_id(user_id)
-        if not user:
+        user_exists = await services.users.exists(
+            query=QuerySpec(UserClauseFactory.with_id(user_id))
+        )
+        if not user_exists:
             return NotFoundResponse()
-        if user.id == authenticated_user.id:
+        if user_id == authenticated_user.id:
             return BadRequestResponse(
                 details=[
                     BaseExceptionDetail(

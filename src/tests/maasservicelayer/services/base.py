@@ -202,9 +202,8 @@ class ServiceCommonTests(abc.ABC):
     async def test_delete_one_not_found(self, service_instance):
         service_instance.repository.get_one.return_value = None
         query = QuerySpec()
-        deleted_resource = await service_instance.delete_one(query)
-        assert deleted_resource is None
-        service_instance.repository.delete_by_id.assert_not_called()
+        with pytest.raises(NotFoundException):
+            await service_instance.delete_one(query)
 
     async def test_delete_one_etag_match(
         self, service_instance, test_instance: MaasBaseModel
@@ -243,9 +242,8 @@ class ServiceCommonTests(abc.ABC):
 
     async def test_delete_by_id_not_found(self, service_instance):
         service_instance.repository.get_by_id.return_value = None
-        deleted_resource = await service_instance.delete_by_id(-1)
-        assert deleted_resource is None
-        service_instance.repository.delete_by_id.assert_not_called()
+        with pytest.raises(NotFoundException):
+            await service_instance.delete_by_id(-1)
 
     async def test_delete_by_id_etag_match(
         self, service_instance, test_instance: MaasBaseModel

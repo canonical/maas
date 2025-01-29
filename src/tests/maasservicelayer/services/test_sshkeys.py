@@ -169,7 +169,7 @@ class TestSshKeysService:
 
     async def test_create_normalize_key(self) -> None:
         repository = Mock(SshKeysRepository)
-        repository.get_one.return_value = None
+        repository.exists.return_value = False
         sshkeys_service = SshKeysService(
             context=Context(), sshkeys_repository=repository
         )

@@ -29,12 +29,9 @@ from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
 )
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
-from maasservicelayer.models.nodes import Node, NodeBuilder
-from maasservicelayer.models.staticipaddress import (
-    StaticIPAddress,
-    StaticIPAddressBuilder,
-)
+from maasservicelayer.models.ipranges import IPRangeBuilder
+from maasservicelayer.models.nodes import NodeBuilder
+from maasservicelayer.models.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
 from maasservicelayer.services import UsersService
 from maasservicelayer.services.base import BaseService
@@ -185,30 +182,30 @@ class TestUsersService:
     @pytest.mark.parametrize(
         "resources, should_raise",
         [
-            ({"ipaddr": [], "ipranges": [], "nodes": []}, False),
+            ({"ipaddr": False, "ipranges": False, "nodes": False}, False),
             (
                 {
-                    "ipaddr": [Mock(StaticIPAddress)],
-                    "ipranges": [],
-                    "nodes": [],
+                    "ipaddr": True,
+                    "ipranges": False,
+                    "nodes": False,
                 },
                 True,
             ),
-            ({"ipaddr": [], "ipranges": [Mock(IPRange)], "nodes": []}, True),
-            ({"ipaddr": [], "ipranges": [], "nodes": [Mock(Node)]}, True),
+            ({"ipaddr": False, "ipranges": True, "nodes": False}, True),
+            ({"ipaddr": False, "ipranges": False, "nodes": True}, True),
             (
                 {
-                    "ipaddr": [Mock(StaticIPAddress)],
-                    "ipranges": [],
-                    "nodes": [Mock(Node)],
+                    "ipaddr": True,
+                    "ipranges": False,
+                    "nodes": True,
                 },
                 True,
             ),
             (
                 {
-                    "ipaddr": [Mock(StaticIPAddress)],
-                    "ipranges": [Mock(IPRange)],
-                    "nodes": [Mock(Node)],
+                    "ipaddr": True,
+                    "ipranges": True,
+                    "nodes": True,
                 },
                 True,
             ),
@@ -220,15 +217,13 @@ class TestUsersService:
         resources: dict[str, list],
         should_raise: bool,
     ) -> None:
-        users_service.staticipaddress_service.get_staticips_for_user.return_value = resources[
+        users_service.staticipaddress_service.exists.return_value = resources[
             "ipaddr"
         ]
-        users_service.ipranges_service.get_ipranges_for_user.return_value = (
-            resources["ipranges"]
-        )
-        users_service.nodes_service.get_nodes_for_user.return_value = (
-            resources["nodes"]
-        )
+        users_service.ipranges_service.exists.return_value = resources[
+            "ipranges"
+        ]
+        users_service.nodes_service.exists.return_value = resources["nodes"]
         if should_raise:
             with pytest.raises(PreconditionFailedException):
                 await users_service.pre_delete_hook(TEST_USER)
@@ -305,7 +300,7 @@ class TestUsersService:
     async def test_transfer_resources_non_existent_user(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        users_repository.get_by_id.return_value = None
+        users_repository.exists.return_value = False
         with pytest.raises(BadRequestException):
             await users_service.transfer_resources(1, 2)
 

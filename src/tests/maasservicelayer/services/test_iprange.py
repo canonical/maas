@@ -131,7 +131,7 @@ class TestIPRangesService:
 
         mock_ipranges_repository = Mock(IPRangesRepository)
         mock_ipranges_repository.create.return_value = iprange
-        mock_ipranges_repository.get_one.return_value = None
+        mock_ipranges_repository.exists.return_value = False
 
         mock_temporal = Mock(TemporalService)
 
@@ -174,7 +174,7 @@ class TestIPRangesService:
 
         mock_ipranges_repository = Mock(IPRangesRepository)
         mock_ipranges_repository.create.return_value = iprange
-        mock_ipranges_repository.get_one.return_value = iprange
+        mock_ipranges_repository.exists.return_value = True
 
         mock_temporal = Mock(TemporalService)
 
@@ -193,7 +193,7 @@ class TestIPRangesService:
 
         with pytest.raises(AlreadyExistsException):
             await ipranges_service.create(builder)
-        mock_ipranges_repository.get_one.assert_called_once_with(
+        mock_ipranges_repository.exists.assert_called_once_with(
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
                     [
@@ -290,24 +290,4 @@ class TestIPRangesService:
             ConfigureDHCPParam(subnet_ids=[iprange.subnet_id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
-        )
-
-    async def test_get_ipranges_for_user(self) -> None:
-        mock_ipranges_repository = Mock(IPRangesRepository)
-        mock_ipranges_repository.get_many.return_value = Mock()
-
-        mock_temporal = Mock(TemporalService)
-        dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
-
-        ipranges_service = IPRangesService(
-            context=Context(),
-            temporal_service=mock_temporal,
-            dhcpsnippets_service=dhcpsnippets_service_mock,
-            ipranges_repository=mock_ipranges_repository,
-        )
-
-        await ipranges_service.get_ipranges_for_user(1)
-
-        mock_ipranges_repository.get_many.assert_called_once_with(
-            query=QuerySpec(where=IPRangeClauseFactory.with_user_id(1))
         )

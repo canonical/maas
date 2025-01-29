@@ -236,8 +236,7 @@ class TestSshKeyApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
-        services_mock.sshkeys.get_one.return_value = SSHKEY_1
-        services_mock.sshkeys.delete_by_id.side_effect = PreconditionFailedException(
+        services_mock.sshkeys.delete_one.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
                     type=ETAG_PRECONDITION_VIOLATION_TYPE,
@@ -250,7 +249,7 @@ class TestSshKeyApi(ApiCommonTests):
             f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
         )
         assert response.status_code == 412
-        services_mock.sshkeys.get_one.assert_called_with(
+        services_mock.sshkeys.delete_one.assert_called_with(
             query=QuerySpec(
                 where=SshKeyClauseFactory.and_clauses(
                     [
@@ -258,9 +257,6 @@ class TestSshKeyApi(ApiCommonTests):
                         SshKeyClauseFactory.with_user_id(0),
                     ]
                 )
-            )
-        )
-        services_mock.sshkeys.delete_by_id.assert_called_with(
-            SSHKEY_1.id,
+            ),
             etag_if_match="wrong_etag",
         )

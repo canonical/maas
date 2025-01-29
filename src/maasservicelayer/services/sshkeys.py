@@ -74,7 +74,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         if builder.protocol is not None:
             return
 
-        ssh_key = await self.get_one(
+        ssh_key_exists = await self.exists(
             query=QuerySpec(
                 where=SshKeyClauseFactory.and_clauses(
                     [
@@ -84,7 +84,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
                 )
             )
         )
-        if ssh_key is not None:
+        if ssh_key_exists:
             raise AlreadyExistsException(
                 details=[
                     BaseExceptionDetail(

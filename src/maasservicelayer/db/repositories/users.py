@@ -31,6 +31,11 @@ from maasservicelayer.utils.date import utcnow
 
 
 class UserClauseFactory(ClauseFactory):
+
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(UserTable.c.id, id))
+
     @classmethod
     def with_username(cls, username: str) -> Clause:
         return Clause(condition=eq(UserTable.c.username, username))

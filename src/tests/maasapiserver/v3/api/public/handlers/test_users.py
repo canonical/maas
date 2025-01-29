@@ -19,11 +19,14 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UsersListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,
     DischargeRequiredException,
+    NotFoundException,
     PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
@@ -455,7 +458,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.update_by_id.return_value = None
+        services_mock.users.update_by_id.side_effect = NotFoundException()
 
         user_request = UserRequest(
             is_superuser=True,
@@ -527,7 +530,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = None
+        services_mock.users.exists.return_value = False
 
         response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
@@ -538,7 +541,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.exists.return_value = True
         services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
@@ -552,7 +555,9 @@ class TestUsersApi(ApiCommonTests):
             f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
         )
         assert response.status_code == 412
-        services_mock.users.get_by_id.assert_called_with(1)
+        services_mock.users.exists.assert_called_with(
+            query=QuerySpec(UserClauseFactory.with_id(USER_1.id))
+        )
         services_mock.users.delete_by_id.assert_called_with(
             USER_1.id,
             etag_if_match="wrong_etag",

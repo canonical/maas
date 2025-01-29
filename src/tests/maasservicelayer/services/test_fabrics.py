@@ -6,7 +6,6 @@ from unittest.mock import Mock
 import pytest
 
 from maascommon.enums.interface import InterfaceType
-from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
@@ -15,7 +14,6 @@ from maasservicelayer.exceptions.catalog import BadRequestException
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.fabrics import Fabric, FabricBuilder
 from maasservicelayer.models.interfaces import Interface
-from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan, VlanBuilder
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.fabrics import FabricsService
@@ -43,6 +41,34 @@ class TestCommonFabricsService(ServiceCommonTests):
         now = utcnow()
         return Fabric(
             id=1, name="test", description="descr", created=now, updated=now
+        )
+
+    async def test_delete_one(self, service_instance, test_instance: Fabric):
+        # NO VLANS linked to the fabric
+        service_instance.subnets_service.exists.return_value = False
+        await super().test_delete_one(service_instance, test_instance)
+
+    async def test_delete_one_etag_match(
+        self, service_instance, test_instance: Fabric
+    ):
+        # NO VLANS linked to the fabric
+        service_instance.subnets_service.exists.return_value = False
+        await super().test_delete_one_etag_match(
+            service_instance, test_instance
+        )
+
+    async def test_delete_by_id(self, service_instance, test_instance: Fabric):
+        # NO VLANS linked to the fabric
+        service_instance.subnets_service.exists.return_value = False
+        await super().test_delete_by_id(service_instance, test_instance)
+
+    async def test_delete_by_id_etag_match(
+        self, service_instance, test_instance: Fabric
+    ):
+        # NO VLANS linked to the fabric
+        service_instance.subnets_service.exists.return_value = False
+        await super().test_delete_by_id_etag_match(
+            service_instance, test_instance
         )
 
     async def test_delete_many(
@@ -115,11 +141,12 @@ class TestFabricsService:
         )
 
         vlans_service_mock = Mock(VlansService)
-        vlans_service_mock.get_many.side_effect = [
+        vlans_service_mock.exists.return_value = [
             [vlan_1],
         ]
 
         subnets_service_mock = Mock(SubnetsService)
+        subnets_service_mock.exists.return_value = False
 
         interfaces_service_mock = Mock(InterfacesService)
 
@@ -141,7 +168,7 @@ class TestFabricsService:
             id=fabric_to_delete.id
         )
 
-        subnets_service_mock.get_many.assert_called_once()
+        subnets_service_mock.exists.assert_called_once()
         interfaces_service_mock.get_interfaces_in_fabric.assert_called_once()
 
         # TODO: Replace `get_many` with `delete_many` once its implemented.
@@ -180,19 +207,7 @@ class TestFabricsService:
         vlans_service_mock = Mock(VlansService)
 
         subnets_service_mock = Mock(SubnetsService)
-        subnets_service_mock.get_many.return_value = [
-            Subnet(
-                id=0,
-                cidr="10.0.0.1/24",
-                rdns_mode=RdnsMode.DEFAULT,
-                allow_dns=False,
-                allow_proxy=False,
-                active_discovery=False,
-                managed=False,
-                disabled_boot_architectures=[],
-                vlan_id=0,
-            )
-        ]
+        subnets_service_mock.exists.return_value = True
 
         interfaces_service_mock = Mock(InterfacesService)
 
@@ -210,7 +225,7 @@ class TestFabricsService:
         with pytest.raises(BadRequestException):
             await fabrics_service.delete_by_id(id=fabric_to_delete.id)
 
-        subnets_service_mock.get_many.assert_called_once_with(
+        subnets_service_mock.exists.assert_called_once_with(
             query=QuerySpec(
                 where=SubnetClauseFactory.with_fabric_id(
                     fabric_id=fabric_to_delete.id
@@ -235,7 +250,7 @@ class TestFabricsService:
         vlans_service_mock = Mock(VlansService)
 
         subnets_service_mock = Mock(SubnetsService)
-        subnets_service_mock.get_many.return_value = []
+        subnets_service_mock.exists.return_value = False
 
         interfaces_service_mock = Mock(InterfacesService)
         interfaces_service_mock.get_interfaces_in_fabric.side_effect = [
@@ -256,7 +271,7 @@ class TestFabricsService:
         with pytest.raises(BadRequestException):
             await fabrics_service.delete_by_id(id=fabric_to_delete.id)
 
-        subnets_service_mock.get_many.assert_called_once_with(
+        subnets_service_mock.exists.assert_called_once_with(
             query=QuerySpec(
                 where=SubnetClauseFactory.with_fabric_id(
                     fabric_id=fabric_to_delete.id

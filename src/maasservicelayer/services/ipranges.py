@@ -54,7 +54,7 @@ class IPRangesService(
         return await self.repository.get_dynamic_range_for_ip(subnet_id, ip)
 
     async def pre_create_hook(self, builder: IPRangeBuilder) -> None:
-        iprange = await self.get_one(
+        iprange = await self.exists(
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
                     [
@@ -66,7 +66,7 @@ class IPRangesService(
                 )
             )
         )
-        if iprange is not None:
+        if iprange:
             raise AlreadyExistsException(
                 details=[
                     BaseExceptionDetail(
@@ -136,8 +136,3 @@ class IPRangesService(
         ):
             return True
         return False
-
-    async def get_ipranges_for_user(self, user_id: int) -> list[IPRange]:
-        return await self.get_many(
-            query=QuerySpec(where=IPRangeClauseFactory.with_user_id(user_id))
-        )

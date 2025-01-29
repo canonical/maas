@@ -60,8 +60,3 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
 
     async def hostname_exists(self, hostname: str) -> bool:
         return await self.repository.hostname_exists(hostname)
-
-    async def get_nodes_for_user(self, user_id: int) -> list[Node]:
-        return await self.get_many(
-            query=QuerySpec(where=NodeClauseFactory.with_owner_id(user_id))
-        )

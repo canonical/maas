@@ -255,8 +255,8 @@ class TestBaseService:
         repository_mock.get_one.return_value = None
         repository_mock.delete_by_id.return_value = resource
         query = QuerySpec()
-        resource = await service.delete_one(query)
-        assert resource is None
+        with pytest.raises(NotFoundException):
+            await service.delete_one(query)
         repository_mock.get_one.assert_awaited_once_with(query=query)
         repository_mock.delete_by_id.assert_not_called()
 
@@ -323,8 +323,8 @@ class TestBaseService:
         resource = DummyMaasBaseModel(id=0)
         repository_mock.get_by_id.return_value = None
         repository_mock.delete_by_id.return_value = resource
-        resource = await service.delete_by_id(0)
-        assert resource is None
+        with pytest.raises(NotFoundException):
+            await service.delete_by_id(0)
         repository_mock.get_by_id.assert_awaited_once_with(id=0)
         repository_mock.delete_by_id.assert_not_called()
 

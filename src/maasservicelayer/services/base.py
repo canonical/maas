@@ -254,8 +254,12 @@ class BaseService(Service, ABC, Generic[M, R, B]):
 
         If `force` is `True`, then the `pre_delete_hook` is bypassed. This mechanism is used for example when cascading the
         deletion of resources
+
+        Raises NotFoundException if no resource matching the query exists.
         """
         resource = await self.get_one(query=query)
+        if not resource:
+            raise NotFoundException()
         return await self._delete_resource(resource, etag_if_match, force)
 
     async def delete_by_id(
@@ -266,24 +270,24 @@ class BaseService(Service, ABC, Generic[M, R, B]):
 
         If `force` is `True`, then the `pre_delete_hook` is bypassed. This mechanism is used for example when cascading the
         deletion of resources
+
+        Raises NotFoundException if no resource with that `id` exists.
         """
         resource = await self.get_by_id(id=id)
+        if not resource:
+            raise NotFoundException()
         return await self._delete_resource(resource, etag_if_match, force)
 
     async def _delete_resource(
         self,
-        resource: M | None,
+        resource: M,
         etag_if_match: str | None = None,
         force: bool = False,
     ) -> M | None:
-        if not resource:
-            return None
-
         self.etag_check(resource, etag_if_match)
         if not force:
             await self.pre_delete_hook(resource)
 
         deleted_resource = await self.repository.delete_by_id(id=resource.id)
-        if deleted_resource:
-            await self.post_delete_hook(deleted_resource)
+        await self.post_delete_hook(deleted_resource)
         return deleted_resource

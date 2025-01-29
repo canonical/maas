@@ -232,7 +232,7 @@ class SshKeysHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         assert authenticated_user is not None
-        sshkey = await services.sshkeys.get_one(
+        await services.sshkeys.delete_one(
             query=QuerySpec(
                 where=SshKeyClauseFactory.and_clauses(
                     [
@@ -242,14 +242,8 @@ class SshKeysHandler(Handler):
                         ),
                     ]
                 )
-            )
-        )
-
-        if sshkey is None:
-            return NotFoundResponse()
-
-        await services.sshkeys.delete_by_id(
-            sshkey.id, etag_if_match=etag_if_match
+            ),
+            etag_if_match=etag_if_match,
         )
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)

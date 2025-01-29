@@ -19,7 +19,10 @@ from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
 )
-from maasservicelayer.db.repositories.users import UsersRepository
+from maasservicelayer.db.repositories.users import (
+    UserClauseFactory,
+    UsersRepository,
+)
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -114,32 +117,41 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         return await self.repository.delete_user_api_keys(user_id)
 
     async def pre_delete_hook(self, resource_to_be_deleted: User) -> None:
-        # TODO: switch to exists() query when we implement it
-        owned_ipranges = await self.ipranges_service.get_ipranges_for_user(
-            resource_to_be_deleted.id
-        )
-        owned_staticips = (
-            await self.staticipaddress_service.get_staticips_for_user(
-                resource_to_be_deleted.id
+        has_ipranges = await self.ipranges_service.exists(
+            query=QuerySpec(
+                where=IPRangeClauseFactory.with_user_id(
+                    resource_to_be_deleted.id
+                )
             )
         )
-        owned_nodes = await self.nodes_service.get_nodes_for_user(
-            resource_to_be_deleted.id
+        has_staticips = await self.staticipaddress_service.exists(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.with_user_id(
+                    resource_to_be_deleted.id
+                )
+            )
+        )
+        has_nodes = await self.nodes_service.exists(
+            query=QuerySpec(
+                where=NodeClauseFactory.with_owner_id(
+                    resource_to_be_deleted.id
+                )
+            )
         )
 
         owned_resources = {
-            "static IP address(es)": owned_staticips,
-            "IP range(s)": owned_ipranges,
-            "node(s)": owned_nodes,
+            "Static IP address(es)": has_ipranges,
+            "IP range(s)": has_staticips,
+            "Node(s)": has_nodes,
         }
         if any(owned_resources.values()):
             details = [
                 BaseExceptionDetail(
                     type=PRECONDITION_FAILED,
-                    message=f"Cannot delete user. {len(resources)} {name} are still allocated.",
+                    message=f"Cannot delete user. {name} are still allocated.",
                 )
-                for name, resources in owned_resources.items()
-                if len(resources) > 0
+                for name, exists in owned_resources.items()
+                if exists
             ]
             raise PreconditionFailedException(details=details)
 
@@ -177,8 +189,10 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     async def transfer_resources(
         self, from_user_id: int, to_user_id: int
     ) -> None:
-        to_user = await self.get_by_id(to_user_id)
-        if not to_user:
+        to_user_exists = await self.exists(
+            query=QuerySpec(where=UserClauseFactory.with_id(id=to_user_id))
+        )
+        if not to_user_exists:
             raise BadRequestException(
                 details=[
                     BaseExceptionDetail(

@@ -68,23 +68,20 @@ class FabricsService(BaseService[Fabric, FabricsRepository, FabricBuilder]):
             )
 
         # Can't delete the Fabric if it still has any Subnets
-        subnets_in_fabric = await self.subnets_service.get_many(
+        subnets_in_fabric = await self.subnets_service.exists(
             query=QuerySpec(
                 where=SubnetClauseFactory.with_fabric_id(
                     resource_to_be_deleted.id
                 )
             )
         )
-
-        if len(subnets_in_fabric) > 0:
-            subnet_descriptions = ", ".join(
-                [str(subnet.cidr) for subnet in subnets_in_fabric]
-            )
+        if subnets_in_fabric:
             raise BadRequestException(
                 details=[
                     BaseExceptionDetail(
                         type=CANNOT_DELETE_FABRIC_WITH_SUBNETS_VIOLATION_TYPE,
-                        message=f"The Fabric {resource_to_be_deleted.id} cannot be deleted as it still has defined subnets: {subnet_descriptions}",
+                        message=f"The Fabric {resource_to_be_deleted.id} cannot be deleted as it still has subnets. Please "
+                        f"delete the subnets first.",
                     )
                 ]
             )

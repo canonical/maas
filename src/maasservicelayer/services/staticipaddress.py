@@ -12,7 +12,6 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
     StaticIPAddressRepository,
 )
 from maasservicelayer.models.base import Unset
@@ -147,12 +146,3 @@ class StaticIPAddressService(
         ):
             return True
         return False
-
-    async def get_staticips_for_user(
-        self, user_id: int
-    ) -> list[StaticIPAddress]:
-        return await self.get_many(
-            query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_user_id(user_id)
-            )
-        )

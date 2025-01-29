@@ -63,7 +63,7 @@ class SubnetsHandler(Handler):
         pagination_params: PaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> SubnetsListResponse:
-        vlan = await services.vlans.get_one(
+        vlan_exists = await services.vlans.exists(
             QuerySpec(
                 where=VlansClauseFactory.and_clauses(
                     [
@@ -73,7 +73,7 @@ class SubnetsHandler(Handler):
                 )
             )
         )
-        if vlan is None:
+        if not vlan_exists:
             raise NotFoundException(
                 details=[
                     BaseExceptionDetail(
@@ -186,7 +186,7 @@ class SubnetsHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        vlan = await services.vlans.get_one(
+        vlan_exists = await services.vlans.exists(
             QuerySpec(
                 where=VlansClauseFactory.and_clauses(
                     [
@@ -196,7 +196,7 @@ class SubnetsHandler(Handler):
                 )
             )
         )
-        if vlan is None:
+        if not vlan_exists:
             raise NotFoundException(
                 details=[
                     BaseExceptionDetail(
