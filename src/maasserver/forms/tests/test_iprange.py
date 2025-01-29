@@ -10,7 +10,7 @@ from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestIPRangeForm(MAASServerTestCase):
@@ -85,7 +85,10 @@ class TestIPRangeForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        iprange = form.save()
+
+        with post_commit_hooks:
+            iprange = form.save()
+
         self.assertEqual(iprange.subnet, subnet)
 
     def test_comment_optional(self):
@@ -99,7 +102,10 @@ class TestIPRangeForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        iprange = form.save()
+
+        with post_commit_hooks:
+            iprange = form.save()
+
         self.assertEqual("", iprange.comment)
 
     def test_creates_iprange(self):
@@ -115,7 +121,10 @@ class TestIPRangeForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        iprange = form.save()
+
+        with post_commit_hooks:
+            iprange = form.save()
+
         self.assertEqual(iprange.subnet, subnet)
         self.assertEqual(iprange.start_ip, "10.0.0.100")
         self.assertEqual(iprange.end_ip, "10.0.0.150")
@@ -138,7 +147,10 @@ class TestIPRangeForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        iprange = form.save()
+
+        with post_commit_hooks:
+            iprange = form.save()
+
         self.assertEqual(iprange.subnet, subnet)
         self.assertEqual(iprange.start_ip, "10.0.0.100")
         self.assertEqual(iprange.end_ip, "10.0.0.150")
@@ -173,7 +185,10 @@ class TestIPRangeForm(MAASServerTestCase):
         new_comment = factory.make_name("comment")
         form = IPRangeForm(instance=iprange, data={"comment": new_comment})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         self.assertEqual(new_comment, reload_object(iprange).comment)
 
     def test_update_iprange_user(self):
@@ -182,5 +197,8 @@ class TestIPRangeForm(MAASServerTestCase):
         iprange = subnet.get_dynamic_ranges().first()
         form = IPRangeForm(instance=iprange, data={"user": user.username})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         self.assertEqual(user, reload_object(iprange).user)

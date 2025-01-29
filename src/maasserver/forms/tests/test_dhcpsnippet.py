@@ -12,7 +12,7 @@ from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestDHCPSnippetForm(MAASServerTestCase):
@@ -125,7 +125,10 @@ class TestDHCPSnippetForm(MAASServerTestCase):
     def test_create_dhcp_snippet_with_iprange(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         iprange = subnet.get_dynamic_ranges().first()
-        iprange.save()
+
+        with post_commit_hooks:
+            iprange.save()
+
         name = factory.make_name("name")
         value = factory.make_string()
         description = factory.make_string()
@@ -155,7 +158,10 @@ class TestDHCPSnippetForm(MAASServerTestCase):
     def test_create_dhcp_snippet_with_iprange_requires_subnet(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         iprange = subnet.get_dynamic_ranges().first()
-        iprange.save()
+
+        with post_commit_hooks:
+            iprange.save()
+
         name = factory.make_name("name")
         value = factory.make_string()
         description = factory.make_string()
@@ -175,7 +181,10 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         subnet2 = factory.make_Subnet()
         iprange = subnet.get_dynamic_ranges().first()
-        iprange.save()
+
+        with post_commit_hooks:
+            iprange.save()
+
         name = factory.make_name("name")
         value = factory.make_string()
         description = factory.make_string()

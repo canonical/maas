@@ -2,16 +2,22 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
+from unittest.mock import call
 
 from django.core.exceptions import ValidationError
 from netaddr import IPNetwork
 from testtools import TestCase
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE
 from maasserver.models import IPRange
+from maasserver.models import iprange as iprange_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 def make_plain_subnet():
@@ -367,6 +373,54 @@ class TestIPRange(MAASServerTestCase):
             user=factory.make_User(),
         )
         iprange.clean_fields()
+
+    def test_save_calls_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(iprange_module, "start_workflow")
+
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.2",
+            end_ip="192.168.0.5",
+        )
+
+        with post_commit_hooks:
+            subnet.vlan.dhcp_on = True
+            subnet.vlan.save()
+            iprange.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(ip_range_ids=[iprange.id]),
+            task_queue="region",
+        )
+
+    def test_delete_calls_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(iprange_module, "start_workflow")
+
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.2",
+            end_ip="192.168.0.5",
+        )
+
+        with post_commit_hooks:
+            subnet.vlan.dhcp_on = True
+            subnet.vlan.save()
+            iprange.save()
+            iprange.delete()
+
+        self.assertIn(
+            call(
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(subnet_ids=[subnet.id]),
+                task_queue="region",
+            ),
+            mock_start_workflow.mock_calls,
+        )
 
 
 class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):

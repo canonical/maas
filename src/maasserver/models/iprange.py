@@ -22,10 +22,19 @@ from django.db.models import (
 import netaddr
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver.enum import IPRANGE_TYPE, IPRANGE_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import MAASQueriesMixin, transactional
+from maasserver.utils.orm import (
+    MAASQueriesMixin,
+    post_commit_do,
+    transactional,
+)
+from maasserver.workflow import start_workflow
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_iprange
 
@@ -275,3 +284,28 @@ class IPRange(CleanSave, TimestampedModel):
                 else:
                     self._raise_validation_error(message)
         self._raise_validation_error(message)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        if self.subnet.vlan.dhcp_on:
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(ip_range_ids=[self.id]),
+                task_queue="region",
+            )
+
+    def delete(self, *args, **kwargs):
+        subnet_id = self.subnet_id
+        dhcp_on = self.subnet.vlan.dhcp_on
+
+        super().delete(*args, **kwargs)
+
+        if dhcp_on:
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(subnet_ids=[subnet_id]),
+                task_queue="region",
+            )

@@ -1907,7 +1907,9 @@ class Factory(maastesting.factory.Factory):
             iprange.comment = comment
             iprange.user = user
             iprange.type = alloc_type
-            iprange.save()
+
+            with post_commit_hooks:
+                iprange.save()
             return iprange
 
         # If any of these values are provided, they must all be provided.
@@ -1922,7 +1924,9 @@ class Factory(maastesting.factory.Factory):
             comment=comment,
             user=user,
         )
-        iprange.save()
+
+        with post_commit_hooks:
+            iprange.save()
         return iprange
 
     def make_ipv4_Subnet_with_IPRanges(

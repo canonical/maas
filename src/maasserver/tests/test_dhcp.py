@@ -1753,7 +1753,10 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         vlan = factory.make_VLAN()
         subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         iprange = subnet.get_dynamic_ranges().first()
-        iprange.save()
+
+        with post_commit_hooks:
+            iprange.save()
+
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
         )
@@ -2738,7 +2741,10 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             dns_servers=[],
         )
         iprange_v4 = subnet_v4.get_dynamic_ranges().first()
-        iprange_v4.save()
+
+        with post_commit_hooks:
+            iprange_v4.save()
+
         iprange_v6 = factory.make_IPRange(
             subnet_v6,
             "fd38:c341:27da:c831:0:1::",

@@ -9,6 +9,7 @@ from django.http.response import Http404
 from maasserver.models import DHCPSnippet, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 
 class TestDHCPSnippet(MAASServerTestCase):
@@ -62,7 +63,10 @@ class TestDHCPSnippet(MAASServerTestCase):
         enabled = factory.pick_bool()
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         iprange = subnet.get_dynamic_ranges().first()
-        iprange.save()
+
+        with post_commit_hooks:
+            iprange.save()
+
         dhcp_snippet = factory.make_DHCPSnippet(
             name, value, description, enabled, subnet=subnet, iprange=iprange
         )
