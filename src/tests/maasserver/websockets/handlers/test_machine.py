@@ -69,6 +69,7 @@ class TestMachineHandler:
     def test_list_ids_num_queries_is_the_expected_number(self, mocker):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
+
         owner, session = self._populate_db_for_query_count(2)
         handler = MachineHandler(
             owner, {}, None, session_id=session.session_key

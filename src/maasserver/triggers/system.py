@@ -523,66 +523,6 @@ DHCP_ALERT = dedent(
     """
 )
 
-# Triggered when a subnet's VLAN, CIDR, gateway IP, or DNS servers change.
-# If the VLAN was changed it alerts both the rack controllers of the old VLAN
-# and then the rack controllers of the new VLAN. Any other field that is
-# updated just alerts the rack controllers of the current VLAN.
-DHCP_SUBNET_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_subnet_update()
-    RETURNS trigger as $$
-    DECLARE
-      vlan maasserver_vlan;
-    BEGIN
-      -- Subnet was moved to a new VLAN.
-      IF OLD.vlan_id != NEW.vlan_id THEN
-        -- Update old VLAN if DHCP is enabled.
-        SELECT * INTO vlan
-        FROM maasserver_vlan WHERE id = OLD.vlan_id;
-        PERFORM sys_dhcp_alert(vlan);
-        -- Update the new VLAN if DHCP is enabled.
-        SELECT * INTO vlan
-        FROM maasserver_vlan WHERE id = NEW.vlan_id;
-        PERFORM sys_dhcp_alert(vlan);
-      -- Related fields of subnet where changed.
-      ELSIF OLD.cidr != NEW.cidr OR
-        (OLD.gateway_ip IS NULL AND NEW.gateway_ip IS NOT NULL) OR
-        (OLD.gateway_ip IS NOT NULL AND NEW.gateway_ip IS NULL) OR
-        host(OLD.gateway_ip) != host(NEW.gateway_ip) OR
-        OLD.dns_servers != NEW.dns_servers OR
-        OLD.allow_dns != NEW.allow_dns OR
-        OLD.managed != NEW.managed OR
-        OLD.disabled_boot_architectures != NEW.disabled_boot_architectures THEN
-        -- Network has changed update alert DHCP if enabled.
-        SELECT * INTO vlan
-        FROM maasserver_vlan WHERE id = NEW.vlan_id;
-        PERFORM sys_dhcp_alert(vlan);
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-# Triggered when the subnet is deleted. Alerts the rack controllers of the
-# VLAN the subnet belonged to.
-DHCP_SUBNET_DELETE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_subnet_delete()
-    RETURNS trigger as $$
-    DECLARE
-      vlan maasserver_vlan;
-    BEGIN
-      -- Update VLAN if DHCP is enabled.
-      SELECT * INTO vlan
-      FROM maasserver_vlan WHERE id = OLD.vlan_id;
-      PERFORM sys_dhcp_alert(vlan);
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
 # Triggered when a dynamic DHCP range is added to a subnet that is on a managed
 # VLAN. Alerts the rack controllers for that VLAN.
 DHCP_IPRANGE_INSERT = dedent(
@@ -2416,12 +2356,6 @@ def register_system_triggers():
 
     # DHCP
     register_procedure(DHCP_ALERT)
-
-    # - Subnet
-    register_procedure(DHCP_SUBNET_UPDATE)
-    register_trigger("maasserver_subnet", "sys_dhcp_subnet_update", "update")
-    register_procedure(DHCP_SUBNET_DELETE)
-    register_trigger("maasserver_subnet", "sys_dhcp_subnet_delete", "delete")
 
     # - IPRange
     register_procedure(DHCP_IPRANGE_INSERT)

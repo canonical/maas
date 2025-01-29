@@ -759,7 +759,10 @@ class TestGetConfig(MAASServerTestCase):
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack_controller)
         subnet = factory.make_Subnet(vlan=vlan)
         subnet.dns_servers = []
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
+
         local_ip = factory.pick_ip_in_Subnet(subnet)
         remote_ip = factory.make_ip_address()
         factory.make_default_ubuntu_release_bootable()
@@ -883,7 +886,10 @@ class TestGetConfig(MAASServerTestCase):
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack_controller)
         subnet = factory.make_Subnet(vlan=vlan)
         subnet.dns_servers = []
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
+
         local_ip = factory.pick_ip_in_Subnet(subnet)
         remote_ip = factory.make_ip_address()
         self.patch(server_address, "resolve_hostname").return_value = {

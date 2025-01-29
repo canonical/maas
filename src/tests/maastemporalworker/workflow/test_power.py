@@ -69,6 +69,9 @@ class TestGetTemporalQueueForMachine:
     def test_get_temporal_task_queue_for_bmc_machine_with_bmc_without_vlan(
         self, factory, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
         subnet = factory.make_Subnet()
         rack = factory.make_RackController()
         factory.make_Interface(

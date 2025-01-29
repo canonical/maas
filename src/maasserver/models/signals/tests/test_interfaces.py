@@ -10,7 +10,7 @@ from maasserver.models.config import Config, NetworkDiscoveryConfig
 from maasserver.models.signals.interfaces import ensure_link_up
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 def _mock_ensure_link_up(self):
@@ -242,7 +242,9 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         factory.make_StaticIPAddress(subnet=subnet_10, interface=interface)
 
         interface.vlan = vlan_20
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
 
         # The subnet_10 moved to the fabric of the vlan_20
         self.assertEqual(fabric_20, reload_object(subnet_10).vlan.fabric)
@@ -255,7 +257,9 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         new_fabric = factory.make_Fabric()
         new_vlan = new_fabric.get_default_vlan()
         interface.vlan = new_vlan
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         self.assertEqual(new_vlan, reload_object(subnet).vlan)
 
     def test_doesnt_move_link_subnets_when_target_vlan_is_None(self):
@@ -265,7 +269,9 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         subnet = factory.make_Subnet(vlan=old_vlan)
         factory.make_StaticIPAddress(subnet=subnet, interface=interface)
         interface.vlan = None
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         self.assertEqual(old_vlan, reload_object(subnet).vlan)
 
     def test_doesnt_move_link_subnets_when_source_vlan_is_None(self):
@@ -277,7 +283,9 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         subnet = factory.make_Subnet(vlan=old_vlan)
         factory.make_StaticIPAddress(subnet=subnet, interface=interface)
         interface.vlan = factory.make_VLAN()
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         self.assertEqual(interface.vlan, reload_object(subnet).vlan)
 
     def test_moves_children_vlans_to_same_fabric(self):
@@ -296,7 +304,10 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         new_fabric = factory.make_Fabric()
         new_vlan = new_fabric.get_default_vlan()
         parent.vlan = new_vlan
-        parent.save()
+
+        with post_commit_hooks:
+            parent.save()
+
         self.assertEqual(new_vlan, reload_object(subnet).vlan)
         vlan_interface = reload_object(vlan_interface)
         self.assertEqual(

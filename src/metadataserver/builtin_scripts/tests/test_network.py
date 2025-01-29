@@ -32,7 +32,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import get_one, reload_object
+from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import hooks
 from metadataserver.builtin_scripts import network as network_module
@@ -72,8 +72,10 @@ class UpdateInterfacesMixin:
         # if it's called once or twice.
         if passes is None:
             passes = random.randint(1, 2)
-        for _ in range(passes):
-            hooks.process_lxd_results(node, json.dumps(data).encode(), 0)
+
+        with post_commit_hooks:
+            for _ in range(passes):
+                hooks.process_lxd_results(node, json.dumps(data).encode(), 0)
         return passes
 
 

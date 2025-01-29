@@ -10,6 +10,7 @@ from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerPermissionError,
@@ -514,7 +515,10 @@ class TestControllerHandler(MAASServerTestCase):
             "system_id": controller.system_id,
             "interface_id": controller.boot_interface.id,
         }
-        handler.update_interface(request)
+
+        with post_commit_hooks:
+            handler.update_interface(request)
+
         controller.refresh_from_db()
         self.assertEqual(controller.boot_interface.vlan, vlan)
 

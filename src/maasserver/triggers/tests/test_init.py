@@ -118,8 +118,6 @@ class TestTriggersUsed(MAASServerTestCase):
         "subnet_sys_dns_updates_maasserver_subnet_delete",
         "subnet_sys_dns_updates_maasserver_subnet_insert",
         "subnet_sys_dns_updates_maasserver_subnet_update",
-        "subnet_sys_dhcp_subnet_delete",
-        "subnet_sys_dhcp_subnet_update",
         "subnet_sys_dns_subnet_delete",
         "subnet_sys_dns_subnet_insert",
         "subnet_sys_dns_subnet_update",
