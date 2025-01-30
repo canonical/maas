@@ -231,7 +231,7 @@ class BuilderModule(GenericModule[BuilderModel]):
         for name, class_ in model_classes:
             if name.endswith("Builder") and name != "ResourceBuilder":
                 builder_methods = inspect.getmembers(
-                    class_, lambda x: inspect.isfunction(x) and not getattr(ResourceBuilder, str(x), False)
+                    class_, lambda x: inspect.isfunction(x) and not getattr(ResourceBuilder, x.__name__, False)
                 )
                 models.append(
                     BuilderModel(
