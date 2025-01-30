@@ -1,13 +1,15 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.notification_dismissal import (
+    NotificationDismissalBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.notification_dismissal import (
     NotificationDismissalsRepository,
 )
 from maasservicelayer.models.notification_dismissal import (
     NotificationDismissal,
-    NotificationDismissalBuilder,
 )
 from maasservicelayer.services.base import BaseService, ServiceCache
 

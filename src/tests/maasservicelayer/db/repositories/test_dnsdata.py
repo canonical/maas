@@ -5,10 +5,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.dnsdata import DNSDataBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
 from maasservicelayer.db.tables import DNSDataTable
-from maasservicelayer.models.dnsdata import DNSDataBuilder
 from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry

@@ -7,7 +7,10 @@ from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maascommon.enums.interface import InterfaceLinkType, InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
-from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
 class Link(BaseModel):
@@ -36,10 +39,8 @@ class Link(BaseModel):
                 mode = InterfaceLinkType.DHCP
         return mode
 
-    class Config:
-        arbitrary_types_allowed = True
 
-
+@generate_builder()
 class Interface(MaasTimestampedBaseModel):
     name: str
     type: InterfaceType
@@ -52,6 +53,3 @@ class Interface(MaasTimestampedBaseModel):
     link_speed: int = 0
     sriov_max_vf: int = 0
     links: list[Link] = Field(default_factory=list)
-
-    class Config:
-        arbitrary_types_allowed = True

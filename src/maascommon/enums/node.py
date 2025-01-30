@@ -95,3 +95,12 @@ class SimplifiedNodeStatusEnum(str, Enum):
 
     def __str__(self):
         return str(self.value)
+
+
+class HardwareDeviceTypeEnum(IntEnum):
+    NODE = 0
+    CPU = 1
+    MEMORY = 2
+    STORAGE = 3
+    NETWORK = 4
+    GPU = 5

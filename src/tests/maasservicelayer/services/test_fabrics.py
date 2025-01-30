@@ -6,15 +6,17 @@ from unittest.mock import Mock
 import pytest
 
 from maascommon.enums.interface import InterfaceType
+from maasservicelayer.builders.fabrics import FabricBuilder
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import BadRequestException
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.fabrics import Fabric, FabricBuilder
+from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.models.interfaces import Interface
-from maasservicelayer.models.vlans import Vlan, VlanBuilder
+from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.interfaces import InterfacesService

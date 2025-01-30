@@ -7,13 +7,11 @@ import pytest
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.ipaddress import IpAddressType
+from maasservicelayer.builders.dnsresources import DNSResourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.dnsresources import (
-    DNSResource,
-    DNSResourceBuilder,
-)
+from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services.base import BaseService

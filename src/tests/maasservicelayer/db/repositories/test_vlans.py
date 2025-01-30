@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.vlans import (
@@ -13,7 +14,7 @@ from maasservicelayer.db.repositories.vlans import (
     VlansRepository,
 )
 from maasservicelayer.db.tables import VlanTable
-from maasservicelayer.models.vlans import Vlan, VlanBuilder
+from maasservicelayer.models.vlans import Vlan
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import create_test_rack_controller_entry

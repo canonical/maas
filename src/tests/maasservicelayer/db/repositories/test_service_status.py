@@ -5,15 +5,13 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.service import ServiceName, ServiceStatusEnum
+from maasservicelayer.builders.service_status import ServiceStatusBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.service_status import (
     ServiceStatusClauseFactory,
     ServiceStatusRepository,
 )
-from maasservicelayer.models.service_status import (
-    ServiceStatus,
-    ServiceStatusBuilder,
-)
+from maasservicelayer.models.service_status import ServiceStatus
 from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.fixtures.factories.service_status import (
     create_test_service_status_entry,

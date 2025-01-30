@@ -10,9 +10,10 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.reservedips import ReservedIPBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
-from maasservicelayer.models.reservedips import ReservedIP, ReservedIPBuilder
+from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 

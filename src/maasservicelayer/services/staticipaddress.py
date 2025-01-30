@@ -9,6 +9,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
@@ -17,10 +18,7 @@ from maasservicelayer.db.repositories.staticipaddress import (
 from maasservicelayer.models.base import Unset
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
-from maasservicelayer.models.staticipaddress import (
-    StaticIPAddress,
-    StaticIPAddressBuilder,
-)
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.temporal import TemporalService

@@ -3,13 +3,14 @@
 
 from typing import Optional
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class DNSResource(MaasTimestampedBaseModel):
     name: str
     address_ttl: Optional[int]
     domain_id: int
-
-
-DNSResourceBuilder = make_builder(DNSResource)

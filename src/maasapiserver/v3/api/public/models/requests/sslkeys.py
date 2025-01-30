@@ -4,7 +4,7 @@
 from pydantic import BaseModel, Field, validator
 
 from maascommon.sslkey import is_valid_ssl_key
-from maasservicelayer.models.sslkeys import SSLKeyBuilder
+from maasservicelayer.builders.sslkeys import SSLKeyBuilder
 
 
 class SSLKeyRequest(BaseModel):

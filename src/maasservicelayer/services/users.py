@@ -1,6 +1,10 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.ipranges import IPRangeBuilder
+from maasservicelayer.builders.nodes import NodeBuilder
+from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
+from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.filestorage import (
@@ -32,15 +36,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     PRECONDITION_FAILED,
 )
-from maasservicelayer.models.ipranges import IPRangeBuilder
-from maasservicelayer.models.nodes import NodeBuilder
-from maasservicelayer.models.staticipaddress import StaticIPAddressBuilder
-from maasservicelayer.models.users import (
-    User,
-    UserBuilder,
-    UserProfile,
-    UserProfileBuilder,
-)
+from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService

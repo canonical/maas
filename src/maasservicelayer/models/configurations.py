@@ -3,15 +3,13 @@
 
 from typing import Any
 
-from pydantic import BaseModel
-
-from maasservicelayer.models.base import make_builder
+from maasservicelayer.models.base import generate_builder, MaasBaseModel
 
 
-class Configuration(BaseModel):
-    id: int
+@generate_builder()
+class Configuration(MaasBaseModel):
     name: str
     value: Any
 
-
-ConfigurationBuilder = make_builder(Configuration)
+    def etag(self) -> str:
+        pass

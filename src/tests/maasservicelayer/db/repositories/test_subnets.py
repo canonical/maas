@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.subnet import RdnsMode
+from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.subnets import (
@@ -14,7 +15,7 @@ from maasservicelayer.db.repositories.subnets import (
     SubnetsRepository,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
-from maasservicelayer.models.subnets import Subnet, SubnetBuilder
+from maasservicelayer.models.subnets import Subnet
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,

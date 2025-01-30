@@ -4,6 +4,9 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.notification_dismissal import (
+    NotificationDismissalBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.notification_dismissal import (
     NotificationDismissalsClauseFactory,
@@ -12,7 +15,6 @@ from maasservicelayer.db.repositories.notification_dismissal import (
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.notification_dismissal import (
     NotificationDismissal,
-    NotificationDismissalBuilder,
 )
 from tests.fixtures.factories.notifications import (
     create_test_notification_dismissal_entry,

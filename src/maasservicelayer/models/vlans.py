@@ -5,9 +5,13 @@ from typing import Optional
 
 from pydantic import IPvAnyAddress
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class Vlan(MaasTimestampedBaseModel):
     id: int
     vid: int
@@ -21,6 +25,3 @@ class Vlan(MaasTimestampedBaseModel):
     relay_vlan_id: Optional[int] = None
     fabric_id: int
     space_id: Optional[int] = None
-
-
-VlanBuilder = make_builder(Vlan)

@@ -6,7 +6,7 @@ from typing import Optional
 from pydantic import Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
-from maasservicelayer.models.spaces import SpaceBuilder
+from maasservicelayer.builders.spaces import SpaceBuilder
 
 
 class SpaceRequest(NamedBaseModel):

@@ -7,7 +7,10 @@ from typing import Optional
 
 from pydantic import IPvAnyAddress
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
 class EndpointChoicesEnum(IntEnum):
@@ -31,6 +34,7 @@ class EventType(MaasTimestampedBaseModel):
     level: LoggingLevelEnum
 
 
+@generate_builder()
 class Event(MaasTimestampedBaseModel):
     type: EventType
     node_system_id: Optional[str]
@@ -42,6 +46,3 @@ class Event(MaasTimestampedBaseModel):
     user_agent: str
     description: str
     action: str
-
-
-EventBuilder = make_builder(Event)

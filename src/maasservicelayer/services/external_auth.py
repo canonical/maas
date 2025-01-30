@@ -24,6 +24,7 @@ from maasservicelayer.auth.macaroons.macaroon_client import (
     RbacAsyncClient,
 )
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
@@ -36,7 +37,7 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
-from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
+from maasservicelayer.models.users import User
 from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.services.users import UsersService

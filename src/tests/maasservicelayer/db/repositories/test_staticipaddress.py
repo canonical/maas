@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
@@ -16,10 +17,7 @@ from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
 from maasservicelayer.models.fields import MacAddress
-from maasservicelayer.models.staticipaddress import (
-    StaticIPAddress,
-    StaticIPAddressBuilder,
-)
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.fixtures.factories.node_config import create_test_node_config_entry

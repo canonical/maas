@@ -1,14 +1,12 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.dhcpsnippets import DhcpSnippetBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsRepository,
 )
-from maasservicelayer.models.dhcpsnippets import (
-    DhcpSnippet,
-    DhcpSnippetBuilder,
-)
+from maasservicelayer.models.dhcpsnippets import DhcpSnippet
 from maasservicelayer.services.base import BaseService
 
 

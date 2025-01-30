@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.resource_pools import ResourcePoolBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
@@ -16,10 +17,7 @@ from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     NotFoundException,
 )
-from maasservicelayer.models.resource_pools import (
-    ResourcePool,
-    ResourcePoolBuilder,
-)
+from maasservicelayer.models.resource_pools import ResourcePool
 from tests.fixtures.factories.resource_pools import (
     create_n_test_resource_pools,
     create_test_resource_pool,

@@ -2,12 +2,13 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from typing import List
 
+from maasservicelayer.builders.spaces import SpaceBuilder
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
-from maasservicelayer.models.spaces import Space, SpaceBuilder
-from maasservicelayer.models.vlans import VlanBuilder
+from maasservicelayer.models.spaces import Space
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.vlans import VlansService
 

@@ -6,9 +6,13 @@ from typing import Optional
 from pydantic import IPvAnyAddress
 
 from maascommon.enums.ipranges import IPRangeType
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class IPRange(MaasTimestampedBaseModel):
     type: IPRangeType
     start_ip: IPvAnyAddress
@@ -16,6 +20,3 @@ class IPRange(MaasTimestampedBaseModel):
     comment: Optional[str] = None
     subnet_id: int
     user_id: Optional[int] = None
-
-
-IPRangeBuilder = make_builder(IPRange)

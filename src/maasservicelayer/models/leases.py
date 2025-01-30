@@ -4,8 +4,10 @@
 from pydantic import BaseModel, IPvAnyAddress
 
 from maascommon.enums.ipaddress import IpAddressFamily, LeaseAction
+from maasservicelayer.models.base import generate_builder
 
 
+@generate_builder()
 class Lease(BaseModel):
     action: LeaseAction
     ip_family: IpAddressFamily

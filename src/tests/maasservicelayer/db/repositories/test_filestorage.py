@@ -4,13 +4,14 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.filestorage import FileStorageBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.filestorage import (
     FileStorageClauseFactory,
     FileStorageRepository,
 )
 from maasservicelayer.models.base import ResourceBuilder
-from maasservicelayer.models.filestorage import FileStorage, FileStorageBuilder
+from maasservicelayer.models.filestorage import FileStorage
 from tests.fixtures.factories.filestorage import create_test_filestorage_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests

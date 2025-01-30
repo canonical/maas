@@ -12,16 +12,14 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.interfaces import Interface
-from maasservicelayer.models.staticipaddress import (
-    StaticIPAddress,
-    StaticIPAddressBuilder,
-)
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService

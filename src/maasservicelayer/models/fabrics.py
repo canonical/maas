@@ -3,13 +3,14 @@
 
 from typing import Optional
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class Fabric(MaasTimestampedBaseModel):
     name: Optional[str]
     description: Optional[str]
     class_type: Optional[str]
-
-
-FabricBuilder = make_builder(Fabric)

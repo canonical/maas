@@ -1,13 +1,15 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.nodegrouptorackcontrollers import (
+    NodeGroupToRackControllerBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
 )
 from maasservicelayer.models.nodegrouptorackcontrollers import (
     NodeGroupToRackController,
-    NodeGroupToRackControllerBuilder,
 )
 from maasservicelayer.services.base import BaseService
 

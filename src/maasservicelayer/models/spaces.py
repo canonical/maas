@@ -3,12 +3,13 @@
 
 from typing import Optional
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class Space(MaasTimestampedBaseModel):
     name: Optional[str]
     description: Optional[str]
-
-
-SpaceBuilder = make_builder(Space)

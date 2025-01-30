@@ -1,29 +1,24 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from enum import Enum
 import re
 from typing import Optional
 
 from pydantic import validator
 
+from maascommon.enums.node import HardwareDeviceTypeEnum
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
-from maasservicelayer.models.base import MaasTimestampedBaseModel
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 from maasservicelayer.models.nodes import Node
-from metadataserver.enum import HARDWARE_TYPE_CHOICES
 
 # PCIE and USB vendor and product ids are represented as a 2 byte hex string
 DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
 
 
-HardwareDeviceTypeEnum = Enum(
-    "HardwareDeviceType",
-    dict(
-        {str(name).lower(): int(code) for code, name in HARDWARE_TYPE_CHOICES}
-    ),
-)
-
-
+@generate_builder()
 class Machine(Node):
     description: str
     owner: Optional[str]
@@ -41,8 +36,7 @@ class Machine(Node):
 
 
 class HardwareDevice(MaasTimestampedBaseModel):
-    # TODO: move HARDWARE_TYPE to enum and change the type here
-    hardware_type: HardwareDeviceTypeEnum = HardwareDeviceTypeEnum.node
+    hardware_type: HardwareDeviceTypeEnum = HardwareDeviceTypeEnum.NODE
     vendor_id: str
     product_id: str
     vendor_name: str
@@ -62,9 +56,11 @@ class HardwareDevice(MaasTimestampedBaseModel):
         return id
 
 
+@generate_builder()
 class UsbDevice(HardwareDevice):
     pass
 
 
+@generate_builder()
 class PciDevice(HardwareDevice):
     pci_address: str

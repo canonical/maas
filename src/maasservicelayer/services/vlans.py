@@ -8,6 +8,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansRepository
@@ -18,7 +19,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
 )
-from maasservicelayer.models.vlans import Vlan, VlanBuilder
+from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService

@@ -3,9 +3,13 @@
 
 from typing import Any, Optional
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class Notification(MaasTimestampedBaseModel):
     ident: str
     users: bool
@@ -15,6 +19,3 @@ class Notification(MaasTimestampedBaseModel):
     user_id: Optional[int]
     category: str
     dismissable: bool
-
-
-NotificationBuilder = make_builder(Notification)

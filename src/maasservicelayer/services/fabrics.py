@@ -3,6 +3,8 @@
 
 from typing import List
 
+from maasservicelayer.builders.fabrics import FabricBuilder
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
@@ -17,8 +19,7 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_FABRIC_WITH_CONNECTED_INTERFACE_VIOLATION_TYPE,
     CANNOT_DELETE_FABRIC_WITH_SUBNETS_VIOLATION_TYPE,
 )
-from maasservicelayer.models.fabrics import Fabric, FabricBuilder
-from maasservicelayer.models.vlans import VlanBuilder
+from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.subnets import SubnetsService

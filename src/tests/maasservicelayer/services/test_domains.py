@@ -6,10 +6,11 @@ from unittest.mock import Mock
 import pytest
 
 from maascommon.enums.dns import DnsUpdateAction
+from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.domains import Domain, DomainBuilder
+from maasservicelayer.models.domains import Domain
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService

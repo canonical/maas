@@ -24,7 +24,7 @@ from maascommon.workflows.power import (
     PowerQueryParam,
 )
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
-from maasservicelayer.models.nodes import NodeBuilder
+from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import activity_defn_with_context

@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, validator
 
-from maasservicelayer.models.users import UserBuilder
+from maasservicelayer.builders.users import UserBuilder
 
 
 class UserRequest(BaseModel):

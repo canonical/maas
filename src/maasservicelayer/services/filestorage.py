@@ -1,9 +1,10 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.filestorage import FileStorageBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.filestorage import FileStorageRepository
-from maasservicelayer.models.filestorage import FileStorage, FileStorageBuilder
+from maasservicelayer.models.filestorage import FileStorage
 from maasservicelayer.services.base import BaseService, ServiceCache
 
 

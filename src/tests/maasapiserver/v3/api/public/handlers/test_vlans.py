@@ -18,6 +18,7 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
     VlansListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -28,7 +29,7 @@ from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.vlans import Vlan, VlanBuilder
+from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow

@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, insert, select, Table, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
+from maasservicelayer.builders.users import UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
@@ -26,7 +27,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.users import User, UserProfile, UserProfileBuilder
+from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.utils.date import utcnow
 
 

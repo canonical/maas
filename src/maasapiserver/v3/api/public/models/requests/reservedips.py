@@ -3,6 +3,7 @@
 
 from pydantic import BaseModel, Field, IPvAnyAddress
 
+from maasservicelayer.builders.reservedips import ReservedIPBuilder
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
@@ -15,7 +16,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.fields import MacAddress
-from maasservicelayer.models.reservedips import ReservedIP, ReservedIPBuilder
+from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 

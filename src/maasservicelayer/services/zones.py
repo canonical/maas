@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import List
 
+from maasservicelayer.builders.zones import ZoneBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
@@ -13,7 +14,7 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.zones import Zone, ZoneBuilder, ZoneWithSummary
+from maasservicelayer.models.zones import Zone, ZoneWithSummary
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.vmcluster import VmClustersService

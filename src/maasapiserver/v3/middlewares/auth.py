@@ -33,6 +33,7 @@ from maasservicelayer.auth.macaroons.models.exceptions import (
 from maasservicelayer.auth.macaroons.models.responses import (
     ValidateUserResponse,
 )
+from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
@@ -48,7 +49,7 @@ from maasservicelayer.exceptions.constants import (
     USER_EXTERNAL_VALIDATION_FAILED,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
-from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
+from maasservicelayer.models.users import User
 from maasservicelayer.utils.date import utcnow
 
 EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)

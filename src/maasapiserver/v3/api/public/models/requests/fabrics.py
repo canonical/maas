@@ -6,7 +6,7 @@ from typing import Optional
 from pydantic import Field, validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
-from maasservicelayer.models.fabrics import FabricBuilder
+from maasservicelayer.builders.fabrics import FabricBuilder
 
 
 class FabricRequest(NamedBaseModel):

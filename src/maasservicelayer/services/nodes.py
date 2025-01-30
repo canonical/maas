@@ -1,6 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodes import (
@@ -8,7 +9,7 @@ from maasservicelayer.db.repositories.nodes import (
     NodeClauseFactory,
 )
 from maasservicelayer.models.bmc import Bmc
-from maasservicelayer.models.nodes import Node, NodeBuilder
+from maasservicelayer.models.nodes import Node
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.secrets import SecretsService
 

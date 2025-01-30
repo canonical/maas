@@ -5,9 +5,13 @@ from typing import Optional
 
 from maascommon.enums.node import NodeStatus
 from maascommon.enums.power import PowerState
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class Node(MaasTimestampedBaseModel):
     # TODO: model to be completed.
     system_id: str
@@ -15,6 +19,3 @@ class Node(MaasTimestampedBaseModel):
     power_state: PowerState
     power_state_updated: datetime | None
     owner_id: Optional[int] = None
-
-
-NodeBuilder = make_builder(Node)

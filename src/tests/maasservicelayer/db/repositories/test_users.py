@@ -6,9 +6,9 @@ import datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.users import UsersRepository
-from maasservicelayer.models.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import (
     create_test_session,

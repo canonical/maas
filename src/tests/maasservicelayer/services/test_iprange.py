@@ -13,6 +13,7 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dhcpsnippets import (
@@ -24,7 +25,7 @@ from maasservicelayer.db.repositories.ipranges import (
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
+from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService

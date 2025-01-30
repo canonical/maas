@@ -21,6 +21,7 @@ __all__ = [
 ]
 
 
+from maascommon.enums.node import HardwareDeviceTypeEnum
 from maascommon.enums.scriptresult import ScriptStatus
 from provisioningserver.enum import enum_choices
 
@@ -125,12 +126,12 @@ SCRIPT_STATUS_FAILED = {
 
 
 class HARDWARE_TYPE:
-    NODE = 0
-    CPU = 1
-    MEMORY = 2
-    STORAGE = 3
-    NETWORK = 4
-    GPU = 5
+    NODE = HardwareDeviceTypeEnum.NODE.value
+    CPU = HardwareDeviceTypeEnum.CPU.value
+    MEMORY = HardwareDeviceTypeEnum.MEMORY.value
+    STORAGE = HardwareDeviceTypeEnum.STORAGE.value
+    NETWORK = HardwareDeviceTypeEnum.NETWORK.value
+    GPU = HardwareDeviceTypeEnum.GPU.value
 
 
 # Labels are also used for autotagging scripts.

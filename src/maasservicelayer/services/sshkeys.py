@@ -16,6 +16,7 @@ from maascommon.enums.sshkeys import (
     OPENSSH_PROTOCOL2_KEY_TYPES,
     SshKeysProtocolType,
 )
+from maasservicelayer.builders.sshkeys import SshKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.sshkeys import (
@@ -30,7 +31,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.sshkeys import SshKey, SshKeyBuilder
+from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 
 
@@ -193,7 +194,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
                 field="key",
                 message=f"Key type {keytype} not recognised; it should be one of: {" ".join(sorted(OPENSSH_PROTOCOL2_KEY_TYPES))}",
             )
-        env = os.environ
+        env = dict(os.environ)
         # Request OpenSSH to use /bin/true when prompting for passwords. We also
         # have to redirect stdin from, say, /dev/null so that it doesn't use the
         # terminal (when this is executed from a terminal).

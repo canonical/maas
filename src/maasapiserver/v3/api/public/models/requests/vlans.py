@@ -10,6 +10,7 @@ from maasapiserver.v3.api.public.models.requests.base import (
 )
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.enums.service import ServiceName, ServiceStatusEnum
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
@@ -25,7 +26,6 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     MISSING_DYNAMIC_RANGE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.vlans import VlanBuilder
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.vlans import DEFAULT_MTU, DEFAULT_VID
 

@@ -5,7 +5,7 @@
 from pydantic import BaseModel, Field
 
 from maascommon.enums.sshkeys import SshKeysProtocolType
-from maasservicelayer.models.sshkeys import SshKeyBuilder
+from maasservicelayer.builders.sshkeys import SshKeyBuilder
 
 
 class SshKeyManualUploadRequest(BaseModel):

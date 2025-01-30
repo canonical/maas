@@ -1,9 +1,11 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import datetime
 from operator import eq
 from typing import Type
 
+from pydantic import Field
 import pytest
 from sqlalchemy import (
     BigInteger,
@@ -25,7 +27,12 @@ from maasservicelayer.db.repositories.base import (
     MultipleResultsException,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    MaasTimestampedBaseModel,
+    ResourceBuilder,
+    UNSET,
+    Unset,
+)
 from maasservicelayer.utils.date import utcnow
 
 METADATA = MetaData()
@@ -101,7 +108,11 @@ class AModel(MaasTimestampedBaseModel):
     data: str
 
 
-AResourceBuilder = make_builder(AModel)
+class AResourceBuilder(ResourceBuilder):
+    id: int | Unset = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET, required=False)
+    updated: datetime | Unset = Field(default=UNSET, required=False)
+    data: str | Unset = Field(default=UNSET, required=False)
 
 
 class MyRepository(BaseRepository[AModel]):

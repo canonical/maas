@@ -11,15 +11,13 @@ from maascommon.workflows.dns import (
     ConfigureDNSParam,
     merge_configure_dns_params,
 )
+from maasservicelayer.builders.dnspublications import DNSPublicationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
 )
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.dnspublications import (
-    DNSPublication,
-    DNSPublicationBuilder,
-)
+from maasservicelayer.models.dnspublications import DNSPublication
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.temporal import TemporalService

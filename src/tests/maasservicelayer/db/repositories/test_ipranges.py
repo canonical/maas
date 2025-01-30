@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipranges import IPRangeType
+from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import (
@@ -15,7 +16,7 @@ from maasservicelayer.db.repositories.ipranges import (
     IPRangesRepository,
 )
 from maasservicelayer.db.tables import IPRangeTable
-from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
+from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.subnet import create_test_subnet_entry

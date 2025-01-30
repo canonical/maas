@@ -4,6 +4,7 @@
 from typing import Type
 from unittest.mock import Mock
 
+from pydantic import Field
 import pytest
 from sqlalchemy import Table
 
@@ -17,8 +18,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.models.base import (
     ListResult,
     MaasBaseModel,
-    make_builder,
     ResourceBuilder,
+    UNSET,
+    Unset,
 )
 from maasservicelayer.services.base import BaseService
 
@@ -28,7 +30,8 @@ class DummyMaasBaseModel(MaasBaseModel):
         return "test"
 
 
-DummyMaasBaseModelBuilder = make_builder(DummyMaasBaseModel)
+class DummyMaasBaseModelBuilder(ResourceBuilder):
+    id: int | Unset = Field(default=UNSET, required=False)
 
 
 class DummyRepository(BaseRepository[DummyMaasBaseModel]):

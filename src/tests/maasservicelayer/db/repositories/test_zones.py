@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
+from maasservicelayer.builders.zones import ZoneBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.filters import QuerySpec
@@ -16,7 +17,7 @@ from maasservicelayer.db.repositories.zones import (
     ZonesRepository,
 )
 from maasservicelayer.db.tables import ZoneTable
-from maasservicelayer.models.zones import Zone, ZoneBuilder
+from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.node import (
     create_test_device_entry,
     create_test_machine_entry,

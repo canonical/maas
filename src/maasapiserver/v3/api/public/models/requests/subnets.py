@@ -10,6 +10,7 @@ from maasapiserver.v3.api.public.models.requests.base import (
 )
 from maascommon.bootmethods import find_boot_method_by_arch_or_octet
 from maascommon.enums.subnet import RdnsMode
+from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
@@ -18,7 +19,6 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.fields import IPv4v6Network
-from maasservicelayer.models.subnets import SubnetBuilder
 
 
 class SubnetRequest(OptionalNamedBaseModel):

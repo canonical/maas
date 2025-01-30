@@ -1,14 +1,12 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.staticroutes import StaticRouteBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesRepository,
 )
-from maasservicelayer.models.staticroutes import (
-    StaticRoute,
-    StaticRouteBuilder,
-)
+from maasservicelayer.models.staticroutes import StaticRoute
 from maasservicelayer.services.base import BaseService
 
 

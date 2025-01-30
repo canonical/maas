@@ -5,6 +5,10 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from maasservicelayer.builders.ipranges import IPRangeBuilder
+from maasservicelayer.builders.nodes import NodeBuilder
+from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
+from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.filestorage import (
@@ -29,10 +33,7 @@ from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
 )
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.ipranges import IPRangeBuilder
-from maasservicelayer.models.nodes import NodeBuilder
-from maasservicelayer.models.staticipaddress import StaticIPAddressBuilder
-from maasservicelayer.models.users import User, UserBuilder, UserProfileBuilder
+from maasservicelayer.models.users import User
 from maasservicelayer.services import UsersService
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.filestorage import FileStorageService

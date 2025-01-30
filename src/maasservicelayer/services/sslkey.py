@@ -1,9 +1,10 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasservicelayer.builders.sslkeys import SSLKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
-from maasservicelayer.models.sslkeys import SSLKey, SSLKeyBuilder
+from maasservicelayer.models.sslkeys import SSLKey
 from maasservicelayer.services.base import BaseService
 
 

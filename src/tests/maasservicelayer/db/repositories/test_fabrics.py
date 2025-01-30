@@ -4,9 +4,10 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.fabrics import FabricBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
-from maasservicelayer.models.fabrics import Fabric, FabricBuilder
+from maasservicelayer.models.fabrics import Fabric
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests

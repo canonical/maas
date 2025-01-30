@@ -29,6 +29,7 @@ from maascommon.workflows.power import (
     PowerParam,
     PowerQueryParam,
 )
+from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.db.tables import (
     BlockDeviceTable,
     InterfaceIPAddressTable,
@@ -38,7 +39,6 @@ from maasservicelayer.db.tables import (
     StaticIPAddressTable,
     VirtualBlockDeviceTable,
 )
-from maasservicelayer.models.nodes import NodeBuilder
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.power import (
     POWER_CYCLE_ACTIVITY_NAME,

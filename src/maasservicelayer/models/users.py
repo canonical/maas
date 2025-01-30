@@ -8,10 +8,11 @@ from typing import Optional
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from pydantic import Field
 
-from maasservicelayer.models.base import MaasBaseModel, make_builder
+from maasservicelayer.models.base import generate_builder, MaasBaseModel
 from maasservicelayer.utils.date import utcnow
 
 
+@generate_builder()
 class User(MaasBaseModel):
     username: str
     password: str
@@ -34,9 +35,7 @@ class User(MaasBaseModel):
         return PBKDF2PasswordHasher().verify(password, self.password)
 
 
-UserBuilder = make_builder(User)
-
-
+@generate_builder()
 class UserProfile(MaasBaseModel):
     completed_intro: bool
     auth_last_check: Optional[datetime]
@@ -45,9 +44,6 @@ class UserProfile(MaasBaseModel):
 
     def etag(self) -> str:
         pass
-
-
-UserProfileBuilder = make_builder(UserProfile)
 
 
 class Consumer(MaasBaseModel):

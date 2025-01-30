@@ -3,14 +3,15 @@
 
 from typing import Optional
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class DNSData(MaasTimestampedBaseModel):
     dnsresource_id: int
     ttl: Optional[int]
     rrtype: str
     rrdata: str
-
-
-DNSDataBuilder = make_builder(DNSData)

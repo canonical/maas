@@ -3,9 +3,10 @@
 
 from typing import Optional
 
-from maasservicelayer.models.base import MaasBaseModel, make_builder
+from maasservicelayer.models.base import generate_builder, MaasBaseModel
 
 
+@generate_builder()
 class FileStorage(MaasBaseModel):
     filename: str
     content: str
@@ -14,6 +15,3 @@ class FileStorage(MaasBaseModel):
 
     def etag(self) -> str:
         pass
-
-
-FileStorageBuilder = make_builder(FileStorage)

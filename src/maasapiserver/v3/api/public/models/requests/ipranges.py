@@ -6,6 +6,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maascommon.enums.ipranges import IPRangeType
+from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ForbiddenException,
@@ -16,7 +17,6 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
-from maasservicelayer.models.ipranges import IPRangeBuilder
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 

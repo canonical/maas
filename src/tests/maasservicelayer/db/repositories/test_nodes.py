@@ -7,6 +7,7 @@ from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
+from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodes import (
@@ -15,7 +16,7 @@ from maasservicelayer.db.repositories.nodes import (
 )
 from maasservicelayer.db.tables import BMCTable, NodeTable, ZoneTable
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.models.nodes import Node, NodeBuilder
+from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine

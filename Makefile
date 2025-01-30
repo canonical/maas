@@ -185,8 +185,13 @@ sec: sec-py
 sec-py:
 	@tox -e bandit
 
-lint: lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
+lint: lint-py-builders lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
+
+# Check if service layer builders must be re-generated
+lint-py-builders:
+	utilities/generate_builders.py --check
+.PHONY: lint-py-builders
 
 lint-py:
 	@tox -e lint
@@ -264,6 +269,11 @@ format-go:
 	@$(MAKE) -C src/host-info format
 	@$(MAKE) -C src/maasagent format
 .PHONY: format-go
+
+generate-builders:
+	utilities/generate_builders.py
+	@tox -e format-builders
+.PHONY: generate-builders
 
 check: clean test
 .PHONY: check

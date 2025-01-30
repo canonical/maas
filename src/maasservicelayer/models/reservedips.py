@@ -5,15 +5,16 @@ from typing import Optional
 
 from pydantic import IPvAnyAddress
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 from maasservicelayer.models.fields import MacAddress
 
 
+@generate_builder()
 class ReservedIP(MaasTimestampedBaseModel):
     ip: IPvAnyAddress
     mac_address: MacAddress
     comment: Optional[str] = None
     subnet_id: int
-
-
-ReservedIPBuilder = make_builder(ReservedIP)

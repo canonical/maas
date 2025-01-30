@@ -2,14 +2,15 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maascommon.enums.service import ServiceName, ServiceStatusEnum
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class ServiceStatus(MaasTimestampedBaseModel):
     name: ServiceName
     status: ServiceStatusEnum
     status_info: str
     node_id: int
-
-
-ServiceStatusBuilder = make_builder(ServiceStatus)

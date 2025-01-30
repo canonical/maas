@@ -10,6 +10,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dhcpsnippets import (
@@ -29,7 +30,7 @@ from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
-from maasservicelayer.models.subnets import Subnet, SubnetBuilder
+from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService

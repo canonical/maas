@@ -3,12 +3,11 @@ from typing import Any
 
 from sqlalchemy import update
 
-from maascommon.enums.node import NodeDeviceBus
+from maascommon.enums.node import HardwareDeviceTypeEnum, NodeDeviceBus
 from maasservicelayer.db.tables import NodeTable
 from maasservicelayer.models.machines import PciDevice, UsbDevice
 from maasservicelayer.utils.date import utcnow
 from maastesting.factory import factory
-from metadataserver.enum import HARDWARE_TYPE
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -78,7 +77,7 @@ async def create_test_usb_device(
         "created": now,
         "updated": now,
         "bus": NodeDeviceBus.USB,
-        "hardware_type": HARDWARE_TYPE.NODE,
+        "hardware_type": HardwareDeviceTypeEnum.NODE,
         "vendor_id": "0000",
         "product_id": "0000",
         "vendor_name": "vendor",
@@ -108,7 +107,7 @@ async def create_test_pci_device(
         "created": now,
         "updated": now,
         "bus": NodeDeviceBus.PCIE,
-        "hardware_type": HARDWARE_TYPE.NODE,
+        "hardware_type": HardwareDeviceTypeEnum.NODE,
         "vendor_id": "0000",
         "product_id": "0000",
         "vendor_name": "vendor",

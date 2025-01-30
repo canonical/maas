@@ -11,6 +11,7 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dhcpsnippets import (
@@ -32,7 +33,7 @@ from maasservicelayer.db.repositories.staticroutes import (
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.exceptions.catalog import PreconditionFailedException
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.subnets import Subnet, SubnetBuilder
+from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.ipranges import IPRangesService

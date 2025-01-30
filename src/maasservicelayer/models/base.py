@@ -5,10 +5,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 import hashlib
-from typing import Any, Generic, Sequence, TypeVar, Union
+from typing import Any, Generic, Sequence, TypeVar
 
-from pydantic import BaseModel, create_model, Field
-from pydantic.fields import ModelField
+from pydantic import BaseModel, Field
 
 from maasservicelayer.utils.date import utcnow
 
@@ -95,30 +94,9 @@ UNSET = Unset()
 BaseModelT = TypeVar("BaseModelT", bound=MaasBaseModel)
 
 
-def transform_field(field: ModelField) -> tuple[Any, Any]:
-    # Each field can be Unset.
-    new_field = Union[field.annotation, Unset]  # type: ignore
-    return (new_field, UNSET)
+def generate_builder():
+    def decorate(cls: type[T]) -> type[T]:
+        setattr(cls, "__generate_builder__", True)
+        return cls
 
-
-# TODO: actually this function is NOT returning a type[BaseModelT]. We have to make it return type[ResourceBuilder] and find a
-#  solution to provide type hints for the builders.
-def make_builder(model: type[BaseModelT]) -> type[BaseModelT]:
-    """
-    Given a model, extract all the fields and the annotations to build a new ModelBuilder.
-    The base of the new Builder is ResourceBuilder, because we want to have some specific functions for builders.
-
-    We want to have a dedicated builder because when we create or update a resource we don't want to specify all the fields.
-    For example, we want to define some default values at DB level.
-
-    Heads up: this works in pydantic 1.x. When we move to 2.x we might have to change this.
-    """
-    return create_model(  # type: ignore
-        f"{model.__name__}Builder",
-        __base__=ResourceBuilder,
-        __module__=ResourceBuilder.__module__,
-        **{
-            field_name: transform_field(field_info)
-            for field_name, field_info in model.__fields__.items()
-        },
-    )
+    return decorate

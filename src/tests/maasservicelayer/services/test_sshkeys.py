@@ -9,13 +9,14 @@ from maascommon.enums.sshkeys import (
     OPENSSH_PROTOCOL2_KEY_TYPES,
     SshKeysProtocolType,
 )
+from maasservicelayer.builders.sshkeys import SshKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     ValidationException,
 )
-from maasservicelayer.models.sshkeys import SshKey, SshKeyBuilder
+from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests

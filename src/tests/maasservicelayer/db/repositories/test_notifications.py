@@ -4,16 +4,14 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
     NotificationsRepository,
 )
 from maasservicelayer.models.base import ResourceBuilder
-from maasservicelayer.models.notifications import (
-    Notification,
-    NotificationBuilder,
-)
+from maasservicelayer.models.notifications import Notification
 from tests.fixtures.factories.notifications import (
     create_test_notification_entry,
 )

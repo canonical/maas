@@ -11,6 +11,7 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.vlans import (
@@ -23,7 +24,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.nodes import Node
-from maasservicelayer.models.vlans import Vlan, VlanBuilder
+from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService

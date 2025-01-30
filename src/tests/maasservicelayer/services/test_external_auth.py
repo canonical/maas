@@ -18,6 +18,7 @@ from maasservicelayer.auth.macaroons.checker import (
 )
 from maasservicelayer.auth.macaroons.locator import AsyncThirdPartyLocator
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
@@ -29,12 +30,7 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.models.external_auth import RootKey
-from maasservicelayer.models.users import (
-    User,
-    UserBuilder,
-    UserProfile,
-    UserProfileBuilder,
-)
+from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import SecretsService, UsersService
 from maasservicelayer.services.external_auth import (
     ExternalAuthService,

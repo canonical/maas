@@ -3,7 +3,7 @@
 from pydantic import Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
-from maasservicelayer.models.resource_pools import ResourcePoolBuilder
+from maasservicelayer.builders.resource_pools import ResourcePoolBuilder
 
 
 class ResourcePoolRequest(NamedBaseModel):

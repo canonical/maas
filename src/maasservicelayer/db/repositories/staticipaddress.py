@@ -10,6 +10,7 @@ from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -22,10 +23,7 @@ from maasservicelayer.db.tables import (
 )
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
-from maasservicelayer.models.staticipaddress import (
-    StaticIPAddress,
-    StaticIPAddressBuilder,
-)
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.utils.date import utcnow
 

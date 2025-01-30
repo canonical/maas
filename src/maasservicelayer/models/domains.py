@@ -3,13 +3,14 @@
 
 from typing import Optional
 
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class Domain(MaasTimestampedBaseModel):
     name: str
     authoritative: bool
     ttl: Optional[int]
-
-
-DomainBuilder = make_builder(Domain)

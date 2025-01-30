@@ -7,16 +7,17 @@ from typing import Optional
 from pydantic import IPvAnyAddress
 
 from maascommon.enums.ipaddress import IpAddressType
-from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasTimestampedBaseModel,
+)
 
 
+@generate_builder()
 class StaticIPAddress(MaasTimestampedBaseModel):
     ip: Optional[IPvAnyAddress]
     alloc_type: IpAddressType
     lease_time: int
     temp_expires_on: Optional[datetime.datetime]
-    subnet_id: int
+    subnet_id: Optional[int]
     user_id: Optional[int] = None
-
-
-StaticIPAddressBuilder = make_builder(StaticIPAddress)

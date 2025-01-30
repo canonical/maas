@@ -6,12 +6,10 @@ from collections.abc import Sequence
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.dnsresources import DNSResourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
-from maasservicelayer.models.dnsresources import (
-    DNSResource,
-    DNSResourceBuilder,
-)
+from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry

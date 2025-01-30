@@ -10,6 +10,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dhcpsnippets import (
@@ -27,7 +28,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import Unset
-from maasservicelayer.models.ipranges import IPRange, IPRangeBuilder
+from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.temporal import TemporalService
