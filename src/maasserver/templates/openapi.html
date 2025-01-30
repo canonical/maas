@@ -1,11 +1,12 @@
 {# HTML for static distribution bundle build #}
+{% load asset_tags %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <title>MAAS API</title>
-    <!-- TODO: Figure out how to update this programatically -->
-    <link href="/MAAS/r/static/css/main.d1c59af9.css" rel="stylesheet">
+    {% comment %} Gets the index css file from the asset manifest {% endcomment %}
+    <link href="{% get_index_css_path %}" rel="stylesheet"> 
     <style>
       {% include "dist/swagger-ui.css" %}
     </style>
