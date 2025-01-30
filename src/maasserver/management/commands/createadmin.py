@@ -6,16 +6,16 @@
 from getpass import getpass
 import re
 
+from aiohttp import ClientError
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
-import requests
 
 from maascli.init import read_input
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.macaroon_auth import external_auth_enabled
 from maasserver.models import SSHKey
-from maasserver.utils.keys import ImportSSHKeysError
+from maasserver.models.sshkey import ImportSSHKeysError
 
 
 class EmptyUsername(CommandError):
@@ -178,7 +178,7 @@ class Command(BaseCommand):
                     )
                 except (
                     ImportSSHKeysError,
-                    requests.exceptions.RequestException,
+                    ClientError,
                 ) as e:
                     raise SSHKeysError(
                         "Importing SSH keys failed.\n%s" % e.args[0]

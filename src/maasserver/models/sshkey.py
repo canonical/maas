@@ -5,6 +5,7 @@
 
 
 from html import escape
+from typing import List
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -14,8 +15,17 @@ from django.utils.safestring import mark_safe
 from maasserver.enum import KEYS_PROTOCOL_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.keys import get_protocol_keys
-from provisioningserver.utils.sshkey import normalise_openssh_public_key
+from maasserver.sqlalchemy import exec_async, servicelayer
+from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.sshkeys import SshKey
+
+
+class OpenSSHKeyError(ValueError):
+    """The given key was not recognised or was corrupt."""
+
+
+class ImportSSHKeysError(Exception):
+    """Importing SSH Keys failed."""
 
 
 class SSHKeyManager(Manager):
@@ -25,7 +35,9 @@ class SSHKeyManager(Manager):
         """Return the text of the ssh keys associated with a user."""
         return SSHKey.objects.filter(user=user).values_list("key", flat=True)
 
-    def from_keysource(self, user: User, protocol: str, auth_id: str):
+    def from_keysource(
+        self, user: User, protocol: str, auth_id: str
+    ) -> List[SshKey]:
         """Save SSH Keys for user's protocol and auth_id.
 
         :param user: The user to save the SSH keys for.
@@ -34,19 +46,29 @@ class SSHKeyManager(Manager):
         :return: List of imported `SSHKey`s.
         """
 
-        keys = get_protocol_keys(protocol, auth_id)
-        return [
-            self.get_or_create(
-                key=key, user=user, protocol=protocol, auth_id=auth_id
-            )[0]
-            for key in keys
-        ]
+        with servicelayer() as services:
+            try:
+                return exec_async(
+                    services.sshkeys.import_keys(protocol, auth_id, user.id)
+                )
+            except ValidationException as e:
+                # The new service layer uses different exceptions. So the following logic ensure backwards compatibility with
+                # the legacy code.
+                if len(e.details) > 0:
+                    detail = e.details[0]
+                    if detail.field == "key":
+                        raise OpenSSHKeyError(detail.message)
+                    elif detail.field == "auth_id":
+                        raise ImportSSHKeysError(detail.message)
 
 
 def validate_ssh_public_key(value):
     """Validate that the given value contains a valid SSH public key."""
     try:
-        return normalise_openssh_public_key(value)
+        with servicelayer() as services:
+            return exec_async(
+                services.sshkeys.normalize_openssh_public_key(key=value)
+            )
     except Exception as error:
         raise ValidationError("Invalid SSH public key: " + str(error))
 

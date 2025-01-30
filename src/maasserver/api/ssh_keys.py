@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
@@ -22,7 +23,7 @@ from maasserver.enum import ENDPOINT, KEYS_PROTOCOL_TYPE
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
 from maasserver.models import SSHKey
-from maasserver.utils.keys import ImportSSHKeysError
+from maasserver.models.sshkey import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from provisioningserver.events import EVENT_TYPES
 
@@ -141,7 +142,18 @@ class SSHKeysHandler(OperationsHandler):
                     None,
                     description="Imported SSH keys.",
                 )
-                return keysource
+                # convert to response
+                return [
+                    {
+                        "id": sshkey.id,
+                        "key": sshkey.key,
+                        "keysource": f"{sshkey.protocol}:{sshkey.auth_id}",
+                        "resource_uri": reverse(
+                            "sshkey_handler", kwargs={"id": sshkey.id}
+                        ),
+                    }
+                    for sshkey in keysource
+                ]
             except (ImportSSHKeysError, RequestException) as e:
                 raise MAASAPIBadRequest(e.args[0])
         else:

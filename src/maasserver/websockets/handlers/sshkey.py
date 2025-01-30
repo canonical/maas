@@ -10,8 +10,7 @@ from django.http import HttpRequest
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.forms import SSHKeyForm
-from maasserver.models.sshkey import SSHKey
-from maasserver.utils.keys import ImportSSHKeysError
+from maasserver.models.sshkey import ImportSSHKeysError, SSHKey
 from maasserver.websockets.base import HandlerError, HandlerValidationError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,

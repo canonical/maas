@@ -6,11 +6,10 @@
 
 from maascommon.events import AUDIT
 from maasserver.models.event import Event
-from maasserver.models.sshkey import SSHKey
+from maasserver.models.sshkey import ImportSSHKeysError, SSHKey
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from maasserver.websockets.base import HandlerDoesNotExistError, HandlerError
 from maasserver.websockets.handlers.sshkey import SSHKeyHandler

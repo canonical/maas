@@ -7,16 +7,16 @@
 import io
 from io import StringIO
 import random
+from unittest.mock import AsyncMock
 
+from aiohttp import ClientError
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from requests.exceptions import RequestException
 
 from apiclient.creds import convert_tuple_to_string
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.management.commands import changepasswords, createadmin
-import maasserver.models.sshkey as sshkey_module
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.user import get_creds_tuple
 from maasserver.secrets import SecretManager
@@ -24,6 +24,7 @@ from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
+import maasservicelayer.services.sshkeys as servicelayer_sshkeys
 
 
 def assertCommandErrors(runner, command, *args, **kwargs):
@@ -231,8 +232,19 @@ class TestCommands(MAASServerTestCase):
         user_id = factory.make_name("user-id")
         ssh_import = f"{protocol}:{user_id}"
         key_string = get_data("data/test_rsa0.pub")
-        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
-        mock_get_protocol_keys.return_value = [key_string]
+        if protocol == KEYS_PROTOCOL_TYPE.LP:
+            mock_get_ssh_key = self.patch(
+                servicelayer_sshkeys.SshKeysService,
+                "_get_ssh_key_from_launchpad",
+                mock_class=AsyncMock,
+            )
+        else:
+            mock_get_ssh_key = self.patch(
+                servicelayer_sshkeys.SshKeysService,
+                "_get_ssh_key_from_github",
+                mock_class=AsyncMock,
+            )
+        mock_get_ssh_key.return_value = [key_string]
         call_command(
             "createadmin",
             username=username,
@@ -262,8 +274,8 @@ class TestCommands(MAASServerTestCase):
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
-        self.patch(SSHKey.objects, "from_keysource").side_effect = (
-            RequestException("error")
+        self.patch(SSHKey.objects, "from_keysource").side_effect = ClientError(
+            "error"
         )
         self.assertRaises(
             createadmin.SSHKeysError,

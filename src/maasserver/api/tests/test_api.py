@@ -3,17 +3,15 @@
 
 """Test maasserver API."""
 
-
 import http.client
 from itertools import chain
 import random
 import string
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock
 
 from django.conf import settings
 from django.urls import reverse
 from piston3.doc import generate_doc
-from requests.exceptions import RequestException
 
 from maascommon.events import AUDIT
 from maasserver import urls_api as urlconf
@@ -23,7 +21,6 @@ from maasserver.api.doc import find_api_resources
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.forms.settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import Config, SSHKey
-from maasserver.models import sshkey as sshkey_module
 from maasserver.models.event import Event
 from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
@@ -35,8 +32,9 @@ from maasserver.testing.testclient import (
     MAASSensibleOAuthClient,
 )
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
+from maasservicelayer.exceptions.catalog import ValidationException
+import maasservicelayer.services.sshkeys as servicelayer_sshkeys
 from maastesting.testcase import MAASTestCase
 
 
@@ -509,8 +507,20 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         auth_id = factory.make_name("auth_id")
         ks = f"{protocol}:{auth_id}"
         key_string = get_data("data/test_rsa0.pub")
-        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
-        mock_get_protocol_keys.return_value = [key_string]
+        if protocol == KEYS_PROTOCOL_TYPE.LP:
+            mock_get_ssh_key = self.patch(
+                servicelayer_sshkeys.SshKeysService,
+                "_get_ssh_key_from_launchpad",
+                mock_class=AsyncMock,
+            )
+        else:
+            mock_get_ssh_key = self.patch(
+                servicelayer_sshkeys.SshKeysService,
+                "_get_ssh_key_from_github",
+                mock_class=AsyncMock,
+            )
+        mock_get_ssh_key.return_value = [key_string]
+
         response = self.client.post(
             reverse("sshkeys_handler"), data=dict(op="import", keysource=ks)
         )
@@ -519,7 +529,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         self.assertEqual(protocol, added_key.protocol)
         self.assertEqual(auth_id, added_key.auth_id)
         self.assertEqual(http.client.OK, response.status_code, response)
-        mock_get_protocol_keys.assert_called_once_with(protocol, auth_id)
+        mock_get_ssh_key.assert_called_once_with(auth_id)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Imported SSH keys.")
@@ -530,23 +540,23 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         )
         auth_id = factory.make_name("auth_id")
         ks = f"{protocol}:{auth_id}"
-        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
-        mock_get_protocol_keys.side_effect = ImportSSHKeysError("error")
-        response = self.client.post(
-            reverse("sshkeys_handler"), data=dict(op="import", keysource=ks)
-        )
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content
+        if protocol == KEYS_PROTOCOL_TYPE.LP:
+            mock_get_ssh_key = self.patch(
+                servicelayer_sshkeys.SshKeysService,
+                "_get_ssh_key_from_launchpad",
+                mock_class=AsyncMock,
+            )
+        else:
+            mock_get_ssh_key = self.patch(
+                servicelayer_sshkeys.SshKeysService,
+                "_get_ssh_key_from_github",
+                mock_class=AsyncMock,
+            )
+
+        mock_get_ssh_key.side_effect = ValidationException.build_for_field(
+            "auth_id", "BOOM"
         )
 
-    def test_import_ssh_keys_crashes_for_RequestException(self):
-        protocol = random.choice(
-            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
-        )
-        auth_id = factory.make_name("auth_id")
-        ks = f"{protocol}:{auth_id}"
-        mock_get_protocol_keys = self.patch(sshkey_module, "get_protocol_keys")
-        mock_get_protocol_keys.side_effect = RequestException("error")
         response = self.client.post(
             reverse("sshkeys_handler"), data=dict(op="import", keysource=ks)
         )

@@ -4,7 +4,8 @@ See the docstring for get_sqlalchemy_django_connection() for more info.
 """
 
 import asyncio
-from typing import Any, Coroutine, TypeVar
+from contextlib import contextmanager
+from typing import Any, Coroutine, Iterator, TypeVar
 
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine.base import Connection, Engine
@@ -12,7 +13,23 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.pool import PoolProxiedConnection
 from sqlalchemy.pool.base import Pool
 
+from maasservicelayer.context import Context
+from maasservicelayer.services import CacheForServices, ServiceCollectionV3
+from provisioningserver.utils.twisted import synchronous
+
 T = TypeVar("T")
+
+
+@synchronous
+@contextmanager
+def servicelayer() -> Iterator[ServiceCollectionV3]:
+    conn = get_sqlalchemy_django_connection()
+    services = exec_async(
+        ServiceCollectionV3.produce(
+            Context(connection=conn), CacheForServices()
+        )
+    )
+    yield services
 
 
 def exec_async(coro: Coroutine[Any, Any, T]) -> T:

@@ -238,7 +238,11 @@ class MAASTestCase(
             super().__call__(result)
 
     def patch(
-        self, obj, attribute=None, value=mock.sentinel.unset
+        self,
+        obj,
+        attribute=None,
+        value=mock.sentinel.unset,
+        mock_class=MagicMock,
     ) -> MagicMock:
         """Patch `obj.attribute` with `value`.
 
@@ -260,7 +264,7 @@ class MAASTestCase(
             attribute = obj.__name__
             obj = import_module(obj.__module__)
         if value is mock.sentinel.unset:
-            value = MagicMock(__name__=attribute)
+            value = mock_class(__name__=attribute)
         super().patch(obj, attribute, value)
         return value
 
