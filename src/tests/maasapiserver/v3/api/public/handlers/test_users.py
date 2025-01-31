@@ -290,6 +290,8 @@ class TestUsersApi(ApiCommonTests):
             username="new_username",
             password="new_password",
             is_superuser=False,
+            is_staff=False,
+            is_active=False,
             first_name="new_first_name",
             last_name="new_last_name",
             email="new_user@example.com",
@@ -337,6 +339,8 @@ class TestUsersApi(ApiCommonTests):
             username="new_username",
             password="new_password",
             is_superuser=False,
+            is_staff=False,
+            is_active=False,
             first_name="new_first_name",
             last_name="new_last_name",
             email="new_user@example.com",
@@ -428,6 +432,8 @@ class TestUsersApi(ApiCommonTests):
 
         user_request = UserRequest(
             is_superuser=True,
+            is_staff=False,
+            is_active=False,
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -462,6 +468,8 @@ class TestUsersApi(ApiCommonTests):
 
         user_request = UserRequest(
             is_superuser=True,
+            is_staff=False,
+            is_active=False,
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -492,6 +500,8 @@ class TestUsersApi(ApiCommonTests):
 
         user_request = UserRequest(
             is_superuser=True,
+            is_staff=False,
+            is_active=False,
             username="new_user",
             password="new_pass",
             first_name="new_first_name",

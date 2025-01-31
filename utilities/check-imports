@@ -194,6 +194,7 @@ APIServerRule = Rule(
     Allow("asyncpg|asyncpg.**"),
     Allow("django.conf.*"),
     Allow("django.core.*"),
+    Allow("django.contrib.auth.hashers.*"),
     Allow("fastapi|fastapi.**"),
     Allow("jose|jose.**"),
     Allow("maasapiserver|maasapiserver.**"),
