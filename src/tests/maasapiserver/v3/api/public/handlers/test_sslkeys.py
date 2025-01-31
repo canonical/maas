@@ -212,7 +212,7 @@ class TestSSLKeysApi(ApiCommonTests):
                 details=[
                     BaseExceptionDetail(
                         type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
-                        message="A resource with such identifiers already exist.",
+                        message="The SSL key already exist.",
                     )
                 ],
             ),

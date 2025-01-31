@@ -1,12 +1,14 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from maasservicelayer.builders.sslkeys import SSLKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
+from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.base import (
     MaasBaseModel,
     MaasTimestampedBaseModel,
@@ -38,6 +40,20 @@ class TestCommonSSLKeysService(ServiceCommonTests):
             updated=now,
             user_id=1,
         )
+
+    async def test_create(self, service_instance, test_instance):
+        # pre_create_hook tested in the next test
+        service_instance.pre_create_hook = AsyncMock()
+        return await super().test_create(service_instance, test_instance)
+
+    async def test_create_duplicated(self, service_instance):
+        key = get_test_data_file("test_x509_0.pem")
+        service_instance.repository.exists.return_value = True
+        builder = SSLKeyBuilder(key=key, user_id=1)
+        with pytest.raises(AlreadyExistsException):
+            await service_instance.create(builder)
+
+        service_instance.repository.create.assert_not_called()
 
     async def test_update_many(
         self, service_instance, test_instance: MaasBaseModel
