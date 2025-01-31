@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2020-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """LXD Pod Driver."""
@@ -282,6 +282,12 @@ class LXDPodDriver(PodDriver):
                 raise LXDPodError(
                     f"Pod {pod_id}: Unknown power status code: {state}"
                 )
+
+    @asynchronous
+    @threadDeferred
+    def power_reset(self, pod_id: int, context: dict):
+        """Power reset LXD VM."""
+        raise NotImplementedError()
 
     @threadDeferred
     def discover_projects(self, pod_id: int, context: dict):

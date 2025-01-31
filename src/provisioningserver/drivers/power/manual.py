@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Manual Power Driver."""
@@ -38,17 +38,23 @@ class ManualPowerDriver(PowerDriver):
         """Override `query` as we do not need retry logic."""
         return maybeDeferred(self.power_query, system_id, context)
 
+    def reset(self, system_id, context):
+        """Override `reset` as we do not need retry logic."""
+        return maybeDeferred(self.power_reset, system_id, context)
+
     def power_on(self, system_id, context):
         """Power on machine manually."""
-        maaslog.info("You need to power on %s manually." % system_id)
+        maaslog.info(f"You need to power on {system_id} manually.")
 
     def power_off(self, system_id, context):
         """Power off machine manually."""
-        maaslog.info("You need to power off %s manually." % system_id)
+        maaslog.info(f"You need to power off {system_id} manually.")
 
     def power_query(self, system_id, context):
         """Power query machine manually."""
-        maaslog.info(
-            "You need to check power state of %s manually." % system_id
-        )
+        maaslog.info(f"You need to check power state of {system_id} manually.")
         return "unknown"
+
+    def power_reset(self, system_id, context):
+        """Power reset machine manually."""
+        maaslog.info(f"You need to power reset {system_id} manually.")

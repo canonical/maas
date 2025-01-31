@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """IPMI Power Driver."""
@@ -534,3 +534,6 @@ class IPMIPowerDriver(PowerDriver):
                 return self._issue_ipmi_command("query", **context)
             else:
                 raise e
+
+    def power_reset(self, system_id, context):
+        raise NotImplementedError()

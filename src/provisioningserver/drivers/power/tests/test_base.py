@@ -63,6 +63,9 @@ class FakePowerDriverBase(PowerDriverBase):
     def query(self, system_id, context):
         raise NotImplementedError
 
+    def reset(self, system_id, context):
+        raise NotImplementedError
+
     def detect_missing_packages(self):
         return []
 
@@ -279,6 +282,9 @@ class FakePowerDriver(PowerDriver):
     def power_query(self, system_id, context):
         raise NotImplementedError
 
+    def power_reset(self, system_id, context):
+        raise NotImplementedError
+
 
 def make_power_driver(
     name=None, description=None, settings=None, wait_time=None, clock=reactor
@@ -310,6 +316,7 @@ class AsyncFakePowerDriver(FakePowerDriver):
         self.power_query_result = query_result
         self.power_on_called = 0
         self.power_off_called = 0
+        self.power_reset_called = 0
 
     @asynchronous
     def power_on(self, system_id, context):
@@ -324,6 +331,11 @@ class AsyncFakePowerDriver(FakePowerDriver):
     @asynchronous
     def power_query(self, system_id, context):
         return succeed(self.power_query_result)
+
+    @asynchronous
+    def power_reset(self, system_id, context):
+        self.power_reset_called += 1
+        return succeed(None)
 
 
 def make_async_power_driver(

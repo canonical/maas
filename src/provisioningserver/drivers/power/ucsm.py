@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Cisco UCS Power Driver."""
@@ -70,3 +70,7 @@ class UCSMPowerDriver(PowerDriver):
         """Power query UCSM node."""
         url, username, password, uuid = extract_ucsm_parameters(context)
         return power_state_ucsm(url, username, password, uuid)
+
+    def power_reset(self, system_id, context):
+        """Power reset UCSM node."""
+        raise NotImplementedError()

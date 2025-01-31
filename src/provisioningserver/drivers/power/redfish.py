@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Redfish Power Driver."""
@@ -458,6 +458,12 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                     node_id,
                 )
                 return POWER_STATE.ERROR
+
+    @asynchronous
+    @inlineCallbacks
+    def power_reset(self, system_id, context):
+        """Power reset machine."""
+        raise NotImplementedError()
 
     @inlineCallbacks
     def _wait_for_status(self, desired_status, url, node_id, headers):

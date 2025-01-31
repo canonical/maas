@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """American Power Conversion (APC) Power Driver.
@@ -133,6 +133,10 @@ class APCPowerDriver(PowerDriver):
                 "APC Power Driver retrieved unknown power state: %r"
                 % power_state
             )
+
+    def power_reset(self, system_id, context):
+        """Power reset APC outlet."""
+        raise NotImplementedError()
 
 
 def _get_common_args(context):

@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Base power driver."""
@@ -300,6 +300,11 @@ class PowerDriver(PowerDriverBase):
     def power_query(self, system_id, context):
         """Implement this method for the actual implementation
         of the power query command."""
+
+    @abstractmethod
+    def power_reset(self, system_id, context):
+        """Implement this method for the actual implementation
+        of the power reset command."""
 
     def on(self, system_id, context):
         """Performs the power on action for `system_id`.

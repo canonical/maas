@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Moonshot IPMI Power Driver."""
@@ -106,3 +106,6 @@ class MoonshotIPMIPowerDriver(PowerDriver):
 
     def power_query(self, system_id, context):
         return self._issue_ipmitool_command("status", **context)
+
+    def power_reset(self, system_id, context):
+        raise NotImplementedError()

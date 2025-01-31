@@ -1,4 +1,4 @@
-# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Virsh pod driver."""
@@ -1375,6 +1375,11 @@ class VirshPodDriver(PodDriver):
     def power_query(self, system_id, context):
         """Power query Virsh node."""
         return self.power_state_virsh(**context)
+
+    @asynchronous
+    def power_reset(self, system_id, context):
+        """Power reset Virsh node."""
+        raise NotImplementedError()
 
     @inlineCallbacks
     def get_virsh_connection(self, context):

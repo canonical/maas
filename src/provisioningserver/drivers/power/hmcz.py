@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2021-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """HMC Z Driver.
@@ -186,6 +186,12 @@ class HMCZPowerDriver(PowerDriver):
             return "off"
         else:
             return "unknown"
+
+    @asynchronous
+    @threadDeferred
+    def power_reset(self, system_id, context):
+        """Power reset IBM Z DPM."""
+        raise NotImplementedError()
 
     @asynchronous
     @threadDeferred

@@ -36,6 +36,9 @@ class FakeDriver(PowerDriver):
     def power_query(self, *args, **kwargs):
         return self._state
 
+    def power_reset(self, *args, **kwargs):
+        raise NotImplementedError()
+
 
 class TestPowerDriverCommand(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(

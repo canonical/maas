@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Facebook's Wedge Power Driver."""
@@ -109,3 +109,7 @@ class WedgePowerDriver(PowerDriver):
                     "Wedge Power Driver retrieved unknown power response %s"
                     % power_state
                 )
+
+    def power_reset(self, system_id, context):
+        """Power reset Wedge."""
+        raise NotImplementedError()

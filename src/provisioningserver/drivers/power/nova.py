@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Nova Power Driver."""
@@ -146,3 +146,7 @@ class NovaPowerDriver(PowerDriver):
     def power_query(self, system_id, context):
         """Power query nova instance."""
         return self.power_control_nova("query", **context)
+
+    def power_reset(self, system_id, context):
+        """Power reset nova instance."""
+        raise NotImplementedError()

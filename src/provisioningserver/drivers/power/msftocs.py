@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """MicrosoftOCS Power Driver."""
@@ -207,6 +207,10 @@ class MicrosoftOCSPowerDriver(PowerDriver):
                     "MicrosoftOCS Power Driver retrieved unknown power state"
                     " %s for blade_id %s" % (power_state, context["blade_id"])
                 )
+
+    def power_reset(self, system_id, context):
+        """Power reset MicrosoftOCS blade."""
+        raise NotImplementedError()
 
 
 @synchronous

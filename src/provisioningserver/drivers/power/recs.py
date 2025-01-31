@@ -1,4 +1,4 @@
-# Copyright 2017-2021 christmann informationstechnik + medien GmbH & Co. KG. This
+# Copyright 2017-2025 christmann informationstechnik + medien GmbH & Co. KG. This
 # software is licensed under the GNU Affero General Public License version 3
 # (see the file LICENSE).
 
@@ -310,6 +310,10 @@ class RECSPowerDriver(PowerDriver):
             context
         )
         return self.power_state_recs(ip, port, username, password, node_id)
+
+    def power_reset(self, system_id, context):
+        """Power reset RECS node."""
+        raise NotImplementedError()
 
 
 @synchronous
