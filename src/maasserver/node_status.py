@@ -11,6 +11,7 @@ __all__ = [
 ]
 
 
+from maascommon.node import NODE_FAILURE_STATUS_TRANSITION_MAP
 from maasserver.enum import NODE_STATUS
 from maasserver.models.config import Config
 from provisioningserver.utils.enum import map_enum
@@ -264,13 +265,7 @@ NODE_TRANSITIONS = {
 # Mapping between in-progress statuses and the corresponding failed
 # statuses.
 NODE_FAILURE_STATUS_TRANSITIONS = {
-    NODE_STATUS.COMMISSIONING: NODE_STATUS.FAILED_COMMISSIONING,
-    NODE_STATUS.DEPLOYING: NODE_STATUS.FAILED_DEPLOYMENT,
-    NODE_STATUS.RELEASING: NODE_STATUS.FAILED_RELEASING,
-    NODE_STATUS.DISK_ERASING: NODE_STATUS.FAILED_DISK_ERASING,
-    NODE_STATUS.ENTERING_RESCUE_MODE: NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
-    NODE_STATUS.EXITING_RESCUE_MODE: NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
-    NODE_STATUS.TESTING: NODE_STATUS.FAILED_TESTING,
+    k.value: v.value for k, v in NODE_FAILURE_STATUS_TRANSITION_MAP.items()
 }
 
 # State transitions that are monitored for timeouts for when a node
