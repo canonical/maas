@@ -40,7 +40,7 @@ from maasserver.testing.commissioning import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
@@ -1992,7 +1992,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             },
             "mounts": {},
         }
-        process_lxd_results(node, json.dumps(data).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(data).encode(), 0)
         node = reload_object(node)
         self.assertEqual(uuid, node.hardware_uuid)
 
@@ -2061,34 +2063,44 @@ class TestProcessLXDResults(MAASServerTestCase):
                 ("mips64", "mips64el/generic"),
             ]
         )
-        process_lxd_results(
-            node, make_lxd_output_json(kernel_architecture=kernel_arch), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(kernel_architecture=kernel_arch), 0
+            )
+
         node = reload_object(node)
         self.assertEqual(deb_arch, node.architecture)
 
     def test_keeps_subarchitecture(self):
         arch = "amd64/somesubarch"
         node = factory.make_Node(architecture=arch)
-        process_lxd_results(
-            node, make_lxd_output_json(kernel_architecture="x86_64"), 0
-        )
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(kernel_architecture="x86_64"), 0
+            )
+
         node = reload_object(node)
         self.assertEqual(node.architecture, arch)
 
     def test_updates_arch_subarch_if_different_arch(self):
         arch = "ppc64/somesubarch"
         node = factory.make_Node(architecture=arch)
-        process_lxd_results(
-            node, make_lxd_output_json(kernel_architecture="x86_64"), 0
-        )
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(kernel_architecture="x86_64"), 0
+            )
+
         node = reload_object(node)
         self.assertEqual(node.architecture, "amd64/generic")
 
     def test_sets_uuid(self):
         node = factory.make_Node()
         uuid = factory.make_UUID()
-        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
         node = reload_object(node)
         self.assertEqual(uuid, node.hardware_uuid)
 
@@ -2097,7 +2109,10 @@ class TestProcessLXDResults(MAASServerTestCase):
         # LXD reports the uuid as "" if the machine doesn't have one
         # set.
         uuid = ""
-        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
         node = reload_object(node)
         # In the DB, we store the missing UUID as None, so that the
         # check for unique UUIDs isn't triggered.
@@ -2107,14 +2122,20 @@ class TestProcessLXDResults(MAASServerTestCase):
         uuid = factory.make_UUID()
         duplicate_uuid_node = factory.make_Node(hardware_uuid=uuid)
         node = factory.make_Node()
-        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
         self.assertIsNone(reload_object(node).hardware_uuid)
         self.assertIsNone(reload_object(duplicate_uuid_node).hardware_uuid)
 
     def test_ignores_invalid_uuid(self):
         uuid = factory.make_name("invalid_uuid")
         node = factory.make_Node()
-        process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
+
         self.assertIsNone(reload_object(node).hardware_uuid)
 
     def test_sets_os_for_deployed_node(self):
@@ -2124,11 +2145,14 @@ class TestProcessLXDResults(MAASServerTestCase):
             [row.__dict__ for row in ubuntu_info._releases]
         )
         os_version = ubuntu_release["version"].replace(" LTS", "")
-        process_lxd_results(
-            node,
-            make_lxd_output_json(os_version=os_version),
-            0,
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node,
+                make_lxd_output_json(os_version=os_version),
+                0,
+            )
+
         node = reload_object(node)
         self.assertEqual("ubuntu", node.osystem)
         self.assertEqual(ubuntu_release["series"], node.distro_series)
@@ -2141,9 +2165,12 @@ class TestProcessLXDResults(MAASServerTestCase):
             distro_series=distro_series,
             status=NODE_STATUS.DEPLOYED,
         )
-        process_lxd_results(
-            node, make_lxd_output_json(os_name="", os_version=""), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(os_name="", os_version=""), 0
+            )
+
         node = reload_object(node)
         self.assertEqual(osystem, node.osystem)
         self.assertEqual(distro_series, node.distro_series)
@@ -2155,7 +2182,10 @@ class TestProcessLXDResults(MAASServerTestCase):
             distro_series="8",
         )
         hostname = node.hostname
-        process_lxd_results(node, make_lxd_output_json(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
+
         node = reload_object(node)
         self.assertEqual("centos", node.osystem)
         self.assertEqual("8", node.distro_series)
@@ -2170,7 +2200,10 @@ class TestProcessLXDResults(MAASServerTestCase):
         mock_set_initial_net_config = self.patch(
             node_module.Node, "set_initial_networking_configuration"
         )
-        process_lxd_results(node, make_lxd_output_json(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
+
         mock_set_initial_net_config.assert_not_called()
         # Verify network device information was collected
         self.assertEqual(
@@ -2189,7 +2222,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             hooks_module, "update_node_network_information"
         ).return_value = {}
 
-        process_lxd_results(node, make_lxd_output_json(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
         self.assertEqual(round(16691519488 / 1024 / 1024), node.memory)
 
@@ -2201,7 +2235,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             hooks_module, "update_node_network_information"
         ).return_value = {}
 
-        process_lxd_results(node, make_lxd_output_json(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
         self.assertEqual(2400, node.cpu_speed)
         nmd = NodeMetadata.objects.get(node=node, key="cpu_model")
@@ -2219,7 +2254,11 @@ class TestProcessLXDResults(MAASServerTestCase):
         NO_SPEED_IN_NAME["cpu"]["sockets"][0][
             "name"
         ] = "Intel(R) Core(TM) i7-4700MQ CPU"
-        process_lxd_results(node, make_lxd_output_json(NO_SPEED_IN_NAME), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(NO_SPEED_IN_NAME), 0
+            )
         node = reload_object(node)
         self.assertEqual(3400, node.cpu_speed)
 
@@ -2234,7 +2273,11 @@ class TestProcessLXDResults(MAASServerTestCase):
         NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_LXD_RESOURCES)
         del NO_NAME_OR_MAX_FREQ["cpu"]["sockets"][0]["name"]
         del NO_NAME_OR_MAX_FREQ["cpu"]["sockets"][0]["frequency_turbo"]
-        process_lxd_results(node, make_lxd_output_json(NO_NAME_OR_MAX_FREQ), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(NO_NAME_OR_MAX_FREQ), 0
+            )
         node = reload_object(node)
         self.assertEqual(3200, node.cpu_speed)
 
@@ -2245,9 +2288,10 @@ class TestProcessLXDResults(MAASServerTestCase):
             hooks_module, "update_node_network_information"
         ).return_value = {}
 
-        process_lxd_results(
-            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
-        )
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
+            )
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
         for numa_node in numa_nodes:
@@ -2264,7 +2308,10 @@ class TestProcessLXDResults(MAASServerTestCase):
         lxd_json = deepcopy(SAMPLE_LXD_RESOURCES)
         lxd_json["memory"]["nodes"][0]["hugepages_total"] = 16 * 2097152
         lxd_json["memory"]["nodes"][1]["hugepages_total"] = 8 * 2097152
-        process_lxd_results(node, make_lxd_output_json(lxd_json), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(lxd_json), 0)
+
         numa_node1, numa_node2 = NUMANode.objects.filter(node=node).order_by(
             "index"
         )
@@ -2280,9 +2327,11 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.patch(
             hooks_module, "update_node_network_information"
         ).return_value = {}
-        process_lxd_results(
-            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
+            )
         for numa_node in NUMANode.objects.filter(node=node):
             self.assertFalse(numa_node.hugepages_set.exists())
 
@@ -2293,9 +2342,10 @@ class TestProcessLXDResults(MAASServerTestCase):
             hooks_module, "update_node_network_information"
         ).return_value = {}
 
-        process_lxd_results(
-            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES_NO_NUMA), 0
-        )
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(SAMPLE_LXD_RESOURCES_NO_NUMA), 0
+            )
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(1, len(numa_nodes))
         for numa_node in numa_nodes:
@@ -2307,9 +2357,10 @@ class TestProcessLXDResults(MAASServerTestCase):
             hooks_module, "update_node_network_information"
         ).return_value = {}
 
-        process_lxd_results(
-            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES_LP1906834), 0
-        )
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(SAMPLE_LXD_RESOURCES_LP1906834), 0
+            )
         node = reload_object(node)
         boot_disk = node.get_boot_disk()
         self.assertEqual(boot_disk.name, "sda")
@@ -2345,7 +2396,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 33720463360,
         }
 
-        process_lxd_results(node, json.dumps(data).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(data).encode(), 0)
 
         self.assertEqual(32158, node.memory)
         self.assertCountEqual(
@@ -2397,7 +2449,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 33720463360,
         }
 
-        process_lxd_results(node, json.dumps(data).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(data).encode(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(6, len(numa_nodes))
 
@@ -2407,7 +2460,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             hooks_module, "update_node_network_information"
         ).return_value = {}
 
-        process_lxd_results(node, make_lxd_output_json(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual([0, 1, 2, 3], numa_nodes[0].cores)
@@ -2425,7 +2479,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         for core in cores_data:
             core["threads"][0]["numa_node"] = 0
             core["threads"][1]["numa_node"] = 1
-        process_lxd_results(node, make_lxd_output_json(lxd_json), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(lxd_json), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual([0, 2, 4, 6], numa_nodes[0].cores)
@@ -2433,7 +2489,9 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_updates_network_numa_nodes(self):
         node = factory.make_Node()
-        process_lxd_results(node, make_lxd_output_json(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         node_interfaces = list(
             Interface.objects.filter(node_config=node.current_config).order_by(
@@ -2447,7 +2505,9 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_updates_storage_numa_nodes(self):
         node = factory.make_Node()
-        process_lxd_results(node, make_lxd_output_json(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         node_interfaces = list(
             node.physicalblockdevice_set.all().order_by("name")
@@ -2470,7 +2530,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         usb_node_device = node.current_config.nodedevice_set.get(
             bus=NODE_DEVICE_BUS.USB
         )
@@ -2520,7 +2581,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         pcie_node_device = node.current_config.nodedevice_set.get(
             bus=NODE_DEVICE_BUS.PCIE
         )
@@ -2542,7 +2604,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         pcie_node_device = node.current_config.nodedevice_set.get(
             bus=NODE_DEVICE_BUS.PCIE
         )
@@ -2565,8 +2628,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         pcie_node_device = node.current_config.nodedevice_set.get(
             bus=NODE_DEVICE_BUS.PCIE
         )
@@ -2587,7 +2651,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             "devices": [usb_device],
             "total": 1,
         }
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         usb_node_device = node.current_config.nodedevice_set.get(
             bus=NODE_DEVICE_BUS.USB
         )
@@ -2627,7 +2693,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         pcie_device = reload_object(pcie_device)
 
         self.assertEqual(new_vendor_name, pcie_device.vendor_name)
@@ -2648,7 +2715,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         pcie_node_device = node.current_config.nodedevice_set.first()
 
         self.assertEqual(1, node.current_config.nodedevice_set.count())
@@ -2694,7 +2762,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         )
         del lxd_output["resources"]["network"]["cards"][2]["pci_address"]
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         for node_device in node.current_config.nodedevice_set.all():
             self.assertEqual(HARDWARE_TYPE.NETWORK, node_device.hardware_type)
@@ -2722,7 +2791,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             )
         )
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         for node_device in node.current_config.nodedevice_set.all():
             self.assertEqual(HARDWARE_TYPE.STORAGE, node_device.hardware_type)
@@ -2750,7 +2820,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 2,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertEqual(
             {
@@ -2780,7 +2851,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         node_device = node.current_config.nodedevice_set.get(
             pci_address=pci_address
         )
@@ -2800,7 +2872,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertIsNone(reload_object(old_node_device))
         self.assertIsNotNone(
@@ -2824,7 +2897,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertIsNone(reload_object(old_node_device))
         self.assertIsNotNone(
@@ -2892,7 +2966,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 2,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertIsNone(reload_object(node_device))
         new_node_device = reload_object(block_device).node_device
@@ -2971,7 +3046,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 2,
         }
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertIsNone(reload_object(node_device))
         iface = Interface.objects.get(
@@ -2989,7 +3065,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             interface_speed=0,
             link_speed=0,
         )
-        process_lxd_results(node, make_lxd_output_json(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         # the existing interface gets updated
         iface1 = reload_object(iface)
         self.assertEqual(1000, iface1.link_speed)
@@ -3018,9 +3096,11 @@ class TestProcessLXDResults(MAASServerTestCase):
                 modified_sample_lxd_data["resources"]["system"][k] = (
                     random.choice([None, "0123456789", "none"])
                 )
-        process_lxd_results(
-            node, json.dumps(modified_sample_lxd_data).encode(), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, json.dumps(modified_sample_lxd_data).encode(), 0
+            )
         self.assertFalse(
             node.nodemetadata_set.exclude(key="cpu_model").exists()
         )
@@ -3031,9 +3111,11 @@ class TestProcessLXDResults(MAASServerTestCase):
         modified_sample_lxd_data = make_lxd_output()
         for key in ["motherboard", "firmware", "chassis"]:
             modified_sample_lxd_data["resources"]["system"][key] = None
-        process_lxd_results(
-            node, json.dumps(modified_sample_lxd_data).encode(), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, json.dumps(modified_sample_lxd_data).encode(), 0
+            )
         self.assertEqual(
             0,
             node.nodemetadata_set.filter(
@@ -3045,15 +3127,19 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_removes_missing_nodemetadata(self):
         node = factory.make_Node()
-        process_lxd_results(node, make_lxd_output_json(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         self.assertTrue(
             node.nodemetadata_set.exclude(key="cpu_model").exists()
         )
         modified_sample_lxd_data = make_lxd_output()
         del modified_sample_lxd_data["resources"]["system"]
-        process_lxd_results(
-            node, json.dumps(modified_sample_lxd_data).encode(), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, json.dumps(modified_sample_lxd_data).encode(), 0
+            )
         self.assertFalse(
             node.nodemetadata_set.exclude(key="cpu_model").exists()
         )
@@ -3062,16 +3148,20 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         tag, _ = Tag.objects.get_or_create(name="virtual")
         node.tags.add(tag)
-        process_lxd_results(
-            node, make_lxd_output_json(virt_type="physical"), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                node, make_lxd_output_json(virt_type="physical"), 0
+            )
         self.assertFalse(node.tags.filter(name="virtual").exists())
 
     def test_syncs_pods(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         pod.hints.nodes.add(node)
-        process_lxd_results(node, make_lxd_output_json(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, make_lxd_output_json(), 0)
         pod.hints.refresh_from_db()
 
         self.assertEqual(8, pod.hints.cores)
@@ -3095,7 +3185,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             host_card.driver_version,
             pci_device_vpd,
         )
-        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                host, json.dumps(host_data.render()).encode(), 0
+            )
 
         dpu = factory.make_Node()
         dpu_data = FakeCommissioningData()
@@ -3112,7 +3206,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             dpu_card.driver_version,
             pci_device_vpd,
         )
-        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
 
         self.assertEqual(dpu.parent_id, host.id)
 
@@ -3133,7 +3229,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             host_card.driver_version,
             pci_device_vpd,
         )
-        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                host, json.dumps(host_data.render()).encode(), 0
+            )
 
         dpu1 = factory.make_Node()
         dpu1_data = FakeCommissioningData()
@@ -3150,7 +3250,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             dpu1_card.driver_version,
             pci_device_vpd,
         )
-        process_lxd_results(dpu1, json.dumps(dpu1_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                dpu1, json.dumps(dpu1_data.render()).encode(), 0
+            )
 
         dpu2 = factory.make_Node()
         dpu2_data = FakeCommissioningData()
@@ -3167,7 +3271,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             dpu2_card.driver_version,
             pci_device_vpd,
         )
-        process_lxd_results(dpu2, json.dumps(dpu2_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                dpu2, json.dumps(dpu2_data.render()).encode(), 0
+            )
 
         self.assertEqual(dpu1.parent_id, host.id)
         self.assertEqual(dpu2.parent_id, host.id)
@@ -3189,7 +3297,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             host_card.driver_version,
             pci_device_vpd,
         )
-        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                host, json.dumps(host_data.render()).encode(), 0
+            )
 
         dpu = factory.make_Node()
         dpu_data = FakeCommissioningData()
@@ -3206,7 +3318,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             dpu_card.driver_version,
             pci_device_vpd,
         )
-        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
 
         self.assertIsNone(dpu.parent_id)
 
@@ -3228,7 +3342,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             host_card.driver_version,
             host_pci_device_vpd,
         )
-        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                host, json.dumps(host_data.render()).encode(), 0
+            )
 
         dpu_pci_device_vpd = LXDPCIDeviceVPD(
             entries={"SN": factory.make_string()}
@@ -3248,7 +3366,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             dpu_card.driver_version,
             dpu_pci_device_vpd,
         )
-        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
 
         self.assertIsNone(dpu.parent_id)
 
@@ -3272,7 +3392,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             host1_card.driver_version,
             host1_pci_device_vpd,
         )
-        process_lxd_results(host1, json.dumps(host1_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                host1, json.dumps(host1_data.render()).encode(), 0
+            )
 
         host2_pci_device_vpd = LXDPCIDeviceVPD(
             entries={"SN": factory.make_string()}
@@ -3293,7 +3417,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             host2_card.driver_version,
             host2_pci_device_vpd,
         )
-        process_lxd_results(host2, json.dumps(host2_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                host2, json.dumps(host2_data.render()).encode(), 0
+            )
 
         dpu = factory.make_Node()
         dpu_data = FakeCommissioningData()
@@ -3312,7 +3440,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             dpu_card.driver_version,
             host2_pci_device_vpd,
         )
-        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
 
         self.assertIsNone(dpu.parent_id)
 
@@ -3334,9 +3464,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             machine_card.driver_version,
             machine_pci_device_vpd,
         )
-        process_lxd_results(
-            machine, json.dumps(machine_data.render()).encode(), 0
-        )
+
+        with post_commit_hooks:
+            process_lxd_results(
+                machine, json.dumps(machine_data.render()).encode(), 0
+            )
 
         host_pci_device_vpd = LXDPCIDeviceVPD(
             entries={"SN": factory.make_string()}
@@ -3363,7 +3495,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             dpu_card.driver_version,
             host_pci_device_vpd,
         )
-        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
 
         host_data.create_pci_device(
             host_pci_addr,
@@ -3375,7 +3509,11 @@ class TestProcessLXDResults(MAASServerTestCase):
             host_card.driver_version,
             host_pci_device_vpd,
         )
-        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(
+                host, json.dumps(host_data.render()).encode(), 0
+            )
 
         machine = Node.objects.get(id=machine.id)
         self.assertIsNone(machine.parent)
@@ -3390,7 +3528,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         lxd_output = make_lxd_output()
         lxd_output["resources"]["network"]["cards"] = {}
 
-        process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
         mock_start_workflow.assert_called_once()
 
     def test_rack_no_change_doesnt_trigger_configure_agent_workflow(self):
@@ -3400,8 +3539,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         lxd_output = make_lxd_output()
         lxd_output["resources"]["network"]["cards"] = {}
 
-        process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
-        process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
+            process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
         mock_start_workflow.assert_called_once()
 
     def test_rack_storage_change_doesnt_trigger_configure_agent_workflow(self):
@@ -3411,7 +3551,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         lxd_output = make_lxd_output()
         lxd_output["resources"]["storage"] = {}
 
-        process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
         mock_start_workflow.assert_not_called()
 
     def test_non_rack_node_change_doesnt_trigger_configure_agent_workflow(
@@ -3423,7 +3564,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         lxd_output = make_lxd_output()
         lxd_output["resources"]["network"]["cards"] = {}
 
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         mock_start_workflow.assert_not_called()
 
 
@@ -4467,9 +4609,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test_does_nothing_if_skip_networking(self):
         node = factory.make_Node(interface=True, skip_networking=True)
         boot_interface = node.get_boot_interface()
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
         self.assertIsNotNone(reload_object(boot_interface))
         self.assertFalse(reload_object(node).skip_networking)
 
@@ -4480,9 +4624,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_config=node.current_config).delete()
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         # Makes sure all the test dataset MAC addresses were added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -4503,9 +4649,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_config=node.current_config).delete()
-        update_node_network_information(
-            node, lxd_output, create_numa_nodes(node)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, lxd_output, create_numa_nodes(node)
+            )
 
         # Makes sure all the test dataset MAC addresses were added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -4516,9 +4664,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_config=node.current_config).delete()
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         nic = Interface.objects.get(mac_address="00:00:00:00:00:01")
         self.assertEqual(nic.vendor, "Intel Corporation")
@@ -4530,9 +4679,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_config=node.current_config).delete()
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         nic = Interface.objects.get(mac_address="00:00:00:00:00:01")
         self.assertEqual(nic.sriov_max_vf, 8)
@@ -4542,9 +4692,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_config=node.current_config).delete()
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         nic1 = Interface.objects.get(mac_address="00:00:00:00:00:01")
         nic2 = Interface.objects.get(mac_address="00:00:00:00:00:02")
@@ -4598,7 +4749,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
                 "product_id": "a01e",
             }
         )
-        update_node_network_information(node, data, create_numa_nodes(node))
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, data, create_numa_nodes(node)
+            )
+
         self.assertFalse(
             Interface.objects.filter(mac_address="01:01:01:01:01:01").exists()
         )
@@ -4653,7 +4809,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             "bond": None,
             "state": "up",
         }
-        update_node_network_information(node, data, create_numa_nodes(node))
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, data, create_numa_nodes(node)
+            )
+
         nic = Interface.objects.get(mac_address="01:01:01:01:01:01")
         self.assertEqual(nic.vendor, "Cavium, Inc.")
 
@@ -4670,7 +4831,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         del card_info["vendor"]
         del card_info["product"]
         del card_info["firmware_version"]
-        update_node_network_information(node, data, create_numa_nodes(node))
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, data, create_numa_nodes(node)
+            )
 
         nic = Interface.objects.get(mac_address="00:00:00:00:00:01")
         self.assertIsNone(nic.vendor)
@@ -4685,9 +4850,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Create a MAC address that we know is not in the test dataset.
         factory.make_Interface(node=node, mac_address="01:23:45:67:89:ab")
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         # These should have been added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -4709,9 +4875,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         interface_to_be_reassigned.save()
 
         node2 = factory.make_Node()
-        update_node_network_information(
-            node2, make_lxd_output(), create_numa_nodes(node2)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node2, make_lxd_output(), create_numa_nodes(node2)
+            )
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
@@ -4725,9 +4893,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         different node to the current one"""
         node1 = factory.make_Node()
 
-        update_node_network_information(
-            node1, make_lxd_output(), create_numa_nodes(node1)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node1, make_lxd_output(), create_numa_nodes(node1)
+            )
 
         # First make sure the first node has all the expected interfaces.
         self.assert_expected_interfaces_and_macs_exist_for_node(node1)
@@ -4741,9 +4910,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         # Now make sure the second node has them all.
         node2 = factory.make_Node()
-        update_node_network_information(
-            node2, make_lxd_output(), create_numa_nodes(node2)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node2, make_lxd_output(), create_numa_nodes(node2)
+            )
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
@@ -4785,9 +4956,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             name=BOND_NAME,
         )
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
+
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test_interface_name_changed(self):
@@ -4799,9 +4972,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             mac_address=eth0_mac,
             node=node,
         )
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         # This will ensure that the interface was renamed appropriately.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
@@ -4814,9 +4989,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             mac_address=eth0_mac, node=node
         )
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         self.assertIsNotNone(reload_object(iface_to_be_preserved))
 
@@ -4826,9 +5002,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node = factory.make_Node()
         eth0 = factory.make_Interface(mac_address=eth0_mac, node=node)
         eth1 = factory.make_Interface(mac_address=eth1_mac, node=node)
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         self.assertEqual(eth0, Interface.objects.get(id=eth0.id))
         self.assertEqual(eth1, Interface.objects.get(id=eth1.id))
@@ -4846,9 +5024,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         eth2 = factory.make_Interface(mac_address=eth2_mac, node=node)
         eth3 = factory.make_Interface(mac_address=eth3_mac, node=node)
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
@@ -4875,9 +5054,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             parents=[eth1],
         )
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test_deletes_virtual_interfaces_linked_to_removed_macs(self):
@@ -4897,9 +5077,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             INTERFACE_TYPE.BOND, mac_address=BOND_MAC, parents=[eth1]
         )
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test_creates_discovered_ip_address(self):
@@ -4908,9 +5089,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=cidr, vlan=VLAN.objects.get_default_vlan()
         )
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
         eth0 = Interface.objects.get(
             node_config=node.current_config, name="eth0"
         )
@@ -4924,7 +5107,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node = factory.make_Node()
         data = make_lxd_output()
         data["networks"]["eth1"]["addresses"] = []
-        update_node_network_information(node, data, create_numa_nodes(node))
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, data, create_numa_nodes(node)
+            )
         eth1 = Interface.objects.get(
             node_config=node.current_config, name="eth1"
         )
@@ -4956,7 +5143,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             resources=resources, networks=SAMPLE_LXD_NETWORK_LP2067998
         )
 
-        update_node_network_information(node, data, create_numa_nodes(node))
+        with post_commit_hooks:
+            update_node_network_information(
+                node, data, create_numa_nodes(node)
+            )
 
         enP2p1s0v0 = Interface.objects.get(
             node_config=node.current_config, name="enP2p1s0v0"
@@ -4976,7 +5166,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         data = make_lxd_output()
         data["networks"]["eth1"]["addresses"] = []
-        update_node_network_information(node, data, create_numa_nodes(node))
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node, data, create_numa_nodes(node)
+            )
         eth1 = Interface.objects.get(
             node_config=node.current_config, name="eth1"
         )
@@ -4994,7 +5188,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         open_bmc_port["address"] = SWITCH_OPENBMC_MAC
         data["networks"][open_bmc_port["id"]]["hwaddr"] = SWITCH_OPENBMC_MAC
 
-        update_node_network_information(node, data, create_numa_nodes(node))
+        with post_commit_hooks:
+            update_node_network_information(
+                node, data, create_numa_nodes(node)
+            )
 
         # Specifically, there is no OpenBMC interface with a fixed MAC address.
         node_interfaces = Interface.objects.filter(
@@ -5008,14 +5205,15 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr="192.168.0.3/24")
         node = factory.make_Node()
 
-        # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_config=node.current_config).delete()
-        node.boot_interface = None
-        node.boot_cluster_ip = "192.168.0.1"
-        node.save()
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            # Delete all Interfaces created by factory attached to this node.
+            Interface.objects.filter(node_config=node.current_config).delete()
+            node.boot_interface = None
+            node.boot_cluster_ip = "192.168.0.1"
+            node.save()
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
         node = reload_object(node)
 
         self.assertIsNotNone(
@@ -5029,16 +5227,18 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             script_type=SCRIPT_TYPE.TESTING,
             parameters={"interface": {"type": "interface"}},
         )
-        node.current_testing_script_set = (
-            ScriptSet.objects.create_testing_script_set(
-                node=node, scripts=[script.name]
-            )
-        )
-        node.save()
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            node.current_testing_script_set = (
+                ScriptSet.objects.create_testing_script_set(
+                    node=node, scripts=[script.name]
+                )
+            )
+            node.save()
+
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         self.assertEqual(1, len(node.get_latest_testing_script_results))
         # The default network layout only configures the boot interface.
@@ -5065,9 +5265,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         factory.make_Subnet(cidr="192.168.0.3/24")
         node = factory.make_Node(boot_cluster_ip="192.168.0.1")
 
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        with post_commit_hooks:
+            update_node_network_information(
+                node, make_lxd_output(), create_numa_nodes(node)
+            )
 
         # 2 devices configured, one for IPv4 one for IPv6.
         self.assertEqual(
@@ -5226,7 +5427,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
                 "vlan": None,
             },
         }
-        process_lxd_results(node, json.dumps(output).encode(), 0)
+
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(output).encode(), 0)
         node.refresh_from_db()
         ens5 = node.current_config.interface_set.get(name="ens5f0")
         ens6 = node.current_config.interface_set.get(name="ens6f0")

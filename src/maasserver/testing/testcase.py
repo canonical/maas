@@ -28,6 +28,7 @@ from django.db.utils import IntegrityError, OperationalError
 
 from maasserver.models import iprange as iprange_module
 from maasserver.models import signals
+from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models import subnet as subnet_module
 from maasserver.models import vlan as vlan_module
 from maasserver.testing.fixtures import (
@@ -88,6 +89,7 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         self.patch(vlan_module, "start_workflow")
         self.patch(subnet_module, "start_workflow")
         self.patch(iprange_module, "start_workflow")
+        self.patch(staticipaddress_module, "start_workflow")
         if self.mock_cache_boot_source:
             self.patch(signals.bootsources, "post_commit_do")
 

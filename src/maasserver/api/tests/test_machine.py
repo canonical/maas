@@ -37,6 +37,7 @@ from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import Config, Domain, Filesystem, Machine, Node
 from maasserver.models import node as node_module
 from maasserver.models import NodeKey, NodeUserData, ScriptSet, StaticIPAddress
+from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models.bmc import Pod
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.signals.testing import SignalsDisabled
@@ -113,6 +114,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.region = factory.make_RegionController()
         self.patch(node_module.Node, "_pc_power_control_node")
         self.patch(node_module.Node, "_temporal_deploy")
+        self.patch(staticipaddress_module, "post_commit_do")
 
     def test_handler_path(self):
         self.assertEqual(
@@ -878,14 +880,17 @@ class TestMachineAPI(APITestCase.ForUser):
             alloc_type=IPADDRESS_TYPE.AUTO
         )
         ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
-        auto_ip.ip = ip
-        auto_ip.save()
-        rack_if = rack_controller.current_config.interface_set.first()
-        rack_if.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC,
-            auto_ip.subnet,
-            factory.pick_ip_in_Subnet(auto_ip.subnet),
-        )
+
+        with post_commit_hooks:
+            auto_ip.ip = ip
+            auto_ip.save()
+            rack_if = rack_controller.current_config.interface_set.first()
+
+            rack_if.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC,
+                auto_ip.subnet,
+                factory.pick_ip_in_Subnet(auto_ip.subnet),
+            )
 
         _, releases = make_usable_osystem(self)
         distro_series = releases[0]
@@ -933,14 +938,16 @@ class TestMachineAPI(APITestCase.ForUser):
             alloc_type=IPADDRESS_TYPE.AUTO
         )
         ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
-        auto_ip.ip = ip
-        auto_ip.save()
-        rack_if = rack_controller.current_config.interface_set.first()
-        rack_if.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC,
-            auto_ip.subnet,
-            factory.pick_ip_in_Subnet(auto_ip.subnet),
-        )
+
+        with post_commit_hooks:
+            auto_ip.ip = ip
+            auto_ip.save()
+            rack_if = rack_controller.current_config.interface_set.first()
+            rack_if.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC,
+                auto_ip.subnet,
+                factory.pick_ip_in_Subnet(auto_ip.subnet),
+            )
 
         _, releases = make_usable_osystem(self)
         distro_series = releases[0]
@@ -3002,6 +3009,10 @@ class TestMachineAPI(APITestCase.ForUser):
 class TestMachineAPITransactional(APITransactionTestCase.ForUser):
     """The following TestMachineAPI tests require APITransactionTestCase."""
 
+    def setUp(self):
+        super().setUp()
+        self.patch(staticipaddress_module, "post_commit_do")
+
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
         self.patch(node_module, "power_driver_check")
         network = IPNetwork("10.0.0.0/30")
@@ -3810,6 +3821,10 @@ class TestGetCurtinConfig(APITestCase.ForUser):
 class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
     """Tests for
     /api/2.0/machines/<machine>/?op=restore_networking_configuration"""
+
+    def setUp(self):
+        super().setUp()
+        self.patch(staticipaddress_module, "post_commit_do")
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""

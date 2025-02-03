@@ -24,7 +24,9 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, enabled=False
         )
         interface.enabled = True
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         link_ip = interface.ip_addresses.get(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=None
         )
@@ -38,7 +40,9 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
             INTERFACE_TYPE.VLAN, parents=[interface]
         )
         interface.enabled = True
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         link_ip = vlan_interface.ip_addresses.get(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=None
         )
@@ -51,7 +55,8 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         interface.enabled = True
         self.patch(Interface, "ensure_link_up", _mock_ensure_link_up)
         # This will cause a RecursionError if the code doesn't work.
-        interface.save()
+        with post_commit_hooks:
+            interface.save()
 
     def test_disable_interface_removes_links(self):
         interface = factory.make_Interface(
@@ -59,7 +64,10 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         )
         interface.ensure_link_up()
         interface.enabled = False
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
+
         self.assertCountEqual([], interface.ip_addresses.all())
 
     def test_disable_interface_removes_links_on_children(self):
@@ -71,7 +79,9 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         )
         vlan_interface.ensure_link_up()
         interface.enabled = False
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         self.assertCountEqual([], vlan_interface.ip_addresses.all())
 
     def test_disable_interface_doesnt_remove_links_on_enabled_children(self):
@@ -85,9 +95,11 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         bond_interface = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[nic0, nic1]
         )
-        bond_interface.ensure_link_up()
-        nic0.enabled = False
-        nic0.save()
+
+        with post_commit_hooks:
+            bond_interface.ensure_link_up()
+            nic0.enabled = False
+            nic0.save()
         self.assertEqual(1, bond_interface.ip_addresses.count())
 
 
@@ -170,7 +182,10 @@ class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
         new_fabric = factory.make_Fabric()
         new_vlan = new_fabric.get_default_vlan()
         interface.vlan = new_vlan
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
+
         self.assertIsNone(reload_object(static_ip))
         self.assertIsNotNone(reload_object(discovered_ip))
 
@@ -182,7 +197,10 @@ class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
         )
         interface.vlan = None
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
+
         self.assertIsNone(reload_object(static_ip))
         self.assertIsNotNone(reload_object(discovered_ip))
 
@@ -205,7 +223,9 @@ class TestInterfaceVLANUpdateMachine(MAASServerTestCase):
         factory.make_StaticIPAddress(subnet=subnet_10, interface=interface)
 
         interface.vlan = vlan_20
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
 
         # The subnet_10 is not moved to the fabric_20.
         self.assertEqual(fabric_10, reload_object(subnet_10).vlan.fabric)
@@ -260,6 +280,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
 
         with post_commit_hooks:
             interface.save()
+
         self.assertEqual(new_vlan, reload_object(subnet).vlan)
 
     def test_doesnt_move_link_subnets_when_target_vlan_is_None(self):
@@ -272,6 +293,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
 
         with post_commit_hooks:
             interface.save()
+
         self.assertEqual(old_vlan, reload_object(subnet).vlan)
 
     def test_doesnt_move_link_subnets_when_source_vlan_is_None(self):
@@ -286,6 +308,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
 
         with post_commit_hooks:
             interface.save()
+
         self.assertEqual(interface.vlan, reload_object(subnet).vlan)
 
     def test_moves_children_vlans_to_same_fabric(self):
@@ -339,7 +362,9 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface = factory.make_Interface(node=node, vlan=vlan)
         fabric2 = factory.make_Fabric()
         interface.vlan = fabric2.get_default_vlan()
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         self.assertEqual(reload_object(fabric), fabric)
         self.assertEqual(reload_object(vlan), vlan)
 
@@ -352,7 +377,9 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface = factory.make_Interface(node=node, vlan=vlan)
         fabric2 = factory.make_Fabric()
         interface.vlan = fabric2.get_default_vlan()
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         self.assertEqual(reload_object(fabric), fabric)
         self.assertEqual(reload_object(vlan), vlan)
 
@@ -365,7 +392,9 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         factory.make_Interface(node=factory.make_Node(), vlan=vlan)
         fabric2 = factory.make_Fabric()
         interface.vlan = fabric2.get_default_vlan()
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         self.assertEqual(reload_object(fabric), fabric)
         self.assertEqual(reload_object(vlan), vlan)
 
@@ -419,9 +448,15 @@ class TestDeleteInterface(MAASServerTestCase):
         interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         interface1.ip_addresses.add(ip1)
         interface1.ip_addresses.add(ip2)
-        interface1.save()
+
+        with post_commit_hooks:
+            interface1.save()
+
         interface2.ip_addresses.add(ip2)
-        interface2.save()
-        interface1.delete()
+
+        with post_commit_hooks:
+            interface2.save()
+            interface1.delete()
+
         self.assertIsNone(reload_object(ip1))
         self.assertIsNotNone(reload_object(ip2))

@@ -155,7 +155,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info = self.make_pod_info()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(pod.power_type, pod_info["type"])
         self.assertEqual(
             pod.get_power_parameters()["power_address"],
@@ -171,7 +174,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["name"] = pod_name
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(pod_name, pod.name)
 
     def test_creates_pod_with_power_parameters(self):
@@ -179,7 +185,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["power_pass"] = factory.make_name("pass")
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(
             pod_info["power_address"],
             pod.get_power_parameters()["power_address"],
@@ -194,7 +203,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["memory_over_commit_ratio"] = random.randint(0, 10)
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(
             pod_info["cpu_over_commit_ratio"], pod.cpu_over_commit_ratio
         )
@@ -212,7 +224,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["tags"] = ",".join(tags)
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertCountEqual(tags, pod.tags)
 
     def test_creates_pod_with_existing_pod_console_logging_tag(self):
@@ -222,7 +237,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info = self.make_pod_info()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertIn("pod-console-logging", pod.tags)
         tag = reload_object(tag)
         self.assertEqual(tag.kernel_opts, "foo bar")
@@ -233,7 +251,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["zone"] = zone.name
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(zone.id, pod.zone.id)
 
     def test_creates_pod_with_pool(self):
@@ -242,7 +263,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["pool"] = pool.name
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(pool.id, pod.pool.id)
 
     def test_creates_lxd_with_generated_certificate(self):
@@ -253,7 +277,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         }
         form = PodForm(data=data, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        vmhost = form.save()
+
+        with post_commit_hooks:
+            vmhost = form.save()
+
         cert = Certificate.from_pem(
             vmhost.get_power_parameters()["certificate"],
             vmhost.get_power_parameters()["key"],
@@ -269,7 +296,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         }
         form = PodForm(data=data, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        vmhost = form.save()
+
+        with post_commit_hooks:
+            vmhost = form.save()
+
         cert = Certificate.from_pem(
             vmhost.get_power_parameters()["certificate"],
             vmhost.get_power_parameters()["key"],
@@ -282,7 +312,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info = self.make_pod_info()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         new_form = PodForm(data=pod_info)
         self.assertTrue(new_form.is_valid(), form._errors)
         self.assertRaises(ValidationError, new_form.save)
@@ -297,7 +330,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(bmc.id, pod.id)
         self.assertEqual(BMC_TYPE.POD, reload_object(bmc).bmc_type)
 
@@ -323,7 +359,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             data={"name": new_name}, request=self.request, instance=orig_pod
         )
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(new_name, pod.name)
         self.assertEqual(zone, pod.zone)
         self.assertEqual(pool, pod.pool)
@@ -343,7 +382,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["name"] = new_name
         form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(pod.id, orig_pod.id)
         self.assertEqual(pod.zone, zone)
         self.assertEqual(pod.pool, pool)
@@ -358,7 +400,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             instance=pod,
         )
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertCountEqual(pod.tags, tags)
 
     def test_updates_default_storage_pool(self):
@@ -375,7 +420,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             instance=pod,
         )
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(
             pod.default_storage_pool.pool_id, default_storage_pool.id
         )
@@ -391,7 +439,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             instance=pod,
         )
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
 
     def test_updates_clustered_peers_certificates(self):
@@ -410,7 +461,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             instance=vmhosts[0],
         )
         self.assertTrue(form.is_valid(), form._errors)
-        result = form.save()
+
+        with post_commit_hooks:
+            result = form.save()
+
         updated_vmhosts = [vmhost for vmhost in result.hints.cluster.hosts()]
         for vmhost in updated_vmhosts:
             self.assertEqual(
@@ -426,7 +480,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info = self.make_pod_info("virsh")
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertIsNone(pod.created_with_trust_password)
         self.assertIsNone(pod.created_with_maas_generated_cert)
         self.assertIsNone(pod.created_with_cert_expiration_days)
@@ -435,28 +492,40 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info = self.make_pod_info("lxd", password="mypass")
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertTrue(pod.created_with_trust_password)
 
     def test_creates_lxd_pod_with_no_trustpassword_metrics(self):
         pod_info = self.make_pod_info("lxd")
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertFalse(pod.created_with_trust_password)
 
     def test_creates_lxd_pod_with_maas_generated_cert_default(self):
         pod_info = self.make_pod_info("lxd")
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertTrue(pod.created_with_maas_generated_cert)
 
     def test_creates_lxd_pod_with_cert_expiration_default(self):
         pod_info = self.make_pod_info("lxd")
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(3649, pod.created_with_cert_expiration_days)
 
     def test_creates_lxd_pod_with_cert_expiration_supplied(self):
@@ -466,7 +535,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["key"] = maas_cert.private_key_pem()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertEqual(4, pod.created_with_cert_expiration_days)
 
     def test_creates_lxd_pod_with_maas_generated_cert_supplied(self):
@@ -476,7 +548,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["key"] = maas_cert.private_key_pem()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertTrue(pod.created_with_maas_generated_cert)
 
     def test_creates_lxd_pod_with_not_maas_generated_cert(self):
@@ -486,7 +561,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["key"] = non_maas_cert.private_key_pem()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertIsNotNone(pod.created_with_maas_generated_cert)
         self.assertFalse(pod.created_with_maas_generated_cert)
 
@@ -506,7 +584,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info["key"] = non_maas_cert.private_key_pem()
         form = PodForm(instance=pod, data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
+
+        with post_commit_hooks:
+            pod = form.save()
+
         self.assertTrue(pod.created_with_trust_password)
         self.assertTrue(pod.created_with_maas_generated_cert)
         self.assertEqual(12, pod.created_with_cert_expiration_days)
@@ -885,7 +966,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             interface=host.get_boot_interface(), subnet=subnet
         )
         expected_ip = str(ip.ip)
-        ip.delete()
+        with post_commit_hooks:
+            ip.delete()
         interfaces = "eth0:ip=%s" % expected_ip
         form = ComposeMachineForm(
             data={"interfaces": interfaces}, request=request, pod=pod
@@ -1444,15 +1526,17 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             interface=host.get_boot_interface(), subnet=subnet
         )
         expected_ip = str(ip.ip)
-        ip.delete()
-        pod.ip_address = host.boot_interface.ip_addresses.first()
-        pod.save()
+        with post_commit_hooks:
+            ip.delete()
+            pod.ip_address = host.boot_interface.ip_addresses.first()
+            pod.save()
         interfaces = "eth0:ip=%s" % expected_ip
         form = ComposeMachineForm(
             data={"interfaces": interfaces}, request=request, pod=pod
         )
         self.assertTrue(form.is_valid(), form.errors)
-        machine = form.compose()
+        with post_commit_hooks:
+            machine = form.compose()
         ip = StaticIPAddress.objects.filter(ip=expected_ip).first()
         self.assertEqual(
             ip.get_interface().node_config, machine.current_config

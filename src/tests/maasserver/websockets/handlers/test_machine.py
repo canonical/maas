@@ -255,7 +255,8 @@ class TestMachineHandler:
         }
 
     def test_secret_power_params_only_viewable_with_admin_read_permission(
-        self, mocker
+        self,
+        mocker,
     ):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
@@ -287,7 +288,9 @@ class TestMachineHandler:
         assert node_data["power_parameters"] == sanitised_power_params
 
     def test_secret_power_params_only_viewable_with_admin_read_permission_rbac(
-        self, enable_rbac, mocker
+        self,
+        enable_rbac,
+        mocker,
     ):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")

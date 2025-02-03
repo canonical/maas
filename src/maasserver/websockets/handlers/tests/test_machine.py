@@ -2595,7 +2595,10 @@ class TestMachineHandler(MAASServerTestCase):
             "power_pass": power_pass,
             "power_address": power_address,
         }
-        updated_node = handler.update(node_data)
+
+        with post_commit_hooks:
+            updated_node = handler.update(node_data)
+
         self.assertEqual(updated_node["hostname"], new_hostname)
         self.assertEqual(updated_node["architecture"], new_architecture)
         self.assertEqual(updated_node["description"], new_description)
@@ -2633,7 +2636,10 @@ class TestMachineHandler(MAASServerTestCase):
             "power_pass": power_pass,
             "power_address": power_address,
         }
-        updated_node = handler.update(node_data)
+
+        with post_commit_hooks:
+            updated_node = handler.update(node_data)
+
         self.assertEqual(updated_node["pool"]["id"], node.pool.id)
 
     def test_update_adds_tags_to_node(self):
@@ -4029,16 +4035,19 @@ class TestMachineHandler(MAASServerTestCase):
         mac_address = factory.make_mac_address()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
-        handler.create_physical(
-            {
-                "system_id": node.system_id,
-                "name": name,
-                "mac_address": mac_address,
-                "vlan": vlan.id,
-                "mode": INTERFACE_LINK_TYPE.AUTO,
-                "subnet": subnet.id,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_physical(
+                {
+                    "system_id": node.system_id,
+                    "name": name,
+                    "mac_address": mac_address,
+                    "vlan": vlan.id,
+                    "mode": INTERFACE_LINK_TYPE.AUTO,
+                    "subnet": subnet.id,
+                }
+            )
+
         new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
@@ -4077,16 +4086,18 @@ class TestMachineHandler(MAASServerTestCase):
         mac_address = factory.make_mac_address()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
-        handler.create_physical(
-            {
-                "system_id": node.system_id,
-                "name": name,
-                "mac_address": mac_address,
-                "vlan": vlan.id,
-                "mode": INTERFACE_LINK_TYPE.LINK_UP,
-                "subnet": subnet.id,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_physical(
+                {
+                    "system_id": node.system_id,
+                    "name": name,
+                    "mac_address": mac_address,
+                    "vlan": vlan.id,
+                    "mode": INTERFACE_LINK_TYPE.LINK_UP,
+                    "subnet": subnet.id,
+                }
+            )
         new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         link_up_ip = new_interface.ip_addresses.filter(
@@ -4142,15 +4153,18 @@ class TestMachineHandler(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
         new_subnet = factory.make_Subnet(vlan=vlan)
-        handler.create_vlan(
-            {
-                "system_id": node.system_id,
-                "parent": interface.id,
-                "vlan": vlan.id,
-                "mode": INTERFACE_LINK_TYPE.AUTO,
-                "subnet": new_subnet.id,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_vlan(
+                {
+                    "system_id": node.system_id,
+                    "parent": interface.id,
+                    "vlan": vlan.id,
+                    "mode": INTERFACE_LINK_TYPE.AUTO,
+                    "subnet": new_subnet.id,
+                }
+            )
+
         vlan_interface = get_one(
             Interface.objects.filter(
                 node_config=node.current_config,
@@ -4495,16 +4509,19 @@ class TestMachineHandler(MAASServerTestCase):
         mode = factory.pick_enum(INTERFACE_LINK_TYPE)
         ip_address = factory.make_ip_address()
         self.patch_autospec(Interface, "update_link_by_id")
-        handler.link_subnet(
-            {
-                "system_id": node.system_id,
-                "interface_id": interface.id,
-                "link_id": link_id,
-                "subnet": subnet.id,
-                "mode": mode,
-                "ip_address": ip_address,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.link_subnet(
+                {
+                    "system_id": node.system_id,
+                    "interface_id": interface.id,
+                    "link_id": link_id,
+                    "subnet": subnet.id,
+                    "mode": mode,
+                    "ip_address": ip_address,
+                }
+            )
+
         Interface.update_link_by_id.assert_called_once_with(
             ANY, link_id, mode, subnet, ip_address=ip_address
         )
@@ -4517,20 +4534,26 @@ class TestMachineHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         sip = factory.make_StaticIPAddress(interface=interface)
         link_id = sip.id
-        sip.delete()
+
+        with post_commit_hooks:
+            sip.delete()
+
         mode = factory.pick_enum(INTERFACE_LINK_TYPE)
         ip_address = factory.make_ip_address()
         self.patch_autospec(Interface, "update_link_by_id")
-        handler.link_subnet(
-            {
-                "system_id": node.system_id,
-                "interface_id": interface.id,
-                "link_id": link_id,
-                "subnet": subnet.id,
-                "mode": mode,
-                "ip_address": ip_address,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.link_subnet(
+                {
+                    "system_id": node.system_id,
+                    "interface_id": interface.id,
+                    "link_id": link_id,
+                    "subnet": subnet.id,
+                    "mode": mode,
+                    "ip_address": ip_address,
+                }
+            )
+
         Interface.update_link_by_id.assert_not_called()
 
     def test_link_subnet_calls_link_subnet_if_not_link_id(self):
@@ -4542,15 +4565,18 @@ class TestMachineHandler(MAASServerTestCase):
         mode = factory.pick_enum(INTERFACE_LINK_TYPE)
         ip_address = factory.make_ip_address()
         self.patch_autospec(Interface, "link_subnet")
-        handler.link_subnet(
-            {
-                "system_id": node.system_id,
-                "interface_id": interface.id,
-                "subnet": subnet.id,
-                "mode": mode,
-                "ip_address": ip_address,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.link_subnet(
+                {
+                    "system_id": node.system_id,
+                    "interface_id": interface.id,
+                    "subnet": subnet.id,
+                    "mode": mode,
+                    "ip_address": ip_address,
+                }
+            )
+
         Interface.link_subnet.assert_called_once_with(
             ANY, mode, subnet, ip_address=ip_address
         )
@@ -4579,13 +4605,15 @@ class TestMachineHandler(MAASServerTestCase):
         link_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="", interface=interface
         )
-        handler.unlink_subnet(
-            {
-                "system_id": node.system_id,
-                "interface_id": interface.id,
-                "link_id": link_ip.id,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.unlink_subnet(
+                {
+                    "system_id": node.system_id,
+                    "interface_id": interface.id,
+                    "link_id": link_ip.id,
+                }
+            )
         self.assertIsNone(reload_object(link_ip))
 
     def test_unlink_subnet_locked_raises_permission_error(self):

@@ -378,7 +378,8 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         for _ in range(3):
             node = self.make_Node(bmc_connected_to=rack)
             node.bmc = None
-            node.save()
+            with post_commit_hooks:
+                node.save()
 
         power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]

@@ -10,7 +10,7 @@ from unittest.mock import Mock
 from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestDNSResourceForm(MAASServerTestCase):
@@ -54,7 +54,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             request=request,
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         actual_ips = dnsresource.ip_addresses.all()
@@ -201,7 +204,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             request=request,
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
 
     def test_create_wildcard(self):
@@ -219,5 +225,8 @@ class TestDNSResourceForm(MAASServerTestCase):
             request=request,
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)

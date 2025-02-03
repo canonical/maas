@@ -67,16 +67,15 @@ class UpdateInterfacesMixin:
         data,
         passes=None,
     ):
-        data = data.render(include_extra=node.is_controller)
-        # update_node_interfaces() is idempotent, so it doesn't matter
-        # if it's called once or twice.
-        if passes is None:
-            passes = random.randint(1, 2)
-
         with post_commit_hooks:
+            data = data.render(include_extra=node.is_controller)
+            # update_node_interfaces() is idempotent, so it doesn't matter
+            # if it's called once or twice.
+            if passes is None:
+                passes = random.randint(1, 2)
             for _ in range(passes):
                 hooks.process_lxd_results(node, json.dumps(data).encode(), 0)
-        return passes
+            return passes
 
 
 class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):

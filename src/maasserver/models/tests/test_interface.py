@@ -2409,7 +2409,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         network = factory.make_ipv6_network()
         subnet = factory.make_Subnet(cidr=network.cidr)
         cidr = "%s/128" % str(IPAddress(network.first + 1))
-        interface.update_ip_addresses([cidr])
+
+        with post_commit_hooks:
+            interface.update_ip_addresses([cidr])
 
         self.assertFalse(Subnet.objects.filter(cidr=cidr).exists())
         self.assertEqual(interface.ip_addresses.first().subnet, subnet)
@@ -2433,7 +2435,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         )
         network = factory.make_ipv6_network(slash=64)
         cidr = "%s/64" % str(iface._eui64_address(network.cidr))
-        iface.update_ip_addresses([cidr])
+
+        with post_commit_hooks:
+            iface.update_ip_addresses([cidr])
         self.assertEqual(0, iface.ip_addresses.count())
         self.assertEqual(1, Subnet.objects.filter(cidr=network.cidr).count())
 
@@ -2450,9 +2454,11 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             vlan=vlan,
             node=node,
         )
-        iface.update_ip_addresses(
-            ["10.0.0.1/8", "10.0.0.2/8", "2001::1/64", "2001::2/64"]
-        )
+
+        with post_commit_hooks:
+            iface.update_ip_addresses(
+                ["10.0.0.1/8", "10.0.0.2/8", "2001::1/64", "2001::2/64"]
+            )
         self.assertEqual(2, iface.ip_addresses.count())
 
     def test_finds_ipv6_subnet_regardless_of_order(self):
@@ -2461,7 +2467,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr=network.cidr)
         cidr_net = str(network.cidr)
         cidr_128 = "%s/128" % str(IPAddress(network.first + 1))
-        iface.update_ip_addresses([cidr_128, cidr_net])
+
+        with post_commit_hooks:
+            iface.update_ip_addresses([cidr_128, cidr_net])
 
         self.assertFalse(Subnet.objects.filter(cidr=cidr_128).exists())
         self.assertFalse(iface.ip_addresses.exclude(subnet=subnet).exists())
@@ -2470,7 +2478,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
         cidr = "%s/128" % str(IPAddress(network.first + 1))
-        interface.update_ip_addresses([cidr])
+
+        with post_commit_hooks:
+            interface.update_ip_addresses([cidr])
 
         subnets = Subnet.objects.filter(cidr="%s/64" % str(network.ip))
         self.assertEqual(1, len(subnets))
@@ -2508,7 +2518,8 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             factory.make_Subnet(cidr=cidr, vlan=vlan) for cidr in cidr_list
         ]
 
-        interface.update_ip_addresses(cidr_list)
+        with post_commit_hooks:
+            interface.update_ip_addresses(cidr_list)
 
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for cidr, subnet in zip(cidr_list, subnet_list):
@@ -2531,9 +2542,11 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface3 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         maaslog = self.patch_autospec(interface_module, "maaslog")
-        interface1.update_ip_addresses([subnet1.cidr])
-        interface2.update_ip_addresses([subnet2.cidr])
-        interface3.update_ip_addresses([subnet3.cidr])
+
+        with post_commit_hooks:
+            interface1.update_ip_addresses([subnet1.cidr])
+            interface2.update_ip_addresses([subnet2.cidr])
+            interface3.update_ip_addresses([subnet3.cidr])
         self.assertEqual(vlan1, interface1.vlan)
         self.assertEqual(vlan2, interface2.vlan)
         self.assertEqual(vlan3, interface3.vlan)
@@ -2576,7 +2589,10 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             )
             for i in range(3)
         ]
-        interface.update_ip_addresses([])
+
+        with post_commit_hooks:
+            interface.update_ip_addresses([])
+
         self.assertEqual(
             0,
             len(reload_objects(StaticIPAddress, existing_discovered)),
@@ -2607,7 +2623,8 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             for i in range(num_connections)
         ]
 
-        interface.update_ip_addresses(cidr_list)
+        with post_commit_hooks:
+            interface.update_ip_addresses(cidr_list)
 
         self.assertEqual(
             0,
@@ -2655,7 +2672,8 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             for i in range(num_connections)
         ]
 
-        interface.update_ip_addresses(cidr_list)
+        with post_commit_hooks:
+            interface.update_ip_addresses(cidr_list)
 
         self.assertEqual(
             0,
@@ -2698,7 +2716,8 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             for i in range(num_connections)
         ]
 
-        interface.update_ip_addresses(cidr_list)
+        with post_commit_hooks:
+            interface.update_ip_addresses(cidr_list)
 
         self.assertEqual(
             0,
@@ -2735,7 +2754,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         # Update that ip address on another interface. Which will log the
         # error message and delete the IP address.
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        interface.update_ip_addresses([cidr])
+
+        with post_commit_hooks:
+            interface.update_ip_addresses([cidr])
         maaslog.warning.assert_called_with(
             f"{ip.get_log_name_for_alloc_type()} IP address "
             f"({address}) on {other_interface.node_config.node.fqdn} "
@@ -2765,7 +2786,10 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             subnet=subnet,
         )
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        interface.update_ip_addresses([cidr])
+
+        with post_commit_hooks:
+            interface.update_ip_addresses([cidr])
+
         self.assertIsNone(reload_object(ip1))
         self.assertIsNone(reload_object(ip2))
 
@@ -2787,7 +2811,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         # Update that ip address on another interface. Which will log the
         # error message and delete the IP address.
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        interface.update_ip_addresses([cidr])
+
+        with post_commit_hooks:
+            interface.update_ip_addresses([cidr])
         maaslog.warning.assert_called_with(
             f"{ip.get_log_name_for_alloc_type()} IP address "
             f"({address}) on {other_interface.node_config.node.fqdn} "
@@ -2944,9 +2970,10 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             subnet=subnet,
             mac_address=interface.mac_address,
         )
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=reserved_ip.ip
-        )
+        with post_commit_hooks:
+            interface.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=reserved_ip.ip
+            )
         interface = reload_object(interface)
         self.assertIsNotNone(
             get_one(
@@ -2964,7 +2991,8 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         )
         interface.vlan = None
         interface.save()
-        interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
+        with post_commit_hooks:
+            interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
         interface = reload_object(interface)
         self.assertEqual(subnet.vlan, interface.vlan)
 
@@ -2996,7 +3024,10 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
     def test_STATIC_sets_ip_in_no_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         ip = factory.make_ip_address()
-        interface.link_subnet(INTERFACE_LINK_TYPE.STATIC, None, ip_address=ip)
+        with post_commit_hooks:
+            interface.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC, None, ip_address=ip
+            )
         interface = reload_object(interface)
         self.assertIsNotNone(
             get_one(
@@ -3010,9 +3041,11 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip
-        )
+
+        with post_commit_hooks:
+            interface.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip
+            )
         interface = reload_object(interface)
         self.assertIsNotNone(
             get_one(
@@ -3026,7 +3059,8 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
     def test_STATIC_picks_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        interface.link_subnet(INTERFACE_LINK_TYPE.STATIC, subnet)
+        with post_commit_hooks:
+            interface.link_subnet(INTERFACE_LINK_TYPE.STATIC, subnet)
         interface = reload_object(interface)
         ip_address = get_one(
             interface.ip_addresses.filter(
@@ -3038,8 +3072,9 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
 
     def test_LINK_UP_creates_link_STICKY_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        link_subnet = factory.make_Subnet(vlan=interface.vlan)
-        interface.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, link_subnet)
+        with post_commit_hooks:
+            link_subnet = factory.make_Subnet(vlan=interface.vlan)
+            interface.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, link_subnet)
         interface = reload_object(interface)
         link_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertIsNone(link_ip.ip)
@@ -3047,7 +3082,8 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
 
     def test_LINK_UP_creates_link_STICKY_without_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        interface.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, None)
+        with post_commit_hooks:
+            interface.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, None)
         interface = reload_object(interface)
         link_ip = get_one(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
@@ -3085,8 +3121,9 @@ class TestEnsureLinkUp(MAASServerTestCase):
     def test_does_nothing_if_has_link(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, subnet)
-        interface.ensure_link_up()
+        with post_commit_hooks:
+            interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, subnet)
+            interface.ensure_link_up()
         interface = reload_object(interface)
         self.assertEqual(
             1,
@@ -3117,7 +3154,8 @@ class TestEnsureLinkUp(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, interface=interface
         )
-        interface.ensure_link_up()
+        with post_commit_hooks:
+            interface.ensure_link_up()
         self.assertCountEqual([], reload_objects(StaticIPAddress, link_ups))
 
     def test_creates_link_up_to_discovered_subnet_on_same_vlan(self):
@@ -3129,7 +3167,8 @@ class TestEnsureLinkUp(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        interface.ensure_link_up()
+        with post_commit_hooks:
+            interface.ensure_link_up()
         link_ip = interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY
         ).first()
@@ -3145,7 +3184,8 @@ class TestEnsureLinkUp(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        interface.ensure_link_up()
+        with post_commit_hooks:
+            interface.ensure_link_up()
         link_ip = interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY
         ).first()
@@ -3154,7 +3194,8 @@ class TestEnsureLinkUp(MAASServerTestCase):
 
     def test_creates_link_up_to_no_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        interface.ensure_link_up()
+        with post_commit_hooks:
+            interface.ensure_link_up()
         link_ip = interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY
         ).first()
@@ -3175,7 +3216,8 @@ class TestUnlinkIPAddress(MAASServerTestCase):
             interface=interface,
         )
         mock_ensure_link_up = self.patch_autospec(interface, "ensure_link_up")
-        interface.unlink_ip_address(auto_ip, clearing_config=True)
+        with post_commit_hooks:
+            interface.unlink_ip_address(auto_ip, clearing_config=True)
         self.assertIsNone(reload_object(auto_ip))
         mock_ensure_link_up.assert_not_called()
 
@@ -3192,45 +3234,54 @@ class TestUnlinkSubnet(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        interface.unlink_subnet_by_id(auto_ip.id)
+        with post_commit_hooks:
+            interface.unlink_subnet_by_id(auto_ip.id)
         self.assertIsNone(reload_object(auto_ip))
 
     def test_DHCP_deletes_link_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         dhcp_subnet = factory.make_Subnet(vlan=interface.vlan)
-        interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
+        with post_commit_hooks:
+            interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
         interface = reload_object(interface)
         dhcp_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.DHCP)
-        interface.unlink_subnet_by_id(dhcp_ip.id)
+        with post_commit_hooks:
+            interface.unlink_subnet_by_id(dhcp_ip.id)
         self.assertIsNone(reload_object(dhcp_ip))
 
     def test_STATIC_deletes_link_in_no_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         ip = factory.make_ip_address()
-        interface.link_subnet(INTERFACE_LINK_TYPE.STATIC, None, ip_address=ip)
+        with post_commit_hooks:
+            interface.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC, None, ip_address=ip
+            )
         interface = reload_object(interface)
         static_ip = get_one(
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=None
             )
         )
-        interface.unlink_subnet_by_id(static_ip.id)
+        with post_commit_hooks:
+            interface.unlink_subnet_by_id(static_ip.id)
         self.assertIsNone(reload_object(static_ip))
 
     def test_STATIC_deletes_link_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip
-        )
+        with post_commit_hooks:
+            interface.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip
+            )
         interface = reload_object(interface)
         static_ip = get_one(
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet
             )
         )
-        interface.unlink_subnet_by_id(static_ip.id)
+        with post_commit_hooks:
+            interface.unlink_subnet_by_id(static_ip.id)
         self.assertIsNone(reload_object(static_ip))
 
     def test_LINK_UP_deletes_link(self):
@@ -3242,7 +3293,8 @@ class TestUnlinkSubnet(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        interface.unlink_subnet_by_id(link_ip.id)
+        with post_commit_hooks:
+            interface.unlink_subnet_by_id(link_ip.id)
         self.assertIsNone(reload_object(link_ip))
 
     def test_always_has_LINK_UP(self):
@@ -3254,7 +3306,8 @@ class TestUnlinkSubnet(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        interface.unlink_subnet_by_id(link_ip.id)
+        with post_commit_hooks:
+            interface.unlink_subnet_by_id(link_ip.id)
         self.assertIsNone(reload_object(link_ip))
         self.assertIsNotNone(
             interface.ip_addresses.filter(
@@ -3277,9 +3330,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.AUTO, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.AUTO, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.AUTO, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3296,9 +3350,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.LINK_UP, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.LINK_UP, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3322,9 +3377,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr)
         )
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3341,9 +3397,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.DHCP, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.DHCP, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.DHCP, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3360,9 +3417,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.LINK_UP, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.LINK_UP, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3386,9 +3444,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr)
         )
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3405,9 +3464,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.AUTO, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.AUTO, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.AUTO, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3424,9 +3484,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.DHCP, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.DHCP, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.DHCP, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3450,9 +3511,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr)
         )
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3469,9 +3531,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.DHCP, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.DHCP, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.DHCP, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3488,9 +3551,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.AUTO, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.AUTO, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.AUTO, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3507,9 +3571,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.LINK_UP, new_subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.LINK_UP, new_subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
@@ -3526,9 +3591,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         )
         static_id = static_ip.id
         static_ip_address = static_ip.ip
-        static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.STATIC, subnet
-        )
+        with post_commit_hooks:
+            static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.STATIC, subnet
+            )
         self.assertEqual(static_id, static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(subnet, static_ip.subnet)
@@ -3580,12 +3646,13 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         new_ip_address = factory.pick_ip_in_Subnet(
             subnet, but_not=[static_ip_address]
         )
-        new_static_ip = interface.update_ip_address(
-            static_ip,
-            INTERFACE_LINK_TYPE.STATIC,
-            subnet,
-            ip_address=new_ip_address,
-        )
+        with post_commit_hooks:
+            new_static_ip = interface.update_ip_address(
+                static_ip,
+                INTERFACE_LINK_TYPE.STATIC,
+                subnet,
+                ip_address=new_ip_address,
+            )
         self.assertEqual(static_id, new_static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, new_static_ip.alloc_type)
         self.assertEqual(subnet, new_static_ip.subnet)
@@ -3621,9 +3688,10 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
             subnet=new_subnet,
             interface=interface,
         )
-        new_static_ip = interface.update_ip_address(
-            static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
-        )
+        with post_commit_hooks:
+            new_static_ip = interface.update_ip_address(
+                static_ip, INTERFACE_LINK_TYPE.STATIC, new_subnet
+            )
         self.assertEqual(static_id, new_static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, new_static_ip.alloc_type)
         self.assertEqual(new_subnet, new_static_ip.subnet)
@@ -3647,12 +3715,13 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
             vlan=interface.vlan, cidr=str(network_v6.cidr)
         )
         new_ip_address = factory.pick_ip_in_Subnet(new_subnet)
-        new_static_ip = interface.update_ip_address(
-            static_ip,
-            INTERFACE_LINK_TYPE.STATIC,
-            new_subnet,
-            ip_address=new_ip_address,
-        )
+        with post_commit_hooks:
+            new_static_ip = interface.update_ip_address(
+                static_ip,
+                INTERFACE_LINK_TYPE.STATIC,
+                new_subnet,
+                ip_address=new_ip_address,
+            )
         self.assertEqual(static_id, new_static_ip.id)
         self.assertEqual(IPADDRESS_TYPE.STICKY, new_static_ip.alloc_type)
         self.assertEqual(new_subnet, new_static_ip.subnet)
@@ -3699,7 +3768,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                     interface=interface,
                 )
         with transaction.atomic():
-            observed = interface.claim_auto_ips()
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips()
         # Should now have 3 AUTO with IP addresses assigned.
         interface = reload_object(interface)
         assigned_addresses = interface.ip_addresses.filter(
@@ -3729,7 +3799,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 )
                 auto_ip_ids.append(auto_ip.id)
         with transaction.atomic():
-            observed = interface.claim_auto_ips()
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips()
         # Should now have 3 AUTO with IP addresses assigned.
         interface = reload_object(interface)
         assigned_addresses = interface.ip_addresses.filter(
@@ -3765,7 +3836,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 interface=interface,
             )
         with transaction.atomic():
-            observed = interface.claim_auto_ips()
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips()
         self.assertEqual(
             1,
             len(observed),
@@ -3791,7 +3863,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 interface=interface,
             )
         with transaction.atomic():
-            observed = interface.claim_auto_ips()
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips()
         self.assertEqual(
             1,
             len(observed),
@@ -3825,7 +3898,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 mac_address=interface.mac_address,
             )
         with transaction.atomic():
-            observed = interface.claim_auto_ips()
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips()
         self.assertEqual(
             1,
             len(observed),
@@ -3857,7 +3931,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 interface=interface,
             )
         with transaction.atomic():
-            observed = interface.claim_auto_ips()
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips()
         self.assertEqual(
             1,
             len(observed),
@@ -3879,7 +3954,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 interface=interface,
             )
             ip.subnet = None
-            ip.save()
+            with post_commit_hooks:
+                ip.save()
             maaslog = self.patch_autospec(interface_module, "maaslog")
         with transaction.atomic():
             with self.assertRaisesRegex(
@@ -3903,7 +3979,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
             exclude = factory.pick_ip_in_Subnet(subnet)
         with transaction.atomic():
-            interface.claim_auto_ips(exclude_addresses={exclude})
+            with post_commit_hooks:
+                interface.claim_auto_ips(exclude_addresses={exclude})
             auto_ip = interface.ip_addresses.get(
                 alloc_type=IPADDRESS_TYPE.AUTO
             )
@@ -3928,7 +4005,8 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 interface=interface,
             )
         with transaction.atomic():
-            interface.claim_auto_ips()
+            with post_commit_hooks:
+                interface.claim_auto_ips()
             auto_ips = interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.AUTO
             ).order_by("id")
@@ -3950,9 +4028,10 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                     interface=interface,
                 )
         with transaction.atomic():
-            observed = interface.claim_auto_ips(
-                temp_expires_after=datetime.timedelta(minutes=5)
-            )
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips(
+                    temp_expires_after=datetime.timedelta(minutes=5)
+                )
         # Should now have 3 AUTO with IP addresses assigned.
         interface = reload_object(interface)
         assigned_addresses = interface.ip_addresses.filter(
@@ -3988,9 +4067,10 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
 
         with transaction.atomic():
-            observed = interface.claim_auto_ips(
-                temp_expires_after=datetime.timedelta(minutes=5)
-            )
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips(
+                    temp_expires_after=datetime.timedelta(minutes=5)
+                )
         interface = reload_object(interface)
         assigned_addresses = interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO
@@ -4085,9 +4165,10 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
 
         with transaction.atomic():
-            observed = interface.claim_auto_ips(
-                temp_expires_after=datetime.timedelta(minutes=5)
-            )
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips(
+                    temp_expires_after=datetime.timedelta(minutes=5)
+                )
         # Should now have 2 AUTO with IP addresses assigned. One of them must be the reserved ip.
         interface = reload_object(interface)
         assigned_addresses = interface.ip_addresses.filter(
@@ -4129,9 +4210,10 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
 
         with transaction.atomic():
-            observed = interface.claim_auto_ips(
-                temp_expires_after=datetime.timedelta(minutes=5)
-            )
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips(
+                    temp_expires_after=datetime.timedelta(minutes=5)
+                )
         self.assertEqual([], observed)
 
     def test_claims_static_ip_interface_with_reserved_ip(self):
@@ -4154,9 +4236,10 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
 
         with transaction.atomic():
-            observed = interface.claim_auto_ips(
-                temp_expires_after=datetime.timedelta(minutes=5)
-            )
+            with post_commit_hooks:
+                observed = interface.claim_auto_ips(
+                    temp_expires_after=datetime.timedelta(minutes=5)
+                )
         self.assertEqual([], observed)
 
 

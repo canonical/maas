@@ -14,7 +14,7 @@ from maasserver.models.dnsresource import DNSResource, separate_fqdn
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
@@ -421,7 +421,9 @@ class TestStaticIPAddressSignals(MAASServerTestCase):
     def test_non_orphaned_record_not_deleted(self):
         dnsrr = factory.make_DNSResource(ip_addresses=["8.8.8.8", "8.8.4.4"])
         sip = StaticIPAddress.objects.get(ip="8.8.4.4")
-        sip.delete()
+
+        with post_commit_hooks:
+            sip.delete()
         dnsrr = reload_object(dnsrr)
         sip = StaticIPAddress.objects.get(ip="8.8.8.8")
         self.assertIn(sip, dnsrr.ip_addresses.all())

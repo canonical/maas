@@ -523,104 +523,6 @@ DHCP_ALERT = dedent(
     """
 )
 
-# Triggered when an IP address that has an IP set (not temp) and is not
-# DISCOVERED is inserted to a subnet on a managed VLAN. Alerts the rack
-# controllers for that VLAN.
-DHCP_STATICIPADDRESS_INSERT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_insert()
-    RETURNS trigger as $$
-    DECLARE
-      vlan maasserver_vlan;
-    BEGIN
-      -- Update VLAN if DHCP is enabled, IP is set and not DISCOVERED.
-      IF NEW.alloc_type != 6 AND NEW.ip IS NOT NULL AND host(NEW.ip) != '' AND
-        NEW.temp_expires_on IS NULL THEN
-        SELECT maasserver_vlan.* INTO vlan
-        FROM maasserver_vlan, maasserver_subnet
-        WHERE maasserver_subnet.id = NEW.subnet_id AND
-          maasserver_subnet.vlan_id = maasserver_vlan.id;
-        PERFORM sys_dhcp_alert(vlan);
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-# Triggered when an IP address that has an IP set (not temp) and is not
-# DISCOVERED is updated. If the subnet changes then it alerts the rack
-# controllers of each VLAN if the VLAN differs from the previous VLAN.
-DHCP_STATICIPADDRESS_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_update()
-    RETURNS trigger as $$
-    DECLARE
-      old_vlan maasserver_vlan;
-      new_vlan maasserver_vlan;
-    BEGIN
-      -- Ignore DISCOVERED IP addresses.
-      IF NEW.alloc_type != 6 THEN
-        IF OLD.subnet_id != NEW.subnet_id THEN
-          -- Subnet has changed; update each VLAN if different.
-          SELECT maasserver_vlan.* INTO old_vlan
-          FROM maasserver_vlan, maasserver_subnet
-          WHERE maasserver_subnet.id = OLD.subnet_id AND
-            maasserver_subnet.vlan_id = maasserver_vlan.id;
-          SELECT maasserver_vlan.* INTO new_vlan
-          FROM maasserver_vlan, maasserver_subnet
-          WHERE maasserver_subnet.id = NEW.subnet_id AND
-            maasserver_subnet.vlan_id = maasserver_vlan.id;
-          IF old_vlan.id != new_vlan.id THEN
-            -- Different VLAN's; update each if DHCP enabled.
-            PERFORM sys_dhcp_alert(old_vlan);
-            PERFORM sys_dhcp_alert(new_vlan);
-          ELSE
-            -- Same VLAN so only need to update once.
-            PERFORM sys_dhcp_alert(new_vlan);
-          END IF;
-        ELSIF (OLD.ip IS NULL AND NEW.ip IS NOT NULL) OR
-          (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
-          (OLD.temp_expires_on IS NULL AND NEW.temp_expires_on IS NOT NULL) OR
-          (OLD.temp_expires_on IS NOT NULL AND NEW.temp_expires_on IS NULL) OR
-          (host(OLD.ip) != host(NEW.ip)) THEN
-          -- Assigned IP address has changed.
-          SELECT maasserver_vlan.* INTO new_vlan
-          FROM maasserver_vlan, maasserver_subnet
-          WHERE maasserver_subnet.id = NEW.subnet_id AND
-            maasserver_subnet.vlan_id = maasserver_vlan.id;
-          PERFORM sys_dhcp_alert(new_vlan);
-        END IF;
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-# Triggered when an IP address is removed from a subnet that is on a
-# managed VLAN. Alerts the rack controllers of that VLAN.
-DHCP_STATICIPADDRESS_DELETE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_staticipaddress_delete()
-    RETURNS trigger as $$
-    DECLARE
-      vlan maasserver_vlan;
-    BEGIN
-      -- Update VLAN if DHCP is enabled and has an IP address.
-      IF host(OLD.ip) != '' AND OLD.temp_expires_on IS NULL THEN
-        SELECT maasserver_vlan.* INTO vlan
-        FROM maasserver_vlan, maasserver_subnet
-        WHERE maasserver_subnet.id = OLD.subnet_id AND
-          maasserver_subnet.vlan_id = maasserver_vlan.id;
-        PERFORM sys_dhcp_alert(vlan);
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
 # Triggered when the interface name or MAC address is updated. Alerts
 # rack controllers on all managed VLAN's that the interface has a non
 # DISCOVERED IP address on.
@@ -2287,26 +2189,6 @@ def register_system_triggers():
 
     # DHCP
     register_procedure(DHCP_ALERT)
-
-    # - StaticIPAddress
-    register_procedure(DHCP_STATICIPADDRESS_INSERT)
-    register_trigger(
-        "maasserver_staticipaddress",
-        "sys_dhcp_staticipaddress_insert",
-        "insert",
-    )
-    register_procedure(DHCP_STATICIPADDRESS_UPDATE)
-    register_trigger(
-        "maasserver_staticipaddress",
-        "sys_dhcp_staticipaddress_update",
-        "update",
-    )
-    register_procedure(DHCP_STATICIPADDRESS_DELETE)
-    register_trigger(
-        "maasserver_staticipaddress",
-        "sys_dhcp_staticipaddress_delete",
-        "delete",
-    )
 
     # - Interface
     register_procedure(DHCP_INTERFACE_UPDATE)

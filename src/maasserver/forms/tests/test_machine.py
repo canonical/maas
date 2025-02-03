@@ -26,6 +26,7 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.certificates import Certificate
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -728,7 +729,10 @@ class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid())
-        machine = form.save()
+
+        with post_commit_hooks:
+            machine = form.save()
+
         power_params = machine.bmc.get_power_parameters()
         self.assertIn("certificate", power_params)
         self.assertIn("key", power_params)

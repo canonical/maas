@@ -39,6 +39,7 @@ from maasserver.testing.architecture import patch_usable_architectures
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
@@ -2157,10 +2158,12 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type, name="pod2")
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
+
+        with post_commit_hooks:
+            node1.bmc = pod1
+            node1.save()
+            node2.bmc = pod2
+            node2.save()
         self.assertConstrainedNodes([node1], {"pod": pod1.name})
         self.assertConstrainedNodes([node2], {"pod": pod2.name})
         self.assertConstrainedNodes([], {"pod": factory.make_name("pod")})
@@ -2176,10 +2179,12 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type, name="pod2")
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
+
+        with post_commit_hooks:
+            node1.bmc = pod1
+            node1.save()
+            node2.bmc = pod2
+            node2.save()
         self.assertConstrainedNodes([node2], {"not_pod": pod1.name})
         self.assertConstrainedNodes([node1], {"not_pod": pod2.name})
         self.assertConstrainedNodes(
@@ -2197,10 +2202,12 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type)
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
+
+        with post_commit_hooks:
+            node1.bmc = pod1
+            node1.save()
+            node2.bmc = pod2
+            node2.save()
         self.assertConstrainedNodes([node1], {"pod_type": pod1.power_type})
         self.assertConstrainedNodes([node2], {"pod_type": pod2.power_type})
         self.assertConstrainedNodes(
@@ -2218,10 +2225,12 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type)
-        node1.bmc = pod1
-        node1.save()
-        node2.bmc = pod2
-        node2.save()
+
+        with post_commit_hooks:
+            node1.bmc = pod1
+            node1.save()
+            node2.bmc = pod2
+            node2.save()
         self.assertConstrainedNodes([node2], {"not_pod_type": pod1.power_type})
         self.assertConstrainedNodes([node1], {"not_pod_type": pod2.power_type})
         self.assertConstrainedNodes(

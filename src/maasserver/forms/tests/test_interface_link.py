@@ -17,7 +17,7 @@ from maasserver.forms.interface_link import (
 from maasserver.models import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import get_one, reload_object
+from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 
 
 class TestInterfaceLinkForm(MAASServerTestCase):
@@ -298,7 +298,9 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertIsNotNone(
             get_one(
                 interface.ip_addresses.filter(
@@ -320,7 +322,9 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertIsNotNone(
             get_one(
                 interface.ip_addresses.filter(
@@ -342,7 +346,9 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertIsNotNone(
             get_one(
                 interface.ip_addresses.filter(
@@ -364,7 +370,9 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertIsNotNone(
             get_one(
                 interface.ip_addresses.filter(
@@ -383,7 +391,10 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             data={"mode": INTERFACE_LINK_TYPE.STATIC, "subnet": subnet.id},
         )
         self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         ip_address = get_one(
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
@@ -407,7 +418,10 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         ip_address = get_one(
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
@@ -431,7 +445,10 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         ip_address = get_one(
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
@@ -486,7 +503,10 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         link_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertIsNone(link_ip.ip)
         self.assertEqual(link_subnet, link_ip.subnet)
@@ -497,7 +517,10 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             instance=interface, data={"mode": INTERFACE_LINK_TYPE.LINK_UP}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         link_ip = get_one(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
         )
@@ -578,21 +601,30 @@ class TestInterfaceUnlinkForm(MAASServerTestCase):
     def test_DHCP_deletes_link_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         dhcp_subnet = factory.make_Subnet(vlan=interface.vlan)
-        interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
+
+        with post_commit_hooks:
+            interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
+
         interface = reload_object(interface)
         dhcp_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.DHCP)
         form = InterfaceUnlinkForm(instance=interface, data={"id": dhcp_ip.id})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         self.assertIsNone(reload_object(dhcp_ip))
 
     def test_STATIC_deletes_link_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip
-        )
+
+        with post_commit_hooks:
+            interface.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip
+            )
+
         interface = reload_object(interface)
         static_ip = get_one(
             interface.ip_addresses.filter(
@@ -603,21 +635,29 @@ class TestInterfaceUnlinkForm(MAASServerTestCase):
             instance=interface, data={"id": static_ip.id}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         self.assertIsNone(reload_object(static_ip))
 
     def test_LINK_UP_deletes_link(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        link_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            ip="",
-            subnet=subnet,
-            interface=interface,
-        )
+
+        with post_commit_hooks:
+            link_ip = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                ip="",
+                subnet=subnet,
+                interface=interface,
+            )
         form = InterfaceUnlinkForm(instance=interface, data={"id": link_ip.id})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         self.assertIsNone(reload_object(link_ip))
 
 

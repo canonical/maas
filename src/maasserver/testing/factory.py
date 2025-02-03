@@ -460,7 +460,9 @@ class Factory(maastesting.factory.Factory):
             parent=parent,
             **kwargs,
         )
-        node.save()
+
+        with post_commit_hooks:
+            node.save()
         if status == NODE_STATUS.EXITING_RESCUE_MODE:
             node._register_request_event(
                 user=None,
@@ -470,8 +472,11 @@ class Factory(maastesting.factory.Factory):
         if bmc is None and power_type:
             # These setters will overwrite the BMC, so don't use them if the
             # BMC was specified.
-            node.set_power_config(power_type, power_parameters or {})
-        self._save_node_unchecked(node)
+            with post_commit_hooks:
+                node.set_power_config(power_type, power_parameters or {})
+
+        with post_commit_hooks:
+            self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
         # number of VLAN identifiers (4,094) makes it very likely to
         # encounter collisions.
@@ -506,7 +511,9 @@ class Factory(maastesting.factory.Factory):
                 acquired=acquired,
             )
             node.boot_disk = root_partition.partition_table.block_device
-            node.save()
+
+            with post_commit_hooks:
+                node.save()
 
         # Setup the BMC connected to rack controller if a BMC is created.
         if bmc_connected_to is not None:
@@ -551,8 +558,10 @@ class Factory(maastesting.factory.Factory):
                 % (factory.ip_to_url_format(bmc_ip_address)),
                 "power_id": factory.make_name("power_id"),
             }
-            node.set_power_config("virsh", power_params)
-            node.save()
+
+            with post_commit_hooks:
+                node.set_power_config("virsh", power_params)
+                node.save()
 
         # Add owner data.
         OwnerData.objects.set_owner_data(node, owner_data)
@@ -584,7 +593,8 @@ class Factory(maastesting.factory.Factory):
             release_script_set.save()
             node.current_release_script_set = release_script_set
 
-            node.save()
+            with post_commit_hooks:
+                node.save()
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
         if updated is not None:
@@ -727,7 +737,9 @@ class Factory(maastesting.factory.Factory):
             ip_address=ip_address,
             **kwargs,
         )
-        bmc.save()
+
+        with post_commit_hooks:
+            bmc.save()
         return bmc
 
     def make_NodeMetadata(self, node=None, key=None, value=None, **kwargs):
@@ -778,13 +790,14 @@ class Factory(maastesting.factory.Factory):
             ip_address=ip_address,
             **kwargs,
         )
-        pod.save()
 
-        if host is not None:
-            pod.hints.nodes.add(host)
-        if cluster is not None:
-            pod.hints.cluster = cluster
-            pod.hints.save()
+        with post_commit_hooks:
+            pod.save()
+            if host is not None:
+                pod.hints.nodes.add(host)
+            if cluster is not None:
+                pod.hints.cluster = cluster
+                pod.hints.save()
 
         return pod
 
@@ -1305,17 +1318,24 @@ class Factory(maastesting.factory.Factory):
                     subnet=subnet,
                     **kwargs,
                 )
-                ipaddress.save()
+
+                with post_commit_hooks:
+                    ipaddress.save()
+
                 ip = None
                 alloc_type = IPADDRESS_TYPE.DHCP
 
         ipaddress = StaticIPAddress(
             ip=ip, alloc_type=alloc_type, user=user, subnet=subnet, **kwargs
         )
-        ipaddress.save()
+
+        with post_commit_hooks:
+            ipaddress.save()
+
         if interface is not None:
-            interface.ip_addresses.add(ipaddress)
-            interface.save(force_update=True)
+            with post_commit_hooks:
+                interface.ip_addresses.add(ipaddress)
+                interface.save(force_update=True)
         if dnsresource is not None:
             dnsresource.ip_addresses.add(ipaddress)
             dnsresource.save(force_update=True)
@@ -1863,20 +1883,24 @@ class Factory(maastesting.factory.Factory):
         if subnet is None and ip is not None:
             subnet = Subnet.objects.get_best_subnet_for_ip(ip)
         if subnet is not None:
-            sip = StaticIPAddress.objects.create(
-                ip=ip,
-                alloc_type=(
-                    IPADDRESS_TYPE.DHCP
-                    if ip is None
-                    else IPADDRESS_TYPE.STICKY
-                ),
-                subnet=subnet,
-            )
-            interface.ip_addresses.add(sip)
+            with post_commit_hooks:
+                sip = StaticIPAddress.objects.create(
+                    ip=ip,
+                    alloc_type=(
+                        IPADDRESS_TYPE.DHCP
+                        if ip is None
+                        else IPADDRESS_TYPE.STICKY
+                    ),
+                    subnet=subnet,
+                )
+                interface.ip_addresses.add(sip)
         if parents:
             for parent in parents:
                 InterfaceRelationship(child=interface, parent=parent).save()
-        interface.save(force_update=True)
+
+        with post_commit_hooks:
+            interface.save(force_update=True)
+
         if interface.type == INTERFACE_TYPE.PHYSICAL:
             self.make_NodeDevice(
                 bus=NODE_DEVICE_BUS.PCIE,

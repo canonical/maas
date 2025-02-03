@@ -36,9 +36,6 @@ class TestTriggers(MAASServerTestCase):
         triggers = [
             "regionrackrpcconnection_sys_core_rpc_insert",
             "regionrackrpcconnection_sys_core_rpc_delete",
-            "staticipaddress_sys_dhcp_staticipaddress_insert",
-            "staticipaddress_sys_dhcp_staticipaddress_update",
-            "staticipaddress_sys_dhcp_staticipaddress_delete",
             "interface_sys_dhcp_interface_update",
             "node_sys_dhcp_node_update",
             "dhcpsnippet_sys_dhcp_snippet_insert",

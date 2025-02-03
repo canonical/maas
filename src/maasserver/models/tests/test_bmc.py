@@ -54,7 +54,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.drivers.pod import (
@@ -129,7 +129,8 @@ class TestBMC(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
         )
         bmc_ip = ip_address.ip
-        ip_address.delete()
+        with post_commit_hooks:
+            ip_address.delete()
         bmc = factory.make_BMC(
             power_type="virsh",
             power_parameters={
@@ -249,7 +250,8 @@ class TestBMC(MAASServerTestCase):
 
         # Now delete the machine.
         old_ip = machine_ip.ip
-        machine.delete()
+        with post_commit_hooks:
+            machine.delete()
 
         # Check BMC still has old IP.
         bmc = reload_object(bmc)
@@ -284,10 +286,13 @@ class TestBMC(MAASServerTestCase):
         )
         new_ip = new_ip_address.ip
         # Remove IP so we can set machine_ip to its address.
-        new_ip_address.delete()
+        with post_commit_hooks:
+            new_ip_address.delete()
         self.assertNotEqual(new_ip, old_ip)
         machine_ip.ip = new_ip
-        machine_ip.save()
+
+        with post_commit_hooks:
+            machine_ip.save()
 
         # Check Machine has new IP address but kept same instance: machine_ip.
         machine = reload_object(machine)
@@ -311,17 +316,20 @@ class TestBMC(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=machine_ip.subnet
         )
         new_ip = new_ip_address.ip
-        # Remove IP so we can set machine_ip to its address.
-        new_ip_address.delete()
+
+        with post_commit_hooks:
+            # Remove IP so we can set machine_ip to its address.
+            new_ip_address.delete()
         self.assertNotEqual(new_ip, old_ip)
 
-        bmc.set_power_parameters(
-            {
-                "power_address": "protocol://%s:8080/path/to/thing#tag"
-                % (factory.ip_to_url_format(new_ip))
-            }
-        )
-        bmc.save()
+        with post_commit_hooks:
+            bmc.set_power_parameters(
+                {
+                    "power_address": "protocol://%s:8080/path/to/thing#tag"
+                    % (factory.ip_to_url_format(new_ip))
+                }
+            )
+            bmc.save()
 
         # Check Machine has old IP address and kept same instance: machine_ip.
         machine = reload_object(machine)
@@ -356,7 +364,8 @@ class TestBMC(MAASServerTestCase):
                 % (factory.ip_to_url_format(machine_ip.ip))
             }
         )
-        bmc.save()
+        with post_commit_hooks:
+            bmc.save()
 
         # Make sure BMC and Machine are using same StaticIPAddress instance.
         machine = reload_object(machine)
@@ -372,7 +381,8 @@ class TestBMC(MAASServerTestCase):
             },
         )
         ip = bmc.ip_address
-        bmc.delete()
+        with post_commit_hooks:
+            bmc.delete()
         self.assertEqual(0, StaticIPAddress.objects.filter(id=ip.id).count())
 
     def test_delete_deletes_bmc_secrets(self):
@@ -382,7 +392,8 @@ class TestBMC(MAASServerTestCase):
             "power-parameters", {"foo": "bar"}, obj=bmc
         )
 
-        bmc.delete()
+        with post_commit_hooks:
+            bmc.delete()
         self.assertIsNone(
             secret_manager.get_simple_secret(
                 "power-parameters", obj=bmc, default=None
@@ -518,7 +529,8 @@ class TestBMC(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet
         )
         sip.subnet = None
-        sip.save()
+        with post_commit_hooks:
+            sip.save()
         bmc = factory.make_BMC(
             power_type="virsh",
             power_parameters={
@@ -532,9 +544,10 @@ class TestBMC(MAASServerTestCase):
     def test_get_usable_rack_controllers_updates_handles_unknown_subnet(self):
         network = factory.make_ipv4_network()
         ip = factory.pick_ip_in_network(network)
-        sip = StaticIPAddress.objects.create(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip
-        )
+        with post_commit_hooks:
+            sip = StaticIPAddress.objects.create(
+                alloc_type=IPADDRESS_TYPE.STICKY, ip=ip
+            )
         bmc = factory.make_BMC(
             power_type="virsh",
             power_parameters={
@@ -997,7 +1010,8 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             tags=[discovered.tags[0]],
         )
         self.patch(pod, "sync_machines")
-        pod.sync(discovered, factory.make_User())
+        with post_commit_hooks:
+            pod.sync(discovered, factory.make_User())
         self.assertEqual(pod.architectures, discovered.architectures)
         self.assertEqual(pod.name, discovered.name)
         self.assertEqual(pod.version, discovered.version)
@@ -1038,7 +1052,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             },
         )
         self.patch(pod, "sync_machines")
-        pod.sync(discovered, factory.make_User())
+
+        with post_commit_hooks:
+            pod.sync(discovered, factory.make_User())
         self.assertNotIn("password", pod.get_power_parameters())
 
     def test_sync_pod_creates_new_machines_connected_to_default_vlan(self):
@@ -1594,15 +1610,17 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             block_devices=[],
             interfaces=[rmi, rmi2, rmi3],
         )
-        machine = pod.create_machine(
-            discovered_machine,
-            factory.make_User(),
-            interfaces=LabeledConstraintMap(
-                "maas0:vlan=id:%d;maas1:vlan=id:%d;maas2:ip=%s"
-                % (vlan.id, vlan2.id, ip3)
-            ),
-            requested_machine=requested_machine,
-        )
+
+        with post_commit_hooks:
+            machine = pod.create_machine(
+                discovered_machine,
+                factory.make_User(),
+                interfaces=LabeledConstraintMap(
+                    "maas0:vlan=id:%d;maas1:vlan=id:%d;maas2:ip=%s"
+                    % (vlan.id, vlan2.id, ip3)
+                ),
+                requested_machine=requested_machine,
+            )
         sip = StaticIPAddress.objects.filter(ip=ip).first()
         self.assertEqual(sip.get_interface().node_config.node, machine)
         sip2 = StaticIPAddress.objects.filter(ip=ip2).first()
@@ -1655,16 +1673,18 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             block_devices=[],
             interfaces=[rmi, rmi2, rmi3],
         )
-        machine = pod.create_machine(
-            discovered_machine,
-            factory.make_User(),
-            interfaces=LabeledConstraintMap(
-                "maas0:vlan=id:%d,mode=unconfigured;"
-                "maas1:vlan=id:%d,mode=unconfigured;"
-                "maas2:ip=%s,mode=unconfigured" % (vlan.id, vlan2.id, ip3)
-            ),
-            requested_machine=requested_machine,
-        )
+
+        with post_commit_hooks:
+            machine = pod.create_machine(
+                discovered_machine,
+                factory.make_User(),
+                interfaces=LabeledConstraintMap(
+                    "maas0:vlan=id:%d,mode=unconfigured;"
+                    "maas1:vlan=id:%d,mode=unconfigured;"
+                    "maas2:ip=%s,mode=unconfigured" % (vlan.id, vlan2.id, ip3)
+                ),
+                requested_machine=requested_machine,
+            )
         sip = StaticIPAddress.objects.filter(
             interface__name=rmi.ifname
         ).first()

@@ -23,7 +23,11 @@ from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled, RBACForceOffFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.orm import reload_object, transactional
+from maasserver.utils.orm import (
+    post_commit_hooks,
+    reload_object,
+    transactional,
+)
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
@@ -756,13 +760,16 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(user, {}, request)
         device = factory.make_Device(owner=user)
         mac = factory.make_mac_address()
-        updated_device = handler.create_interface(
-            {
-                "system_id": device.system_id,
-                "mac_address": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
-            }
-        )
+
+        with post_commit_hooks:
+            updated_device = handler.create_interface(
+                {
+                    "system_id": device.system_id,
+                    "mac_address": mac,
+                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
+                }
+            )
+
         self.assertEqual(updated_device["primary_mac"], mac)
         self.assertEqual(
             updated_device["ip_assignment"],
@@ -778,14 +785,16 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = factory.make_Device(owner=user)
         mac = factory.make_mac_address()
         ip_address = factory.make_ipv4_address()
-        updated_device = handler.create_interface(
-            {
-                "system_id": device.system_id,
-                "mac_address": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
-                "ip_address": ip_address,
-            }
-        )
+
+        with post_commit_hooks:
+            updated_device = handler.create_interface(
+                {
+                    "system_id": device.system_id,
+                    "mac_address": mac,
+                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
+                    "ip_address": ip_address,
+                }
+            )
         self.assertEqual(updated_device["primary_mac"], mac)
         self.assertEqual(
             updated_device["ip_assignment"],
@@ -804,14 +813,16 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = factory.make_Device(owner=user)
         mac = factory.make_mac_address()
         subnet = factory.make_Subnet()
-        updated_device = handler.create_interface(
-            {
-                "system_id": device.system_id,
-                "mac_address": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-                "subnet": subnet.id,
-            }
-        )
+
+        with post_commit_hooks:
+            updated_device = handler.create_interface(
+                {
+                    "system_id": device.system_id,
+                    "mac_address": mac,
+                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                    "subnet": subnet.id,
+                }
+            )
         self.assertEqual(updated_device["primary_mac"], mac)
         self.assertEqual(
             updated_device["ip_assignment"],
@@ -835,15 +846,18 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         mac = factory.make_mac_address()
         subnet = factory.make_Subnet()
         ip_address = factory.pick_ip_in_Subnet(subnet)
-        updated_device = handler.create_interface(
-            {
-                "system_id": device.system_id,
-                "mac_address": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-                "subnet": subnet.id,
-                "ip_address": ip_address,
-            }
-        )
+
+        with post_commit_hooks:
+            updated_device = handler.create_interface(
+                {
+                    "system_id": device.system_id,
+                    "mac_address": mac,
+                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                    "subnet": subnet.id,
+                    "ip_address": ip_address,
+                }
+            )
+
         self.assertEqual(updated_device["primary_mac"], mac)
         self.assertEqual(
             updated_device["ip_assignment"],
@@ -937,14 +951,17 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(user, {}, None)
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
-        handler.create_interface(
-            {
-                "system_id": node.system_id,
-                "name": name,
-                "mac_address": mac_address,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_interface(
+                {
+                    "system_id": node.system_id,
+                    "name": name,
+                    "mac_address": mac_address,
+                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC,
+                }
+            )
+
         self.assertEqual(
             1,
             node.current_config.interface_set.count(),
@@ -961,15 +978,18 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         subnet = factory.make_Subnet(vlan=vlan)
-        handler.create_interface(
-            {
-                "system_id": node.system_id,
-                "name": name,
-                "mac_address": mac_address,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
-                "subnet": subnet.id,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_interface(
+                {
+                    "system_id": node.system_id,
+                    "name": name,
+                    "mac_address": mac_address,
+                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.STATIC,
+                    "subnet": subnet.id,
+                }
+            )
+
         new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
@@ -986,15 +1006,17 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
         ip_address = factory.make_ip_address()
-        handler.create_interface(
-            {
-                "system_id": node.system_id,
-                "name": name,
-                "mac_address": mac_address,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
-                "ip_address": ip_address,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_interface(
+                {
+                    "system_id": node.system_id,
+                    "name": name,
+                    "mac_address": mac_address,
+                    "ip_assignment": DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL,
+                    "ip_address": ip_address,
+                }
+            )
         new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
@@ -1025,7 +1047,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         elif ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
             ip_address = factory.make_ip_address()
             params["ip_address"] = ip_address
-        handler.create_interface(params)
+
+        with post_commit_hooks:
+            handler.create_interface(params)
+
         interface = node.current_config.interface_set.first()
         self.assertIsNotNone(interface)
         new_name = factory.make_name("eth")
@@ -1045,7 +1070,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         elif new_ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
             new_ip_address = factory.make_ip_address()
             new_params["ip_address"] = new_ip_address
-        handler.update_interface(new_params)
+
+        with post_commit_hooks:
+            handler.update_interface(new_params)
+
         data = self.dehydrate_device(node, user)["interfaces"]
         self.assertEqual(1, len(data))
         self.assertEqual(data[0]["ip_assignment"], new_ip_assignment)
@@ -1068,7 +1096,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "mac_address": mac_address,
             "ip_assignment": ip_assignment,
         }
-        handler.create_interface(params)
+
+        with post_commit_hooks:
+            handler.create_interface(params)
         interface = node.current_config.interface_set.first()
         self.assertIsNotNone(interface)
         new_mac_address = factory.make_mac_address()

@@ -34,6 +34,10 @@ from django.db.models import (
 )
 from netaddr import IPAddress
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver import locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -56,6 +60,8 @@ from maasserver.utils.dns import (
     get_iface_name_based_hostname,
     get_ip_based_hostname,
 )
+from maasserver.utils.orm import post_commit_do
+from maasserver.workflow import start_workflow
 from provisioningserver.utils.enum import map_enum_reverse
 
 StaticIPAddress = TypeVar("StaticIPAddress")
@@ -931,6 +937,22 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     objects = StaticIPAddressManager()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._previous_subnet_id = None
+        self._previous_temp_expires_on = None
+        self._previous_ip = None
+        self._updated = False
+
+    def __setattr__(self, name, value):
+        if (
+            hasattr(self, f"_previous_{name}")
+            and getattr(self, f"_previous_{name}") is None
+        ):
+            setattr(self, f"_previous_{name}", getattr(self, name))
+            self._updated = True
+        super().__setattr__(name, value)
+
     def __str__(self):
         # Attempt to show the symbolic alloc_type name if possible.
         type_names = map_enum_reverse(IPADDRESS_TYPE)
@@ -1196,3 +1218,53 @@ class StaticIPAddress(CleanSave, TimestampedModel):
             .order_by("-id")
             .first()
         )
+
+    def save(self, *args, **kwargs):
+        configure_dhcp = self.alloc_type != IPADDRESS_TYPE.DISCOVERED and (
+            (self.id is None and self.ip)
+            or (
+                self.id is not None
+                and self._updated
+                and (
+                    self._previous_ip != self.ip
+                    or self._previous_temp_expires_on != self.temp_expires_on
+                    or self._previous_subnet_id != self.subnet_id
+                )
+            )
+        )
+
+        super().save(*args, **kwargs)
+
+        if configure_dhcp:
+            params = (
+                ConfigureDHCPParam(
+                    subnet_ids=[self._previous_subnet_id, self.subnet_id]
+                )
+                if self._previous_subnet_id
+                else ConfigureDHCPParam(static_ip_addr_ids=[self.id])
+            )
+
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=params,
+                task_queue="region",
+            )
+
+    def delete(self, *args, **kwargs):
+        subnet_id = self.subnet_id
+        alloc_type = self.alloc_type
+        temp_expires = self.temp_expires_on
+
+        super().delete(*args, **kwargs)
+
+        if (
+            alloc_type != IPADDRESS_TYPE.DISCOVERED
+            and temp_expires is not None
+        ):
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(subnet_ids=[subnet_id]),
+                task_queue="region",
+            )

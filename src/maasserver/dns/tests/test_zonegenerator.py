@@ -40,7 +40,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import post_commit_hooks, transactional
 from maastesting.factory import factory as maastesting_factory
 from maastesting.fakemethod import FakeMethod
 from provisioningserver.dns.config import DynamicDNSUpdate
@@ -1266,7 +1266,8 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             address_ttl=random.randint(300, 399),
         )
         boot_iface = node.get_boot_interface()
-        [boot_ip] = boot_iface.claim_auto_ips()
+        with post_commit_hooks:
+            [boot_ip] = boot_iface.claim_auto_ips()
         dnsrr = factory.make_DNSResource(
             name=node.hostname,
             domain=domain,
@@ -1323,7 +1324,9 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             address_ttl=random.randint(300, 399),
         )
         boot_iface = node.get_boot_interface()
-        [boot_ip] = boot_iface.claim_auto_ips()
+
+        with post_commit_hooks:
+            [boot_ip] = boot_iface.claim_auto_ips()
         dnsrr = factory.make_DNSResource(
             domain=domain, address_ttl=random.randint(400, 499)
         )

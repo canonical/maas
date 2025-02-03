@@ -33,6 +33,7 @@ from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.dns.commands import get_named_conf, setup_dns
 from provisioningserver.dns.config import (
     compose_config_path,
@@ -853,7 +854,10 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
         )
         resource.ip_addresses.add(ip2)
         message = f"DELETE-IP {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
-        resource.ip_addresses.first().delete()
+
+        with post_commit_hooks:
+            resource.ip_addresses.first().delete()
+
         result, _ = process_dns_update_notify(message)
         self.assertCountEqual(
             [

@@ -1233,15 +1233,16 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
 
         # Pre-claim the only addresses.
         with transaction.atomic():
-            StaticIPAddress.objects.allocate_new(
-                subnet, requested_address="10.0.0.1"
-            )
-            StaticIPAddress.objects.allocate_new(
-                subnet, requested_address="10.0.0.2"
-            )
-            StaticIPAddress.objects.allocate_new(
-                subnet, requested_address="10.0.0.3"
-            )
+            with post_commit_hooks:
+                StaticIPAddress.objects.allocate_new(
+                    subnet, requested_address="10.0.0.1"
+                )
+                StaticIPAddress.objects.allocate_new(
+                    subnet, requested_address="10.0.0.2"
+                )
+                StaticIPAddress.objects.allocate_new(
+                    subnet, requested_address="10.0.0.3"
+                )
 
         e = self.assertRaises(
             NodeActionError, Deploy(node, user, request).execute

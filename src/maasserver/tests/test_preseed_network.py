@@ -2137,7 +2137,10 @@ class TestNetplan(MAASServerTestCase):
                 ]
             ),
         )
-        node.set_initial_networking_configuration()
+
+        with post_commit_hooks:
+            node.set_initial_networking_configuration()
+
         v2 = self._render_netplan_dict(node)
         self.assertDictEqual(
             v2,

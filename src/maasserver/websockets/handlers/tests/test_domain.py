@@ -12,7 +12,7 @@ from netaddr import IPAddress
 from maasserver.models import DNSData, DNSResource, Domain, StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerPermissionError,
@@ -230,14 +230,17 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_dnsresource(
-            {
-                "domain": domain.id,
-                "name": name,
-                "address_ttl": ttl,
-                "ip_addresses": ["127.0.0.1"],
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_dnsresource(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "address_ttl": ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
+
         resource = DNSResource.objects.get(domain=domain, name=name)
         self.assertEqual(ttl, resource.address_ttl)
         self.assertEqual(name, resource.name)
@@ -250,15 +253,18 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         resource = factory.make_DNSResource(domain=domain)
         new_name = factory.make_hostname()
         new_ttl = randint(1, 3600)
-        handler.update_dnsresource(
-            {
-                "domain": domain.id,
-                "dnsresource_id": resource.id,
-                "name": new_name,
-                "address_ttl": new_ttl,
-                "ip_addresses": ["127.0.0.1"],
-            }
-        )
+
+        with post_commit_hooks:
+            handler.update_dnsresource(
+                {
+                    "domain": domain.id,
+                    "dnsresource_id": resource.id,
+                    "name": new_name,
+                    "address_ttl": new_ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
+
         resource = reload_object(resource)
         self.assertEqual(new_ttl, resource.address_ttl)
         self.assertEqual(new_name, resource.name)
@@ -500,14 +506,17 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_address_record(
-            {
-                "domain": domain.id,
-                "name": name,
-                "address_ttl": ttl,
-                "ip_addresses": ["127.0.0.1"],
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_address_record(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "address_ttl": ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
+
         resource = DNSResource.objects.get(domain=domain, name=name)
         self.assertEqual(ttl, resource.address_ttl)
         self.assertEqual(name, resource.name)
@@ -519,22 +528,23 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_address_record(
-            {
-                "domain": domain.id,
-                "name": name,
-                "address_ttl": ttl,
-                "ip_addresses": ["127.0.0.1"],
-            }
-        )
-        handler.create_address_record(
-            {
-                "domain": domain.id,
-                "name": name,
-                "address_ttl": ttl,
-                "ip_addresses": ["127.0.0.2"],
-            }
-        )
+        with post_commit_hooks:
+            handler.create_address_record(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "address_ttl": ttl,
+                    "ip_addresses": ["127.0.0.1"],
+                }
+            )
+            handler.create_address_record(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "address_ttl": ttl,
+                    "ip_addresses": ["127.0.0.2"],
+                }
+            )
         resource = DNSResource.objects.get(domain=domain, name=name)
         self.assertEqual(ttl, resource.address_ttl)
         self.assertEqual(name, resource.name)
@@ -565,16 +575,19 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         resource = factory.make_DNSResource(
             domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"]
         )
-        handler.update_address_record(
-            {
-                "domain": domain.id,
-                "dnsresource_id": resource.id,
-                "previous_name": resource.name,
-                "previous_rrdata": "127.0.0.1",
-                "name": name,
-                "ip_addresses": ["127.0.0.3"],
-            }
-        )
+
+        with post_commit_hooks:
+            handler.update_address_record(
+                {
+                    "domain": domain.id,
+                    "dnsresource_id": resource.id,
+                    "previous_name": resource.name,
+                    "previous_rrdata": "127.0.0.1",
+                    "name": name,
+                    "ip_addresses": ["127.0.0.3"],
+                }
+            )
+
         resource = reload_object(resource)
         self.assertCountEqual(
             resource.get_addresses(), ["127.0.0.2", "127.0.0.3"]
@@ -587,16 +600,19 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         resource = factory.make_DNSResource(
             domain=domain, name="foo", ip_addresses=["127.0.0.1", "127.0.0.2"]
         )
-        handler.update_address_record(
-            {
-                "domain": domain.id,
-                "dnsresource_id": resource.id,
-                "previous_name": resource.name,
-                "previous_rrdata": "127.0.0.1",
-                "name": "bar",
-                "ip_addresses": ["127.0.0.3"],
-            }
-        )
+
+        with post_commit_hooks:
+            handler.update_address_record(
+                {
+                    "domain": domain.id,
+                    "dnsresource_id": resource.id,
+                    "previous_name": resource.name,
+                    "previous_rrdata": "127.0.0.1",
+                    "name": "bar",
+                    "ip_addresses": ["127.0.0.3"],
+                }
+            )
+
         resource = reload_object(resource)
         self.assertEqual(["127.0.0.2"], resource.get_addresses())
         resource = DNSResource.objects.get(domain=domain, name="bar")
@@ -610,13 +626,16 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         resource = factory.make_DNSResource(
             domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"]
         )
-        handler.delete_address_record(
-            {
-                "domain": domain.id,
-                "dnsresource_id": resource.id,
-                "rrdata": "127.0.0.1",
-            }
-        )
+
+        with post_commit_hooks:
+            handler.delete_address_record(
+                {
+                    "domain": domain.id,
+                    "dnsresource_id": resource.id,
+                    "rrdata": "127.0.0.1",
+                }
+            )
+
         self.assertEqual(["127.0.0.2"], resource.get_addresses())
 
     def test_add_address_as_non_admin_fails(self):

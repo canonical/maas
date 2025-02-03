@@ -1,10 +1,11 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import datetime
 from random import randint, shuffle
 import threading
 from unittest import TestCase
-from unittest.mock import sentinel
+from unittest.mock import call, sentinel
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -13,6 +14,10 @@ from netaddr import IPAddress
 from psycopg2.errorcodes import FOREIGN_KEY_VIOLATION
 from twisted.python.failure import Failure
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver import locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -27,6 +32,7 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
+from maasserver.models import staticipaddress as static_ip_address_module
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import (
@@ -44,7 +50,11 @@ from maasserver.utils.dns import (
     get_iface_name_based_hostname,
     get_ip_based_hostname,
 )
-from maasserver.utils.orm import reload_object, transactional
+from maasserver.utils.orm import (
+    post_commit_hooks,
+    reload_object,
+    transactional,
+)
 from maasserver.websockets.base import dehydrate_datetime
 
 
@@ -87,7 +97,8 @@ class TestStaticIPAddressManager(MAASServerTestCase):
 
     def test_allocate_new_returns_ip_in_correct_range(self):
         subnet = factory.make_managed_Subnet()
-        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
+        with post_commit_hooks:
+            ipaddress = StaticIPAddress.objects.allocate_new(subnet)
         self.assertIsInstance(ipaddress, StaticIPAddress)
         self.assertTrue(
             subnet.is_valid_static_ip(ipaddress.ip),
@@ -97,16 +108,24 @@ class TestStaticIPAddressManager(MAASServerTestCase):
 
     def test_allocate_new_allocates_IPv6_address(self):
         subnet = factory.make_managed_Subnet(ipv6=True)
-        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
+
+        with post_commit_hooks:
+            ipaddress = StaticIPAddress.objects.allocate_new(subnet)
+
         self.assertIsInstance(ipaddress, StaticIPAddress)
         self.assertTrue(subnet.is_valid_static_ip(ipaddress.ip))
 
     def test_allocate_new_sets_user(self):
         subnet = factory.make_managed_Subnet()
         user = factory.make_User()
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            subnet=subnet, alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=user
-        )
+
+        with post_commit_hooks:
+            ipaddress = StaticIPAddress.objects.allocate_new(
+                subnet=subnet,
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+                user=user,
+            )
+
         self.assertEqual(user, ipaddress.user)
 
     def test_allocate_new_with_user_disallows_wrong_alloc_types(self):
@@ -143,38 +162,42 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         factory.make_IPRange(subnet, "10.0.0.2", "10.0.0.97")
         factory.make_StaticIPAddress("10.0.0.99", subnet=subnet)
         subnet = reload_object(subnet)
-        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
+        with post_commit_hooks:
+            ipaddress = StaticIPAddress.objects.allocate_new(subnet)
         self.assertEqual(ipaddress.ip, "10.0.0.98")
 
     def test_allocate_new_returns_requested_IP_if_available(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            subnet,
-            factory.pick_enum(
-                IPADDRESS_TYPE,
-                but_not=[
-                    IPADDRESS_TYPE.DHCP,
-                    IPADDRESS_TYPE.DISCOVERED,
-                    IPADDRESS_TYPE.USER_RESERVED,
-                ],
-            ),
-            requested_address="10.0.0.1",
-        )
+
+        with post_commit_hooks:
+            ipaddress = StaticIPAddress.objects.allocate_new(
+                subnet,
+                factory.pick_enum(
+                    IPADDRESS_TYPE,
+                    but_not=[
+                        IPADDRESS_TYPE.DHCP,
+                        IPADDRESS_TYPE.DISCOVERED,
+                        IPADDRESS_TYPE.USER_RESERVED,
+                    ],
+                ),
+                requested_address="10.0.0.1",
+            )
         self.assertEqual("10.0.0.1", ipaddress.ip)
 
     def test_allocate_new_raises_when_requested_IP_unavailable(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
-        requested_address = StaticIPAddress.objects.allocate_new(
-            subnet,
-            factory.pick_enum(
-                IPADDRESS_TYPE,
-                but_not=[
-                    IPADDRESS_TYPE.DHCP,
-                    IPADDRESS_TYPE.DISCOVERED,
-                    IPADDRESS_TYPE.USER_RESERVED,
-                ],
-            ),
-        ).ip
+        with post_commit_hooks:
+            requested_address = StaticIPAddress.objects.allocate_new(
+                subnet,
+                factory.pick_enum(
+                    IPADDRESS_TYPE,
+                    but_not=[
+                        IPADDRESS_TYPE.DHCP,
+                        IPADDRESS_TYPE.DISCOVERED,
+                        IPADDRESS_TYPE.USER_RESERVED,
+                    ],
+                ),
+            ).ip
 
         self.assertRaises(
             StaticIPAddressUnavailable,
@@ -311,11 +334,14 @@ class TestStaticIPAddressManager(MAASServerTestCase):
             "10.0.0.254",
             alloc_type=IPRANGE_TYPE.RESERVED,
         )
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            subnet,
-            requested_address="10.0.0.101",
-            restrict_ip_to_unreserved_ranges=False,
-        )
+
+        with post_commit_hooks:
+            ipaddress = StaticIPAddress.objects.allocate_new(
+                subnet,
+                requested_address="10.0.0.101",
+                restrict_ip_to_unreserved_ranges=False,
+            )
+
         self.assertEqual("10.0.0.101", ipaddress.ip)
 
 
@@ -325,6 +351,7 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
     scenarios = (("IPv4", dict(ip_version=4)), ("IPv6", dict(ip_version=6)))
 
     def test_allocate_new_works_under_extreme_concurrency(self):
+        self.patch(static_ip_address_module, "post_commit_do")
         ipv6 = self.ip_version == 6
         subnet = factory.make_managed_Subnet(ipv6=ipv6)
         count = 20  # Allocate this number of IP addresses.
@@ -895,7 +922,9 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             hostname=factory.make_name("host"), subnet=subnet
         )
         node.boot_interface = None
-        node.save()
+
+        with post_commit_hooks:
+            node.save()
         iface = node.get_boot_interface()
         iface2 = factory.make_Interface(node=node)
         iface3 = factory.make_Interface(node=node, vlan=iface2.vlan)
@@ -1245,7 +1274,8 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         ip0 = factory.pick_ip_in_network(cidrs[0])
         sip0.ip = ip0
         sip0.alloc_type = IPADDRESS_TYPE.AUTO
-        sip0.save()
+        with post_commit_hooks:
+            sip0.save()
         # Now create another interface, and give it a DISCOVERED IP of the
         # other family from subnets[1].
         iface1 = factory.make_Interface(node=node, vlan=subnets[1].vlan)
@@ -1254,7 +1284,9 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             subnet=subnets[1], ip=ip1, alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
         iface1.ip_addresses.add(sip1)
-        iface1.save()
+
+        with post_commit_hooks:
+            iface1.save()
         # The only mapping we should get is for the boot interface.
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
         expected_mapping = {
@@ -1284,7 +1316,9 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         ip0 = factory.pick_ip_in_network(cidrs[0])
         sip0.ip = ip0
         sip0.alloc_type = IPADDRESS_TYPE.STICKY
-        sip0.save()
+
+        with post_commit_hooks:
+            sip0.save()
         # Now create another interface, and give it a DISCOVERED IP of the
         # other family from subnets[1].
         iface1 = factory.make_Interface(node=node, vlan=subnets[1].vlan)
@@ -1456,6 +1490,148 @@ class TestStaticIPAddress(MAASServerTestCase):
         self.assertEqual(
             INTERFACE_LINK_TYPE.LINK_UP, ip.get_interface_link_type()
         )
+
+    def test_save_create_calls_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="10.0.0.1", subnet=subnet
+        )
+
+        with post_commit_hooks:
+            ip.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(static_ip_addr_ids=[ip.id]),
+            task_queue="region",
+        )
+
+    def test_save_new_subnet_calls_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet1 = factory.make_Subnet(cidr="10.0.0.0/20")
+        subnet2 = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="10.0.0.1", subnet=subnet1
+        )
+
+        with post_commit_hooks:
+            ip.save()
+            ip.subnet = subnet2
+            ip.save()
+
+        self.assertIn(
+            call(
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(subnet_ids=[subnet1.id, subnet2.id]),
+                task_queue="region",
+            ),
+            mock_start_workflow.mock_calls,
+        )
+
+    def test_save_new_ip_calls_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="", subnet=subnet
+        )
+
+        with post_commit_hooks:
+            ip.save()
+            ip.ip = "10.0.0.1"
+            ip.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(static_ip_addr_ids=[ip.id]),
+            task_queue="region",
+        )
+
+    def test_save_new_temp_expires_on_calls_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="10.0.0.1", subnet=subnet
+        )
+
+        with post_commit_hooks:
+            ip.save()
+            ip.temp_expires_on = datetime.now()
+            ip.save()
+
+        self.assertIn(
+            call(
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(static_ip_addr_ids=[ip.id]),
+                task_queue="region",
+            ),
+            mock_start_workflow.mock_calls,
+        )
+
+    def test_delete_calls_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="10.0.0.1",
+            subnet=subnet,
+            temp_expires_on=timezone.now(),
+        )
+
+        with post_commit_hooks:
+            ip.save()
+            ip.delete()
+
+        self.assertIn(
+            call(
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(subnet_ids=[subnet.id]),
+                task_queue="region",
+            ),
+            mock_start_workflow.mock_calls,
+        )
+
+    def test_discovered_ips_do_not_call_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="10.0.0.1", subnet=subnet
+        )
+
+        with post_commit_hooks:
+            ip.save()
+
+        mock_start_workflow.assert_not_called()
+
+    def test_delete_empty_ip_does_not_call_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            ip="10.0.0.1",
+            subnet=subnet,
+            temp_expires_on=None,
+        )
+
+        with post_commit_hooks:
+            ip.save()
+            ip.delete()
+
+        assert len(mock_start_workflow.mock_calls) == 1
 
 
 class TestUserReservedStaticIPAddress(MAASServerTestCase):

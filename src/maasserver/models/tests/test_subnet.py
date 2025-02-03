@@ -524,11 +524,13 @@ class TestSubnet(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
         )
         subnet.description = "foo"
-        subnet.save()
-        static_ip_2.delete()
-        subnet.delete()
-        iprange.delete()
-        static_ip.delete()
+
+        with post_commit_hooks:
+            subnet.save()
+            static_ip_2.delete()
+            subnet.delete()
+            iprange.delete()
+            static_ip.delete()
 
     def test_creates_subnet(self):
         name = factory.make_name("name")
@@ -1812,7 +1814,10 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         # ... but creating another single IP address in the subnet should push
         # it over the edge.
         self.assertEqual(self.expected_notification, notification_exists)
-        ip.delete()
+
+        with post_commit_hooks:
+            ip.delete()
+
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
         self.assertFalse(notification_exists)
