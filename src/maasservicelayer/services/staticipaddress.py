@@ -15,7 +15,6 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
-from maasservicelayer.models.base import Unset
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -129,18 +128,6 @@ class StaticIPAddressService(
             query=query, builder=builder
         )
 
-        if self._must_trigger_update_hook(builder):
+        if builder.must_trigger_workflow():
             await self.post_update_many_hook(updated_resources)
         return updated_resources
-
-    async def _must_trigger_update_hook(
-        self, builder: StaticIPAddressBuilder
-    ) -> bool:
-        # TODO: change this when refactoring builders and update_many
-        if (
-            not isinstance(builder.ip, Unset)
-            or not isinstance(builder.alloc_type, Unset)
-            or not isinstance(builder.subnet_id, Unset)
-        ):
-            return True
-        return False

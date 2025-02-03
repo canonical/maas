@@ -27,7 +27,6 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import Unset
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
@@ -123,17 +122,6 @@ class IPRangesService(
             query=query, builder=builder
         )
 
-        if self._must_trigger_update_hook(builder):
+        if builder.must_trigger_workflow():
             await self.post_update_many_hook(updated_resources)
         return updated_resources
-
-    async def _must_trigger_update_hook(self, builder: IPRangeBuilder) -> bool:
-        # TODO: change this when refactoring builders and update_many
-        if (
-            not isinstance(builder.start_ip, Unset)
-            or not isinstance(builder.end_ip, Unset)
-            or not isinstance(builder.type, Unset)
-            or not isinstance(builder.subnet_id, Unset)
-        ):
-            return True
-        return False

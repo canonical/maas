@@ -65,11 +65,11 @@ class TestCommonIPRangesService(ServiceCommonTests):
         service_instance.pre_create_hook = AsyncMock()
         return await super().test_create(service_instance, test_instance)
 
+    @pytest.mark.skip(reason="custom update many")
     async def test_update_many(
         self, service_instance, test_instance: MaasBaseModel
     ):
-        with pytest.raises(NotImplementedError):
-            await super().test_update_many(service_instance, test_instance)
+        pass
 
     async def test_delete_many(
         self, service_instance, test_instance: MaasBaseModel
@@ -250,6 +250,53 @@ class TestIPRangesService:
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
+
+    @pytest.mark.parametrize(
+        "builder, should_raise",
+        [
+            (IPRangeBuilder(type=IPRangeType.RESERVED), True),
+            (IPRangeBuilder(user_id=1), False),
+        ],
+    )
+    async def test_update_many(
+        self, builder: IPRangeBuilder, should_raise: bool
+    ):
+        ipranges = [
+            IPRange(
+                id=i,
+                type=IPRangeType.DYNAMIC,
+                start_ip=f"10.0.0.{i}",
+                end_ip=f"10.0.0.{i + 1}",
+                subnet_id=2,
+                created=utcnow(),
+                updated=utcnow(),
+            )
+            for i in range(2)
+        ]
+
+        mock_ipranges_repository = Mock(IPRangesRepository)
+        mock_ipranges_repository.update_many.return_value = ipranges
+
+        mock_temporal = Mock(TemporalService)
+
+        ipranges_service = IPRangesService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            dhcpsnippets_service=Mock(DhcpSnippetsService),
+            ipranges_repository=mock_ipranges_repository,
+        )
+
+        if should_raise:
+            with pytest.raises(NotImplementedError):
+                await ipranges_service.update_many(QuerySpec(), builder)
+        else:
+            await ipranges_service.update_many(QuerySpec(), builder)
+
+        mock_ipranges_repository.update_many.assert_called_once_with(
+            query=QuerySpec(), builder=builder
+        )
+
+        mock_temporal.register_or_update_workflow_call.assert_not_called()
 
     async def test_delete(self):
         iprange = IPRange(

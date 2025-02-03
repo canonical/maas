@@ -29,3 +29,13 @@ class IPRangeBuilder(ResourceBuilder):
     type: Union[IPRangeType, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
     user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+
+    def must_trigger_workflow(self) -> bool:
+        if (
+            not isinstance(self.start_ip, Unset)
+            or not isinstance(self.end_ip, Unset)
+            or not isinstance(self.type, Unset)
+            or not isinstance(self.subnet_id, Unset)
+        ):
+            return True
+        return False

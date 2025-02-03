@@ -14,6 +14,7 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -53,11 +54,11 @@ class TestCommonStaticIPAddressService(ServiceCommonTests):
             updated=now,
         )
 
+    @pytest.mark.skip(reason="custom update many")
     async def test_update_many(
         self, service_instance, test_instance: MaasBaseModel
     ):
-        with pytest.raises(NotImplementedError):
-            await super().test_update_many(service_instance, test_instance)
+        pass
 
     async def test_delete_many(
         self, service_instance, test_instance: MaasBaseModel
@@ -316,6 +317,53 @@ class TestStaticIPAddressService:
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
+
+    @pytest.mark.parametrize(
+        "builder, should_raise",
+        [
+            (StaticIPAddressBuilder(subnet_id=10), True),
+            (StaticIPAddressBuilder(user_id=10), False),
+        ],
+    )
+    async def test_update_many(
+        self, builder: StaticIPAddressBuilder, should_raise: bool
+    ) -> None:
+        now = utcnow()
+        ips = [
+            StaticIPAddress(
+                id=i,
+                ip=f"10.0.0.{i}",
+                lease_time=30,
+                subnet_id=1,
+                alloc_type=IpAddressType.AUTO,
+                created=now,
+                updated=now,
+            )
+            for i in range(2)
+        ]
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.update_many.return_value = ips
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        if should_raise:
+            with pytest.raises(NotImplementedError):
+                await staticipaddress_service.update_many(QuerySpec(), builder)
+        else:
+            await staticipaddress_service.update_many(QuerySpec(), builder)
+
+        mock_staticipaddress_repository.update_many.assert_called_once_with(
+            query=QuerySpec(),
+            builder=builder,
+        )
+        mock_temporal.register_or_update_workflow_call.assert_not_called()
 
     async def test_delete(self) -> None:
         now = utcnow()
