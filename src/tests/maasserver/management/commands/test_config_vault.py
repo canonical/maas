@@ -222,6 +222,8 @@ class TestMigrateSecrets:
         assert not Secret.objects.exists()
 
     def test_handle_migrate_stops_when_vault_is_enabled(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         get_vault_mock = mocker.patch.object(
             config_vault, "get_region_vault_client"
         )
@@ -231,6 +233,8 @@ class TestMigrateSecrets:
         get_vault_mock.assert_not_called()
 
     def test_handle_migrate_stops_when_no_client(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         mocker.patch.object(
             config_vault, "get_region_vault_client"
         ).return_value = None
@@ -240,6 +244,8 @@ class TestMigrateSecrets:
             Command()._handle_migrate({})
 
     def test_handle_migrate_stops_when_regions_unconfigured(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         mocker.patch.object(
             config_vault, "get_region_vault_client"
         ).return_value = MagicMock()
@@ -253,6 +259,8 @@ class TestMigrateSecrets:
             Command()._handle_migrate({})
 
     def test_handle_migrate_success(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         restart_mock = mocker.patch.object(Command, "_restart_regions")
         migrate_mock = mocker.patch.object(Command, "_migrate_secrets")
         client = MagicMock()
@@ -266,6 +274,8 @@ class TestMigrateSecrets:
         assert observed == "Successfully migrated cluster secrets to Vault"
 
     def test_handle_migrate_raises_when_client_check_fails(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         client = MagicMock()
         mocker.patch.object(
             config_vault, "get_region_vault_client"
@@ -348,7 +358,9 @@ class TestStatus:
             "unconfigured_regions": ["two"],
         }
 
-    def test_status_enabled(self, capsys):
+    def test_status_enabled(self, capsys, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         region_one = factory.make_RegionController(hostname="one")
         region_two = factory.make_RegionController(hostname="two")
         ControllerInfo(node=region_one, vault_configured=True).save()

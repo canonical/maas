@@ -38,8 +38,10 @@ from tests.maasapiserver.fixtures.db import Fixture
 @pytest.mark.usefixtures("maasdb")
 class TestGetTemporalQueueForMachine:
     def test_get_temporal_task_queue_for_bmc_machine_with_no_bmc(
-        self, factory
+        self, factory, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         machine = factory.make_Machine(bmc=None)
         machine.save()
         with pytest.raises(UnroutablePowerWorkflowException):

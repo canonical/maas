@@ -1130,7 +1130,9 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         )
         eth0 = node.get_boot_interface()
         eth0.name = "eth0"
-        eth0.save()
+        with post_commit_hooks:
+            eth0.save()
+
         eth1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth1", vlan=subnet.vlan
         )
@@ -1178,7 +1180,10 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         )
         eth0 = node.get_boot_interface()
         eth0.name = "eth0"
-        eth0.save()
+
+        with post_commit_hooks:
+            eth0.save()
+
         eth1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth1"
         )

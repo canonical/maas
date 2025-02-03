@@ -523,44 +523,6 @@ DHCP_ALERT = dedent(
     """
 )
 
-# Triggered when the interface name or MAC address is updated. Alerts
-# rack controllers on all managed VLAN's that the interface has a non
-# DISCOVERED IP address on.
-DHCP_INTERFACE_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_interface_update()
-    RETURNS trigger as $$
-    DECLARE
-      vlan maasserver_vlan;
-    BEGIN
-      -- Update VLAN if DHCP is enabled and the interface name or MAC
-      -- address has changed.
-      IF OLD.name != NEW.name OR OLD.mac_address != NEW.mac_address THEN
-        FOR vlan IN (
-          SELECT DISTINCT ON (maasserver_vlan.id)
-            maasserver_vlan.*
-          FROM
-            maasserver_vlan,
-            maasserver_subnet,
-            maasserver_staticipaddress,
-            maasserver_interface_ip_addresses AS ip_link
-          WHERE maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-          AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-          AND ip_link.interface_id = NEW.id
-          AND maasserver_staticipaddress.alloc_type != 6
-          AND maasserver_staticipaddress.ip IS NOT NULL
-          AND maasserver_staticipaddress.temp_expires_on IS NULL
-          AND host(maasserver_staticipaddress.ip) != ''
-          AND maasserver_vlan.id = maasserver_subnet.vlan_id)
-        LOOP
-          PERFORM sys_dhcp_alert(vlan);
-        END LOOP;
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
 
 # Triggered when the hostname of the node is changed. Alerts rack controllers
 # for all VLAN's that this interface has a non DISCOVERED IP address.
@@ -2189,12 +2151,6 @@ def register_system_triggers():
 
     # DHCP
     register_procedure(DHCP_ALERT)
-
-    # - Interface
-    register_procedure(DHCP_INTERFACE_UPDATE)
-    register_trigger(
-        "maasserver_interface", "sys_dhcp_interface_update", "update"
-    )
 
     # - Node
     register_procedure(DHCP_NODE_UPDATE)

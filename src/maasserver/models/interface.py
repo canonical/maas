@@ -36,6 +36,10 @@ from django.db.models.query import QuerySet
 from django.utils import timezone
 from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver.enum import (
     BRIDGE_TYPE,
     INTERFACE_LINK_TYPE,
@@ -55,7 +59,8 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.reservedip import ReservedIP
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import MAASQueriesMixin
+from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
+from maasserver.workflow import start_workflow
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import parse_integer
 
@@ -666,6 +671,18 @@ class Interface(CleanSave, TimestampedModel):
             self.__class__ = klass
         else:
             raise ValueError("Unknown interface type: %s" % type)
+
+        self._previous_name = None
+        self._previous_mac_address = None
+        self._updated = False
+
+    def __setattr__(self, name, value):
+        if hasattr(self, f"_previous_{name}") and (
+            getattr(self, f"_previous_{name}") is None
+        ):
+            setattr(self, f"_previous_{name}", getattr(self, name))
+            self._updated = True
+        super().__setattr__(name, value)
 
     @classmethod
     def get_type(cls):
@@ -1737,6 +1754,30 @@ class Interface(CleanSave, TimestampedModel):
             self.link_speed = 0
         super().save(*args, **kwargs)
         self._update_parents()
+
+        if (
+            self.id is not None
+            and self.vlan_id is not None
+            and (
+                self._updated
+                and (
+                    (
+                        self._previous_name != self.name
+                        and self._previous_name is not None
+                    )
+                    or (
+                        self._previous_mac_address != self.mac_address
+                        and self._previous_mac_address is not None
+                    )
+                )
+            )
+        ):
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(vlan_ids=[self.vlan_id]),
+                task_queue="region",
+            )
 
     def _update_parents(self):
         if self.type not in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):

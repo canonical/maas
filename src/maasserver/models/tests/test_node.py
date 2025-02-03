@@ -7951,7 +7951,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             INTERFACE_TYPE.BRIDGE, parents=[parent]
         )
         bridge.acquired = True
-        bridge.save()
+
+        with post_commit_hooks:
+            bridge.save()
+
         subnet = factory.make_Subnet(vlan=parent.vlan)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
@@ -7972,7 +7975,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             INTERFACE_TYPE.VLAN, parents=[interface]
         )
         vlan_if.acquired = True
-        vlan_if.save()
+
+        with post_commit_hooks:
+            vlan_if.save()
+
         subnet = factory.make_Subnet()
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
@@ -8280,7 +8286,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         # reset network intefaces from commissioning data
         @transactional
         def restore_network_interfaces():
-            node.restore_network_interfaces()
+            with post_commit_hooks:
+                node.restore_network_interfaces()
 
         restore_network_interfaces()
         self.assertCountEqual(
@@ -8348,7 +8355,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         # reset network intefaces from commissioning data
         @transactional
         def restore_network_interfaces():
-            node.restore_network_interfaces()
+            with post_commit_hooks:
+                node.restore_network_interfaces()
 
         restore_network_interfaces()
         self.assertCountEqual(
@@ -8384,7 +8392,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
 
         @transactional
         def restore_network_interfaces():
-            node.restore_network_interfaces()
+            with post_commit_hooks:
+                node.restore_network_interfaces()
 
         restore_network_interfaces()
 
@@ -8439,7 +8448,9 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         test_hooks.create_numa_nodes(node)
         iface_name = factory.make_name()
         factory.make_Interface(name=iface_name, node=node)
-        node.restore_network_interfaces()
+
+        with post_commit_hooks:
+            node.restore_network_interfaces()
         self.assertIn(
             iface_name,
             [iface.name for iface in node.current_config.interface_set.all()],
@@ -9723,7 +9734,10 @@ class TestNode_Start(MAASTransactionServerTestCase):
         rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
-        rackif.save()
+
+        with post_commit_hooks:
+            rackif.save()
+
         rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
 
         with post_commit_hooks:
@@ -9892,7 +9906,10 @@ class TestNode_Start(MAASTransactionServerTestCase):
         rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
-        rackif.save()
+
+        with post_commit_hooks:
+            rackif.save()
+
         rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
         with post_commit_hooks:
             rackif.link_subnet(
@@ -9947,7 +9964,10 @@ class TestNode_Start(MAASTransactionServerTestCase):
         rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
-        rackif.save()
+
+        with post_commit_hooks:
+            rackif.save()
+
         rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
 
         with post_commit_hooks:
@@ -10004,7 +10024,10 @@ class TestNode_Start(MAASTransactionServerTestCase):
         rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
-        rackif.save()
+
+        with post_commit_hooks:
+            rackif.save()
+
         rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
 
         with post_commit_hooks:
@@ -10091,7 +10114,10 @@ class TestNode_Start(MAASTransactionServerTestCase):
         rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
-        rackif.save()
+
+        with post_commit_hooks:
+            rackif.save()
+
         rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
 
         with post_commit_hooks:

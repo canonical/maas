@@ -14,6 +14,10 @@ from django.utils import timezone
 from fixtures import FakeLogger
 from netaddr import EUI, IPAddress, IPNetwork
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver.enum import (
     BRIDGE_TYPE,
     BRIDGE_TYPE_CHOICES,
@@ -374,7 +378,8 @@ class TestInterfaceManager(MAASServerTestCase):
             node=factory.make_Node(bmc=factory.make_Pod()),
         )
         iface.mac_address = None
-        iface.save()
+        with post_commit_hooks:
+            iface.save()
         self.assertEqual(iface.node_config.node.status, NODE_STATUS.BROKEN)
         iface.mac_address = factory.make_mac_address()
         PhysicalInterface.objects.resolve_missing_mac_address(iface)
@@ -388,7 +393,8 @@ class TestInterfaceManager(MAASServerTestCase):
             node=factory.make_Node(bmc=factory.make_Pod()),
         )
         iface.mac_address = None
-        iface.save()
+        with post_commit_hooks:
+            iface.save()
         self.assertEqual(iface.node_config.node.status, NODE_STATUS.BROKEN)
         self.assertRaises(
             ValidationError,
@@ -1331,6 +1337,47 @@ class TestInterface(MAASServerTestCase):
         interface.save()
         self.assertEqual(0, interface.link_speed)
 
+    def test_save_does_not_call_cofigure_dhcp_on_create(self):
+        mock_start_workflow = self.patch(interface_module, "start_workflow")
+        interface = Interface(
+            type=INTERFACE_TYPE.PHYSICAL,
+            name=f"{factory.make_name()}0",
+            mac_address=factory.make_mac_address(),
+            node_config=factory.make_NodeConfig(),
+        )
+        interface.save()
+        mock_start_workflow.assert_not_called()
+
+    def test_save_calls_configure_dhcp_if_name_changed(self):
+        mock_start_workflow = self.patch(interface_module, "start_workflow")
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
+        interface.name = factory.make_name()
+
+        with post_commit_hooks:
+            interface.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            task_queue="region",
+        )
+
+    def test_save_calls_configure_dhcp_if_mac_address_changed(self):
+        mock_start_workflow = self.patch(interface_module, "start_workflow")
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
+        interface.mac_address = factory.make_mac_address()
+
+        with post_commit_hooks:
+            interface.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            task_queue="region",
+        )
+
 
 class TestUpdateInterfaceParentsOnSave(MAASServerTestCase):
     scenarios = (
@@ -1721,7 +1768,9 @@ class TestPhysicalInterface(MAASServerTestCase):
         name = factory.make_name("eth")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         interface.name = name
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         interface = reload_object(interface)
         self.assertEqual(interface.name, name)
 
@@ -1971,7 +2020,10 @@ class TestVLANInterface(MAASServerTestCase):
             INTERFACE_TYPE.VLAN, parents=[parent]
         )
         parent.mac_address = factory.make_mac_address()
-        parent.save()
+
+        with post_commit_hooks:
+            parent.save()
+
         interface = reload_object(interface)
         self.assertEqual(parent.mac_address, interface.mac_address)
 

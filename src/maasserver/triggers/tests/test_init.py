@@ -92,7 +92,6 @@ class TestTriggersUsed(MAASServerTestCase):
         "interface_ip_addresses_sys_dns_nic_ip_unlink",
         "interface_ip_addresses_sys_dns_updates_interface_ip_insert",
         "interface_ip_addresses_sys_dns_updates_interface_ip_delete",
-        "interface_sys_dhcp_interface_update",
         "interface_sys_dns_interface_update",
         "interface_sys_dns_updates_maasserver_interface_delete",
         "node_sys_dhcp_node_update",

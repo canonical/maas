@@ -4872,7 +4872,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Create a MAC address that we know IS in the test dataset.
         interface_to_be_reassigned = factory.make_Interface(node=node1)
         interface_to_be_reassigned.mac_address = "00:00:00:00:00:01"
-        interface_to_be_reassigned.save()
+
+        with post_commit_hooks:
+            interface_to_be_reassigned.save()
 
         node2 = factory.make_Node()
 

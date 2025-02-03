@@ -20,7 +20,9 @@ FILE_SIZE = 50
 
 
 @pytest.fixture
-def controller(factory):
+def controller(factory, mocker):
+    mocker.patch("maasserver.utils.orm.post_commit_hooks")
+    mocker.patch("maasserver.utils.orm.post_commit_do")
     controller = factory.make_RegionRackController()
     yield controller
 

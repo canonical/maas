@@ -1278,7 +1278,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             pod_host.boot_interface.vlan.save()
 
         pod_host.boot_interface.sriov_max_vf = 1
-        pod_host.boot_interface.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.save()
 
         sriov_if = factory.make_Interface(
             node=pod_host,
@@ -1330,7 +1332,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             pod_host.boot_interface.vlan.save()
 
         pod_host.boot_interface.sriov_max_vf = 1
-        pod_host.boot_interface.save()
+
+        with post_commit_hooks:
+            pod_host.boot_interface.save()
 
         sriov_if = factory.make_Interface(
             node=pod_host,

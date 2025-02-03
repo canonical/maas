@@ -24,7 +24,9 @@ from provisioningserver.config import ClusterConfiguration
 
 
 @pytest.fixture
-def controller(factory):
+def controller(factory, mocker):
+    mocker.patch("maasserver.utils.orm.post_commit_hooks")
+    mocker.patch("maasserver.utils.orm.post_commit_do")
     controller = factory.make_RegionRackController()
     yield controller
 
@@ -255,13 +257,21 @@ class TestExportImagesFromDB:
 
 @pytest.mark.usefixtures("maasdb")
 class TestInitialiseImageStorage:
-    def test_empty(self, controller, image_store_dir: Path):
+    def test_empty(self, controller, image_store_dir: Path, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         initialize_image_storage(controller)
         assert list_files(image_store_dir) == {"bootloaders"}
 
     def test_remove_extra_files(
-        self, controller, image_store_dir: Path, tftp_root: Path
+        self,
+        controller,
+        image_store_dir: Path,
+        tftp_root: Path,
+        mocker,
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         extra_file = image_store_dir / "abcde"
         extra_file.write_text("some content")
         extra_dir = image_store_dir / "somedir"
@@ -278,8 +288,10 @@ class TestInitialiseImageStorage:
         assert not extra_symlink.exists()
 
     def test_remove_extra_symlink(
-        self, controller, image_store_dir: Path, tmp_path
+        self, controller, image_store_dir: Path, tmp_path, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         extra_dir = tmp_path / "somedir"
         extra_dir.mkdir(parents=True)
         extra_symlink = image_store_dir / "somelink"
@@ -289,8 +301,10 @@ class TestInitialiseImageStorage:
         assert not extra_symlink.exists()
 
     def test_missing_local_files(
-        self, controller, image_store_dir: Path, factory
+        self, controller, image_store_dir: Path, factory, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         resource = factory.make_usable_boot_resource()
         other = factory.make_usable_boot_resource()
         rset = resource.sets.first()
@@ -305,8 +319,10 @@ class TestInitialiseImageStorage:
         assert other.get_latest_complete_set() is not None
 
     def test_booloaders_export(
-        self, controller, tmpdir, image_store_dir, factory
+        self, controller, tmpdir, image_store_dir, factory, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name="grub-efi/uefi",
@@ -343,8 +359,10 @@ class TestInitialiseImageStorage:
         }
 
     def test_booloaders_export_already_exist(
-        self, controller, tmpdir, image_store_dir, factory
+        self, controller, tmpdir, image_store_dir, factory, mocker
     ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name="grub-efi/uefi",

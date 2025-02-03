@@ -18,7 +18,11 @@ def exec_workflow_mock(mocker):
 
 @pytest.mark.usefixtures("maasdb")
 class TestBootResourceFile:
-    def test_get_sync_source(self, bootres_file_partial_sync, region_cluster):
+    def test_get_sync_source(
+        self, bootres_file_partial_sync, region_cluster, mocker
+    ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
         assert bootres_file_partial_sync.has_complete_copy
         assert bootres_file_partial_sync.get_regions_with_complete_copy() == [
             region_cluster[0].system_id

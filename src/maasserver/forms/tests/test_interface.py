@@ -243,7 +243,10 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         self.assertEqual(interface.node_config, node.current_config)
         self.assertEqual(interface.mac_address, mac_address)
         self.assertEqual(interface.name, interface_name)
@@ -271,7 +274,10 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         self.assertEqual(interface.node_config.node, node)
         self.assertEqual(interface.numa_node, numa_node)
 
@@ -292,7 +298,10 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         self.assertEqual(interface.node_config, node.current_config)
         self.assertEqual(interface.mac_address, mac_address)
         self.assertEqual(interface.name, interface_name)
@@ -341,7 +350,9 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertIsNotNone(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
         )
@@ -410,7 +421,8 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+        with post_commit_hooks:
+            interface = form.save()
         self.assertEqual(vlan, interface.vlan)
 
     def test_rejects_parents(self):
@@ -448,7 +460,9 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertEqual(interface.name, new_name)
         self.assertEqual(interface.vlan, new_vlan)
         self.assertFalse(interface.enabled)
@@ -488,7 +502,10 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         self.assertEqual(interface.name, new_name)
         self.assertIsNone(interface.vlan)
         self.assertFalse(interface.enabled)
@@ -515,7 +532,9 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertEqual(
             {"mtu": mtu, "accept-ra": accept_ra},
             interface.params,
@@ -543,7 +562,8 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+        with post_commit_hooks:
+            interface = form.save()
         self.assertEqual(
             {"mtu": mtu, "accept-ra": accept_ra},
             interface.params,
@@ -620,7 +640,10 @@ class TestVLANInterfaceForm(MAASServerTestCase):
             data={"name": "myvlan", "vlan": vlan.id, "parents": [parent.id]},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         self.assertEqual("myvlan", interface.name)
         self.assertEqual(INTERFACE_TYPE.VLAN, interface.type)
         self.assertEqual(vlan, interface.vlan)
@@ -639,7 +662,9 @@ class TestVLANInterfaceForm(MAASServerTestCase):
             data={"vlan": vlan.id, "parents": [parent.id]},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertEqual("eth42.10", interface.name)
 
     def test_create_ensures_link_up(self):
@@ -650,7 +675,8 @@ class TestVLANInterfaceForm(MAASServerTestCase):
             data={"vlan": vlan.id, "parents": [parent.id]},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+        with post_commit_hooks:
+            interface = form.save()
         self.assertIsNotNone(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY)
         )
@@ -1391,7 +1417,9 @@ class TestBridgeInterfaceForm(MAASServerTestCase):
             data={"name": interface_name, "parents": [parent.id]},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertEqual(interface.name, interface_name)
         self.assertEqual(interface.type, INTERFACE_TYPE.BRIDGE)
         self.assertEqual(interface.mac_address, parent.mac_address)
@@ -1409,7 +1437,9 @@ class TestBridgeInterfaceForm(MAASServerTestCase):
             data={"name": interface_name, "parents": [parent.id]},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
         self.assertEqual(interface.name, interface_name)
         self.assertEqual(interface.type, INTERFACE_TYPE.BRIDGE)
         self.assertEqual(interface.mac_address, parent.mac_address)
@@ -1431,7 +1461,10 @@ class TestBridgeInterfaceForm(MAASServerTestCase):
             node=node, data={"name": interface_name, "parents": [bond0.id]}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        interface = form.save()
+
+        with post_commit_hooks:
+            interface = form.save()
+
         self.assertEqual(interface.name, interface_name)
         self.assertEqual(interface.type, INTERFACE_TYPE.BRIDGE)
         self.assertEqual(interface.mac_address, bond0.mac_address)

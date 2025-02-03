@@ -19,7 +19,9 @@ def bootresfile_size() -> int:
 
 
 @pytest.fixture
-def region_cluster(factory) -> list[RegionController]:
+def region_cluster(factory, mocker) -> list[RegionController]:
+    mocker.patch("maasserver.utils.orm.post_commit_hooks")
+    mocker.patch("maasserver.utils.orm.post_commit_do")
     cluster = [factory.make_RegionController() for _ in range(3)]
     yield cluster
 

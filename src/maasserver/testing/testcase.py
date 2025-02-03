@@ -26,6 +26,7 @@ from django.db import (
 )
 from django.db.utils import IntegrityError, OperationalError
 
+from maasserver.models import interface as interface_module
 from maasserver.models import iprange as iprange_module
 from maasserver.models import signals
 from maasserver.models import staticipaddress as staticipaddress_module
@@ -90,6 +91,7 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         self.patch(subnet_module, "start_workflow")
         self.patch(iprange_module, "start_workflow")
         self.patch(staticipaddress_module, "start_workflow")
+        self.patch(interface_module, "start_workflow")
         if self.mock_cache_boot_source:
             self.patch(signals.bootsources, "post_commit_do")
 

@@ -1879,7 +1879,9 @@ class Factory(maastesting.factory.Factory):
             neighbour_discovery_state=neighbour_discovery_state,
             mdns_discovery_state=mdns_discovery_state,
         )
-        interface.save()
+
+        with post_commit_hooks:
+            interface.save()
         if subnet is None and ip is not None:
             subnet = Subnet.objects.get_best_subnet_for_ip(ip)
         if subnet is not None:
