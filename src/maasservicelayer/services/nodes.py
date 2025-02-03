@@ -11,6 +11,7 @@ from maasservicelayer.db.repositories.nodes import (
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.secrets import SecretsService
 
 
@@ -19,10 +20,12 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
         self,
         context: Context,
         secrets_service: SecretsService,
+        scriptresults_service: ScriptResultsService,
         nodes_repository: AbstractNodesRepository,
     ):
         super().__init__(context, nodes_repository)
         self.secrets_service = secrets_service
+        self.scriptresults_service = scriptresults_service
 
     async def update_by_system_id(
         self, system_id: str, builder: NodeBuilder

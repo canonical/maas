@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from maasservicelayer.db.tables import ScriptResultTable
+from maasservicelayer.models.scriptresult import ScriptResult
 from metadataserver.enum import SCRIPT_STATUS
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -46,7 +47,7 @@ async def create_test_scriptresult_entry(
         "result": "",
         "script_set_id": script_set_id,
         "output": "",
-        "parameters": {},
+        "parameters": "{}",
         "suppressed": False,
     }
     scriptresult.update(extra_details)
@@ -55,4 +56,4 @@ async def create_test_scriptresult_entry(
         ScriptResultTable.name, scriptresult
     )
 
-    return created_scriptresult
+    return ScriptResult(**created_scriptresult)

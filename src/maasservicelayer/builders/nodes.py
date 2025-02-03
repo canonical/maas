@@ -19,6 +19,15 @@ class NodeBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    current_commissioning_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    current_installation_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    current_testing_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     id: Union[int, Unset] = Field(default=UNSET, required=False)
     owner_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
     power_state: Union[PowerState, Unset] = Field(

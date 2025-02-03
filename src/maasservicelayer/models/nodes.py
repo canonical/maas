@@ -19,3 +19,6 @@ class Node(MaasTimestampedBaseModel):
     power_state: PowerState
     power_state_updated: datetime | None
     owner_id: Optional[int] = None
+    current_commissioning_script_set_id: int | None = None
+    current_testing_script_set_id: int | None = None
+    current_installation_script_set_id: int | None = None

@@ -15,7 +15,7 @@ from maasservicelayer.db.repositories.nodes import (
 )
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.nodes import Node
-from maasservicelayer.services import NodesService
+from maasservicelayer.services import NodesService, ScriptResultsService
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.secrets import SecretsService
 from tests.maasservicelayer.services.base import ServiceCommonTests
@@ -29,6 +29,7 @@ class TestCommonNodesService(ServiceCommonTests):
             context=Context(),
             secrets_service=Mock(SecretsService),
             nodes_repository=Mock(NodesRepository),
+            scriptresults_service=Mock(ScriptResultsService),
         )
 
     @pytest.fixture
@@ -52,6 +53,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            scriptresults_service=Mock(ScriptResultsService),
         )
         builder = Mock(ResourceBuilder)
         result = await nodes_service.update_by_system_id(
@@ -70,6 +72,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            scriptresults_service=Mock(ScriptResultsService),
         )
         await nodes_service.move_to_zone(0, 0)
         nodes_repository_mock.move_to_zone.assert_called_once_with(0, 0)
@@ -81,6 +84,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            scriptresults_service=Mock(ScriptResultsService),
         )
         await nodes_service.move_bmcs_to_zone(0, 0)
         nodes_repository_mock.move_bmcs_to_zone.assert_called_once_with(0, 0)
@@ -93,6 +97,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            scriptresults_service=Mock(ScriptResultsService),
         )
         await nodes_service.get_bmc("aaaaaa")
         nodes_repository_mock.get_node_bmc.assert_called_once_with("aaaaaa")

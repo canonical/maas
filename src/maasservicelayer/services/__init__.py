@@ -39,6 +39,9 @@ from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
 )
+from maasservicelayer.db.repositories.scriptresults import (
+    ScriptResultsRepository,
+)
 from maasservicelayer.db.repositories.service_status import (
     ServiceStatusRepository,
 )
@@ -83,6 +86,7 @@ from maasservicelayer.services.notification_dismissal import (
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
+from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.secrets import (
     SecretsService,
     SecretsServiceFactory,
@@ -150,6 +154,7 @@ class ServiceCollectionV3:
     notifications_dismissal: NotificationDismissalService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
+    scriptresults: ScriptResultsService
     secrets: SecretsService
     service_status: ServiceStatusService
     spaces: SpacesService
@@ -188,9 +193,14 @@ class ServiceCollectionV3:
                 TemporalService.__name__, TemporalService.build_cache_object
             ),
         )
+        services.scriptresults = ScriptResultsService(
+            context=context,
+            scriptresults_repository=ScriptResultsRepository(context),
+        )
         services.nodes = NodesService(
             context=context,
             secrets_service=services.secrets,
+            scriptresults_service=services.scriptresults,
             nodes_repository=NodesRepository(context),
         )
         services.vmclusters = VmClustersService(
@@ -210,6 +220,7 @@ class ServiceCollectionV3:
         services.machines = MachinesService(
             context=context,
             secrets_service=services.secrets,
+            scriptresults_service=services.scriptresults,
             machines_repository=MachinesRepository(context),
         )
         services.events = EventsService(

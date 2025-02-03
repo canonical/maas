@@ -15,6 +15,7 @@ from maasservicelayer.models.base import ListResult, MaasBaseModel
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.machines import MachinesService
+from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
@@ -28,6 +29,7 @@ class TestCommonMachinesService(ServiceCommonTests):
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=Mock(MachinesRepository),
+            scriptresults_service=Mock(ScriptResultsService),
         )
 
     @pytest.fixture
@@ -67,6 +69,7 @@ class TestMachinesService:
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
+            scriptresults_service=Mock(ScriptResultsService),
         )
         usb_devices_list = await machines_service.list_machine_usb_devices(
             system_id="dummy", page=1, size=1
@@ -86,6 +89,7 @@ class TestMachinesService:
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
+            scriptresults_service=Mock(ScriptResultsService),
         )
         pci_devices_list = await machines_service.list_machine_pci_devices(
             system_id="dummy", page=1, size=1
@@ -106,6 +110,7 @@ class TestMachinesService:
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
+            scriptresults_service=Mock(ScriptResultsService),
         )
         result = await machines_service.count_machines_by_statuses()
         assert result is return_value

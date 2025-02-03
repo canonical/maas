@@ -7,6 +7,7 @@ from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import PciDevice, UsbDevice
 from maasservicelayer.services.nodes import NodesService
+from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.secrets import SecretsService
 
 
@@ -15,9 +16,15 @@ class MachinesService(NodesService):
         self,
         context: Context,
         secrets_service: SecretsService,
+        scriptresults_service: ScriptResultsService,
         machines_repository: MachinesRepository,
     ):
-        super().__init__(context, secrets_service, machines_repository)
+        super().__init__(
+            context,
+            secrets_service,
+            scriptresults_service,
+            machines_repository,
+        )
         self.machines_repository = machines_repository
 
     async def list_machine_usb_devices(

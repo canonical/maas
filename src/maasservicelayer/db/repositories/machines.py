@@ -74,6 +74,9 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
                 NodeTable.c.hostname,
                 NodeTable.c.power_state,
                 NodeTable.c.owner_id,
+                NodeTable.c.current_commissioning_script_set_id,
+                NodeTable.c.current_testing_script_set_id,
+                NodeTable.c.current_installation_script_set_id,
                 BMCTable.c.power_type,
                 func.concat(
                     NodeTable.c.hostname, ".", DomainTable.c.name

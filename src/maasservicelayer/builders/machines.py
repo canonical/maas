@@ -25,6 +25,15 @@ class MachineBuilder(ResourceBuilder):
     cpu_count: Union[int, Unset] = Field(default=UNSET, required=False)
     cpu_speed: Union[int, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    current_commissioning_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    current_installation_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    current_testing_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     description: Union[str, Unset] = Field(default=UNSET, required=False)
     distro_series: Union[str, Unset] = Field(default=UNSET, required=False)
     fqdn: Union[str, Unset] = Field(default=UNSET, required=False)
