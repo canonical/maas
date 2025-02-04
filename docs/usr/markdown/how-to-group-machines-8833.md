@@ -174,7 +174,7 @@ To add a VM host to a resource pool:
 
 With the UI in all other versions of MAAS, you can add a VM host to a resource pool when you create a new VM host, or you can edit the VM host's configuration:
 
-![image](https://assets.ubuntu.com/v1/84a89952-nodes-resource-pools__2.5_pod_to_pool.png)
+![image](upload://iVyflPdm8pbbeVtTUQ2stCCk9uC.png)
 
 * Via the MAAS CLI, use the following command:
 
@@ -190,7 +190,7 @@ To remove a VM host from a resource pool:
 
 * With the UI in all other versions of MAAS, edit the VM host's configuration and assign it to the "default" resource pool:
 
-![image](https://assets.ubuntu.com/v1/84a89952-nodes-resource-pools__2.5_pod_to_pool.png)
+![image](upload://iVyflPdm8pbbeVtTUQ2stCCk9uC.png)
 
 * Via the MAAS CLI, use the following command:
 

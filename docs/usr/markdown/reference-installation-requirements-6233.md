@@ -8,7 +8,7 @@ If you plan to use LXD to create virtual machines with MAAS, you need to use LXD
 
 ## PostgreSQL
 
-From version 3.5, MAAS [requires PostgreSQL 14 or higher](/t/postgresql-deprecation-notices/8089), as well as a change in the allowed PostgreSQL default user.
+From version 3.5, MAAS [requires PostgreSQL 14](/t/postgresql-deprecation-notices/8089), as well as a change in the allowed PostgreSQL default user.
 
 > **Warning**: Default configuration of PostgreSQL may not be enough for MAAS 3.5 HA deployments, as MAAS now requires more connections towards your database.  For every Region Controller you need to consider at least an additional 20 connections. A safer move would be to have +50 for every Region Controller.  You can check your current settings using `psql` or by getting information from the configuration file.  Both methods are demonstrated below.
 
@@ -54,7 +54,7 @@ That will lead to variety of issues, so please make sure you've configured enoug
 
 Time sync complications can arise between Ubuntu's default `systemd-timesyncd` and MAAS `chrony`. If the NTP servers differ, you're asking for trouble. Consult the MAAS [installation guide](/t/how-to-install-maas/5128) for solutions.
 
-## Test environment
+## Test environment {#custom-id}
 
 For a single-host test setup assuming the latest two Ubuntu LTS releases:
 

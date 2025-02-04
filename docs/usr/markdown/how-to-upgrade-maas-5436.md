@@ -11,7 +11,7 @@ Upgrade your MAAS setup using this page.
 **For a region+rack setup**, run this command:
 
 ```nohighlight
-sudo snap refresh maas
+sudo snap refresh maas --channel=3.5/stable
 ```
 
 Be sure to input your password. Your snap will update to the 3.5 channel, no MAAS re-initialisation required.
@@ -20,7 +20,13 @@ Be sure to input your password. Your snap will update to the 3.5 channel, no MAA
 
 ### Upgrading MAAS 2.9++ to 3.5
 
-Before updating to MAAS 3.5, keep in mind that PostgreSQL 12 support has been phased out. You must [upgrade to PostgreSQL 14](/t/how-to-upgrade-postgresql-v12-to-v14/7203) beforehand.
+Before updating to MAAS 3.5, keep in mind that PostgreSQL 12 support has been phased out. You must [upgrade to PostgreSQL 14](/t/how-to-upgrade-postgresql-v12-to-v14/7203) beforehand.  
+
+Once that's done, add the PPA (ignore any errors here):
+
+```nohighlight
+sudo apt-add-repository ppa:maas/3.5
+```
 
 If you're running MAAS versions 2.9 to 3.3, first check the Ubuntu version with `lsb_release -a`. Look for "22.04" as the release and "Jammy" as the codename.
 

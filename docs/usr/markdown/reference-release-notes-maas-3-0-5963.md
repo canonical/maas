@@ -44,13 +44,13 @@ New features for MAAS 3.0 release candidate 1.
 
 The logs and events tabs have combined and now live under "Logs". In addition to a number of small improvements, navigating and displaying events has been made easier.
 
-![image](https://discourse.maas.io/uploads/default/optimized/2X/4/497fd5d03ece0308648db33cf144f4cfefc6e5ed_2_690x465.png)
+![image](upload://zvQSdbcenjYrkYsq2mtDx8UCGgS.png)
 
 #### Downloading logs
 
 A helpful new feature is the ability to download the machine and installation output, and if a machine has failed deployment you can now download a full tar of the curtain logs.
 
-![image](https://discourse.maas.io/uploads/default/optimized/2X/f/fe9df81b810fa3dd502b303b08978d1c60bff933_2_690x465.png)
+![image](upload://m0CtHR0E4GvNFqRQkcfcFpeSCId.png)
 
 ### Disabling boot methods
  

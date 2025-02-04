@@ -105,8 +105,6 @@ maas admin tags read | jq -r '(["tag_name","tag_comment","kernel_options"] |(.,m
 
 ## Enable hardware sync (MAAS 3.2+)
 
-On MAAS versions 3.2 and higher, you can [enable hardware sync](/t/-7903) for machines that are running, but not connected to MAAS. 
-
 To enable hardware sync:
 
 - **MAAS 3.4+ UI:**  

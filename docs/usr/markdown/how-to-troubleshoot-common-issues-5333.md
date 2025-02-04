@@ -2,7 +2,6 @@
 
 ## MAAS OS deployment failing with cloud-init error
 
-<!-- add to main doc -->
 **Problem:**
 Deployment of a JUJU controller or an OS directly on a node fails with the error "cloud-init Data source not found."
 
@@ -91,7 +90,6 @@ By following these steps and checking these configurations, you should be able t
 
 ## Decoupling DNS from MAAS and resolving configuration issues
 
-<!-- include in main doc -->
 **Problem:**
 MAAS restarted after an update, causing DNS to fail due to duplicate subnets and configurations. This led to BIND9 failing to start, creating repeated crashes and restarts of the DNS service.
 
@@ -161,7 +159,6 @@ By following these steps, you can decouple DNS from MAAS, resolve configuration 
 
 ## Configuring the second NIC for external DHCP in MAAS
 
-<!-- include in main doc -->
 **Problem:**
 You have managed to deploy machines with two NICs using MAAS. The first NIC uses PXE/DHCP, but configuring the second NIC to use external DHCP is proving challenging.
 
@@ -222,7 +219,6 @@ By following these steps, you should be able to configure the second NIC on a ma
 
 ## MAAS setup with existing/external DHCP
 
-<!-- include in main doc -->
 **Problem:**
 A user was trying to set up MAAS with an existing DHCP server on an Edgerouter 12. However, when attempting to PXE boot machines, they received a 'no media found' error. The goal was to use MAAS without creating VLANs or replacing the existing DHCP server.
 
@@ -273,7 +269,6 @@ By following these steps, you can configure MAAS to work with an existing DHCP s
 
 ## Configuring multiple NICs on a machine with MAAS
 
-<!-- include in main doc -->
 **Problem:**
 You want to configure a machine with two NICs. NIC #1 is connected to a private subnet managed by MAAS, while NIC #2 is connected to a public subnet used for internet access. The user struggled to find a way to configure NIC #2 through the MAAS UI.
 
@@ -341,7 +336,6 @@ By following these steps, you should be able to configure both NICs on your mach
 
 ## Manual DHCP Allocation with MAAS
 
-<!-- include in main doc -->
 **Problem:**
 A casual user is considering using MAAS for his homelab, primarily for learning configuration and deployment of containers on Raspberry Pi clusters. He has traditionally used manual DHCP allocations for server IP addresses to simplify IP address management and DNS. He is concerned whether this approach will conflict with MAAS's use of DHCP.
 
@@ -447,7 +441,6 @@ By following these steps, you should be able to diagnose and resolve the issues 
 
 ## Setting up an upstream DNS for external DNS resolution in MAAS
 
-<!-- include in main doc -->
 **Problem:**
 You have set up a MAAS environment with DHCP and DNS enabled. However, your MAAS-deployed devices are unable to resolve hostnames using upstream DNS. Specifically, you are trying to resolve the hostname "grafana" but it only resolves via IP.
 
@@ -539,7 +532,6 @@ By following these steps, your MAAS-deployed devices should be able to resolve h
 
 ## Unable to commission server - cloud-init error: "Can not apply stage final, no datasource found!"
 
-<!-- include in main doc -->
 **Problem:**
 You are experiencing an issue where newly commissioned servers in your MAAS 3.1 environment fail with the cloud-init error "Can not apply stage final, no datasource found!" This problem is preventing you from commissioning new servers while your existing OpenStack environment has been running properly for some time.
 
@@ -1748,7 +1740,6 @@ By following these steps, you can diagnose and resolve the issue of clients rece
 
 ## HA DHCP for relayed subnets
 
-<!-- include in main doc -->
 **Problem:**
 Implementing high availability (HA) for DHCP in relayed subnets using MAAS is not straightforward, and the standard architecture restricts adding a secondary rack controller in these scenarios.
 
@@ -1817,7 +1808,6 @@ By following these steps, you can set up HA for DHCP in relayed subnets using MA
 
 ## External DHCP configuration
 
-<!-- include in main doc -->
 **Problem:**
 MAAS passes the commissioning and deployment stages but gets stuck in the "rebooting" stage with an `errno 101 network is unreachable` error. This issue may be related to the external DHCP configuration.
 
@@ -2634,7 +2624,7 @@ sudo tar -C xenial -xpSf xenial-server-cloudimg-amd64-root.tar.gz --numeric-owne
 Create a SHA-512 hashed password:
 
 ```nohighlight
-python3 -c 'import passlib.hash; print(passlib.hash.sha512_crypt.hash("ubuntu"))'
+python3 -c 'import crypt; print(crypt.crypt("ubuntu", crypt.mksalt(crypt.METHOD_SHA512)))'
 ```
 
 Modify the `xenial/etc/shadow` file to insert this hash.
@@ -2701,4 +2691,4 @@ on u.id = c.user_id
 where key = 'your-leaked-api-key';
 ```
 
-	To remove the leaked API key, log in to the MAAS UI and delete it. Then reconfigure your MAAS CLI and hardware sync as needed.
+To remove the leaked API key, log in to the MAAS UI and delete it. Then reconfigure your MAAS CLI and hardware sync as needed.

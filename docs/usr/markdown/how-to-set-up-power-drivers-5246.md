@@ -42,11 +42,11 @@ You may also like to try [maaspower](https://gilesknap.github.io/maaspower/main/
 
 To configure a machine's power type, click on the machine from the 'Machines' page of the web UI, then select its 'Configuration' tab. Scroll down until you find the Power configuration. If the power type is undefined, the following will be displayed:
 
-![image](https://assets.ubuntu.com/v1/4fae5977-nodes-power-types__2.4_undefined.png)
+![image](upload://bmTgfRdqvcU7daTHviqxmyX0qSY.png)
 
 Choose a type in the drop-down menu that corresponds to the machine's underlying machine's BMC card.
 
-![image](https://assets.ubuntu.com/v1/b53c6613-nodes-power-types__2.4_selection.png)
+![image](upload://pRhPcwG91d7U3gHhhXbMC1vUFl0.png)
 
 Fill in the resulting form; the information required will depends on the power type:
 
@@ -78,7 +78,7 @@ See the [power catalogue](/t/how-to-set-up-power-drivers/5146) for detailed para
 
 Click 'Save changes' to finish. Once that's done, MAAS performs a power check on the machine. A successful power check is a good indication that MAAS can properly communicate with the machine, that is, it should quickly result in a power status of "Power off". A failed attempt will show:
 
-![image](https://assets.ubuntu.com/v1/3bd5e93b-nodes-power-types__2.4_power-error.png)
+![image](upload://8xktkC3LBHrHLRgEFzs6AFDjrrn.png)
 
 If you see this error, double-check your entered values by editing the power type, or  consider another power type altogether.
 

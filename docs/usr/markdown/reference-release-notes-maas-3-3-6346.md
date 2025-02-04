@@ -6,6 +6,24 @@ These are the release notes for MAAS 3.3.
 
 This section recaps the version history of MAAS version 3.3.
 
+### MAAS 3.3.9 has been released
+
+We are happy to announce  that MAAS 3.3.9 has been released.
+This  is  a  maintenance  release,  with  no  new  features, providing the following bug fixes:
+
+- [2004661](https://bugs.launchpad.net/maas/+bug/2004661)**^**: implement exponential backoff retry in the redfish power driver. We retry up to 6 times the requests to redfish before giving up. With this change the rackd is going to be more fault tolerant to whatever failure might happen.
+- [2058063](https://bugs.launchpad.net/maas/+bug/2058063)**^**: regiond and rackd showing different versions
+- [2040324](https://bugs.launchpad.net/maas/+bug/2040324)**^**:  distro_series and osystem check based on node status
+
+### MAAS 3.3.8 has been released
+
+We are happy to announce  that MAAS 3.3.8 has been released.
+This  is  a  maintenance  release,  with  no  new  features, providing the following bug fixes:
+
+- [2029522](https://bugs.launchpad.net/maas/+bug/2029522)**^**: stacktrace on _reap_extra_connection()
+- [2031482](https://bugs.launchpad.net/maas/+bug/2031482)**^**: Subnet changed to wrong fabric, impacting DHCP
+
+
 ### MAAS 3.3.7 has been released
 
 We are happy to announce  that MAAS 3.3.7 has been released.
@@ -415,7 +433,7 @@ maas $PROFILE events query limit=20 \
 | jq -r '(["USERNAME","NODE","HOSTNAME","LEVEL","DATE","TYPE","EVENT"] | 
 (., map(length*"-"))),
 (.events[] | [.username,.node,.hostname,.level,.created,.type,.description]) 
-| @tsv' | column -t -s$'\t'
+| @tsv' | column -t -s\t'
 ```
 
 And finally, we provided some detailed usage examples. For instance, we walked a MAAS machine called `fun-zebra` through the following states:
@@ -430,7 +448,7 @@ And finally, we provided some detailed usage examples. For instance, we walked a
 We used this example command:
 
 ```nohighlight
- maas $PROFILE events query level=INFO hostname=fun-zebra limit=1000 | jq -r '(["USERNAME","NODE","HOSTNAME","LEVEL","DATE","TYPE","EVENT"] | (., map(length*"-"))),(.events[] | [.username,.node,.hostname,.level,.created,.type,.description]) | @tsv' | column -t -s$'\t'
+ maas $PROFILE events query level=INFO hostname=fun-zebra limit=1000 | jq -r '(["USERNAME","NODE","HOSTNAME","LEVEL","DATE","TYPE","EVENT"] | (., map(length*"-"))),(.events[] | [.username,.node,.hostname,.level,.created,.type,.description]) | @tsv' | column -t -s\t'
 ```
 
 This gave us a reasonably thorough report of what happened to the machine:
@@ -502,7 +520,7 @@ $ maas $PROFILE events query level=AUDIT after=0 limit=20 \
 | jq -r '(["USERNAME","HOSTNAME","DATE","EVENT"] | 
 (., map(length*"-"))),
 (.events[] | [.username,.hostname,.created,.description]) 
-| @tsv' | column -t -s$'\t'
+| @tsv' | column -t -s\t'
 ```
 
 By itself, such a command might produce output similar to this:

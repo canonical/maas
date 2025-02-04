@@ -24,4 +24,4 @@ Contemporary cloud networks use a spine-and-leaf architecture of inexpensive, un
 
 Moving packets using IP addresses is simple. Packet forwarding, though, still hops messages to the destination. Routing algorithms need to be very efficient; currently, that efficient algorithm is multicast routing. A single packet can serve multiple servers efficiently, but only those interested in receiving it. With multicast, only the designated Network Interface Cards (NICs) process the packets, making it a perfect fit for scalable operations like software updates or database refreshes.
 
-For example, IPv6 has fully embraced multicast, replacing ARP with neighbour discovery protocols for better efficiency and scaling.
+For example, IPv6 has fully embraced multicast, replacing ARP with neighbor discovery protocols for better efficiency and scaling.

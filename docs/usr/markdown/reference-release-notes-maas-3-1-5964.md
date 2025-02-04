@@ -361,7 +361,7 @@ from which you can continue with normal LXD KVM setup.
 
 Suppose that, after identifying your LXD KVM, you choose "Provide certificate and private key". When you do so, the screen will extend to allow you to upload these items:
 
-![image](https://discourse.maas.io/uploads/default/optimized/2X/a/ad3f6fd06fdef3ce5be467816b2fc3667550f397_2_690x204.png)
+![image](upload://5J5yTzf8p1wHMmyaB8Af6rRBTPC.png)
 
 Paste or upload your certificate and private key, then click "Next" to validate your authentication criteria, before continuing through the normal LXD KVM creation process. If your certificate and/or key aren't usable for some reason, MAAS will return an error (in this case, the private key was entered as gibberish, to produce an error output):
 

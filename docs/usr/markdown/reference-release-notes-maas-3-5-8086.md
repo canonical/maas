@@ -1,3 +1,47 @@
+## Release history
+
+This section recaps the release history of MAAS version 3.5.
+
+### MAAS 3.5.3 has been released
+
+We are happy to announce that MAAS 3.5.3 has been released, with the following bug fixes
+ - [2040324](https://bugs.launchpad.net/maas/3.5/+bug/2040324)**^** : Power configuration change fails with <image> is not a valid distro series error
+ - [2058496](https://bugs.launchpad.net/maas/3.5/+bug/2058496)**^** : Commissioning failed during 1st pxe install 24.04
+ - [2072155](https://bugs.launchpad.net/maas/3.5/+bug/2072155)**^** : Discovered ip addresses mapped to an invalid name (ending with -)
+ - [2055347](https://bugs.launchpad.net/maas/3.5/+bug/2055347)**^** : MAAS IPMI k_g validation error
+ - [2073501](https://bugs.launchpad.net/maas/3.5/+bug/2073501)**^** : Bionic not available for commissioning on pro-enabled systems
+ - [2078810](https://bugs.launchpad.net/maas/3.5/+bug/2078810)**^** : Can't filter by system id in the UI
+ - [2084788](https://bugs.launchpad.net/maas/3.5/+bug/2084788)**^** : MAAS 3.5.1 machines staying forever at commissioning
+ - [2063457](https://bugs.launchpad.net/maas/3.5/+bug/2063457)**^** : dhcpd6.conf can contain IPv4 nameserver options
+ - [2091001](https://bugs.launchpad.net/maas/3.5/+bug/2091001)**^** : Listing images is slow if you have many images in a busy MAAS
+ - [2089185](https://bugs.launchpad.net/maas/3.5/+bug/2089185)**^** : Releasing fails with latest cloud-init on image 20241113
+ - [2058063](https://bugs.launchpad.net/maas/3.5/+bug/2058063)**^** : Controllers show different versions when installed with debs
+
+### MAAS 3.5.2 has been released
+
+We are happy to announce that MAAS 3.5.2 has been released, with the following bug fixes
+- [2079987](https://bugs.launchpad.net/bugs/2079987)**^**:  LeaseSocketService is sending 10 RPC calls to the region every second even if there are no updates 
+- [2079797](https://bugs.launchpad.net/bugs/2079797)**^**:  Redfish powerdriver should be able to handle the reset power status 
+- [2075555](https://bugs.launchpad.net/bugs/2075555)**^**:  Custom OSes fail to deploy 'in memory' 
+- [2069059](https://bugs.launchpad.net/bugs/2069059)**^**:  Ubuntu 24.04 doesn't deploy on any ARM64 machine 
+- [2078941](https://bugs.launchpad.net/bugs/2078941)**^**:  When the snap is initialized again the certificates are not cleaned up 
+- [2004661](https://bugs.launchpad.net/bugs/2004661)**^**:  MAAS deployment failures on server with Redfish 
+- [2076910](https://bugs.launchpad.net/bugs/2076910)**^**:  'crypto/rsa: verification error' while trying to verify candidate authority certificate 'maas-ca' 
+- [2077602](https://bugs.launchpad.net/bugs/2077602)**^**:   Unknown power configuration error for new machines registered with IPMI
+- [2078052](https://bugs.launchpad.net/bugs/2078052)**^**:   Squid initialization issue with pebble - [2039737](https://bugs.launchpad.net/bugs/2039737)**^**:   Page sizing on machine table doesn't work
+- [2081262](https://bugs.launchpad.net/bugs/2081262)**^**:   Missing module in MAAS snap, required for AMT power
+
+### MAAS 3.5.1 has been released
+
+We are happy to announce that MAAS 3.5.1 has been released, with the following bug fixes
+- [2073731](https://bugs.launchpad.net/bugs/2073731)**^**: BMC commissioning error on HPE Gen 10 with ILO 5
+- [1953049](https://bugs.launchpad.net/bugs/1953049)**^**: Error while calling ScanNetworks: Unable to get RPC connection for rack controller
+- [1980000](https://bugs.launchpad.net/bugs/1980000)**^**: dhcpd.conf not written due to byte size of hosts value in rpc
+- [2073575](https://bugs.launchpad.net/bugs/2073575)**^**: Incorrect display of bondig options
+- [2076292](https://bugs.launchpad.net/bugs/2076292)**^**: Installing MAAS does not install the required simplestream version
+- [2073540](https://bugs.launchpad.net/bugs/2073540)**^**: 	Error: ('Connection aborted.', FileNotFoundError(2, 'No such file or directory'))
+
+
 MAAS 3.5 delivers substantial improvements in core functionality.  We've integrated Temporal for enhanced process and thread management, and started a transition to Go, re-implementing some of the rack controller functions as the "MAAS agent."  We've standardised logging and monitoring to use tools like syslogd, stepping away from the custom code we had been using.  We've also expanded the capabilities of existing features to include comprehensive service monitoring and support for deploying ephemeral (RAM-only) OS images.  And we've made great strides in visibly improving the performance of MAAS.
 
 ## Capabilities added in MAAS 3.5

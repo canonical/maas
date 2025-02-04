@@ -4,6 +4,44 @@
 
 This section recaps the release history of MAAS version 3.4.
 
+### MAAS 3.4.6 has been released
+
+We are happy to announce that MAAS 3.4.6 has been released, with the following bug fixes
+
+- [2040324](https://bugs.launchpad.net/bugs/2040324)^: Power configuration change fails with <image> is not a valid distro series error
+- [2055347](https://bugs.launchpad.net/bugs/2055347)^: MAAS IPMI k_g validation error
+- [2058496](https://bugs.launchpad.net/bugs/2058496)^: Commissioning failed during 1st pxe install 24.04
+- [2072155](https://bugs.launchpad.net/bugs/2072155)^: Discovered ip addresses mapped to an invalid name (ending with -)
+- [2073501](https://bugs.launchpad.net/bugs/2073501)^: Bionic not available for commissioning on pro-enabled systems
+- [2078810](https://bugs.launchpad.net/bugs/2078810)^: Can't filter by system id in the UI
+- [2084788](https://bugs.launchpad.net/bugs/2084788)^: MAAS 3.5.1 machines staying forever at commissioning
+- [2089185](https://bugs.launchpad.net/bugs/2089185)^: Releasing fails with latest cloud-init on image 20241113
+- [2091370](https://bugs.launchpad.net/bugs/2091370)^: MAAS snap build pulls python modules from outside Ubuntu Archive / MAAS PPAs
+- [2058063](https://bugs.launchpad.net/bugs/2058063)^: Controllers show different versions when installed with debs
+
+### MAAS 3.4.5 has been released
+
+We are happy to announce that MAAS 3.4.5 has been released, with the following bug fixes
+- [2004661](https://bugs.launchpad.net/bugs/2004661)**^**: MAAS deployment failures on server with Redfish
+- [2024242](https://bugs.launchpad.net/bugs/2024242)**^**: Unable to Deploy Machines; get() returned more than one Neighbour -- it returned 2!
+- [2052503](https://bugs.launchpad.net/bugs/2052503)**^**: Additional Power States in Redfish Schema
+- [2079797](https://bugs.launchpad.net/bugs/2079797)**^**: Redfish powerdriver should be able to handle the reset power status
+
+### MAAS 3.4.4 has been released
+
+We are happy to announce that MAAS 3.4.4 has been released, with the following bug fixes
+- [2073731](https://bugs.launchpad.net/bugs/2073731)**^**: BMC commissioning error on HPE Gen 10 with ILO 5
+- [1953049](https://bugs.launchpad.net/bugs/1953049)**^**: Error while calling ScanNetworks: Unable to get RPC connection for rack controller
+
+### MAAS 3.4.3 has been released
+
+We are happy to announce that MAAS 3.4.3 has been released, with the following bug fixes
+- [2029522](https://bugs.launchpad.net/bugs/2029522)**^**: stacktrace on _reap_extra_connection()
+- [2031482](https://bugs.launchpad.net/bugs/2031482)**^**: Subnet changed to wrong fabric, impacting DHCP
+- [2066276](https://bugs.launchpad.net/bugs/2066276)**^**: IPv6 test failures: AttributeError: 'RRHeader' object has no attribute '_address'
+- [2067998](https://bugs.launchpad.net/bugs/2067998)**^**: MAAS resets VLAN on interface if no link is detected during commissioning
+- [2070304](https://bugs.launchpad.net/bugs/2070304)**^**: regiond at 100% CPU after UI reconnect causing API errors
+
 ### MAAS 3.4.2 has been released
 
 We are happy to announce that MAAS 3.4.2 has been released, with the following bug fixes:

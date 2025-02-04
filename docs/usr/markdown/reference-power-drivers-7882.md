@@ -1,13 +1,14 @@
-The following page catalogues the fields in the "create machine" dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice.
+The following page catalogs the fields in the "create machine" dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice.  In the next section we introduce configuring power drivers using the UI. In "CLI parameter expressions," you will find how to configure them using the CLI.
 
-## Intel AMT
+## UI parameter expressions 
+### Intel AMT
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
 | Power password | Password to access unit | Optional |
 | Power address | IP address of unit | Required |
 
-## American Power Conversion (APC) PDU
+### American Power Conversion (APC) PDU
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -15,7 +16,7 @@ The following page catalogues the fields in the "create machine" dialogue for ea
 | APU PDU node outlet number (1-16) | PDU node outlet number | Required |
 | Power ON outlet delay (seconds) | outlet power ON delay | Optional, default=5 |
 
-## Digital Loggers, Inc. PDU
+### Digital Loggers, Inc. PDU
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -24,7 +25,7 @@ The following page catalogues the fields in the "create machine" dialogue for ea
 | Power user | Username to login | Optional |
 | Power password | Password to access unit | Optional |
 
-## IBM Hardware Management Console (HMC)
+### IBM Hardware Management Console (HMC)
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -34,7 +35,7 @@ The following page catalogues the fields in the "create machine" dialogue for ea
 | HMC Managed System server name | HMC managed server name | Required |
 | HMC logical partition | HMC logical partition of unit | Required |
 
-## LXD VMs
+### LXD VMs
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -42,7 +43,7 @@ The following page catalogues the fields in the "create machine" dialogue for ea
 | Instance name | LXD container instance name | Required |
 | LXD password | Password to access unit | Optional |
 
-## IPMI
+### IPMI
 
 Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
 
@@ -67,11 +68,11 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 | | | `Operator` | |
 | | | `Administrator` | |
 
-## Manual power configuration
+### Manual power configuration
 
 Manual power configuration means exactly that -- manually configured at the unit -- hence there are no parameters to set in the "create machine" UI.
 
-## HP Moonshot - iLO4 (IPMI)
+### HP Moonshot - iLO4 (IPMI)
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -80,7 +81,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Power password | Password to access unit | Optional |
 | Power hardware address | Hardware address of unit | Required |
 
-## HP Moonshot - iLO Chassis Manager
+### HP Moonshot - iLO Chassis Manager
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -91,7 +92,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 |  - where  | X = cartridge number | |
 |           | Y = node number | |
 
-## Microsoft OCS - Chassis Manager
+### Microsoft OCS - Chassis Manager
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -101,7 +102,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Power password | Password to access unit | Optional |
 | Blade ID | Blade ID (usu. 1-24) | Required |
 
-## OpenStack Nova
+### OpenStack Nova
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -111,7 +112,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Password | Password to access unit | Required |
 | Auth URL | URL to access unit | Required |
 
-## Proxmox
+### Proxmox
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -124,7 +125,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Node ID | VM name or ID | Optional |
 | Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
-## OpenBMC Power Driver
+### OpenBMC Power Driver
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -132,7 +133,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | OpenBMC user | Username to login | Required |
 | OpenBMC password | Password to access unit | Required |
 
-## Christmann RECS-Box Power Driver
+### Christmann RECS-Box Power Driver
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -142,7 +143,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Power user | Username to login | Optional |
 | Power password | Password to access unit | Optional |
 
-## Redfish
+### Redfish
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -151,7 +152,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Redfish password | Password to access unit | Required |
 | Node ID | Node ID | Optional |
 
-## SeaMicro 15000
+### SeaMicro 15000
 
 Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
 
@@ -165,7 +166,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 |  |  | REST API v0.9 | |
 |  |  | REST API v2.0 | |
 
-## Cisco UCS Manager
+### Cisco UCS Manager
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -174,7 +175,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 | API user | API user | Optional |
 | API password | API password | Optional |
 
-## virsh - libvirt KVM
+### virsh - libvirt KVM
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -182,7 +183,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 | Password | API password | Optional |
 | Virsh VM ID | libvirt VM UUID | Required |
 
-## VMware
+### VMware
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -194,7 +195,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 | VMware API port | VMware API port number | Optional |
 | VMware API protocol | VMware API protocol | Optional |
 
-## Facebook's Wedge
+### Facebook's Wedge
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -202,7 +203,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 | Power user | Username to access unit | Optional |
 | Power password | Password to access unit | Optional |
 
-## Virsh power type (UI)
+### Virsh power type (UI)
 
 Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selected, and the 'Power address' of `qemu+ssh://ubuntu@192.168.1.2/system` has been entered (replace values as appropriate). The value of 'Power ID' is the VM domain (guest) name, here `node2`.
 
@@ -210,7 +211,7 @@ Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selec
 
 > **Pro tip**: The machine's hostname -- according to MAAS -- is a randomly chosen string (here `dear.ant`). You should change this hostname to something descriptive, that helps you remember why this machine is in your MAAS network.
 
-## Webhook
+### Webhook
 
 It's important to understand that the Webhook power driver is more generic than other drivers, so it has some flexibility that the underlying power driver may not support. For example, Webhook doesn't require a username or password for the power driver, because not all power drivers work that way. Nevertheless, the power driver you're connecting to Webhook may actually require a username and/or password. Understanding and implementing these fields correctly for the chosen back-end power driver is the user's responsibility.
 
@@ -229,8 +230,8 @@ To that end, the "Required" column for this driver refers only to whether Webhoo
 | Power token | Power driver API token (used instead of user and password, if set) | Optional |
 | Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
-[/tab]
-#### Intel AMT
+## CLI parameter expressions
+### Intel AMT
 
 All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -240,7 +241,7 @@ All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI 
 | `power_address` | IP address of unit | Required |
 | `power_pass` | Password to access unit | Optional |
 
-#### American Power Conversion (APC) PDU
+### American Power Conversion (APC) PDU
 
 All parameters are entered as `key=value`, e.g., `power_type=apc`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -251,7 +252,7 @@ All parameters are entered as `key=value`, e.g., `power_type=apc`. The MAAS CLI 
 | `node_outlet` | PDU node outlet number | Required |
 | `power_on_delay` | outlet power ON delay | Optional, default=5 |
 
-#### Digital Loggers, Inc. PDU
+### Digital Loggers, Inc. PDU
 
 All parameters are entered as `key=value`, e.g., `power_type=dli`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -263,7 +264,7 @@ All parameters are entered as `key=value`, e.g., `power_type=dli`. The MAAS CLI 
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
 
-#### Eaton PDU
+### Eaton PDU
 
 All parameters are entered as `key=value`, e.g., `power_type=eaton`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -274,7 +275,7 @@ All parameters are entered as `key=value`, e.g., `power_type=eaton`. The MAAS CL
 | `node_outlet` | PDU node outlet number | Required |
 | `power_on_delay` | outlet power ON delay | Optional, default=5 |
 
-#### IBM Hardware Management Console (HMC)
+### IBM Hardware Management Console (HMC)
 
 All parameters are entered as `key=value`, e.g., `power_type=hmc`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -287,7 +288,7 @@ All parameters are entered as `key=value`, e.g., `power_type=hmc`. The MAAS CLI 
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
 
-#### LXD VMs
+### LXD VMs
 
 All parameters are entered as `key=value`, e.g., `power_type=lxd`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -298,7 +299,7 @@ All parameters are entered as `key=value`, e.g., `power_type=lxd`. The MAAS CLI 
 | `instance_name` | LXD container instance name | Required |
 | `power_pass` | Password to access unit | Optional |
 
-#### IPMI
+### IPMI
 
 All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded. Power driver specific parameters should be prefixed with `power_parameters_{key}`.
 
@@ -325,11 +326,11 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 | | | `Operator` | |
 | | | `Administrator` | |
 
-#### Manual power configuration
+### Manual power configuration
 
 Manual power configuration means exactly that -- manually configured at the unit. The only MAAS CLI parameter is `power_type=amt`. 
 
-#### HP Moonshot - iLO4 (IPMI)
+### HP Moonshot - iLO4 (IPMI)
 
 All parameters are entered as `key=value`, e.g., `power_type=moonshot`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -341,7 +342,7 @@ All parameters are entered as `key=value`, e.g., `power_type=moonshot`. The MAAS
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
 
-#### HP Moonshot - iLO Chassis Manager
+### HP Moonshot - iLO Chassis Manager
 
 All parameters are entered as `key=value`, e.g., `power_type=mscm`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -355,7 +356,7 @@ All parameters are entered as `key=value`, e.g., `power_type=mscm`. The MAAS CLI
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
 
-#### Microsoft OCS - Chassis Manager
+### Microsoft OCS - Chassis Manager
 
 All parameters are entered as `key=value`, e.g., `power_type=msftocs`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -368,7 +369,7 @@ All parameters are entered as `key=value`, e.g., `power_type=msftocs`. The MAAS 
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
 
-#### OpenStack Nova
+### OpenStack Nova
 
 All parameters are entered as `key=value`, e.g., `power_type=nova`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -381,7 +382,7 @@ All parameters are entered as `key=value`, e.g., `power_type=nova`. The MAAS CLI
 | `os_password` | Password to access unit | Required |
 | `os_authurl` | URL to access unit | Required |
 
-#### OpenBMC Power Driver
+### OpenBMC Power Driver
 
 All parameters are entered as `key=value`, e.g., `power_type=openbmc`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -392,7 +393,7 @@ All parameters are entered as `key=value`, e.g., `power_type=openbmc`. The MAAS 
 | `power_user` | Username to login | Required |
 | `power_pass` | Password to access unit | Required |
 
-#### Christmann RECS-Box Power Driver
+### Christmann RECS-Box Power Driver
 
 All parameters are entered as `key=value`, e.g., `power_type=recs_box`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -405,7 +406,7 @@ All parameters are entered as `key=value`, e.g., `power_type=recs_box`. The MAAS
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
 
-#### Redfish
+### Redfish
 
 All parameters are entered as `key=value`, e.g., `power_type=redfish`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -417,7 +418,7 @@ All parameters are entered as `key=value`, e.g., `power_type=redfish`. The MAAS 
 | `power_pass` | Password to access unit | Required |
 | `node_id` | Node ID | Optional |
 
-#### SeaMicro 15000
+### SeaMicro 15000
 
 All parameters are entered as `key=value`, e.g., `power_type=sm15k`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -434,7 +435,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 | `power_user` | Username to login || Optional |
 | `power_pass` | Password to access unit || Optional |
 
-#### Cisco UCS Manager
+### Cisco UCS Manager
 
 All parameters are entered as `key=value`, e.g., `power_type=ucsm`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -446,7 +447,7 @@ All parameters are entered as `key=value`, e.g., `power_type=ucsm`. The MAAS CLI
 | `power_user` | API user | Optional |
 | `power_pass` | API password | Optional |
 
-#### virsh - libvirt KVM
+### virsh - libvirt KVM
 
 All parameters are entered as `key=value`, e.g., `power_type=virsh`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -457,7 +458,7 @@ All parameters are entered as `key=value`, e.g., `power_type=virsh`. The MAAS CL
 | `power_address` | URL of VM | Required |
 | `power_pass` | API password | Optional |
 
-#### VMware
+### VMware
 
 All parameters are entered as `key=value`, e.g., `power_type=vmware`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -472,7 +473,7 @@ All parameters are entered as `key=value`, e.g., `power_type=vmware`. The MAAS C
 | `power_port` | VMware API port number | Optional |
 | `power_protocol` | VMware API protocol | Optional |
 
-#### Facebook's Wedge
+### Facebook's Wedge
 
 All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
@@ -485,7 +486,7 @@ All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI 
 
 
 
-#### Virsh power type (CLI)
+### Virsh power type (CLI)
 
 Consider a machine backed by a KVM, accessed via `virsh`. You can create a corresponding MAAS machine and set its power parameters with a command like this one:
 
@@ -682,5 +683,3 @@ Machine-readable output follows this announcement. The JSON generated by this co
 }
 ```
 </details>
-[/tab]
-[/tabs]
