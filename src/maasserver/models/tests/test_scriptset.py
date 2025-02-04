@@ -26,7 +26,7 @@ from maasserver.models import scriptset as scriptset_module
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -406,12 +406,14 @@ class TestScriptSetManager(MAASServerTestCase):
             status=SCRIPT_STATUS.ABORTED
         )
         node.current_testing_script_set = testing_script_set
-        node.save()
+        with post_commit_hooks:
+            node.save()
         new_script_set = ScriptSet.objects.create_commissioning_script_set(
             node=node
         )
         node.current_commissioning_script_set = new_script_set
-        node.save()
+        with post_commit_hooks:
+            node.save()
         self.assertIsNotNone(ScriptSet.objects.get(id=testing_script_set.id))
 
     def test_create_commissioning_script_set_removes_previous_placeholder(

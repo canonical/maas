@@ -2415,17 +2415,18 @@ class TestMachineHandler(MAASServerTestCase):
 
         self.patch(node_model, "start_commissioning")
 
-        created_node = handler.create(
-            {
-                "hostname": hostname,
-                "pxe_mac": mac,
-                "architecture": architecture,
-                "description": description,
-                "zone": {"name": zone.name},
-                "power_type": "manual",
-                "power_parameters": {},
-            }
-        )
+        with post_commit_hooks:
+            created_node = handler.create(
+                {
+                    "hostname": hostname,
+                    "pxe_mac": mac,
+                    "architecture": architecture,
+                    "description": description,
+                    "zone": {"name": zone.name},
+                    "power_type": "manual",
+                    "power_parameters": {},
+                }
+            )
         self.assertEqual(created_node["hostname"], hostname)
         self.assertEqual(created_node["pxe_mac"], mac)
         self.assertEqual(created_node["extra_macs"], [])
@@ -2448,16 +2449,17 @@ class TestMachineHandler(MAASServerTestCase):
             node_model, "start_commissioning"
         )
 
-        handler.create(
-            {
-                "hostname": hostname,
-                "pxe_mac": mac,
-                "architecture": architecture,
-                "zone": {"name": zone.name},
-                "power_type": "manual",
-                "power_parameters": {},
-            }
-        )
+        with post_commit_hooks:
+            handler.create(
+                {
+                    "hostname": hostname,
+                    "pxe_mac": mac,
+                    "architecture": architecture,
+                    "zone": {"name": zone.name},
+                    "power_type": "manual",
+                    "power_parameters": {},
+                }
+            )
         mock_start_commissioning.assert_called_once_with(user)
 
     def test_create_creates_deployed_node(self):
@@ -2471,14 +2473,15 @@ class TestMachineHandler(MAASServerTestCase):
             node_model, "start_commissioning"
         )
 
-        created_node = handler.create(
-            {
-                "hostname": hostname,
-                "description": description,
-                "zone": {"name": zone.name},
-                "deployed": True,
-            }
-        )
+        with post_commit_hooks:
+            created_node = handler.create(
+                {
+                    "hostname": hostname,
+                    "description": description,
+                    "zone": {"name": zone.name},
+                    "deployed": True,
+                }
+            )
         # the commissioning process is not started
         mock_start_commissioning.assert_not_called()
         self.assertEqual(created_node["status"], "Deployed")

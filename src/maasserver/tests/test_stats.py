@@ -62,6 +62,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils.orm import post_commit_hooks
 from maastesting import get_testing_timeout
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
@@ -916,7 +917,8 @@ class TestGetBrownfieldStats(MAASServerTestCase):
                 "deployed": True,
             },
         )
-        return form.save()
+        with post_commit_hooks:
+            return form.save()
 
     def _make_normal_deployed_machine(self):
         machine = factory.make_Machine(
@@ -958,11 +960,14 @@ class TestGetBrownfieldStats(MAASServerTestCase):
     def test_added_deployed(self):
         machine = self._make_brownfield_machine()
         machine.bmc = factory.make_BMC()
-        machine.save()
+
+        with post_commit_hooks:
+            machine.save()
         for _ in range(2):
             machine = self._make_brownfield_machine()
             machine.bmc = None
-            machine.save()
+            with post_commit_hooks:
+                machine.save()
         normal = self._make_normal_deployed_machine()
         factory.make_Machine(status=NODE_STATUS.READY)
         # If pods and controllers are registered in MAAS, that don't

@@ -77,6 +77,10 @@ from twisted.python.threadable import isInIOThread
 
 from maascommon.constants import NODE_TIMEOUT
 from maascommon.workflows.deploy import DEPLOY_MANY_WORKFLOW_NAME
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maascommon.workflows.power import PowerParam
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
@@ -1349,6 +1353,20 @@ class Node(CleanSave, TimestampedModel):
     # Manager that returns all controller objects. See `ControllerManager`.
     controllers = ControllerManager()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._previous_hostname = None
+        self._updated = False
+
+    def __setattr__(self, name, value):
+        if (
+            hasattr(self, f"_previous_{name}")
+            and getattr(self, f"_previous_{name}") is None
+        ):
+            setattr(self, f"_previous_{name}", getattr(self, name))
+            self._updated = True
+        super().__setattr__(name, value)
+
     def __str__(self):
         if self.hostname:
             return f"{self.system_id} ({self.hostname})"
@@ -2112,6 +2130,27 @@ class Node(CleanSave, TimestampedModel):
             self.set_random_hostname()
         super().save(*args, **kwargs)
         self._remove_orphaned_bmcs()
+
+        if (
+            self.id is not None
+            and self._updated
+            and self._previous_hostname != self.hostname
+            and self._previous_hostname
+        ):
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(
+                    vlan_ids=list(
+                        {
+                            ip.subnet.vlan.id
+                            for iface in self.current_config.interface_set.all()
+                            for ip in iface.ip_addresses.all()
+                        }
+                    ),
+                ),
+                task_queue="region",
+            )
 
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC

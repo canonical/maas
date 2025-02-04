@@ -11,7 +11,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import get_QueryDict
-from maasserver.utils.orm import get_one, reload_object
+from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 
 
 class TestDeviceForm(MAASServerTestCase):
@@ -94,7 +94,9 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
             request=self.make_request(),
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
         self.assertEqual(hostname, device.hostname)
         iface = get_one(Interface.objects.filter(mac_address=mac))
@@ -111,7 +113,9 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
             request=self.make_request(),
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
         self.assertEqual(hostname, device.hostname)
         iface = get_one(Interface.objects.filter(mac_address=mac1))
@@ -135,7 +139,8 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
             request=self.make_request(),
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+        with post_commit_hooks:
+            form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
         self.assertEqual(hostname, device.hostname)
         self.assertEqual(parent.domain, device.domain)
@@ -162,7 +167,8 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
             request=self.make_request(),
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+        with post_commit_hooks:
+            form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
         self.assertEqual(hostname, device.hostname)
         self.assertEqual(domain, device.domain)

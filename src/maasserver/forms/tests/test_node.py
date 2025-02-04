@@ -11,7 +11,7 @@ from maasserver.testing.architecture import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestNodeForm(MAASServerTestCase):
@@ -35,7 +35,9 @@ class TestNodeForm(MAASServerTestCase):
             },
             instance=machine,
         )
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
 
         self.assertEqual(hostname, machine.hostname)
 
@@ -138,7 +140,9 @@ class TestAdminNodeForm(MAASServerTestCase):
             },
             instance=node,
         )
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
 
         node = reload_object(node)
         self.assertEqual(node.hostname, hostname)

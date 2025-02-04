@@ -523,49 +523,6 @@ DHCP_ALERT = dedent(
     """
 )
 
-
-# Triggered when the hostname of the node is changed. Alerts rack controllers
-# for all VLAN's that this interface has a non DISCOVERED IP address.
-DHCP_NODE_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_node_update()
-    RETURNS trigger as $$
-    DECLARE
-      vlan maasserver_vlan;
-    BEGIN
-      -- Update VLAN if on every interface on the node that is managed when
-      -- the node hostname is changed.
-      IF OLD.hostname != NEW.hostname THEN
-        FOR vlan IN (
-          SELECT DISTINCT ON (maasserver_vlan.id)
-            maasserver_vlan.*
-          FROM maasserver_vlan
-            JOIN maasserver_subnet
-              ON maasserver_subnet.vlan_id = maasserver_vlan.id
-            JOIN maasserver_staticipaddress
-              ON maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-            JOIN maasserver_interface_ip_addresses
-              ON maasserver_interface_ip_addresses.staticipaddress_id = maasserver_staticipaddress.id
-            JOIN maasserver_interface
-              ON maasserver_interface.id = maasserver_interface_ip_addresses.interface_id
-            JOIN maasserver_nodeconfig
-              ON maasserver_nodeconfig.id = maasserver_interface.node_config_id
-          WHERE maasserver_nodeconfig.node_id = NEW.id
-          AND maasserver_staticipaddress.alloc_type != 6
-          AND maasserver_staticipaddress.ip IS NOT NULL
-          AND maasserver_staticipaddress.temp_expires_on IS NULL
-          AND host(maasserver_staticipaddress.ip) != ''
-        )
-        LOOP
-          PERFORM sys_dhcp_alert(vlan);
-        END LOOP;
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
 DHCP_UPDATE_ALL_VLANS = dedent(
     """\
     CREATE OR REPLACE FUNCTION sys_dhcp_update_all_vlans()
@@ -2151,10 +2108,6 @@ def register_system_triggers():
 
     # DHCP
     register_procedure(DHCP_ALERT)
-
-    # - Node
-    register_procedure(DHCP_NODE_UPDATE)
-    register_trigger("maasserver_node", "sys_dhcp_node_update", "update")
 
     # - DHCPSnippet
     register_procedure(DHCP_UPDATE_ALL_VLANS)

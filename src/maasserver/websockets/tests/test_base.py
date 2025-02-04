@@ -24,7 +24,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.websockets import base
 from maasserver.websockets.base import (
     Handler,
@@ -707,13 +707,16 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             form=AdminMachineWithMACAddressesForm,
         )
         handler.user = factory.make_admin()
-        json_obj = handler.create(
-            {
-                "hostname": hostname,
-                "architecture": arch,
-                "mac_addresses": [factory.make_mac_address()],
-            }
-        )
+
+        with post_commit_hooks:
+            json_obj = handler.create(
+                {
+                    "hostname": hostname,
+                    "architecture": arch,
+                    "mac_addresses": [factory.make_mac_address()],
+                }
+            )
+
         self.assertEqual(
             {"hostname": hostname, "architecture": arch}, json_obj
         )
@@ -726,13 +729,15 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         self.patch(handler, "get_form_class").return_value = (
             AdminMachineWithMACAddressesForm
         )
-        json_obj = handler.create(
-            {
-                "hostname": hostname,
-                "architecture": arch,
-                "mac_addresses": [factory.make_mac_address()],
-            }
-        )
+
+        with post_commit_hooks:
+            json_obj = handler.create(
+                {
+                    "hostname": hostname,
+                    "architecture": arch,
+                    "mac_addresses": [factory.make_mac_address()],
+                }
+            )
         self.assertEqual(
             {"hostname": hostname, "architecture": arch}, json_obj
         )
@@ -784,9 +789,12 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         handler = self.make_nodes_handler(fields=["hostname"])
         node = factory.make_Node()
         hostname = factory.make_name("hostname")
-        json_obj = handler.update(
-            {"system_id": node.system_id, "hostname": hostname}
-        )
+
+        with post_commit_hooks:
+            json_obj = handler.update(
+                {"system_id": node.system_id, "hostname": hostname}
+            )
+
         self.assertEqual({"hostname": hostname}, json_obj)
         self.assertEqual(reload_object(node).hostname, hostname)
 
@@ -798,9 +806,11 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             fields=["hostname"], form=AdminMachineForm
         )
         handler.user = factory.make_admin()
-        json_obj = handler.update(
-            {"system_id": node.system_id, "hostname": hostname}
-        )
+
+        with post_commit_hooks:
+            json_obj = handler.update(
+                {"system_id": node.system_id, "hostname": hostname}
+            )
         self.assertEqual({"hostname": hostname}, json_obj)
         self.assertEqual(reload_object(node).hostname, hostname)
 
@@ -811,9 +821,12 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         handler = self.make_nodes_handler(fields=["hostname"])
         handler.user = factory.make_admin()
         self.patch(handler, "get_form_class").return_value = AdminMachineForm
-        json_obj = handler.update(
-            {"system_id": node.system_id, "hostname": hostname}
-        )
+
+        with post_commit_hooks:
+            json_obj = handler.update(
+                {"system_id": node.system_id, "hostname": hostname}
+            )
+
         self.assertEqual({"hostname": hostname}, json_obj)
         self.assertEqual(reload_object(node).hostname, hostname)
 

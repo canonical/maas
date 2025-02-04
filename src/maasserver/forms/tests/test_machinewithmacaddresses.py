@@ -16,6 +16,7 @@ from maasserver.testing.architecture import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 
 class TestMachineWithMACAddressesForm(MAASServerTestCase):
@@ -251,6 +252,7 @@ class TestMachineWithMACAddressesForm(MAASServerTestCase):
             request, data={"commission": True, **self.make_params()}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        machine = form.save()
+        with post_commit_hooks:
+            machine = form.save()
         self.assertEqual(NODE_STATUS.COMMISSIONING, machine.status)
         self.assertIsNotNone(machine.current_commissioning_script_set)

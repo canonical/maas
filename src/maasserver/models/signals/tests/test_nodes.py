@@ -222,7 +222,8 @@ class TestNodeDefaultNUMANode(MAASServerTestCase):
         node = factory.make_Node()
         [numanode] = node.numanode_set.all()
         node.hostname = factory.make_string()
-        node.save()
+        with post_commit_hooks:
+            node.save()
         [new_numanode] = node.numanode_set.all()
         self.assertEqual(new_numanode.id, numanode.id)
 

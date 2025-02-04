@@ -28,6 +28,10 @@ from twisted.internet.defer import succeed
 from twisted.internet.error import ConnectionDone
 import yaml
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver import server_address
 from maasserver import workflow as workflow_module
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
@@ -6117,6 +6121,32 @@ class TestNode(MAASServerTestCase):
             secret_manager.get_simple_secret(
                 "power-parameters", obj=node, default=None
             )
+        )
+
+    def test_save_does_not_call_configure_dhcp_workflow_on_new(self):
+        mock_start_workflow = self.patch(node_module, "start_workflow")
+        node = Node()
+        node.save()
+        mock_start_workflow.assert_not_called()
+
+    def test_save_calls_configure_dhcp_workflow_if_hostname_changes(self):
+        mock_start_workflow = self.patch(node_module, "start_workflow")
+        node = factory.make_Node()
+        node.hostname = factory.make_name()
+
+        with post_commit_hooks:
+            node.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(
+                vlan_ids=[
+                    ip.subnet.vlan.id
+                    for iface in node.current_config.interface_set.all()
+                    for ip in iface.ip_addresses.all()
+                ]
+            ),
+            task_queue="region",
         )
 
 

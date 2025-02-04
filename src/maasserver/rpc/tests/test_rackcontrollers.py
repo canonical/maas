@@ -37,23 +37,27 @@ class TestRegisterRackController(MAASServerTestCase):
 
     def test_sets_owner_to_worker_when_none(self):
         node = factory.make_Node()
-        rack_registered = register(system_id=node.system_id)
+        with post_commit_hooks:
+            rack_registered = register(system_id=node.system_id)
         self.assertEqual(worker_user.get_worker_user(), rack_registered.owner)
 
     def test_leaves_owner_when_owned(self):
         user = factory.make_User()
         node = factory.make_Machine(owner=user)
-        rack_registered = register(system_id=node.system_id)
+        with post_commit_hooks:
+            rack_registered = register(system_id=node.system_id)
         self.assertEqual(user, rack_registered.owner)
 
     def test_finds_existing_node_by_system_id(self):
         node = factory.make_Node()
-        rack_registered = register(system_id=node.system_id)
+        with post_commit_hooks:
+            rack_registered = register(system_id=node.system_id)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_finds_existing_node_by_hostname(self):
         node = factory.make_Node()
-        rack_registered = register(hostname=node.hostname)
+        with post_commit_hooks:
+            rack_registered = register(hostname=node.hostname)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_finds_existing_node_by_mac(self):
@@ -68,7 +72,8 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack_registered = register(interfaces=interfaces)
+        with post_commit_hooks:
+            rack_registered = register(interfaces=interfaces)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_find_existing_keeps_type(self):
@@ -76,13 +81,15 @@ class TestRegisterRackController(MAASServerTestCase):
             (NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
         )
         node = factory.make_Node(node_type=node_type)
-        register(system_id=node.system_id)
+        with post_commit_hooks:
+            register(system_id=node.system_id)
         self.assertEqual(node_type, node.node_type)
 
     def test_logs_finding_existing_node(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-        register(system_id=node.system_id)
+        with post_commit_hooks:
+            register(system_id=node.system_id)
         self.assertEqual(
             "Existing rack controller '%s' running version 2.2 or below has "
             "connected to region '%s'."
@@ -93,7 +100,8 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_finding_existing_node_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-        register(system_id=node.system_id, version="2.10.0")
+        with post_commit_hooks:
+            register(system_id=node.system_id, version="2.10.0")
         self.assertEqual(
             "Existing rack controller '%s' running version 2.10.0 has "
             "connected to region '%s'."
@@ -103,7 +111,8 @@ class TestRegisterRackController(MAASServerTestCase):
 
     def test_converts_region_controller(self):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        rack_registered = register(system_id=node.system_id)
+        with post_commit_hooks:
+            rack_registered = register(system_id=node.system_id)
         self.assertEqual(
             rack_registered.node_type, NODE_TYPE.REGION_AND_RACK_CONTROLLER
         )
@@ -111,7 +120,8 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_converting_region_controller(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        register(system_id=node.system_id)
+        with post_commit_hooks:
+            register(system_id=node.system_id)
         self.assertEqual(
             "Region controller '%s' running version 2.2 or below converted "
             "into a region and rack controller.\n" % node.hostname,
@@ -121,7 +131,9 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_converting_region_controller_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        register(system_id=node.system_id, version="2.10.0")
+
+        with post_commit_hooks:
+            register(system_id=node.system_id, version="2.10.0")
         self.assertEqual(
             "Region controller '%s' running version 2.10.0 converted "
             "into a region and rack controller.\n" % node.hostname,
@@ -138,7 +150,8 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_converting_existing_node(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
-        register(system_id=node.system_id)
+        with post_commit_hooks:
+            register(system_id=node.system_id)
         self.assertEqual(
             "Region controller '%s' converted '%s' running version 2.2 or "
             "below into a rack controller.\n"
@@ -149,7 +162,8 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_converting_existing_node_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
-        register(system_id=node.system_id, version="1.10.2")
+        with post_commit_hooks:
+            register(system_id=node.system_id, version="1.10.2")
         self.assertEqual(
             "Region controller '%s' converted '%s' running version 1.10.2 "
             "into a rack controller.\n"
@@ -169,7 +183,9 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack_controller = register(interfaces=interfaces)
+
+        with post_commit_hooks:
+            rack_controller = register(interfaces=interfaces)
         self.assertNotEqual(
             existing_machine.system_id, rack_controller.system_id
         )
@@ -178,14 +194,16 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_always_has_current_commissioning_script_set(self):
         load_builtin_scripts()
         hostname = factory.make_name("hostname")
-        register(hostname=hostname)
+        with post_commit_hooks:
+            register(hostname=hostname)
         rack = RackController.objects.get(hostname=hostname)
         self.assertIsNotNone(rack.current_commissioning_script_set)
 
     def test_logs_creating_new_rackcontroller(self):
         logger = self.useFixture(FakeLogger("maas"))
         hostname = factory.make_name("hostname")
-        register(hostname=hostname)
+        with post_commit_hooks:
+            register(hostname=hostname)
         self.assertEqual(
             "New rack controller '%s' running version 2.2 or below was "
             "created by region '%s' upon first connection."
@@ -196,7 +214,8 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_creating_new_rackcontroller_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         hostname = factory.make_name("hostname")
-        register(hostname=hostname, version="2.10.0")
+        with post_commit_hooks:
+            register(hostname=hostname, version="2.10.0")
         self.assertEqual(
             "New rack controller '%s' running version 2.10.0 was "
             "created by region '%s' upon first connection."
@@ -207,7 +226,8 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_sets_version_of_controller(self):
         version = "1.10.2"
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
-        register(system_id=node.system_id, version=version)
+        with post_commit_hooks:
+            register(system_id=node.system_id, version=version)
         self.assertEqual(version, node.as_rack_controller().version)
 
     def test_registers_with_startup_lock_held(self):
@@ -220,7 +240,8 @@ class TestRegisterRackController(MAASServerTestCase):
         find = self.patch(rackcontrollers, "find")
         find.side_effect = record_lock_status
 
-        register()
+        with post_commit_hooks:
+            register()
 
         self.assertEqual([True], lock_status)
 
@@ -237,19 +258,21 @@ class TestRegisterRackController(MAASServerTestCase):
             }
         }
         url = "http://%s/MAAS" % factory.make_name("host")
-        rack_registered = register(
-            rack_controller.system_id,
-            interfaces=interfaces,
-            url=urlparse(url),
-            is_loopback=False,
-        )
+        with post_commit_hooks:
+            rack_registered = register(
+                rack_controller.system_id,
+                interfaces=interfaces,
+                url=urlparse(url),
+                is_loopback=False,
+            )
         self.assertEqual(url, rack_registered.url)
-        rack_registered = register(
-            rack_controller.system_id,
-            interfaces=interfaces,
-            url=urlparse("http://localhost/MAAS/"),
-            is_loopback=True,
-        )
+        with post_commit_hooks:
+            rack_registered = register(
+                rack_controller.system_id,
+                interfaces=interfaces,
+                url=urlparse("http://localhost/MAAS/"),
+                is_loopback=True,
+            )
         self.assertEqual("", rack_registered.url)
 
     def test_creates_rackcontroller_domain(self):
@@ -266,13 +289,14 @@ class TestRegisterRackController(MAASServerTestCase):
             }
         }
         url = "http://%s/MAAS" % factory.make_name("host")
-        rack_registered = register(
-            "rack-id-foo",
-            interfaces=interfaces,
-            url=urlparse(url),
-            is_loopback=False,
-            hostname=hostname,
-        )
+        with post_commit_hooks:
+            rack_registered = register(
+                "rack-id-foo",
+                interfaces=interfaces,
+                url=urlparse(url),
+                is_loopback=False,
+                hostname=hostname,
+            )
         self.assertEqual("newcontroller", rack_registered.hostname)
         self.assertEqual("example.com", rack_registered.domain.name)
         self.assertFalse(rack_registered.domain.authoritative)
@@ -292,13 +316,15 @@ class TestRegisterRackController(MAASServerTestCase):
             }
         }
         url = "http://%s/MAAS" % factory.make_name("host")
-        rack_registered = register(
-            "rack-id-foo",
-            interfaces=interfaces,
-            url=urlparse(url),
-            is_loopback=False,
-            hostname=hostname,
-        )
+
+        with post_commit_hooks:
+            rack_registered = register(
+                "rack-id-foo",
+                interfaces=interfaces,
+                url=urlparse(url),
+                is_loopback=False,
+                hostname=hostname,
+            )
         self.assertEqual("newcontroller", rack_registered.hostname)
         self.assertEqual("example.com", rack_registered.domain.name)
         self.assertTrue(rack_registered.domain.authoritative)
