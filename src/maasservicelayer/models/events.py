@@ -28,6 +28,7 @@ class LoggingLevelEnum(IntEnum):
     CRITICAL = logging.CRITICAL
 
 
+@generate_builder()
 class EventType(MaasTimestampedBaseModel):
     name: str
     description: str

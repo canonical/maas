@@ -239,6 +239,7 @@ class TestVlanUpdateRequest:
                 system_id="",
                 status=NodeStatus.DEPLOYED,
                 power_state=PowerState.ON,
+                hostname="hostname",
             )
         ]
         with pytest.raises(ValidationException) as e:
@@ -265,6 +266,7 @@ class TestVlanUpdateRequest:
                 system_id="",
                 status=NodeStatus.DEPLOYED,
                 power_state=PowerState.ON,
+                hostname="hostname",
             )
         ]
         services_mock.subnets = Mock(SubnetsService)
@@ -304,12 +306,14 @@ class TestVlanUpdateRequest:
                 system_id="",
                 status=NodeStatus.DEPLOYED,
                 power_state=PowerState.ON,
+                hostname="hostname1",
             ),
             Node(
                 id=2,
                 system_id="",
                 status=NodeStatus.DEPLOYED,
                 power_state=PowerState.ON,
+                hostname="hostname2",
             ),
         ]
         services_mock.subnets = Mock(SubnetsService)

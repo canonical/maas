@@ -212,6 +212,7 @@ class TestVlansService:
         primary_rack = Node(
             id=2,
             system_id="abc",
+            hostname="hostname",
             status=NodeStatus.DEPLOYED,
             power_state=PowerState.ON,
             created=now,

@@ -15,6 +15,7 @@ from maasservicelayer.models.base import (
 class Node(MaasTimestampedBaseModel):
     # TODO: model to be completed.
     system_id: str
+    hostname: str
     status: NodeStatus
     power_state: PowerState
     power_state_updated: datetime | None

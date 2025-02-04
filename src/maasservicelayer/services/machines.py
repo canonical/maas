@@ -6,6 +6,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import PciDevice, UsbDevice
+from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.secrets import SecretsService
@@ -16,12 +17,14 @@ class MachinesService(NodesService):
         self,
         context: Context,
         secrets_service: SecretsService,
+        events_service: EventsService,
         scriptresults_service: ScriptResultsService,
         machines_repository: MachinesRepository,
     ):
         super().__init__(
             context,
             secrets_service,
+            events_service,
             scriptresults_service,
             machines_repository,
         )

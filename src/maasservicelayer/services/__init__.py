@@ -16,7 +16,10 @@ from maasservicelayer.db.repositories.dnspublications import (
 )
 from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.db.repositories.domains import DomainsRepository
-from maasservicelayer.db.repositories.events import EventsRepository
+from maasservicelayer.db.repositories.events import (
+    EventsRepository,
+    EventTypesRepository,
+)
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
 )
@@ -193,6 +196,11 @@ class ServiceCollectionV3:
                 TemporalService.__name__, TemporalService.build_cache_object
             ),
         )
+        services.events = EventsService(
+            context=context,
+            events_repository=EventsRepository(context),
+            eventtypes_repository=EventTypesRepository(context),
+        )
         services.scriptresults = ScriptResultsService(
             context=context,
             scriptresults_repository=ScriptResultsRepository(context),
@@ -200,6 +208,7 @@ class ServiceCollectionV3:
         services.nodes = NodesService(
             context=context,
             secrets_service=services.secrets,
+            events_service=services.events,
             scriptresults_service=services.scriptresults,
             nodes_repository=NodesRepository(context),
         )
@@ -220,11 +229,9 @@ class ServiceCollectionV3:
         services.machines = MachinesService(
             context=context,
             secrets_service=services.secrets,
+            events_service=services.events,
             scriptresults_service=services.scriptresults,
             machines_repository=MachinesRepository(context),
-        )
-        services.events = EventsService(
-            context=context, events_repository=EventsRepository(context)
         )
         services.interfaces = InterfacesService(
             context=context,

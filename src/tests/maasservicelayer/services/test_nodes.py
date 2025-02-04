@@ -15,7 +15,11 @@ from maasservicelayer.db.repositories.nodes import (
 )
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.nodes import Node
-from maasservicelayer.services import NodesService, ScriptResultsService
+from maasservicelayer.services import (
+    EventsService,
+    NodesService,
+    ScriptResultsService,
+)
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.secrets import SecretsService
 from tests.maasservicelayer.services.base import ServiceCommonTests
@@ -29,6 +33,7 @@ class TestCommonNodesService(ServiceCommonTests):
             context=Context(),
             secrets_service=Mock(SecretsService),
             nodes_repository=Mock(NodesRepository),
+            events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
 
@@ -37,6 +42,7 @@ class TestCommonNodesService(ServiceCommonTests):
         return Node(
             id=2,
             system_id="systemid",
+            hostname="hostname",
             status=NodeStatus.NEW,
             power_state=PowerState.ON,
         )
@@ -53,6 +59,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
         builder = Mock(ResourceBuilder)
@@ -72,6 +79,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
         await nodes_service.move_to_zone(0, 0)
@@ -84,6 +92,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
         await nodes_service.move_bmcs_to_zone(0, 0)
@@ -97,6 +106,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
         await nodes_service.get_bmc("aaaaaa")
