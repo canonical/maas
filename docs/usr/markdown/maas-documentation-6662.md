@@ -15,7 +15,7 @@ MAAS is designed to meet the needs of data centre operators and administrators, 
 
 ## Project and community
 
-MAAS is a member of the Ubuntu family. It’s an open source project that warmly welcomes community projects, contributions, suggestions, fixes and constructive feedback.
+MAAS is a member of the Ubuntu family. It is an open source project that warmly welcomes community projects, contributions, suggestions, fixes and constructive feedback.
 
 - [Read our code of conduct](https://ubuntu.com/community/code-of-conduct)**^**
 - [Get support](https://ubuntu.com/pro)**^**
@@ -30,7 +30,7 @@ MAAS is a member of the Ubuntu family. It’s an open source project that warmly
 ### Our roadmap
 
 
-Here's a view of our current roadmap:
+Here is a view of our current roadmap:
 
 
 ![image](https://discourse.maas.io/uploads/default/original/2X/e/ec5bbcc5e3126d8a22fe3be22785917f5c5c71a1.png)
@@ -58,20 +58,17 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 0     |                                         |                                                                                |
 | 1     | how-to-guides                           | [How-to guides](/t/-/6663)                                                     |
 | 2     | how-to-install-maas                     | [Install or upgrade MAAS](/t/-/5128)                                           |
+| 2     | how-to-provision-machines              | [Provision machines](/t/-/5172)                                                |
 | 2     | how-to-customise-maas-networks          | [Customise networks](/t/-/5164)                                                |
 | 2     | how-to-customise-dhcp                   | [Customise DHCP](/t/-/5132)                                                    |
 | 2     | how-to-choose-os-images                 | [Choose OS images](/t/-/5124)                                                  |
-| 2     | how-to-provision-machines               | [Provision machines](/t/-/5172)                                                |
-| 2     | how-to-customise-machines               | [Customise machines](/t/-/5108)                                                |
 | 2     | how-to-use-lxd-vms                      | [Use virtual LXD VMs](/t/-/6500)                                               |
-| 2     | how-to-locate-machines                  | [Locate machines](/t/how-to-locate-machines/5192)                              |
 | 2     | how-to-monitor-maas                     | [Monitor MAAS](/t/how-to-monitor-maas/5204)                                    |
 | 2     | how-to-enable-high-availability         | [Enable high availability](/t/-/5120)                                          |
 | 2     | how-to-set-up-power-drivers             | [Set up power drivers](/t/-/5246)                                              |
 | 2     | how-to-configure-an-air-gapped-maas     | [Set up air-gapped MAAS](/t/how-to-configure-an-air-gapped-maas/5212)          |
 | 2     | how-to-deploy-vms-on-ibm-z              | [Deploy VMs on IBM Z](/t/how-to-deploy-vms-on-ibm-z/7885)                      |
 | 2     | how-to-use-logging                      | [Use logging](/t/how-to-use-logging/6956)                                      |
-| 2     | how-to-use-group-machines           | [Group machines](/t/-/8833)                                            |
 | 2     | how-to-use-cloud-init-with-maas         | [Use cloud-init with MAAS](/t/how-to-use-cloud-init-with-maas/9122)            |
 | 2     | how-to-authenticate-to-the-maas-api     | [Login to the MAAS API](/t/how-to-authenticate-to-the-maas-api/5060)           |
 | 2     | how-to-use-the-python-api-client        | [Script MAAS with Python](/t/how-to-use-the-python-api-client/5404)            |
@@ -161,10 +158,13 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 [details=Mapping table]
 | PATH                                                    | LOCATION                                         |
 |---------------------------------------------------------|--------------------------------------------------|
+| /docs/how-to-use-group-machines | /docs/how-to-provision-machines#p-9078-group-machines-into-pools |
+| /docs/how-to-locate-machines | /docs/how-to-provision-machines#p-9078-examine-machines |
+| /docs/how-to-customise-machines | /docs/how-to-provision-machines#p-9078-set-up-deployment |
 | /docs/how-to-configure-controllers            | /docs/how-to-provision-machines                                             |
-| /docs/how-to-configure-machines               | /docs/how-to-provision-machines                                                |
-| /docs/how-to-commission-machines-with-maas    | /docs/how-to-provision-machines                                               |
-| /docs/how-to-allocate-machines-with-maas      | /docs/how-to-provision-machines                                                 |
+| /docs/how-to-configure-machines               | /docs/how-to-provision-machines                                             |
+| /docs/how-to-commission-machines-with-maas    | /docs/how-to-provision-machines                                              |
+| /docs/how-to-allocate-machines-with-maas      | /docs/how-to-provision-machines                                                |
 | /docs/how-to-deploy-machines-with-maas        | /docs/how-to-provision-machines                                                   |
 | /docs/how-to-use-standard-images | /docs/how-to-choose-os-images |
 | /docs/how-to-enable-dhcp | /docs/how-to-customise-dhcp |
