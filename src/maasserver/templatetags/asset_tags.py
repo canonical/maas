@@ -1,7 +1,8 @@
 import json
 
 from django import template
-from django.conf import settings
+
+from maasserver.djangosettings import settings
 
 register = template.Library()
 

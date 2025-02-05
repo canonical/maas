@@ -21,8 +21,7 @@ class TestGetIndexCssPath(MAASTestCase):
 
             # Patch the manifest path to point to the temp file
             with patch(
-                "maasserver.templatetags.asset_tags.settings."
-                "MAAS_UI_MANIFEST_PATH",
+                "maasserver.djangosettings.settings.MAAS_UI_MANIFEST_PATH",
                 Path(temp_manifest.name),
             ):
                 css_path = get_index_css_path()
