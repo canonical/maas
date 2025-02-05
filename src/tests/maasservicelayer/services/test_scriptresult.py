@@ -27,5 +27,5 @@ class TestScriptResultsService(ServiceCommonTests):
     @pytest.fixture
     def test_instance(self) -> ScriptResult:
         return ScriptResult(
-            id=1, script_set_id=10, status=ScriptStatus.PASSED, parameters="{}"
+            id=1, script_set_id=10, status=ScriptStatus.PASSED, parameters={}
         )

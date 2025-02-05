@@ -18,5 +18,5 @@ class ScriptResult(MaasTimestampedBaseModel):
     stderr: str = ""
     result: str = ""
     output: str = ""
-    parameters: str = "{}"
+    parameters: dict
     suppressed: bool = False

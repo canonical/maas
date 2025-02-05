@@ -47,7 +47,7 @@ async def create_test_scriptresult_entry(
         "result": "",
         "script_set_id": script_set_id,
         "output": "",
-        "parameters": "{}",
+        "parameters": {},
         "suppressed": False,
     }
     scriptresult.update(extra_details)

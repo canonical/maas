@@ -145,7 +145,7 @@ class TestScriptResultsRepository(RepositoryCommonTests[ScriptResult]):
             stderr="",
             result="",
             output="",
-            parameters="{}",
+            parameters={},
             suppressed=False,
         )
 
