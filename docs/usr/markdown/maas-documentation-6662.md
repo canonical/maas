@@ -60,7 +60,6 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 2     | how-to-install-maas                     | [Install or upgrade MAAS](/t/-/5128)                                           |
 | 2     | how-to-provision-machines              | [Provision machines](/t/-/5172)                                                |
 | 2     | how-to-customise-maas-networks          | [Customise networks](/t/-/5164)                                                |
-| 2     | how-to-customise-dhcp                   | [Customise DHCP](/t/-/5132)                                                    |
 | 2     | how-to-choose-os-images                 | [Choose OS images](/t/-/5124)                                                  |
 | 2     | how-to-use-lxd-vms                      | [Use virtual LXD VMs](/t/-/6500)                                               |
 | 2     | how-to-monitor-maas                     | [Monitor MAAS](/t/how-to-monitor-maas/5204)                                    |
@@ -158,6 +157,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 [details=Mapping table]
 | PATH                                                    | LOCATION                                         |
 |---------------------------------------------------------|--------------------------------------------------|
+| /docs/how-to-customise-dhcp | /docs/how-to-customise-maas-networks#p-9070-manage-dhcp-11 |	
 | /docs/how-to-use-group-machines | /docs/how-to-provision-machines#p-9078-group-machines-into-pools |
 | /docs/how-to-locate-machines | /docs/how-to-provision-machines#p-9078-examine-machines |
 | /docs/how-to-customise-machines | /docs/how-to-provision-machines#p-9078-set-up-deployment |
