@@ -88,6 +88,9 @@ class Unset:
     def __eq__(self, other):
         return other.__class__ is self.__class__
 
+    def __repr__(self):
+        return "Unset"
+
 
 UNSET = Unset()
 
