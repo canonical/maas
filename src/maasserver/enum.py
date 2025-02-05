@@ -58,6 +58,7 @@ from maascommon.enums.node import (
 )
 from maascommon.enums.sshkeys import SshKeysProtocolType
 from maascommon.enums.subnet import RdnsMode
+from maascommon.node import NODE_STATUS_LABELS
 from provisioningserver.enum import enum_choices
 
 
@@ -131,30 +132,8 @@ class NODE_STATUS:
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
 # representation).
-NODE_STATUS_CHOICES = (
-    (NODE_STATUS.NEW, "New"),
-    (NODE_STATUS.COMMISSIONING, "Commissioning"),
-    (NODE_STATUS.FAILED_COMMISSIONING, "Failed commissioning"),
-    (NODE_STATUS.MISSING, "Missing"),
-    (NODE_STATUS.READY, "Ready"),
-    (NODE_STATUS.RESERVED, "Reserved"),
-    (NODE_STATUS.ALLOCATED, "Allocated"),
-    (NODE_STATUS.DEPLOYING, "Deploying"),
-    (NODE_STATUS.DEPLOYED, "Deployed"),
-    (NODE_STATUS.RETIRED, "Retired"),
-    (NODE_STATUS.BROKEN, "Broken"),
-    (NODE_STATUS.FAILED_DEPLOYMENT, "Failed deployment"),
-    (NODE_STATUS.RELEASING, "Releasing"),
-    (NODE_STATUS.FAILED_RELEASING, "Releasing failed"),
-    (NODE_STATUS.DISK_ERASING, "Disk erasing"),
-    (NODE_STATUS.FAILED_DISK_ERASING, "Failed disk erasing"),
-    (NODE_STATUS.RESCUE_MODE, "Rescue mode"),
-    (NODE_STATUS.ENTERING_RESCUE_MODE, "Entering rescue mode"),
-    (NODE_STATUS.FAILED_ENTERING_RESCUE_MODE, "Failed to enter rescue mode"),
-    (NODE_STATUS.EXITING_RESCUE_MODE, "Exiting rescue mode"),
-    (NODE_STATUS.FAILED_EXITING_RESCUE_MODE, "Failed to exit rescue mode"),
-    (NODE_STATUS.TESTING, "Testing"),
-    (NODE_STATUS.FAILED_TESTING, "Failed testing"),
+NODE_STATUS_CHOICES = tuple(
+    [(k.value, v) for k, v in NODE_STATUS_LABELS.items()]
 )
 
 # A version of NODE_STATUS_CHOICES with one-word labels
