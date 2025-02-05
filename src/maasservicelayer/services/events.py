@@ -52,13 +52,13 @@ class EventsService(BaseService[Event, EventsRepository, EventBuilder]):
         user_agent: str = "",
         created: datetime | None = None,
     ) -> Event:
-        await self.ensure_event_type(event_type)
+        et = await self.ensure_event_type(event_type)
 
         created = created or utcnow()
 
         return await self.repository.create(
             EventBuilder(
-                type=event_type,
+                type=et,
                 node_system_id=node.system_id if node else None,
                 node_hostname=node.hostname if node else hostname,
                 user_id=None,
