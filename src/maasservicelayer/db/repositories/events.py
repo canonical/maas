@@ -110,6 +110,7 @@ class EventsRepository(BaseRepository[Event]):
                     "level",
                     EventTypeTable.c.level,
                 ).label("type"),
+                EventTable.c.node_id,
                 EventTable.c.node_system_id,
                 case(
                     (

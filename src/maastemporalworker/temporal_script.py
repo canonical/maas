@@ -128,6 +128,7 @@ async def main() -> None:
                 # Deploy activities
                 deploy_activity.set_node_status,
                 deploy_activity.get_boot_order,
+                deploy_activity.set_node_failed,
                 # DHCP activities
                 dhcp_activity.find_agents_for_updates,
                 dhcp_activity.fetch_hosts_for_update,

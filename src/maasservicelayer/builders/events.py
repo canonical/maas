@@ -33,6 +33,7 @@ class EventBuilder(ResourceBuilder):
         default=UNSET, required=False
     )
     node_hostname: Union[str, Unset] = Field(default=UNSET, required=False)
+    node_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
     node_system_id: Union[str, None, Unset] = Field(
         default=UNSET, required=False
     )

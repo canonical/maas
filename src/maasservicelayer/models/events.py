@@ -38,6 +38,7 @@ class EventType(MaasTimestampedBaseModel):
 @generate_builder()
 class Event(MaasTimestampedBaseModel):
     type: EventType
+    node_id: Optional[int]
     node_system_id: Optional[str]
     node_hostname: str
     user_id: Optional[int]

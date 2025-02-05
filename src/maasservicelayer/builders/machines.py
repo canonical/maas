@@ -36,6 +36,7 @@ class MachineBuilder(ResourceBuilder):
     )
     description: Union[str, Unset] = Field(default=UNSET, required=False)
     distro_series: Union[str, Unset] = Field(default=UNSET, required=False)
+    error_description: Union[str, Unset] = Field(default=UNSET, required=False)
     fqdn: Union[str, Unset] = Field(default=UNSET, required=False)
     hostname: Union[str, Unset] = Field(default=UNSET, required=False)
     hwe_kernel: Union[str, None, Unset] = Field(default=UNSET, required=False)

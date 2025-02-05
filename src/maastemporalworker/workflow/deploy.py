@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from temporalio.exceptions import CancelledError, ChildWorkflowError
+from temporalio.exceptions import (
+    CancelledError,
+    ChildWorkflowError,
+    TimeoutError,
+)
 
 from maascommon.constants import NODE_TIMEOUT
 from maascommon.enums.node import NodeStatus
@@ -60,6 +64,7 @@ DEFAULT_DEPLOY_RETRY_TIMEOUT = timedelta(seconds=60)
 # Activities names
 GET_BOOT_ORDER_ACTIVITY_NAME = "get-boot-order"
 SET_NODE_STATUS_ACTIVITY_NAME = "set-node-status"
+MARK_NODE_FAILED_ACTIVITY_NAME = "mark-node-failed"
 SET_BOOT_ORDER_ACTIVITY_NAME = "set-boot-order"
 
 
@@ -72,6 +77,12 @@ class InvalidMachineStateException(Exception):
 class SetNodeStatusParam:
     system_id: str
     status: NodeStatus
+
+
+@dataclass
+class MarkNodeFailedParam:
+    system_id: str
+    message: str
 
 
 @dataclass
@@ -100,6 +111,13 @@ class DeployActivity(ActivityBase):
             builder = NodeBuilder(status=params.status)
             await services.nodes.update_by_system_id(
                 system_id=params.system_id, builder=builder
+            )
+
+    @activity_defn_with_context(name=MARK_NODE_FAILED_ACTIVITY_NAME)
+    async def set_node_failed(self, params: MarkNodeFailedParam) -> None:
+        async with self.start_transaction() as services:
+            await services.nodes.mark_failed(
+                system_id=params.system_id, message=params.message
             )
 
     def _single_result_to_dict(self, result: Result) -> dict[str, Any]:
@@ -270,12 +288,40 @@ class DeployActivity(ActivityBase):
 
 @workflow.defn(name=DEPLOY_MANY_WORKFLOW_NAME, sandboxed=False)
 class DeployManyWorkflow:
+    async def _set_status(self, system_id, status):
+        await workflow.execute_activity(
+            SET_NODE_STATUS_ACTIVITY_NAME,
+            SetNodeStatusParam(
+                system_id=system_id,
+                status=status,
+            ),
+            task_queue="region",
+            start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+            retry_policy=RetryPolicy(
+                maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
+            ),
+        )
+
+    async def _mark_failed(self, system_id, msg):
+        await workflow.execute_activity(
+            MARK_NODE_FAILED_ACTIVITY_NAME,
+            MarkNodeFailedParam(
+                system_id=system_id,
+                message=msg,
+            ),
+            task_queue="region",
+            start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+            retry_policy=RetryPolicy(
+                maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
+            ),
+        )
+
     @workflow_run_with_context
     async def run(self, params: DeployManyParam) -> None:
         # timeout of workflow is defined as 3 times the default node timeout
         wf_timeout = 3 * NODE_TIMEOUT
 
-        child_workflows = []
+        pending: list[workflow.ChildWorkflowHandle] = []
 
         for param in params.params:
             wf = await workflow.start_child_workflow(
@@ -288,39 +334,45 @@ class DeployManyWorkflow:
                 ),
                 execution_timeout=timedelta(minutes=wf_timeout),
             )
-            child_workflows.append((param.system_id, wf))
+            pending.append(wf)
 
-        for system_id, wf in child_workflows:
-            try:
-                result = await wf
-            except (CancelledError, asyncio.CancelledError):
-                continue
-            except ChildWorkflowError as e:
-                if isinstance(e.cause, CancelledError):
-                    continue
-
-                status = NodeStatus.FAILED_DEPLOYMENT
-            except Exception:  # TODO handle failed workflow more specifically
-                status = NodeStatus.FAILED_DEPLOYMENT
-            else:
-                status = (
-                    NodeStatus.DEPLOYED
-                    if result["success"]
-                    else NodeStatus.FAILED_DEPLOYMENT
-                )
-
-            await workflow.execute_activity(
-                SET_NODE_STATUS_ACTIVITY_NAME,
-                SetNodeStatusParam(
-                    system_id=system_id,
-                    status=status,
-                ),
-                task_queue="region",
-                start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
-                retry_policy=RetryPolicy(
-                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
-                ),
+        while pending:
+            done, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
             )
+            for t in done:
+                system_id = t.id.removeprefix("deploy:")
+
+                if e := t.exception():
+                    msg = ""
+                    if isinstance(e, (CancelledError, asyncio.CancelledError)):
+                        # Workflow was explicitly cancelled (e.g by the user)
+                        # let them handle the node status
+                        continue
+                    elif isinstance(e, ChildWorkflowError):
+                        if isinstance(e.cause, CancelledError):
+                            continue
+                        elif isinstance(e.cause, TimeoutError):
+                            msg = "time-out during deployment"
+                        else:
+                            msg = str(e.cause)
+                            logger.error(
+                                f"unexpected exception in child workflow: {e.cause}"
+                            )
+                    else:
+                        msg = str(e)
+                        logger.error(f"unexpected exception: {e}")
+
+                    await self._mark_failed(system_id, msg)
+                else:
+                    result = t.result()
+                    if result["success"]:
+                        await self._set_status(system_id, NodeStatus.DEPLOYED)
+                    else:
+                        # this never happens, the WF is successful or timeouts
+                        await self._mark_failed(
+                            system_id, "Unexpected failure."
+                        )
 
 
 @workflow.defn(name=DEPLOY_WORKFLOW_NAME, sandboxed=False)

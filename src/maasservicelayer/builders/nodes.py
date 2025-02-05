@@ -28,6 +28,7 @@ class NodeBuilder(ResourceBuilder):
     current_testing_script_set_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )
+    error_description: Union[str, Unset] = Field(default=UNSET, required=False)
     hostname: Union[str, Unset] = Field(default=UNSET, required=False)
     id: Union[int, Unset] = Field(default=UNSET, required=False)
     owner_id: Union[int, None, Unset] = Field(default=UNSET, required=False)

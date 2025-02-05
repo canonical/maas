@@ -28,6 +28,7 @@ class TestEventsService:
     @pytest.fixture(scope="function")
     def node(self):
         node = Mock(Node)
+        type(node).id = PropertyMock(return_value=100)
         type(node).system_id = PropertyMock(return_value="system_id")
         type(node).hostname = PropertyMock(return_value="hostname")
         return node

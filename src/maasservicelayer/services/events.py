@@ -59,6 +59,7 @@ class EventsService(BaseService[Event, EventsRepository, EventBuilder]):
         return await self.repository.create(
             EventBuilder(
                 type=et,
+                node_id=node.id if node else None,
                 node_system_id=node.system_id if node else None,
                 node_hostname=node.hostname if node else hostname,
                 user_id=None,
