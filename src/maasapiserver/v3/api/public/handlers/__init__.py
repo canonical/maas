@@ -3,6 +3,7 @@
 
 from maasapiserver.common.api.base import API
 from maasapiserver.v3.api.public.handlers.auth import AuthHandler
+from maasapiserver.v3.api.public.handlers.domains import DomainsHandler
 from maasapiserver.v3.api.public.handlers.events import EventsHandler
 from maasapiserver.v3.api.public.handlers.fabrics import FabricsHandler
 from maasapiserver.v3.api.public.handlers.interfaces import InterfacesHandler
@@ -27,6 +28,7 @@ APIv3 = API(
     handlers=[
         AuthHandler(),
         EventsHandler(),
+        DomainsHandler(),
         FabricsHandler(),
         InterfacesHandler(),
         IPRangesHandler(),
