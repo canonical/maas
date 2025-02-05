@@ -2,10 +2,16 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
+from unittest.mock import call
 
 from django.core.exceptions import ValidationError
 from django.http.response import Http404
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
+from maasserver.models import dhcpsnippet as snippet_module
 from maasserver.models import DHCPSnippet, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -156,3 +162,31 @@ class TestDHCPSnippet(MAASServerTestCase):
         subnet = factory.make_Subnet()
         snippet = factory.make_DHCPSnippet(subnet=subnet, node=None)
         self.assertFalse(snippet.is_global)
+
+    def test_save_calls_configure_dhcp_workflow(self):
+        mock_start_workflow = self.patch(snippet_module, "start_workflow")
+        subnet = factory.make_Subnet()
+        factory.make_DHCPSnippet(subnet=subnet, node=None)
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(
+                subnet_ids=[subnet.id],
+            ),
+            task_queue="region",
+        )
+
+    def test_delete_calls_configure_dhcp_workflow(self):
+        mock_start_workflow = self.patch(snippet_module, "start_workflow")
+        subnet = factory.make_Subnet()
+        snippet = factory.make_DHCPSnippet(subnet=subnet, node=None)
+
+        with post_commit_hooks:
+            snippet.delete()
+        self.assertIn(
+            call(
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(subnet_ids=[subnet.id]),
+                task_queue="region",
+            ),
+            mock_start_workflow.mock_calls,
+        )

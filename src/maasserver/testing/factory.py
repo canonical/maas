@@ -3397,15 +3397,17 @@ class Factory(maastesting.factory.Factory):
             value = VersionedTextFile.objects.create(data=self.make_string())
         if description is None:
             description = self.make_string()
-        return DHCPSnippet.objects.create(
-            name=name,
-            value=value,
-            description=description,
-            enabled=enabled,
-            node=node,
-            subnet=subnet,
-            iprange=iprange,
-        )
+
+        with post_commit_hooks:
+            return DHCPSnippet.objects.create(
+                name=name,
+                value=value,
+                description=description,
+                enabled=enabled,
+                node=node,
+                subnet=subnet,
+                iprange=iprange,
+            )
 
     def make_default_PackageRepositories(self):
         factory.make_PackageRepository(

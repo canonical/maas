@@ -11,7 +11,7 @@ from maascommon.events import AUDIT
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerPermissionError,
@@ -102,9 +102,10 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet_name = factory.make_name("dhcp_snippet_name")
-        handler.create(
-            {"name": dhcp_snippet_name, "value": factory.make_string()}
-        )
+        with post_commit_hooks:
+            handler.create(
+                {"name": dhcp_snippet_name, "value": factory.make_string()}
+            )
         self.assertIsNotNone(DHCPSnippet.objects.get(name=dhcp_snippet_name))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
@@ -122,7 +123,8 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         node = factory.make_Node()
-        handler.update({"id": dhcp_snippet.id, "node": node.system_id})
+        with post_commit_hooks:
+            handler.update({"id": dhcp_snippet.id, "node": node.system_id})
         dhcp_snippet = reload_object(dhcp_snippet)
         self.assertEqual(node, dhcp_snippet.node)
         event = Event.objects.get(type__level=AUDIT)
@@ -139,7 +141,8 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
     def test_delete(self):
         user = factory.make_admin()
         handler = DHCPSnippetHandler(user, {}, None)
-        dhcp_snippet = factory.make_DHCPSnippet()
+        with post_commit_hooks:
+            dhcp_snippet = factory.make_DHCPSnippet()
         handler.delete({"id": dhcp_snippet.id})
         self.assertRaises(
             DHCPSnippet.DoesNotExist,
@@ -166,7 +169,8 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         revert_to = random.randint(-10, -1)
         reverted_ids = textfile_ids[revert_to:]
         remaining_ids = textfile_ids[:revert_to]
-        handler.revert({"id": dhcp_snippet.id, "to": revert_to})
+        with post_commit_hooks:
+            handler.revert({"id": dhcp_snippet.id, "to": revert_to})
         dhcp_snippet = reload_object(dhcp_snippet)
         self.assertEqual(
             VersionedTextFile.objects.get(id=textfile_ids[revert_to - 1]).data,

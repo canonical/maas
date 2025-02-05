@@ -13,13 +13,19 @@ from django.db.models import (
     TextField,
 )
 
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.iprange import IPRange
 from maasserver.models.node import Node
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.versionedtextfile import VersionedTextFile
-from maasserver.utils.orm import MAASQueriesMixin
+from maasserver.models.vlan import VLAN
+from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
+from maasserver.workflow import start_workflow
 
 
 class DHCPSnippetQueriesMixin(MAASQueriesMixin):
@@ -115,3 +121,51 @@ class DHCPSnippet(CleanSave, TimestampedModel):
             raise ValidationError(
                 "A DHCP snippet's IP Range must be within the" "parent subnet"
             )
+
+    def _get_params_for_dhcp_update(self):
+        if self.node_id:
+            return ConfigureDHCPParam(
+                static_ip_addr_ids=[
+                    ip.id
+                    for iface in self.node.current_config.interface_set.all()
+                    for ip in iface.ip_addresses.all()
+                ],
+            )
+        elif self.iprange_id:
+            return ConfigureDHCPParam(
+                ip_range_ids=[self.iprange_id],
+            )
+        elif self.subnet_id:
+            return ConfigureDHCPParam(
+                subnet_ids=[self.subnet_id],
+            )
+
+        vlan_ids = [vlan.id for vlan in VLAN.objects.filter(dhcp_on=True)]
+
+        if vlan_ids:
+            return ConfigureDHCPParam(vlan_ids=vlan_ids)
+        return None
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        param = self._get_params_for_dhcp_update()
+
+        if param:
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=param,
+                task_queue="region",
+            )
+
+    def delete(self, *args, **kwargs):
+        param = self._get_params_for_dhcp_update()
+
+        if param:
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=param,
+                task_queue="region",
+            )
+        super().delete(*args, **kwargs)

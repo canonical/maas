@@ -43,7 +43,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(name, dhcp_snippet.name)
         self.assertEqual(value, dhcp_snippet.value.data)
         self.assertEqual(description, dhcp_snippet.description)
@@ -65,7 +66,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(name, dhcp_snippet.name)
         self.assertEqual(value, dhcp_snippet.value.data)
         self.assertEqual(description, dhcp_snippet.description)
@@ -90,7 +92,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(value, dhcp_snippet.value.data)
         self.assertEqual(description, dhcp_snippet.description)
         self.assertEqual(enabled, dhcp_snippet.enabled)
@@ -115,7 +118,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(name, dhcp_snippet.name)
         self.assertEqual(value, dhcp_snippet.value.data)
         self.assertEqual(description, dhcp_snippet.description)
@@ -147,7 +151,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(name, dhcp_snippet.name)
         self.assertEqual(value, dhcp_snippet.value.data)
         self.assertEqual(description, dhcp_snippet.description)
@@ -249,7 +254,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(name, dhcp_snippet.name)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
@@ -268,7 +274,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(new_value, dhcp_snippet.value.data)
         self.assertEqual(old_value, dhcp_snippet.value.previous_version.data)
 
@@ -282,7 +289,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(description, dhcp_snippet.description)
 
     def test_updates_enabled(self):
@@ -295,7 +303,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(enabled, dhcp_snippet.enabled)
 
     def test_updates_node(self):
@@ -308,7 +317,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(node, dhcp_snippet.node)
 
     def test_updates_node_when_subnet_set(self):
@@ -321,7 +331,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertIsNone(dhcp_snippet.subnet)
         self.assertEqual(node, dhcp_snippet.node)
 
@@ -335,7 +346,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertEqual(subnet, dhcp_snippet.subnet)
 
     def test_updates_subnet_when_node_set(self):
@@ -348,7 +360,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertIsNone(dhcp_snippet.node)
         self.assertEqual(subnet, dhcp_snippet.subnet)
 
@@ -386,7 +399,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertIsNone(dhcp_snippet.node)
 
     def test_update_global_snippet_resets_subnet(self):
@@ -399,5 +413,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
         request.user = factory.make_User()
-        dhcp_snippet = form.save(endpoint, request)
+        with post_commit_hooks:
+            dhcp_snippet = form.save(endpoint, request)
         self.assertIsNone(dhcp_snippet.subnet)
