@@ -9,7 +9,7 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressType
-from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -37,10 +37,7 @@ def build_interface_links(
     return interface
 
 
-class InterfaceRepository:
-    def __init__(self, context: Context):
-        self.connection = context.get_connection()
-
+class InterfaceRepository(Repository):
     async def list(
         self, node_id: int, page: int, size: int
     ) -> ListResult[Interface]:
@@ -60,7 +57,7 @@ class InterfaceRepository:
             )
             .where(eq(NodeTable.c.id, node_id))
         )
-        total = (await self.connection.execute(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar()
 
         stmt = (
             self._select_all_statement()
@@ -70,7 +67,7 @@ class InterfaceRepository:
             .limit(size)
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
 
         interfaces = [build_interface_links(row._asdict()) for row in result]
         await self._find_discovered_ip_for_dhcp_links(interfaces, node_id)
@@ -85,7 +82,7 @@ class InterfaceRepository:
             InterfaceTable.c.mac_address == mac
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         return [
             Interface(**data)
             for data in [
@@ -110,7 +107,7 @@ class InterfaceRepository:
             .filter(VlanTable.c.fabric_id == fabric_id)
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         return [
             Interface(**data)
             for data in [
@@ -124,7 +121,7 @@ class InterfaceRepository:
             staticipaddress_id=ip.id,
         )
 
-        await self.connection.execute(stmt)
+        await self.execute_stmt(stmt)
 
     async def _find_discovered_ip_for_dhcp_links(
         self, interfaces, node_id
@@ -137,7 +134,7 @@ class InterfaceRepository:
             discovered_ips = [
                 discovered._asdict()
                 for discovered in (
-                    await self.connection.execute(
+                    await self.execute_stmt(
                         self._discovered_ip_statement().where(
                             eq(NodeTable.c.id, node_id)
                         )

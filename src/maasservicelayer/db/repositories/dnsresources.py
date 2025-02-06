@@ -63,7 +63,7 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         if but_not_for:
             stmt = stmt.filter(DNSResourceTable.c.id != but_not_for.id)
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         return [DNSResource(**row._asdict()) for row in result]
 
     async def get_ips_for_dnsresource(
@@ -98,7 +98,7 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
             .filter(*filters)
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
 
         return [StaticIPAddress(**row._asdict()) for row in result]
 
@@ -109,11 +109,11 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
             DNSResourceIPAddressTable.c.staticipaddress_id == ip.id,
             DNSResourceIPAddressTable.c.dnsresource_id == dnsrr.id,
         )
-        await self.connection.execute(remove_relation_stmt)
+        await self.execute_stmt(remove_relation_stmt)
 
     async def link_ip(self, dnsrr: DNSResource, ip: StaticIPAddress) -> None:
         stmt = insert(DNSResourceIPAddressTable).values(
             dnsresource_id=dnsrr.id, staticipaddress_id=ip.id
         )
 
-        await self.connection.execute(stmt)
+        await self.execute_stmt(stmt)

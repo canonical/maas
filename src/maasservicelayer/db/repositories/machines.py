@@ -112,7 +112,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
         )
         if query:
             total_stmt = query.enrich_stmt(total_stmt)
-        total = (await self.connection.execute(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar()
 
         stmt = (
             self.select_all_statement()
@@ -138,7 +138,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .select_from(NodeDeviceTable)
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.USB))
         )
-        total = (await self.connection.execute(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar()
 
         stmt = (
             self._list_devices_statement(system_id)
@@ -148,7 +148,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .limit(size)
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
 
         return ListResult[UsbDevice](
             items=[UsbDevice(**row._asdict()) for row in result],
@@ -163,7 +163,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .select_from(NodeDeviceTable)
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.PCIE))
         )
-        total = (await self.connection.execute(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar()
 
         stmt = (
             self._list_devices_statement(system_id)
@@ -173,7 +173,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .limit(size)
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
 
         return ListResult[PciDevice](
             items=[PciDevice(**row._asdict()) for row in result],
@@ -187,7 +187,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
             .group_by(NodeTable.c.status)
         )
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         machines_count = MachinesCountByStatus()
         for row in result:
             match row.status:

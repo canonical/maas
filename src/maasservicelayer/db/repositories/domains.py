@@ -47,6 +47,6 @@ class DomainsRepository(BaseRepository[Domain]):
             .filter(GlobalDefaultTable.c.id == 0)
         )
 
-        default_domain = (await self.connection.execute(stmt)).one()
+        default_domain = (await self.execute_stmt(stmt)).one()
 
         return Domain(**default_domain._asdict())

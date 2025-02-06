@@ -96,7 +96,7 @@ class IPRangesRepository(BaseRepository[IPRange]):
             .filter(SubnetTable.c.id == subnet_id)
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
 
         ipranges = [IPRange(**row._asdict()) for row in result]
 

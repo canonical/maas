@@ -24,7 +24,7 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
             .order_by(desc(DNSPublicationTable.c.id))
         )
 
-        result = (await self.connection.execute(stmt)).first()
+        result = (await self.execute_stmt(stmt)).first()
 
         return result[0]
 
@@ -39,6 +39,6 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
             )
         )
 
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
 
         return [DNSPublication(**row._asdict()) for row in result]

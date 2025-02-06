@@ -26,5 +26,5 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
 
     async def list_ids(self) -> set[int]:
         stmt = select(ResourcePoolTable.c.id).select_from(ResourcePoolTable)
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         return {row.id for row in result}

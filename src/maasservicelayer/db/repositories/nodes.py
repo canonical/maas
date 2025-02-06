@@ -48,14 +48,14 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
             .where(eq(NodeTable.c.zone_id, old_zone_id))
             .values(zone_id=new_zone_id)
         )
-        await self.connection.execute(stmt)
+        await self.execute_stmt(stmt)
 
     async def get_node_bmc(self, system_id: str) -> Bmc | None:
         stmt = self._bmc_select_all_statement().where(
             eq(NodeTable.c.system_id, system_id)
         )
 
-        result = (await self.connection.execute(stmt)).one()
+        result = (await self.execute_stmt(stmt)).one()
         return Bmc(**result._asdict())
 
     async def move_bmcs_to_zone(
@@ -66,7 +66,7 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
             .where(eq(BMCTable.c.zone_id, old_zone_id))
             .values(zone_id=new_zone_id)
         )
-        await self.connection.execute(stmt)
+        await self.execute_stmt(stmt)
 
     async def hostname_exists(self, hostname: str) -> bool:
         stmt = (
@@ -75,7 +75,7 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
             .filter(NodeTable.c.hostname == hostname)
         )
 
-        exists = (await self.connection.execute(stmt)).one_or_none()
+        exists = (await self.execute_stmt(stmt)).one_or_none()
 
         return exists is not None
 

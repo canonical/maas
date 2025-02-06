@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from operator import eq
 from typing import Any, Generic, List, Sequence, TypeVar
 
+import psycopg2
 from sqlalchemy import (
     Connection,
     CursorResult,
@@ -49,10 +50,38 @@ class MultipleResultsException(Exception):
 T = TypeVar("T", bound=MaasBaseModel)
 
 
-class BaseRepository(ABC, Generic[T]):
+class Repository(ABC):
     def __init__(self, context: Context):
         self.context = context
-        self.connection = context.get_connection()
+        self._connection = context.get_connection()
+
+    # TODO: remove this when the connection in context is changed back to the
+    # AsyncConnection type only.
+    async def execute_stmt(self, stmt) -> CursorResult[Any]:
+        """Execute the statement synchronously or asynchronously based on the
+        type of the connection."""
+        if isinstance(self._connection, Connection):
+            # Django wants to get jsonb columns as strings so to load the json programmatically in JsonField. Instead,
+            # in the servicelayer/sqlalchemy we want the driver to return a dictionary, so we register the handler on the connection.
+            try:
+                psycopg2.extras.register_default_jsonb(
+                    conn_or_curs=self._connection.connection.dbapi_connection
+                )
+                return self._connection.execute(stmt)
+            finally:
+                # Give this connection back to django and reset the default jsonb handler
+                # https://github.com/django/django/blob/f609a2da868b2320ecdc0551df3cca360d5b5bc3/django/db/backends/postgresql/base.py#L339
+                psycopg2.extras.register_default_jsonb(
+                    conn_or_curs=self._connection.connection.dbapi_connection,
+                    loads=lambda x: x,
+                )
+        else:
+            return await self._connection.execute(stmt)
+
+
+class BaseRepository(Repository, Generic[T]):
+    def __init__(self, context: Context):
+        super().__init__(context)
         self.mapper = self.get_mapper()
         self.has_timestamped_fields = issubclass(
             self.get_model_factory(), MaasTimestampedBaseModel
@@ -65,16 +94,6 @@ class BaseRepository(ABC, Generic[T]):
     @abstractmethod
     def get_model_factory(self) -> type[T]:
         pass
-
-    # TODO: remove this when the connection in context is changed back to the
-    # AsyncConnection type only.
-    async def execute_stmt(self, stmt) -> CursorResult[Any]:
-        """Execute the statement synchronously or asynchronously based on the
-        type of the connection."""
-        if isinstance(self.connection, Connection):
-            return self.connection.execute(stmt)
-        else:
-            return await self.connection.execute(stmt)
 
     def get_mapper(self) -> BaseDomainDataMapper:
         """
@@ -146,7 +165,7 @@ class BaseRepository(ABC, Generic[T]):
         total_stmt = select(count()).select_from(self.get_repository_table())
         if query:
             total_stmt = query.enrich_stmt(total_stmt)
-        total = (await self.connection.execute(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar()
 
         stmt = (
             self.select_all_statement()

@@ -440,6 +440,7 @@ ServiceLayerRule = Rule(
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.security.**"),
     Allow("provisioningserver.utils.network.**"),
+    Allow("psycopg2"),
     Allow("pydantic|pydantic.**"),
     Allow("pymacaroons|pymacaroons.**"),
     Allow("pythonjsonlogger|pythonjsonlogger.**"),

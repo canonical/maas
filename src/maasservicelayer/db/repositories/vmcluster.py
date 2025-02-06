@@ -24,4 +24,4 @@ class VmClustersRepository(BaseRepository[VmCluster]):
             .where(eq(VmClusterTable.c.zone_id, old_zone_id))
             .values(zone_id=new_zone_id)
         )
-        await self.connection.execute(stmt)
+        await self.execute_stmt(stmt)

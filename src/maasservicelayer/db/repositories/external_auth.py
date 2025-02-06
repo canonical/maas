@@ -7,18 +7,15 @@ from sqlalchemy import delete, desc, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import and_, eq, ge, le
 
-from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import RootKeyTable
 from maasservicelayer.models.external_auth import RootKey
 from maasservicelayer.utils.date import utcnow
 
 
-class ExternalAuthRepository:
+class ExternalAuthRepository(Repository):
     GENERATE_INTERVAL = datetime.timedelta(days=1)
     EXPIRY_DURATION = datetime.timedelta(days=1)
-
-    def __init__(self, context: Context):
-        self.connection = context.get_connection()
 
     async def create(self) -> RootKey:
         now = utcnow()
@@ -36,7 +33,7 @@ class ExternalAuthRepository:
                 expiration=now + self.GENERATE_INTERVAL + self.EXPIRY_DURATION,
             )
         )
-        result = await self.connection.execute(stmt)
+        result = await self.execute_stmt(stmt)
         root_key = result.one()
         return RootKey(**root_key._asdict())
 
@@ -48,7 +45,7 @@ class ExternalAuthRepository:
                 eq(RootKeyTable.c.id, id),
             )
         )
-        result = await self.connection.execute(stmt)
+        result = await self.execute_stmt(stmt)
         root_key = result.first()
         if not root_key:
             return None
@@ -71,7 +68,7 @@ class ExternalAuthRepository:
             .limit(1)
         )
 
-        result = (await self.connection.execute(stmt)).one_or_none()
+        result = (await self.execute_stmt(stmt)).one_or_none()
         return RootKey(**result._asdict()) if result else None
 
     async def find_expired_keys(self) -> list[RootKey]:
@@ -82,9 +79,9 @@ class ExternalAuthRepository:
             .where(le(RootKeyTable.c.expiration, now))
         )
 
-        results = (await self.connection.execute(stmt)).all()
+        results = (await self.execute_stmt(stmt)).all()
         return [RootKey(**result._asdict()) for result in results]
 
     async def delete(self, id: int) -> None:
         stmt = delete(RootKeyTable).where(eq(RootKeyTable.c.id, id))
-        await self.connection.execute(stmt)
+        await self.execute_stmt(stmt)

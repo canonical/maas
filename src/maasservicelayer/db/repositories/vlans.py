@@ -59,7 +59,7 @@ class VlansRepository(BaseRepository[Vlan]):
             .order_by(VlanTable.c.id)
             .limit(1)
         )
-        result = (await self.connection.execute(stmt)).one()
+        result = (await self.execute_stmt(stmt)).one()
         return self.get_model_factory()(**result._asdict())
 
     async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
@@ -106,5 +106,5 @@ class VlansRepository(BaseRepository[Vlan]):
             )
         )
         stmt = query.enrich_stmt(stmt)
-        result = (await self.connection.execute(stmt)).all()
+        result = (await self.execute_stmt(stmt)).all()
         return [Vlan(**row._asdict()) for row in result]

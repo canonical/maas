@@ -75,7 +75,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
             .where(SubnetTable.c.cidr.op(">>")(ip_addr))
         )
 
-        result = (await self.connection.execute(stmt)).first()
+        result = (await self.execute_stmt(stmt)).first()
         if not result:
             return None
 
@@ -98,7 +98,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
         )
         # use the query from `delete` to specify which subnet we want to delete
         stmt = query.enrich_stmt(stmt)
-        subnet = (await self.connection.execute(stmt)).one_or_none()
+        subnet = (await self.execute_stmt(stmt)).one_or_none()
         if subnet:
             raise ValidationException(
                 details=[
