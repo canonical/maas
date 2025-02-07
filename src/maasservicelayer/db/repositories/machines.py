@@ -133,10 +133,10 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
     async def list_machine_usb_devices(
         self, system_id: str, page: int, size: int
     ) -> ListResult[UsbDevice]:
-        total_stmt = (
-            select(count())
-            .select_from(NodeDeviceTable)
+        total_stmt = select(count()).select_from(
+            self._list_devices_statement(system_id)
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.USB))
+            .subquery()
         )
         total = (await self.execute_stmt(total_stmt)).scalar()
 
@@ -158,10 +158,11 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
     async def list_machine_pci_devices(
         self, system_id: str, page: int, size: int
     ) -> ListResult[PciDevice]:
-        total_stmt = (
-            select(count())
-            .select_from(NodeDeviceTable)
+
+        total_stmt = select(count()).select_from(
+            self._list_devices_statement(system_id)
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.PCIE))
+            .subquery()
         )
         total = (await self.execute_stmt(total_stmt)).scalar()
 

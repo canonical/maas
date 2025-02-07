@@ -245,6 +245,46 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         assert devices_result.total == 3
         assert devices_result.items[0] == devices.pop()
 
+    async def test_list_machine_usb_devices_filters_by_system_id(
+        self, repository_instance: MachinesRepository, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        machines_devices = {}
+
+        # Create 3 machines with some devices
+        for i in range(3):
+            machine = (
+                await create_test_machine(fixture, bmc=bmc, user=user)
+            ).dict()
+            config = await create_test_node_config_entry(fixture, node=machine)
+            numa_node = await create_test_numa_node(fixture, node=machine)
+            devices = [
+                (
+                    await create_test_usb_device(
+                        fixture,
+                        numa_node=numa_node,
+                        config=config,
+                        vendor_name=str(i),
+                    )
+                )
+                for i in range(3)
+            ]
+            machines_devices[machine["system_id"]] = devices
+
+        # pick the first machine for the test
+        test_machine_system_id = next(iter(machines_devices))
+        test_machine_devices = machines_devices[test_machine_system_id]
+        machines_repository = repository_instance
+        devices_result = await machines_repository.list_machine_usb_devices(
+            system_id=test_machine_system_id, page=1, size=3
+        )
+        assert len(devices_result.items) == 3
+        assert devices_result.total == 3
+        assert test_machine_devices.pop() in devices_result.items
+        assert test_machine_devices.pop() in devices_result.items
+        assert test_machine_devices.pop() in devices_result.items
+
     async def test_list_machine_pci_devices(
         self, repository_instance: MachinesRepository, fixture: Fixture
     ) -> None:
@@ -284,6 +324,46 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         assert len(devices_result.items) == 1
         assert devices_result.total == 3
         assert devices_result.items[0] == devices.pop()
+
+    async def test_list_machine_pci_devices_filters_by_system_id(
+        self, repository_instance: MachinesRepository, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        machines_devices = {}
+
+        # Create 3 machines with some devices
+        for i in range(3):
+            machine = (
+                await create_test_machine(fixture, bmc=bmc, user=user)
+            ).dict()
+            config = await create_test_node_config_entry(fixture, node=machine)
+            numa_node = await create_test_numa_node(fixture, node=machine)
+            devices = [
+                (
+                    await create_test_pci_device(
+                        fixture,
+                        numa_node=numa_node,
+                        config=config,
+                        pci_address=f"0000:00:00.{i}",
+                    )
+                )
+                for i in range(3)
+            ]
+            machines_devices[machine["system_id"]] = devices
+
+        # pick the first machine for the test
+        test_machine_system_id = next(iter(machines_devices))
+        test_machine_devices = machines_devices[test_machine_system_id]
+        machines_repository = repository_instance
+        devices_result = await machines_repository.list_machine_pci_devices(
+            system_id=test_machine_system_id, page=1, size=3
+        )
+        assert len(devices_result.items) == 3
+        assert devices_result.total == 3
+        assert test_machine_devices.pop() in devices_result.items
+        assert test_machine_devices.pop() in devices_result.items
+        assert test_machine_devices.pop() in devices_result.items
 
     async def test_count_machines_by_statuses_no_machines(
         self, repository_instance: MachinesRepository
