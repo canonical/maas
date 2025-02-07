@@ -3,7 +3,6 @@
 
 from maasapiserver.v2.services.machine import MachineService
 from maasapiserver.v2.services.user import UserService
-from maasapiserver.v2.services.zone import ZoneService
 from maasservicelayer.context import Context
 
 
@@ -13,4 +12,3 @@ class ServiceCollectionV2:
     def __init__(self, context: Context):
         self.machines = MachineService(context)
         self.users = UserService(context)
-        self.zones = ZoneService(context)

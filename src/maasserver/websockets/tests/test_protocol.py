@@ -751,7 +751,6 @@ ALL_NOTIFIERS = {
     "user",
     "vlan",
     "vmcluster",
-    "zone",
 }
 
 ALL_HANDLERS = {
@@ -787,7 +786,6 @@ ALL_HANDLERS = {
     "user",
     "vlan",
     "vmcluster",
-    "zone",
 }
 
 
