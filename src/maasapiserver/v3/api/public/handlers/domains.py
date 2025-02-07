@@ -5,10 +5,15 @@ from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    NotFoundBodyResponse,
+    NotFoundResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
+)
 from maasapiserver.v3.api.public.models.responses.domains import (
     DomainResponse,
     DomainsListResponse,
@@ -62,4 +67,37 @@ class DomainsHandler(Handler):
             ],
             total=domains.total,
             next=next_link,
+        )
+
+    @handler(
+        path="/domains/{domain_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": DomainResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_domain(
+        self,
+        domain_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        domain = await services.domains.get_by_id(domain_id)
+        if not domain:
+            return NotFoundResponse()
+
+        response.headers["ETag"] = domain.etag()
+        return DomainResponse.from_model(
+            domain=domain, self_base_hyperlink=f"{V3_API_PREFIX}/domains"
         )
