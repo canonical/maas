@@ -48,10 +48,10 @@ MSM_REFRESH_RETRY_INTERVAL = timedelta(minutes=1)
 MSM_POLL_INTERVAL = timedelta(minutes=1)
 MSM_SECRET = "msm-connector"
 
-MSM_ENROL_EP = "/site/v1/enrol"
+MSM_ENROL_EP = "/site/v1/enroll"
 MSM_DETAIL_EP = "/site/v1/details"
-MSM_REFRESH_EP = "/site/v1/enrol/refresh"
-MSM_VERIFY_EP = "/site/v1/enrol/verify"
+MSM_REFRESH_EP = "/site/v1/enroll/refresh"
+MSM_VERIFY_EP = "/site/v1/enroll/verify"
 
 # Activities names
 MSM_CHECK_ENROL_ACTIVITY_NAME = "msm-check-enrol"
