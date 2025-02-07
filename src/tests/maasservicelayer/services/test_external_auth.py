@@ -682,7 +682,7 @@ class TestExternalAuthService:
             == "http://10.0.1.23:5000/auth"
         )
 
-    async def test_raise_discharge_exception(self):
+    async def test_raise_discharge_exception(self, mock_aioresponse):
         secrets_service_mock = Mock(SecretsService)
         # get the external auth config
         secrets_service_mock.get_composite_secret.return_value = (
@@ -705,13 +705,22 @@ class TestExternalAuthService:
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
+        third_party_key = bakery.generate_key()
+        # mock the call to the third party auth
+        mock_aioresponse.get(
+            "http://10.0.1.23:5000/auth/discharge/info",
+            payload={
+                "Version": bakery.LATEST_VERSION,
+                "PublicKey": str(third_party_key.public_key),
+            },
+        )
+
         external_auth_info = await external_auth_service.get_external_auth()
 
         with pytest.raises(DischargeRequiredException) as exc_info:
             await external_auth_service.raise_discharge_required_exception(
                 external_auth_info, "http://test"
             )
-
         assert exc_info.value.args[0] == "Macaroon discharge required."
 
     async def test_cache(self):

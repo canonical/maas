@@ -113,7 +113,8 @@ class TestVlansAPI(APITestCase.ForUser):
             response = self.client.get(uri)
         # XXX: These really should be equal.
         self.assertEqual(base_count + 7, counter.count)
-        self.assertEqual((base_count, counter.count), (25, 32))
+        # TODO: this should be 25, 32. Update this when we will be able to count also the queries made by the service layer.
+        self.assertEqual((base_count, counter.count), (24, 31))
 
     def test_create(self):
         self.become_admin()

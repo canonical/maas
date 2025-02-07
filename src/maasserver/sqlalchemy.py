@@ -4,8 +4,9 @@ See the docstring for get_sqlalchemy_django_connection() for more info.
 """
 
 import asyncio
+from asyncio import AbstractEventLoop
 from contextlib import contextmanager
-from typing import Any, Coroutine, Iterator, TypeVar
+from typing import Any, Callable, Coroutine, Iterator, Self, TypeVar
 
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine.base import Connection, Engine
@@ -15,39 +16,91 @@ from sqlalchemy.pool.base import Pool
 
 from maasservicelayer.context import Context
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
-from provisioningserver.utils.twisted import synchronous
+from maasservicelayer.services.base import Service
 
 T = TypeVar("T")
 
 
-@synchronous
-@contextmanager
-def servicelayer() -> Iterator[ServiceCollectionV3]:
-    conn = get_sqlalchemy_django_connection()
-    services = exec_async(
-        ServiceCollectionV3.produce(
-            Context(connection=conn), CacheForServices()
+class SyncServiceCollectionV3Adapter:
+    """Wraps a ServiceCollectionV3 to automatically execute async calls synchronously."""
+
+    def __init__(
+        self,
+        event_loop: AbstractEventLoop,
+        service_collection: ServiceCollectionV3,
+    ):
+        self._event_loop = event_loop
+        self._service_collection = service_collection
+
+    def __getattr__(self, name: str) -> Any:
+        attr = getattr(self._service_collection, name)
+
+        if isinstance(attr, Service):
+            return self._wrap_service(attr)
+
+        return attr
+
+    def _wrap_service(self, service: Service):
+        class SyncServiceWrapper:
+            def __init__(
+                self, event_loop: AbstractEventLoop, service: Service
+            ):
+                self._event_loop = event_loop
+                self._service = service
+
+            def __getattr__(self, method_name: str) -> Callable:
+                method = getattr(self._service, method_name)
+
+                if asyncio.iscoroutinefunction(method):
+
+                    def sync_wrapper(*args, **kwargs):
+                        if self._event_loop.is_running():
+                            raise RuntimeError(
+                                "Cannot call async function from a running event loop"
+                            )
+                        return self._event_loop.run_until_complete(
+                            method(*args, **kwargs)
+                        )
+
+                    return sync_wrapper
+
+                return method
+
+        return SyncServiceWrapper(self._event_loop, service)
+
+
+class ServiceLayerAdapter:
+    def __init__(self):
+        self.event_loop = asyncio.new_event_loop()
+        self.cache_for_services = CacheForServices()
+        # Set ServiceCollectionV3 just to help developers to use the service layer from the django application even if it's
+        # technically not the right type. However, it's fine because this adapter is supposed to be used only in the django
+        # application and we will never run this process with mypy.
+        self.services: ServiceCollectionV3 = SyncServiceCollectionV3Adapter(
+            event_loop=self.event_loop,
+            service_collection=self.exec_async(
+                ServiceCollectionV3.produce(
+                    Context(connection=get_sqlalchemy_django_connection()),
+                    self.cache_for_services,
+                )
+            ),
         )
-    )
-    yield services
 
+    @classmethod
+    @contextmanager
+    def build(cls) -> Iterator[Self]:
+        instance = cls()
+        try:
+            yield instance
+        finally:
+            instance.close()
 
-def exec_async(coro: Coroutine[Any, Any, T]) -> T:
-    """Executes the coroutine `coro` in a synchronous way.
+    def exec_async(self, coro: Coroutine[Any, Any, T]) -> T:
+        return self.event_loop.run_until_complete(coro)
 
-    Use only for the ServiceCollectionV3, example:
-
-        from maasservicelayer.services import ServiceCollectionV3
-
-        services = exec_async(ServiceCollectionV3.produce(context, cache))
-        machine = exec_async(services.machines.get_by_id(1))
-    """
-    try:
-        return asyncio.run(coro)
-    except RuntimeError:
-        # this should never happen as we are using it inside database threads
-        # that do not have an async event loop.
-        raise
+    def close(self):
+        self.exec_async(self.cache_for_services.close())
+        self.event_loop.close()
 
 
 def get_sqlalchemy_django_connection() -> Connection:

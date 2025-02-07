@@ -1,9 +1,8 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
-from functools import lru_cache
 import os
 
 from macaroonbakery import bakery, checkers, httpbakery
@@ -47,13 +46,6 @@ from provisioningserver.security import to_bin, to_hex
 MACAROON_LIFESPAN = timedelta(days=1)
 
 
-@lru_cache
-def get_third_party_locator(auth_endpoint: str):
-    return AsyncThirdPartyLocator(
-        allow_insecure=not auth_endpoint.startswith("https:")
-    )
-
-
 @dataclass(slots=True)
 class ExternalAuthServiceCache(ServiceCache):
     external_auth_config: ExternalAuthConfig | None = None
@@ -61,8 +53,23 @@ class ExternalAuthServiceCache(ServiceCache):
     bakery_key: bakery.PrivateKey | None = None
     candid_client: CandidAsyncClient | None = None
     rbac_client: RbacAsyncClient | None = None
+    third_party_locators: dict[str, AsyncThirdPartyLocator] = field(
+        default_factory=dict
+    )
+
+    def get_third_party_locator(
+        self, auth_endpoint: str
+    ) -> AsyncThirdPartyLocator:
+        if auth_endpoint not in self.third_party_locators:
+            self.third_party_locators[auth_endpoint] = AsyncThirdPartyLocator(
+                allow_insecure=not auth_endpoint.startswith("https:")
+            )
+        return self.third_party_locators[auth_endpoint]
 
     async def close(self) -> None:
+        for third_party_locator in self.third_party_locators.values():
+            await third_party_locator.close()
+
         if self.rbac_client:
             await self.rbac_client.close()
         if self.candid_client:
@@ -97,9 +104,6 @@ class ExternalAuthService(Service, RootKeyStore):
 
     @Service.from_cache_or_execute(attr="external_auth_config")
     async def get_external_auth(self) -> ExternalAuthConfig | None:
-        """
-        Same logic of maasserver.middleware.ExternalAuthInfoMiddleware._get_external_auth_info
-        """
         config = await self.secrets_service.get_composite_secret(
             path=self.EXTERNAL_AUTH_SECRET_PATH, default={}
         )
@@ -198,6 +202,13 @@ class ExternalAuthService(Service, RootKeyStore):
 
         return user
 
+    def _get_third_party_locator(self, auth_endpoint):
+        if self.cache:
+            return self.cache.get_third_party_locator(auth_endpoint)
+        return AsyncThirdPartyLocator(
+            allow_insecure=not auth_endpoint.startswith("https:")
+        )
+
     async def get_bakery(
         self, request_absolute_uri: str
     ) -> bakery.Bakery | None:
@@ -211,7 +222,7 @@ class ExternalAuthService(Service, RootKeyStore):
         oven = AsyncOven(
             key=await self.get_or_create_bakery_key(),
             location=request_absolute_uri,
-            locator=get_third_party_locator(auth_endpoint),
+            locator=self._get_third_party_locator(auth_endpoint),
             namespace=base_checker.namespace(),
             root_keystore_for_ops=lambda ops: self,
             ops_store=None,

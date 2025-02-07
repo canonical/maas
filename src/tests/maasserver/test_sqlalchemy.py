@@ -3,10 +3,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.sql.expression import func
 
-from maasserver.sqlalchemy import exec_async, get_sqlalchemy_django_connection
+from maasserver.sqlalchemy import (
+    get_sqlalchemy_django_connection,
+    ServiceLayerAdapter,
+)
 from maasserver.testing.factory import factory
-from maasservicelayer.context import Context
-from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 
 
 def test_same_transaction(maasdb):
@@ -50,12 +51,7 @@ def test_no_pool_connect(maasdb):
 
 def test_v3_services_creation(maasdb):
     machine = factory.make_Machine()
-    conn = get_sqlalchemy_django_connection()
-    services = exec_async(
-        ServiceCollectionV3.produce(
-            Context(connection=conn), CacheForServices()
-        )
-    )
-    fetched_machine = exec_async(services.machines.get_by_id(machine.id))
+    with ServiceLayerAdapter.build() as servicelayer:
+        fetched_machine = servicelayer.services.machines.get_by_id(machine.id)
     assert fetched_machine is not None
     assert fetched_machine.id == machine.id

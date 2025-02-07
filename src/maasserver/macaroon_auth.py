@@ -26,10 +26,12 @@ from piston3.utils import rc
 import requests
 
 from maasserver.auth import MAASAuthorizationBackend
-from maasserver.macaroons import _get_macaroon_caveats_ops, _IDClient
+from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasserver.models.rootkey import RootKey
 from maasserver.models.user import SYSTEM_USERS
+from maasserver.sqlalchemy import ServiceLayerAdapter
 from maasserver.utils.views import request_headers
+from maasservicelayer.auth.external_auth import ExternalAuthType
 from provisioningserver.security import to_bin, to_hex
 
 MACAROON_LIFESPAN = timedelta(days=1)
@@ -84,16 +86,22 @@ class MacaroonAPIAuthentication:
             return False
 
         req_headers = request_headers(request)
-        macaroon_bakery = _get_bakery(request)
-        auth_checker = macaroon_bakery.checker.auth(
-            httpbakery.extract_macaroons(req_headers)
-        )
-        try:
-            auth_info = auth_checker.allow(
-                checkers.AuthContext(), [bakery.LOGIN_OP]
+        with ServiceLayerAdapter.build() as servicelayer:
+            macaroon_bakery = servicelayer.services.external_auth.get_bakery(
+                request.build_absolute_uri("/")
             )
-        except (bakery.DischargeRequiredError, bakery.PermissionDenied):
-            return False
+            auth_checker = macaroon_bakery.checker.auth(
+                httpbakery.extract_macaroons(req_headers)
+            )
+
+            try:
+                auth_info = servicelayer.exec_async(
+                    auth_checker.allow(
+                        checkers.AuthContext(), [bakery.LOGIN_OP]
+                    )
+                )
+            except (bakery.DischargeRequiredError, bakery.PermissionDenied):
+                return False
 
         # set the user in the request so that it's considered authenticated. If
         # a user is not found with the username from the identity, it's
@@ -107,6 +115,7 @@ class MacaroonAPIAuthentication:
             user = User(username=username)
             user.save()
 
+        # TODO: Replace with service layer
         if not validate_user_external_auth(user, request.external_auth_info):
             return False
 
@@ -119,12 +128,16 @@ class MacaroonAPIAuthentication:
             # as the name implies.
             return rc.FORBIDDEN
 
-        macaroon_bakery = _get_bakery(request)
-        return _authorization_request(
-            macaroon_bakery,
-            auth_endpoint=request.external_auth_info.url,
-            auth_domain=request.external_auth_info.domain,
-        )
+        with ServiceLayerAdapter.build() as servicelayer:
+            macaroon_bakery = servicelayer.services.external_auth.get_bakery(
+                request.build_absolute_uri("/")
+            )
+            return _authorization_request(
+                macaroon_bakery,
+                servicelayer,
+                auth_endpoint=request.external_auth_info.url,
+                auth_domain=request.external_auth_info.domain,
+            )
 
 
 class MacaroonDischargeRequest:
@@ -134,28 +147,38 @@ class MacaroonDischargeRequest:
         if not request.external_auth_info:
             return HttpResponseNotFound("Not found")
 
-        macaroon_bakery = _get_bakery(request)
-        req_headers = request_headers(request)
-        auth_checker = macaroon_bakery.checker.auth(
-            httpbakery.extract_macaroons(req_headers)
-        )
-        try:
-            auth_info = auth_checker.allow(
-                checkers.AuthContext(), [bakery.LOGIN_OP]
+        with ServiceLayerAdapter.build() as servicelayer:
+            macaroon_bakery = servicelayer.services.external_auth.get_bakery(
+                request.build_absolute_uri("/")
             )
-        except bakery.DischargeRequiredError as err:
-            return _authorization_request(
-                macaroon_bakery, derr=err, req_headers=req_headers
+            req_headers = request_headers(request)
+            auth_checker = macaroon_bakery.checker.auth(
+                httpbakery.extract_macaroons(req_headers)
             )
-        except bakery.VerificationError:
-            return _authorization_request(
-                macaroon_bakery,
-                req_headers=req_headers,
-                auth_endpoint=request.external_auth_info.url,
-                auth_domain=request.external_auth_info.domain,
-            )
-        except bakery.PermissionDenied:
-            return HttpResponseForbidden()
+
+            try:
+                auth_info = servicelayer.exec_async(
+                    auth_checker.allow(
+                        checkers.AuthContext(), [bakery.LOGIN_OP]
+                    )
+                )
+            except bakery.DischargeRequiredError as err:
+                return _authorization_request(
+                    macaroon_bakery,
+                    servicelayer,
+                    derr=err,
+                    req_headers=req_headers,
+                )
+            except bakery.VerificationError:
+                return _authorization_request(
+                    macaroon_bakery,
+                    servicelayer,
+                    req_headers=req_headers,
+                    auth_endpoint=request.external_auth_info.url,
+                    auth_domain=request.external_auth_info.domain,
+                )
+            except bakery.PermissionDenied:
+                return HttpResponseForbidden()
 
         user = authenticate(request, identity=auth_info.identity)
         if user is None:
@@ -399,11 +422,11 @@ def validate_user_external_auth(
 
     active, superuser = False, False
     try:
-        if auth_info.type == "candid":
+        if auth_info.type == ExternalAuthType.CANDID:
             active, superuser, details = _validate_user_candid(
                 auth_info, user.username, client=candid_client
             )
-        elif auth_info.type == "rbac":
+        elif auth_info.type == ExternalAuthType.RBAC:
             active, superuser, details = _validate_user_rbac(
                 auth_info, user.username, client=rbac_client
             )
@@ -508,25 +531,13 @@ def _candid_login(credentials):
     return login_with_credentials
 
 
-def _get_bakery(request):
-    auth_endpoint = request.external_auth_info.url
-    auth_domain = request.external_auth_info.domain
-    return bakery.Bakery(
-        key=_get_macaroon_private_key(),
-        root_key_store=KeyStore(MACAROON_LIFESPAN),
-        location=request.build_absolute_uri("/"),
-        locator=httpbakery.ThirdPartyLocator(
-            allow_insecure=not auth_endpoint.startswith("https:")
-        ),
-        identity_client=_IDClient(auth_endpoint, auth_domain=auth_domain),
-        authorizer=bakery.ACLAuthorizer(
-            get_acl=lambda ctx, op: [bakery.EVERYONE]
-        ),
-    )
-
-
 def _authorization_request(
-    bakery, derr=None, auth_endpoint=None, auth_domain=None, req_headers=None
+    bakery,
+    servicelayer,
+    derr=None,
+    auth_endpoint=None,
+    auth_domain=None,
+    req_headers=None,
 ):
     """Return a 401 response with a macaroon discharge request.
 
@@ -539,7 +550,9 @@ def _authorization_request(
     else:
         caveats, ops = _get_macaroon_caveats_ops(auth_endpoint, auth_domain)
     expiration = datetime.now(timezone.utc) + MACAROON_LIFESPAN
-    macaroon = bakery.oven.macaroon(bakery_version, expiration, caveats, ops)
+    macaroon = servicelayer.exec_async(
+        bakery.oven.macaroon(bakery_version, expiration, caveats, ops)
+    )
     content, headers = httpbakery.discharge_required_response(
         macaroon, "/", "maas"
     )

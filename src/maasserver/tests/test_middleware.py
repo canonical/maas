@@ -35,6 +35,7 @@ from maasserver.utils.orm import (
     make_deadlock_failure,
     make_serialization_failure,
 )
+from maasservicelayer.auth.external_auth import ExternalAuthType
 from maastesting.utils import sample_binary_data
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.shell import ExternalProcessError
@@ -527,7 +528,9 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         )
         request = factory.make_fake_request("/")
         self.process_request(request)
-        self.assertEqual(request.external_auth_info.type, "candid")
+        self.assertEqual(
+            request.external_auth_info.type, ExternalAuthType.CANDID
+        )
         self.assertEqual(request.external_auth_info.url, "https://example.com")
         self.assertEqual(request.external_auth_info.domain, "ldap")
         self.assertEqual(request.external_auth_info.admin_group, "admins")
@@ -538,7 +541,9 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         )
         request = factory.make_fake_request("/")
         self.process_request(request)
-        self.assertEqual(request.external_auth_info.type, "rbac")
+        self.assertEqual(
+            request.external_auth_info.type, ExternalAuthType.RBAC
+        )
         self.assertEqual(
             request.external_auth_info.url, "https://rbac.example.com/auth"
         )
@@ -557,7 +562,9 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         )
         request = factory.make_fake_request("/")
         self.process_request(request)
-        self.assertEqual(request.external_auth_info.type, "rbac")
+        self.assertEqual(
+            request.external_auth_info.type, ExternalAuthType.RBAC
+        )
         self.assertEqual(
             request.external_auth_info.url, "https://rbac.example.com/auth"
         )
@@ -570,7 +577,9 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         )
         request = factory.make_fake_request("/")
         self.process_request(request)
-        self.assertEqual(request.external_auth_info.type, "candid")
+        self.assertEqual(
+            request.external_auth_info.type, ExternalAuthType.CANDID
+        )
         self.assertEqual(request.external_auth_info.url, "https://example.com")
 
 

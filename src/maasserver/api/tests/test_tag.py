@@ -218,7 +218,7 @@ class TestTagAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status` and 'resource_pool', the number
         # of queries is not the same but it is proportional to the number of
         # machines.
-        base_count = 88
+        base_count = 87
         for idx, node_count in enumerate(node_counts):
             self.assertEqual(query_counts[idx], base_count + (node_count * 6))
 

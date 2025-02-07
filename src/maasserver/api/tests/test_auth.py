@@ -16,10 +16,13 @@ from maasserver.api.auth import (
     OAuthBadRequest,
     OAuthUnauthorized,
 )
-from maasserver.middleware import ExternalAuthInfo
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasservicelayer.auth.external_auth import (
+    ExternalAuthConfig,
+    ExternalAuthType,
+)
 from maastesting.testcase import MAASTestCase
 from metadataserver.nodeinituser import get_node_init_user
 
@@ -41,8 +44,8 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
             .get("url", "")
         )
         if auth_url:
-            request.external_auth_info = ExternalAuthInfo(
-                type="candid",
+            request.external_auth_info = ExternalAuthConfig(
+                type=ExternalAuthType.CANDID,
                 url=auth_url,
                 domain="domain",
                 admin_group="admins",
@@ -81,8 +84,11 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         self.assertTrue(auth.is_authenticated(request))
         mock_validate.assert_called_with(
             user,
-            ExternalAuthInfo(
-                "candid", "https://example.com", "domain", "admins"
+            ExternalAuthConfig(
+                ExternalAuthType.CANDID,
+                "https://example.com",
+                "domain",
+                "admins",
             ),
         )
 
@@ -103,8 +109,8 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         # check interval not expired, the user isn't checked
         mock_validate.assert_called_with(
             user,
-            ExternalAuthInfo(
-                type="candid",
+            ExternalAuthConfig(
+                type=ExternalAuthType.CANDID,
                 url="https://example.com",
                 domain="domain",
                 admin_group="admins",

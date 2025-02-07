@@ -5,15 +5,20 @@ from datetime import timedelta
 import json
 import os
 from unittest import mock
+from unittest.mock import ANY, AsyncMock
 
+import aiohttp
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.utils import timezone
 from macaroonbakery._utils import visit_page_with_browser
-from macaroonbakery.bakery import SimpleIdentity, VerificationError
+from macaroonbakery.bakery import (
+    DischargeRequiredError,
+    SimpleIdentity,
+    VerificationError,
+)
 from macaroonbakery.httpbakery import WebBrowserInteractor
 from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
-import requests
 
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
@@ -30,12 +35,17 @@ from maasserver.macaroon_auth import (
     UserDetails,
     validate_user_external_auth,
 )
-from maasserver.middleware import ExternalAuthInfo, ExternalAuthInfoMiddleware
+from maasserver.middleware import ExternalAuthInfoMiddleware
 from maasserver.models import RootKey
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
+import maasservicelayer
+from maasservicelayer.auth.external_auth import (
+    ExternalAuthConfig,
+    ExternalAuthType,
+)
 from maastesting.testcase import MAASTestCase
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.security import to_bin
@@ -117,8 +127,8 @@ class TestValidateUserExternalAuthWithCandid(MAASServerTestCase):
         )
         self.user.userprofile.auth_last_check = self.default_last_check
         self.user.userprofile.save()
-        self.auth_info = ExternalAuthInfo(
-            type="candid",
+        self.auth_info = ExternalAuthConfig(
+            type=ExternalAuthType.CANDID,
             url="http://example.com",
             domain="example.com",
             admin_group="admins",
@@ -258,8 +268,8 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         )
         self.user.userprofile.auth_last_check = self.default_last_check
         self.user.userprofile.save()
-        self.auth_info = ExternalAuthInfo(
-            type="rbac", url="http://example.com"
+        self.auth_info = ExternalAuthConfig(
+            type=ExternalAuthType.RBAC, url="http://example.com"
         )
 
     def test_interval_not_expired(self):
@@ -432,12 +442,16 @@ class MacaroonBakeryMockMixin:
         Bakery internally performs this request.
         """
         mock_result = mock.Mock()
-        mock_result.status_code = 200
-        mock_result.json.return_value = {
-            "PublicKey": "CIdWcEUN+0OZnKW9KwruRQnQDY/qqzVdD30CijwiWCk=",
-            "Version": 3,
-        }
-        mock_get = self.patch(requests, "get")
+        mock_result.status = 200
+        mock_result.json = mock.AsyncMock(
+            return_value={
+                "PublicKey": "CIdWcEUN+0OZnKW9KwruRQnQDY/qqzVdD30CijwiWCk=",
+                "Version": 3,
+            }
+        )
+        mock_get = self.patch(
+            aiohttp.ClientSession, "get", mock_class=AsyncMock
+        )
         mock_get.return_value = mock_result
 
     def mock_auth_info(self, username=None, exception=None):
@@ -450,7 +464,7 @@ class MacaroonBakeryMockMixin:
         Return the mocked bakery object.
 
         """
-        mock_auth_checker = mock.Mock()
+        mock_auth_checker = mock.AsyncMock()
         if username:
             mock_auth_checker.allow.return_value = mock.Mock(
                 identity=SimpleIdentity(user=username)
@@ -460,7 +474,12 @@ class MacaroonBakeryMockMixin:
 
         mock_bakery = mock.Mock()
         mock_bakery.checker.auth.return_value = mock_auth_checker
-        mock_get_bakery = self.patch(maasserver.macaroon_auth, "_get_bakery")
+
+        mock_get_bakery = self.patch(
+            maasservicelayer.services.external_auth.ExternalAuthService,
+            "get_bakery",
+            mock_class=AsyncMock,
+        )
         mock_get_bakery.return_value = mock_bakery
         return mock_bakery
 
@@ -497,6 +516,11 @@ class TestMacaroonAPIAuthentication(
         self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
     def test_is_authenticated_no_auth_details(self):
+        self.mock_auth_info(
+            exception=DischargeRequiredError(
+                "authentication required", None, None
+            )
+        )
         self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
     def test_is_authenticated_with_auth(self):
@@ -514,8 +538,8 @@ class TestMacaroonAPIAuthentication(
         self.assertFalse(user.userprofile.is_local)
         self.mock_validate.assert_called_with(
             user,
-            ExternalAuthInfo(
-                type="candid",
+            ExternalAuthConfig(
+                type=ExternalAuthType.CANDID,
                 url="https://auth.example.com",
                 domain="",
                 admin_group="admins",
@@ -600,8 +624,8 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         self.assertFalse(user.userprofile.is_local)
         self.mock_validate.assert_called_with(
             user,
-            ExternalAuthInfo(
-                type="candid",
+            ExternalAuthConfig(
+                type=ExternalAuthType.CANDID,
                 url="https://auth.example.com",
                 domain="",
                 admin_group="admins",
@@ -648,8 +672,8 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         )
         self.mock_validate.assert_called_with(
             user,
-            ExternalAuthInfo(
-                type="candid",
+            ExternalAuthConfig(
+                type=ExternalAuthType.CANDID,
                 url="https://auth.example.com",
                 domain="",
                 admin_group="admins",
@@ -814,6 +838,7 @@ class TestMacaroonDischargeRequest(
         )
         mock_auth_request.assert_called_with(
             mock_bakery,
+            ANY,  # service layer object
             auth_endpoint="https://auth.example.com",
             auth_domain="",
             req_headers={"cookie": ""},

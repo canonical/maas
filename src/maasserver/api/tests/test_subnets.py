@@ -85,7 +85,8 @@ class TestSubnetsAPI(APITestCase.ForUser):
             response = self.client.get(uri)
         # XXX: These should be the same.
         self.assertEqual(base_count + 9, counter.count)
-        self.assertEqual((base_count, counter.count), (24, 33))
+        # TODO: this should be 24, 33. Update this when we will be able to count also the queries made by the service layer.
+        self.assertEqual((base_count, counter.count), (23, 32))
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content
