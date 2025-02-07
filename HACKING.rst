@@ -498,3 +498,112 @@ Sometimes you need to see where in the code that query was performed.::
 
     from maasserver.testing.fixtures import LogSQL
     self.useFixture(LogSQL(include_stacktrace=True))
+
+
+Temporal Workflows
+===================
+
+This section outlines how to configure Temporal to view and develop temporal
+workflows in MAAS.
+
+Viewing Workflows
+^^^^^^^^^^^^^^^^^^
+
+Prerequisites
+-------------
+
+- The MAAS development environment setup and running, as outlined in the
+  `MAAS-dev GitHub repository <https://github.com/canonical/maas-dev-setup>`_.
+- Docker installed on your host, i.e. outside your LXD container. Docker won't
+  work if running in a lxd container, so it needs to run on your host. If it's
+  not installed, the easiest installation is as a
+  `snap <https://snapcraft.io/install/docker/ubuntu>`_. 
+- `Go <https://golang.org/dl/>`_ installed on your host machine: 
+  ::
+
+    sudo apt update
+    sudo apt install golang-go
+
+
+UI configuration
+-----------------
+
+1. Ensure your maas environment is running. 
+2. On your host machine, copy your TLS certificates and keys from your container to your
+   host. Assuming the container name is ``maas-dev``:
+   ::
+    
+    cd ~/path_to_repos/maas/
+    lxc file pull -r maas-dev/var/snap/maas/current/certificates ./.dev-certificates/
+   
+3. Verify you've copied over ``cacerts.pem``, ``cluster.key``, and ``cluster.pem``:
+   ::
+
+    ls -la ./.dev-certificates/certificates/
+
+4. Open a new terminal on your **host**, navigate to the temporal directory to run
+   the ui, making sure to specify the MAAS IP address: 
+   ::
+
+    cd utilities
+    sudo ./run_temporal_ui <maas_ip_address>
+
+5. Access the temporal UI on your browser at http://localhost:8080 to verify
+   the setup. You should see a list of workflows that have run.
+
+
+Codec Server configuration
+--------------------------
+
+The Codec Server is a separate service used to encode and decode data handled in
+your Workflow Execution. It allows you to observe and interact with workflows during
+development. Read more about it in the
+`docs <https://docs.temporal.io/production-deployment/data-encryption>`_.
+
+To run the Codec Server:
+
+1. ON YOUR MACHINE: clone this repository https://git.launchpad.net/~maas-committers/maas/+git/temporalio-maas-codecserver
+2. ON THE REGION: extract the MAAS secret from one of the regions from 
+   `/var/snap/maas/common/maas/secret`
+3. ON YOUR MACHINE: in the codecserver directory, `go run main.go --key <SECRET> --port 8090`
+4. The terminal process will be blocked when the codec server is running.
+
+Running Workflows
+^^^^^^^^^^^^^^^^^^
+
+Prerequisites
+-------------
+
+- Install tctl on your host machine:
+  ::
+
+    go install github.com/temporalio/tctl/cmd/tctl@latest
+
+- If tctl isn't found, you may need to add the go bin directory to your path:
+  ::
+
+    export GOPATH=$HOME/go
+    export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+
+
+Run
+---
+
+- On your host machine, in the same directory as your certificates, run the following 
+  specifying the MAAS IP, workflow, and parameters:
+  ::
+
+        MAAS_IP=10.10.0.20
+        WF_NAME=tag-evaluation
+        PARAMS='{"task_queue":"foo"}'
+
+        TEMPORAL_CLI_CODEC_ENDPOINT="http://127.0.0.1:8090" \
+            TEMPORAL_CLI_TLS_CERT=cluster.pem \
+            TEMPORAL_CLI_TLS_KEY=cluster.key \
+            TEMPORAL_CLI_TLS_CA=cacerts.pem \
+            TEMPORAL_CLI_TLS_SERVER_NAME=maas \
+            tctl --ad $MAAS_IP:5271 \
+            wf run --tq region  \
+            --wt $WF_NAME \
+            -i $PARAMS
+

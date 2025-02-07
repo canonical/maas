@@ -1,0 +1,26 @@
+#!/bin/bash  
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <maas_ip_address>"
+    echo "Example: $0 10.10.0.2"
+    exit 1
+fi
+
+MAAS_IP=$1
+CERTIFICATES_DIR=$(dirname "$0")/../.dev-certificates/certificates
+
+echo "Using MAAS IP: $MAAS_IP"
+echo "Using certificates directory: $CERTIFICATES_DIR"
+
+docker run --rm \
+    -e TEMPORAL_CODEC_ENDPOINT=http://localhost:8090 \
+    -e TEMPORAL_ADDRESS=$MAAS_IP:5271 \
+    -e TEMPORAL_CSRF_COOKIE_INSECURE=true \
+    -e TEMPORAL_CORS_ORIGINS=http://localhost:8080 \
+    -e TEMPORAL_TLS_CA=/var/lib/certificates/cacerts.pem \
+    -e TEMPORAL_TLS_CERT=/var/lib/certificates/cluster.pem \
+    -e TEMPORAL_TLS_KEY=/var/lib/certificates/cluster.key \
+    -e TEMPORAL_TLS_SERVER_NAME=maas \
+    -p 8080:8080 \
+    -v $CERTIFICATES_DIR:/var/lib/certificates \
+    temporalio/ui
