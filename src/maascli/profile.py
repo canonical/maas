@@ -3,7 +3,6 @@
 
 """Profile-related functionality."""
 
-
 from itertools import islice
 
 

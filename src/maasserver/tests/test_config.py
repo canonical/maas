@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.config`."""
 
-
 import random
 
 import formencode.api

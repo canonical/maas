@@ -3,7 +3,6 @@
 
 """API handler: `StaticIPAddress`."""
 
-
 from django.http import Http404
 from django.http.response import HttpResponseBadRequest, HttpResponseForbidden
 from formencode.validators import StringBool
@@ -373,8 +372,7 @@ class IPAddressesHandler(OperationsHandler):
         if _all and not request.user.is_superuser:
             return HttpResponseForbidden(
                 content_type="text/plain",
-                content="Listing all IP addresses requires admin "
-                "privileges.",
+                content="Listing all IP addresses requires admin privileges.",
             )
         if owner is not None and not request.user.is_superuser:
             return HttpResponseForbidden(

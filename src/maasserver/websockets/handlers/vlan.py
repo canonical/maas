@@ -3,7 +3,6 @@
 
 """The VLAN handler for the WebSocket connection."""
 
-
 import netaddr
 
 from maasserver.enum import IPRANGE_TYPE

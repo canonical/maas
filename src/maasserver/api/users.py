@@ -3,7 +3,6 @@
 
 """API handlers: `User`."""
 
-
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from piston3.handler import BaseHandler
@@ -196,7 +195,7 @@ class UserHandler(OperationsHandler):
                     ),
                 )
             except CannotDeleteUserException as e:
-                raise ValidationError(str(e))
+                raise ValidationError(str(e))  # noqa: B904
 
         return rc.DELETED
 

@@ -445,7 +445,7 @@ class TestSshKeysService:
         assert e.value.details[0].field == "key"
         assert (
             e.value.details[0].message
-            == f"Key type wrong-keytype not recognised; it should be one of: {" ".join(sorted(OPENSSH_PROTOCOL2_KEY_TYPES))}"
+            == f"Key type wrong-keytype not recognised; it should be one of: {' '.join(sorted(OPENSSH_PROTOCOL2_KEY_TYPES))}"
         )
 
     @pytest.mark.parametrize(

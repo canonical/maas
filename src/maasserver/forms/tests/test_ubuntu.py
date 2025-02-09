@@ -3,7 +3,6 @@
 
 """Tests for `UbuntuForm`."""
 
-
 from urllib.parse import urlparse
 
 from maasserver.forms import UbuntuForm

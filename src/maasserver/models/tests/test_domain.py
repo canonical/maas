@@ -3,7 +3,6 @@
 
 """Tests for the Domain model."""
 
-
 import random
 
 from django.core.exceptions import PermissionDenied, ValidationError

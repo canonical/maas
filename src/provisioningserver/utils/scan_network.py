@@ -3,7 +3,6 @@
 
 """Utilities for scanning attached networks."""
 
-
 from collections import namedtuple
 import json
 from multiprocessing import cpu_count
@@ -396,7 +395,7 @@ def validate_ipv4_cidrs(cidrs):
         try:
             IPNetwork(cidr, version=4)
         except AddrFormatError:
-            raise ActionScriptError("Not a valid IPv4 CIDR: %s" % cidr)
+            raise ActionScriptError("Not a valid IPv4 CIDR: %s" % cidr)  # noqa: B904
 
 
 def adjust_scanning_parameters(
@@ -437,7 +436,7 @@ def scan_networks(args, to_scan, stderr, stdout):
         tool = "nmap"
         scanner = nmap_scan(to_scan, slow=args.slow, threads=args.threads)
         count = 0
-        for count, event in enumerate(scanner, 1):
+        for count, event in enumerate(scanner, 1):  # noqa: B007
             write_event(event, stdout)
         clock_diff = time.monotonic() - clock
         if count > 0:

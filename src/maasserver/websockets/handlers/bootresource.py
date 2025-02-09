@@ -889,7 +889,7 @@ class BootResourceHandler(Handler):
             # Validate the boot source fields without committing it.
             boot_source.clean_fields()
         except ValidationError as error:
-            raise HandlerValidationError(error)
+            raise HandlerValidationError(error)  # noqa: B904
         source = boot_source.to_dict_without_selections()
 
         # FIXME: This modifies the environment of the entire process, which is
@@ -903,7 +903,7 @@ class BootResourceHandler(Handler):
                     [source], user_agent=get_maas_user_agent()
                 )
             except Exception as error:
-                raise HandlerError(str(error))
+                raise HandlerError(str(error))  # noqa: B904
         items = list(descriptions.items())
         err_msg = "Mirror provides no Ubuntu images."
         if not items:

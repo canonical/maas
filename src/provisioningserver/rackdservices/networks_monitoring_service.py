@@ -3,7 +3,6 @@
 
 """Networks monitoring service for rack controllers."""
 
-
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from provisioningserver.logger import get_maas_logger

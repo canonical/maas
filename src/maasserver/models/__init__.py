@@ -261,8 +261,10 @@ def get_resource_uri_template(self):
     See http://bitworking.org/projects/URI-Templates/
     """
 
-    def _convert(template, params=[]):
+    def _convert(template, params=None):
         """URI template converter"""
+        if params is None:
+            params = []
         paths = template % {p: "{%s}" % p for p in params}
         return f"{get_script_prefix()}{paths}"
 

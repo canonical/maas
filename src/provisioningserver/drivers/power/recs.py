@@ -4,7 +4,6 @@
 
 """Christmann RECS|Box Power Driver."""
 
-
 from typing import Optional
 import urllib.error
 import urllib.parse
@@ -61,7 +60,9 @@ class RECSAPI:
         self.username = username
         self.password = password
 
-    def build_url(self, command, params=[]):
+    def build_url(self, command, params=None):
+        if params is None:
+            params = []
         url = f"http://{self.ip}:{self.port}/REST/"
         params = filter(None, params)
         return urllib.parse.urljoin(url, command) + "?" + "&".join(params)
@@ -71,8 +72,10 @@ class RECSAPI:
         root = fromstring(response)
         return root.attrib.get(attribute)
 
-    def get(self, command, params=[]):
+    def get(self, command, params=None):
         """Dispatch a GET request to a RECS_Master."""
+        if params is None:
+            params = []
         url = self.build_url(command, params)
         authinfo = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         authinfo.add_password(None, url, self.username, self.password)
@@ -83,20 +86,24 @@ class RECSAPI:
         try:
             response = urllib.request.urlopen(url)
         except urllib.error.HTTPError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to RECS|Box."
                 " HTTP error code: %s" % e.code
             )
         except urllib.error.URLError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to RECS|Box."
                 " Server could not be reached: %s" % e.reason
             )
         else:
             return response.read()
 
-    def post(self, command, urlparams=[], params={}):
+    def post(self, command, urlparams=None, params=None):
         """Dispatch a POST request to a RECS_Master."""
+        if params is None:
+            params = {}
+        if urlparams is None:
+            urlparams = []
         url = self.build_url(command, urlparams)
         authinfo = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         authinfo.add_password(None, url, self.username, self.password)
@@ -109,20 +116,24 @@ class RECSAPI:
         try:
             response = urllib.request.urlopen(req)
         except urllib.error.HTTPError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to RECS|Box."
                 " HTTP error code: %s" % e.code
             )
         except urllib.error.URLError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to RECS|Box."
                 " Server could not be reached: %s" % e.reason
             )
         else:
             return response.read()
 
-    def put(self, command, urlparams=[], params={}):
+    def put(self, command, urlparams=None, params=None):
         """Dispatch a PUT request to a RECS_Master."""
+        if params is None:
+            params = {}
+        if urlparams is None:
+            urlparams = []
         url = self.build_url(command, urlparams)
         authinfo = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         authinfo.add_password(None, url, self.username, self.password)
@@ -135,12 +146,12 @@ class RECSAPI:
         try:
             response = urllib.request.urlopen(req)
         except urllib.error.HTTPError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to RECS|Box."
                 " HTTP error code: %s" % e.code
             )
         except urllib.error.URLError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to RECS|Box."
                 " Server could not be reached: %s" % e.reason
             )
@@ -248,11 +259,11 @@ class RECSPowerDriver(PowerDriver):
         try:
             power_state = api.get_node_power_state(node_id)
         except urllib.error.HTTPError as e:
-            raise RECSError(
+            raise RECSError(  # noqa: B904
                 "Failed to retrieve power state. HTTP error code: %s" % e.code
             )
         except urllib.error.URLError as e:
-            raise RECSError(
+            raise RECSError(  # noqa: B904
                 "Failed to retrieve power state. Server not reachable: %s"
                 % e.reason
             )
@@ -335,13 +346,13 @@ def probe_and_enlist_recs(
         # if get_nodes works, we have access to the system
         nodes = api.get_nodes()
     except urllib.error.HTTPError as e:
-        raise RECSError(
+        raise RECSError(  # noqa: B904
             "Failed to probe nodes for RECS_Master with ip=%s "
             "port=%s, username=%s, password=%s. HTTP error code: %s"
             % (ip, port, username, password, e.code)
         )
     except urllib.error.URLError as e:
-        raise RECSError(
+        raise RECSError(  # noqa: B904
             "Failed to probe nodes for RECS_Master with ip=%s "
             "port=%s, username=%s, password=%s. "
             "Server could not be reached: %s"

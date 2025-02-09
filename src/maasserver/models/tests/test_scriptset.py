@@ -338,7 +338,7 @@ class TestScriptSetManager(MAASServerTestCase):
     def test_create_commissioning_script_set_cleans_up_past_limit(self):
         limit = Config.objects.get_config("max_node_commissioning_results")
         node = factory.make_Node()
-        for i in range(limit + 2):
+        for i in range(limit + 2):  # noqa: B007
             ScriptSet.objects.create_commissioning_script_set(node)
 
         for script_name in NODE_INFO_SCRIPTS:
@@ -351,7 +351,7 @@ class TestScriptSetManager(MAASServerTestCase):
         limit = Config.objects.get_config("max_node_commissioning_results")
         node1 = factory.make_Node()
         node2 = factory.make_Node()
-        for i in range(limit + 2):
+        for i in range(limit + 2):  # noqa: B007
             ScriptSet.objects.create_commissioning_script_set(node1)
             ScriptSet.objects.create_commissioning_script_set(node2)
 

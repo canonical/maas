@@ -250,7 +250,7 @@ class TestBaseService:
 
         service.pre_delete_hook = _mock_pre_delete_hook
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             await service.delete_one(query)
 
     async def test_delete_one_not_found(self, repository_mock, service):
@@ -319,7 +319,7 @@ class TestBaseService:
 
         service.pre_delete_hook = _mock_pre_delete_hook
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             await service.delete_by_id(0)
 
     async def test_delete_by_id_not_found(self, repository_mock, service):

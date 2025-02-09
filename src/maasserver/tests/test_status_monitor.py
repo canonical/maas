@@ -3,7 +3,6 @@
 
 """Tests for the status monitor module."""
 
-
 from datetime import timedelta
 from unittest.mock import call
 

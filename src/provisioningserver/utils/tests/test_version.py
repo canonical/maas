@@ -281,11 +281,11 @@ class TestVersionTestCase(MAASTestCase):
 
 class TestGetRunningVersion(TestVersionTestCase):
     def test_uses_get_deb_versions_info(self):
-        self.patch(version.deb, "get_deb_versions_info").return_value = (
-            deb.DebVersionsInfo(
-                current=deb.DebVersion(
-                    version="2.10.0-456-g.deadbeef-0ubuntu1",
-                )
+        self.patch(
+            version.deb, "get_deb_versions_info"
+        ).return_value = deb.DebVersionsInfo(
+            current=deb.DebVersion(
+                version="2.10.0-456-g.deadbeef-0ubuntu1",
             )
         )
         maas_version = get_running_version()

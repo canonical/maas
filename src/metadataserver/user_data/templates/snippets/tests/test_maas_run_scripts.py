@@ -156,9 +156,9 @@ class TestScript(MAASTestCase):
         self.patch(maas_run_scripts.subprocess, "Popen")
         error = OSError("Fail!")
         error.errno = 10
-        self.patch(maas_run_scripts, "capture_script_output").side_effect = (
-            error
-        )
+        self.patch(
+            maas_run_scripts, "capture_script_output"
+        ).side_effect = error
         info = {
             "name": "myscript",
             "path": "commissioning-scripts/myscript",
@@ -175,9 +175,9 @@ class TestScript(MAASTestCase):
         self.patch(maas_run_scripts.subprocess, "Popen")
         error = OSError("Timeout!")
         error.errno = 124
-        self.patch(maas_run_scripts, "capture_script_output").side_effect = (
-            error
-        )
+        self.patch(
+            maas_run_scripts, "capture_script_output"
+        ).side_effect = error
         info = {
             "name": "myscript",
             "path": "commissioning-scripts/myscript",
@@ -473,12 +473,12 @@ class TestMain(MAASTestCase):
     def test_get_machine_token_machine_not_found(self):
         tempdir = self.useFixture(TempDirectory()).path
         mock_exit = self.patch(maas_run_scripts.sys, "exit")
-        self.patch(maas_run_scripts, "geturl").side_effect = (
-            self.make_http_error(
-                404,
-                "Not found",
-                "Machine not found",
-            )
+        self.patch(
+            maas_run_scripts, "geturl"
+        ).side_effect = self.make_http_error(
+            404,
+            "Not found",
+            "Machine not found",
         )
         main(
             [

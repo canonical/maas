@@ -13,9 +13,8 @@ from twisted.internet.defer import succeed
 
 from maasserver.api import auth
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES
-from maasserver.models import Config, Node
+from maasserver.models import Config, Node, NodeKey
 from maasserver.models import node as node_module
-from maasserver.models import NodeKey
 from maasserver.models.scriptset import get_status_from_qs
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
@@ -861,9 +860,9 @@ class TestPowerMixin(APITestCase.ForUser):
         factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, tags=["commissioning"]
         )
-        self.patch(node_module.Node, "_power_control_node").return_value = (
-            succeed(None)
-        )
+        self.patch(
+            node_module.Node, "_power_control_node"
+        ).return_value = succeed(None)
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
             owner=factory.make_User(),

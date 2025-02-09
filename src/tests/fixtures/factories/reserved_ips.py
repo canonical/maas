@@ -12,7 +12,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_reserved_ip_entry(
     fixture: Fixture,
     subnet: dict[str, Any] | None = None,
-    **extra_details: Any
+    **extra_details: Any,
 ) -> dict[str, Any]:
     created_at = datetime.now(timezone.utc).astimezone()
     updated_at = datetime.now(timezone.utc).astimezone()

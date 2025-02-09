@@ -61,7 +61,6 @@ class TestCommonMachinesService(ServiceCommonTests):
 
 @pytest.mark.asyncio
 class TestMachinesService:
-
     async def test_list_machine_usb_devices(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list_machine_usb_devices.return_value = (

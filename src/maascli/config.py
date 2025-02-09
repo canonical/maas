@@ -3,7 +3,6 @@
 
 """Configuration abstractions for the MAAS CLI."""
 
-
 from contextlib import closing, contextmanager
 import json
 from pathlib import Path
@@ -57,7 +56,7 @@ class ProfileConfig:
 
     def __delitem__(self, name):
         with self.cursor() as cursor:
-            cursor.execute("DELETE FROM profiles" " WHERE name = ?", (name,))
+            cursor.execute("DELETE FROM profiles WHERE name = ?", (name,))
         self.cache.pop(name, None)
 
     @classmethod

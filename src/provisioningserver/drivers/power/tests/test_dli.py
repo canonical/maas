@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.dli`."""
 
-
 from random import choice
 from unittest.mock import call, sentinel
 

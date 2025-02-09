@@ -3,7 +3,6 @@
 
 """Testing infrastructure for MAAS."""
 
-
 import copy
 from os import environ
 from os.path import abspath, dirname, join, pardir, realpath
@@ -100,7 +99,7 @@ class MAASTracebackContent(testtools.content.Content):
         ):
             # Skip assert*() traceback levels
             limit = 0
-            for frame, line_no in traceback.walk_tb(tb):
+            for frame, line_no in traceback.walk_tb(tb):  # noqa: B007
                 if "__unittest" in frame.f_globals:
                     break
                 limit += 1

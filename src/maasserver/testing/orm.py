@@ -3,7 +3,6 @@
 
 """ORM-related test helpers."""
 
-
 from contextlib import contextmanager
 
 from django.db import transaction

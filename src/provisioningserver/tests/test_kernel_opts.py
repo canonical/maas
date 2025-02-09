@@ -3,7 +3,6 @@
 
 """Test composition of kernel command lines."""
 
-
 import random
 from unittest.mock import sentinel
 

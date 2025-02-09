@@ -3,7 +3,6 @@
 
 """Nonces cleanup utilities."""
 
-
 import time
 
 from piston3.models import Nonce

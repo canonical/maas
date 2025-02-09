@@ -3,7 +3,6 @@
 
 """Global license keys."""
 
-
 from django.db.models import CharField, Manager
 
 from maasserver.models.timestampedmodel import TimestampedModel

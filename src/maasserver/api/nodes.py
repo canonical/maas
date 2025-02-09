@@ -1054,7 +1054,7 @@ class PowerMixin:
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the
             # system_id in it, as that is the primary API key to a node.
-            raise StaticIPAddressExhaustion(
+            raise StaticIPAddressExhaustion(  # noqa: B904
                 "%s: Unable to allocate static IP due to address"
                 " exhaustion." % system_id
             )
@@ -1144,7 +1144,7 @@ class PowerMixin:
             try:
                 return form.save()
             except NoScriptsFound:
-                raise MAASAPIValidationError("No testing scripts found!")
+                raise MAASAPIValidationError("No testing scripts found!")  # noqa: B904
         else:
             raise MAASAPIValidationError(form.errors)
 

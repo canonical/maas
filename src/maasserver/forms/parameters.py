@@ -3,7 +3,6 @@
 
 """Parameters form."""
 
-
 import copy
 from ipaddress import ip_address
 import os
@@ -62,7 +61,10 @@ class ParametersForm(Form):
         ifaces = [
             interface
             for interface in self._node.current_config.interface_set.filter(
-                children_relationships=None, enabled=True, *args, **kwargs
+                children_relationships=None,
+                enabled=True,
+                *args,  # noqa: B026
+                **kwargs,  # noqa: B026
             ).prefetch_related("ip_addresses")
             if interface.is_configured()
         ]
@@ -633,7 +635,7 @@ class ParametersForm(Form):
         ]
         if param["value"] not in choices:
             set_form_error(
-                self, param_name, f"Invalid choice \"{param['value']}\""
+                self, param_name, f'Invalid choice "{param["value"]}"'
             )
 
     def clean_input(self):

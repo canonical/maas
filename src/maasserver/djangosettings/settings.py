@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django settings for maas project."""
+
 import logging
 import os
 import pathlib
@@ -65,7 +66,7 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
             database_pass = creds["pass"]
             database_name = creds["name"]
         except KeyError as e:
-            raise ImproperlyConfigured(
+            raise ImproperlyConfigured(  # noqa: B904
                 f"Incomplete Vault-stored DB credentials, missing key {e}"
             )
         except UnknownSecretPath:

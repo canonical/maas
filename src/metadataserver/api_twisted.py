@@ -354,7 +354,7 @@ class StatusWorkerService(TimerService):
             )
         else:
             # Here we're in a database thread, with a database connection.
-            for idx, message in enumerate(messages):
+            for idx, message in enumerate(messages):  # noqa: B007
                 try:
                     exists = self._processMessage(node, message)
                     if not exists:

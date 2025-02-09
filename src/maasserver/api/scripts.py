@@ -3,7 +3,6 @@
 
 """API handlers: `Script`."""
 
-
 from base64 import b64encode
 from email.utils import format_datetime
 
@@ -150,7 +149,7 @@ class NodeScriptsHandler(OperationsHandler):
             try:
                 script_type = translate_script_type(script_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
             else:
                 qs = qs.filter(script_type=script_type)
 
@@ -159,7 +158,7 @@ class NodeScriptsHandler(OperationsHandler):
             try:
                 hardware_type = translate_hardware_type(hardware_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
             else:
                 qs = qs.filter(hardware_type=hardware_type)
 
@@ -487,7 +486,7 @@ class NodeScriptHandler(OperationsHandler):
             )
             return script
         except ValueError as e:
-            raise MAASAPIValidationError(e.args[0])
+            raise MAASAPIValidationError(e.args[0])  # noqa: B904
 
     @admin_method
     @operation(idempotent=False)

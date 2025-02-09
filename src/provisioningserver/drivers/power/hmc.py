@@ -7,7 +7,6 @@ Support for managing lpars via the IBM Hardware Management Console (HMC).
 This module provides support for interacting with IBM's HMC via SSH.
 """
 
-
 from socket import error as SOCKETError
 
 from paramiko import AutoAddPolicy, SSHClient, SSHException
@@ -72,7 +71,7 @@ class HMCPowerDriver(PowerDriver):
         power_address=None,
         power_user=None,
         power_pass=None,
-        **extra
+        **extra,
     ):
         """Run a single command on HMC via SSH and return output."""
         try:
@@ -84,7 +83,7 @@ class HMCPowerDriver(PowerDriver):
             _, stdout, _ = ssh_client.exec_command(command)
             output = stdout.read().decode("utf-8").strip()
         except (SSHException, EOFError, SOCKETError) as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make SSH connection to HMC for "
                 "%s on %s - %s" % (power_user, power_address, e)
             )
@@ -102,10 +101,10 @@ class HMCPowerDriver(PowerDriver):
             self.run_hmc_command(
                 "chsysstate -r lpar -m %s -o on -n %s --bootstring network-all"
                 % (context["server_name"], context["lpar"]),
-                **context
+                **context,
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "HMC Power Driver unable to power on lpar %s: %s"
                 % (context["lpar"], e)
             )
@@ -117,10 +116,10 @@ class HMCPowerDriver(PowerDriver):
             self.run_hmc_command(
                 "chsysstate -r lpar -m %s -o shutdown -n %s --immed"
                 % (context["server_name"], context["lpar"]),
-                **context
+                **context,
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "HMC Power Driver unable to power off lpar %s: %s"
                 % (context["lpar"], e)
             )
@@ -132,10 +131,10 @@ class HMCPowerDriver(PowerDriver):
             power_state = self.run_hmc_command(
                 "lssyscfg -m %s -r lpar -F state --filter lpar_names=%s"
                 % (context["server_name"], context["lpar"]),
-                **context
+                **context,
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "HMC Power Driver unable to power query lpar %s: %s"
                 % (context["lpar"], e)
             )

@@ -3,7 +3,6 @@
 
 """Utilities for Audit logging."""
 
-
 from django.contrib.auth.models import AnonymousUser
 
 from maascommon.events import AUDIT

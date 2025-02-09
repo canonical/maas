@@ -3,7 +3,6 @@
 
 """Tests for the ipxe boot method."""
 
-
 import re
 
 from twisted.python.filepath import FilePath
@@ -115,7 +114,7 @@ class TestIPXEBootMethodRender(MAASTestCase):
 
 
 class TestIPXEBootMethodRegex(MAASTestCase):
-    "Tests for `provisioningserver.boot.ipxe.IPXEBootMethod.re_config_file`." ""
+    "Tests for `provisioningserver.boot.ipxe.IPXEBootMethod.re_config_file`."
 
     @staticmethod
     def get_example_path_and_components() -> TFTPPathAndComponents:
@@ -136,7 +135,7 @@ class TestIPXEBootMethodRegex(MAASTestCase):
     def test_re_config_file_is_compatible_with_config_path_generator(self):
         # The regular expression for extracting components of the file path is
         # compatible with the PXE config path generator.
-        for iteration in range(10):
+        for iteration in range(10):  # noqa: B007
             config_path, args = self.get_example_path_and_components()
             match = re_config_file.match(config_path)
             self.assertIsNotNone(match, config_path)

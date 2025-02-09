@@ -3,7 +3,6 @@
 
 """Model base class with creation/update timestamps."""
 
-
 from django.db.models import DateTimeField, Model
 from django.utils import timezone
 

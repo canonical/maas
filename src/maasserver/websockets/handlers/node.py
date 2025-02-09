@@ -1555,7 +1555,7 @@ class NodeHandler(TimestampedModelHandler):
         try:
             key = params["group_key"]
         except KeyError:
-            raise HandlerValidationError(
+            raise HandlerValidationError(  # noqa: B904
                 "a 'group_key' param must be provided for filter_options"
             )
         else:

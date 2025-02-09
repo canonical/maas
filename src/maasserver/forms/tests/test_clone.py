@@ -3,7 +3,6 @@
 
 """Tests for Clone form."""
 
-
 import random
 
 from maasserver.enum import NODE_STATUS

@@ -3,7 +3,6 @@
 
 """Owner key/value data placed on a machine while it is owned."""
 
-
 import re
 
 from django.db.models import (

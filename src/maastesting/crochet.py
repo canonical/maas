@@ -100,12 +100,12 @@ class EventualResultCatchingMixin:
                 message = [block.encode("utf-8") for block in message]
                 self.addDetail(
                     "Unfired/unhandled EventualResult #%d" % fail_count,
-                    Content(UTF8_TEXT, lambda: message),
+                    Content(UTF8_TEXT, lambda: message),  # noqa: B023
                 )
 
-        assert (
-            fail_count == 0
-        ), "Unfired and/or unhandled EventualResult(s); see test details."
+        assert fail_count == 0, (
+            "Unfired and/or unhandled EventualResult(s); see test details."
+        )
 
 
 class TimeoutInTestException(Exception):
@@ -144,7 +144,7 @@ def wait_for(timeout=None):
                 return eventual_result.wait(timeout)
             except crochet.TimeoutError:
                 eventual_result.cancel()
-                raise TimeoutInTestException(function, args, kwargs, timeout)
+                raise TimeoutInTestException(function, args, kwargs, timeout)  # noqa: B904
 
         if iscoroutinefunction(function):
             # Create a non-async wrapper with same signature.

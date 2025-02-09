@@ -11,7 +11,6 @@ from maasservicelayer.models.vmcluster import VmCluster
 
 
 class VmClustersRepository(BaseRepository[VmCluster]):
-
     def get_repository_table(self) -> Table:
         return VmClusterTable
 

@@ -3,7 +3,6 @@
 
 """PXE Boot Method"""
 
-
 from itertools import repeat
 import re
 
@@ -66,7 +65,6 @@ re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
 class PXEBootMethod(BootMethod, PXEBootMetadata):
-
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be
         generated.

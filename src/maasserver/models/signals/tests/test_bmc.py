@@ -8,7 +8,6 @@ These signals are tested in src/maasserver/models/tests/test_bmc.py. They
 handle cleaning up orphaned IPs after BMC model instance deletion.
 """
 
-
 from maasserver.enum import BMC_TYPE
 from maasserver.models.podhints import PodHints
 from maasserver.testing.factory import factory

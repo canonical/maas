@@ -31,7 +31,6 @@ from provisioningserver.utils.service_monitor import (
 
 
 class RegiondWorkerMaster(AlwaysOnService):
-
     is_master = True
     name = "regiond-worker@1"
     service_name = "maas-regiond-worker@1"
@@ -39,7 +38,6 @@ class RegiondWorkerMaster(AlwaysOnService):
 
 
 class RegiondWorker2(AlwaysOnService):
-
     is_master = False
     name = "regiond-worker@2"
     service_name = "maas-regiond-worker@2"
@@ -47,7 +45,6 @@ class RegiondWorker2(AlwaysOnService):
 
 
 class RegiondWorker3(AlwaysOnService):
-
     is_master = False
     name = "regiond-worker@3"
     service_name = "maas-regiond-worker@3"
@@ -55,7 +52,6 @@ class RegiondWorker3(AlwaysOnService):
 
 
 class RegiondWorker4(AlwaysOnService):
-
     is_master = False
     name = "regiond-worker@4"
     service_name = "maas-regiond-worker@4"

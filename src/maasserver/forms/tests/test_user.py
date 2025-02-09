@@ -3,7 +3,6 @@
 
 """Tests for user-creation forms."""
 
-
 from django.contrib.auth.models import User
 
 from maasserver.forms import EditUserForm, NewUserCreationForm, ProfileForm

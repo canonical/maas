@@ -530,7 +530,7 @@ class TestEventsAPI(APITestCase.ForUser):
             for level_name, level in self.log_levels
         ]
 
-        for idx, (level_name, level) in enumerate(self.log_levels):
+        for idx, (level_name, level) in enumerate(self.log_levels):  # noqa: B007
             response = self.client.get(
                 reverse("events_handler"), {"op": "query", "level": level_name}
             )
@@ -543,7 +543,7 @@ class TestEventsAPI(APITestCase.ForUser):
             )
 
     def test_GET_query_with_default_log_level_is_info(self):
-        for level_name, level in self.log_levels:
+        for level_name, level in self.log_levels:  # noqa: B007
             make_events(type=factory.make_EventType(level=level))
 
         info_response = self.client.get(

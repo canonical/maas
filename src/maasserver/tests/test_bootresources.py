@@ -1152,9 +1152,9 @@ class TestImportImages(MAASTransactionServerTestCase):
         }
         product_mapping = ProductMapping()
         store = BootResourceStore()
-        self.patch(bootresources.services, "getServiceNamed").return_value = (
-            MagicMock()
-        )
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = MagicMock()
         fake_download = self.patch(bootresources, "download_boot_resources")
         download_all_boot_resources(
             sources=[source], product_mapping=product_mapping, store=store
@@ -1169,9 +1169,9 @@ class TestImportImages(MAASTransactionServerTestCase):
     def test_download_all_boot_resources_calls_finalize_on_store(self):
         product_mapping = ProductMapping()
         store = BootResourceStore()
-        self.patch(bootresources.services, "getServiceNamed").return_value = (
-            MagicMock()
-        )
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = MagicMock()
         fake_finalize = self.patch(store, "finalize")
         success = download_all_boot_resources(
             sources=[], product_mapping=product_mapping, store=store
@@ -1183,9 +1183,9 @@ class TestImportImages(MAASTransactionServerTestCase):
         product_mapping = ProductMapping()
         store = BootResourceStore()
         listener = MagicMock()
-        self.patch(bootresources.services, "getServiceNamed").return_value = (
-            listener
-        )
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = listener
         self.patch(bootresources, "download_boot_resources")
         download_all_boot_resources(
             sources=[], product_mapping=product_mapping, store=store
@@ -1196,17 +1196,17 @@ class TestImportImages(MAASTransactionServerTestCase):
         product_mapping = ProductMapping()
         store = BootResourceStore()
         listener = MagicMock()
-        self.patch(bootresources.services, "getServiceNamed").return_value = (
-            listener
-        )
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = listener
 
         # Call the stop_import function register with the listener.
         def call_stop(*args, **kwargs):
             listener.listen.call_args[0][1]("sys_stop_import", "")
 
-        self.patch(bootresources, "download_boot_resources").side_effect = (
-            call_stop
-        )
+        self.patch(
+            bootresources, "download_boot_resources"
+        ).side_effect = call_stop
 
         mock_cancel = self.patch(store, "cancel_finalize")
         mock_finalize = self.patch(store, "finalize")
@@ -1223,9 +1223,9 @@ class TestImportImages(MAASTransactionServerTestCase):
         product_mapping = ProductMapping()
         store = BootResourceStore()
         listener = MagicMock()
-        self.patch(bootresources.services, "getServiceNamed").return_value = (
-            listener
-        )
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = listener
         self.patch(bootresources, "download_boot_resources")
 
         # Call the stop_import function when finalize is called.
@@ -1248,13 +1248,13 @@ class TestImportImages(MAASTransactionServerTestCase):
     def test_download_all_boot_resources_reraises_download_failure(self):
         product_mapping = ProductMapping()
         store = BootResourceStore()
-        self.patch(bootresources.services, "getServiceNamed").return_value = (
-            MagicMock()
-        )
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = MagicMock()
         exc_text = "Expected"
-        self.patch(bootresources, "download_boot_resources").side_effect = (
-            Exception(exc_text)
-        )
+        self.patch(
+            bootresources, "download_boot_resources"
+        ).side_effect = Exception(exc_text)
 
         with self.assertRaisesRegex(Exception, exc_text):
             download_all_boot_resources(
@@ -1271,13 +1271,13 @@ class TestImportImages(MAASTransactionServerTestCase):
         listener = PostgresListenerService()
         listener.register = MagicMock()
         listener.unregister = MagicMock()
-        self.patch(bootresources.services, "getServiceNamed").return_value = (
-            listener
-        )
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = listener
         exc_text = "Expected"
-        self.patch(bootresources, "download_boot_resources").side_effect = (
-            Exception(exc_text)
-        )
+        self.patch(
+            bootresources, "download_boot_resources"
+        ).side_effect = Exception(exc_text)
 
         with self.assertRaisesRegex(Exception, exc_text):
             download_all_boot_resources(

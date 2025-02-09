@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.ipc`"""
 
-
 from datetime import timedelta
 import os
 import random

@@ -3,7 +3,6 @@
 
 """Tests for DHCP snippets forms."""
 
-
 import random
 
 from django.core.exceptions import ValidationError

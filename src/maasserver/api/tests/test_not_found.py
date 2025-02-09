@@ -3,7 +3,6 @@
 
 """Tests for the not found handler."""
 
-
 import http.client
 
 from django.conf import settings

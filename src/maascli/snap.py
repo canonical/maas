@@ -477,7 +477,7 @@ def get_database_settings(options):
     try:
         parsed_dsn = parse_dsn(database_uri)
     except psycopg2.ProgrammingError as error:
-        raise DatabaseSettingsError(
+        raise DatabaseSettingsError(  # noqa: B904
             "Error parsing database URI: " + str(error).strip()
         )
     unsupported_params = set(parsed_dsn.keys()).difference(
@@ -552,7 +552,7 @@ def get_vault_settings(options) -> dict:
             secrets_mount=options.vault_secrets_mount,
         )
     except VaultError as e:
-        raise CommandError(e)
+        raise CommandError(e)  # noqa: B904
 
     return {
         "vault_url": options.vault_uri,
@@ -657,7 +657,7 @@ class cmd_init(SnapCommand):
             try:
                 database_settings = get_database_settings(options)
             except DatabaseSettingsError as error:
-                raise CommandError(str(error))
+                raise CommandError(str(error))  # noqa: B904
 
             vault_settings = get_vault_settings(options)
         else:

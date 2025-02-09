@@ -32,7 +32,6 @@ DHCP:
     controller is marked as needing an update.
 """
 
-
 from functools import partial
 import os
 

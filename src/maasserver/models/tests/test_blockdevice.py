@@ -10,12 +10,12 @@ from django.http import Http404
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
 from maasserver.models import (
+    BlockDevice,
     FilesystemGroup,
     PhysicalBlockDevice,
     VirtualBlockDevice,
     VolumeGroup,
 )
-from maasserver.models import BlockDevice
 from maasserver.models import blockdevice as blockdevice_module
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
@@ -346,7 +346,7 @@ class TestBlockDevice(MAASServerTestCase):
         with self.assertRaisesRegex(
             ValueError, "^BlockDevice is not a subclass of"
         ):
-            block_device.type
+            block_device.type  # noqa: B018
 
     def test_actual_instance_returns_PhysicalBlockDevice(self):
         block_device = factory.make_PhysicalBlockDevice()

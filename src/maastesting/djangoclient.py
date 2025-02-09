@@ -3,7 +3,6 @@
 
 """Django client with sensible handling of data."""
 
-
 from functools import wraps
 
 from django.test import client
@@ -33,7 +32,7 @@ def transparent_encode_multipart(func):
         content_type=None,
         secure=False,
         query=None,
-        **extra
+        **extra,
     ):
         if isinstance(data, bytes):
             if content_type is None:

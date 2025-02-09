@@ -3,7 +3,6 @@
 
 """API handlers: `Tag`."""
 
-
 import http.client
 
 from django.conf import settings
@@ -47,7 +46,7 @@ def check_rack_controller_access(request, rack_controller):
     try:
         key = extract_oauth_key(request)
     except Unauthorized as e:
-        raise PermissionDenied(str(e))
+        raise PermissionDenied(str(e))  # noqa: B904
 
     tokens = list(get_auth_tokens(rack_controller.owner))
     # Use the latest token if available
@@ -138,7 +137,7 @@ class TagHandler(OperationsHandler):
             new_tag.save()
             form.save_m2m()
         except DatabaseError as e:
-            raise MAASAPIValidationError(e)
+            raise MAASAPIValidationError(e)  # noqa: B904
 
         new_name = request.data.get("name")
         action = f"renamed to '{new_name}'" if new_name else "updated"

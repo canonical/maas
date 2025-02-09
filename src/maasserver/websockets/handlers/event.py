@@ -3,7 +3,6 @@
 
 """The event handler for the WebSocket connection."""
 
-
 import datetime
 
 from django.utils import timezone
@@ -56,7 +55,7 @@ class EventHandler(TimestampedModelHandler):
         try:
             node = Node.objects.get(id=node_id)
         except Node.DoesNotExist:
-            raise HandlerDoesNotExistError(
+            raise HandlerDoesNotExistError(  # noqa: B904
                 f"Node with id ({node_id}) does not exist"
             )
         return node

@@ -3,7 +3,6 @@
 
 """Tests for static route forms."""
 
-
 import random
 
 from maasserver.forms.staticroute import StaticRouteForm

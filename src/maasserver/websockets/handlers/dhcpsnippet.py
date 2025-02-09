@@ -3,7 +3,6 @@
 
 """The DHCPSnippet handler for the WebSocket connection."""
 
-
 from email.utils import format_datetime
 
 from django.core.exceptions import ValidationError
@@ -77,7 +76,7 @@ class DHCPSnippetHandler(TimestampedModelHandler):
                 try:
                     raise HandlerValidationError(e.message_dict)
                 except AttributeError:
-                    raise HandlerValidationError({"__all__": e.message})
+                    raise HandlerValidationError({"__all__": e.message})  # noqa: B904
             return self.full_dehydrate(obj)
         else:
             raise HandlerValidationError(form.errors)
@@ -96,7 +95,7 @@ class DHCPSnippetHandler(TimestampedModelHandler):
             try:
                 obj = form.save(ENDPOINT.UI, request)
             except ValidationError as e:
-                raise HandlerValidationError(e.error_dict)
+                raise HandlerValidationError(e.error_dict)  # noqa: B904
             return self.full_dehydrate(obj)
         else:
             raise HandlerValidationError(form.errors)
@@ -119,7 +118,7 @@ class DHCPSnippetHandler(TimestampedModelHandler):
         try:
             revert_to = int(revert_to)
         except ValueError:
-            raise HandlerValidationError(
+            raise HandlerValidationError(  # noqa: B904
                 "%s is an invalid 'to' value" % revert_to
             )
         try:
@@ -142,4 +141,4 @@ class DHCPSnippetHandler(TimestampedModelHandler):
                 ),
             )
         except ValueError as e:
-            raise HandlerValidationError(e.args[0])
+            raise HandlerValidationError(e.args[0])  # noqa: B904

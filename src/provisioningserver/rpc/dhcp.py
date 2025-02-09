@@ -186,7 +186,7 @@ def _write_config(server, state):
             interfaces_config,
             str(e),
         )
-        raise CannotConfigureDHCP(
+        raise CannotConfigureDHCP(  # noqa: B904
             "Could not rewrite %s server configuration: %s"
             % (server.descriptive_name, e.output_as_unicode)
         )
@@ -207,17 +207,17 @@ def _update_hosts(server, remove, add, modify):
         for host in remove:
             omapi_client.del_host(host["mac"])
     except OmapiError as e:
-        raise CannotRemoveHostMap(str(e))
+        raise CannotRemoveHostMap(str(e))  # noqa: B904
     try:
         for host in add:
             omapi_client.add_host(host["mac"], host["ip"])
     except OmapiError as e:
-        raise CannotCreateHostMap(str(e))
+        raise CannotCreateHostMap(str(e))  # noqa: B904
     try:
         for host in modify:
             omapi_client.update_host(host["mac"], host["ip"])
     except OmapiError as e:
-        raise CannotModifyHostMap(str(e))
+        raise CannotModifyHostMap(str(e))  # noqa: B904
 
 
 @asynchronous

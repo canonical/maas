@@ -3,7 +3,6 @@
 
 """Test cases for dhcp.config"""
 
-
 from base64 import b64encode
 from itertools import count
 import random
@@ -144,11 +143,14 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
     :param configuration: The contents of the configuration file as a string.
     :param ipv6: When true validate as DHCPv6, otherwise validate as DHCPv4.
     """
-    with tempfile.NamedTemporaryFile(
-        "w", encoding="ascii", prefix="dhcpd.", suffix=".conf"
-    ) as conffile, tempfile.NamedTemporaryFile(
-        "w", encoding="ascii", prefix="dhcpd.", suffix=".leases"
-    ) as leasesfile:
+    with (
+        tempfile.NamedTemporaryFile(
+            "w", encoding="ascii", prefix="dhcpd.", suffix=".conf"
+        ) as conffile,
+        tempfile.NamedTemporaryFile(
+            "w", encoding="ascii", prefix="dhcpd.", suffix=".leases"
+        ) as leasesfile,
+    ):
         # Write the configuration to the temporary file.
         conffile.write(configuration)
         conffile.flush()

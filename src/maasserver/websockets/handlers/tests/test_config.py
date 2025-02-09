@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.config`"""
 
-
 import random
 
 from maasserver.forms.settings import CONFIG_ITEMS, get_config_field

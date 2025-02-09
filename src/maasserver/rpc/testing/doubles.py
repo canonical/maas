@@ -3,7 +3,6 @@
 
 """Test doubles for the region's RPC implementation."""
 
-
 from twisted.internet.defer import succeed
 
 from maasserver.rpc.regionservice import RegionServer

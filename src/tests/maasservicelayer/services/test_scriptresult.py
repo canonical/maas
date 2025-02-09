@@ -33,7 +33,6 @@ class TestCommonScriptResultsService(ServiceCommonTests):
 
 @pytest.mark.asyncio
 class TestScriptResultsService:
-
     @pytest.fixture
     def scriptresults_repository_mock(self):
         return Mock(ScriptResultsRepository)

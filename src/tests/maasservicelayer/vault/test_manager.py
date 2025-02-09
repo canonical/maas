@@ -46,19 +46,19 @@ def build_valid_login_response_stub(
         **get_base_response_dict(),
         auth=AppRoleLoginDetailResponse(
             client_token=token,
-        )
+        ),
     )
 
 
 def build_valid_self_token_response_stub(
-    expire_time: datetime | None = utcnow() + timedelta(minutes=30),
+    expire_time: datetime | None = utcnow() + timedelta(minutes=30),  # noqa: B008
 ) -> TokenLookupSelfResponse:
     return TokenLookupSelfResponse(
         **get_base_response_dict(),
         data=TokenLookupSelfDetailResponse(
             issue_time=utcnow(),
             expire_time=expire_time,
-        )
+        ),
     )
 
 
@@ -74,12 +74,12 @@ def async_vault_client_default_mock() -> AsyncVaultApiClient:
     apiclient.kv_v2_delete_metadata_and_all_versions.return_value = None
     apiclient.kv_v2_create_or_update.return_value = KvV2WriteResponse(
         **get_base_response_dict(),
-        data=KvV2WriteDetailResponse(created_time=utcnow(), version=1)
+        data=KvV2WriteDetailResponse(created_time=utcnow(), version=1),
     )
 
     apiclient.kv_v2_read.return_value = KvV2ReadResponse(
         **get_base_response_dict(),
-        data=KvV2ReadDetailResponse(data={"mykey": "myvalue"})
+        data=KvV2ReadDetailResponse(data={"mykey": "myvalue"}),
     )
     return apiclient
 

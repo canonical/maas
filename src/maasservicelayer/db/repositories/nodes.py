@@ -41,7 +41,6 @@ T = TypeVar("T", bound=Node)
 
 
 class AbstractNodesRepository(BaseRepository[T], ABC):
-
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         stmt = (
             update(NodeTable)
@@ -95,7 +94,6 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
 
 
 class NodesRepository(AbstractNodesRepository[Node]):
-
     def get_repository_table(self) -> Table:
         return NodeTable
 

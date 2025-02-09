@@ -3,7 +3,6 @@
 
 """Tests for Domain API."""
 
-
 import http.client
 import json
 import random

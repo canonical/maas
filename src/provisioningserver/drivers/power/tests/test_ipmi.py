@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
 
-
 import random
 from unittest.mock import ANY, call, sentinel
 

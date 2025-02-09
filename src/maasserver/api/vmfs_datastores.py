@@ -3,7 +3,6 @@
 
 """API handlers: `VMFS Datastore`."""
 
-
 from piston3.utils import rc
 
 from maasserver.api.support import OperationsHandler

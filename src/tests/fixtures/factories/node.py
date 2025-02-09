@@ -16,7 +16,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 # async implementation of generate_node_system_id from the django model
 async def generate_node_system_id(db_connection: AsyncConnection):
-    for attempt in range(1, 1001):
+    for attempt in range(1, 1001):  # noqa: B007
         system_num = random.randrange(24**5, 24**6)
         system_id = znums.from_int(system_num)
         stmt = (

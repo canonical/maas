@@ -3,7 +3,6 @@
 
 """Tests for DNSData forms."""
 
-
 import random
 
 from maasserver.forms.dnsdata import DNSDataForm

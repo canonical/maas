@@ -230,7 +230,7 @@ class HttpBakeryAsyncClient:
         try:
             cause = Error.from_dict(resp_json)
         except (ValueError, AttributeError):
-            raise DischargeError(
+            raise DischargeError(  # noqa: B904
                 f"unexpected response: [{resp.status}] {(await resp.read())}"
             )
         if cause.code != ERR_INTERACTION_REQUIRED:

@@ -3,7 +3,6 @@
 
 """Tests for Notification forms."""
 
-
 import json
 import random
 

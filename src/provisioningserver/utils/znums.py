@@ -7,7 +7,6 @@ A z number is a representation of a number using 24 unambiguous alphanumeric
 digits. Put another way, it's a base-24 number with a custom alphabet.
 """
 
-
 from itertools import count
 
 zchars = "34678abcdefghkmnpqrstwxy"

@@ -227,9 +227,7 @@ def fix_twisted_web_http_Request():
             default = 443
         else:
             default = 80
-        if ip is None:
-            hostHeader = host
-        elif ip.version == 4:
+        if ip is None or ip.version == 4:
             hostHeader = host
         else:
             hostHeader = networkString(f"[{host}]")

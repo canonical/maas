@@ -3,7 +3,7 @@
 
 from typing import Any, Type
 
-from sqlalchemy import and_, desc, select, Select, Table
+from sqlalchemy import and_, desc, Select, select, Table
 from sqlalchemy.sql.expression import func, join
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
@@ -46,7 +46,6 @@ class MachineClauseFactory(ClauseFactory):
 
 
 class MachinesRepository(AbstractNodesRepository[Machine]):
-
     def get_repository_table(self) -> Table:
         return NodeTable
 
@@ -158,7 +157,6 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
     async def list_machine_pci_devices(
         self, system_id: str, page: int, size: int
     ) -> ListResult[PciDevice]:
-
         total_stmt = select(count()).select_from(
             self._list_devices_statement(system_id)
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.PCIE))

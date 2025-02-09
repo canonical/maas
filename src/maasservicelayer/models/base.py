@@ -99,7 +99,7 @@ BaseModelT = TypeVar("BaseModelT", bound=MaasBaseModel)
 
 def generate_builder():
     def decorate(cls: type[T]) -> type[T]:
-        setattr(cls, "__generate_builder__", True)
+        setattr(cls, "__generate_builder__", True)  # noqa: B010
         return cls
 
     return decorate

@@ -3,7 +3,6 @@
 
 """The Pod handler for the WebSocket connection."""
 
-
 import dataclasses
 
 import attr
@@ -321,7 +320,7 @@ class PodHandler(TimestampedModelHandler):
             )
         except Exception as error:
             log.err(error, "Failed to compose machine.")
-            raise PodProblem("Pod unable to compose machine: %s" % str(error))
+            raise PodProblem("Pod unable to compose machine: %s" % str(error))  # noqa: B904
         return await deferToDatabase(render_obj, pod)
 
     @transactional

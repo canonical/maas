@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.eventloop`."""
 
-
 from unittest.mock import ANY, call, Mock, sentinel
 
 from django.db import connections

@@ -3,7 +3,6 @@
 
 """Fixtures for testing `driver_parameters`."""
 
-
 from copy import deepcopy
 from functools import wraps
 

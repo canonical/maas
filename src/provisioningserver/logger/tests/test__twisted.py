@@ -3,7 +3,6 @@
 
 """Tests for Twisted-specific logging stuff."""
 
-
 import io
 import time
 
@@ -330,7 +329,7 @@ class TestFormatModernEvent(MAASTestCase):
 
     def test_format_failure(self):
         try:
-            1 / 0
+            1 / 0  # noqa: B018
         except ZeroDivisionError:
             failure = Failure()
         else:

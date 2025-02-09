@@ -3,7 +3,6 @@
 
 """Tests for the script API."""
 
-
 from base64 import b64decode, b64encode
 from email.utils import format_datetime
 import http.client

@@ -43,7 +43,6 @@ class SubnetClauseFactory(ClauseFactory):
 
 
 class SubnetsRepository(BaseRepository[Subnet]):
-
     def get_repository_table(self) -> Table:
         return SubnetTable
 

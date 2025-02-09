@@ -3,7 +3,6 @@
 
 """Tests for the Nginx fixture."""
 
-
 import os
 
 from maastesting.testcase import MAASTestCase

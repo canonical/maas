@@ -3,7 +3,6 @@
 
 """:class:`NodeKey` model."""
 
-
 from django.db.models import CASCADE, Manager, Model, OneToOneField
 from piston3.models import Token
 

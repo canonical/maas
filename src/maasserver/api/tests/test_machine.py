@@ -34,9 +34,18 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
-from maasserver.models import Config, Domain, Filesystem, Machine, Node
+from maasserver.models import (
+    Config,
+    Domain,
+    Filesystem,
+    Machine,
+    Node,
+    NodeKey,
+    NodeUserData,
+    ScriptSet,
+    StaticIPAddress,
+)
 from maasserver.models import node as node_module
-from maasserver.models import NodeKey, NodeUserData, ScriptSet, StaticIPAddress
 from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models.bmc import Pod
 from maasserver.models.node import RELEASABLE_STATUSES
@@ -369,7 +378,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.get(self.get_machine_uri(machine))
 
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         parsed_result = json_load_bytes(response.content)
         assert parsed_result["ephemeral_deploy"] is True
 
@@ -381,7 +390,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.get(self.get_machine_uri(machine))
 
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         parsed_result = json_load_bytes(response.content)
         assert parsed_result["error_description"] == "my error"
 
@@ -440,7 +449,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.get(self.get_machine_uri(machine))
 
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         parsed_result = json_load_bytes(response.content)
         assert parsed_result["enable_kernel_crash_dump"] is True
 
@@ -656,7 +665,7 @@ class TestMachineAPI(APITestCase.ForUser):
             self.get_machine_uri(machine), {"op": "deploy"}
         )
         response_info = json_load_bytes(response.content)
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         assert response_info["ephemeral_deploy"] is True
 
     def test_POST_deploy_fails_when_install_kvm_set_for_ephemeral_deploy(self):
@@ -1582,7 +1591,7 @@ class TestMachineAPI(APITestCase.ForUser):
             self.get_machine_uri(machine), {"op": "deploy"}
         )
         response_info = json_load_bytes(response.content)
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         assert response_info["enable_kernel_crash_dump"] is True
         machine.refresh_from_db()
         self.assertTrue(machine.enable_kernel_crash_dump)
@@ -1615,7 +1624,7 @@ class TestMachineAPI(APITestCase.ForUser):
             {"op": "deploy", "enable_kernel_crash_dump": True},
         )
         response_info = json_load_bytes(response.content)
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         assert response_info["enable_kernel_crash_dump"] is True
         machine.refresh_from_db()
         self.assertTrue(machine.enable_kernel_crash_dump)
@@ -1649,7 +1658,7 @@ class TestMachineAPI(APITestCase.ForUser):
             {"op": "deploy", "enable_kernel_crash_dump": False},
         )
         response_info = json_load_bytes(response.content)
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         assert response_info["enable_kernel_crash_dump"] is False
         machine.refresh_from_db()
         self.assertFalse(machine.enable_kernel_crash_dump)
@@ -1682,7 +1691,7 @@ class TestMachineAPI(APITestCase.ForUser):
             {"op": "deploy", "enable_kernel_crash_dump": True},
         )
         response_info = json_load_bytes(response.content)
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         assert response_info["enable_kernel_crash_dump"] is False
         machine.refresh_from_db()
         self.assertFalse(machine.enable_kernel_crash_dump)
@@ -1715,7 +1724,7 @@ class TestMachineAPI(APITestCase.ForUser):
             {"op": "deploy", "enable_kernel_crash_dump": True},
         )
         response_info = json_load_bytes(response.content)
-        assert http.client.OK == response.status_code
+        assert response.status_code == http.client.OK
         assert response_info["enable_kernel_crash_dump"] is False
         machine.refresh_from_db()
         self.assertFalse(machine.enable_kernel_crash_dump)

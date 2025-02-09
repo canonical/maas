@@ -3,7 +3,6 @@
 
 """Test AMP argument classes."""
 
-
 import random
 
 import attr

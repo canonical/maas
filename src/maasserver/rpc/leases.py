@@ -3,7 +3,6 @@
 
 """RPC helpers relating to DHCP leases."""
 
-
 from datetime import datetime, timezone
 
 from netaddr import IPAddress
@@ -83,11 +82,12 @@ def update_lease(
 
     # Check that the subnet family is the same.
     subnet_family = subnet.get_ipnetwork().version
-    if ip_family == "ipv4" and subnet_family != IPADDRESS_FAMILY.IPv4:
-        raise LeaseUpdateError(
-            "Family for the subnet does not match. Expected: %s" % ip_family
-        )
-    elif ip_family == "ipv6" and subnet_family != IPADDRESS_FAMILY.IPv6:
+    if (
+        ip_family == "ipv4"
+        and subnet_family != IPADDRESS_FAMILY.IPv4
+        or ip_family == "ipv6"
+        and subnet_family != IPADDRESS_FAMILY.IPv6
+    ):
         raise LeaseUpdateError(
             "Family for the subnet does not match. Expected: %s" % ip_family
         )

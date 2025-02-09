@@ -3,7 +3,6 @@
 
 """Help functioners to send commissioning data to MAAS region."""
 
-
 from collections import OrderedDict
 from email.utils import parsedate
 import json
@@ -395,15 +394,15 @@ def signal(
                 % (ret.status, ret.read().decode())
             )
     except urllib.error.HTTPError as exc:
-        raise SignalException("HTTP error [%s]" % exc.code)
+        raise SignalException("HTTP error [%s]" % exc.code)  # noqa: B904
     except urllib.error.URLError as exc:
-        raise SignalException("URL error [%s]" % exc.reason)
+        raise SignalException("URL error [%s]" % exc.reason)  # noqa: B904
     except socket.timeout as exc:
-        raise SignalException("Socket timeout [%s]" % exc)
+        raise SignalException("Socket timeout [%s]" % exc)  # noqa: B904
     except TypeError as exc:
-        raise SignalException(str(exc))
+        raise SignalException(str(exc))  # noqa: B904
     except Exception as exc:
-        raise SignalException("Unexpected error [%s]" % exc)
+        raise SignalException("Unexpected error [%s]" % exc)  # noqa: B904
 
 
 def capture_script_output(

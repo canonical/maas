@@ -3,7 +3,6 @@
 
 """Tests for the commissioning-related portions of the MAAS API."""
 
-
 from base64 import b64decode, b64encode
 import http.client
 from itertools import chain

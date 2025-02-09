@@ -3,7 +3,6 @@
 
 """Tests for IPRange API."""
 
-
 import http.client
 import json
 import random

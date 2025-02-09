@@ -3,7 +3,6 @@
 
 """Tests for the WindowsOS module."""
 
-
 import random
 
 from maastesting.factory import factory

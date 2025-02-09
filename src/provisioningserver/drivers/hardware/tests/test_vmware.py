@@ -1,9 +1,7 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.drivers.hardware.vmware`.
-"""
-
+"""Tests for `provisioningserver.drivers.hardware.vmware`."""
 
 import random
 
@@ -67,11 +65,11 @@ class FakeVmomiVMConfigHardware:
         if nics is None:
             nics = random.choice([1, 1, 1, 2, 2, 3])
 
-        for i in range(0, nics):
+        for i in range(0, nics):  # noqa: B007
             self.device.append(FakeVmomiNic())
 
         # add a few random non-NICs into the mix
-        for i in range(0, random.choice([0, 1, 3, 5, 15])):
+        for i in range(0, random.choice([0, 1, 3, 5, 15])):  # noqa: B007
             self.device.append(FakeVmomiVMConfigHardwareDevice())
 
         random.shuffle(self.device)
@@ -110,7 +108,7 @@ class FakeVmomiVM:
 class FakeVmomiVmFolder:
     def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.childEntity = []
-        for i in range(0, servers):
+        for i in range(0, servers):  # noqa: B007
             vm = FakeVmomiVM(
                 has_instance_uuid=has_instance_uuid, has_uuid=has_uuid
             )

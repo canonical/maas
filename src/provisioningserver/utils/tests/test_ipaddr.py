@@ -129,9 +129,9 @@ class TestGetIPAddr(MAASTestCase):
 
     def test_get_ip_addr_calls_methods(self):
         self.patch(ipaddr_module, "running_in_snap").return_value = False
-        self.patch(ipaddr_module, "_get_resources_bin_path").return_value = (
-            "/path/to/amd64"
-        )
+        self.patch(
+            ipaddr_module, "_get_resources_bin_path"
+        ).return_value = "/path/to/amd64"
         patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
         patch_call_and_check.return_value = json.dumps(
             {"networks": SAMPLE_LXD_NETWORKS}
@@ -143,9 +143,9 @@ class TestGetIPAddr(MAASTestCase):
         )
 
     def test_no_use_sudo_in_snap(self):
-        self.patch(ipaddr_module, "_get_resources_bin_path").return_value = (
-            "/path/to/amd64"
-        )
+        self.patch(
+            ipaddr_module, "_get_resources_bin_path"
+        ).return_value = "/path/to/amd64"
         patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
         patch_call_and_check.return_value = json.dumps(
             {"networks": SAMPLE_LXD_NETWORKS}

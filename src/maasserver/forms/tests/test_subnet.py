@@ -3,7 +3,6 @@
 
 """Tests for Subnet forms."""
 
-
 import random
 
 from maasserver.forms.subnet import SubnetForm

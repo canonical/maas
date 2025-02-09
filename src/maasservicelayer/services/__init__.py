@@ -220,7 +220,9 @@ class ServiceCollectionV3:
             nodes_service=services.nodes,
             vmcluster_service=services.vmclusters,
             zones_repository=ZonesRepository(context),
-            cache=cache.get(ZonesService.__name__, ZonesService.build_cache_object),  # type: ignore
+            cache=cache.get(
+                ZonesService.__name__, ZonesService.build_cache_object
+            ),  # type: ignore
         )
         services.resource_pools = ResourcePoolsService(
             context=context,
@@ -332,7 +334,9 @@ class ServiceCollectionV3:
         services.sshkeys = SshKeysService(
             context=context,
             sshkeys_repository=SshKeysRepository(context),
-            cache=cache.get(SshKeysService.__name__, SshKeysService.build_cache_object),  # type: ignore
+            cache=cache.get(
+                SshKeysService.__name__, SshKeysService.build_cache_object
+            ),  # type: ignore
         )
         services.sslkeys = SSLKeysService(
             context=context,
@@ -370,12 +374,17 @@ class ServiceCollectionV3:
             secrets_service=services.secrets,
             users_service=services.users,
             external_auth_repository=ExternalAuthRepository(context),
-            cache=cache.get(ExternalAuthService.__name__, ExternalAuthService.build_cache_object),  # type: ignore
+            cache=cache.get(
+                ExternalAuthService.__name__,
+                ExternalAuthService.build_cache_object,
+            ),  # type: ignore
         )
         services.agents = AgentsService(
             context=context,
             configurations_service=services.configurations,
             users_service=services.users,
-            cache=cache.get(AgentsService.__name__, AgentsService.build_cache_object),  # type: ignore
+            cache=cache.get(
+                AgentsService.__name__, AgentsService.build_cache_object
+            ),  # type: ignore
         )
         return services

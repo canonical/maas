@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.iprange`"""
 
-
 from maasserver.models.iprange import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

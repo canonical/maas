@@ -3,7 +3,6 @@
 
 """Configuration items."""
 
-
 from collections import defaultdict, namedtuple
 from contextlib import suppress
 import copy

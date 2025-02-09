@@ -3,7 +3,6 @@
 
 """Tests for node transition event."""
 
-
 from maasserver.enum import NODE_STATUS_CHOICES_DICT
 from maasserver.models import Event
 from maasserver.models.signals import power as node_query

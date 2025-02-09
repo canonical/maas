@@ -38,7 +38,7 @@ class AsyncOven(Oven):
         """
         if len(ops) == 0:
             raise ValueError(
-                "cannot mint a macaroon associated " "with no operations"
+                "cannot mint a macaroon associated with no operations"
             )
 
         ops = canonical_ops(ops)

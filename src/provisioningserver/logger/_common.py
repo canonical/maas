@@ -67,7 +67,7 @@ def get_module_for_file(filename):
 
     The module must already be loaded. If it's not found, `None` is returned.
     """
-    for module_name, module in sys.modules.items():
+    for module_name, module in sys.modules.items():  # noqa: B007
         # Some modules, like `_imp`, do not have a `__file__` attribute.
         if getattr(module, "__file__", None) == filename:
             return module

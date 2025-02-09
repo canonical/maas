@@ -3,7 +3,6 @@
 
 """Custom MAAS manager classes."""
 
-
 from django.db.models import Manager
 
 

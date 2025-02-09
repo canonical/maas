@@ -128,7 +128,7 @@ class RbacAsyncClient(MacaroonAsyncClient):
         except MacaroonApiException as exc:
             if exc.status == HTTPStatus.CONFLICT and request.last_sync_id:
                 # Notify the caller of the conflict explicitly.
-                raise SyncConflictException()
+                raise SyncConflictException()  # noqa: B904
             raise
         return UpdateResourcesResponse.parse_obj(result)
 

@@ -3,7 +3,6 @@
 
 """Generic helpers for working with constraint strings."""
 
-
 import re
 
 

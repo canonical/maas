@@ -3,7 +3,6 @@
 
 """Test for RPC utility functions for Nodes."""
 
-
 from datetime import timedelta
 import json
 from operator import attrgetter

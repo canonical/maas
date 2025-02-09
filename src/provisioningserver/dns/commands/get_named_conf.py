@@ -5,7 +5,6 @@
 files with an existing DNS server.
 """
 
-
 import sys
 from textwrap import dedent
 

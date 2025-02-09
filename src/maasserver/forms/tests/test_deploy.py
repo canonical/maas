@@ -3,7 +3,6 @@
 
 """Tests for `DeployForm`."""
 
-
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import DeployForm
 from maasserver.testing.factory import factory

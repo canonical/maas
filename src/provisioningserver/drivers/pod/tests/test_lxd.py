@@ -24,8 +24,6 @@ from provisioningserver.drivers.pod import (
     DiscoveredPodHints,
     InterfaceAttachType,
     KnownHostInterface,
-)
-from provisioningserver.drivers.pod import (
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -216,7 +214,7 @@ class FakeLXD:
             try:
                 behaviors = self._client_behaviors.pop(0)
             except IndexError:
-                raise Exception("Requested more clients than expected")
+                raise Exception("Requested more clients than expected")  # noqa: B904
             # apply behaviors
             if behaviors.get("fail_connect"):
                 raise ClientConnectionFailed()

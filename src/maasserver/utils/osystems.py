@@ -216,7 +216,7 @@ def list_hwe_kernel_choices(hwe_kernels):
 
 
 def list_all_releases_requiring_keys(
-    osystems: Dict[str, OperatingSystem]
+    osystems: Dict[str, OperatingSystem],
 ) -> Dict[str, OperatingSystem]:
     """Return dictionary of OS name mapping to `releases` that require
     license keys."""
@@ -411,9 +411,11 @@ def get_release_from_db(string):
         | Q(release__startswith=string)
         | Q(release_title__startswith=string)
     ).first()
-    if bsc is None:
-        return None
-    elif None in (bsc.release_title, bsc.release, bsc.release_codename):
+    if bsc is None or None in (
+        bsc.release_title,
+        bsc.release,
+        bsc.release_codename,
+    ):
         return None
     else:
         return {

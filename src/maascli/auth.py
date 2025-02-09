@@ -3,7 +3,6 @@
 
 """MAAS CLI authentication."""
 
-
 from getpass import getpass
 import http.client
 import sys

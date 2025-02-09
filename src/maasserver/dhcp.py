@@ -99,16 +99,16 @@ def get_best_interface(interfaces):
     """
     best_interface = None
     for interface in interfaces:
-        if best_interface is None:
-            best_interface = interface
-        elif (
-            best_interface.type == INTERFACE_TYPE.PHYSICAL
-            and interface.type == INTERFACE_TYPE.BOND
-        ):
-            best_interface = interface
-        elif (
-            best_interface.type == INTERFACE_TYPE.VLAN
-            and interface.type == INTERFACE_TYPE.PHYSICAL
+        if (
+            best_interface is None
+            or (
+                best_interface.type == INTERFACE_TYPE.PHYSICAL
+                and interface.type == INTERFACE_TYPE.BOND
+            )
+            or (
+                best_interface.type == INTERFACE_TYPE.VLAN
+                and interface.type == INTERFACE_TYPE.PHYSICAL
+            )
         ):
             best_interface = interface
     return best_interface

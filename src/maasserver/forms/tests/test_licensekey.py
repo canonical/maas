@@ -3,7 +3,6 @@
 
 """Tests for `LicenseKeyForm`."""
 
-
 from operator import itemgetter
 import random
 

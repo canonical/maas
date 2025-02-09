@@ -302,9 +302,11 @@ class Factory(maastesting.factory.Factory):
         domain=None,
         vlan=None,
         fabric=None,
-        owner_data={},
+        owner_data=None,
         **kwargs,
     ):
+        if owner_data is None:
+            owner_data = {}
         if hostname is None:
             hostname = self.make_string(20)
         if domain is None:
@@ -397,7 +399,7 @@ class Factory(maastesting.factory.Factory):
         vlan=None,
         fabric=None,
         bmc_connected_to=None,
-        owner_data={},
+        owner_data=None,
         hardware_uuid=None,
         with_empty_script_sets=False,
         bmc=None,
@@ -419,6 +421,8 @@ class Factory(maastesting.factory.Factory):
         :type bmc_connected_to: `:class:RackController`
         """
         # hostname=None is a valid value, hence the set_hostname trick.
+        if owner_data is None:
+            owner_data = {}
         if hostname is None:
             hostname = self.make_string(20)
         if domain is None:
@@ -817,7 +821,9 @@ class Factory(maastesting.factory.Factory):
         fwd_dns_srvr.save()
         return fwd_dns_srvr
 
-    def pick_rrset(self, rrtype=None, rrdata=None, exclude=[]):
+    def pick_rrset(self, rrtype=None, rrdata=None, exclude=None):
+        if exclude is None:
+            exclude = []
         while rrtype is None:
             rrtype = self.pick_choice(
                 (
@@ -1658,7 +1664,7 @@ class Factory(maastesting.factory.Factory):
                     hostname=hostname,
                     ip=neighbour.ip,
                     interface=interface,
-                    updated=kwargs.get("updated", None),
+                    updated=kwargs.get("updated"),
                 )
         # By using filter here, we guarantee that an object is returned.
         # If we search by the Neighbour ID we think we just created, there
@@ -1685,7 +1691,7 @@ class Factory(maastesting.factory.Factory):
     def _get_available_vid(self, fabric):
         """Return a free vid in the given Fabric."""
         taken_vids = set(fabric.vlan_set.all().values_list("vid", flat=True))
-        for attempt in range(1000):
+        for attempt in range(1000):  # noqa: B007
             vid = random.randint(1, 4094)
             if vid not in taken_vids:
                 return vid
@@ -3159,16 +3165,10 @@ class Factory(maastesting.factory.Factory):
                         block_device=block_device,
                     )
                     group.filesystems.add(filesystem)
-            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
-                for _ in range(2):
-                    block_device = self.make_PhysicalBlockDevice(
-                        node_config=node_config
-                    )
-                    filesystem = self.make_Filesystem(
-                        fstype=FILESYSTEM_TYPE.RAID, block_device=block_device
-                    )
-                    group.filesystems.add(filesystem)
-            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
+            elif (
+                group_type == FILESYSTEM_GROUP_TYPE.RAID_0
+                or group_type == FILESYSTEM_GROUP_TYPE.RAID_1
+            ):
                 for _ in range(2):
                     block_device = self.make_PhysicalBlockDevice(
                         node_config=node_config
@@ -3194,24 +3194,10 @@ class Factory(maastesting.factory.Factory):
                     block_device=spare_block_device,
                 )
                 group.filesystems.add(spare_filesystem)
-            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
-                for _ in range(4):
-                    block_device = self.make_PhysicalBlockDevice(
-                        node_config=node_config
-                    )
-                    filesystem = self.make_Filesystem(
-                        fstype=FILESYSTEM_TYPE.RAID, block_device=block_device
-                    )
-                    group.filesystems.add(filesystem)
-                spare_block_device = self.make_PhysicalBlockDevice(
-                    node_config=node_config
-                )
-                spare_filesystem = self.make_Filesystem(
-                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
-                    block_device=spare_block_device,
-                )
-                group.filesystems.add(spare_filesystem)
-            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
+            elif (
+                group_type == FILESYSTEM_GROUP_TYPE.RAID_6
+                or group_type == FILESYSTEM_GROUP_TYPE.RAID_10
+            ):
                 for _ in range(4):
                     block_device = self.make_PhysicalBlockDevice(
                         node_config=node_config

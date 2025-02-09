@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.service`"""
 
-
 from maasserver.models.service import Service
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

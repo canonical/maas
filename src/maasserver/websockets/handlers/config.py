@@ -3,7 +3,6 @@
 
 """The config handler for the WebSocket connection."""
 
-
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
@@ -112,7 +111,7 @@ class ConfigHandler(Handler):
                 request.user = self.user
                 form.save(ENDPOINT.UI, request)
             except ValidationError as e:
-                raise HandlerValidationError(e.error_dict)
+                raise HandlerValidationError(e.error_dict)  # noqa: B904
             else:
                 return items
         else:
@@ -131,7 +130,7 @@ class ConfigHandler(Handler):
         try:
             form = get_config_form(name, {name: value})
         except ValidationError:
-            raise HandlerDoesNotExistError(
+            raise HandlerDoesNotExistError(  # noqa: B904
                 f"Configuration parameter ({name}) does not exist"
             )
         if form.is_valid():
@@ -141,7 +140,7 @@ class ConfigHandler(Handler):
                 form.save(ENDPOINT.UI, request)
             except ValidationError as e:
                 self._fix_validation_error(name, e.error_dict)
-                raise HandlerValidationError(e.error_dict)
+                raise HandlerValidationError(e.error_dict)  # noqa: B904
             return self._include_choice(
                 {"name": name, "value": Config.objects.get_config(name)}
             )

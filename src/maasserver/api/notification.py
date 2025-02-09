@@ -124,9 +124,10 @@ class NotificationHandler(OperationsHandler):
             No Notification matches the given query.
         """
         notification = get_object_or_404(Notification, id=id)
-        if notification.is_relevant_to(request.user):
-            return notification
-        elif request.user.is_superuser:
+        if (
+            notification.is_relevant_to(request.user)
+            or request.user.is_superuser
+        ):
             return notification
         else:
             raise MAASAPIForbidden()

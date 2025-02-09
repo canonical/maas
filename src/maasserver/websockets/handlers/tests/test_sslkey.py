@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.sslkey`"""
 
-
 from maasserver.models.sslkey import SSLKey
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory

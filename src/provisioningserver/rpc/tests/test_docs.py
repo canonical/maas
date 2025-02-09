@@ -8,7 +8,6 @@ Specifically, check
 MAAS codebase.
 """
 
-
 from inspect import getdoc
 from itertools import chain
 
@@ -22,7 +21,7 @@ import provisioningserver.rpc.region
 
 def get_commands(module):
     """Return command classes from the given module."""
-    for name, value in vars(module).items():
+    for name, value in vars(module).items():  # noqa: B007
         if isinstance(value, type):
             if issubclass(value, amp.Command):
                 yield value

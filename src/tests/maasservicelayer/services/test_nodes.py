@@ -54,7 +54,6 @@ class TestCommonNodesService(ServiceCommonTests):
 
 @pytest.mark.asyncio
 class TestNodesService:
-
     @pytest.fixture
     def secrets_service_mock(self) -> SecretsService:
         return Mock(SecretsService)

@@ -88,43 +88,96 @@ include = [
   "provisioningserver*",
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 79
-exclude = """
-/.egg
-/.git
-/.mypy_cache
-/.ve
-/build
-/dist
-/parts
-/snap
-/src/maasui
-/src/maas-offline-docs
-"""
+indent-width = 4
 
-[tool.isort]
-from_first = false
-force_sort_within_sections = true
-profile = "black"
-line_length = 79
-known_first_party = """
-apiclient
-maasapiserver
-maascli
-maascommon
-maasserver
-maasservicelayer
-maastesting
-metadataserver
-provisioningserver
-snippets
-"""
-order_by_type = false
+src = [
+  "src",
+]
+extend-exclude = [
+  ".egg",
+  ".git",
+  ".mypy_cache",
+  ".ve",
+  "build",
+  "dist",
+  "parts",
+  "snap",
+  "src/maas-offline-docs",
+  "src/maasui",
+]
+# Like Black, indent with spaces, rather than tabs.
+format.indent-style = "space"
 
-[tool.flake8]
-ignore = [ "E203", "E266", "E501", "W503", "W504" ]
-exclude = [ "src/*/migrations/*" ]
+# Like Black, use double quotes for strings.
+format.quote-style = "double"
+
+# Like Black, automatically detect the appropriate line ending.
+format.line-ending = "auto"
+
+# Unlike Black, don't respect magic trailing commas.
+format.skip-magic-trailing-comma = false
+
+lint.select = [
+  # flake8-bugbear
+  "B",
+  # pycodestyle
+  "E",
+  # pyflakes
+  "F",
+  # isort
+  "I",
+  # flake8-simplify - remove for now
+  #"SIM",
+  # pycodestyle
+  "W",
+]
+
+# recommended rules to avoid if you use ruff as a formatter
+lint.ignore = [
+  "COM812",
+  "COM819",
+  "D206",
+  "D300",
+  "E111",
+  "E114",
+  "E117",
+  "E203",
+  "E266",
+  "E501",
+  "ISC001",
+  "ISC002",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "SIM105", # ignore because it could impact performances
+  "W191",
+]
+lint.exclude = [
+  "src/*/migrations/*",
+]
+
+lint.isort.case-sensitive = false
+lint.isort.force-sort-within-sections = true
+lint.isort.from-first = false
+
+lint.isort.known-first-party = [
+  "apiclient",
+  "maasapiserver",
+  "maascli",
+  "maascommon",
+  "maasserver",
+  "maasservicelayer",
+  "maastesting",
+  "metadataserver",
+  "provisioningserver",
+  "snippets",
+]
+
+lint.isort.order-by-type = false
+lint.isort.split-on-trailing-comma = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -209,12 +209,15 @@ class BootResourcesActivity(MAASAPIClient):
                 await self.report_progress(param.rfile_ids, lfile.size)
                 return True
 
-            async with self.session.get(
-                url,
-                verify_ssl=False,
-                chunked=True,
-                proxy=param.http_proxy,
-            ) as response, lfile.astore(autocommit=False) as store:
+            async with (
+                self.session.get(
+                    url,
+                    verify_ssl=False,
+                    chunked=True,
+                    proxy=param.http_proxy,
+                ) as response,
+                lfile.astore(autocommit=False) as store,
+            ):
                 response.raise_for_status()
                 last_update = datetime.now(timezone.utc)
                 async for data, _ in response.content.iter_chunks():

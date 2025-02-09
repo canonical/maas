@@ -3,7 +3,6 @@
 
 """Tests for `BootResourceSet`."""
 
-
 from itertools import repeat
 import random
 from unittest import skip

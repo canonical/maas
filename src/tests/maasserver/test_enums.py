@@ -47,14 +47,14 @@ class TestEnumsSync:
         expected_pairs = enum_class.__members__.items()
         legacy_keys = [a for a in dir(legacy_class) if not a.startswith("_")]
 
-        assert len(expected_pairs) == len(
-            legacy_keys
-        ), f"Mismatch in the number of members: {len(expected_pairs)} in enum, {len(legacy_keys)} in legacy class"
+        assert len(expected_pairs) == len(legacy_keys), (
+            f"Mismatch in the number of members: {len(expected_pairs)} in enum, {len(legacy_keys)} in legacy class"
+        )
 
         for expected_key, expected_value in expected_pairs:
-            assert hasattr(
-                legacy_class, expected_key
-            ), f"{expected_key} is missing in {legacy_class.__name__}"
+            assert hasattr(legacy_class, expected_key), (
+                f"{expected_key} is missing in {legacy_class.__name__}"
+            )
             assert (
                 getattr(legacy_class, expected_key) == expected_value.value
             ), (

@@ -3,7 +3,6 @@
 
 """The resource pool handler for the WebSocket connection."""
 
-
 from django.db.models import Case, Count, IntegerField, Sum, When
 
 from maasserver.enum import NODE_STATUS

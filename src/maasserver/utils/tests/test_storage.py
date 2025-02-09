@@ -3,7 +3,6 @@
 
 """Tests for storage utilities."""
 
-
 from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,

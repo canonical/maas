@@ -347,7 +347,7 @@ class Handler(metaclass=HandlerMetaclass):
         try:
             obj = self.get_queryset(for_list=False).get(**{self._meta.pk: pk})
         except self._meta.object_class.DoesNotExist:
-            raise HandlerDoesNotExistError(
+            raise HandlerDoesNotExistError(  # noqa: B904
                 f"Object with id ({pk}) does not exist"
             )
         if permission is not None or self._meta.view_permission is not None:
@@ -462,7 +462,7 @@ class Handler(metaclass=HandlerMetaclass):
             try:
                 method = getattr(self, method_name)
             except AttributeError:
-                raise HandlerNoSuchMethodError(method_name)
+                raise HandlerNoSuchMethodError(method_name)  # noqa: B904
             else:
                 if method_name in self._meta.methods_using_apiserver:
                     return self._apiserver_execute(method, params)
@@ -771,7 +771,7 @@ class Handler(metaclass=HandlerMetaclass):
                     try:
                         raise HandlerValidationError(e.message_dict)
                     except AttributeError:
-                        raise HandlerValidationError({"__all__": e.message})
+                        raise HandlerValidationError({"__all__": e.message})  # noqa: B904
                 return self.refetch(obj)
             else:
                 raise HandlerValidationError(form.errors)
@@ -812,7 +812,7 @@ class Handler(metaclass=HandlerMetaclass):
                 try:
                     obj = form.save()
                 except ValidationError as e:
-                    raise HandlerValidationError(e.error_dict)
+                    raise HandlerValidationError(e.error_dict)  # noqa: B904
                 return obj
             else:
                 raise HandlerValidationError(form.errors)

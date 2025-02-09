@@ -57,10 +57,10 @@ def check_permissions(
 
     async def wrapper(
         request: Request,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         openapi_security_generator: None = Depends(oauth2_bearer_openapi),
     ) -> AuthenticatedUser:
         """
@@ -83,10 +83,12 @@ def check_permissions(
         external_auth_info = await services.external_auth.get_external_auth()
         if not authenticated_user:
             if external_auth_info:
-                await services.external_auth.raise_discharge_required_exception(
-                    external_auth_info,
-                    extract_absolute_uri(request),
-                    request.headers,
+                await (
+                    services.external_auth.raise_discharge_required_exception(
+                        external_auth_info,
+                        extract_absolute_uri(request),
+                        request.headers,
+                    )
                 )
 
             raise UnauthorizedException(
@@ -132,17 +134,11 @@ def check_permissions(
                     )
                     match resp.permission:
                         case RbacPermission.VIEW:
-                            authenticated_user.rbac_permissions.visible_pools = (
-                                pools
-                            )
+                            authenticated_user.rbac_permissions.visible_pools = pools
                         case RbacPermission.VIEW_ALL:
-                            authenticated_user.rbac_permissions.view_all_pools = (
-                                pools
-                            )
+                            authenticated_user.rbac_permissions.view_all_pools = pools
                         case RbacPermission.DEPLOY_MACHINES:
-                            authenticated_user.rbac_permissions.deploy_pools = (
-                                pools
-                            )
+                            authenticated_user.rbac_permissions.deploy_pools = pools
                         case RbacPermission.ADMIN_MACHINES:
                             authenticated_user.rbac_permissions.admin_pools = (
                                 pools
@@ -153,9 +149,7 @@ def check_permissions(
                             )
                             if resp.access_all:
                                 # The user can edit resource pools only if access_all is set
-                                authenticated_user.rbac_permissions.can_edit_all_resource_pools = (
-                                    True
-                                )
+                                authenticated_user.rbac_permissions.can_edit_all_resource_pools = True
             return authenticated_user
 
     return wrapper

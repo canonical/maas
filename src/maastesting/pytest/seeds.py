@@ -21,8 +21,7 @@ def pytest_runtest_makereport(item, call):
     item.add_report_section(
         "setup",
         "seeds",
-        f"MAAS_RAND_SEED={maas_rand_seed} "
-        f"PYTHONHASHSEED={python_hash_seed}",
+        f"MAAS_RAND_SEED={maas_rand_seed} PYTHONHASHSEED={python_hash_seed}",
     )
 
 

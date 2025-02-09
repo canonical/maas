@@ -203,7 +203,7 @@ def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
         try:
             opcode = CONTROLS.lookupByValue(opcode)
         except ValueError:
-            raise _WSException("Unknown opcode %d in frame" % opcode)
+            raise _WSException("Unknown opcode %d in frame" % opcode)  # noqa: B904
 
         # Get the payload length and determine whether we need to look for an
         # extra length.

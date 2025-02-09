@@ -3,7 +3,6 @@
 
 """LXD utilities."""
 
-
 from collections import defaultdict
 from dataclasses import dataclass, field
 import re

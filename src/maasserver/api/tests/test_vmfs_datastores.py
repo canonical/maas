@@ -3,7 +3,6 @@
 
 """Tests for VMFS datastore API."""
 
-
 import http.client
 import random
 import uuid

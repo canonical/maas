@@ -3,7 +3,6 @@
 
 """Tests for `rpc.leases`."""
 
-
 from datetime import datetime, timezone
 import random
 import time

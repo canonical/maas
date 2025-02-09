@@ -4,7 +4,6 @@
 
 """Tests for `provisioningserver.drivers.power.recs`."""
 
-
 from io import StringIO
 from textwrap import dedent
 from unittest.mock import call, Mock
@@ -448,9 +447,11 @@ class TestRECSPowerDriver(MAASTestCase):
             domain,
         )
 
-        mock_create_node.assert_called_once_with(
-            macs, "amd64", "recs_box", context, domain
-        ),
+        (
+            mock_create_node.assert_called_once_with(
+                macs, "amd64", "recs_box", context, domain
+            ),
+        )
         mock_commission_node.assert_called_once_with(node_id, user)
 
     @inlineCallbacks
@@ -477,9 +478,11 @@ class TestRECSPowerDriver(MAASTestCase):
             domain,
         )
 
-        mock_create_node.assert_called_once_with(
-            macs, "armhf", "recs_box", context, domain
-        ),
+        (
+            mock_create_node.assert_called_once_with(
+                macs, "armhf", "recs_box", context, domain
+            ),
+        )
         mock_commission_node.assert_not_called()
 
     @inlineCallbacks

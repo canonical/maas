@@ -21,7 +21,6 @@ from maastesting.djangotestcase import count_queries
 
 
 class TestReservedIPHandler(MAASServerTestCase):
-
     def setUp(self):
         super().setUp()
         d = defer.succeed(None)

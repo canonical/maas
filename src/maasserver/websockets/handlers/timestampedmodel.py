@@ -3,7 +3,6 @@
 
 """The nodes handler for the WebSocket connection."""
 
-
 from maasserver.websockets.base import dehydrate_datetime, Handler
 
 

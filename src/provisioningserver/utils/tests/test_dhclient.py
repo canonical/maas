@@ -3,7 +3,6 @@
 
 """Tests for dhclient helpers."""
 
-
 import os
 import random
 from textwrap import dedent
@@ -91,17 +90,14 @@ class TestGetDhclientInfo(MAASTestCase):
             address = factory.make_ipv4_address()
             interfaces[interface_name] = address
             lease_path = os.path.join(leases_path, "%s.lease" % interface_name)
-            lease_data = (
-                dedent(
-                    """\
+            lease_data = dedent(
+                """\
                 lease {
                   interface "%s";
                   fixed-address %s;
                 }
                 """
-                )
-                % (interface_name, address)
-            )
+            ) % (interface_name, address)
             atomic_write(lease_data.encode("ascii"), lease_path)
             cmdline_path = os.path.join(proc_path, str(pid), "cmdline")
             cmdline = [

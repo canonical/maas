@@ -11,7 +11,7 @@ class DatabaseLockNotHeld(Exception):
     """A particular lock was not held."""
 
 
-class DatabaseLockBase(ABC):
+class DatabaseLockBase(ABC):  # noqa: B024
     def __init__(self, connection: AsyncConnection, classid: int, objid: int):
         self.connection = connection
         self.classid = classid

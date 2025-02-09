@@ -16,7 +16,6 @@ class Endpoint:
 
 @pytest.mark.asyncio
 class ApiCommonTests(abc.ABC):
-
     @pytest.fixture
     @abc.abstractmethod
     def user_endpoints(self) -> list[Endpoint]:

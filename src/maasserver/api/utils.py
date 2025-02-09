@@ -66,7 +66,7 @@ def get_mandatory_param(data, key, validator=None):
         try:
             return validator.to_python(value)
         except Invalid as e:
-            raise MAASAPIValidationError(f"Invalid {key}: {e.msg}")
+            raise MAASAPIValidationError(f"Invalid {key}: {e.msg}")  # noqa: B904
     else:
         return value
 
@@ -76,7 +76,7 @@ def _validate_param(key, value, validator):
     try:
         return validator.to_python(value)
     except Invalid as e:
-        raise MAASAPIValidationError(f"Invalid {key}: {e.msg}")
+        raise MAASAPIValidationError(f"Invalid {key}: {e.msg}")  # noqa: B904
 
 
 def get_optional_param(data, key, default=None, validator=None):
@@ -231,4 +231,4 @@ def get_oauth_token(request):
     try:
         return Token.objects.get(key=extract_oauth_key(request))
     except Token.DoesNotExist:
-        raise Unauthorized("Unknown OAuth token.")
+        raise Unauthorized("Unknown OAuth token.")  # noqa: B904

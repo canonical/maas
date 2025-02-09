@@ -3,7 +3,6 @@
 
 """Tests for `rpc.services`."""
 
-
 from fixtures import FakeLogger
 
 from maasserver.enum import SERVICE_STATUS

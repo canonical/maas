@@ -3,7 +3,6 @@
 
 """Test custom field types."""
 
-
 from base64 import b64encode
 
 from maasserver.testing.testcase import (

@@ -3,7 +3,6 @@
 
 """Load all pod drivers."""
 
-
 from jsonschema import validate
 
 from provisioningserver.drivers.pod import JSON_POD_DRIVERS_SCHEMA

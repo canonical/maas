@@ -90,9 +90,9 @@ class DomainsHandler(OperationsHandler):
         try:
             serial = int(request.data["serial"])
         except KeyError:
-            raise MAASAPIValidationError({"serial": "Missing parameter"})
+            raise MAASAPIValidationError({"serial": "Missing parameter"})  # noqa: B904
         except ValueError:
-            raise MAASAPIValidationError(
+            raise MAASAPIValidationError(  # noqa: B904
                 {"serial": "Expected a serial number"}
             )
         if serial == 0 or serial > INT_MAX:

@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.ethernet``."""
 
-
 import random
 
 from maastesting.factory import factory

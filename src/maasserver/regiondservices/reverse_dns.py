@@ -3,7 +3,6 @@
 
 """Reverse DNS service."""
 
-
 from typing import List
 
 from twisted.application.service import Service

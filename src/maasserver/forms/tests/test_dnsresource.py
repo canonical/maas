@@ -3,7 +3,6 @@
 
 """Tests for DNSResource forms."""
 
-
 import random
 from unittest.mock import Mock
 

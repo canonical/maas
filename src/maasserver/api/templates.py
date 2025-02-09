@@ -26,7 +26,6 @@ for function_def in function_defs:
 
 """
 
-
 import tempita
 
 

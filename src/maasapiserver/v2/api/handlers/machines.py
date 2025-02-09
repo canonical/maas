@@ -14,7 +14,7 @@ class MachineHandler(Handler):
     async def list(
         self,
         request: MachineListRequest,
-        services: ServiceCollectionV2 = Depends(services),
-        user: User = Depends(authenticated_user),
+        services: ServiceCollectionV2 = Depends(services),  # noqa: B008
+        user: User = Depends(authenticated_user),  # noqa: B008
     ) -> MachineListResponse:
         return await services.machines.list(request)

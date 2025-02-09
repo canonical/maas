@@ -329,7 +329,7 @@ RegionMigrations = files(
     "src/maasserver/migrations/**/*.py", "src/metadataserver/migrations/*.py"
 )
 RegionUserDataSnippets = files(
-    "src/metadataserver/user_data/templates/" "snippets/**/*.py"
+    "src/metadataserver/user_data/templates/snippets/**/*.py"
 )
 RegionController = (
     files("src/maasserver/**/*.py", "src/metadataserver/**/*.py")
@@ -723,7 +723,7 @@ def _expand(checks):
     """
     for filenames, rule in checks:
         rule.compile()  # Compile or it's slow.
-        for filenames in _batch(filenames, 100):
+        for filenames in _batch(filenames, 100):  # noqa: B020
             yield rule, filenames
 
 
@@ -814,9 +814,12 @@ def main(args):
                 print_denied(imported_name)
 
     if options.show_summary:
-        if options.show_allowed and allowedcount != 0:
-            print()
-        elif options.show_denied and deniedcount != 0:
+        if (
+            options.show_allowed
+            and allowedcount != 0
+            or options.show_denied
+            and deniedcount != 0
+        ):
             print()
 
         print(allowedcount, "imported names were ALLOWED.")

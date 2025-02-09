@@ -3,7 +3,6 @@
 
 """Tests for register command code."""
 
-
 from argparse import ArgumentParser, Namespace
 
 from twisted.internet import reactor

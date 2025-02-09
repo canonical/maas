@@ -207,7 +207,7 @@ class TestPrometheusMetricsNew:
             raise Exception()
 
         obj = object()
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             func(obj, param2="baz")
         assert (
             'test_failure_total{bar="BAR",foo="FOO"} 1.0'
@@ -253,7 +253,7 @@ class TestPrometheusMetricsNew:
         with pytest.raises(FailureCounterTestException):
             func1(obj, param2="baz")
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             func2(obj, param2="baz")
 
         with pytest.raises(FailureCounterTestException):

@@ -33,9 +33,9 @@ def _assert_interfaces_match_without_links(
 ) -> None:
     assert interface1.id == interface2.id
     interface1.links = interface2.links = []
-    assert (
-        interface1 == interface2
-    ), f"{interface1} does not match {interface2}!"
+    assert interface1 == interface2, (
+        f"{interface1} does not match {interface2}!"
+    )
 
 
 def _assert_interface_in_list(
@@ -113,12 +113,12 @@ class TestInterfaceRepository:
                 )
             else:
                 expected_length = page_size
-            assert (
-                expected_length == actual_page_size
-            ), f"page {page} has length {actual_page_size}? expected {expected_length}"
+            assert expected_length == actual_page_size, (
+                f"page {page} has length {actual_page_size}? expected {expected_length}"
+            )
 
             for interface in created_interfaces[
-                ((page - 1) * page_size) : ((page * page_size))
+                ((page - 1) * page_size) : (page * page_size)
             ]:
                 _assert_interface_in_list(interface, interfaces_result)
         assert total_retrieved == interface_count

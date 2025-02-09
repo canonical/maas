@@ -101,7 +101,6 @@ class TestReservedIPsAPI(APITestCase.ForUser):
 
 
 class TestReservedIPAPI(APITestCase.ForUser):
-
     def setUp(self):
         super().setUp()
         d = defer.succeed(None)

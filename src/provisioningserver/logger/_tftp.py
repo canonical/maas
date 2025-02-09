@@ -3,7 +3,6 @@
 
 """TFTP-specific logging stuff."""
 
-
 from twisted.logger import globalLogPublisher, LogLevel
 
 from provisioningserver.logger._common import LoggingMode

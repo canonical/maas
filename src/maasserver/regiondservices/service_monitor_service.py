@@ -3,7 +3,6 @@
 
 """Service that periodically checks that system services are running."""
 
-
 from datetime import timedelta
 
 from twisted.application.internet import TimerService

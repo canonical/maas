@@ -3,7 +3,6 @@
 
 """Service to periodically check for version updates."""
 
-
 from abc import abstractmethod
 import dataclasses
 from datetime import timedelta

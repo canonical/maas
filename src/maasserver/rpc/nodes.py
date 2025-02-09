@@ -45,11 +45,11 @@ def mark_node_failed(system_id, error_description):
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
-        raise NoSuchNode.from_system_id(system_id)
+        raise NoSuchNode.from_system_id(system_id)  # noqa: B904
     try:
         node.mark_failed(comment=error_description)
     except exceptions.NodeStateViolation as e:
-        raise NodeStateViolation(e)
+        raise NodeStateViolation(e)  # noqa: B904
 
 
 def _gen_cluster_nodes_power_parameters(nodes, limit):
@@ -133,7 +133,7 @@ def list_cluster_nodes_power_parameters(system_id, limit=10):
     try:
         rack = RackController.objects.get(system_id=system_id)
     except RackController.DoesNotExist:
-        raise NoSuchCluster.from_uuid(system_id)
+        raise NoSuchCluster.from_uuid(system_id)  # noqa: B904
 
     # Generate all the the power queries that will fit into the response.
     nodes = rack.get_bmc_accessible_nodes()
@@ -162,7 +162,7 @@ def update_node_power_state(system_id, power_state):
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
-        raise NoSuchNode.from_system_id(system_id)
+        raise NoSuchNode.from_system_id(system_id)  # noqa: B904
     node.update_power_state(power_state)
 
 
@@ -237,12 +237,12 @@ def commission_node(system_id, user):
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
-        raise NoSuchNode.from_system_id(system_id)
+        raise NoSuchNode.from_system_id(system_id)  # noqa: B904
     try:
         node.start_commissioning(User.objects.get(username=user))
     except Exception as e:
         # Cluster takes care of logging
-        raise CommissionNodeFailed(e)
+        raise CommissionNodeFailed(e)  # noqa: B904
 
 
 @synchronous
@@ -260,7 +260,7 @@ def request_node_info_by_mac_address(mac_address):
             .node_config.node
         )
     except PhysicalInterface.DoesNotExist:
-        raise NoSuchNode.from_mac_address(mac_address)
+        raise NoSuchNode.from_mac_address(mac_address)  # noqa: B904
     return (node, node.get_boot_purpose())
 
 
@@ -275,7 +275,7 @@ def get_controller_type(system_id: str) -> dict[str, bool]:
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
-        raise NoSuchNode.from_system_id(system_id)
+        raise NoSuchNode.from_system_id(system_id)  # noqa: B904
     else:
         return {
             "is_region": node.is_region_controller,
@@ -294,7 +294,7 @@ def get_time_configuration(system_id: str) -> dict[str, frozenset]:
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
-        raise NoSuchNode.from_system_id(system_id)
+        raise NoSuchNode.from_system_id(system_id)  # noqa: B904
     else:
         return {
             "servers": ntp.get_servers_for(node),

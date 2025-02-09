@@ -32,7 +32,6 @@ from maasservicelayer.utils.date import utcnow
 
 
 class UserClauseFactory(ClauseFactory):
-
     @classmethod
     def with_id(cls, id: int) -> Clause:
         return Clause(condition=eq(UserTable.c.id, id))
@@ -150,7 +149,7 @@ class UsersRepository(BaseRepository[User]):
         except IntegrityError:
             self._raise_already_existing_exception()
         except NoResultFound:
-            raise NotFoundException(
+            raise NotFoundException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
                         type=UNEXISTING_RESOURCE_VIOLATION_TYPE,

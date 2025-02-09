@@ -113,7 +113,7 @@ class RBACClient(MacaroonClient):
         except APIError as exc:
             if exc.status_code == int(http.client.CONFLICT) and last_sync_id:
                 # Notify the caller of the conflict explicitly.
-                raise SyncConflictError()
+                raise SyncConflictError()  # noqa: B904
             raise
         return result["sync-id"]
 
@@ -294,7 +294,7 @@ class RBACWrapper:
         cache = getattr(self._store, "cache", None)
         if cache is None:
             cache = {}
-            setattr(self._store, "cache", cache)
+            setattr(self._store, "cache", cache)  # noqa: B010
         key = (resource, user)
         if key in cache:
             return cache[key]
@@ -437,7 +437,7 @@ class FakeRBACUserClient(RBACUserClient):
             "name": "maas",
             "$uri": "/api/rbac/v1/service/4",
             "pending": True,
-            "product": {"$ref" "/api/rbac/v1/product/2"},
+            "product": {"$ref/api/rbac/v1/product/2"},
         }
         self.services.append(maas)
         return maas

@@ -100,8 +100,7 @@ class TestRBACClient(MAASServerTestCase):
         )
         self.mock_request.assert_called_once_with(
             "GET",
-            "https://rbac.example.com/api/"
-            "service/v1/resources/resource-pool",
+            "https://rbac.example.com/api/service/v1/resources/resource-pool",
             auth=mock.ANY,
             cookies=mock.ANY,
             json=None,
@@ -133,8 +132,7 @@ class TestRBACClient(MAASServerTestCase):
         self.assertEqual(sync_id, "x-y-z")
         self.mock_request.assert_called_once_with(
             "POST",
-            "https://rbac.example.com/api/"
-            "service/v1/resources/resource-pool",
+            "https://rbac.example.com/api/service/v1/resources/resource-pool",
             auth=mock.ANY,
             cookies=mock.ANY,
             json=json,
@@ -164,8 +162,7 @@ class TestRBACClient(MAASServerTestCase):
         self.assertEqual(sync_id, "x-y-z")
         self.mock_request.assert_called_once_with(
             "POST",
-            "https://rbac.example.com/api/"
-            "service/v1/resources/resource-pool",
+            "https://rbac.example.com/api/service/v1/resources/resource-pool",
             auth=mock.ANY,
             cookies=mock.ANY,
             json=json,
@@ -493,7 +490,7 @@ class TestRBACUserClient(MAASServerTestCase):
         self.assertEqual(self.client._get_maas_product(), maas)
         self.mock_request.assert_called_once_with(
             "GET",
-            "https://rbac.example.com/api/" "rbac/v1/product",
+            "https://rbac.example.com/api/rbac/v1/product",
             auth=mock.ANY,
             cookies=mock.ANY,
             json=None,
@@ -558,7 +555,7 @@ class TestRBACUserClient(MAASServerTestCase):
 
         self.mock_request.assert_any_call(
             "GET",
-            "https://rbac.example.com/api/" "rbac/v1/service/registerable",
+            "https://rbac.example.com/api/rbac/v1/service/registerable",
             auth=mock.ANY,
             cookies=mock.ANY,
             json=None,
@@ -576,7 +573,7 @@ class TestRBACUserClient(MAASServerTestCase):
         json = {"public-key": "dead-beef"}
         self.mock_request.assert_called_once_with(
             "POST",
-            "https://rbac.example.com/api/" "rbac/v1/service/3/credentials",
+            "https://rbac.example.com/api/rbac/v1/service/3/credentials",
             auth=mock.ANY,
             cookies=mock.ANY,
             json=json,

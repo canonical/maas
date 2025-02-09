@@ -3,7 +3,6 @@
 
 """The PackageRepository handler for the WebSocket connection."""
 
-
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
@@ -43,7 +42,7 @@ class PackageRepositoryHandler(TimestampedModelHandler):
                 try:
                     raise HandlerValidationError(e.message_dict)
                 except AttributeError:
-                    raise HandlerValidationError({"__all__": e.message})
+                    raise HandlerValidationError({"__all__": e.message})  # noqa: B904
             return self.full_dehydrate(obj)
         else:
             raise HandlerValidationError(form.errors)
@@ -64,7 +63,7 @@ class PackageRepositoryHandler(TimestampedModelHandler):
             try:
                 obj = form.save(ENDPOINT.UI, request)
             except ValidationError as e:
-                raise HandlerValidationError(e.error_dict)
+                raise HandlerValidationError(e.error_dict)  # noqa: B904
             return self.full_dehydrate(obj)
         else:
             raise HandlerValidationError(form.errors)

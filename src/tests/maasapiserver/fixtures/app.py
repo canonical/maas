@@ -63,9 +63,7 @@ def create_app_with_mocks(
                 request.state.services.external_auth = Mock(
                     ExternalAuthService
                 )
-                request.state.services.external_auth.get_external_auth.return_value = (
-                    None
-                )
+                request.state.services.external_auth.get_external_auth.return_value = None
             return await call_next(request)
 
     class InjectUserInRequest(BaseHTTPMiddleware):

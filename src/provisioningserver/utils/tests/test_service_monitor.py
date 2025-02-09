@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.service_monitor`."""
+
 import json
 from json import JSONDecodeError
 import logging
@@ -373,9 +374,11 @@ class TestServiceMonitor(MAASTestCase):
         mock_getServiceState.return_value = succeed(service_state)
         observed = yield service_monitor.restartService(fake_service.name)
         self.assertEqual(service_state, observed)
-        mock_getServiceState.assert_called_once_with(
-            fake_service.name, now=True
-        ),
+        (
+            mock_getServiceState.assert_called_once_with(
+                fake_service.name, now=True
+            ),
+        )
         mock_performServiceAction.assert_called_once_with(
             fake_service, "restart"
         )
@@ -1256,20 +1259,17 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadSystemDServiceState_status_returns_off_and_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        systemd_status_output = (
-            dedent(
-                """\
+        systemd_status_output = dedent(
+            """\
             %s.service - LSB: iscsi target daemon
                 Loaded: loaded (/lib/systemd/system/%s.service)
                 Active: %s (dead)
                 Docs: man:systemd-sysv-generator(8)
             """
-            )
-            % (
-                service.service_name,
-                service.service_name,
-                random.choice(["inactive", "deactivating"]),
-            )
+        ) % (
+            service.service_name,
+            service.service_name,
+            random.choice(["inactive", "deactivating"]),
         )
 
         mock_execSystemDServiceAction = self.patch(
@@ -1290,20 +1290,17 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadSystemDServiceState_status_returns_dead_for_failed(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        systemd_status_output = (
-            dedent(
-                """\
+        systemd_status_output = dedent(
+            """\
             %s.service - Fake service
                 Loaded: loaded (/lib/systemd/system/%s.service; ...
                 Active: %s (Result: exit-code) since Wed 2016-01-20...
                 Docs: man:dhcpd(8)
             """
-            )
-            % (
-                service.service_name,
-                service.service_name,
-                random.choice(["reloading", "failed", "activating"]),
-            )
+        ) % (
+            service.service_name,
+            service.service_name,
+            random.choice(["reloading", "failed", "activating"]),
         )
 
         mock_execSystemDServiceAction = self.patch(
@@ -1323,17 +1320,14 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadSystemDServiceState_status_returns_on_and_running(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        systemd_status_output = (
-            dedent(
-                """\
+        systemd_status_output = dedent(
+            """\
             %s.service - Fake Service
                 Loaded: loaded (/lib/systemd/system/%s.service)
                 Active: active (running) since Fri 2015-05-15 15:08:26 UTC;
                 Docs: man:systemd-sysv-generator(8)
             """
-            )
-            % (service.service_name, service.service_name)
-        )
+        ) % (service.service_name, service.service_name)
 
         mock_execSystemDServiceAction = self.patch(
             service_monitor, "_execSystemDServiceAction"
@@ -1353,18 +1347,15 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadSystemDServiceState_status_ignores_sudo_output(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        systemd_status_output = (
-            dedent(
-                """\
+        systemd_status_output = dedent(
+            """\
             sudo: unable to resolve host sub-etha-sens-o-matic
             %s.service - Fake service
                 Loaded: loaded (/lib/systemd/system/%s.service)
                 Active: active (running) since Fri 2015-05-15 15:08:26 UTC;
                 Docs: man:systemd-sysv-generator(8)
             """
-            )
-            % (service.service_name, service.service_name)
-        )
+        ) % (service.service_name, service.service_name)
 
         mock_execSystemDServiceAction = self.patch(
             service_monitor, "_execSystemDServiceAction"
@@ -1384,17 +1375,14 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadSystemDServiceState_status_raise_error_for_bad_active(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        systemd_status_output = (
-            dedent(
-                """\
+        systemd_status_output = dedent(
+            """\
             %s.service - Fake service
                 Loaded: loaded (/lib/systemd/system/%s.service)
                 Active: unknown (running) since Fri 2015-05-15 15:08:26 UTC;
                 Docs: man:systemd-sysv-generator(8)
             """
-            )
-            % (service.service_name, service.service_name)
-        )
+        ) % (service.service_name, service.service_name)
 
         service_monitor = self.make_service_monitor()
         mock_execSystemDServiceAction = self.patch(

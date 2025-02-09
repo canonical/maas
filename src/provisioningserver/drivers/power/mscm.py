@@ -10,7 +10,6 @@ Management (MSCM) CLI via SSH, and for using that support to allow MAAS to
 manage systems via iLO.
 """
 
-
 import re
 from socket import error as SOCKETError
 from typing import Optional
@@ -88,7 +87,7 @@ class MSCMPowerDriver(PowerDriver):
         power_address=None,
         power_user=None,
         power_pass=None,
-        **extra
+        **extra,
     ):
         """Run a single command on MSCM via SSH and return output."""
         try:
@@ -100,7 +99,7 @@ class MSCMPowerDriver(PowerDriver):
             _, stdout, _ = ssh_client.exec_command(command)
             output = stdout.read().decode("utf-8")
         except (SSHException, EOFError, SOCKETError) as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make SSH connection to MSCM for "
                 "%s on %s - %s" % (power_user, power_address, e)
             )
@@ -123,7 +122,7 @@ class MSCMPowerDriver(PowerDriver):
             # Power node on
             self.run_mscm_command("set node power on %s" % node_id, **context)
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "MSCM Power Driver unable to power on node %s: %s"
                 % (context["node_id"], e)
             )
@@ -136,7 +135,7 @@ class MSCMPowerDriver(PowerDriver):
                 "set node power off force %s" % context["node_id"], **context
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "MSCM Power Driver unable to power off node %s: %s"
                 % (context["node_id"], e)
             )
@@ -153,7 +152,7 @@ class MSCMPowerDriver(PowerDriver):
                 "show node power %s" % context["node_id"], **context
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "MSCM Power Driver unable to power query node %s: %s"
                 % (context["node_id"], e)
             )

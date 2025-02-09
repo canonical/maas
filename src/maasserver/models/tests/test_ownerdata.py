@@ -3,7 +3,6 @@
 
 """Tests for `OwnerData`."""
 
-
 from maasserver.models.ownerdata import OwnerData
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -39,7 +38,7 @@ class TestOwnerData(MAASServerTestCase):
             for _ in range(3)
         }
         OwnerData.objects.set_owner_data(node, owner_data)
-        for key in owner_data.keys():
+        for key in owner_data:
             owner_data[key] = factory.make_name("value")
         OwnerData.objects.set_owner_data(node, owner_data)
         self.assertEqual(owner_data, self.get_owner_data(node))
@@ -51,7 +50,7 @@ class TestOwnerData(MAASServerTestCase):
             for _ in range(3)
         }
         OwnerData.objects.set_owner_data(node, owner_data)
-        for key in owner_data.keys():
+        for key in owner_data:
             owner_data[key] = None
         OwnerData.objects.set_owner_data(node, owner_data)
         self.assertEqual({}, self.get_owner_data(node))

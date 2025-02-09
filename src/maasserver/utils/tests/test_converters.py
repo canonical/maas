@@ -3,7 +3,6 @@
 
 """Tests for converters utilities."""
 
-
 from datetime import timedelta
 from textwrap import dedent
 

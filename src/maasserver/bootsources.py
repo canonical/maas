@@ -392,7 +392,7 @@ def cache_boot_sources():
                     [source], user_agent=user_agent
                 )
             except (OSError, ConnectionError) as error:
-                msg = "Failed to import images from " "%s: %s" % (
+                msg = "Failed to import images from %s: %s" % (
                     source["url"],
                     error,
                 )

@@ -3,7 +3,6 @@
 
 """Tests for the `helpers` module."""
 
-
 from simplestreams.util import SignatureMissingException
 
 from maasserver.import_images import helpers

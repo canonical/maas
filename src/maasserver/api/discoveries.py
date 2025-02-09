@@ -3,7 +3,6 @@
 
 """API handlers: `Discovery`."""
 
-
 from textwrap import dedent
 
 from django.http.response import HttpResponseBadRequest, HttpResponseForbidden
@@ -70,7 +69,7 @@ class DiscoveryHandler(OperationsHandler):
         @error-example "not-found"
             No Discovery matches the given query.
         """
-        discovery_id = kwargs.get("discovery_id", None)
+        discovery_id = kwargs.get("discovery_id")
         discovery = Discovery.objects.get_discovery_or_404(discovery_id)
         return discovery
 

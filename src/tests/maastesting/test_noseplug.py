@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.noseplug`."""
 
-
 from optparse import OptionParser
 from os import devnull, makedirs
 from os.path import dirname, join

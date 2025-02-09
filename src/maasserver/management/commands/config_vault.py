@@ -96,9 +96,9 @@ class Command(BaseCommand):
                 """
             )
         except VaultError as e:
-            raise CommandError(e.__cause__)
+            raise CommandError(e.__cause__)  # noqa: B904
         except WrappedSecretError as e:
-            raise CommandError(e)
+            raise CommandError(e)  # noqa: B904
 
     def _get_online_regions(self) -> list[str]:
         """Returns the list of online regions"""
@@ -193,7 +193,7 @@ class Command(BaseCommand):
         try:
             client.check_authentication()
         except VaultError as e:
-            raise CommandError(f"Vault test failed: {e.__cause__}")
+            raise CommandError(f"Vault test failed: {e.__cause__}")  # noqa: B904
         # Restart regions to ensure there will be no regions trying to write secrets to the DB during migration
         self._restart_regions()
         # Now we're ready to perform the actual migration

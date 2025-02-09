@@ -3,7 +3,6 @@
 
 """Tests for log.py"""
 
-
 import pathlib
 import subprocess
 import sys

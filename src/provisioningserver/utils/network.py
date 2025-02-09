@@ -540,9 +540,12 @@ class MAASIPSet(set):
         if isinstance(outer_range, IPNetwork):
             # Skip the network address, if this is a network
             prefixlen = outer_range.prefixlen
-            if outer_range.version == 4 and prefixlen in (31, 32):
-                start = outer_range.first
-            elif outer_range.version == 6 and prefixlen in (127, 128):
+            if (
+                outer_range.version == 4
+                and prefixlen in (31, 32)
+                or outer_range.version == 6
+                and prefixlen in (127, 128)
+            ):
                 start = outer_range.first
             else:
                 start = outer_range.first + 1
@@ -935,7 +938,7 @@ def hex_str_to_bytes(data):
     except ValueError as e:
         # The default execption is not really useful since it doesn't specify
         # the incorrect input.
-        raise ValueError(f"Invalid hex string: '{data}'; {str(e)}")
+        raise ValueError(f"Invalid hex string: '{data}'; {str(e)}")  # noqa: B904
 
 
 def ipv4_to_bytes(ipv4_address):

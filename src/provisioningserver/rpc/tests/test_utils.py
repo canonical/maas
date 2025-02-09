@@ -3,7 +3,6 @@
 
 """Test `provisioningserver.rpc.utils`."""
 
-
 import json
 from random import choice
 
@@ -168,7 +167,7 @@ class TestCreateNode(MAASTestCase):
         yield create_node(macs, arch, power_type, power_parameters)
         yield create_node(macs, arch, power_type, power_parameters)
         maaslog.error.assert_called_once_with(
-            "A node with one of the mac addresses in %s already " "exists.",
+            "A node with one of the mac addresses in %s already exists.",
             macs,
         )
 

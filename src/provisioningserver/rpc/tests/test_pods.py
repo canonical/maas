@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.pod`."""
 
-
 import json
 import random
 import re

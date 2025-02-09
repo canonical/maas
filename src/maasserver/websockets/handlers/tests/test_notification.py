@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.notification`."""
 
-
 from itertools import product
 from operator import itemgetter
 import random

@@ -3,7 +3,6 @@
 
 """DNSData objects."""
 
-
 from collections import defaultdict
 import re
 
@@ -253,11 +252,11 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 name, d_name = d_name.split(".", 1)
                 # Since we don't allow more than one label in dnsresource
                 # names, we should never ever be wrong in this assertion.
-                assert (
-                    d_name == domain.name
-                ), "Invalid domain; expected '{}' == '{}'".format(
-                    d_name,
-                    domain.name,
+                assert d_name == domain.name, (
+                    "Invalid domain; expected '{}' == '{}'".format(
+                        d_name,
+                        domain.name,
+                    )
                 )
             entry = mapping[name]
             entry.node_type = node_type

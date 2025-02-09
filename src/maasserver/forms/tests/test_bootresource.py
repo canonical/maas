@@ -3,7 +3,6 @@
 
 """Tests for `BootSourceForm`."""
 
-
 import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile

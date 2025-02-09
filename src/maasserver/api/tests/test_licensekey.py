@@ -3,7 +3,6 @@
 
 """Tests for the `LicenseKey` API."""
 
-
 import http.client
 import random
 

@@ -3,7 +3,6 @@
 
 """Preseed generation for curtin/netplan network."""
 
-
 from collections import defaultdict, OrderedDict
 from operator import attrgetter
 
@@ -245,9 +244,12 @@ class InterfaceConfiguration:
         family = network.version
         node_config = self.node_config
         if not self.source_routing:
-            if family == 4 and node_config.gateway_ipv4_set:
-                return
-            elif family == 6 and node_config.gateway_ipv6_set:
+            if (
+                family == 4
+                and node_config.gateway_ipv4_set
+                or family == 6
+                and node_config.gateway_ipv6_set
+            ):
                 return
         gateway = self._get_default_gateway(subnet)
         if gateway is not None:

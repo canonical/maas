@@ -213,7 +213,7 @@ class TestPrintResponseHeaders(MAASTestCase):
         buf = io.StringIO()
         utils.print_response_headers(headers, buf)
         self.assertEqual(
-            ("      One: %(one)s\n" "  Two-Two: %(two-two)s\n") % headers,
+            ("      One: %(one)s\n  Two-Two: %(two-two)s\n") % headers,
             buf.getvalue(),
         )
 
@@ -318,9 +318,9 @@ class TestPrintServerCertificate(MAASTestCase):
         from provisioningserver.testing.certificates import get_sample_cert
 
         cert = get_sample_cert()
-        self.patch(ssl, "get_server_certificate").return_value = (
-            cert.certificate_pem()
-        )
+        self.patch(
+            ssl, "get_server_certificate"
+        ).return_value = cert.certificate_pem()
 
         url = "https://example.com:5443"
 

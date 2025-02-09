@@ -3,7 +3,6 @@
 
 """Monitored service driver."""
 
-
 from abc import ABCMeta, abstractproperty
 
 from provisioningserver.path import get_maas_data_path
@@ -24,7 +23,7 @@ DHCPv6_INTERFACES_FILE = "dhcpd6-interfaces"
 DISABLED_DHCP_SERVER = "# DHCP server stopped and disabled."
 
 
-class DHCPServer(metaclass=ABCMeta):
+class DHCPServer(metaclass=ABCMeta):  # noqa: B024
     """Represents the settings for a DHCP server.
 
     :cvar descriptive_name: A name to use for this server in human-readable

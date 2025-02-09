@@ -5,7 +5,6 @@
 Monkey patch for the MAAS region server, with code for region server patching.
 """
 
-
 from collections import OrderedDict
 
 import yaml

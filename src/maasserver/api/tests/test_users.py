@@ -3,7 +3,6 @@
 
 """Tests for the user accounts API."""
 
-
 import http.client
 import json
 

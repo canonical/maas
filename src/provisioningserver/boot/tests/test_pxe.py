@@ -3,7 +3,6 @@
 
 """Tests for the pxe boot method."""
 
-
 from collections import OrderedDict
 import re
 
@@ -411,7 +410,7 @@ class TestPXEBootMethodRegex(MAASTestCase):
     def test_re_config_file_is_compatible_with_config_path_generator(self):
         # The regular expression for extracting components of the file path is
         # compatible with the PXE config path generator.
-        for iteration in range(10):
+        for iteration in range(10):  # noqa: B007
             config_path, args = self.get_example_path_and_components()
             match = re_config_file.match(config_path)
             self.assertIsNotNone(match, config_path)

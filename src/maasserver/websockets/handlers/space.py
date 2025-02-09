@@ -3,7 +3,6 @@
 
 """The space handler for the WebSocket connection."""
 
-
 import itertools
 
 from maasserver.forms.space import SpaceForm
@@ -47,7 +46,7 @@ class SpaceHandler(TimestampedModelHandler):
     def delete(self, parameters):
         """Delete this Space."""
         space = self.get_object(parameters)
-        assert self.user.has_perm(
-            NodePermission.admin, space
-        ), "Permission denied."
+        assert self.user.has_perm(NodePermission.admin, space), (
+            "Permission denied."
+        )
         space.delete()

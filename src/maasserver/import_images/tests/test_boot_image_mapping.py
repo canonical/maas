@@ -3,7 +3,6 @@
 
 """Tests for `BootImageMapping` and its module."""
 
-
 from maasserver.import_images.boot_image_mapping import BootImageMapping
 from maasserver.import_images.testing.factory import (
     make_image_spec,

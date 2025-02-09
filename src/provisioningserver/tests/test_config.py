@@ -3,7 +3,6 @@
 
 """Tests for provisioning configuration."""
 
-
 import contextlib
 from operator import delitem, methodcaller, setitem
 import os.path

@@ -244,9 +244,9 @@ def load_builtin_scripts():
             # Form validation should never fail as these are the scripts
             # which ship with MAAS. If they ever do this will be cause by
             # unit tests.
-            assert (
-                form.is_valid()
-            ), f"Builtin script {script.name} caused these errors: {form.errors}"
+            assert form.is_valid(), (
+                f"Builtin script {script.name} caused these errors: {form.errors}"
+            )
             script_in_db = form.save(commit=False)
         if NODE_INFO_SCRIPTS.get(script.name, {}).get("run_on_controller"):
             script_in_db.add_tag("deploy-info")

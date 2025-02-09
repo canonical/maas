@@ -6,7 +6,6 @@ the named.conf.options.inside.maas file, which contains the 'forwarders'
 setting.
 """
 
-
 from copy import deepcopy
 from datetime import datetime, timezone
 import os

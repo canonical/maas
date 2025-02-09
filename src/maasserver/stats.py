@@ -328,9 +328,9 @@ def get_vmcluster_stats(**filter_params):
         stats["available_resources"]["cores"] += res.cores.total
         stats["available_resources"]["over_cores"] += res.cores.overcommited
         stats["available_resources"]["memory"] += res.memory.general.total
-        stats["available_resources"][
-            "over_memory"
-        ] += res.memory.general.overcommited
+        stats["available_resources"]["over_memory"] += (
+            res.memory.general.overcommited
+        )
         stats["utilized_resources"]["cores"] += res.cores.allocated
         stats["utilized_resources"]["memory"] += res.memory.general.allocated
 
@@ -431,7 +431,7 @@ def get_bmc_stats():
         "unknown": {},
     }
     for entry in stats:
-        for key in result.keys():
+        for key in result:
             if entry[key]:
                 result[key][entry["power_type"]] = entry[key]
     return result
@@ -522,7 +522,7 @@ def get_maas_stats():
         "custom_images": {
             "deployed": get_custom_images_deployed_stats(),
             "uploaded": {
-                f'{img["base_image"]}__{img["filetype"]}': img.get("count", 0)
+                f"{img['base_image']}__{img['filetype']}": img.get("count", 0)
                 for img in custom_images
             },
         },

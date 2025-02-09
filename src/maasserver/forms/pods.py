@@ -203,9 +203,9 @@ class PodForm(MAASModelForm):
             self.initial["tags"] = ",".join(instance.tags)
             self.initial["zone"] = instance.zone.name
             self.initial["pool"] = instance.pool.name
-            self.fields["default_storage_pool"].queryset = (
-                instance.storage_pools.all()
-            )
+            self.fields[
+                "default_storage_pool"
+            ].queryset = instance.storage_pools.all()
             if instance.default_storage_pool:
                 self.initial["default_storage_pool"] = (
                     instance.default_storage_pool.pool_id
@@ -741,7 +741,7 @@ class ComposeMachineForm(forms.Form):
                     name=self.pod.name,
                 ).wait(timeout)
             except crochet.TimeoutError:
-                raise PodProblem(
+                raise PodProblem(  # noqa: B904
                     "Unable to compose a machine because '%s' driver "
                     "timed out after %d seconds."
                     % (self.pod.power_type, timeout)

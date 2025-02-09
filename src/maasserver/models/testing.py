@@ -3,7 +3,6 @@
 
 """Testing helpers for ORM models and their supporting code."""
 
-
 import fixtures
 
 

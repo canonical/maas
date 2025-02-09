@@ -3,7 +3,6 @@
 
 """UEFI AMD64 Boot Method"""
 
-
 from itertools import repeat
 import os
 import re
@@ -72,7 +71,6 @@ re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
 class UEFIAMD64BootMethod(BootMethod, UefiAmd64BootMetadata):
-
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be
         generated.

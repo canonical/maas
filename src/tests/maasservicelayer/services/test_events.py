@@ -16,7 +16,6 @@ from maasservicelayer.services.events import EventsService
 
 @pytest.mark.asyncio
 class TestEventsService:
-
     @pytest.fixture(scope="function")
     def events_repository(self):
         return Mock(EventsRepository)

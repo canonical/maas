@@ -37,7 +37,7 @@ class IPv4v6Network(_BaseNetwork):
             try:
                 ip = IPv6Network(value, strict=False)
             except ValueError:
-                raise ValueError("Value is not a valid IPv4 or IPv6 network.")
+                raise ValueError("Value is not a valid IPv4 or IPv6 network.")  # noqa: B904
 
         if ip is not None:
             if ip.prefixlen == 0:

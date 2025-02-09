@@ -785,8 +785,7 @@ CONFIG_ITEMS = {
         "form_kwargs": {
             "required": False,
             "label": (
-                "The maximum number of testing results runs which are "
-                "stored"
+                "The maximum number of testing results runs which are stored"
             ),
             "min_value": 1,
         },

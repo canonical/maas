@@ -21,6 +21,11 @@ from maasserver.enum import (
     PARTITION_TABLE_TYPE,
 )
 from maasserver.models import (
+    Config,
+    Event,
+    EventType,
+    Interface,
+    Node,
     NodeMetadata,
     NUMANode,
     PhysicalInterface,
@@ -28,7 +33,6 @@ from maasserver.models import (
     Tag,
     VLAN,
 )
-from maasserver.models import Config, Event, EventType, Interface, Node
 from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.storage_custom import ConfigError
@@ -1845,7 +1849,7 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
         (
             "no_matcj",
             {
-                "modaliases": b"pci:xxx\n" b"pci:yyy\n",
+                "modaliases": b"pci:xxx\npci:yyy\n",
                 "expected_tags": set(),
             },
         ),
@@ -2251,9 +2255,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         ).return_value = {}
 
         NO_SPEED_IN_NAME = deepcopy(SAMPLE_LXD_RESOURCES)
-        NO_SPEED_IN_NAME["cpu"]["sockets"][0][
-            "name"
-        ] = "Intel(R) Core(TM) i7-4700MQ CPU"
+        NO_SPEED_IN_NAME["cpu"]["sockets"][0]["name"] = (
+            "Intel(R) Core(TM) i7-4700MQ CPU"
+        )
 
         with post_commit_hooks:
             process_lxd_results(
@@ -3088,7 +3092,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         modified_sample_lxd_data = make_lxd_output()
         for k, v in modified_sample_lxd_data["resources"]["system"].items():
             if isinstance(v, dict):
-                for x, w in v.items():
+                for x, w in v.items():  # noqa: B007
                     modified_sample_lxd_data["resources"]["system"][k][x] = (
                         random.choice([None, "0123456789", "none"])
                     )

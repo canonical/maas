@@ -3,7 +3,6 @@
 
 """Static route form."""
 
-
 from netaddr import IPAddress
 
 from maasserver.fields import SpecifierOrModelChoiceField

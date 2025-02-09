@@ -3,7 +3,6 @@
 
 """Global default objects."""
 
-
 from django.db.models import AutoField, ForeignKey, Manager, PROTECT
 from django.utils import timezone
 

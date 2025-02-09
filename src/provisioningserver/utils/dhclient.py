@@ -3,7 +3,6 @@
 
 """Helpers for inspecting dhclient."""
 
-
 import os
 import re
 

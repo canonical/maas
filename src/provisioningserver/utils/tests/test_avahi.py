@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.avahi``."""
 
-
 from argparse import ArgumentParser
 from contextlib import contextmanager
 import io

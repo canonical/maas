@@ -3,7 +3,6 @@
 
 """Utilities related to Debian packages."""
 
-
 import dataclasses
 from typing import Optional
 

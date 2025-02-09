@@ -3,7 +3,6 @@
 
 """View utilities configuration."""
 
-
 import http.client
 from itertools import count
 import logging

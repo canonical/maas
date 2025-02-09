@@ -3,7 +3,6 @@
 
 """Test :class:`Sequence`."""
 
-
 from itertools import islice
 import random
 

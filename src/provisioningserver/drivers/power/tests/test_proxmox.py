@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.proxmox`."""
+
 import json
 import random
 from unittest.mock import ANY, call
@@ -290,8 +291,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
             b"POST",
             self.proxmox._get_url(
                 context,
-                f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/"
-                "status/start",
+                f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/status/start",
             ),
             self.proxmox._make_auth_headers(system_id, {}, extra_headers),
             False,
@@ -349,7 +349,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
             b"POST",
             self.proxmox._get_url(
                 context,
-                f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/" "status/stop",
+                f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/status/stop",
             ),
             self.proxmox._make_auth_headers(system_id, {}, extra_headers),
             False,

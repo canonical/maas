@@ -3,7 +3,6 @@
 
 """MAAS Boot Resources Action."""
 
-
 import hashlib
 from io import BytesIO
 import json

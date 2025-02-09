@@ -1,4 +1,4 @@
-""" Forward DNS Server Objects."""
+"""Forward DNS Server Objects."""
 
 __all__ = [
     "ForwardDNSServerManager",

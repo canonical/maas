@@ -25,18 +25,18 @@ from maasservicelayer.models.base import (
 
 
 @dataclass(slots=True)
-class ServiceCache(ABC):
+class ServiceCache(ABC):  # noqa: B024
     """Base cache for a service."""
 
     def clear(self):
         for field in list(self.__slots__):
             self.__setattr__(field, None)
 
-    async def close(self):
+    async def close(self):  # noqa: B027
         """Shutdown operations to be performed when destroying the cache."""
 
 
-class Service(ABC):
+class Service(ABC):  # noqa: B024
     """Base class for services."""
 
     def __init__(self, context: Context, cache: ServiceCache | None = None):

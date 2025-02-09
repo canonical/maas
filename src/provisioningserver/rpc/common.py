@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Common RPC classes and utilties."""
+
 from os import getpid
 from socket import gethostname
 
@@ -94,9 +95,9 @@ class Client:
 
     def __init__(self, conn):
         super().__init__()
-        assert IConnection.providedBy(
-            conn
-        ), f"{conn!r} does not provide IConnection"
+        assert IConnection.providedBy(conn), (
+            f"{conn!r} does not provide IConnection"
+        )
         self._conn = conn
 
     @property

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.domain`"""
 
-
 from random import choice, randint
 
 from django.core.exceptions import ValidationError

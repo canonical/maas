@@ -3,7 +3,6 @@
 
 """Model for a partition in a partition table."""
 
-
 from collections.abc import Iterable
 from uuid import uuid4
 

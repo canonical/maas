@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.resourcepool`"""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.enum import NODE_STATUS

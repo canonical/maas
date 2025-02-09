@@ -3,7 +3,6 @@
 
 """Utilities for working with Netplan."""
 
-
 import re
 
 from provisioningserver.logger import LegacyLogger

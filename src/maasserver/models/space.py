@@ -3,7 +3,6 @@
 
 """Space objects."""
 
-
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -46,7 +45,7 @@ class SpaceQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
 

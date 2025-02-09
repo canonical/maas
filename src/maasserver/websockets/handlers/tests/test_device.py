@@ -247,7 +247,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
 
     def make_devices(self, number, owner=None, ip_assignment=None):
         """Create `number` of new devices."""
-        for counter in range(number):
+        for counter in range(number):  # noqa: B007
             self.make_device_with_ip_address(
                 owner=owner, ip_assignment=ip_assignment
             )

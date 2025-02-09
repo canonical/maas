@@ -15,7 +15,6 @@ from metadataserver.builtin_scripts.release_scripts.maas_wipe import (
 
 
 class TestMaasWipe:
-
     # Patches here defined in order in which they're executed within `main()`
     @patch("argparse.ArgumentParser.parse_args")
     @patch(

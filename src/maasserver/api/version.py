@@ -3,7 +3,6 @@
 
 """API handler: API Version."""
 
-
 import http.client
 import json
 

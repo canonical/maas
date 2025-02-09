@@ -1063,9 +1063,9 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)
-        self.patch(server_address_module.MAAS_ID, "get").return_value = (
-            r1.system_id
-        )
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
         r2 = factory.make_RegionRackController(interface=False)
         subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
         interface = factory.make_Interface(
@@ -1086,9 +1086,9 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)
-        self.patch(server_address_module.MAAS_ID, "get").return_value = (
-            r1.system_id
-        )
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
         subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
         r1_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r1
@@ -2889,9 +2889,9 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 
         # Get the client and simulate a closed handler
         client = yield getClientFor(rack_controller.system_id)
-        self.patch(client._conn, "_sendBoxCommand").side_effect = (
-            always_fail_with(RuntimeError("the handler is closed"))
-        )
+        self.patch(
+            client._conn, "_sendBoxCommand"
+        ).side_effect = always_fail_with(RuntimeError("the handler is closed"))
 
         ipv4_stub.side_effect = always_succeed_with({})
         ipv6_stub.side_effect = always_succeed_with({})

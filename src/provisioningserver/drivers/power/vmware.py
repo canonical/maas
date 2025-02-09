@@ -3,7 +3,6 @@
 
 """VMware Power Driver."""
 
-
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,

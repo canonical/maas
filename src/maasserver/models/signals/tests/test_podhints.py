@@ -3,7 +3,6 @@
 
 """Test PodHints signals."""
 
-
 from maasserver.models.signals import podhints as podhints_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

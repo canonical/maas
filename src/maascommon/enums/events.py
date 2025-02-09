@@ -11,7 +11,6 @@ class EndpointTypeEnum(IntEnum):
 
 
 class EventTypeEnum(str, Enum):
-
     # Power-related events.
     NODE_POWERED_ON = "NODE_POWERED_ON"
     NODE_POWERED_OFF = "NODE_POWERED_OFF"

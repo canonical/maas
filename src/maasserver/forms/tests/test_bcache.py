@@ -221,10 +221,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEqual(
             form.errors["__all__"],
-            [
-                "Either backing_device or backing_partition must be "
-                "specified."
-            ],
+            ["Either backing_device or backing_partition must be specified."],
         )
 
 

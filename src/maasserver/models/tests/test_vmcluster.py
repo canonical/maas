@@ -35,7 +35,7 @@ class TestVMClusterManager(MAASServerTestCase):
             for _ in range(3)
         ]
 
-        for i, cluster_group in enumerate(cluster_groups):
+        for i, cluster_group in enumerate(cluster_groups):  # noqa: B007
             address_group = [factory.make_StaticIPAddress() for _ in range(3)]
             for cluster in cluster_group:
                 for address in address_group:
@@ -77,7 +77,7 @@ class TestVMClusterManager(MAASServerTestCase):
             view_all_cluster_group,
             other_cluster_group,
         ]
-        for i, cluster_group in enumerate(cluster_groups):
+        for i, cluster_group in enumerate(cluster_groups):  # noqa: B007
             address_group = [factory.make_StaticIPAddress() for _ in range(3)]
             for cluster in cluster_group:
                 for address in address_group:

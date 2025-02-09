@@ -218,7 +218,7 @@ def start_up(master=False):
             psycopg2_exception = get_psycopg2_exception(e)
             if psycopg2_exception is None:
                 maaslog.warning(
-                    "Database error during start-up; " "pausing for 3 seconds."
+                    "Database error during start-up; pausing for 3 seconds."
                 )
             elif psycopg2_exception.pgcode is None:
                 maaslog.warning(

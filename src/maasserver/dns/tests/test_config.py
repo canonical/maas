@@ -12,9 +12,8 @@ from netaddr import IPAddress, IPNetwork
 from maasserver.config import RegionConfiguration
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
-    dns_update_all_zones as wrapped_dns_update_all_zones,
-)
-from maasserver.dns.config import (
+    current_zone_serial,
+    dns_force_reload,
     forward_domains_to_forwarded_zones,
     get_internal_domain,
     get_resource_name_for_subnet,
@@ -24,7 +23,9 @@ from maasserver.dns.config import (
     get_upstream_dns,
     process_dns_update_notify,
 )
-from maasserver.dns.config import current_zone_serial, dns_force_reload
+from maasserver.dns.config import (
+    dns_update_all_zones as wrapped_dns_update_all_zones,
+)
 from maasserver.dns.zonegenerator import InternalDomainResourseRecord
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.listener import PostgresListenerService
@@ -190,7 +191,7 @@ class TestDNSServer(MAASServerTestCase):
         if not fqdn.endswith("."):
             fqdn = fqdn + "."
 
-        for elapsed, remaining, wait in retries(15, 0.02):
+        for elapsed, remaining, wait in retries(15, 0.02):  # noqa: B007
             query_name = fqdn
 
             # Loop until we have a value for serial, be that numeric or None.
@@ -407,9 +408,9 @@ class TestDNSConfigModifications(TestDNSServer):
             factory.make_Domain(authoritative=False)
         node, static = self.create_node_with_static_ip(domain=domain)
         fake_serial = random.randint(1, 1000)
-        self.patch(dns_config_module, "current_zone_serial").return_value = (
-            fake_serial
-        )
+        self.patch(
+            dns_config_module, "current_zone_serial"
+        ).return_value = fake_serial
         serial, reloaded, domains = dns_update_all_zones(
             reload_timeout=RELOAD_TIMEOUT
         )
@@ -430,9 +431,9 @@ class TestDNSConfigModifications(TestDNSServer):
             factory.make_Domain(authoritative=False)
         node, static = self.create_node_with_static_ip(domain=domain)
         fake_serial = random.randint(1, 1000)
-        self.patch(dns_config_module, "current_zone_serial").return_value = (
-            fake_serial
-        )
+        self.patch(
+            dns_config_module, "current_zone_serial"
+        ).return_value = fake_serial
         reload_call = self.patch(dns_config_module, "bind_reload")
         serial1, reloaded, _ = dns_update_all_zones(
             reload_timeout=RELOAD_TIMEOUT

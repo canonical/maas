@@ -21,6 +21,6 @@ from provisioningserver.drivers.pod.virsh import (
 def test_template_has_passthrough(arch, template):
     element = lxml.etree.fromstring(template)
     cpus = element.iter("cpu")
-    assert [cpu.get("mode") for cpu in cpus] == [
-        "host-passthrough"
-    ], f"Failed to find passthrough for {arch}"
+    assert [cpu.get("mode") for cpu in cpus] == ["host-passthrough"], (
+        f"Failed to find passthrough for {arch}"
+    )

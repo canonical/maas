@@ -86,7 +86,6 @@ class TestEventsApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-
         services_mock.events = Mock(EventsService)
         services_mock.events.list.side_effect = [
             ListResult[Event](items=[TEST_EVENT], total=1),

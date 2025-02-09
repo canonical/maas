@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.sshkey`"""
 
-
 from maascommon.events import AUDIT
 from maasserver.models.event import Event
 from maasserver.models.sshkey import ImportSSHKeysError, SSHKey

@@ -3,7 +3,6 @@
 
 """Tests for the `ProductMapping` class."""
 
-
 from maasserver.import_images.boot_image_mapping import BootImageMapping
 from maasserver.import_images.product_mapping import (
     map_products,

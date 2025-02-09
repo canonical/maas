@@ -3,15 +3,14 @@
 
 """SeaMicro Power Driver."""
 
-
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.hardware.seamicro import (
-    power_control_seamicro15k_v2,
     power_control_seamicro15k_v09,
+    power_control_seamicro15k_v2,
     power_query_seamicro15k_v2,
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver
@@ -102,7 +101,7 @@ class SeaMicroPowerDriver(PowerDriver):
                 ]
             )
         except ExternalProcessError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "Failed to power %s %s at %s: %s"
                 % (power_change, server_id, ip, e.output_as_unicode)
             )

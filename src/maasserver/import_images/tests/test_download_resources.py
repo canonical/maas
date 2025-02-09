@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.import_images.download_resources`."""
 
-
 import hashlib
 import os
 import random
@@ -191,7 +190,7 @@ class TestExtractArchiveTar(MAASTestCase):
                     content_source,
                 )
                 mocked_tar.assert_not_called()
-                for f, info in files.items():
+                for f, info in files.items():  # noqa: B007
                     cached_file = os.path.join(cache_dir, f"{f}-{sha256}")
                     expected_cached_file = (cached_file, f)
                     self.assertIn(expected_cached_file, cached_files)
@@ -224,9 +223,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(download_resources, "products_exdata").return_value = (
-            product
-        )
+        self.patch(
+            download_resources, "products_exdata"
+        ).return_value = product
         # Prevent MAAS from trying to actually write the file.
         mock_extract_archive_tar = self.patch(
             download_resources, "extract_archive_tar"
@@ -265,9 +264,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(download_resources, "products_exdata").return_value = (
-            product
-        )
+        self.patch(
+            download_resources, "products_exdata"
+        ).return_value = product
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -303,9 +302,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(download_resources, "products_exdata").return_value = (
-            product
-        )
+        self.patch(
+            download_resources, "products_exdata"
+        ).return_value = product
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -359,9 +358,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(download_resources, "products_exdata").return_value = (
-            product
-        )
+        self.patch(
+            download_resources, "products_exdata"
+        ).return_value = product
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -397,9 +396,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(download_resources, "products_exdata").return_value = (
-            product
-        )
+        self.patch(
+            download_resources, "products_exdata"
+        ).return_value = product
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -408,14 +407,16 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        mock_insert_file.assert_called_once_with(
-            None,
-            os.path.basename(product["path"]),
-            product["sha256"],
-            {"sha256": product["sha256"]},
-            product["size"],
-            None,
-        ),
+        (
+            mock_insert_file.assert_called_once_with(
+                None,
+                os.path.basename(product["path"]),
+                product["sha256"],
+                {"sha256": product["sha256"]},
+                product["size"],
+                None,
+            ),
+        )
         # links are mocked out by the mock_insert_file above.
         mock_link_resources.assert_called_once_with(
             snapshot_path=None,
@@ -436,9 +437,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(download_resources, "products_exdata").return_value = (
-            product
-        )
+        self.patch(
+            download_resources, "products_exdata"
+        ).return_value = product
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -477,9 +478,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(download_resources, "products_exdata").return_value = (
-            product
-        )
+        self.patch(
+            download_resources, "products_exdata"
+        ).return_value = product
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -587,7 +588,7 @@ class TestLinkResources(MAASTestCase):
                 bootloader_type,
             )
 
-            for cached_file, logical_name in links:
+            for cached_file, logical_name in links:  # noqa: B007
                 cached_file_path = os.path.join(snapshot_path, cached_file)
                 logical_name_path = os.path.join(
                     snapshot_path, "bootloader", bootloader_type, arch

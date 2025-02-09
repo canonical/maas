@@ -3,7 +3,6 @@
 
 """Test event catalog."""
 
-
 import random
 from unittest.mock import sentinel
 

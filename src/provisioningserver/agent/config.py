@@ -3,7 +3,6 @@
 
 """MAAS Agent config management module."""
 
-
 from dataclasses import asdict, dataclass
 import os
 

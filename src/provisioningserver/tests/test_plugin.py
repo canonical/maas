@@ -3,7 +3,6 @@
 
 """Tests for the ``maasrackd`` TAP."""
 
-
 from itertools import count
 import os
 from pathlib import Path
@@ -20,9 +19,8 @@ from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 import provisioningserver
-from provisioningserver import logger
+from provisioningserver import logger, settings
 from provisioningserver import plugin as plugin_module
-from provisioningserver import settings
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.plugin import Options, ProvisioningServiceMaker
 from provisioningserver.rackdservices.dhcp_probe_service import (

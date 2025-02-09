@@ -3,7 +3,6 @@
 
 """Test helpers for `provisioningserver.events`."""
 
-
 from fixtures import Fixture
 
 from provisioningserver import events

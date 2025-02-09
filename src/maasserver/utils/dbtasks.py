@@ -7,7 +7,6 @@ A service that runs deferred database operations, and then ensures they're
 finished before stopping.
 """
 
-
 from twisted.application.service import Service
 from twisted.internet.defer import Deferred, DeferredQueue
 from twisted.internet.task import cooperate

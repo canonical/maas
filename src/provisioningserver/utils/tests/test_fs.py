@@ -3,7 +3,6 @@
 
 """Tests for filesystem-related utilities."""
 
-
 import glob
 import io
 import os

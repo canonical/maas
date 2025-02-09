@@ -3,7 +3,6 @@
 
 """Respond to node changes."""
 
-
 from django.db.models.signals import post_init, post_save, pre_delete, pre_save
 
 from maasserver.enum import NODE_STATUS

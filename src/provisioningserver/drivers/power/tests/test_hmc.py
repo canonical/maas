@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.hmc`."""
 
-
 from io import BytesIO
 from random import choice
 from socket import error as SOCKETError
@@ -15,12 +14,12 @@ from paramiko import SSHException
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.drivers.power import hmc as hmc_module
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
     PowerFatalError,
 )
-from provisioningserver.drivers.power import hmc as hmc_module
 from provisioningserver.drivers.power.hmc import HMCPowerDriver, HMCState
 
 

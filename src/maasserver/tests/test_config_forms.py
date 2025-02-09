@@ -3,7 +3,6 @@
 
 """Test config forms utilities."""
 
-
 from unittest.mock import ANY, Mock
 
 from django import forms

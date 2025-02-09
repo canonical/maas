@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.pcap``."""
 
-
 import io
 
 from maastesting.testcase import MAASTestCase

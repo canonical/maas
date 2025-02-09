@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`provisioningserver.dns.actions`."""
 
-
 import os
 from os.path import join
 import random

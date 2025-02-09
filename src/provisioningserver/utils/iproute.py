@@ -21,7 +21,6 @@ Example dictionary returned by get_ip_route():
 
 """
 
-
 import json
 
 from provisioningserver.utils.shell import call_and_check

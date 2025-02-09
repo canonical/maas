@@ -3,7 +3,6 @@
 
 """API logger."""
 
-
 from provisioningserver.logger import get_maas_logger
 
 maaslog = get_maas_logger("api")

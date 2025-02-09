@@ -3,7 +3,6 @@
 
 """Twisted Application Plugin code for the MAAS provisioning server"""
 
-
 from errno import ENOPROTOOPT
 import socket
 from socket import error as socket_error
@@ -233,7 +232,7 @@ class ProvisioningServiceMaker:
         from provisioningserver import services
 
         secret = None
-        for elapsed, remaining, wait in retries(timeout=5 * 60, clock=clock):
+        for elapsed, remaining, wait in retries(timeout=5 * 60, clock=clock):  # noqa: B007
             secret = MAAS_SHARED_SECRET.get()
             if secret is not None:
                 MAAS_SECRET.set(to_bin(secret))

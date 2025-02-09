@@ -3,7 +3,6 @@
 
 """Tests for event-related helpers."""
 
-
 from unittest.mock import MagicMock, sentinel
 
 from maastesting.factory import factory

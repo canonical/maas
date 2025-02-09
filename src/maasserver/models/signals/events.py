@@ -3,7 +3,6 @@
 
 """Emit node state transition event."""
 
-
 from maasserver.enum import NODE_STATUS_CHOICES_DICT, NODE_TYPE
 from maasserver.models import Event
 from maasserver.models.node import (

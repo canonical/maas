@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.vmware`."""
 
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.hardware.vmware import try_pyvmomi_import

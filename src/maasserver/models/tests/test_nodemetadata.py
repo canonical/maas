@@ -3,7 +3,6 @@
 
 """Test maasserver NodeMetadata model."""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.testing.factory import factory

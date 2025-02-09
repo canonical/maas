@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.dblocks`."""
 
-
 from contextlib import closing, contextmanager
 import sys
 
@@ -48,7 +47,7 @@ def get_objid():
 @transaction.atomic
 def divide_by_zero():
     """Do something stupid in a transaction."""
-    0 / 0
+    0 / 0  # noqa: B018
 
 
 @contextmanager

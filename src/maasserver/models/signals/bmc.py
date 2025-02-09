@@ -3,7 +3,6 @@
 
 """Respond to BMC changes."""
 
-
 from django.db.models.signals import post_delete, post_save, pre_delete
 
 from maasserver.enum import BMC_TYPE

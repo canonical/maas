@@ -3,7 +3,6 @@
 
 """Utilities for working with the storage model."""
 
-
 from maasserver.enum import FILESYSTEM_TYPE
 
 

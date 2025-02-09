@@ -3,7 +3,6 @@
 
 """Emit ScriptResult status transition event."""
 
-
 from maasserver.models import Event, ScriptResult
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.utils.signals import SignalsManager
@@ -81,7 +80,7 @@ def emit_script_result_status_transition_event(
             % (script_name, old_status_name, new_status_name),
         )
         if (
-            CURTIN_INSTALL_LOG == script_result.name
+            script_result.name == CURTIN_INSTALL_LOG
             and not script_result.script_set.node.netboot
         ):
             Event.objects.create_node_event(

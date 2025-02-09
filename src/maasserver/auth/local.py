@@ -156,9 +156,9 @@ class MAASAuthorizationBackend(ModelBackend):
             )
 
         if isinstance(obj, (Node, BlockDevice, FilesystemGroup)):
-            if isinstance(obj, BlockDevice):
-                obj = obj.get_node()
-            elif isinstance(obj, FilesystemGroup):
+            if isinstance(obj, BlockDevice) or isinstance(
+                obj, FilesystemGroup
+            ):
                 obj = obj.get_node()
             if perm == NodePermission.view:
                 return self._can_view(
@@ -396,11 +396,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 "only `PodPermission.create` can be used without an `obj`."
             )
 
-        if perm == PodPermission.edit:
-            if rbac_enabled:
-                return obj.pool_id in admin_pools
-            return user.is_superuser
-        elif perm == PodPermission.compose:
+        if perm == PodPermission.edit or perm == PodPermission.compose:
             if rbac_enabled:
                 return obj.pool_id in admin_pools
             return user.is_superuser

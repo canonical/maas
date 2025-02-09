@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.token`"""
 
-
 from maascommon.events import AUDIT
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens

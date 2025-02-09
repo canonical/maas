@@ -3,7 +3,6 @@
 
 """The SSHKey handler for the WebSocket connection."""
 
-
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
@@ -58,7 +57,7 @@ class SSHKeyHandler(TimestampedModelHandler):
                 try:
                     raise HandlerValidationError(e.message_dict)
                 except AttributeError:
-                    raise HandlerValidationError({"__all__": e.message})
+                    raise HandlerValidationError({"__all__": e.message})  # noqa: B904
             return self.full_dehydrate(obj)
         else:
             raise HandlerValidationError(form.errors)
@@ -85,4 +84,4 @@ class SSHKeyHandler(TimestampedModelHandler):
                 description="Imported SSH keys.",
             )
         except ImportSSHKeysError as e:
-            raise HandlerError(str(e))
+            raise HandlerError(str(e))  # noqa: B904

@@ -3,7 +3,6 @@
 
 """Tests for Fabric forms."""
 
-
 from maasserver.forms.fabric import FabricForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

@@ -3,7 +3,6 @@
 
 """Low-level composition code for preseeds."""
 
-
 from datetime import timedelta
 from ipaddress import ip_address
 from urllib.parse import urlencode, urlparse
@@ -297,14 +296,14 @@ def get_enlist_archive_config(apt_proxy=None):
     )
     for suite in ["updates", "backports"]:
         if suite not in disabled_suites:
-            archives["apt"][
-                "sources_list"
-            ] += f"deb $PRIMARY $RELEASE-{suite} {components}\n"
+            archives["apt"]["sources_list"] += (
+                f"deb $PRIMARY $RELEASE-{suite} {components}\n"
+            )
             if disable_sources:
                 archives["apt"]["sources_list"] += "# "
-            archives["apt"][
-                "sources_list"
-            ] += f"deb-src $PRIMARY $RELEASE-{suite} {components}\n"
+            archives["apt"]["sources_list"] += (
+                f"deb-src $PRIMARY $RELEASE-{suite} {components}\n"
+            )
     if "security" not in disabled_suites:
         archives["apt"]["sources_list"] += (
             "deb $SECURITY $RELEASE-security %s\n" % components
@@ -628,7 +627,7 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
     try:
         os_drv = OperatingSystemRegistry[osystem]
     except KeyError:
-        raise NoSuchOperatingSystem(osystem)
+        raise NoSuchOperatingSystem(osystem)  # noqa: B904
     else:
         return os_drv.compose_preseed(
             preseed_type,

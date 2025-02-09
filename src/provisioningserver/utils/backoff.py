@@ -10,7 +10,6 @@ Jitter`__ on the AWS Architecture Blog.
 
 """
 
-
 from itertools import count
 from random import random
 

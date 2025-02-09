@@ -14,7 +14,6 @@ def migrate_images(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         # depend on the latest patch in the 3.5 branch as this is meant to be
         # backported there.

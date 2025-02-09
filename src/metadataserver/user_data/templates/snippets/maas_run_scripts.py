@@ -189,7 +189,7 @@ def oauth_token(string):
     try:
         return Credentials.from_string(string)
     except InvalidCredentialsFormat as e:
-        raise argparse.ArgumentTypeError(str(e))
+        raise argparse.ArgumentTypeError(str(e))  # noqa: B904
 
 
 TOKEN_FORMAT = "'consumer-key:token-key:token-secret[:consumer_secret]'"
@@ -303,7 +303,7 @@ def get_config(ns):
         }
 
     url = conf.get("endpoint")
-    ns_url = getattr(ns, "metadata_url")
+    ns_url = getattr(ns, "metadata_url")  # noqa: B009
     if ns_url is not None:
         url = ns_url
     data["metadata_url"] = url
@@ -339,7 +339,7 @@ def get_machine_token(maas_url, admin_token, system_id):
             retry=False,
         )
     except urllib.error.HTTPError as e:
-        raise ExitError(
+        raise ExitError(  # noqa: B904
             "Failed getting machine credentials: {reason}: {details}".format(
                 reason=e.reason, details=e.read().decode("utf8")
             )
@@ -444,7 +444,7 @@ def action_register_machine(ns):
             retry=False,
         )
     except urllib.error.HTTPError as e:
-        raise ExitError(
+        raise ExitError(  # noqa: B904
             "Machine creation failed: {reason}: {details}".format(
                 reason=e.reason, details=e.read().decode("utf8")
             )

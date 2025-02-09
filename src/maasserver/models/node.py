@@ -297,7 +297,7 @@ def generate_node_system_id():
     result in an `IntegrityError` in one process or the other, but it's small:
     there are over 183 million six-digit system IDs to choose from.
     """
-    for attempt in range(1, 1001):
+    for attempt in range(1, 1001):  # noqa: B007
         system_num = random.randrange(24**5, 24**6)
         system_id = znums.from_int(system_num)
         with connection.cursor() as cursor:
@@ -1690,8 +1690,7 @@ class Node(CleanSave, TimestampedModel):
             return issues
         if not root_mounted:
             issues.append(
-                "Mount the root '/' filesystem to be able to deploy this "
-                "node."
+                "Mount the root '/' filesystem to be able to deploy this node."
             )
         if root_mounted and root_on_bcache and not boot_mounted:
             issues.append(
@@ -4339,8 +4338,10 @@ class Node(CleanSave, TimestampedModel):
                 "%s: Failed to configure storage layout: %s", self.hostname, e
             )
 
-    def set_storage_layout(self, layout, params={}, allow_fallback=True):
+    def set_storage_layout(self, layout, params=None, allow_fallback=True):
         """Set storage layout for this node."""
+        if params is None:
+            params = {}
         storage_layout = get_storage_layout_for_node(
             layout, self, params=params
         )
@@ -4847,7 +4848,7 @@ class Node(CleanSave, TimestampedModel):
                 f"Processing IP allocation results for {self.system_id}"
             )
             check_failed, ips_in_use = False, False
-            for _, (check_result, rack_id, ips) in results:
+            for _, (check_result, rack_id, ips) in results:  # noqa: B007
                 ip_ids = [ip.id for ip in ips]
                 ip_to_obj = {ip.ip: ip for ip in ips}
                 if check_result is None:
@@ -4957,7 +4958,7 @@ class Node(CleanSave, TimestampedModel):
                     # Set flag to prevent a race condition that would otherwise
                     # cause the IP addresses moved to the parent interface to
                     # be deleted on interface removal.
-                    setattr(interface, "_skip_ip_address_removal", True)
+                    setattr(interface, "_skip_ip_address_removal", True)  # noqa: B010
             interface.delete()
 
     def _clear_networking_configuration(self):
@@ -6381,7 +6382,7 @@ class Node(CleanSave, TimestampedModel):
                         returnValue(res)
                     except WorkflowFailureError as e:
                         cause = getattr(e.cause, "cause", e.cause)
-                        raise PowerActionFail(cause)
+                        raise PowerActionFail(cause)  # noqa: B904
 
                 d.addCallback(exec_power_workflow)
 
@@ -6824,7 +6825,7 @@ class Controller(Node):
         token = NodeKey.objects.get_token_for_node(self)
         # Pull consumer into memory so it can be accessed outside a
         # database thread
-        token.consumer
+        token.consumer  # noqa: B018
         return token
 
     @transactional

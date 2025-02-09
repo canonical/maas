@@ -832,7 +832,7 @@ def parse_parameters(script, scripts_dir):
             try:
                 ret += argument_format.format(**value).split()
             except KeyError:
-                raise KeyError(
+                raise KeyError(  # noqa: B904
                     f"Storage device '{model}' with serial '{serial}' not found!\n\n"
                     "This indicates the storage device has been removed or "
                     "the OS is unable to find it due to a hardware failure. "
@@ -854,7 +854,7 @@ def parse_parameters(script, scripts_dir):
                 )
                 ret += argument_format.format(**value).split()
             except KeyError:
-                raise KeyError(
+                raise KeyError(  # noqa: B904
                     f"Interface device {value['name']} (vendor: {value['vendor']} "
                     f"product: {value['product']}) with MAC address "
                     f"{value['mac_address']} has not been found!\n\n"
@@ -921,9 +921,7 @@ def _check_link_connected(script):
         if "link_connected" in result:
             return
         # If the test passed don't report link_connected status.
-        if result.get("status") == "passed":
-            return
-        elif script["exit_status"] == 0:
+        if result.get("status") == "passed" or script["exit_status"] == 0:
             return
         os.remove(script["result_path"])
     else:
@@ -1204,7 +1202,7 @@ def run_script(script, scripts_dir, send_result=True):
                 # script to make this clear to the user.
                 script["exit_status"] = args["exit_status"] = 1
                 bmc_config_error = (
-                    "\n\nError: Unable to send BMC config to MAAS - " "%s" % e
+                    "\n\nError: Unable to send BMC config to MAAS - %s" % e
                 ).encode()
                 args["files"][script["combined_name"]] += bmc_config_error
                 args["files"][script["stderr_name"]] += bmc_config_error

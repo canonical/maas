@@ -3,7 +3,6 @@
 
 """Tests for BIND zone config generation."""
 
-
 from itertools import chain
 import os.path
 import random

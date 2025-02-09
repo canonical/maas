@@ -142,9 +142,9 @@ class TestInnerStartUp(MAASServerTestCase):
         self.versions_info = DebVersionsInfo(
             current={"version": "1:3.1.0-1234-g.deadbeef"}
         )
-        self.patch(start_up, "get_versions_info").return_value = (
-            self.versions_info
-        )
+        self.patch(
+            start_up, "get_versions_info"
+        ).return_value = self.versions_info
         temp_dir = Path(self.make_dir())
         self.patch(MAAS_SHARED_SECRET, "_path", lambda: temp_dir / "secret")
         MAAS_SECRET.set(factory.make_bytes())
@@ -278,9 +278,9 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test_logs_deprecation_notifications(self):
         self.patch(deprecations, "postgresql_major_version").return_value = 12
-        self.patch(deprecations, "get_database_owner").return_value = (
-            "postgres"
-        )
+        self.patch(
+            deprecations, "get_database_owner"
+        ).return_value = "postgres"
         mock_log = self.patch(start_up, "log")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
@@ -378,7 +378,6 @@ class TestInnerStartUp(MAASServerTestCase):
         assert Interface.objects.all().count() == 5
 
     def test_start_up_stores_certificates_on_disk(self):
-
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
 
@@ -386,10 +385,9 @@ class TestInnerStartUp(MAASServerTestCase):
         self.store_maas_cluster_cert_tuple_mock.assert_called_once()
 
     def test_startup_not_storing_certificates_if_exception_is_raised(self):
-
-        self.patch(start_up, "initialize_image_storage").side_effect = (
-            factory.make_exception("boom")
-        )
+        self.patch(
+            start_up, "initialize_image_storage"
+        ).side_effect = factory.make_exception("boom")
 
         try:
             with post_commit_hooks:
@@ -419,9 +417,9 @@ class TestVaultMigrateDbCredentials(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.creds_path = factory.make_name("uuid")
-        self.patch(start_up, "get_db_creds_vault_path").return_value = (
-            self.creds_path
-        )
+        self.patch(
+            start_up, "get_db_creds_vault_path"
+        ).return_value = self.creds_path
 
     def test_does_nothing_when_on_disk_and_vault_disabled(self):
         db_name = factory.make_name("uuid")
@@ -560,7 +558,6 @@ class TestCreateClusterCertificate(MAASServerTestCase):
         self.useFixture(MAASUUIDFixture(str(uuid4())))
 
     def test_create_and_store_certificates(self):
-
         secret_manager = SecretManager()
         # No certificates on the database
         self.assertRaises(

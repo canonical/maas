@@ -3,7 +3,6 @@
 
 """RPC helpers related to pod."""
 
-
 from twisted.internet.defer import DeferredList
 
 from maasserver.exceptions import PodProblem

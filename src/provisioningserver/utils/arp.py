@@ -3,7 +3,6 @@
 
 """Utilities for working with ARP packets."""
 
-
 import os
 import subprocess
 import sys

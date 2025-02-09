@@ -3,7 +3,6 @@
 
 """Tests for utilities to execute external commands."""
 
-
 import os
 import random
 from subprocess import CalledProcessError
@@ -184,9 +183,9 @@ class TestHasCommandAvailable(MAASTestCase):
 
     def test_returns_True_when_ExternalProcessError_not_raised(self):
         command = factory.make_name("cmd")
-        self.patch(shell_module.shutil, "which").return_value = (
-            f"/bin/{command}"
-        )
+        self.patch(
+            shell_module.shutil, "which"
+        ).return_value = f"/bin/{command}"
         self.assertTrue(has_command_available(command))
 
 
@@ -327,10 +326,12 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
         name = factory.make_name("name")
         value = factory.make_name("value")
         with EnvironmentVariable(name, value):
-            self.assertEqual(
-                get_env_with_bytes_locale().get(name.encode("ascii")),
-                value.encode("Ascii"),
-            ),
+            (
+                self.assertEqual(
+                    get_env_with_bytes_locale().get(name.encode("ascii")),
+                    value.encode("Ascii"),
+                ),
+            )
 
 
 class TestRunCommand(MAASTestCase):

@@ -76,7 +76,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
         power_type_parameters = get_driver_parameters_from_json(
             json_parameters
         )
-        for name, field in power_type_parameters.items():
+        for name, field in power_type_parameters.items():  # noqa: B007
             self.assertIsInstance(field, DictCharField)
 
     def test_overrides_defaults(self):

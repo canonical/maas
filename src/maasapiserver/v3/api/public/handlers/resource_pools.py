@@ -74,9 +74,9 @@ class ResourcePoolHandler(Handler):
     )
     async def list_resource_pools(
         self,
-        pagination_params: PaginationParams = Depends(),
-        authenticated_user=Depends(get_authenticated_user),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        authenticated_user=Depends(get_authenticated_user),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ResourcePoolsListResponse:
         query = None
         if authenticated_user.rbac_permissions:
@@ -141,8 +141,8 @@ class ResourcePoolHandler(Handler):
         self,
         response: Response,
         resource_pool_request: ResourcePoolRequest,
-        authenticated_user=Depends(get_authenticated_user),
-        services: ServiceCollectionV3 = Depends(services),
+        authenticated_user=Depends(get_authenticated_user),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         if (
             authenticated_user.rbac_permissions
@@ -194,8 +194,8 @@ class ResourcePoolHandler(Handler):
         self,
         resource_pool_id: int,
         response: Response,
-        authenticated_user=Depends(get_authenticated_user),
-        services: ServiceCollectionV3 = Depends(services),
+        authenticated_user=Depends(get_authenticated_user),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         if (
             authenticated_user.rbac_permissions
@@ -250,8 +250,8 @@ class ResourcePoolHandler(Handler):
         resource_pool_id: int,
         response: Response,
         resource_pool_request: ResourcePoolRequest,
-        authenticated_user=Depends(get_authenticated_user),
-        services: ServiceCollectionV3 = Depends(services),
+        authenticated_user=Depends(get_authenticated_user),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         if (
             authenticated_user.rbac_permissions

@@ -3,7 +3,6 @@
 
 """OpenBMC Power Driver."""
 
-
 from http import HTTPStatus
 from http.cookiejar import CookieJar
 from io import BytesIO

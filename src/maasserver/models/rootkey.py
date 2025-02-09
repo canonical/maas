@@ -3,7 +3,6 @@
 
 """RootKey model."""
 
-
 from django.db.models import DateTimeField
 
 from maasserver.models.timestampedmodel import TimestampedModel

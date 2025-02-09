@@ -3,7 +3,6 @@
 
 """DHCP snippets form."""
 
-
 from django import forms
 
 from maasserver.audit import create_audit_event

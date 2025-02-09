@@ -48,18 +48,18 @@ class TestRegisterCommands(MAASTestCase):
 
     def test_doesnt_call_load_regiond_commands_if_no_management(self):
         self.patch(cli, "get_django_management").return_value = None
-        self.patch(cli, "is_maasserver_available").return_value = (
-            sentinel.pkg_util
-        )
+        self.patch(
+            cli, "is_maasserver_available"
+        ).return_value = sentinel.pkg_util
         mock_load_regiond_commands = self.patch(cli, "load_regiond_commands")
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
         mock_load_regiond_commands.assert_not_called()
 
     def test_doesnt_call_load_regiond_commands_if_no_maasserver(self):
-        self.patch(cli, "get_django_management").return_value = (
-            sentinel.management
-        )
+        self.patch(
+            cli, "get_django_management"
+        ).return_value = sentinel.management
         self.patch(cli, "is_maasserver_available").return_value = None
         mock_load_regiond_commands = self.patch(cli, "load_regiond_commands")
         parser = ArgumentParser()
@@ -67,12 +67,12 @@ class TestRegisterCommands(MAASTestCase):
         mock_load_regiond_commands.assert_not_called()
 
     def test_calls_load_regiond_commands_when_management_and_maasserver(self):
-        self.patch(cli, "get_django_management").return_value = (
-            sentinel.management
-        )
-        self.patch(cli, "is_maasserver_available").return_value = (
-            sentinel.pkg_util
-        )
+        self.patch(
+            cli, "get_django_management"
+        ).return_value = sentinel.management
+        self.patch(
+            cli, "is_maasserver_available"
+        ).return_value = sentinel.pkg_util
         mock_load_regiond_commands = self.patch(cli, "load_regiond_commands")
         parser = ArgumentParser()
         cli.register_cli_commands(parser)

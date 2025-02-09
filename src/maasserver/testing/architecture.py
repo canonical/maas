@@ -3,7 +3,6 @@
 
 """Helpers for architectures in testing."""
 
-
 from random import randint
 
 from maasserver import forms

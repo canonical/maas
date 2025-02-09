@@ -54,7 +54,7 @@ class PrometheusMetrics:
                 definition.description,
                 labels,
                 registry=self.registry,
-                **definition.kwargs
+                **definition.kwargs,
             )
 
         return metrics

@@ -3,7 +3,6 @@
 
 """The `BootImageMapping` class."""
 
-
 from maasserver.import_images.helpers import ImageSpec
 
 

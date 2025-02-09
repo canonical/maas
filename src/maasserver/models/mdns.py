@@ -3,7 +3,6 @@
 
 """Model definition for mDNS. (Multicast DNS, or RFC 6762.)"""
 
-
 from django.db.models import (
     CASCADE,
     CharField,

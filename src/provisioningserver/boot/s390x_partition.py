@@ -3,7 +3,6 @@
 
 """S390X DPM Partition Boot Method"""
 
-
 import tempita
 
 from maascommon.bootmethods import S390XPartitionBootMetadata

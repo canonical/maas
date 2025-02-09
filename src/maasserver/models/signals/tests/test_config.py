@@ -3,7 +3,6 @@
 
 """Test the behaviour of config signals."""
 
-
 from maasserver.models import domain as domain_module
 from maasserver.models.config import Config
 from maasserver.testing.testcase import MAASServerTestCase

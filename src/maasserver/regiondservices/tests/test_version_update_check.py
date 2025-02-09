@@ -37,9 +37,9 @@ class TestRegionVersionUpdateCheckService(MAASTransactionServerTestCase):
                 revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
             ),
         )
-        self.patch(version_update_check, "get_versions_info").return_value = (
-            versions_info
-        )
+        self.patch(
+            version_update_check, "get_versions_info"
+        ).return_value = versions_info
 
         service = RegionVersionUpdateCheckService(reactor)
         yield service.startService()

@@ -3,7 +3,6 @@
 
 """Services related to DNS publication."""
 
-
 from datetime import timedelta
 import random
 

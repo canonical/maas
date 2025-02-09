@@ -3,7 +3,6 @@
 
 """Commission form."""
 
-
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
@@ -63,7 +62,7 @@ class ScriptForm(Form):
 
     def _clean_fields(self):
         # before validating fields, split values for the list of scripts
-        for param, script_type, _ in self.script_fields_details:
+        for param, script_type, _ in self.script_fields_details:  # noqa: B007
             scripts = self.data.get(param)
             if scripts is not None and isinstance(scripts, str):
                 if isinstance(self.data, QueryDict):

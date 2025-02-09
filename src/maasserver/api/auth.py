@@ -3,7 +3,6 @@
 
 """OAuth authentication for the various APIs."""
 
-
 from operator import xor
 
 from piston3.authentication import OAuthAuthentication, send_oauth_error
@@ -73,9 +72,9 @@ class MAASAPIAuthentication(OAuthAuthentication):
             try:
                 consumer, token, parameters = self.validate_token(request)
             except OAuthError as error:
-                raise OAuthUnauthorized(error)
+                raise OAuthUnauthorized(error)  # noqa: B904
             except OAuthMissingParam as error:
-                raise OAuthBadRequest(error)
+                raise OAuthBadRequest(error)  # noqa: B904
 
             if consumer and token:
                 user = token.user

@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Services monitor ensures services are in their expected state."""
+
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import defaultdict, namedtuple
 import enum
@@ -490,7 +491,7 @@ class ServiceMonitor:
             except CancelledError:
                 if try_num == retries - 1:
                     # Failed on final retry.
-                    raise ServiceActionError(
+                    raise ServiceActionError(  # noqa: B904
                         f"Service monitor timed out after '{timeout}' "
                         f"seconds and '{retries}' retries running cmd: {' '.join(cmd)}"
                     )
@@ -614,7 +615,7 @@ class ServiceMonitor:
                         "Expected at least one result in services request response"
                     )
                 result = result[0]
-                output = f'{result["name"]} {result["current"]}'
+                output = f"{result['name']} {result['current']}"
             else:
                 if "type" in response and response["type"] == "async":
                     if "change" not in response:

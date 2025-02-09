@@ -3,7 +3,6 @@
 
 """The Token handler for the WebSocket connection."""
 
-
 from django.http import HttpRequest
 from piston3.models import Token
 

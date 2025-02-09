@@ -3,7 +3,6 @@
 
 """Tests for the script result API."""
 
-
 from base64 import b64encode
 import http.client
 from io import BytesIO

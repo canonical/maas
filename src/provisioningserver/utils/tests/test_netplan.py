@@ -3,7 +3,6 @@
 
 """Tests for netplan helpers."""
 
-
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.netplan import (

@@ -3,7 +3,6 @@
 
 """Notification form."""
 
-
 from maasserver.forms import MAASModelForm
 from maasserver.models.notification import Notification
 

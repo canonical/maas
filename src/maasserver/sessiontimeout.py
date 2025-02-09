@@ -1,4 +1,4 @@
-""" Custom sessionstore for a user-configurable session timeout. """
+"""Custom sessionstore for a user-configurable session timeout."""
 
 from django.contrib.sessions.backends.db import SessionStore as DBStore
 

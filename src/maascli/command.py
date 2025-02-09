@@ -3,7 +3,6 @@
 
 """Command-related classes."""
 
-
 from abc import ABCMeta, abstractmethod
 
 

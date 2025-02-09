@@ -280,7 +280,7 @@ class WithPowerTypeMixin:
                 try:
                     parameters = json.loads(parameters)
                 except json.JSONDecodeError:
-                    raise ValidationError(
+                    raise ValidationError(  # noqa: B904
                         "Failed to parse JSON %s" % params_field_name
                     )
 
@@ -443,7 +443,7 @@ class MAASModelForm(
 
     def __init__(self, data=None, files=None, ui_submission=False, **kwargs):
         super().__init__(data=data, files=files, **kwargs)
-        self.is_update = bool(kwargs.get("instance", None))
+        self.is_update = bool(kwargs.get("instance"))
         if ui_submission:
             # Add the ui_submission field.  Insert it before the other fields,
             # so that the field validators will have access to it regardless of
@@ -694,7 +694,7 @@ class NodeForm(MAASModelForm):
         try:
             return int(swap_size)
         except ValueError:
-            raise ValidationError("Invalid size for swap: %s" % swap_size)
+            raise ValidationError("Invalid size for swap: %s" % swap_size)  # noqa: B904
 
     def clean_domain(self):
         domain = self.cleaned_data.get("domain")
@@ -706,7 +706,7 @@ class NodeForm(MAASModelForm):
             try:
                 return Domain.objects.get(name=domain)
             except Domain.DoesNotExist:
-                raise ValidationError("Unable to find domain %s" % domain)
+                raise ValidationError("Unable to find domain %s" % domain)  # noqa: B904
 
     hostname = forms.CharField(
         label="Host name",
@@ -1982,8 +1982,7 @@ ERROR_MESSAGE_STATIC_RANGE_IN_USE = (
 
 
 ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S = (
-    "All addresses in the dynamic range must be within the same /16 "
-    "network."
+    "All addresses in the dynamic range must be within the same /16 network."
 )
 
 ERROR_MESSAGE_INVALID_RANGE = (
@@ -2012,7 +2011,7 @@ class TagForm(MAASModelForm):
         try:
             etree.XPath(definition)
         except etree.XPathSyntaxError as e:
-            raise ValidationError(f"Invalid xpath expression: {e}")
+            raise ValidationError(f"Invalid xpath expression: {e}")  # noqa: B904
         return definition
 
 
@@ -2651,7 +2650,7 @@ class BootResourceForm(MAASModelForm):
                     ]
                 )
             else:
-                raise ValidationError(
+                raise ValidationError(  # noqa: B904
                     "a base image must follow the format: <osystem>/<series>"
                 )
         else:
@@ -2823,7 +2822,7 @@ class BootResourceNoContentForm(BootResourceForm):
             .exists()
         ):
             raise ValidationError(
-                "File already exists with sha256 that is of " "different size."
+                "File already exists with sha256 that is of different size."
             )
 
         return BootResourceFile.objects.create(
@@ -3128,7 +3127,7 @@ class NUMANodeFormMixin:
                 index=index
             )
         except NUMANode.DoesNotExist:
-            raise ValidationError("Invalid NUMA node")
+            raise ValidationError("Invalid NUMA node")  # noqa: B904
         return self.cleaned_data["numa_node"]
 
 
@@ -4014,16 +4013,16 @@ class UpdateRaidForm(Form):
         self.fields["add_spare_partitions"].choices = add_partition_choices
 
         # Sets up the choices for removal fields.
-        self.fields["remove_block_devices"].choices = (
-            remove_block_device_choices
-        )
+        self.fields[
+            "remove_block_devices"
+        ].choices = remove_block_device_choices
         self.fields["remove_partitions"].choices = remove_partition_choices
-        self.fields["remove_spare_devices"].choices = (
-            remove_block_device_choices
-        )
-        self.fields["remove_spare_partitions"].choices = (
-            remove_partition_choices
-        )
+        self.fields[
+            "remove_spare_devices"
+        ].choices = remove_block_device_choices
+        self.fields[
+            "remove_spare_partitions"
+        ].choices = remove_partition_choices
 
     def save(self):
         """Save updates to the RAID.

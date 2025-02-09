@@ -3,7 +3,6 @@
 
 """IPRange form."""
 
-
 from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -46,7 +45,7 @@ class IPRangeForm(MAASModelForm):
                 data["user"] = request.user.username
         elif instance.user and "user" not in data:
             data["user"] = instance.user.username
-        super().__init__(data=data, instance=instance, *args, **kwargs)
+        super().__init__(data=data, instance=instance, *args, **kwargs)  # noqa: B026
 
     def clean(self):
         cleaned_data = super().clean()

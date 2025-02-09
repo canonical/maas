@@ -5,7 +5,6 @@
 
 """Tests for `provisioningserver.boot.windows`."""
 
-
 import io
 import os
 import shutil

@@ -35,7 +35,6 @@ class ReservedIPCreateRequest(ReservedIPBaseRequest):
     async def to_builder(
         self, subnet: Subnet, services: ServiceCollectionV3
     ) -> ReservedIPBuilder:
-
         # TODO: move this logic to service layer
         existing_ip = await services.staticipaddress.get_one(
             QuerySpec(where=StaticIPAddressClauseFactory.with_ip(self.ip))

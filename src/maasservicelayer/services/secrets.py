@@ -134,7 +134,7 @@ class VaultSecretsService(SecretsService):
             secret = await self.vault_manager.get(path)
         except VaultNotFoundException:
             if default is UNSET:
-                raise SecretNotFound(path)
+                raise SecretNotFound(path)  # noqa: B904
             return default
         return secret
 

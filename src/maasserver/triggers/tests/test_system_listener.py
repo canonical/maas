@@ -4,7 +4,6 @@
 """Use the `PostgresListenerService` to test all of the triggers from for
 `maasserver.triggers.system`"""
 
-
 from datetime import timedelta
 import random
 

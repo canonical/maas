@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.packagerepository`"""
 
-
 from maascommon.events import AUDIT
 from maasserver.models import Event, PackageRepository
 from maasserver.testing.factory import factory

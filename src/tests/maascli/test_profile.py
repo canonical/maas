@@ -3,7 +3,6 @@
 
 """Tests for `maascli.profile`."""
 
-
 from maascli.profile import (
     get_profile,
     InvalidProfile,

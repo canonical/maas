@@ -3,7 +3,6 @@
 
 """The fabric handler for the WebSocket connection."""
 
-
 from maasserver.forms.fabric import FabricForm
 from maasserver.models.fabric import Fabric
 from maasserver.permissions import NodePermission
@@ -41,7 +40,7 @@ class FabricHandler(TimestampedModelHandler):
     def delete(self, parameters):
         """Delete this Domain."""
         domain = self.get_object(parameters)
-        assert self.user.has_perm(
-            NodePermission.admin, domain
-        ), "Permission denied."
+        assert self.user.has_perm(NodePermission.admin, domain), (
+            "Permission denied."
+        )
         domain.delete()

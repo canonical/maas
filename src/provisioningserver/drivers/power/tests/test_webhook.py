@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.webhook`."""
+
 import base64
 from http import HTTPStatus
 import random

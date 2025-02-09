@@ -183,7 +183,7 @@ class InstallSharedSecretScript:
                 secret_hex = input("Secret (hex/base16 encoded): ")
             except EOFError:
                 print()  # So that the shell prompt appears on the next line.
-                raise SystemExit(1)
+                raise SystemExit(1)  # noqa: B904
             except KeyboardInterrupt:
                 print()  # So that the shell prompt appears on the next line.
                 raise
@@ -194,7 +194,7 @@ class InstallSharedSecretScript:
             to_bin(secret_hex.strip())
         except binascii.Error as error:
             print("Secret could not be decoded:", str(error), file=stderr)
-            raise SystemExit(1)
+            raise SystemExit(1)  # noqa: B904
         else:
             MAAS_SHARED_SECRET.set(secret_hex)
             print(f"Secret installed to {MAAS_SHARED_SECRET.path}.")

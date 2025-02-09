@@ -3,7 +3,6 @@
 
 """Tests for node power status query when state changes."""
 
-
 from unittest.mock import ANY
 
 from twisted.internet import defer
@@ -111,6 +110,5 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         yield power.update_power_state_of_node(node.system_id)
         mock_log_err.assert_called_once_with(
             ANY,
-            "Failed to update power state of machine after state "
-            "transition.",
+            "Failed to update power state of machine after state transition.",
         )

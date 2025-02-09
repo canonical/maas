@@ -3,7 +3,6 @@
 
 """API handler: MAAS."""
 
-
 import json
 
 from django.http import HttpResponse

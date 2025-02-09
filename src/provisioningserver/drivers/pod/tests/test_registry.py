@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.pod.registry`."""
 
-
 from unittest.mock import sentinel
 
 from maastesting.testcase import MAASTestCase

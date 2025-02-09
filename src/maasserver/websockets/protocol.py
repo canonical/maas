@@ -3,7 +3,6 @@
 
 """The MAAS WebSockets protocol."""
 
-
 from collections import deque
 from contextlib import ExitStack
 from functools import partial

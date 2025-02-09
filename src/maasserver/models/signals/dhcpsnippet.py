@@ -3,7 +3,6 @@
 
 """Respond to DHCPSnippet changes."""
 
-
 from django.db.models.signals import post_delete
 
 from maasserver.models import DHCPSnippet

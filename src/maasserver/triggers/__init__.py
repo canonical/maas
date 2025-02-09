@@ -10,7 +10,6 @@ its previous trigger. All triggers will be added into the database via the
 `start_up` method for regiond.
 """
 
-
 from contextlib import closing
 from textwrap import dedent
 

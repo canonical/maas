@@ -10,6 +10,7 @@ To define a new node action, derive a class for it from :class:`NodeAction`,
 provide the missing pieces documented in the class, and add it to
 `ACTION_CLASSES`.
 """
+
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import OrderedDict
 import json
@@ -374,7 +375,7 @@ class Commission(NodeAction):
                 script_input=script_input,
             )
         except RPC_EXCEPTIONS + (ExternalProcessError, ValidationError) as e:
-            raise NodeActionError(e)
+            raise NodeActionError(e)  # noqa: B904
 
 
 class Test(NodeAction):
@@ -412,8 +413,10 @@ class Test(NodeAction):
         return self.audit_description % action.node.hostname
 
     def _execute(
-        self, enable_ssh=False, testing_scripts=[], script_input=None
+        self, enable_ssh=False, testing_scripts=None, script_input=None
     ):
+        if testing_scripts is None:
+            testing_scripts = []
         try:
             self.node.start_testing(
                 self.user,
@@ -422,7 +425,7 @@ class Test(NodeAction):
                 script_input=script_input,
             )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
 
 class Abort(NodeAction):
@@ -454,7 +457,7 @@ class Abort(NodeAction):
         try:
             self.node.abort_operation(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
 
 class Acquire(NodeAction):
@@ -479,7 +482,7 @@ class Acquire(NodeAction):
             try:
                 self.node.acquire(self.user)
             except ValidationError as e:
-                raise NodeActionError(e)
+                raise NodeActionError(e)  # noqa: B904
 
 
 class Deploy(NodeAction):
@@ -541,7 +544,7 @@ class Deploy(NodeAction):
                 try:
                     self.node.acquire(self.user)
                 except ValidationError as e:
-                    raise NodeActionError(e)
+                    raise NodeActionError(e)  # noqa: B904
         if osystem and distro_series:
             try:
                 (
@@ -550,7 +553,7 @@ class Deploy(NodeAction):
                 ) = validate_osystem_and_distro_series(osystem, distro_series)
                 self.node.save()
             except ValidationError as e:
-                raise NodeActionError(e)
+                raise NodeActionError(e)  # noqa: B904
         else:
             configs = Config.objects.get_configs(
                 ["default_osystem", "default_distro_series"]
@@ -569,7 +572,7 @@ class Deploy(NodeAction):
             )
             self.node.save()
         except ValidationError as e:
-            raise NodeActionError(e)
+            raise NodeActionError(e)  # noqa: B904
 
         user_data = user_data.encode() if user_data else None
         request = self.request
@@ -589,7 +592,7 @@ class Deploy(NodeAction):
             base_osystem, base_series = get_base_osystem_series(self.node)
             get_curtin_config(request, self.node, base_osystem, base_series)
         except Exception as e:
-            raise NodeActionError("Failed to retrieve curtin config: %s" % e)
+            raise NodeActionError("Failed to retrieve curtin config: %s" % e)  # noqa: B904
 
         if enable_hw_sync and (
             self.node.osystem not in LINUX_OSYSTEMS
@@ -608,16 +611,16 @@ class Deploy(NodeAction):
                 enable_hw_sync=enable_hw_sync,
             )
         except StaticIPAddressExhaustion:
-            raise NodeActionError(
+            raise NodeActionError(  # noqa: B904
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname
             )
         except IPAddressCheckFailed:
-            raise NodeActionError(
+            raise NodeActionError(  # noqa: B904
                 f"{self.node.hostname}: Failed to start, IP addresses check failed."
             )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
 
 class PowerOn(NodeAction):
@@ -645,16 +648,16 @@ class PowerOn(NodeAction):
         try:
             self.node.start(self.user)
         except StaticIPAddressExhaustion:
-            raise NodeActionError(
+            raise NodeActionError(  # noqa: B904
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname
             )
         except IPAddressCheckFailed:
-            raise NodeActionError(
+            raise NodeActionError(  # noqa: B904
                 f"{self.node.hostname}: Failed to start, IP addresses check failed."
             )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
 
 FAILED_STATUSES = [
@@ -686,7 +689,7 @@ class PowerOff(NodeAction):
         try:
             self.node.stop(self.user, stop_mode=stop_mode)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
     def is_actionable(self):
         is_actionable = super().is_actionable()
@@ -750,7 +753,7 @@ class Release(NodeAction):
                 script_input=params,
             )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
 
 class MarkBroken(NodeAction):
@@ -941,7 +944,7 @@ class RescueMode(NodeAction):
         try:
             self.node.start_rescue_mode(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
 
 class ExitRescueMode(NodeAction):
@@ -970,7 +973,7 @@ class ExitRescueMode(NodeAction):
         try:
             self.node.stop_rescue_mode(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+            raise NodeActionError(exception)  # noqa: B904
 
 
 class AddTag(NodeAction):
@@ -1083,7 +1086,7 @@ class Clone(NodeAction):
         try:
             form.save()
         except ValidationError as exc:
-            raise NodeActionError(
+            raise NodeActionError(  # noqa: B904
                 self._format_errors_as_json(exc.message_dict)
             )
         if _error_data:

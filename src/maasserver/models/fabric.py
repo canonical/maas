@@ -3,7 +3,6 @@
 
 """Fabric objects."""
 
-
 from operator import attrgetter
 import re
 

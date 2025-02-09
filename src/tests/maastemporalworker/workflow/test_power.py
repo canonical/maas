@@ -118,7 +118,7 @@ class TestGetTemporalQueueForMachine:
             "agent:power@vlan-1"
         )
 
-        for power_action, param in power_actions.items():
+        for power_action, param in power_actions.items():  # noqa: B007
             (
                 workfow_type,
                 workflow_param,

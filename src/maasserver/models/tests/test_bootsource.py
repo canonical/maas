@@ -3,7 +3,6 @@
 
 """Tests for `BootSource`."""
 
-
 import os
 
 from django.core.exceptions import ValidationError

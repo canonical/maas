@@ -3,7 +3,6 @@
 
 """Performance testing related classes and functions for MAAS and its applications"""
 
-
 from contextlib import contextmanager, ExitStack
 from cProfile import Profile
 import gc
@@ -174,7 +173,6 @@ class QueryCounter(PerfTracer):
 
 
 class SQLAlchemyQueryCounter:
-
     count = 0
     time = 0.0
 

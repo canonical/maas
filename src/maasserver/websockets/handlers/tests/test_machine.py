@@ -570,7 +570,7 @@ class TestMachineHandlerUtils:
     @staticmethod
     def make_nodes(number):
         """Create `number` of new nodes."""
-        for counter in range(number):
+        for counter in range(number):  # noqa: B007
             node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
             factory.make_PhysicalBlockDevice(node=node)
             # Make some devices.
@@ -3862,9 +3862,7 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=destination, size=8 * 1024**3, name="sda"
         )
-        pt = (
-            destination.current_config.blockdevice_set.first().get_partitiontable()
-        )
+        pt = destination.current_config.blockdevice_set.first().get_partitiontable()
         self.assertIsNone(pt)  # Pre-condition check
         handler = MachineHandler(user, {}, request)
         handler.action(
@@ -3878,9 +3876,7 @@ class TestMachineHandler(MAASServerTestCase):
                 },
             }
         )
-        pt = (
-            destination.current_config.blockdevice_set.first().get_partitiontable()
-        )
+        pt = destination.current_config.blockdevice_set.first().get_partitiontable()
         self.assertIsNotNone(pt)
 
     def test_clone_with_filter(self):
@@ -3912,9 +3908,7 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=destination, size=8 * 1024**3, name="sda"
         )
-        pt = (
-            destination.current_config.blockdevice_set.first().get_partitiontable()
-        )
+        pt = destination.current_config.blockdevice_set.first().get_partitiontable()
         self.assertIsNone(pt)  # Pre-condition check
         handler = MachineHandler(user, {}, request)
         handler.action(
@@ -3925,9 +3919,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "filter": {"id": destination.system_id},
             }
         )
-        pt = (
-            destination.current_config.blockdevice_set.first().get_partitiontable()
-        )
+        pt = destination.current_config.blockdevice_set.first().get_partitiontable()
         self.assertIsNotNone(pt)
 
     def test_clone_where_possible(self):
@@ -3996,9 +3988,7 @@ class TestMachineHandler(MAASServerTestCase):
                 ]
             },
         )
-        partition_table = (
-            destination2.current_config.blockdevice_set.first().get_partitiontable()
-        )
+        partition_table = destination2.current_config.blockdevice_set.first().get_partitiontable()
         self.assertIsNotNone(partition_table)
         partitions = partition_table.partitions
         maybe_efi, maybe_root, *rest = partitions.all()
@@ -5580,7 +5570,7 @@ class TestMachineHandlerSuppressScriptResult(MAASServerTestCase):
         owner = factory.make_User()
         handler = MachineHandler(owner, {}, None)
         nodes = []
-        for idx in range(10):
+        for idx in range(10):  # noqa: B007
             node = factory.make_Node(owner=owner)
             nodes.append(node)
             factory.make_ScriptResult(

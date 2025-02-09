@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.third_party_drivers`."""
 
-
 import os
 
 from maasserver import third_party_drivers

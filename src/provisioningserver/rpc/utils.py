@@ -3,7 +3,6 @@
 
 """Utilities for the provisioning server."""
 
-
 import json
 
 from twisted.internet import reactor
@@ -41,7 +40,7 @@ def create_node(
     if hostname is not None:
         hostname = coerce_to_valid_hostname(hostname, False)
 
-    for elapsed, remaining, wait in retries(15, 5, reactor):
+    for elapsed, remaining, wait in retries(15, 5, reactor):  # noqa: B007
         try:
             client = getRegionClient()
             break
@@ -105,7 +104,7 @@ def commission_node(system_id, user):
     # Avoid circular dependencies.
     from provisioningserver.rpc.region import CommissionNode
 
-    for elapsed, remaining, wait in retries(15, 5, reactor):
+    for elapsed, remaining, wait in retries(15, 5, reactor):  # noqa: B007
         try:
             client = getRegionClient()
             break

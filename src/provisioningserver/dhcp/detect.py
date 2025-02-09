@@ -3,7 +3,6 @@
 
 """Utilities and helpers to help discover DHCP servers on your network."""
 
-
 from contextlib import contextmanager
 import errno
 import fcntl
@@ -123,10 +122,7 @@ class DHCPDiscoverPacket:
             # Hardware address length: 6
             b"\x06"
             # Hops: 0
-            b"\x00"
-            + self.transaction_id
-            + self.seconds.to_bytes(2, "big")
-            +
+            b"\x00" + self.transaction_id + self.seconds.to_bytes(2, "big") +
             # Flags: the most significant bit is the broadcast bit.
             #     0x8000 means "force the server to use broadcast".
             #     0x0000 means "it's okay to unicast replies".
@@ -142,8 +138,7 @@ class DHCPDiscoverPacket:
             # Next server IP address: 0.0.0.0
             b"\x00\x00\x00\x00"
             # Relay agent IP address: 0.0.0.0
-            b"\x00\x00\x00\x00"
-            +
+            b"\x00\x00\x00\x00" +
             # Client hardware address
             self.mac_bytes
             +
@@ -188,9 +183,9 @@ def get_interface_mac(sock: socket.socket, ifname: str) -> str:
         info = fcntl.ioctl(sock.fileno(), SIOCGIFHWADDR, ifreq)
     except OSError as e:
         if e.errno is not None and e.errno == errno.ENODEV:
-            raise InterfaceNotFound("Interface not found: '%s'." % ifname)
+            raise InterfaceNotFound("Interface not found: '%s'." % ifname)  # noqa: B904
         else:
-            raise MACAddressNotAvailable(
+            raise MACAddressNotAvailable(  # noqa: B904
                 "Failed to get MAC address for '%s': %s."
                 % (ifname, strerror(e.errno))
             )
@@ -209,13 +204,13 @@ def get_interface_ip(sock: socket.socket, ifname: str) -> str:
         info = fcntl.ioctl(sock, SIOCGIFADDR, ifreq)
     except OSError as e:
         if e.errno == errno.ENODEV:
-            raise InterfaceNotFound("Interface not found: '%s'." % ifname)
+            raise InterfaceNotFound("Interface not found: '%s'." % ifname)  # noqa: B904
         elif e.errno == errno.EADDRNOTAVAIL:
-            raise IPAddressNotAvailable(
+            raise IPAddressNotAvailable(  # noqa: B904
                 "No IP address found on interface '%s'." % ifname
             )
         else:
-            raise IPAddressNotAvailable(
+            raise IPAddressNotAvailable(  # noqa: B904
                 "Failed to get IP address for '%s': %s."
                 % (ifname, strerror(e.errno))
             )

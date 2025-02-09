@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for working with local boot resources."""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager, contextmanager
@@ -56,7 +57,7 @@ class MMapedLocalFile(mmap.mmap):
             self.lfile._size = self.tell()
             return wrote
         except ValueError as e:
-            raise LocalStoreWriteBeyondEOF(e)
+            raise LocalStoreWriteBeyondEOF(e)  # noqa: B904
 
     def _check_content_size(self, content):
         """Check if `content` fits in the file
@@ -203,7 +204,7 @@ class LocalBootResourceFile:
                 stream.write(b"\x00")
                 stream.flush()
         except IOError as e:
-            raise LocalStoreAllocationFail(e)
+            raise LocalStoreAllocationFail(e)  # noqa: B904
 
     @contextmanager
     def store(self, autocommit: bool = True) -> MMapedLocalFile:
@@ -225,10 +226,13 @@ class LocalBootResourceFile:
         elif self.complete:
             raise LocalStoreWriteBeyondEOF()
 
-        with self.partial_file_path.open("rb+") as stream, MMapedLocalFile(
-            fileno=stream.fileno(),
-            lfile=self,
-        ) as mm:
+        with (
+            self.partial_file_path.open("rb+") as stream,
+            MMapedLocalFile(
+                fileno=stream.fileno(),
+                lfile=self,
+            ) as mm,
+        ):
             mm.seek(self._size, os.SEEK_SET)
             yield mm
         if autocommit and self.complete:
@@ -257,10 +261,13 @@ class LocalBootResourceFile:
         elif self.complete:
             raise LocalStoreWriteBeyondEOF()
 
-        with self.partial_file_path.open("rb+") as stream, MMapedLocalFile(
-            fileno=stream.fileno(),
-            lfile=self,
-        ) as mm:
+        with (
+            self.partial_file_path.open("rb+") as stream,
+            MMapedLocalFile(
+                fileno=stream.fileno(),
+                lfile=self,
+            ) as mm,
+        ):
             mm.seek(self._size, os.SEEK_SET)
             yield mm
         if autocommit and self.complete:

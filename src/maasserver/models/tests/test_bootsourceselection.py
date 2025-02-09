@@ -3,7 +3,6 @@
 
 """Tests for `BootSourceSelection`."""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.models import BootSource, BootSourceSelection, Config

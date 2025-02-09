@@ -3,7 +3,6 @@
 
 """API handlers: `CommissioningScript`."""
 
-
 from base64 import b64encode
 
 from django.http import HttpResponse

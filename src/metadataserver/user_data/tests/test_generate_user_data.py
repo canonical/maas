@@ -3,7 +3,6 @@
 
 """Test generation of commissioning user data."""
 
-
 import base64
 import email
 

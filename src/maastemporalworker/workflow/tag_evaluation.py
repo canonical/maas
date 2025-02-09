@@ -112,7 +112,6 @@ class TagEvaluationActivity(ActivityBase):
         pointer = -1
 
         while 0 < param.batch_size == processed_nodes:
-
             async with self._start_transaction() as tx:
                 stmt = f"""
 WITH batch_nodes_cte AS (

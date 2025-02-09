@@ -27,7 +27,6 @@ from tests.maasservicelayer.services.base import ServiceCommonTests
 
 @pytest.mark.asyncio
 class TestDNSPublicationsService(ServiceCommonTests):
-
     @pytest.fixture
     def service_instance(self) -> BaseService:
         return DNSPublicationsService(

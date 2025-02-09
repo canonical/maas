@@ -1070,9 +1070,9 @@ class TestMetadataUserData(MAASServerTestCase):
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         user_data = factory.make_name("user data").encode("ascii")
-        self.patch(api, "generate_user_data_for_poweroff").return_value = (
-            user_data
-        )
+        self.patch(
+            api, "generate_user_data_for_poweroff"
+        ).return_value = user_data
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual("application/octet-stream", response["Content-Type"])
         self.assertIsInstance(response.content, bytes)

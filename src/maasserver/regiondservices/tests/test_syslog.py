@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.regiondservices.syslog`."""
 
-
 from netaddr import IPAddress
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks

@@ -3,7 +3,6 @@
 
 """Redfish Power Driver."""
 
-
 from base64 import b64encode
 from enum import Enum
 from http import HTTPStatus
@@ -171,7 +170,7 @@ class RedfishPowerDriverBase(PowerDriver):
                     try:
                         return json.loads(data)
                     except ValueError as error:
-                        raise PowerActionError(
+                        raise PowerActionError(  # noqa: B904
                             "Redfish request failed from a JSON parse error:"
                             " %s." % error
                         )

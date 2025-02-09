@@ -1,9 +1,7 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.drivers.hardware.seamicro`.
-"""
-
+"""Tests for `provisioningserver.drivers.hardware.seamicro`."""
 
 import json
 from unittest.mock import call, Mock
@@ -18,8 +16,8 @@ from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import seamicro
 from provisioningserver.drivers.hardware.seamicro import (
     find_seamicro15k_servers,
-    power_control_seamicro15k_v2,
     power_control_seamicro15k_v09,
+    power_control_seamicro15k_v2,
     power_query_seamicro15k_v2,
     POWER_STATUS,
     probe_seamicro15k_and_enlist,

@@ -3,7 +3,6 @@
 
 """RegionRackRPCConnection object."""
 
-
 from django.db.models import CASCADE, ForeignKey
 
 from maasserver.models.cleansave import CleanSave

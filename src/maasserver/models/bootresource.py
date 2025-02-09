@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource."""
+
 from datetime import datetime
 from operator import attrgetter
 from typing import Dict

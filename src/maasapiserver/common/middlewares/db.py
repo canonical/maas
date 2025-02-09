@@ -41,7 +41,7 @@ class TransactionMiddleware(BaseHTTPMiddleware):
                     yield conn
         # Foreign key exceptions are raised only when the transaction is committed, so we have to capture them here.
         except IntegrityError as e:
-            raise ValidationException(
+            raise ValidationException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
                         type=INVALID_ARGUMENT_VIOLATION_TYPE,

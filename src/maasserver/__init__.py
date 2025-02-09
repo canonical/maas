@@ -3,7 +3,6 @@
 
 """MAAS Server application."""
 
-
 import logging
 
 from provisioningserver.utils.version import DISTRIBUTION

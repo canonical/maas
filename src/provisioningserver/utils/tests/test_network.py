@@ -1256,12 +1256,12 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
     ):
         self.patch(network_module, "get_ip_addr").return_value = ip_addr
         self.patch(network_module, "get_ip_route").return_value = iproute_info
-        self.patch(network_module, "get_dhclient_info").return_value = (
-            dhclient_info
-        )
-        self.patch(network_module, "running_in_container").return_value = (
-            in_container
-        )
+        self.patch(
+            network_module, "get_dhclient_info"
+        ).return_value = dhclient_info
+        self.patch(
+            network_module, "running_in_container"
+        ).return_value = in_container
         observed_result = get_all_interfaces_definition(
             annotate_with_monitored=False
         )

@@ -3,7 +3,6 @@
 
 """API handlers: `ResourcePool`."""
 
-
 from piston3.utils import rc
 
 from maasserver.api.support import (

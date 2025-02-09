@@ -37,9 +37,9 @@ def deprecated_for(new_option):
         def __call__(self, parser, namespace, values, option_string=None):
             action = parser._option_string_actions.get(self._new_option)
             assert action, f'unknown option "{self._new_option}"'
-            assert (
-                option_string
-            ), '"deprecate_for" must be used with optional arguments'
+            assert option_string, (
+                '"deprecate_for" must be used with optional arguments'
+            )
             print(
                 self._deprecation_message.format(
                     option_string=option_string, new_option=self._new_option
@@ -277,7 +277,7 @@ def read_input(prompt):
             continue
         except KeyboardInterrupt:
             print()
-            raise SystemExit(1)
+            raise SystemExit(1)  # noqa: B904
         else:
             # The assumption is that, since Python 3 return a Unicode string
             # from input(), it has Done The Right Thing with respect to

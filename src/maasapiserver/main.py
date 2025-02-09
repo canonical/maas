@@ -150,7 +150,6 @@ async def create_app(
     # In the tests the database is created in the fixture, so we need to inject it here as a parameter.
     db: Database = None,
 ) -> FastAPI:
-
     app = await prepare_app(
         config,
         transaction_middleware_class,

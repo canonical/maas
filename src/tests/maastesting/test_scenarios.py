@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.scenarios`."""
 
-
 import unittest
 
 from maastesting.scenarios import WithScenarios

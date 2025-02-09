@@ -74,8 +74,8 @@ class IPRangesHandler(Handler):
         fabric_id: int,
         vlan_id: int,
         subnet_id: int,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> IPRangeListResponse:
         ipranges = await services.ipranges.list(
             page=pagination_params.page,
@@ -135,8 +135,8 @@ class IPRangesHandler(Handler):
         subnet_id: int,
         iprange_request: IPRangeCreateRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
-        authenticated_user: AuthenticatedUser = Depends(
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> Response:
@@ -210,7 +210,7 @@ class IPRangesHandler(Handler):
         subnet_id: int,
         id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         iprange = await services.ipranges.get_one(
             QuerySpec(
@@ -257,8 +257,8 @@ class IPRangesHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
-        authenticated_user: AuthenticatedUser = Depends(
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> Response:
@@ -320,8 +320,8 @@ class IPRangesHandler(Handler):
         iprange_id: int,
         iprange_request: IPRangeUpdateRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
-        authenticated_user: AuthenticatedUser = Depends(
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> Response:

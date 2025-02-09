@@ -3,7 +3,6 @@
 
 """Tests for the `dbupgrade` command."""
 
-
 from contextlib import closing
 import os
 from subprocess import PIPE, Popen, STDOUT

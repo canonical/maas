@@ -3,7 +3,6 @@
 
 """AMT Power Driver."""
 
-
 from itertools import chain
 from os.path import dirname, join
 import re
@@ -31,8 +30,7 @@ AMT_ERRORS = {
     },
     "500 Can't connect": {
         "message": (
-            "Could not connect to BMC.  "
-            "Check BMC configuration and try again."
+            "Could not connect to BMC.  Check BMC configuration and try again."
         ),
         "exception": PowerConnError,
     },

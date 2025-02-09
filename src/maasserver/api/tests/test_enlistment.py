@@ -613,8 +613,8 @@ class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
         # anonymously enlisted machines, but only those for which he/she has
         # admin privs will be accepted, which currently equates to none of
         # them.
-        factory.make_Node(status=NODE_STATUS.NEW),
-        factory.make_Node(status=NODE_STATUS.NEW),
+        factory.make_Node(status=NODE_STATUS.NEW)
+        factory.make_Node(status=NODE_STATUS.NEW)
         response = self.client.post(
             reverse("machines_handler"), {"op": "accept_all"}
         )

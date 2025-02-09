@@ -3,7 +3,6 @@
 
 """Test server-address-guessing logic."""
 
-
 import random
 from socket import gethostname
 from unittest import skip
@@ -124,9 +123,9 @@ class TestAddress(MAASTestCase):
         ipv4_address = factory.make_ipv4_address()
         addresses.append(ipv6_address)
         addresses.append(ipv4_address)
-        self.patch(address, "get_all_addresses_for_interface").return_value = (
-            addresses
-        )
+        self.patch(
+            address, "get_all_addresses_for_interface"
+        ).return_value = addresses
         self.assertEqual(ipv4_address, address.get_ip_address(b"lo"))
 
     def test_get_ip_address_returns_v6_address_if_no_v4_available(self):

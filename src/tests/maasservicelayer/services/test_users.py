@@ -163,7 +163,6 @@ class TestUsersService:
     async def test_create(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-
         blank_create_resource = UserBuilder()
 
         users_repository.create.return_value = TEST_USER
@@ -235,7 +234,6 @@ class TestUsersService:
     async def test_post_delete_hook(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-
         await users_service.post_delete_hook(TEST_USER)
         users_repository.delete_profile.assert_called_once_with(
             user_id=TEST_USER.id

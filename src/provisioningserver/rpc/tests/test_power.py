@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.power`."""
 
-
 import logging
 import random
 from unittest import TestCase
@@ -91,7 +90,9 @@ class TestPowerQuery(MAASTestCase):
             clusterservice, "get_all_interfaces_definition"
         ).return_value = {}
 
-    def patch_rpc_methods(self, return_value={}, side_effect=None):
+    def patch_rpc_methods(self, return_value=None, side_effect=None):
+        if return_value is None:
+            return_value = {}
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
             region.MarkNodeFailed,

@@ -3,7 +3,6 @@
 
 """Tests for the maastftp Twisted plugin."""
 
-
 from functools import partial
 import json
 import os

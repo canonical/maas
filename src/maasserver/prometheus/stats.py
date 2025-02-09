@@ -3,7 +3,6 @@
 
 """Prometheus integration"""
 
-
 from datetime import timedelta
 
 from django.db.models import F, Max, Q, Window

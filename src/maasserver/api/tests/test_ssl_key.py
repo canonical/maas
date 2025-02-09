@@ -3,7 +3,6 @@
 
 """Tests for the ssl key API."""
 
-
 import http.client
 import json
 

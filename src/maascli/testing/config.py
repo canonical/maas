@@ -3,7 +3,6 @@
 
 """Fake `ProfileConfig` for testing."""
 
-
 from maastesting.factory import factory
 
 

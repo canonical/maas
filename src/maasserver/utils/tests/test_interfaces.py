@@ -3,7 +3,6 @@
 
 """Tests for network/cluster interface helpers."""
 
-
 from random import randint
 
 from maasserver.utils.interfaces import (

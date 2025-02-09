@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.listener`"""
 
-
 from collections import namedtuple
 import errno
 from re import escape

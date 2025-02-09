@@ -3,7 +3,6 @@
 
 """NTP related functionality."""
 
-
 from typing import FrozenSet, Iterable
 
 from maasserver.models.config import Config

@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django PERFORMANCE TESTING settings for maas project."""
+
 from maasserver.djangosettings import development, import_settings
 
 import_settings(development)

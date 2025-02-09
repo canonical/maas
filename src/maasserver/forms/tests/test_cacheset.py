@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `CacheSet`."""
 
-
 from maasserver.forms import CreateCacheSetForm, UpdateCacheSetForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

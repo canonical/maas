@@ -230,7 +230,7 @@ def dump_certificate_info(url, file=None):
             "Fingerprint (SHA-256)": fingerprint,
         }
 
-        form = "%%%ds: %%s" % (max(len(k) for k in data.keys()) + 2)
+        form = "%%%ds: %%s" % (max(len(k) for k in data) + 2)
         for k, v in data.items():
             print(form % (k, v), file=file)
         print(file=file)

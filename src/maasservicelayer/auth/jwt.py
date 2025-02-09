@@ -105,7 +105,7 @@ class JWT:
                 audience=cls.AUDIENCE,
             )
         except JWTError:
-            raise InvalidToken()
+            raise InvalidToken()  # noqa: B904
 
         # check that all required fields are there
         if cls._REQUIRED_FIELDS - set(payload):

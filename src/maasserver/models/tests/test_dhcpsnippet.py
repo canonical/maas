@@ -11,8 +11,8 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
 )
-from maasserver.models import dhcpsnippet as snippet_module
 from maasserver.models import DHCPSnippet, VersionedTextFile
+from maasserver.models import dhcpsnippet as snippet_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks

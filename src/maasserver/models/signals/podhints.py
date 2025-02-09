@@ -3,7 +3,6 @@
 
 """Respond to PodHints changes."""
 
-
 from django.db.models.signals import m2m_changed
 
 from maasserver.models import PodHints

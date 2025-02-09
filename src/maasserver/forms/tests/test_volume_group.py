@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `VolumeGroup`."""
 
-
 import random
 import uuid
 

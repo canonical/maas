@@ -12,7 +12,6 @@ from maasservicelayer.db.repositories.events import EventsClauseFactory
 
 
 class EventsFiltersParams(BaseModel):
-
     system_ids: Optional[list[str]] = Field(
         Query(default=None, title="Filter by system id", alias="system_id")
     )

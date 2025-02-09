@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.redfish`."""
 
-
 from base64 import b64encode
 from copy import deepcopy
 from http import HTTPStatus

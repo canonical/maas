@@ -3,7 +3,6 @@
 
 """Utilities for URL handling."""
 
-
 import re
 import urllib.error
 import urllib.parse

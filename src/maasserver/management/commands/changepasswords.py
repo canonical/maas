@@ -37,7 +37,7 @@ class Command(BaseCommand):
             try:
                 username, password = line.rstrip("\r\n").split(":", 1)
             except ValueError:
-                raise CommandError(
+                raise CommandError(  # noqa: B904
                     "Invalid input provided. "
                     "Format is 'username:password', one per line."
                 )
@@ -46,7 +46,7 @@ class Command(BaseCommand):
                     **{UserModel.USERNAME_FIELD: username}
                 )
             except UserModel.DoesNotExist:
-                raise CommandError("User '%s' does not exist." % username)
+                raise CommandError("User '%s' does not exist." % username)  # noqa: B904
             user.set_password(password)
             user.save()
             count += 1

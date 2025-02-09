@@ -55,11 +55,11 @@ class SshKeysHandler(Handler):
     )
     async def list_user_sshkeys(
         self,
-        pagination_params: PaginationParams = Depends(),
-        authenticated_user: AuthenticatedUser | None = Depends(
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SshKeysListResponse:
         assert authenticated_user is not None
         ssh_keys = await services.sshkeys.list(
@@ -107,10 +107,10 @@ class SshKeysHandler(Handler):
         self,
         sshkey_id: int,
         response: Response,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         assert authenticated_user is not None
         ssh_key = await services.sshkeys.get_one(
@@ -155,10 +155,10 @@ class SshKeysHandler(Handler):
         self,
         sshkey_request: SshKeyManualUploadRequest,
         response: Response,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         assert authenticated_user is not None
         builder = sshkey_request.to_builder(authenticated_user.id)
@@ -187,10 +187,10 @@ class SshKeysHandler(Handler):
     async def import_user_sshkeys(
         self,
         sshkey_request: SshKeyImportFromSourceRequest,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SshKeysListResponse:
         assert authenticated_user is not None
         imported_sshkeys = await services.sshkeys.import_keys(
@@ -226,10 +226,10 @@ class SshKeysHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         assert authenticated_user is not None
         await services.sshkeys.delete_one(

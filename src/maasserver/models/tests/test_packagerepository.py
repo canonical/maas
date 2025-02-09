@@ -3,7 +3,6 @@
 
 """:class:`PackageRepository` tests."""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.models import PackageRepository

@@ -3,7 +3,6 @@
 
 """Helpers for testing database locks and related."""
 
-
 from contextlib import contextmanager
 import threading
 

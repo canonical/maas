@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the region's RPC implementation."""
+
 from collections import defaultdict
 import json
 import random

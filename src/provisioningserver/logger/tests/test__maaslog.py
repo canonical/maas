@@ -3,7 +3,6 @@
 
 """Tests for `p.logger._maaslog`."""
 
-
 import logging
 import logging.handlers
 

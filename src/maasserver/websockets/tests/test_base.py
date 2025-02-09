@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.base`"""
 
-
 import random
 from unittest.mock import ANY, MagicMock, sentinel
 
@@ -726,9 +725,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         arch = make_usable_architecture(self)
         handler = self.make_nodes_handler(fields=["hostname", "architecture"])
         handler.user = factory.make_admin()
-        self.patch(handler, "get_form_class").return_value = (
-            AdminMachineWithMACAddressesForm
-        )
+        self.patch(
+            handler, "get_form_class"
+        ).return_value = AdminMachineWithMACAddressesForm
 
         with post_commit_hooks:
             json_obj = handler.create(
@@ -746,9 +745,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         hostname = factory.make_name("hostname")
         arch = make_usable_architecture(self)
         handler = self.make_nodes_handler(fields=["hostname", "architecture"])
-        self.patch(handler, "get_form_class").return_value = (
-            AdminMachineWithMACAddressesForm
-        )
+        self.patch(
+            handler, "get_form_class"
+        ).return_value = AdminMachineWithMACAddressesForm
         self.assertRaises(
             HandlerPermissionError,
             handler.create,

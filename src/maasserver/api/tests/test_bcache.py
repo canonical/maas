@@ -3,7 +3,6 @@
 
 """Tests for bcache API."""
 
-
 import http.client
 from unittest.mock import ANY
 from uuid import uuid4
@@ -152,13 +151,15 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         self.assertEqual(backing_size, parsed_device["virtual_device"]["size"])
         self.assertEqual("bcache0", parsed_device["name"])
         self.assertEqual(uuid, parsed_device["uuid"])
-        mock_create_audit_event.assert_called_once_with(
-            EVENT_TYPES.NODE,
-            ENDPOINT.API,
-            ANY,
-            node.system_id,
-            "Created bcache.",
-        ),
+        (
+            mock_create_audit_event.assert_called_once_with(
+                EVENT_TYPES.NODE,
+                ENDPOINT.API,
+                ANY,
+                node.system_id,
+                "Created bcache.",
+            ),
+        )
 
     def test_create_with_missing_cache_set_fails(self):
         """Tests Bcache device creation without a cache set."""

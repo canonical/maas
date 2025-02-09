@@ -31,7 +31,6 @@ class ConfigureDHCPForAgentParam:
 def merge_configure_dhcp_param(
     old: ConfigureDHCPParam, new: ConfigureDHCPParam
 ) -> ConfigureDHCPParam:
-
     def ensure_list(val: list[Any] | None) -> list[Any]:
         return val if val is not None else []
 

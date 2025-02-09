@@ -22,7 +22,6 @@ from maasservicelayer.models.vlans import Vlan
 
 
 class VlansClauseFactory(ClauseFactory):
-
     @classmethod
     def with_id(cls, id: int) -> Clause:
         return Clause(condition=eq(VlanTable.c.id, id))

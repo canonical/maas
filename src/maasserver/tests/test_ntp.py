@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.ntp`."""
 
-
 from netaddr import IPSet
 
 from maasserver.models.config import Config

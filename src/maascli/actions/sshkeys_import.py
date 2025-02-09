@@ -3,7 +3,6 @@
 
 """MAAS SSH Keys Import Action."""
 
-
 import re
 
 from maascli.api import Action
@@ -25,7 +24,7 @@ class SSHKeysImportAction(Action):
         When `string` is of the form ``lp:user-id`` or ``gh:user-id``,
         this returns a 2-tuple ``sshkeys, string``.
         """
-        parts = re.split(r"(:)", string, 1)
+        parts = re.split(r"(:)", string, 1)  # noqa: B034
         if len(parts) == 3 or string:
             return "keysource", string
         else:

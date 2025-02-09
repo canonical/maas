@@ -3,7 +3,6 @@
 
 """Tests for `maastesting.httpd`."""
 
-
 from contextlib import closing
 import gzip
 from io import BytesIO

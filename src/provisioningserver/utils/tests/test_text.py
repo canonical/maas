@@ -3,7 +3,6 @@
 
 """Tests for text processing utilities."""
 
-
 from itertools import repeat
 import string
 

@@ -100,18 +100,18 @@ class Command(BaseCommand):
                 options=decode_opts,
             )
         except ExpiredSignatureError:
-            raise CommandError("Enrolment token is expired.")
+            raise CommandError("Enrolment token is expired.")  # noqa: B904
         except JOSEError:
-            raise CommandError("Invalid enrolment token.")
+            raise CommandError("Invalid enrolment token.")  # noqa: B904
         # validate the yaml config
         if config:
             try:
                 cfg = yaml.safe_load(config)
                 validate(cfg, self.CFG_SCHEMA)
             except ValidationError as e:
-                raise CommandError(f"Invalid config file: {e.message}")
+                raise CommandError(f"Invalid config file: {e.message}")  # noqa: B904
             except yaml.error.MarkedYAMLError as e:
-                raise CommandError(
+                raise CommandError(  # noqa: B904
                     f"Invalid config file: {e.problem}: line {e.problem_mark.line}, column: {e.problem_mark.column}"
                 )
         base_url = decoded["service-url"]

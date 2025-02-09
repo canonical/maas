@@ -3,7 +3,6 @@
 
 """User management for nodes' access to the metadata service."""
 
-
 from django.contrib.auth.models import User
 
 user_name = "maas-init-node"

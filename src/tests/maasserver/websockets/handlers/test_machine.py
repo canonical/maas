@@ -82,12 +82,12 @@ class TestMachineHandler:
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         expected_query_count = 4
-        assert (
-            queries_one == expected_query_count
-        ), "Number of queries has changed; make sure this is expected."
-        assert (
-            queries_total == expected_query_count
-        ), "Number of queries has changed; make sure this is expected."
+        assert queries_one == expected_query_count, (
+            "Number of queries has changed; make sure this is expected."
+        )
+        assert queries_total == expected_query_count, (
+            "Number of queries has changed; make sure this is expected."
+        )
 
     # Prevent RBAC from making a query.
     @pytest.mark.usefixtures("force_rbac_off")
@@ -122,12 +122,12 @@ class TestMachineHandler:
         # and slowing down the client waiting for the response.
         expected_query_count = 5
 
-        assert (
-            queries_one == expected_query_count
-        ), "Number of queries has changed; make sure this is expected."
-        assert (
-            queries_total == expected_query_count
-        ), "Number of queries has changed; make sure this is expected."
+        assert queries_one == expected_query_count, (
+            "Number of queries has changed; make sure this is expected."
+        )
+        assert queries_total == expected_query_count, (
+            "Number of queries has changed; make sure this is expected."
+        )
 
     def test_list_ids_num_queries_is_the_expected_number_with_rbac(
         self, enable_rbac, mocker
@@ -176,12 +176,12 @@ class TestMachineHandler:
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         expected_query_count = 4
-        assert (
-            queries_one == expected_query_count
-        ), "Number of queries has changed; make sure this is expected."
-        assert (
-            queries_total == expected_query_count
-        ), "Number of queries has changed; make sure this is expected."
+        assert queries_one == expected_query_count, (
+            "Number of queries has changed; make sure this is expected."
+        )
+        assert queries_total == expected_query_count, (
+            "Number of queries has changed; make sure this is expected."
+        )
 
     def test_cache_clears_on_reload(self, mocker):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")

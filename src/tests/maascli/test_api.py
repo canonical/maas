@@ -586,18 +586,15 @@ class TestActionHelp(MAASTestCase):
         option_help = factory.make_name("help")
         parser = ArgumentParser(add_help=False)
         parser.add_argument(long_option, short_option, help=option_help)
-        expected_text = (
-            dedent(
-                """\
+        expected_text = dedent(
+            """\
 
 
             Common command-line options:
                 %s
             \t%s
             """
-            )
-            % (", ".join([long_option, short_option]), option_help)
-        )
+        ) % (", ".join([long_option, short_option]), option_help)
         self.assertEqual(
             expected_text.rstrip(),
             "\n".join(api.ActionHelp.compose_optional_args(parser)),

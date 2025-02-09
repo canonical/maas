@@ -3,9 +3,8 @@
 
 """Tests for the Discovery model."""
 
-from maasserver.models import Discovery
+from maasserver.models import Discovery, MDNS, Neighbour, RDNS
 from maasserver.models import discovery as discovery_module
-from maasserver.models import MDNS, Neighbour, RDNS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

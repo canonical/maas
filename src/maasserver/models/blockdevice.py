@@ -3,7 +3,6 @@
 
 """Model for a nodes block device."""
 
-
 from collections.abc import Iterable
 from contextlib import suppress
 import re

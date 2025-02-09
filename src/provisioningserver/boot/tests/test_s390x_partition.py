@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.boot.s390x`."""
 
-
 import random
 
 from maastesting.factory import factory

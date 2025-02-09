@@ -355,7 +355,7 @@ class ConfigurationDatabase:
     def __getitem__(self, name):
         with self.cursor() as cursor:
             data = cursor.execute(
-                "SELECT data FROM configuration" " WHERE name = ?", (name,)
+                "SELECT data FROM configuration WHERE name = ?", (name,)
             ).fetchone()
         if data is None:
             raise KeyError(name)
@@ -377,7 +377,7 @@ class ConfigurationDatabase:
         if self.mutable:
             with self.cursor() as cursor:
                 cursor.execute(
-                    "DELETE FROM configuration" " WHERE name = ?", (name,)
+                    "DELETE FROM configuration WHERE name = ?", (name,)
                 )
         else:
             raise ConfigurationImmutable(f"{self}: Cannot set `{name}'.")

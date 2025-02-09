@@ -344,4 +344,4 @@ def power_state_virsh(poweraddr, machine, password=None):
     try:
         return VM_STATE_TO_POWER_STATE[state]
     except KeyError:
-        raise VirshError("Unknown state: %s" % state)
+        raise VirshError("Unknown state: %s" % state)  # noqa: B904

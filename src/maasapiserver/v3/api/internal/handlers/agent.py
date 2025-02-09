@@ -24,9 +24,8 @@ class AgentHandler(Handler):
         system_id: str,
         service_name: str,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
-
         tokens = await services.agents.get_service_configuration(
             system_id, service_name
         )

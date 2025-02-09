@@ -3,7 +3,6 @@
 
 """Django command: Manage a user's API keys."""
 
-
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.http import Http404
@@ -71,34 +70,34 @@ class Command(BaseCommand):
         try:
             creds_tuple = convert_string_to_tuple(key_to_delete)
         except ValueError as e:
-            raise CommandError(e)
+            raise CommandError(e)  # noqa: B904
         _, token_key, _ = creds_tuple
         try:
             user.userprofile.delete_authorisation_token(token_key)
         except Http404:
-            raise CommandError("No matching api key found.")
+            raise CommandError("No matching api key found.")  # noqa: B904
 
     def _update_token(self, user, key_to_update, consumer_name):
         try:
             creds_tuple = convert_string_to_tuple(key_to_update)
         except ValueError as e:
-            raise CommandError(e)
+            raise CommandError(e)  # noqa: B904
         _, token_key, _ = creds_tuple
         try:
             user.userprofile.modify_consumer_name(token_key, consumer_name)
         except Http404:
-            raise CommandError("No matching api key found.")
+            raise CommandError("No matching api key found.")  # noqa: B904
 
     def handle(self, *args, **options):
-        username = options.get("username", None)
+        username = options.get("username")
         if username is None:
             raise CommandError("You must provide a username with --username.")
 
         generate = options.get("generate")
-        key_to_delete = options.get("delete", None)
-        key_to_update = options.get("update", None)
-        consumer_name = options.get("api_key_name", None)
-        self.display_names = options.get("with_names", None)
+        key_to_delete = options.get("delete")
+        key_to_update = options.get("update")
+        consumer_name = options.get("api_key_name")
+        self.display_names = options.get("with_names")
 
         if generate and key_to_delete is not None:
             raise CommandError("Specify one of --generate or --delete.")

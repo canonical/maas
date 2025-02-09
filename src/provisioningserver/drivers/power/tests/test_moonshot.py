@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
 
-
 from unittest.mock import call
 
 from maastesting.factory import factory
@@ -117,7 +116,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
             PowerActionError,
             moonshot_driver._issue_ipmitool_command,
             "status",
-            **context
+            **context,
         )
 
     def test_power_on_calls__issue_ipmitool_command(self):

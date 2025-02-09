@@ -587,7 +587,7 @@ def retry_on_retryable_failure(func, reset=noop):
                 try:
                     return func(*args, **kwargs)
                 except RetryTransaction:
-                    raise TooManyRetries(
+                    raise TooManyRetries(  # noqa: B904
                         "This transaction has already been attempted "
                         "multiple times; giving up."
                     )
@@ -1041,7 +1041,7 @@ def get_model_object_name(queryset):
     """
     if hasattr(queryset, "model"):
         if hasattr(queryset.model, "_meta"):
-            metadata = getattr(queryset.model, "_meta")
+            metadata = getattr(queryset.model, "_meta")  # noqa: B009
             if hasattr(metadata, "object_name"):
                 return metadata.object_name
     return None
@@ -1252,7 +1252,7 @@ class MAASQueriesMixin:
             vid = parse_integer(item)
         if vid < 0 or vid >= 0xFFF:
             raise ValidationError(
-                "VLAN tag (VID) out of range " "(0-4094; 0 for untagged.)"
+                "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"
             )
         current_q = op(current_q, Q(vlan__vid=vid))
         return current_q
@@ -1316,7 +1316,7 @@ class MAASQueriesMixin:
             if object is None:
                 raise Http404("No %s matches the given query." % object_name)
         except self.model.MultipleObjectsReturned:
-            raise MAASAPIForbidden(
+            raise MAASAPIForbidden(  # noqa: B904
                 "Too many %s objects match the given query." % object_name
             )
         return object

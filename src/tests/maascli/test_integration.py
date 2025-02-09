@@ -3,7 +3,6 @@
 
 """Integration-test the `maascli` command."""
 
-
 import os.path
 import random
 from subprocess import CalledProcessError, check_output, STDOUT

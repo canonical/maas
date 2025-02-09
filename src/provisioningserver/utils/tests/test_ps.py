@@ -3,7 +3,6 @@
 
 """Tests for process helpers."""
 
-
 import os
 import random
 from textwrap import dedent

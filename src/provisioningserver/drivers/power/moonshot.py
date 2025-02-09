@@ -3,7 +3,6 @@
 
 """Moonshot IPMI Power Driver."""
 
-
 import re
 
 from provisioningserver.drivers import (
@@ -58,7 +57,7 @@ class MoonshotIPMIPowerDriver(PowerDriver):
         power_user=None,
         power_pass=None,
         power_hwaddress=None,
-        **extra
+        **extra,
     ):
         """Issue ipmitool command for HP Moonshot cartridge."""
         command = (
@@ -82,7 +81,7 @@ class MoonshotIPMIPowerDriver(PowerDriver):
             stdout = call_and_check(command, env=get_env_with_locale())
             stdout = stdout.decode("utf-8")
         except ExternalProcessError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "Failed to execute %s for cartridge %s at %s: %s"
                 % (
                     command,

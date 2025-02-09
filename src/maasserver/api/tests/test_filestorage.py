@@ -3,7 +3,6 @@
 
 """Tests for file-storage API."""
 
-
 from base64 import b64decode
 import http.client
 

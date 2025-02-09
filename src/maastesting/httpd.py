@@ -3,7 +3,6 @@
 
 """HTTP server fixture."""
 
-
 import gzip
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler

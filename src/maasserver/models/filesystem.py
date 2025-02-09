@@ -3,7 +3,6 @@
 
 """Model for a filesystem on a partition or a block device."""
 
-
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError

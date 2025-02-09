@@ -3,7 +3,6 @@
 
 """Model for a nodes virtual block device."""
 
-
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError

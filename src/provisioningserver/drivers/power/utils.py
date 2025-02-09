@@ -3,7 +3,6 @@
 
 """Helpers for MAAS power drivers."""
 
-
 from twisted.internet._sslverify import (
     ClientTLSOptions,
     OpenSSLCertificateOptions,

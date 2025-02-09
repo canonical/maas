@@ -3,7 +3,6 @@
 
 """Preseed generation for curtin storage."""
 
-
 from operator import attrgetter
 
 from django.db.models import F, Q, Sum
@@ -409,8 +408,9 @@ class CurtinStorageGenerator:
                 previous_partitions = Partition.objects.filter(
                     id__lt=partition.id, partition_table=partition_table
                 )
-                extended_size = extended_size - (
-                    previous_partitions.aggregate(Sum("size"))["size__sum"]
+                extended_size = (
+                    extended_size
+                    - (previous_partitions.aggregate(Sum("size"))["size__sum"])
                 )
                 # Curtin adds 1MiB between each logical partition inside the
                 # extended partition. It incorrectly adds onto the size

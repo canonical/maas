@@ -3,7 +3,6 @@
 
 """Tests for :class:`FakeMethod`."""
 
-
 from maastesting.fakemethod import FakeMethod, MultiFakeMethod
 from maastesting.testcase import MAASTestCase
 

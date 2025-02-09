@@ -341,7 +341,7 @@ def get_failed_status(status):
 
     If no corresponding failed status exists, return None.
     """
-    return NODE_FAILURE_STATUS_TRANSITIONS.get(status, None)
+    return NODE_FAILURE_STATUS_TRANSITIONS.get(status)
 
 
 def is_failed_status(status):

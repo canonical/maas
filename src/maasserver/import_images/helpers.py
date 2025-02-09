@@ -3,7 +3,6 @@
 
 """Miscellaneous small definitions in support of boot-resource import."""
 
-
 from collections import namedtuple
 import functools
 

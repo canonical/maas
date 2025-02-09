@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.rackdservices.external`."""
 
-
 import random
 from unittest.mock import Mock
 

@@ -11,9 +11,7 @@ from pathlib import Path
 def get_path_env(env):
     """Return ``env`` if set, else "/"."""
     path = getenv(env)
-    if path is None:
-        return "/"
-    elif len(path) == 0:
+    if path is None or len(path) == 0:
         return "/"
     else:
         return path

@@ -3,7 +3,6 @@
 
 """Pod RPC functions."""
 
-
 import json
 
 from twisted.internet.defer import Deferred, ensureDeferred, NotACoroutineError
@@ -77,7 +76,7 @@ def discover_pod(pod_type, context, pod_id=None, name=None):
     try:
         d = ensureDeferred(pod_driver.discover(pod_id, context))
     except NotACoroutineError:
-        raise PodActionFail(
+        raise PodActionFail(  # noqa: B904
             "bad pod driver '%s'; 'discover' did not return Deferred."
             % pod_type
         )
@@ -169,7 +168,7 @@ def send_pod_commissioning_results(
     try:
         d = ensureDeferred(pod_driver.get_commissioning_data(pod_id, context))
     except NotACoroutineError:
-        raise PodActionFail(
+        raise PodActionFail(  # noqa: B904
             f"bad pod driver '{pod_type}'; 'get_commissioning_data' did not return Deferred."
         )
 
@@ -201,7 +200,7 @@ def send_pod_commissioning_results(
                     error=f"Finished {filename}: 0",
                 )
             except SignalException as e:
-                raise PodActionFail(
+                raise PodActionFail(  # noqa: B904
                     f"Unable to send Pod commissioning information for {name}({system_id}): {e}"
                 )
 

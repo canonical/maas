@@ -3,7 +3,6 @@
 
 """Interfaces for the RPC implementation."""
 
-
 from zope import interface
 
 

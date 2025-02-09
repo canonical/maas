@@ -3,7 +3,6 @@
 
 """PowerNV Boot Method"""
 
-
 import re
 
 from tftp.backend import FilesystemReader
@@ -69,7 +68,6 @@ def format_bootif(mac):
 
 
 class PowerNVBootMethod(BootMethod, PowerNvBootMetadata):
-
     def get_params(self, backend, path):
         """Gets the matching parameters from the requested path."""
         match = re_config_file.match(path)

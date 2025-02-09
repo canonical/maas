@@ -36,7 +36,7 @@ async def create_test_session(
     fixture: Fixture,
     user_id: int,
     session_id: str = "a-b-c",
-    expire_date: datetime = utcnow() + timedelta(days=1),
+    expire_date: datetime = utcnow() + timedelta(days=1),  # noqa: B008
 ) -> None:
     signer = signing.TimestampSigner(
         key="<UNUSED>",
@@ -118,7 +118,7 @@ async def create_test_user_sshkey(
     user_id: int,
     protocol: SshKeysProtocolType | None = None,
     auth_id: str | None = None,
-    **extra_details: Any
+    **extra_details: Any,
 ) -> SshKey:
     now = utcnow()
     ssh_key = {

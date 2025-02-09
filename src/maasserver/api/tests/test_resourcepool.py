@@ -3,7 +3,6 @@
 
 """Tests for resource pool API."""
 
-
 import http.client
 import json
 

@@ -3,7 +3,6 @@
 
 """Respond to interface changes."""
 
-
 from django.db.models import Count
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 

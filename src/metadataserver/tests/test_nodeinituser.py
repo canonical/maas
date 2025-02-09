@@ -3,7 +3,6 @@
 
 """Model tests for metadata server."""
 
-
 from django.contrib.auth.models import User
 
 from maasserver.models import UserProfile

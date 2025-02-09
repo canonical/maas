@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.raritan`."""
 
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import PowerActionError

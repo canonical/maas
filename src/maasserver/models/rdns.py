@@ -3,7 +3,6 @@
 
 """Model definition for observed reverse-DNS entries."""
 
-
 from typing import List
 
 from django.contrib.postgres.fields import ArrayField

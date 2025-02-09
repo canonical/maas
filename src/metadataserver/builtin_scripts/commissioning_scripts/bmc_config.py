@@ -114,7 +114,7 @@ class BMCConfig(metaclass=ABCMeta):
     username = None
     password = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # noqa: B027
         pass
 
     @abstractmethod
@@ -142,7 +142,7 @@ class BMCConfig(metaclass=ABCMeta):
                 % self
             )
 
-    def configure(self):
+    def configure(self):  # noqa: B027
         """Configure the BMC for use."""
         pass
 
@@ -722,7 +722,7 @@ class HPMoonshot(BMCConfig):
                 "-t",
                 "0x20",
                 "-b",
-                ",0" "-m",
+                ",0-m",
                 local_address,
                 "raw",
                 "0x2c",
@@ -1410,7 +1410,7 @@ def get_network_interface(machine_resources, vendor_id, product_id):
                 address_type = f"{device_type}_address"
                 # pci_address holds address as 0000:0001:00.0
                 # but usb_address is a combination of bus_address:device_address
-                address_value = f'{":".join(f"{device[address]}" for address in addresses)}'
+                address_value = f"{':'.join(f'{device[address]}' for address in addresses)}"
                 if card.get(address_type, "") == address_value:
                     return card["ports"][0]["id"]
 

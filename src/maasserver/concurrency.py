@@ -9,7 +9,6 @@ Twisted concurrency primative, like `DeferredLock` or `DeferredSemaphore`.
 
 """
 
-
 from twisted.internet.defer import DeferredSemaphore
 
 #

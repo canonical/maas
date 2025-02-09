@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.threads`."""
 
-
 import random
 from unittest.mock import sentinel
 

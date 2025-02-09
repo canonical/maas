@@ -3,7 +3,6 @@
 
 """Test executors for MAAS."""
 
-
 import os
 import sys
 import threading

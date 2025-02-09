@@ -3,7 +3,6 @@
 
 """Test model for testing BinaryField."""
 
-
 from django.db.models import Model
 
 from metadataserver.fields import BinaryField

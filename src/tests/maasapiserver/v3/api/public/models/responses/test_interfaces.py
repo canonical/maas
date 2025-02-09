@@ -23,7 +23,6 @@ link = Link(
 
 class TestLinkResponse:
     def test_to_respone(self) -> None:
-
         response = LinkResponse.from_model(link)
         assert response.id == link.id
         assert response.ip_address == link.ip_address

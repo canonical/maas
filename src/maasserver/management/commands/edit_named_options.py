@@ -6,7 +6,6 @@ the named.conf.options.inside.maas file, which contains the 'forwarders'
 setting.
 """
 
-
 from collections import OrderedDict
 import sys
 from textwrap import dedent

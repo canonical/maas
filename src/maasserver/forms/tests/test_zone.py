@@ -3,7 +3,6 @@
 
 """Tests for `ZoneForm`."""
 
-
 from maasserver.forms import ZoneForm
 from maasserver.models.defaultresource import DefaultResource
 from maasserver.models.zone import Zone

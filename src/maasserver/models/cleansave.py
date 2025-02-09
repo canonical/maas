@@ -53,7 +53,7 @@ class CleanSave:
                 {"validate_constraints": False}
                 if HAS_VALIDATE_CONSTRAINTS
                 else {}
-            )
+            ),
         )
         self.validate_unique(exclude=exclude_unique_fields)
         return super().save(*args, **kwargs)

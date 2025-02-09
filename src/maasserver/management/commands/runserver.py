@@ -3,7 +3,6 @@
 
 """Django command: run the server.  Overrides the default implementation."""
 
-
 from socketserver import ThreadingMixIn
 
 from django.core.management.commands.runserver import BaseRunserverCommand
@@ -36,7 +35,7 @@ class Command(BaseRunserverCommand):
                 pass
 
             # Monkey patch basehttp.WSGIServer.
-            setattr(basehttp, "WSGIServer", ThreadedWSGIServer)
+            setattr(basehttp, "WSGIServer", ThreadedWSGIServer)  # noqa: B010
 
         start_up()
         return super().run(*args, **options)

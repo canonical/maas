@@ -3,7 +3,6 @@
 
 """Query power status on node state changes."""
 
-
 from datetime import timedelta
 
 from twisted.internet import reactor

@@ -3,7 +3,6 @@
 
 """Backend for Macaroon-based authentication."""
 
-
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from functools import partial
@@ -391,7 +390,7 @@ class UserValidationFailed(Exception):
 def validate_user_external_auth(
     user,
     auth_info,
-    now=partial(datetime.now, timezone.utc),
+    now=partial(datetime.now, timezone.utc),  # noqa: B008
     candid_client=None,
     rbac_client=None,
     *,
@@ -451,7 +450,7 @@ def _validate_user_candid(auth_info, username, client=None):
     try:
         groups = client.get_groups(username)
     except APIError:
-        raise UserValidationFailed()
+        raise UserValidationFailed()  # noqa: B904
 
     if auth_info.admin_group:
         superuser = auth_info.admin_group in groups
@@ -484,7 +483,7 @@ def _validate_user_rbac(auth_info, username, client=None):
         )
         user_details = client.get_user_details(username)
     except APIError:
-        raise UserValidationFailed()
+        raise UserValidationFailed()  # noqa: B904
 
     return (is_admin or access_to_pools, is_admin, user_details)
 

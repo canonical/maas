@@ -27,7 +27,6 @@ class SSLKeyClauseFactory(ClauseFactory):
 
 
 class SSLKeysRepository(BaseRepository[SSLKey]):
-
     def get_repository_table(self) -> Table:
         return SSLKeyTable
 

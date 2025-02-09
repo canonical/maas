@@ -3,7 +3,6 @@
 
 """Tests for IP addresses API."""
 
-
 import http.client
 
 from django.conf import settings
@@ -222,7 +221,7 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
         parsed_result = json_load_bytes(response.content)
         expected = [
             addr.ip
-            for addr in sorted(addrs, key=lambda addr: getattr(addr, "id"))
+            for addr in sorted(addrs, key=lambda addr: getattr(addr, "id"))  # noqa: B009
         ]
         observed = [result["ip"] for result in parsed_result]
         self.assertEqual(expected, observed)

@@ -3,7 +3,6 @@
 
 """Cluster-side evaluation of tags."""
 
-
 from collections import OrderedDict
 
 from lxml import etree
@@ -23,7 +22,7 @@ DEFAULT_BATCH_SIZE = 100
 
 
 def _details_prepare_merge(
-    details: dict[str, bytes]
+    details: dict[str, bytes],
 ) -> tuple[dict[str, bytes], etree._Element]:
     # We may mutate the details later, so copy now to prevent
     # affecting the caller's data.

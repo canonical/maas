@@ -173,7 +173,7 @@ class SecretManager:
             try:
                 model_secret = MODEL_SECRETS[type(obj)]
             except KeyError:
-                raise UnknownSecret(name, obj=obj)
+                raise UnknownSecret(name, obj=obj)  # noqa: B904
             return model_secret.get_secret_path(name, obj)
 
         if name not in GLOBAL_SECRETS:
@@ -184,10 +184,10 @@ class SecretManager:
         try:
             return Secret.objects.get(path=path).value
         except Secret.DoesNotExist:
-            raise SecretNotFound(path)
+            raise SecretNotFound(path)  # noqa: B904
 
     def _get_secret_from_vault(self, path: str):
         try:
             return self._vault_client.get(path)
         except UnknownSecretPath:
-            raise SecretNotFound(path)
+            raise SecretNotFound(path)  # noqa: B904

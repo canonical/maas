@@ -309,7 +309,7 @@ class IPv4CIDRField(CIDRField):
             try:
                 cidr = IPNetwork(value)
             except AddrFormatError:
-                raise ValidationError(
+                raise ValidationError(  # noqa: B904
                     "Invalid network: %(cidr)s", params={"cidr": value}
                 )
             if cidr.cidr.version != 4:
@@ -338,7 +338,7 @@ class IPListFormField(forms.CharField):
                 try:
                     GenericIPAddressField().clean(ip, model_instance=None)
                 except ValidationError:
-                    raise ValidationError(
+                    raise ValidationError(  # noqa: B904
                         "Invalid IP address: %s; provide a list of "
                         "space-separated IP addresses" % ip
                     )
@@ -360,7 +360,7 @@ class IPPortListFormField(IPListFormField):
             ]
             result = []
             for ip_port in ip_ports:
-                if "." in ip_port or ("[" == ip_port[0] and "]:" in ip_port):
+                if "." in ip_port or (ip_port[0] == "[" and "]:" in ip_port):
                     sock_addr = urllib.parse.urlsplit("//" + ip_port)
                     ip = sock_addr.hostname
                     port = (
@@ -375,7 +375,7 @@ class IPPortListFormField(IPListFormField):
                     GenericIPAddressField().clean(ip, model_instance=None)
                     IntegerField().clean(port, model_instance=None)
                 except ValidationError:
-                    raise ValidationError(
+                    raise ValidationError(  # noqa: B904
                         f"Invalid IP and port combination: {ip_port};"
                         f"please provide a list of space-separated IP addresses {'and port' if not self._default_port else ''}"
                     )
@@ -423,7 +423,7 @@ class HostListFormField(forms.CharField):
         except AddrFormatError as error:
             message = str(error)  # netaddr has good messages.
             message = message[:1].upper() + message[1:] + "."
-            raise ValidationError(message)
+            raise ValidationError(message)  # noqa: B904
         else:
             return str(addr)
 
@@ -431,7 +431,7 @@ class HostListFormField(forms.CharField):
         try:
             validate_hostname(host)
         except ValidationError as error:
-            raise ValidationError("Invalid hostname: " + error.message)
+            raise ValidationError("Invalid hostname: " + error.message)  # noqa: B904
         else:
             return host
 
@@ -478,7 +478,7 @@ class SubnetListFormField(forms.CharField):
         except ValueError:
             return
         except AddrFormatError:
-            raise ValidationError("Invalid IP address: %s." % value)
+            raise ValidationError("Invalid IP address: %s." % value)  # noqa: B904
         else:
             return str(addr)
 
@@ -486,7 +486,7 @@ class SubnetListFormField(forms.CharField):
         try:
             cidr = IPNetwork(value)
         except AddrFormatError:
-            raise ValidationError("Invalid network: %s." % value)
+            raise ValidationError("Invalid network: %s." % value)  # noqa: B904
         else:
             return str(cidr)
 
@@ -494,7 +494,7 @@ class SubnetListFormField(forms.CharField):
         try:
             validate_hostname(host)
         except ValidationError as error:
-            raise ValidationError("Invalid hostname: " + error.message)
+            raise ValidationError("Invalid hostname: " + error.message)  # noqa: B904
         else:
             return host
 
@@ -533,7 +533,7 @@ class SpecifierOrModelChoiceField(forms.ModelChoiceField):
                         # Re-raising this as a ValidationError prevents the API
                         # from returning an internal server error rather than
                         # a bad request.
-                        raise ValidationError("None found with id=%s." % value)
+                        raise ValidationError("None found with id=%s." % value)  # noqa: B904
             raise e
 
 
@@ -572,7 +572,7 @@ class DomainNameField(CharField):
 
 class NodeChoiceField(forms.ModelChoiceField):
     def __init__(self, queryset, *args, **kwargs):
-        super().__init__(queryset=queryset.distinct(), *args, **kwargs)
+        super().__init__(queryset=queryset.distinct(), *args, **kwargs)  # noqa: B026
 
     def clean(self, value):
         if not value:
@@ -591,7 +591,7 @@ class NodeChoiceField(forms.ModelChoiceField):
         try:
             return self.queryset.get(Q(system_id=value) | Q(hostname=value))
         except Node.DoesNotExist:
-            raise ValidationError(
+            raise ValidationError(  # noqa: B904
                 "Select a valid choice. "
                 "%s is not one of the available choices." % value
             )
@@ -603,7 +603,7 @@ class NodeChoiceField(forms.ModelChoiceField):
         try:
             return self.queryset.get(Q(system_id=value) | Q(hostname=value))
         except Node.DoesNotExist:
-            raise ValidationError(
+            raise ValidationError(  # noqa: B904
                 "Select a valid choice. "
                 "%s is not one of the available choices." % value
             )
@@ -611,7 +611,7 @@ class NodeChoiceField(forms.ModelChoiceField):
 
 class VersionedTextFileField(forms.ModelChoiceField):
     def __init__(self, *args, **kwargs):
-        super().__init__(queryset=None, *args, **kwargs)
+        super().__init__(queryset=None, *args, **kwargs)  # noqa: B026
 
     def clean(self, value):
         if self.initial is None:
@@ -679,7 +679,7 @@ class SystemdIntervalField(forms.CharField):
         try:
             parse_systemd_interval(value)
         except ValueError as e:
-            raise ValidationError(
+            raise ValidationError(  # noqa: B904
                 f"{e}: {value}, only 'h|hr|hour|hours, m|min|minute|minutes, s|sec|second|seconds' are valid units"
             )
         else:
@@ -727,7 +727,7 @@ class IPWithOptionalPort(forms.CharField):
                 raise ValueError()
             return value
         except (ValueError, ValidationError):
-            raise ValidationError(
+            raise ValidationError(  # noqa: B904
                 message="Invalid IPv4/IPv6 address with optional port."
             )
 

@@ -3,7 +3,6 @@
 
 """Tests for Fabric API."""
 
-
 import http.client
 import random
 
@@ -128,7 +127,7 @@ class TestFabricAPI(APITestCase.ForUser):
         class_type = factory.make_name("class")
         fabric = factory.make_Fabric(class_type=class_type)
         for vid in range(1, 4):
-            factory.make_VLAN(fabric=fabric, vid=vid).id
+            factory.make_VLAN(fabric=fabric, vid=vid).id  # noqa: B018
         uri = get_fabric_uri(fabric)
         response = self.client.get(uri)
 

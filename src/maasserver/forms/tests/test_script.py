@@ -3,7 +3,6 @@
 
 """Tests for Script form."""
 
-
 from datetime import timedelta
 import json
 import random
@@ -251,7 +250,7 @@ class TestScriptForm(MAASServerTestCase):
 
     def test_update_prohibits_most_field_updates_on_default_script(self):
         script = factory.make_Script(default=True)
-        for name, field in ScriptForm.base_fields.items():
+        for name, field in ScriptForm.base_fields.items():  # noqa: B007
             if name in ["tags", "timeout"]:
                 continue
             elif name == "script_type":
@@ -280,7 +279,7 @@ class TestScriptForm(MAASServerTestCase):
 
     def test_update_edit_default_allows_update_of_all_fields(self):
         script = factory.make_Script(default=True)
-        for name, field in ScriptForm.base_fields.items():
+        for name, field in ScriptForm.base_fields.items():  # noqa: B007
             if name == "script_type":
                 value = factory.pick_choice(SCRIPT_TYPE_CHOICES)
             elif name == "hardware_type":
@@ -993,7 +992,8 @@ class TestScriptForm(MAASServerTestCase):
     def test_allows_dictionary_of_results(self):
         results = {
             factory.make_name("result_key"): {
-                "title": factory.make_name("result_title") for _ in range(3)
+                "title": factory.make_name("result_title")  # noqa: B035
+                for _ in range(3)  # noqa: B035
             }
             for _ in range(3)
         }

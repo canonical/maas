@@ -3,7 +3,6 @@
 
 """Load all power drivers."""
 
-
 from jsonschema import validate
 
 from provisioningserver.drivers.pod.registry import PodDriverRegistry

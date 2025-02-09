@@ -32,7 +32,7 @@ class TestConfigurationsRepository:
         )
         configuration = await configuration_repository.get("test")
         assert value == configuration.value
-        assert "test" == configuration.name
+        assert configuration.name == "test"
 
     async def test_unexisting_get(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -40,4 +40,4 @@ class TestConfigurationsRepository:
         configuration_repository = ConfigurationsRepository(
             Context(connection=db_connection)
         )
-        assert None == (await configuration_repository.get("whatever"))
+        assert (await configuration_repository.get("whatever")) is None

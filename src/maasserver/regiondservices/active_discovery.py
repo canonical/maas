@@ -143,8 +143,7 @@ class ActiveDiscoveryService(TimerService):
         current_time = self.getCurrentTimestamp()
         if (last_scan + interval) > current_time:
             raise _InvalidScanState(
-                "Another region controller is already scanning. "
-                "Skipping scan."
+                "Another region controller is already scanning. Skipping scan."
             )
         cidrs = Subnet.objects.get_cidr_list_for_periodic_active_scan()
         return cidrs

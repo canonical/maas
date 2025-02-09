@@ -3,7 +3,6 @@
 
 """Tests for XPath utilities."""
 
-
 from textwrap import dedent
 from unittest.mock import Mock
 

@@ -889,7 +889,7 @@ class MachineHandler(NodeHandler):
         try:
             vbd = node.virtualblockdevice_set.get(id=vmfs_datastore_id)
         except ObjectDoesNotExist:
-            raise HandlerDoesNotExistError(
+            raise HandlerDoesNotExistError(  # noqa: B904
                 f"VMFS datastore ({vmfs_datastore_id}) does not exist"
             )
         if not vbd.filesystem_group:
@@ -1088,12 +1088,12 @@ class MachineHandler(NodeHandler):
         try:
             node.set_storage_layout(storage_layout)
         except StorageLayoutMissingBootDiskError:
-            raise HandlerError(
+            raise HandlerError(  # noqa: B904
                 "Machine is missing a boot disk; no storage layout can be "
                 "applied."
             )
         except StorageLayoutError as e:
-            raise HandlerError(
+            raise HandlerError(  # noqa: B904
                 "Failed to configure storage layout '%s': %s"
                 % (storage_layout, str(e))
             )
@@ -1296,7 +1296,7 @@ class MachineHandler(NodeHandler):
         try:
             OwnerData.objects.set_owner_data(machine, owner_data)
         except ValueError as e:
-            raise HandlerValidationError(str(e))
+            raise HandlerValidationError(str(e))  # noqa: B904
         return OwnerData.objects.get_owner_data(machine)
 
     def count(self, params):

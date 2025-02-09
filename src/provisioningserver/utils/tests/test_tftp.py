@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.tftp``."""
 
-
 from twisted.python.context import call
 
 from maastesting.factory import factory

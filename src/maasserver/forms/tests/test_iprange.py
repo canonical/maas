@@ -3,7 +3,6 @@
 
 """Tests for IPRange forms."""
 
-
 from unittest.mock import Mock
 
 from maasserver.enum import IPRANGE_TYPE

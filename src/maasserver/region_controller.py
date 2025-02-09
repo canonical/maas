@@ -30,7 +30,6 @@ Vault migration restart:
     is restarted to make sure no regions will try to access secrets table.
 """
 
-
 import logging
 from operator import attrgetter
 

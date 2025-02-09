@@ -9,6 +9,7 @@ blocks which will tie MACs into a specific IP.  The IPs are separate
 from the dynamic range that the DHCP server itself allocates to unknown
 clients.
 """
+
 from collections import defaultdict, namedtuple
 from dataclasses import dataclass, field
 from queue import Empty, Queue
@@ -282,7 +283,7 @@ class StaticIPAddressManager(Manager):
                 ipaddress.save()
         except IntegrityError:
             # The address is already taken.
-            raise StaticIPAddressUnavailable(
+            raise StaticIPAddressUnavailable(  # noqa: B904
                 f"The IP address {requested_address.format()} is already in use."
             )
         else:
@@ -823,7 +824,8 @@ class StaticIPAddressManager(Manager):
         # All of the mappings that we got mean that we will only want to add
         # addresses for the boot interface (is_boot == True).
         iface_is_boot = defaultdict(
-            bool, {hostname: True for hostname in mapping.keys()}
+            bool,
+            {hostname: True for hostname in mapping.keys()},
         )
         assigned_ips = defaultdict(bool)
         cursor.execute(sql_query, query_parms)

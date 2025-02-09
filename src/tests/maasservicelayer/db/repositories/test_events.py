@@ -82,7 +82,6 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
     async def _setup_test_list(
         self, fixture: Fixture, event_type: EventType, num_objects: int
     ) -> list[Event]:
-
         created_events = [
             (
                 await create_test_event_entry(
@@ -167,7 +166,6 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
     async def test_list_filter(
         self, repository_instance: EventsRepository, fixture: Fixture
     ) -> None:
-
         bmc = await create_test_bmc(fixture)
         user = await create_test_user(fixture)
         created_machine = await create_test_machine(
@@ -230,7 +228,6 @@ class TestEventTypesRepository(RepositoryCommonTests[EventType]):
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[EventType]:
-
         created_types = [
             (await create_test_event_type_entry(fixture, name=i.value))
             for i in list(EventTypeEnum)[:num_objects]

@@ -14,7 +14,7 @@ async def create_test_dnsresource_entry(
     fixture: Fixture,
     domain: Domain,
     ip: dict[str, Any] | None = None,
-    **extra_details: dict[str, Any]
+    **extra_details: dict[str, Any],
 ) -> DNSResource:
     created_at = datetime.now(timezone.utc).astimezone()
     updated_at = datetime.now(timezone.utc).astimezone()

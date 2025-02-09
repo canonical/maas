@@ -3,7 +3,6 @@
 
 """The MAAS command-line interface."""
 
-
 import os
 import sys
 
@@ -43,7 +42,7 @@ def main(argv=sys.argv):
             # PyPI (which differs from argparse 1.1 in the standard library).
             sub_parser.error("too few arguments")
     except KeyboardInterrupt:
-        raise SystemExit(1)
+        raise SystemExit(1)  # noqa: B904
     except Exception as error:
         show = getattr(error, "always_show", False)
         if options.debug or show or verbose_errors:

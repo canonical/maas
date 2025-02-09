@@ -37,9 +37,9 @@ class TestRefresh(MAASTestCase):
         self.mock_running_in_snap = self.patch(refresh, "running_in_snap")
         self.mock_running_in_snap.return_value = True
         self.urlopen_calls = []
-        self.patch(maas_api_helper.urllib.request, "urlopen").side_effect = (
-            self._fake_urlopen
-        )
+        self.patch(
+            maas_api_helper.urllib.request, "urlopen"
+        ).side_effect = self._fake_urlopen
 
         self.tmpdir = self.useFixture(TempDirectory()).path
         self.patch(refresh, "SCRIPTS_BASE_PATH", self.tmpdir)
@@ -349,8 +349,9 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        with patch.dict("os.environ", {"SNAP": path}), patch.dict(
-            refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True
+        with (
+            patch.dict("os.environ", {"SNAP": path}),
+            patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True),
         ):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url

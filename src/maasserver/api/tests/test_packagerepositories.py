@@ -3,7 +3,6 @@
 
 """Tests for the Package Repositories API."""
 
-
 import http.client
 import json
 import random

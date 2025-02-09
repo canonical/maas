@@ -3,7 +3,6 @@
 
 """Django command: configure the authentication source."""
 
-
 from dataclasses import dataclass
 import json
 
@@ -56,11 +55,11 @@ def update_auth_details_from_agent_file(agent_file_name, auth_details):
         with open(agent_file_name) as fh:
             details = json.load(fh)
     except (FileNotFoundError, PermissionError) as error:
-        raise CommandError(str(error))
+        raise CommandError(str(error))  # noqa: B904
     try:
         agent_details = details.get("agents", []).pop(0)
     except IndexError:
-        raise CommandError("No agent users found in agent file")
+        raise CommandError("No agent users found in agent file")  # noqa: B904
     # update the passed auth details
     auth_details.url = agent_details.get("url", "")
     auth_details.user = agent_details.get("username", "")
@@ -95,10 +94,10 @@ def update_auth_details_from_rbac_registration(auth_details, service_name):
                 service = client.create_service(service_name)
             except APIError as error:
                 if error.status_code == 409:
-                    raise CommandError(
+                    raise CommandError(  # noqa: B904
                         "User not allowed to register this service"
                     )
-                raise CommandError(str(error))
+                raise CommandError(str(error))  # noqa: B904
     _register_service(client, service, auth_details)
     print('Service "{}" registered'.format(service["name"]))
 
@@ -125,7 +124,7 @@ def _pick_service(services):
     try:
         service_name = services_list[int(idx) - 1][0]
     except (ValueError, IndexError):
-        raise CommandError("Invalid index")
+        raise CommandError("Invalid index")  # noqa: B904
     return services[service_name]
 
 

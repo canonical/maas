@@ -91,7 +91,6 @@ class TestTagIsDefined(MAASServerTestCase):
 
 
 class TestTagPopulateNodesLater(MAASServerTestCase):
-
     def test_tag_is_populated_when_tag_is_defined(self):
         mock_reactor = self.patch(tag_module, "reactor")
         mock_reactor.callLater = Mock()

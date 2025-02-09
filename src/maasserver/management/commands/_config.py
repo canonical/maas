@@ -3,7 +3,6 @@
 
 """Django command: change region controller configuration settings."""
 
-
 import json
 import sys
 
@@ -210,7 +209,7 @@ class ResetCommand(LocalConfigCommand):
 
     def handle(self, *args, **options):
         with RegionConfiguration.open_for_update() as config:
-            for name, option in gen_configuration_options():
+            for name, option in gen_configuration_options():  # noqa: B007
                 if options.get(name):
                     delattr(config, name)
 
@@ -226,13 +225,13 @@ class SetCommand(LocalConfigCommand):
 
     def handle(self, *args, **options):
         with RegionConfiguration.open_for_update() as config:
-            for name, option in gen_configuration_options():
+            for name, option in gen_configuration_options():  # noqa: B007
                 value = options.get(name)
                 if value is not None:
                     try:
                         setattr(config, name, value)
                     except formencode.Invalid as error:
                         message = str(error).rstrip(".")
-                        raise CommandError(
+                        raise CommandError(  # noqa: B904
                             "{}: {}.".format(name.replace("_", "-"), message)
                         )

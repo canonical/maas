@@ -3,7 +3,6 @@
 
 """DLI Power Driver."""
 
-
 import re
 from time import sleep
 
@@ -60,7 +59,7 @@ class DLIPowerDriver(PowerDriver):
         power_user=None,
         power_pass=None,
         power_address=None,
-        **extra
+        **extra,
     ):
         """Power DLI outlet ON/OFF."""
         try:
@@ -78,7 +77,7 @@ class DLIPowerDriver(PowerDriver):
                 env=get_env_with_locale(),
             )
         except ExternalProcessError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "Failed to power %s outlet %s: %s"
                 % (power_change, outlet_id, e.output_as_unicode)
             )
@@ -89,7 +88,7 @@ class DLIPowerDriver(PowerDriver):
         power_user=None,
         power_pass=None,
         power_address=None,
-        **extra
+        **extra,
     ):
         """Query DLI outlet power state.
 
@@ -137,7 +136,7 @@ class DLIPowerDriver(PowerDriver):
                 else:
                     return "off"
         except ExternalProcessError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "Failed to power query outlet %s: %s"
                 % (outlet_id, e.output_as_unicode)
             )

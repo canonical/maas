@@ -102,7 +102,7 @@ class cmd_login(Command):
                     crypto.FILETYPE_PEM, cacerts.encode("utf-8")
                 )
             except crypto.Error:
-                raise CommandError("Invalid PEM material")
+                raise CommandError("Invalid PEM material")  # noqa: B904
 
             if not CERTS_DIR.exists():
                 CERTS_DIR.mkdir()
@@ -128,7 +128,7 @@ class cmd_login(Command):
                     options.insecure,
                 )
             except UnexpectedResponse as e:
-                raise SystemExit("%s" % e)
+                raise SystemExit("%s" % e)  # noqa: B904
             else:
                 if not valid_apikey:
                     raise SystemExit("The MAAS server rejected your API key.")

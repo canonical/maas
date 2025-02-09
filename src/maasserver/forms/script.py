@@ -3,7 +3,6 @@
 
 """Script form."""
 
-
 from datetime import timedelta
 import json
 from json import JSONDecodeError
@@ -147,7 +146,7 @@ class ScriptForm(ModelForm):
         if "script" in self.data:
             self._read_script()
 
-    def _validate_results(self, results={}):
+    def _validate_results(self, results={}):  # noqa: B006
         valid = True
         if isinstance(results, list):
             for result in results:

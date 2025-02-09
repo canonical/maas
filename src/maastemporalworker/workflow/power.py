@@ -89,7 +89,6 @@ class SetPowerStateParam:
 
 
 class PowerActivity(ActivityBase):
-
     @activity_defn_with_context(name=SET_POWER_STATE_ACTIVITY_NAME)
     async def set_power_state(self, params: SetPowerStateParam) -> None:
         async with self.start_transaction() as services:

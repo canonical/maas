@@ -3,7 +3,6 @@
 
 """Routable addresses."""
 
-
 from collections import defaultdict
 from textwrap import dedent
 from typing import Iterable, Mapping, Sequence, TypeVar

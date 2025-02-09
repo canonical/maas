@@ -3,7 +3,6 @@
 
 """API handlers: `SSHKey`."""
 
-
 import http.client
 
 from django.conf import settings
@@ -155,7 +154,7 @@ class SSHKeysHandler(OperationsHandler):
                     for sshkey in keysource
                 ]
             except (ImportSSHKeysError, RequestException) as e:
-                raise MAASAPIBadRequest(e.args[0])
+                raise MAASAPIBadRequest(e.args[0])  # noqa: B904
         else:
             raise MAASAPIBadRequest(
                 "Importing SSH keys failed. "

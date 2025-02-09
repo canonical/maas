@@ -3,7 +3,6 @@
 
 """Tests for the PodStoragePool model."""
 
-
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

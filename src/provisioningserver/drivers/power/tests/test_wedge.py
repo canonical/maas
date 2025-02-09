@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.wedge`."""
 
-
 from io import BytesIO
 from random import choice
 from socket import error as SOCKETError

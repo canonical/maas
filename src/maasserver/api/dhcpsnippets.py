@@ -3,7 +3,6 @@
 
 """API handlers: `DHCPSnippet`."""
 
-
 from email.utils import format_datetime
 
 from piston3.utils import rc
@@ -196,7 +195,7 @@ class DHCPSnippetHandler(OperationsHandler):
         try:
             revert_to = int(revert_to)
         except ValueError:
-            raise MAASAPIValidationError(
+            raise MAASAPIValidationError(  # noqa: B904
                 "%s is an invalid 'to' value" % revert_to
             )
 
@@ -220,7 +219,7 @@ class DHCPSnippetHandler(OperationsHandler):
             )
             return dhcp_snippet
         except ValueError as e:
-            raise MAASAPIValidationError(e.args[0])
+            raise MAASAPIValidationError(e.args[0])  # noqa: B904
 
 
 @deprecated(use=ReservedIpsHandler)

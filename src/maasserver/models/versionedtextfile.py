@@ -3,7 +3,6 @@
 
 """VersionedTextFile objects."""
 
-
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, TextField
 

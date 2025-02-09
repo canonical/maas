@@ -46,9 +46,9 @@ class EventsHandler(Handler):
     )
     async def list_events(
         self,
-        pagination_params: PaginationParams = Depends(),
-        filters: EventsFiltersParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: EventsFiltersParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> EventsListResponse:
         events = await services.events.list(
             page=pagination_params.page,

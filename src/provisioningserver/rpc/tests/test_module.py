@@ -3,7 +3,6 @@
 
 """Tests for the top-level cluster RPC API."""
 
-
 from maastesting.testcase import MAASTestCase
 import provisioningserver
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable

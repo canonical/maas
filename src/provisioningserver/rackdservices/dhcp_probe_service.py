@@ -3,7 +3,6 @@
 
 """DHCP probing service."""
 
-
 from datetime import timedelta
 
 from twisted.application.internet import TimerService
@@ -97,7 +96,7 @@ class DHCPProbeService(TimerService):
     @inlineCallbacks
     def _tryGetClient(self):
         client = None
-        for elapsed, remaining, wait in retries(15, 5, self.clock):
+        for elapsed, remaining, wait in retries(15, 5, self.clock):  # noqa: B007
             try:
                 client = yield self.client_service.getClientNow()
                 break

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.dbviews`."""
 
-
 from django.db import connection
 
 from maasserver.dbviews import _ALL_VIEWS, register_all_views
@@ -22,7 +21,7 @@ class TestDatabaseViews(MAASServerTestCase):
 
     def test_each_view_can_be_used(self):
         register_all_views()
-        for view_name, view_sql in _ALL_VIEWS.items():
+        for view_name, view_sql in _ALL_VIEWS.items():  # noqa: B007
             with connection.cursor() as cursor:
                 cursor.execute("SELECT * from %s;" % view_name)
 

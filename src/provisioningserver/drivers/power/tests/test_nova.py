@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.nova`."""
 
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import nova as nova_module

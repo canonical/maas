@@ -3,7 +3,6 @@
 
 """Views for VM hosts"""
 
-
 from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import get_object_or_404
 

@@ -86,7 +86,7 @@ def write_config(write_local, forwarders=None, port=None, promtail_port=None):
     try:
         content = template.substitute(context)
     except NameError as error:
-        raise SyslogConfigFail(*error.args)
+        raise SyslogConfigFail(*error.args)  # noqa: B904
 
     # Squid prefers ascii.
     content = content.encode("ascii")

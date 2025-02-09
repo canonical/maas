@@ -8,7 +8,6 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_sslkey(fixture: Fixture, **extra_details: Any) -> SSLKey:
-
     # Build a new test SSL key
     key = get_test_data_file("test_x509_0.pem")
 

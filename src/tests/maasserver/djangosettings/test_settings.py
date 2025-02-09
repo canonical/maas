@@ -3,7 +3,6 @@
 
 """Test the maas package."""
 
-
 import os
 import types
 from unittest.mock import MagicMock
@@ -87,9 +86,9 @@ class TestTimezoneSettings:
 @pytest.fixture
 def db_creds_vault_path(mocker):
     path = factory.make_name("uuid")
-    mocker.patch.object(settings, "get_db_creds_vault_path").return_value = (
-        path
-    )
+    mocker.patch.object(
+        settings, "get_db_creds_vault_path"
+    ).return_value = path
     yield path
 
 

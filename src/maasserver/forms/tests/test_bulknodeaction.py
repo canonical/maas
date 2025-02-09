@@ -3,7 +3,6 @@
 
 """Tests for `BulkNodeActionForm`."""
 
-
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled

@@ -3,7 +3,6 @@
 
 """The StaticRoute handler for the WebSocket connection."""
 
-
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
 from maasserver.websockets.base import HandlerPermissionError

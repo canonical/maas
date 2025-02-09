@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.node_result`"""
 
-
 import random
 from unittest.mock import sentinel
 

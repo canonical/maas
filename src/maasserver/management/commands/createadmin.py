@@ -48,7 +48,7 @@ def read_password(prompt: str):
             continue
         except KeyboardInterrupt:
             print()
-            raise SystemExit(1)
+            raise SystemExit(1)  # noqa: B904
         else:
             # The assumption is that, since Python 3 return a Unicode string
             # from input(), it has Done The Right Thing with respect to
@@ -141,10 +141,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        username = options.get("username", None)
-        password = options.get("password", None)
-        email = options.get("email", None)
-        ssh_import = options.get("ssh_import", None)
+        username = options.get("username")
+        password = options.get("password")
+        email = options.get("email")
+        ssh_import = options.get("ssh_import")
         prompt_ssh_import = False
         if ssh_import is None and (
             username is None or password is None or email is None
@@ -165,7 +165,7 @@ class Command(BaseCommand):
                     username, email=email, password=password
                 )
             except IntegrityError:
-                raise AlreadyExistingUser(
+                raise AlreadyExistingUser(  # noqa: B904
                     "A user with the email %s already exists." % email
                 )
 
@@ -180,6 +180,6 @@ class Command(BaseCommand):
                     ImportSSHKeysError,
                     ClientError,
                 ) as e:
-                    raise SSHKeysError(
+                    raise SSHKeysError(  # noqa: B904
                         "Importing SSH keys failed.\n%s" % e.args[0]
                     )

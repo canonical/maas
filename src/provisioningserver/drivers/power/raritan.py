@@ -6,7 +6,6 @@
 Support for managing Raritan PDU outlets via SNMP.
 """
 
-
 import re
 from time import sleep
 

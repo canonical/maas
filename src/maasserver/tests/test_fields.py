@@ -440,8 +440,7 @@ class TestHostListFormField(MAASTestCase):
         )
         self.assertEqual(
             error.message,
-            "Invalid hostname: Label cannot start or end with "
-            "hyphen: 'abc-'.",
+            "Invalid hostname: Label cannot start or end with hyphen: 'abc-'.",
         )
 
 
@@ -590,8 +589,7 @@ class TestSubnetListFormField(MAASTestCase):
         )
         self.assertEqual(
             error.message,
-            "Invalid hostname: Label cannot start or end with "
-            "hyphen: 'abc-'.",
+            "Invalid hostname: Label cannot start or end with hyphen: 'abc-'.",
         )
 
 

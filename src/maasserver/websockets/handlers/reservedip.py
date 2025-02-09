@@ -20,7 +20,6 @@ from maasserver.websockets.handlers.timestampedmodel import (
 
 
 class ReservedIPHandler(TimestampedModelHandler):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._node_summary_cache = {}
@@ -77,7 +76,7 @@ class ReservedIPHandler(TimestampedModelHandler):
         if not self.user.is_superuser:
             raise HandlerPermissionError()
 
-        entry_id = params.get("id", None)
+        entry_id = params.get("id")
 
         if entry_id is None:
             raise HandlerValidationError({"id": "Missing value."})

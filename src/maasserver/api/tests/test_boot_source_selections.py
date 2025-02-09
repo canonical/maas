@@ -3,7 +3,6 @@
 
 """Tests for the `Boot Source Selections` API."""
 
-
 import http.client
 
 from django.urls import reverse

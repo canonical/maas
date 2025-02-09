@@ -3,7 +3,6 @@
 
 """Storage layouts."""
 
-
 from operator import attrgetter
 
 from django import forms
@@ -996,7 +995,7 @@ class CustomStorageLayout(StorageLayoutBase):
             layout = get_storage_layout(data["storage-extra"])
             apply_layout_to_machine(layout, self.node)
         except (ConfigError, UnappliableLayout) as e:
-            raise StorageLayoutError(f"Failed to apply storage layout: {e}")
+            raise StorageLayoutError(f"Failed to apply storage layout: {e}")  # noqa: B904
         return self.name
 
     def is_layout(self):

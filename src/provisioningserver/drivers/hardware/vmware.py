@@ -30,7 +30,7 @@ def try_pyvmomi_import():
     try:
         if vim is None:
             vim_module = import_module("pyVmomi")
-            vim = getattr(vim_module, "vim")
+            vim = getattr(vim_module, "vim")  # noqa: B009
         if vmomi_api is None:
             vmomi_api = import_module("pyVim.connect")
     except ImportError:
@@ -545,7 +545,7 @@ def power_control_vmware(
         except Exception:
             # This is to cover what might go wrong in set_power_state(), if
             # an exception occurs while poweriing on or off.
-            raise VMwareAPIException(
+            raise VMwareAPIException(  # noqa: B904
                 "Failed to set power state to {state} for uuid={uuid}".format(
                     state=power_change, uuid=uuid
                 ),
@@ -572,7 +572,7 @@ def power_query_vmware(
         except VMwareAPIException:
             raise
         except Exception:
-            raise VMwareAPIException(
+            raise VMwareAPIException(  # noqa: B904
                 f"Failed to get power state for uuid={uuid}",
                 traceback.format_exc(),
             )

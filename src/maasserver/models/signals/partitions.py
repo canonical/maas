@@ -3,7 +3,6 @@
 
 """Respond to partition changes."""
 
-
 from django.db.models.signals import post_delete
 
 from maasserver.models.partition import Partition

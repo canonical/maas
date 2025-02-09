@@ -102,7 +102,7 @@ class TestSubnetHandler(MAASServerTestCase):
 
         for _ in range(5):
             subnet = factory.make_Subnet()
-            for x in range(3):
+            for x in range(3):  # noqa: B007
                 node = factory.make_Node_with_Interface_on_Subnet(
                     subnet=subnet, status=NODE_STATUS.READY
                 )

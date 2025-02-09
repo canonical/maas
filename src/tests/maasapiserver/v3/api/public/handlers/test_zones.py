@@ -181,7 +181,6 @@ class TestZonesApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
             items=[TEST_ZONE], total=2

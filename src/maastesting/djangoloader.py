@@ -4,7 +4,6 @@
 
 """Test loader for the Django parts of MAAS."""
 
-
 from django.conf import settings
 from django_nose import NoseTestSuiteRunner
 from postgresfixture import ClusterFixture

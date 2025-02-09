@@ -65,9 +65,9 @@ class MachinesHandler(Handler):
     )
     async def list_machines(
         self,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
-        authenticated_user: AuthenticatedUser = Depends(
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> MachinesListResponse:
@@ -154,8 +154,8 @@ class MachinesHandler(Handler):
     async def list_machine_usb_devices(
         self,
         system_id: str,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         usb_devices = await services.machines.list_machine_usb_devices(
             system_id=system_id,
@@ -200,8 +200,8 @@ class MachinesHandler(Handler):
     async def list_machine_pci_devices(
         self,
         system_id: str,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         pci_devices = await services.machines.list_machine_pci_devices(
             system_id=system_id,
@@ -247,7 +247,7 @@ class MachinesHandler(Handler):
     async def get_machine_power_parameters(
         self,
         system_id: str,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         bmc = await services.machines.get_bmc(system_id)
         if bmc is None:

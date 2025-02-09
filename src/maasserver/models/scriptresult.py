@@ -193,7 +193,7 @@ class ScriptResult(CleanSave, TimestampedModel):
         try:
             parsed_yaml = yaml.safe_load(self.result)
         except yaml.YAMLError as err:
-            raise ValidationError(err)
+            raise ValidationError(err)  # noqa: B904
 
         if parsed_yaml is None:
             # No results were given.
@@ -267,9 +267,9 @@ class ScriptResult(CleanSave, TimestampedModel):
             # Allow PENDING, APPLYING_NETCONF, INSTALLING, and RUNNING scripts
             # in case the node didn't inform MAAS the Script was being run, it
             # just uploaded results.
-            assert (
-                self.status in SCRIPT_STATUS_RUNNING_OR_PENDING
-            ), f"Status for scriptresult {self.id} is not running or pending ({self.status})"
+            assert self.status in SCRIPT_STATUS_RUNNING_OR_PENDING, (
+                f"Status for scriptresult {self.id} is not running or pending ({self.status})"
+            )
 
         if timedout:
             self.status = SCRIPT_STATUS.TIMEDOUT

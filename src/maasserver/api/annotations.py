@@ -172,7 +172,6 @@ NOTES:
     change if a speed improvement is needed.
 """
 
-
 import json
 import os
 import re

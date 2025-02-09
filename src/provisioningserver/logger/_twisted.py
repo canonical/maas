@@ -184,11 +184,7 @@ def _getSystemName(system):
     that start with an underscore. For example "a.b._c.d" would be transformed
     into "a.b".
     """
-    if system is None:
-        return None
-    elif len(system) == 0:
-        return None
-    elif system.startswith("_"):
+    if system is None or len(system) == 0 or system.startswith("_"):
         return None
     else:
         return system.split("._")[0]

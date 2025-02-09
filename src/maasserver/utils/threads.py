@@ -136,7 +136,7 @@ def install_database_unpool(maxthreads=max_threads_for_database_pool):
     See `make_database_unpool` for details.
     """
     try:
-        reactor.threadpoolForDatabase
+        reactor.threadpoolForDatabase  # noqa: B018
     except AttributeError:
         reactor.threadpoolForDatabase = make_database_unpool(maxthreads)
         reactor.callInDatabase = reactor.threadpoolForDatabase.callInThread

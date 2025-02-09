@@ -3,7 +3,6 @@
 
 """Tests for MAAS's cluster security module."""
 
-
 from binascii import b2a_hex
 from pathlib import Path
 from random import randint

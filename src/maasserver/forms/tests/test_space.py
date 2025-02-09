@@ -3,7 +3,6 @@
 
 """Tests for Space forms."""
 
-
 from maasserver.forms.space import SpaceForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

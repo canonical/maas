@@ -3,7 +3,6 @@
 
 """Model that holds hint information for a Pod."""
 
-
 from django.db.models import (
     BigIntegerField,
     CASCADE,

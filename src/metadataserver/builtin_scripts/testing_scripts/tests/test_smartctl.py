@@ -3,7 +3,6 @@
 
 """Test smartctl functions."""
 
-
 import io
 import random
 from subprocess import CalledProcessError, DEVNULL, STDOUT, TimeoutExpired
@@ -272,7 +271,7 @@ class TestCheckSMARTSupport(MAASTestCase):
     def test_available_megaraid(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.return_value = (
-            "Product: MegaRAID\n" "SMART support is: Unavailable\n"
+            "Product: MegaRAID\nSMART support is: Unavailable\n"
         )
         scsi_ids = [random.randint(0, 127) for _ in range(3)]
         self.patch(smartctl, "detect_megaraid_config").return_value = scsi_ids
@@ -594,9 +593,11 @@ class TestExecuteSmartCTL(MAASTestCase):
         self.mock_wait_smartctl_selftest.assert_called_once_with(
             self.blockdevice, self.test, device
         )
-        self.mock_check_smartctl.assert_called_once_with(
-            self.blockdevice, device
-        ),
+        (
+            self.mock_check_smartctl.assert_called_once_with(
+                self.blockdevice, device
+            ),
+        )
 
     def test_returns_true_with_device(self):
         device = factory.make_name("device")
@@ -616,9 +617,11 @@ class TestExecuteSmartCTL(MAASTestCase):
         self.mock_wait_smartctl_selftest.assert_called_once_with(
             self.blockdevice, self.test, device
         )
-        self.mock_check_smartctl.assert_called_once_with(
-            self.blockdevice, device
-        ),
+        (
+            self.mock_check_smartctl.assert_called_once_with(
+                self.blockdevice, device
+            ),
+        )
 
     def test_tests_all_scsi_bus_nums(self):
         device = factory.make_name("device")

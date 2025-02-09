@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Reserved IP form."""
+
 from ipaddress import ip_address, ip_network
 
 from django import forms

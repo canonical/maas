@@ -3,7 +3,6 @@
 
 """Respond to block device changes."""
 
-
 from django.db.models.signals import post_delete, post_save
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE

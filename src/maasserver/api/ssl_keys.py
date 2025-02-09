@@ -3,7 +3,6 @@
 
 """API handlers: `SSLKey`."""
 
-
 import http.client
 
 from django.conf import settings

@@ -3,7 +3,6 @@
 
 """Respond to user changes."""
 
-
 from django.contrib.auth.models import User
 from django.db.models.signals import pre_delete
 

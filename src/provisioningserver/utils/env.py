@@ -3,7 +3,6 @@
 
 """Environment-related utilities."""
 
-
 from contextlib import contextmanager, suppress
 import os
 from pathlib import Path

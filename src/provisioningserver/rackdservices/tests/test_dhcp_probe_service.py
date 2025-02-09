@@ -3,7 +3,6 @@
 
 """Tests for periodic DHCP prober."""
 
-
 from unittest.mock import Mock, sentinel
 
 from twisted.internet import defer

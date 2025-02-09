@@ -3,7 +3,6 @@
 
 """Tests for tag updating."""
 
-
 from functools import partial
 from itertools import chain
 from textwrap import dedent

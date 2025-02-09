@@ -3,7 +3,6 @@
 
 """Tests for API helpers."""
 
-
 from collections import namedtuple
 
 from django.forms import CharField
@@ -99,7 +98,7 @@ class TestGetOverridedQueryDict(MAASTestCase):
         fields = {field_name: DictCharField(sub_fields)}
         defaults = {
             f"{field_name}_{field}": factory.make_name("subfield")
-            for field in sub_fields.keys()
+            for field in sub_fields
         }
         data = {field_name: DictCharField(fields)}
         results = get_overridden_query_dict(defaults, data, fields)

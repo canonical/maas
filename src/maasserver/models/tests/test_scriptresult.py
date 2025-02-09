@@ -873,11 +873,11 @@ class TestScriptResult(MAASServerTestCase):
         queries_one = CountQueries()
         script_result_one = ScriptResult.objects.get(id=script_results[0].id)
         with queries_one:
-            script_result_one.history
+            script_result_one.history  # noqa: B018
         queries_many = CountQueries()
         script_result_many = ScriptResult.objects.get(id=script_results[-1].id)
         with queries_many:
-            script_result_many.history
+            script_result_many.history  # noqa: B018
         self.assertEqual(1, queries_one.count)
         self.assertEqual(1, queries_many.count)
 

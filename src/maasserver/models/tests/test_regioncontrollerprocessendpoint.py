@@ -3,7 +3,6 @@
 
 """Tests for `RegionControllerProcessEndpoint`."""
 
-
 import random
 
 from django.core.exceptions import ValidationError

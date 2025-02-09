@@ -3,7 +3,6 @@
 
 """The general handler for the WebSocket connection."""
 
-
 from collections import OrderedDict
 
 import petname

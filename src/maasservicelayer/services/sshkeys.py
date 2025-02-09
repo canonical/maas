@@ -256,7 +256,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         if keytype not in OPENSSH_PROTOCOL2_KEY_TYPES:
             raise ValidationException.build_for_field(
                 field="key",
-                message=f"Key type {keytype} not recognised; it should be one of: {" ".join(sorted(OPENSSH_PROTOCOL2_KEY_TYPES))}",
+                message=f"Key type {keytype} not recognised; it should be one of: {' '.join(sorted(OPENSSH_PROTOCOL2_KEY_TYPES))}",
             )
         env = dict(os.environ)
         # Request OpenSSH to use /bin/true when prompting for passwords. We also

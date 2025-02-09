@@ -63,7 +63,7 @@ def unwrap_secret(url: str, wrapped_token: str) -> str:
     try:
         return client.sys.unwrap()["data"]["secret_id"]
     except KeyError:
-        raise WrappedSecretError(
+        raise WrappedSecretError(  # noqa: B904
             "Unable to unwrap Secret ID with given token."
         )
 
@@ -106,7 +106,7 @@ class VaultClient:
                 mount_point=self._secrets_mount,
             )["data"]["data"]
         except hvac.exceptions.InvalidPath:
-            raise UnknownSecretPath(path)
+            raise UnknownSecretPath(path)  # noqa: B904
 
     @wrap_errors
     def delete(self, path: str):

@@ -3,7 +3,6 @@
 
 """DNS management module."""
 
-
 from collections import defaultdict
 
 from django.conf import settings

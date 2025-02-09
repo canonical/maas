@@ -16,7 +16,6 @@ The current implementation is limited in a number of ways:
   not for commissioning or fastpath installations.
 """
 
-
 from copy import deepcopy
 import fnmatch
 

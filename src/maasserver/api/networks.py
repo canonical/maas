@@ -3,7 +3,6 @@
 
 """API handlers: `Network`."""
 
-
 from django.urls import reverse
 from piston3.utils import rc
 

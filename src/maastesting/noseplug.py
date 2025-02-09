@@ -3,7 +3,6 @@
 
 """Nose plugins for MAAS."""
 
-
 import inspect
 import logging
 import optparse
@@ -348,7 +347,7 @@ class SelectBucket(Plugin):
         try:
             value = self._parseSelectedBucket(value)
         except ValueError as error:
-            raise optparse.OptionValueError(f"{option_string}: {error}")
+            raise optparse.OptionValueError(f"{option_string}: {error}")  # noqa: B904
         else:
             setattr(parser.values, option.dest, value)
 
@@ -362,7 +361,7 @@ class SelectBucket(Plugin):
                 bucket = int(bucket)
                 buckets = int(buckets)
             except ValueError:
-                raise ValueError("not bucket/buckets")
+                raise ValueError("not bucket/buckets")  # noqa: B904
             else:
                 if buckets <= 0:
                     raise ValueError("buckets must be >= 0")

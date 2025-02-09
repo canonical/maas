@@ -8,7 +8,6 @@ Views are implemented in the database to better encapsulate complex queries,
 and are recreated during the `dbupgrade` process.
 """
 
-
 from contextlib import closing
 from textwrap import dedent
 
@@ -32,7 +31,7 @@ def drop_all_views():
     schema can be freely changed without worrying about whether or not the
     views depend on the schema.
     """
-    for view_name in _ALL_VIEWS.keys():
+    for view_name in _ALL_VIEWS:
         _drop_view_if_exists(view_name)
 
 

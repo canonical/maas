@@ -3,7 +3,6 @@
 
 """Test `maasserver.preseed` and related bits and bobs."""
 
-
 import http.client
 from ipaddress import ip_address
 import json

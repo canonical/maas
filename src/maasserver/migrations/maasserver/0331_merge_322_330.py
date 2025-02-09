@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         # Merge the last 3.5 and master patches
         ("maasserver", "0329_add_reserved_ip_model"),

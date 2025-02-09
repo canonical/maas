@@ -53,14 +53,15 @@ class AsyncAuthChecker(AuthChecker):
 
         for i, ms in enumerate(self._macaroons):
             try:
-                ops, conditions = (
-                    await self.parent._macaroon_opstore.macaroon_ops(ms)
-                )
+                (
+                    ops,
+                    conditions,
+                ) = await self.parent._macaroon_opstore.macaroon_ops(ms)
             except VerificationError as e:
                 self._init_errors.append(str(e))
                 continue
             except Exception as exc:
-                raise AuthInitError(str(exc))
+                raise AuthInitError(str(exc))  # noqa: B904
 
             # It's a valid macaroon (in principle - we haven't checked first
             # party caveats).

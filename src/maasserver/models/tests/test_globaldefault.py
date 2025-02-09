@@ -3,7 +3,6 @@
 
 """Test GlobalDefault objects."""
 
-
 import random
 
 from maasserver.enum import NODE_STATUS

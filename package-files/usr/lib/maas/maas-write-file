@@ -52,7 +52,6 @@ arg_parser.add_argument("mode", type=octal, help="The octal file mode.")
 
 
 def main(args, fin):
-
     # Validate the filename here because using a `choices` argument in the
     # parser results in ugly help and error text.
     if args.filename not in WRITABLE_FILES:

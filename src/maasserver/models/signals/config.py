@@ -3,7 +3,6 @@
 
 """Signals called when config values changed."""
 
-
 from maasserver.utils.signals import SignalsManager
 
 signals = SignalsManager()

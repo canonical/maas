@@ -51,8 +51,8 @@ class SpacesHandler(Handler):
     )
     async def list_spaces(
         self,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SpacesListResponse:
         spaces = await services.spaces.list(
             page=pagination_params.page,
@@ -98,7 +98,7 @@ class SpacesHandler(Handler):
         self,
         space_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         space = await services.spaces.get_by_id(space_id)
         if not space:
@@ -131,7 +131,7 @@ class SpacesHandler(Handler):
         self,
         response: Response,
         space_request: SpaceRequest,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         space = await services.spaces.create(
             builder=space_request.to_builder()
@@ -164,7 +164,7 @@ class SpacesHandler(Handler):
         space_id: int,
         space_request: SpaceRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         space = await services.spaces.update_by_id(
             id=space_id,
@@ -196,7 +196,7 @@ class SpacesHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.spaces.delete_by_id(
             id=space_id, etag_if_match=etag_if_match

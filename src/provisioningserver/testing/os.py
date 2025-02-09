@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for testing operating systems-related code."""
 
-
 from maastesting.factory import factory
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,

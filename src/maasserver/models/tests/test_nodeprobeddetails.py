@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.models.nodeprobeddetails`."""
 
-
 from maasserver.models.nodeprobeddetails import (
     get_probed_details,
     get_single_probed_details,

@@ -530,7 +530,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         input = form.cleaned_data["input"]
         self.assertEqual(len(selected_scripts), len(input))
-        for bd in selected_scripts.keys():
+        for bd in selected_scripts:
             for i in input:
                 if bd.name == i["storage"]["value"]["name"]:
                     break
@@ -801,7 +801,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         input = form.cleaned_data["input"]
         self.assertEqual(len(selected_scripts), len(input))
-        for nic in selected_scripts.keys():
+        for nic in selected_scripts:
             for i in input:
                 if (
                     str(nic.mac_address)

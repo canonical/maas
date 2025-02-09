@@ -3,7 +3,6 @@
 
 """Utilities for the per-tenant file storage work."""
 
-
 import yaml
 
 from maasserver.models import FileStorage, Node

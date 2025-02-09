@@ -3,7 +3,6 @@
 
 """:class:`SSHKey` and friends."""
 
-
 from html import escape
 from typing import List
 
@@ -57,9 +56,9 @@ class SSHKeyManager(Manager):
                 if len(e.details) > 0:
                     detail = e.details[0]
                     if detail.field == "key":
-                        raise OpenSSHKeyError(detail.message)
+                        raise OpenSSHKeyError(detail.message)  # noqa: B904
                     elif detail.field == "auth_id":
-                        raise ImportSSHKeysError(detail.message)
+                        raise ImportSSHKeysError(detail.message)  # noqa: B904
 
 
 def validate_ssh_public_key(value):
@@ -70,7 +69,7 @@ def validate_ssh_public_key(value):
                 key=value
             )
     except Exception as error:
-        raise ValidationError("Invalid SSH public key: " + str(error))
+        raise ValidationError("Invalid SSH public key: " + str(error))  # noqa: B904
 
 
 HELLIPSIS = "&hellip;"

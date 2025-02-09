@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.utils.config`."""
 
-
 import os.path
 import random
 import re

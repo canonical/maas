@@ -3,7 +3,6 @@
 
 """Tests for `StaticRoute`."""
 
-
 from django.core.exceptions import PermissionDenied, ValidationError
 
 from maasserver.models.staticroute import StaticRoute

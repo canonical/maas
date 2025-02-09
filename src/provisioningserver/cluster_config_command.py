@@ -1,9 +1,7 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Change cluster controller configuration settings.
-"""
-
+"""Change cluster controller configuration settings."""
 
 import argparse
 
@@ -50,7 +48,7 @@ def to(cast_type):
         try:
             return cast_type().to_python(value)
         except Invalid as exc:
-            raise argparse.ArgumentTypeError(str(exc))
+            raise argparse.ArgumentTypeError(str(exc))  # noqa: B904
 
     return _inner
 

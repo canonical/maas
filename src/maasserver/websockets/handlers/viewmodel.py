@@ -3,7 +3,6 @@
 
 """Abstract handler class for a ViewModel. All fields are read-only."""
 
-
 from maasserver.websockets.base import Handler
 
 

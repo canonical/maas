@@ -15,21 +15,21 @@ from provisioningserver.utils.version import MAASVersion
 
 class TestGetDeprecations(MAASServerTestCase):
     def test_dhcp_snippets_not_included(self):
-        self.patch(deprecations, "get_maas_version").return_value = (
-            MAASVersion.from_string("3.5.0")
-        )
+        self.patch(
+            deprecations, "get_maas_version"
+        ).return_value = MAASVersion.from_string("3.5.0")
         self.assertNotIn(DEPRECATIONS["DHCP_SNIPPETS"], get_deprecations())
 
     def test_dhcp_snippets_not_included_MAAS_4(self):
-        self.patch(deprecations, "get_maas_version").return_value = (
-            MAASVersion.from_string("4.0.0")
-        )
+        self.patch(
+            deprecations, "get_maas_version"
+        ).return_value = MAASVersion.from_string("4.0.0")
         self.assertNotIn(DEPRECATIONS["DHCP_SNIPPETS"], get_deprecations())
 
     def test_dhcp_snippets_included(self):
-        self.patch(deprecations, "get_maas_version").return_value = (
-            MAASVersion.from_string("3.6.0")
-        )
+        self.patch(
+            deprecations, "get_maas_version"
+        ).return_value = MAASVersion.from_string("3.6.0")
         self.assertIn(DEPRECATIONS["DHCP_SNIPPETS"], get_deprecations())
 
     def test_old_postgres_version(self):
@@ -39,9 +39,9 @@ class TestGetDeprecations(MAASServerTestCase):
         )
 
     def test_wrong_database_owner(self):
-        self.patch(deprecations, "get_database_owner").return_value = (
-            "postgres"
-        )
+        self.patch(
+            deprecations, "get_database_owner"
+        ).return_value = "postgres"
         self.assertIn(
             DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"], get_deprecations()
         )

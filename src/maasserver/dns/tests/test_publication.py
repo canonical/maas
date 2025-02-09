@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.dns.publication`."""
 
-
 from datetime import timedelta
 
 from django.utils import timezone

@@ -3,7 +3,6 @@
 
 """Adapting `testscenarios` to work with MAAS."""
 
-
 import testscenarios
 
 

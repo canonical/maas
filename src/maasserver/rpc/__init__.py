@@ -3,7 +3,6 @@
 
 """Region Controller RPC."""
 
-
 from maasserver import eventloop
 from provisioningserver.rpc import exceptions
 from provisioningserver.utils.twisted import asynchronous, deferred, FOREVER
@@ -22,7 +21,7 @@ def getClientFromIdentifiers(identifiers, timeout=0):
     try:
         service = eventloop.services.getServiceNamed("rpc")
     except KeyError:
-        raise exceptions.NoConnectionsAvailable(
+        raise exceptions.NoConnectionsAvailable(  # noqa: B904
             "Unable to connect to any rack controller %s; no connections "
             "available." % ",".join(identifiers)
         )
@@ -43,7 +42,7 @@ def getClientFor(uuid, timeout=0):
     try:
         service = eventloop.services.getServiceNamed("rpc")
     except KeyError:
-        raise exceptions.NoConnectionsAvailable(
+        raise exceptions.NoConnectionsAvailable(  # noqa: B904
             "Unable to connect to rack controller %s; no connections "
             "available." % uuid,
             uuid=uuid,

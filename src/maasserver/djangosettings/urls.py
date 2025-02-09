@@ -3,7 +3,6 @@
 
 """URL configuration for the maas project."""
 
-
 from django.urls import include, path
 
 urlpatterns = [

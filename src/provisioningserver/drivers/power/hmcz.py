@@ -134,7 +134,7 @@ class HMCZPowerDriver(PowerDriver):
                 # If 120s isn't enough time raise a PowerError() which will
                 # trigger the builtin retry code in the base PowerDriver()
                 # class.
-                raise PowerError(
+                raise PowerError(  # noqa: B904
                     "Partition is stuck in a "
                     f"{partition.get_property('status')} state!"
                 )
@@ -157,7 +157,7 @@ class HMCZPowerDriver(PowerDriver):
                 # If 120s isn't enough time raise a PowerError() which will
                 # trigger the builtin retry code in the base PowerDriver()
                 # class.
-                raise PowerError(
+                raise PowerError(  # noqa: B904
                     "Partition is stuck in a "
                     f"{partition.get_property('status')} state!"
                 )
@@ -243,7 +243,7 @@ class HMCZPowerDriver(PowerDriver):
                         return
 
             raise PowerError(
-                f'No storage volume found with {boot_device["serial"].upper()}'
+                f"No storage volume found with {boot_device['serial'].upper()}"
             )
 
 
@@ -277,8 +277,7 @@ def probe_hmcz_and_enlist(
     for cpc in client.cpcs.list():
         if not cpc.dpm_enabled:
             maaslog.warning(
-                f"DPM is not enabled on '{cpc.get_property('name')}', "
-                "skipping"
+                f"DPM is not enabled on '{cpc.get_property('name')}', skipping"
             )
             continue
         for partition in cpc.partitions.list():

@@ -3,7 +3,6 @@
 
 """Tests for commissioning forms."""
 
-
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import CommissioningForm
 from maasserver.models import Config

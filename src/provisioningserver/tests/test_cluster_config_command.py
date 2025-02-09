@@ -3,7 +3,6 @@
 
 """Tests for configuration update code."""
 
-
 from argparse import ArgumentParser
 import io
 from itertools import combinations
@@ -59,8 +58,9 @@ class TestAddArguments(MAASTestCase):
                 # a nice ArgumentError exception, which unfortunately,
                 # gets caught and sent to exit.
                 if "--init" in test_arg_names and "--uuid" in test_arg_names:
-                    with self.assertRaisesRegex(SystemExit, "2"), patch(
-                        "sys.stderr"
+                    with (
+                        self.assertRaisesRegex(SystemExit, "2"),
+                        patch("sys.stderr"),
                     ):
                         parser.parse_known_args(args_under_test)
 

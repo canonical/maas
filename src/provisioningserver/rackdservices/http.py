@@ -3,7 +3,6 @@
 
 """HTTP service for the rack controller."""
 
-
 from collections import defaultdict
 from datetime import timedelta
 import os
@@ -189,7 +188,7 @@ class RackHTTPService(TimerService):
                 }
             )
         except NameError as error:
-            raise HTTPConfigFail(*error.args)
+            raise HTTPConfigFail(*error.args)  # noqa: B904
         else:
             # The rendered configuration is Unicode text but should contain
             # only ASCII characters.

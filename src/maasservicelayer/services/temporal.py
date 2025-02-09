@@ -37,7 +37,7 @@ class TemporalService(Service):
         return await get_temporal_client_async()
 
     async def post_commit(self) -> None:
-        for key, arguments in self._post_commit_workflows.items():
+        for key, arguments in self._post_commit_workflows.items():  # noqa: B007
             workflow_name, parameter, workflow_id, wait, args, kwargs = (
                 arguments
             )
@@ -52,7 +52,7 @@ class TemporalService(Service):
                     parameter,
                     id=workflow_id,
                     task_queue="region",
-                    *args,
+                    *args,  # noqa: B026
                     **kwargs,
                 )
             else:
@@ -61,7 +61,7 @@ class TemporalService(Service):
                     parameter,
                     id=workflow_id,
                     task_queue="region",
-                    *args,
+                    *args,  # noqa: B026
                     **kwargs,
                 )
                 self._running_workflows.append(fut)

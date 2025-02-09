@@ -4,7 +4,6 @@
 """Tests for
 :py:module:`~provisioningserver.rackdservices.node_power_monitor_service`."""
 
-
 from unittest.mock import ANY, Mock, sentinel
 
 from fixtures import FakeLogger

@@ -12,7 +12,7 @@ class FakeVaultClient:
         try:
             return self.store[path]
         except KeyError:
-            raise SecretNotFound(path)
+            raise SecretNotFound(path)  # noqa: B904
 
     def delete(self, path):
         self.store.pop(path, None)

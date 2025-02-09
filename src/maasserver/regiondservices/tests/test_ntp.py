@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.regiondservices.ntp`."""
 
-
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -115,9 +114,9 @@ class TestRegionNetworkTimeProtocolService_Errors(
 
         # Ensure that we never actually execute against systemd or write an
         # actual configuration file.
-        self.patch_autospec(ntp, "deferToThread").side_effect = (
-            always_succeed_with(None)
-        )
+        self.patch_autospec(
+            ntp, "deferToThread"
+        ).side_effect = always_succeed_with(None)
         self.patch_autospec(service_monitor, "restartService")
 
         with TwistedLoggerFixture() as logger:

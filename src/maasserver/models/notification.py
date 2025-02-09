@@ -3,7 +3,6 @@
 
 """Model for a notification message."""
 
-
 from functools import wraps
 
 from django.contrib.auth.models import User
@@ -298,7 +297,7 @@ class Notification(CleanSave, TimestampedModel):
         try:
             self.render()
         except Exception:
-            raise ValidationError("Notification cannot be rendered.")
+            raise ValidationError("Notification cannot be rendered.")  # noqa: B904
 
     def __repr__(self):
         username = "None" if self.user is None else repr(self.user.username)

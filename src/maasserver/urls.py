@@ -3,7 +3,6 @@
 
 """URL routing configuration."""
 
-
 from django.http import HttpResponse
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView

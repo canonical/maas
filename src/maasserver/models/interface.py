@@ -123,7 +123,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         try:
             item = parse_integer(item)
         except ValueError:
-            raise ValidationError("Interface ID must be numeric.")
+            raise ValidationError("Interface ID must be numeric.")  # noqa: B904
         else:
             return op(current_q, Q(id=item))
 

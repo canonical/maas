@@ -131,9 +131,9 @@ def get_sqlalchemy_django_connection() -> Connection:
     from django.db import connection as django_connection
 
     django_db = settings.DATABASES[django_connection.alias]
-    assert (
-        django_db["ENGINE"] == "django.db.backends.postgresql"
-    ), f"{django_db['ENGINE']} is not supported"
+    assert django_db["ENGINE"] == "django.db.backends.postgresql", (
+        f"{django_db['ENGINE']} is not supported"
+    )
 
     pool = SharedDjangoPool()
     engine = Engine(

@@ -3,7 +3,6 @@
 
 """Tests for asynchronous utilities."""
 
-
 import asyncio
 from functools import partial
 import threading

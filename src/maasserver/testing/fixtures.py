@@ -3,7 +3,6 @@
 
 """maasserver fixtures."""
 
-
 import inspect
 import logging
 

@@ -7,7 +7,7 @@ from maasapiserver.v2.services import ServiceCollectionV2
 
 async def authenticated_user(
     request: Request,
-    services: ServiceCollectionV2 = Depends(services),
+    services: ServiceCollectionV2 = Depends(services),  # noqa: B008
 ) -> User:
     unauthorized_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

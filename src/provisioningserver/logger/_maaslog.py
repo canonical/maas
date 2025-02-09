@@ -3,7 +3,6 @@
 
 """Logging for MAAS, redirects to syslog."""
 
-
 from collections import deque
 import logging
 import logging.handlers

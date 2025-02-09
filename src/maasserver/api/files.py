@@ -3,7 +3,6 @@
 
 """API handlers: `File`."""
 
-
 from base64 import b64encode
 import http.client
 
@@ -45,7 +44,7 @@ def get_file_by_name(handler, request):
             owner=request.user, filename=filename
         ).latest("id")
     except FileStorage.DoesNotExist:
-        raise MAASAPINotFound("File not found")
+        raise MAASAPINotFound("File not found")  # noqa: B904
     return HttpResponse(db_file.content, status=int(http.client.OK))
 
 
@@ -106,7 +105,7 @@ def json_file_storage(stored_file, request):
         for fieldname in DISPLAYED_FILES_FIELDS
     }
     # Encode the content as base64.
-    dict_representation["content"] = b64encode(getattr(stored_file, "content"))
+    dict_representation["content"] = b64encode(getattr(stored_file, "content"))  # noqa: B009
     dict_representation["resource_uri"] = reverse(
         "file_handler", args=[stored_file.filename]
     )

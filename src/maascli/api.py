@@ -3,7 +3,6 @@
 
 """Interact with a remote MAAS server."""
 
-
 import argparse
 from contextlib import suppress
 from functools import partial
@@ -50,7 +49,7 @@ def http_request(
             url = url.decode("ascii")
         return http.request(url, method, body=body, headers=headers)
     except httplib2.ssl.SSLError as error:
-        raise CommandError(
+        raise CommandError(  # noqa: B904
             "Certificate verification failed, use --insecure/-k to "
             "disable the certificate check.\n" + str(error)
         )
@@ -206,7 +205,7 @@ class Action(Command):
         that will return an open file handle when called. The file will
         be opened in binary mode for reading only.
         """
-        parts = re.split(r"(=|@=)", string, 1)
+        parts = re.split(r"(=|@=)", string, 1)  # noqa: B034
         if len(parts) == 3:
             name, what, value = parts
             if what == "=":

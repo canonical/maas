@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.osystems`."""
 
-
 from operator import attrgetter
 import random
 
@@ -1446,9 +1445,9 @@ class TestGetAvailableKernelsPrioritisingPlatform(MAASTestCase):
                 return [generic]
             raise Exception("Get kernel mock conditions failed")
 
-        self.patch(BootResource.objects, "get_kernels").side_effect = (
-            get_kernel_side_effect
-        )
+        self.patch(
+            BootResource.objects, "get_kernels"
+        ).side_effect = get_kernel_side_effect
 
         result = get_available_kernels_prioritising_platform(
             arch=arch,
@@ -1497,9 +1496,9 @@ class TestGetAvailableKernelsPrioritisingPlatform(MAASTestCase):
                 return [generic]
             raise Exception("Get kernel mock conditions failed")
 
-        self.patch(BootResource.objects, "get_kernels").side_effect = (
-            get_kernel_side_effect
-        )
+        self.patch(
+            BootResource.objects, "get_kernels"
+        ).side_effect = get_kernel_side_effect
 
         result = get_available_kernels_prioritising_platform(
             arch=arch,

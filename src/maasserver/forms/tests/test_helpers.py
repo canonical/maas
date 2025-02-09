@@ -3,7 +3,6 @@
 
 """Tests for forms helpers."""
 
-
 from django.forms import CharField
 
 from maasserver.enum import BOOT_RESOURCE_TYPE
@@ -45,7 +44,7 @@ class TestHelpers(MAASServerTestCase):
             arch = factory.make_name("arch")
         if subarch is None:
             subarch = factory.make_name("subarch")
-        for purpose in ["install", "commissioning"]:
+        for purpose in ["install", "commissioning"]:  # noqa: B007
             architecture = f"{arch}/{subarch}"
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, architecture=architecture

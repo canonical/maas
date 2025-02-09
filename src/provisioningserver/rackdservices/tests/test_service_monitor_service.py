@@ -4,7 +4,6 @@
 """Tests for
 :py:module:`~provisioningserver.rackdservices.service_monitor_service`."""
 
-
 import random
 from unittest.mock import Mock, sentinel
 

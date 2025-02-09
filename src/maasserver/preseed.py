@@ -492,7 +492,7 @@ def get_curtin_image(
     try:
         rfile = rset.files.filter(filetype__in=filetypes.keys()).get()
     except BootResourceFile.DoesNotExist:
-        raise MissingBootImage(
+        raise MissingBootImage(  # noqa: B904
             "Error generating the URL of curtin's image file.  "
             "No image could be found for the given selection: "
             f"os={os_name}, arch={arch}, subarch={platform}, series={series}, "

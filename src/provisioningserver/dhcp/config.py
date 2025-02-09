@@ -3,7 +3,6 @@
 
 """Write config output for ISC DHCPD."""
 
-
 from itertools import chain, repeat
 import logging
 import socket
@@ -159,9 +158,11 @@ def compose_conditional_bootloader(
     output = ""
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
-        if method.arch_octet is None and method.user_class is None:
-            continue
-        elif name in disabled_boot_architectures:
+        if (
+            method.arch_octet is None
+            and method.user_class is None
+            or name in disabled_boot_architectures
+        ):
             continue
 
         use_http = method.path_prefix_http or method.http_url

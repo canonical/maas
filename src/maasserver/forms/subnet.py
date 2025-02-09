@@ -3,7 +3,6 @@
 
 """Subnet form."""
 
-
 from django import forms
 from django.core.exceptions import ValidationError
 from netaddr import AddrFormatError, IPAddress, IPNetwork
@@ -110,7 +109,7 @@ class SubnetForm(MAASModelForm):
             if network.prefixlen == 0:
                 raise ValidationError("Prefix length must be greater than 0.")
         except AddrFormatError:
-            raise ValidationError("Required format: <network>/<prefixlen>.")
+            raise ValidationError("Required format: <network>/<prefixlen>.")  # noqa: B904
         if self.instance and self.instance.id and self.instance.cidr != data:
             network = IPNetwork(data)
             for reservedip in self.instance.reservedip_set.all():
@@ -121,7 +120,7 @@ class SubnetForm(MAASModelForm):
         return data
 
     def _clean_name(self, cleaned_data: dict) -> dict:
-        name = cleaned_data.get("name", None)
+        name = cleaned_data.get("name")
         instance_name_and_cidr_match = (
             self.instance.id is not None
             and name == self.instance.name
@@ -136,9 +135,9 @@ class SubnetForm(MAASModelForm):
         return cleaned_data
 
     def _clean_vlan(self, cleaned_data: dict) -> dict:
-        fabric = cleaned_data.get("fabric", None)
-        vlan = cleaned_data.get("vlan", None)
-        vid = cleaned_data.get("vid", None)
+        fabric = cleaned_data.get("fabric")
+        vlan = cleaned_data.get("vlan")
+        vid = cleaned_data.get("vid")
         if fabric is None and vlan is None:
             if not vid:
                 cleaned_data["vlan"] = (
@@ -182,7 +181,7 @@ class SubnetForm(MAASModelForm):
         return cleaned_data
 
     def _clean_dns_servers(self, cleaned_data: dict) -> dict:
-        dns_servers = cleaned_data.get("dns_servers", None)
+        dns_servers = cleaned_data.get("dns_servers")
         if dns_servers is None:
             return cleaned_data
         clean_dns_servers = []

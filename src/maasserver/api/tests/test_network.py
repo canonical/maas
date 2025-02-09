@@ -3,7 +3,6 @@
 
 """Tests for the `Network` API."""
 
-
 import http.client
 
 from django.urls import reverse

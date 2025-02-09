@@ -3,7 +3,6 @@
 
 """Model definition for Neighbour."""
 
-
 from django.db.models import (
     CASCADE,
     ForeignKey,
@@ -39,7 +38,7 @@ class NeighbourQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
 

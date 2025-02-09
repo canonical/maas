@@ -33,6 +33,7 @@ from maasserver.exceptions import (
     StaticIPAddressReservedIPConflict,
     StaticIPAddressUnavailable,
 )
+from maasserver.models import interface as interface_module
 from maasserver.models import (
     MDNS,
     Neighbour,
@@ -41,7 +42,6 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
-from maasserver.models import interface as interface_module
 from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.interface import (
     BondInterface,

@@ -66,7 +66,6 @@ def get_task_queue_for_update(system_id: str) -> str:
 
 
 class DNSConfigActivity(ActivityBase):
-
     @activity.defn(name=GET_CHANGES_SINCE_CURRENT_SERIAL_NAME)
     async def get_changes_since_current_serial(
         self,
@@ -100,7 +99,6 @@ class DNSConfigActivity(ActivityBase):
 
 @workflow.defn(name=CONFIGURE_DNS_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDNSWorkflow:
-
     @workflow.run
     async def run(self, param: ConfigureDNSParam) -> None:
         updates = None

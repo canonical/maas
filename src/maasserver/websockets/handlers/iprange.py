@@ -3,7 +3,6 @@
 
 """The IPRange handler for the WebSocket connection."""
 
-
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.models import IPRange
 from maasserver.websockets.handlers.timestampedmodel import (

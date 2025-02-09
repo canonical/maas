@@ -3,7 +3,6 @@
 
 """Utilities for working with TCP/IP packets. (That is, layers 3 and 4.)"""
 
-
 from collections import namedtuple
 from ipaddress import ip_address
 import struct

@@ -3,7 +3,7 @@
 
 from typing import Any, List
 
-from sqlalchemy import desc, insert, select, Select
+from sqlalchemy import desc, insert, Select, select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
@@ -41,7 +41,6 @@ class InterfaceRepository(Repository):
     async def list(
         self, node_id: int, page: int, size: int
     ) -> ListResult[Interface]:
-
         total_stmt = (
             select(count())
             .select_from(InterfaceTable)

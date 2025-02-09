@@ -436,9 +436,9 @@ class TestNetworksMonitoringService(MAASTestCase):
             "hints": {"my-hint": "foo"},
         }
         self.all_interfaces_mock.return_value = network_extra["interfaces"]
-        self.patch(service, "_get_topology_hints").return_value = (
-            network_extra["hints"]
-        )
+        self.patch(
+            service, "_get_topology_hints"
+        ).return_value = network_extra["hints"]
 
         yield service.startService()
         service.clock.advance(0)

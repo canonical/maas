@@ -931,7 +931,7 @@ class ThreadPoolLimiter:
     def callInThreadWithCallback(self, onResult, func, *args, **kwargs):
         """Acquires the lock then calls the underlying pool."""
 
-        def signal(success, result, done=[False]):
+        def signal(success, result, done=[False]):  # noqa: B006
             # Call onResult once and once only.
             if not done[0]:
                 try:
@@ -939,7 +939,7 @@ class ThreadPoolLimiter:
                 finally:
                     done[0] = True
 
-        def release(lock, done=[False]):
+        def release(lock, done=[False]):  # noqa: B006
             # Release the lock once and once only.
             if not done[0]:
                 try:
@@ -1145,7 +1145,11 @@ class SiteNoLog(Site):
 
 
 def getProcessOutputAndValue(
-    executable, args=(), env={}, path=None, reactor=None
+    executable,
+    args=(),
+    env={},  # noqa: B006
+    path=None,
+    reactor=None,
 ):
     """Utility to create a process in the reactor and get all the output and
     return code of that process.

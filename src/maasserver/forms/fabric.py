@@ -3,7 +3,6 @@
 
 """Fabric form."""
 
-
 from maasserver.forms import MAASModelForm
 from maasserver.models.fabric import Fabric
 

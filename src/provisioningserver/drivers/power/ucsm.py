@@ -3,7 +3,6 @@
 
 """Cisco UCS Power Driver."""
 
-
 from provisioningserver.drivers import (
     IP_EXTRACTOR_PATTERNS,
     make_ip_extractor,

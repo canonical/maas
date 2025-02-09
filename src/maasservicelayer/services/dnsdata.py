@@ -39,7 +39,9 @@ class DNSDataService(BaseService[DNSData, DNSDataRepository, DNSDataBuilder]):
             else (
                 dnsresource.address_ttl
                 if dnsresource.address_ttl
-                else domain.ttl if domain.ttl else 30
+                else domain.ttl
+                if domain.ttl
+                else 30
             )
         )
 

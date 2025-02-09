@@ -72,7 +72,7 @@ class Tag(CleanSave, TimestampedModel):
                 etree.XPath(self.definition)
             except etree.XPathSyntaxError as e:
                 msg = f"Invalid XPath expression: {e}"
-                raise ValidationError({"definition": [msg]})
+                raise ValidationError({"definition": [msg]})  # noqa: B904
 
     def save(self, *args, populate=True, **kwargs):
         """Save this tag.

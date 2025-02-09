@@ -3,7 +3,6 @@
 
 """Metadata service application."""
 
-
 import logging
 
 logger = logging.getLogger("metadataserver")

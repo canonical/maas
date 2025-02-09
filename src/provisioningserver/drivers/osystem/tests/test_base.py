@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.osystem`."""
 
-
 from unittest.mock import sentinel
 
 from maastesting.factory import factory

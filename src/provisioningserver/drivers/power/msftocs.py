@@ -3,7 +3,6 @@
 
 """MicrosoftOCS Power Driver."""
 
-
 from typing import Optional
 import urllib.error
 import urllib.parse
@@ -88,12 +87,12 @@ class MicrosoftOCSPowerDriver(PowerDriver):
         try:
             response = urllib.request.urlopen(url)
         except urllib.error.HTTPError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to Microsoft OCS Chassis."
                 " HTTP error code: %s" % e.code
             )
         except urllib.error.URLError as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make proper connection to Microsoft OCS Chassis."
                 " Server could not be reached: %s" % e.reason
             )
@@ -163,7 +162,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
                 "SetBladeOn", context, ["bladeid=%s" % context["blade_id"]]
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "MicrosoftOCS Power Driver unable to power on blade_id %s: %s"
                 % (context["blade_id"], e)
             )
@@ -176,7 +175,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
                 "SetBladeOff", context, ["bladeid=%s" % context["blade_id"]]
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "MicrosoftOCS Power Driver unable to power off blade_id %s: %s"
                 % (context["blade_id"], e)
             )
@@ -193,7 +192,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
                 "bladeState",
             )
         except PowerConnError as e:
-            raise PowerActionError(
+            raise PowerActionError(  # noqa: B904
                 "MicrosoftOCS Power Driver unable to power query blade_id %s:"
                 " %r" % (context["blade_id"], e)
             )
@@ -242,13 +241,13 @@ def probe_and_enlist_msftocs(
         # if get_blades works, we have access to the system
         blades = msftocs_driver.get_blades(context)
     except urllib.error.HTTPError as e:
-        raise PowerFatalError(
+        raise PowerFatalError(  # noqa: B904
             "Failed to probe nodes for Microsoft OCS with ip=%s "
             "port=%s, username=%s, password=%s. HTTP error code: %s"
             % (ip, port, username, password, e.code)
         )
     except urllib.error.URLError as e:
-        raise PowerFatalError(
+        raise PowerFatalError(  # noqa: B904
             "Failed to probe nodes for Microsoft OCS with ip=%s "
             "port=%s, username=%s, password=%s. "
             "Server could not be reached: %s"

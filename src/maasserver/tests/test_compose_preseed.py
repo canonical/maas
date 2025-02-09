@@ -343,9 +343,9 @@ class TestAptProxy(MAASServerTestCase):
         Config.objects.set_config("enable_http_proxy", True)
         Config.objects.set_config("use_peer_proxy", False)
         Config.objects.set_config("use_rack_proxy", True)
-        self.patch(cp_module, "get_maas_facing_server_host").return_value = (
-            "region.example.com"
-        )
+        self.patch(
+            cp_module, "get_maas_facing_server_host"
+        ).return_value = "region.example.com"
 
         subnet1 = factory.make_Subnet(cidr="10.10.0.0/24", dns_servers=[])
         rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
@@ -1265,8 +1265,9 @@ class TestBuildMetadataURL(MAASServerTestCase):
         rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
         _enable_dhcp(subnet, rack)
         machine_ip = "10.10.0.100"
-        assert "http://10.10.0.2:5248/MAAS" == build_metadata_url(
-            _make_request(machine_ip), "/MAAS", rack
+        assert (
+            build_metadata_url(_make_request(machine_ip), "/MAAS", rack)
+            == "http://10.10.0.2:5248/MAAS"
         )
 
     def test_uses_rack_ipv6_enlist_without_external_dns(self):

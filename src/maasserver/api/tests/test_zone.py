@@ -3,7 +3,6 @@
 
 """Tests for physical `Zone` API."""
 
-
 import http.client
 import json
 

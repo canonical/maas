@@ -3,7 +3,6 @@
 
 """S390X Boot Method"""
 
-
 import re
 
 from tftp.backend import FilesystemReader

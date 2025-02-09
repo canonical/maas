@@ -86,10 +86,10 @@ class UsersHandler(Handler):
     )
     async def get_user_info(
         self,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserInfoResponse:
         assert authenticated_user is not None
         user = await services.users.get_one(
@@ -128,8 +128,8 @@ class UsersHandler(Handler):
     )
     async def list_users(
         self,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UsersListResponse:
         users = await services.users.list(
             page=pagination_params.page,
@@ -176,7 +176,7 @@ class UsersHandler(Handler):
         self,
         user_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
         user = await services.users.get_by_id(user_id)
         if not user:
@@ -210,7 +210,7 @@ class UsersHandler(Handler):
         self,
         user_request: UserRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
         builder = user_request.to_builder()
         builder.date_joined = utcnow()
@@ -245,7 +245,7 @@ class UsersHandler(Handler):
         user_id: int,
         user_request: UserRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
         user = await services.users.update_by_id(
             user_id, user_request.to_builder()
@@ -277,10 +277,10 @@ class UsersHandler(Handler):
     async def delete_user(
         self,
         user_id: int,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),

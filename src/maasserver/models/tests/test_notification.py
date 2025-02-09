@@ -3,7 +3,6 @@
 
 """Tests for `Notification`."""
 
-
 import itertools
 import random
 

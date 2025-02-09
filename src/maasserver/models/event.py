@@ -3,7 +3,6 @@
 
 """:class:`Event` and friends."""
 
-
 import logging
 
 from django.db.models import (

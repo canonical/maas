@@ -38,6 +38,7 @@ that are not tied to an HTTP request.
    This is a convenient reference to :py:attr:`.loop.restart`.
 
 """
+
 import logging
 import os
 from socket import gethostname

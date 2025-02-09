@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.mscm`."""
 
-
 from io import BytesIO
 from random import randint
 import re
@@ -20,12 +19,12 @@ from twisted.internet.threads import deferToThread
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from provisioningserver.drivers.power import mscm as mscm_module
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
     PowerFatalError,
 )
-from provisioningserver.drivers.power import mscm as mscm_module
 from provisioningserver.drivers.power.mscm import (
     cartridge_mapping,
     MSCMPowerDriver,

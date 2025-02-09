@@ -85,7 +85,7 @@ INTERFACES_PREFETCH = [
     "ip_addresses__subnet",
     # Prefetch 3 levels deep, anything more will require extra queries.
     "children_relationships__child__vlan",
-    ("children_relationships__child__" "children_relationships__child__vlan"),
+    ("children_relationships__child__children_relationships__child__vlan"),
     (
         "children_relationships__child__"
         "children_relationships__child__"

@@ -3,7 +3,6 @@
 
 """Proxy config management module."""
 
-
 from django.conf import settings
 from twisted.internet.defer import succeed
 

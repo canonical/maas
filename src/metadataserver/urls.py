@@ -3,7 +3,6 @@
 
 """Metadata API URLs."""
 
-
 from django.urls import re_path
 
 from maasserver.api.auth import api_auth

@@ -3,7 +3,6 @@
 
 """Tests for VLAN forms."""
 
-
 import random
 
 from maasserver.enum import SERVICE_STATUS

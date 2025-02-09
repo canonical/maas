@@ -3,7 +3,6 @@
 
 """RPC helpers relating to events."""
 
-
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models import Event, EventType, Interface, Node
 from maasserver.utils.orm import transactional
@@ -34,7 +33,7 @@ def send_event(system_id, type_name, description, timestamp):
     try:
         event_type = EventType.objects.get(name=type_name)
     except EventType.DoesNotExist:
-        raise NoSuchEventType.from_name(type_name)
+        raise NoSuchEventType.from_name(type_name)  # noqa: B904
 
     try:
         node = Node.objects.get(system_id=system_id)
@@ -69,7 +68,7 @@ def send_event_mac_address(mac_address, type_name, description, timestamp):
     try:
         event_type = EventType.objects.get(name=type_name)
     except EventType.DoesNotExist:
-        raise NoSuchEventType.from_name(type_name)
+        raise NoSuchEventType.from_name(type_name)  # noqa: B904
 
     try:
         interface = Interface.objects.get(
@@ -106,7 +105,7 @@ def send_event_ip_address(ip_address, type_name, description, timestamp):
     try:
         event_type = EventType.objects.get(name=type_name)
     except EventType.DoesNotExist:
-        raise NoSuchEventType.from_name(type_name)
+        raise NoSuchEventType.from_name(type_name)  # noqa: B904
 
     node = Node.objects.filter(
         current_config__interface__ip_addresses__ip=ip_address

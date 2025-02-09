@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the rack contoller (and possibly the region)."""
+
 from typing import Any, Callable, cast
 
 

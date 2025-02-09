@@ -163,7 +163,7 @@ class VlanHandler(OperationsHandler):
             try:
                 vlan = VLAN.objects.get(id=vlan_id)
             except VLAN.DoesNotExist:
-                raise Http404("VLAN with specified ID does not exist.")
+                raise Http404("VLAN with specified ID does not exist.")  # noqa: B904
             fabric = vlan.fabric
             if not user.has_perm(permission, fabric):
                 raise PermissionDenied()

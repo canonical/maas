@@ -3,7 +3,6 @@
 
 """RHELOS Operating System."""
 
-
 import re
 
 from provisioningserver.drivers.osystem import (

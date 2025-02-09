@@ -3,7 +3,6 @@
 
 """Form utilities."""
 
-
 from django.http import QueryDict
 
 

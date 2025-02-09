@@ -97,7 +97,6 @@ class QuerySpec:
 
 
 class ClauseFactory:
-
     @staticmethod
     def _combine_joins(clauses: list[Clause]) -> list[Join]:
         joins = []

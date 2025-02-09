@@ -3,7 +3,6 @@
 
 """Test maasserver model managers."""
 
-
 from maasserver.testing.testcase import MAASLegacyTransactionServerTestCase
 from maasserver.tests.models import (
     BulkManagerParentTestModel,

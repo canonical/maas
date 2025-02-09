@@ -3,7 +3,6 @@
 
 """URL API routing configuration."""
 
-
 import itertools
 
 from django.urls import re_path as django_re_path

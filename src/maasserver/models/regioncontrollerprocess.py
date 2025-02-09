@@ -3,7 +3,6 @@
 
 """RegionControllerProcess object."""
 
-
 from django.db.models import CASCADE, ForeignKey, IntegerField
 
 from maasserver.models.cleansave import CleanSave

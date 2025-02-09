@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for common RPC code."""
+
 import random
 import re
 from unittest.mock import ANY, sentinel
@@ -67,7 +68,7 @@ class TestClient(MAASTestCase):
         with self.assertRaisesRegex(
             NotImplementedError, ".* only available in the rack\\b"
         ):
-            client.localIdent
+            client.localIdent  # noqa: B018
 
     def test_address(self):
         conn, client = self.make_connection_and_client()
@@ -80,7 +81,7 @@ class TestClient(MAASTestCase):
         with self.assertRaisesRegex(
             NotImplementedError, ".* only available in the rack\\b"
         ):
-            client.address
+            client.address  # noqa: B018
 
     def test_call_no_timeout(self):
         conn, client = self.make_connection_and_client()

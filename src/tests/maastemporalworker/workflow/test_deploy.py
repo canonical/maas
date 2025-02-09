@@ -299,9 +299,8 @@ class TestDeployManyWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=5))
 
@@ -424,9 +423,8 @@ class TestDeployManyWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=1))
 
@@ -567,9 +565,8 @@ class TestDeployManyWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=5))
 
@@ -725,9 +722,8 @@ class TestDeployManyWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=5))
 
@@ -878,13 +874,12 @@ class TestDeployManyWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=5))
 
-                for i, machine in enumerate(machines):
+                for i, machine in enumerate(machines):  # noqa: B007
                     deploy_wf = env.client.get_workflow_handle(
                         f"deploy:{machine['system_id']}"
                     )
@@ -1001,9 +996,8 @@ class TestDeployWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=5))
                 await wf.signal("netboot-finished")
@@ -1059,9 +1053,8 @@ class TestDeployWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 try:
                     await env.sleep(duration=timedelta(minutes=30))
@@ -1165,9 +1158,8 @@ class TestDeployWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=5))
                 await wf.signal("netboot-finished")
@@ -1286,9 +1278,8 @@ class TestDeployWorkflow:
                 )
 
                 assert (
-                    WorkflowExecutionStatus.RUNNING
-                    == (await wf.describe()).status
-                )
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
 
                 await env.sleep(duration=timedelta(seconds=5))
                 await wf.signal("netboot-finished")

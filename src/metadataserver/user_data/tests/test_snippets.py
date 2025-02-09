@@ -3,7 +3,6 @@
 
 """Test the snippets-related support routines for commissioning user data."""
 
-
 import os.path
 
 from maastesting.factory import factory

@@ -3,7 +3,6 @@
 
 """LXD Pod Driver."""
 
-
 from contextlib import contextmanager, suppress
 import os
 from pathlib import Path
@@ -279,7 +278,7 @@ class LXDPodDriver(PodDriver):
             try:
                 return LXD_VM_POWER_STATE[state]
             except KeyError:
-                raise LXDPodError(
+                raise LXDPodError(  # noqa: B904
                     f"Pod {pod_id}: Unknown power status code: {state}"
                 )
 
@@ -830,7 +829,7 @@ class LXDPodDriver(PodDriver):
                 yield client.virtual_machines.get(instance_name)
             except NotFound:
                 if fail:
-                    raise LXDPodError(
+                    raise LXDPodError(  # noqa: B904
                         f"Pod {pod_id}: LXD VM {instance_name} not found."
                     )
                 yield None
@@ -855,7 +854,7 @@ class LXDPodDriver(PodDriver):
         try:
             cert_paths = self._get_cert_paths(context)
         except CertificateError as e:
-            raise Error(str(e))
+            raise Error(str(e))  # noqa: B904
         maas_certs = get_maas_cert_tuple()
         if not cert_paths and not maas_certs:
             raise Error("No certificates available")

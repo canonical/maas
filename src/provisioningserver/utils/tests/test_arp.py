@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.arp``."""
 
-
 from argparse import ArgumentParser
 import io
 from unittest.mock import Mock

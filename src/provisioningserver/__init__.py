@@ -3,7 +3,6 @@
 
 """The MAAS Provisioning Server, now referred to as Cluster."""
 
-
 from twisted.application.service import MultiService
 
 # The cluster's services. This is initialised by

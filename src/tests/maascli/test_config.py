@@ -3,7 +3,6 @@
 
 """Tests for `maascli.config`."""
 
-
 import contextlib
 import os.path
 import sqlite3

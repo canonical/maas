@@ -3,7 +3,6 @@
 
 """:class:`EventType` and friends."""
 
-
 import logging
 
 from django.db.models import CharField, IntegerField, Manager

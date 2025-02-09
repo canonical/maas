@@ -3,7 +3,6 @@
 
 """Tests for node forms."""
 
-
 from maasserver.forms import AdminNodeForm, NodeForm
 from maasserver.testing.architecture import (
     make_usable_architecture,

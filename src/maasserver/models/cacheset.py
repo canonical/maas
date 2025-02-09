@@ -3,7 +3,6 @@
 
 """Model for a Bcache cache set."""
 
-
 from itertools import chain
 
 from django.core.exceptions import PermissionDenied
@@ -94,19 +93,19 @@ class CacheSetManager(Manager):
             name_split = cache_set_id_or_name.split("cache")
             if len(name_split) != 2:
                 # Invalid name.
-                raise self.model.DoesNotExist()
+                raise self.model.DoesNotExist()  # noqa: B904
             _, cache_number = name_split
             try:
                 cache_number = int(cache_number)
             except ValueError:
                 # Invalid cache number.
-                raise self.model.DoesNotExist()
+                raise self.model.DoesNotExist()  # noqa: B904
             cache_sets = self.get_cache_sets_for_node(node)
             for cache_set in cache_sets:
                 if cache_number == self.get_cache_set_idx(cache_set):
                     return cache_set
             # No cache set with that name on the node.
-            raise self.model.DoesNotExist()
+            raise self.model.DoesNotExist()  # noqa: B904
         cache_set = self.get(id=cache_set_id)
         if cache_set.get_node() != node:
             raise self.model.DoesNotExist()
@@ -142,7 +141,7 @@ class CacheSetManager(Manager):
         try:
             cache_set = self.get_cache_set_by_id_or_name(cache_set_id, machine)
         except self.model.DoesNotExist:
-            raise Http404()
+            raise Http404()  # noqa: B904
         node = cache_set.get_node()
         if node.system_id != system_id:
             raise Http404()

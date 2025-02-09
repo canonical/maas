@@ -79,7 +79,7 @@ def test_translate_script_type_invalid(value, exception_text):
     ],
 )
 def test_translate_hardware_type_valid(value, hardware_type):
-    translate_hardware_type(value) == hardware_type
+    translate_hardware_type(value) == hardware_type  # noqa: B015
 
 
 @pytest.mark.parametrize(

@@ -138,9 +138,9 @@ class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_doesnt_raises_other_errors(self):
         # Cause a random exception
-        self.patch(leases_module, "update_lease").side_effect = (
-            factory.make_exception()
-        )
+        self.patch(
+            leases_module, "update_lease"
+        ).side_effect = factory.make_exception()
 
         yield eventloop.start()
         try:
@@ -703,7 +703,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
     def make_interface(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         # Precache the node. So a database query is not made in the event-loop.
-        interface.node_config.node
+        interface.node_config.node  # noqa: B018
         return interface
 
     @wait_for_reactor

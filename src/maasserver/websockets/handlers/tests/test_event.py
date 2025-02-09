@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.event`"""
 
-
 import datetime
 import random
 from unittest.mock import sentinel

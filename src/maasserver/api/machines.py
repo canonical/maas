@@ -546,7 +546,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 "id": cacheset_id,
                 "__incomplete__": True,
             }
-            for cacheset_id in sets.keys()
+            for cacheset_id in sets
         ]
 
     @classmethod
@@ -892,7 +892,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             try:
                 get_curtin_merged_config(request, machine)
             except Exception as e:
-                raise MAASAPIBadRequest("Failed to render preseed: %s" % e)
+                raise MAASAPIBadRequest("Failed to render preseed: %s" % e)  # noqa: B904
 
         if machine.osystem == "esxi" and request.user.has_perm(
             NodePermission.admin, machine
@@ -1165,12 +1165,12 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 storage_layout, params=request.data, allow_fallback=False
             )
         except StorageLayoutMissingBootDiskError:
-            raise MAASAPIBadRequest(
+            raise MAASAPIBadRequest(  # noqa: B904
                 "Machine is missing a boot disk; no storage layout can be "
                 "applied."
             )
         except StorageLayoutError as e:
-            raise MAASAPIBadRequest(
+            raise MAASAPIBadRequest(  # noqa: B904
                 "Failed to configure storage layout '%s': %s"
                 % (storage_layout, str(e))
             )

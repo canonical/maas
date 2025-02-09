@@ -13,8 +13,8 @@ from sqlalchemy import (
     desc,
     insert,
     Row,
-    select,
     Select,
+    select,
     Table,
     update,
 )
@@ -50,7 +50,7 @@ class MultipleResultsException(Exception):
 T = TypeVar("T", bound=MaasBaseModel)
 
 
-class Repository(ABC):
+class Repository(ABC):  # noqa: B024
     def __init__(self, context: Context):
         self.context = context
         self._connection = context.get_connection()
@@ -161,7 +161,6 @@ class BaseRepository(Repository, Generic[T]):
     async def list(
         self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[T]:
-
         total_stmt = select(count()).select_from(self.get_repository_table())
         if query:
             total_stmt = query.enrich_stmt(total_stmt)

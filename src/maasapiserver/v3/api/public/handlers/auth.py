@@ -47,11 +47,12 @@ class AuthHandler(Handler):
     async def login(
         self,
         request: Request,
-        services: ServiceCollectionV3 = Depends(services),
-        form_data: OAuth2PasswordRequestForm = Depends(),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        form_data: OAuth2PasswordRequestForm = Depends(),  # noqa: B008
     ) -> AccessTokenResponse:
         if (
-            external_auth_info := await request.state.services.external_auth.get_external_auth()
+            external_auth_info
+            := await request.state.services.external_auth.get_external_auth()
         ):
             await request.state.services.external_auth.raise_discharge_required_exception(
                 external_auth_info,
@@ -83,10 +84,10 @@ class AuthHandler(Handler):
     )
     async def access_token(
         self,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> AccessTokenResponse:
         token = await services.auth.access_token(authenticated_user)
         return AccessTokenResponse(

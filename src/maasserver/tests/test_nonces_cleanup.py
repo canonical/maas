@@ -3,7 +3,6 @@
 
 """Tests for the nonces cleanup module."""
 
-
 import time
 
 from piston3.models import Nonce
@@ -19,9 +18,9 @@ from maasserver.nonces_cleanup import (
     get_time_string,
     key_prefix,
     NonceCleanupService,
+    timestamp_threshold,
 )
 from maasserver.nonces_cleanup import time as module_time
-from maasserver.nonces_cleanup import timestamp_threshold
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

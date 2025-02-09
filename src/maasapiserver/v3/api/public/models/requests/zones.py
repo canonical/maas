@@ -13,7 +13,6 @@ from maasservicelayer.db.repositories.zones import ZonesClauseFactory
 
 
 class ZonesFiltersParams(BaseModel):
-
     ids: Optional[list[int]] = Field(
         Query(default=None, title="Filter by zone id", alias="id")
     )

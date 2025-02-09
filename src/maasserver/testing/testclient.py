@@ -3,7 +3,6 @@
 
 """MAAS-specific test HTTP clients."""
 
-
 from time import time
 
 from django.conf import settings

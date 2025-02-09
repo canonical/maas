@@ -253,12 +253,10 @@ class TestGetHostnameMapping(MAASServerTestCase):
         ttl = random.randint(10, 300)
         Config.objects.set_config("default_dns_ttl", ttl)
         expected_mapping = {
-            "%s.maas"
-            % node1.hostname: HostnameIPMapping(
+            "%s.maas" % node1.hostname: HostnameIPMapping(
                 node1.system_id, ttl, {static_ip.ip}, node1.node_type
             ),
-            "%s.maas"
-            % node2.hostname: HostnameIPMapping(
+            "%s.maas" % node2.hostname: HostnameIPMapping(
                 node2.system_id, ttl, {dynamic_ip.ip}, node2.node_type
             ),
         }
@@ -630,8 +628,7 @@ class TestZoneGenerator(MAASServerTestCase):
                     {str(boot_ip.ip)},
                     node.node_type,
                 ),
-                "%s.%s"
-                % (interfaces[0].name, node.fqdn): HostnameIPMapping(
+                "%s.%s" % (interfaces[0].name, node.fqdn): HostnameIPMapping(
                     node.system_id,
                     default_ttl,
                     {str(sip.ip)},

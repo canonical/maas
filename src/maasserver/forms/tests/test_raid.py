@@ -3,7 +3,6 @@
 
 """Tests for all forms that are used with `RAID`."""
 
-
 import random
 from uuid import uuid4
 

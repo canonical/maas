@@ -3,7 +3,6 @@
 
 """Figure out server address for the maas_url setting."""
 
-
 import re
 import socket
 from subprocess import check_output

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.manual`."""
 
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import manual as manual_module
 

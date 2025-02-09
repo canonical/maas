@@ -3,7 +3,6 @@
 
 """Test Service model and manager."""
 
-
 import random
 
 from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES

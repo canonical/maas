@@ -3,7 +3,6 @@
 
 """The Service handler for the WebSocket connection."""
 
-
 from maasserver.models.service import Service
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,

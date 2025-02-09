@@ -3,7 +3,6 @@
 
 """Tests for volume-group API."""
 
-
 import http.client
 import json
 import random

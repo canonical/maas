@@ -31,7 +31,6 @@ class TestCentOS(MAASTestCase):
             "centos7": "CentOS 7",
             "centos70": "CentOS 7",  # See LP: #1654063
             "centos71": "CentOS 7.1",
-            "centos65": "CentOS 6.5",
             "cent": "CentOS cent",
             "centos711": "CentOS 7.1 1",
             "centos71-custom": "CentOS 7.1 custom",

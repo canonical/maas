@@ -3,7 +3,6 @@
 
 """Tests for the `describe` view."""
 
-
 import http.client
 from urllib.parse import urlparse
 

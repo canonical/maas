@@ -3,7 +3,6 @@
 
 """Utilities for adding sub-commands to the MAAS management commands."""
 
-
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import io
 import signal
@@ -63,7 +62,7 @@ class ActionScript:
             *args,
             help=handler.run.__doc__,
             formatter_class=RawDescriptionHelpFormatter,
-            **kwargs
+            **kwargs,
         )
         parser.set_defaults(handler=handler)
         handler.add_arguments(parser)
@@ -88,12 +87,12 @@ class ActionScript:
             self.execute(argv)
         except ActionScriptError as error:
             print(str(error), file=sys.stderr)
-            raise SystemExit(error.returncode)
+            raise SystemExit(error.returncode)  # noqa: B904
         except CalledProcessError as error:
             # Print error.cmd and error.output too?
-            raise SystemExit(error.returncode)
+            raise SystemExit(error.returncode)  # noqa: B904
         except KeyboardInterrupt:
-            raise SystemExit(1)
+            raise SystemExit(1)  # noqa: B904
         else:
             raise SystemExit(0)
 

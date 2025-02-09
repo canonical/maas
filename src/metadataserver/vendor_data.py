@@ -3,7 +3,6 @@
 
 """vendor-data for cloud-init's use."""
 
-
 from base64 import b64encode
 from ipaddress import ip_address
 from itertools import chain
@@ -60,9 +59,9 @@ def get_vendor_data(node, proxy):
         if key in ("runcmd", "write_files", "packages"):
             vendor_data.setdefault(key, []).extend(value)
         else:
-            assert (
-                key not in vendor_data
-            ), f"vendor-data key {key} already in configuration"
+            assert key not in vendor_data, (
+                f"vendor-data key {key} already in configuration"
+            )
             vendor_data[key] = value
     return vendor_data
 
@@ -89,20 +88,24 @@ def generate_system_info(node):
         username = node.default_user
         fullname = node.owner.get_full_name()
         gecos = make_gecos_field(fullname)
-        yield "system_info", {
-            "default_user": {"name": username, "gecos": gecos}
-        }
+        yield (
+            "system_info",
+            {"default_user": {"name": username, "gecos": gecos}},
+        )
 
 
 def generate_snap_configuration(node, proxy):
     """Generate cloud-init configuration for snapd."""
     if not proxy:
         return
-    yield "snap", {
-        "commands": [
-            f'snap set system proxy.http="{proxy}" proxy.https="{proxy}"',
-        ],
-    }
+    yield (
+        "snap",
+        {
+            "commands": [
+                f'snap set system proxy.http="{proxy}" proxy.https="{proxy}"',
+            ],
+        },
+    )
 
 
 def generate_ntp_configuration(node):
@@ -147,10 +150,13 @@ def generate_rack_controller_configuration(node):
         maas_url = get_node_maas_url(node)
         secret = SecretManager().get_simple_secret("rpc-shared")
         channel = str(get_target_version().snap_channel)
-        yield "runcmd", [
-            f"snap install maas --channel={channel}",
-            f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
-        ]
+        yield (
+            "runcmd",
+            [
+                f"snap install maas --channel={channel}",
+                f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
+            ],
+        )
 
 
 def generate_ephemeral_netplan_lock_removal(node):
@@ -183,17 +189,23 @@ def generate_ephemeral_deployment_network_configuration(node):
     network_config_yaml = yaml.safe_dump(
         network_config.config, default_flow_style=False
     )
-    yield "write_files", [
-        {
-            "content": network_config_yaml,
-            "path": "/etc/netplan/50-maas.yaml",
-        }
-    ]
-    yield "runcmd", [
-        "rm -rf /run/netplan",
-        "rm -rf /etc/netplan/50-cloud-init.yaml",
-        "netplan apply --debug",
-    ]
+    yield (
+        "write_files",
+        [
+            {
+                "content": network_config_yaml,
+                "path": "/etc/netplan/50-maas.yaml",
+            }
+        ],
+    )
+    yield (
+        "runcmd",
+        [
+            "rm -rf /run/netplan",
+            "rm -rf /etc/netplan/50-cloud-init.yaml",
+            "netplan apply --debug",
+        ],
+    )
 
 
 def generate_openvswitch_configuration(node):
@@ -225,25 +237,31 @@ def generate_kvm_pod_configuration(node):
         # write out the LXD cert on node to add it to the trust after setup
         maas_project = "maas"
         cert_file = "/root/lxd.crt"
-        yield "write_files", [
-            {
-                "content": cert.certificate_pem(),
-                "path": cert_file,
-            },
-        ]
+        yield (
+            "write_files",
+            [
+                {
+                    "content": cert.certificate_pem(),
+                    "path": cert_file,
+                },
+            ],
+        )
         # When installing LXD, ensure no deb packages are installed, since they
         # would conflict with the snap. Also, ensure that the snap version is
         # the latest, since MAAS requires features not present in the one
         # installed by default in Focal.
-        yield "runcmd", [
-            "apt autoremove --purge --yes lxd lxd-client lxcfs",
-            "snap install lxd --channel=5.21/stable",
-            "snap refresh lxd --channel=5.21/stable",
-            "lxd init --auto --network-address=[::]",
-            f"lxc project create {maas_project}",
-            f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
-            f"rm {cert_file}",
-        ]
+        yield (
+            "runcmd",
+            [
+                "apt autoremove --purge --yes lxd lxd-client lxcfs",
+                "snap install lxd --channel=5.21/stable",
+                "snap refresh lxd --channel=5.21/stable",
+                "lxd init --auto --network-address=[::]",
+                f"lxc project create {maas_project}",
+                f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
+                f"rm {cert_file}",
+            ],
+        )
 
     if node.install_kvm:
         password = _generate_password()
@@ -252,15 +270,18 @@ def generate_kvm_pod_configuration(node):
         yield "ssh_pwauth", True
         # Create a custom 'virsh' user (in addition to the default user)
         # with the encrypted password, and a locked-down shell.
-        yield "users", [
-            "default",
-            {
-                "name": "virsh",
-                "lock_passwd": False,
-                "passwd": sha512_crypt.hash(password),
-                "shell": "/bin/rbash",
-            },
-        ]
+        yield (
+            "users",
+            [
+                "default",
+                {
+                    "name": "virsh",
+                    "lock_passwd": False,
+                    "passwd": sha512_crypt.hash(password),
+                    "shell": "/bin/rbash",
+                },
+            ],
+        )
 
         packages = ["libvirt-daemon-system", "libvirt-clients"]
         # libvirt emulates UEFI on ARM64 however qemu-efi-aarch64 is only a
@@ -270,39 +291,45 @@ def generate_kvm_pod_configuration(node):
         yield "packages", packages
 
         # set up virsh user and ssh authentication
-        yield "runcmd", [
-            # Restrict the $PATH so that rbash can be used to limit what the
-            # virsh user can do if they manage to get a shell.
-            "mkdir -p /home/virsh/bin",
-            "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
-            # Make sure the 'virsh' user is allowed to access libvirt.
-            "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
-            # SSH needs to be restarted in order for the above changes to take
-            # effect.
-            "systemctl restart sshd",
-        ]
+        yield (
+            "runcmd",
+            [
+                # Restrict the $PATH so that rbash can be used to limit what the
+                # virsh user can do if they manage to get a shell.
+                "mkdir -p /home/virsh/bin",
+                "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
+                # Make sure the 'virsh' user is allowed to access libvirt.
+                "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
+                # SSH needs to be restarted in order for the above changes to take
+                # effect.
+                "systemctl restart sshd",
+            ],
+        )
 
-        yield "write_files", [
-            {
-                "path": "/home/virsh/.bash_profile",
-                "content": "PATH=/home/virsh/bin",
-            },
-            # Use a ForceCommand to make sure the only thing the virsh user can
-            # do with SSH is communicate with libvirt.
-            {
-                "path": "/etc/ssh/sshd_config",
-                "content": dedent(
-                    """\
+        yield (
+            "write_files",
+            [
+                {
+                    "path": "/home/virsh/.bash_profile",
+                    "content": "PATH=/home/virsh/bin",
+                },
+                # Use a ForceCommand to make sure the only thing the virsh user can
+                # do with SSH is communicate with libvirt.
+                {
+                    "path": "/etc/ssh/sshd_config",
+                    "content": dedent(
+                        """\
                     Match user virsh
                       X11Forwarding no
                       AllowTcpForwarding no
                       PermitTTY no
                       ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock
                     """
-                ),
-                "append": True,
-            },
-        ]
+                    ),
+                    "append": True,
+                },
+            ],
+        )
 
     secret_manager = SecretManager()
     node = node.as_node()
@@ -344,13 +371,16 @@ def generate_kvm_pod_configuration(node):
 
     if rc_script:
         rc_local = "/etc/rc.local"
-        yield "write_files", [
-            {
-                "path": rc_local,
-                "content": rc_script,
-                "permissions": "0755",
-            },
-        ]
+        yield (
+            "write_files",
+            [
+                {
+                    "path": rc_local,
+                    "content": rc_script,
+                    "permissions": "0755",
+                },
+            ],
+        )
         yield "runcmd", [rc_local]
 
 
@@ -387,12 +417,15 @@ def generate_vcenter_configuration(node):
     if vcenter_password:
         configs["vcenter_password"] = vcenter_password
     if configs:
-        yield "write_files", [
-            {
-                "content": yaml.safe_dump(configs),
-                "path": "/altbootbank/maas/vcenter.yaml",
-            }
-        ]
+        yield (
+            "write_files",
+            [
+                {
+                    "content": yaml.safe_dump(configs),
+                    "path": "/altbootbank/maas/vcenter.yaml",
+                }
+            ],
+        )
 
 
 def _get_metadataserver_template(template_name):
@@ -442,26 +475,32 @@ def generate_hardware_sync_systemd_configuration(node):
         }
     }
 
-    yield "write_files", [
-        {
-            "content": hardware_sync_timer,
-            "path": "/lib/systemd/system/maas_hardware_sync.timer",
-        },
-        {
-            "content": hardware_sync_service,
-            "path": "/lib/systemd/system/maas_hardware_sync.service",
-        },
-        {
-            "content": yaml.safe_dump(credentials),
-            "path": HARDWARE_SYNC_MACHINE_TOKEN_PATH,
-            "permissions": "0700",
-        },
-    ]
-    yield "runcmd", [
-        "systemctl daemon-reload",
-        "systemctl start maas_hardware_sync.timer",
-        "systemctl enable maas_hardware_sync.timer",
-    ]
+    yield (
+        "write_files",
+        [
+            {
+                "content": hardware_sync_timer,
+                "path": "/lib/systemd/system/maas_hardware_sync.timer",
+            },
+            {
+                "content": hardware_sync_service,
+                "path": "/lib/systemd/system/maas_hardware_sync.service",
+            },
+            {
+                "content": yaml.safe_dump(credentials),
+                "path": HARDWARE_SYNC_MACHINE_TOKEN_PATH,
+                "permissions": "0700",
+            },
+        ],
+    )
+    yield (
+        "runcmd",
+        [
+            "systemctl daemon-reload",
+            "systemctl start maas_hardware_sync.timer",
+            "systemctl enable maas_hardware_sync.timer",
+        ],
+    )
 
 
 def _generate_password():

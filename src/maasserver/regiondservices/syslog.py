@@ -3,7 +3,6 @@
 
 """Syslog service for the region controller."""
 
-
 from datetime import timedelta
 
 import attr

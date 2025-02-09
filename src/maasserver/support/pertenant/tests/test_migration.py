@@ -3,7 +3,6 @@
 
 """Test `maasserver.support.pertenant.migration."""
 
-
 from unittest.mock import call, sentinel
 
 from django.contrib.auth.models import User
@@ -95,7 +94,7 @@ class TestFunctions(MAASServerTestCase):
         self.assertEqual(nodes, set(get_owned_nodes()))
 
     def test_get_owned_nodes_with_nodes_owned_by_system_users(self):
-        factory.make_Node(owner=get_legacy_user()),
+        (factory.make_Node(owner=get_legacy_user()),)
         self.assertEqual([], list(get_owned_nodes()))
 
     def test_get_owned_nodes_owners_no_users(self):

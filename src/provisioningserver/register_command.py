@@ -3,19 +3,18 @@
 
 """Register rack controller.
 
-  A MAAS region controller URL where this rack controller should connect
-  to will be prompted for when it has not been supplied.
+A MAAS region controller URL where this rack controller should connect
+to will be prompted for when it has not been supplied.
 
-  Additionially, a shared secret required for communications with the region
-  controller will be prompted for (or read from stdin in a non-interactive
-  shell, see below) if one has not previously been installed. You can find it
-  at /var/lib/maas/secret on the region.
+Additionially, a shared secret required for communications with the region
+controller will be prompted for (or read from stdin in a non-interactive
+shell, see below) if one has not previously been installed. You can find it
+at /var/lib/maas/secret on the region.
 
-  Only the shared secret can be supplied via stdin (non-interactive shell).
-  When this is the case, the user will need to supply the MAAS region
-  controller URL.
-  """
-
+Only the shared secret can be supplied via stdin (non-interactive shell).
+When this is the case, the user will need to supply the MAAS region
+controller URL.
+"""
 
 from sys import stderr, stdin
 from textwrap import dedent
@@ -109,7 +108,7 @@ def run(args):
     except ExternalProcessError as e:
         print("Unable to stop maas-rackd service.", file=stderr)
         print("Failed with error: %s." % e.output_as_unicode, file=stderr)
-        raise SystemExit(1)
+        raise SystemExit(1)  # noqa: B904
     # maas_id could be stale so remove it
     MAAS_ID.set(None)
     if args.url is not None:
@@ -120,7 +119,7 @@ def run(args):
             url = input("MAAS region controller URL: ")
         except EOFError:
             print()  # So that the shell prompt appears on the next line.
-            raise SystemExit(1)
+            raise SystemExit(1)  # noqa: B904
         except KeyboardInterrupt:
             print()  # So that the shell prompt appears on the next line.
             raise
@@ -139,4 +138,4 @@ def run(args):
             "Unable to enable and start the maas-rackd service.", file=stderr
         )
         print("Failed with error: %s." % e.output_as_unicode, file=stderr)
-        raise SystemExit(1)
+        raise SystemExit(1)  # noqa: B904

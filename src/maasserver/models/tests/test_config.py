@@ -3,7 +3,6 @@
 
 """Tests for the `Config` class and friends."""
 
-
 from socket import gethostname
 
 from django.db import IntegrityError

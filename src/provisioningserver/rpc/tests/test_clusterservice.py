@@ -1752,9 +1752,9 @@ class TestClusterClient(TestClusterClientBase):
         MAAS_ID.set(system_id)
         maas_url = factory.make_simple_http_url()
         hostname = "rackcontrol.example.com"
-        self.patch_autospec(clusterservice, "gethostname").return_value = (
-            hostname
-        )
+        self.patch_autospec(
+            clusterservice, "gethostname"
+        ).return_value = hostname
         self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
         protocol, connecting = fixture.makeEventLoop()
@@ -2083,7 +2083,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             shared_networks,
             hosts,
             interfaces,
-            None,
+            [],
         )
 
     @inlineCallbacks

@@ -243,8 +243,8 @@ def secure_erase_hdparm(kname):
     # Before secure erase can be performed on a device a user password must
     # be set. The password will automatically be removed once the drive has
     # been securely erased.
-    print_flush(f"{kname.decode("ascii")}: performing secure erase process.")
-    print_flush(f"{kname.decode("ascii")}: setting user password to 'maas'.")
+    print_flush(f"{kname.decode('ascii')}: performing secure erase process.")
+    print_flush(f"{kname.decode('ascii')}: setting user password to 'maas'.")
     try:
         subprocess.check_output(
             [
@@ -269,7 +269,7 @@ def secure_erase_hdparm(kname):
 
     # Perform the actual secure erase. This will clear the set user password.
     failed_exc = None
-    print_flush(f"{kname.decode("ascii")}: calling secure erase on device.")
+    print_flush(f"{kname.decode('ascii')}: calling secure erase on device.")
     try:
         subprocess.check_call(
             [
@@ -316,19 +316,19 @@ def try_secure_erase_hdparm(kname, info):
     if info[b"supported"]:
         if info[b"frozen"]:
             print_flush(
-                f"{kname.decode("ascii")}: not using secure erase; "
+                f"{kname.decode('ascii')}: not using secure erase; "
                 "drive is currently frozen."
             )
             return False
         elif info[b"locked"]:
             print_flush(
-                f"{kname.decode("ascii")}: not using secure erase; "
+                f"{kname.decode('ascii')}: not using secure erase; "
                 "drive is currently locked."
             )
             return False
         elif info[b"enabled"]:
             print_flush(
-                f"{kname.decode("ascii")}: not using secure erase; "
+                f"{kname.decode('ascii')}: not using secure erase; "
                 "drive security is already enabled."
             )
             return False
@@ -338,17 +338,17 @@ def try_secure_erase_hdparm(kname, info):
                 secure_erase_hdparm(kname)
             except Exception as e:
                 print_flush(
-                    f"{kname.decode("ascii")}: failed to be securely erased: {e}"
+                    f"{kname.decode('ascii')}: failed to be securely erased: {e}"
                 )
                 return False
             else:
                 print_flush(
-                    f"{kname.decode("ascii")}: successfully securely erased."
+                    f"{kname.decode('ascii')}: successfully securely erased."
                 )
                 return True
     else:
         print_flush(
-            f"{kname.decode("ascii")}: drive does not support secure erase."
+            f"{kname.decode('ascii')}: drive does not support secure erase."
         )
         return False
 
@@ -359,7 +359,7 @@ def try_secure_erase_nvme(kname, info):
 
     if not info["format_supported"]:
         print_flush(
-            f"Device {kname.decode("ascii")} does not support formatting"
+            f"Device {kname.decode('ascii')} does not support formatting"
         )
         return False
 
@@ -390,7 +390,7 @@ def try_secure_erase_nvme(kname, info):
         return False
 
     print_flush(
-        f"Secure erase was successful on NVMe drive {kname.decode("ascii")}"
+        f"Secure erase was successful on NVMe drive {kname.decode('ascii')}"
     )
     return True
 
@@ -412,7 +412,7 @@ def wipe_quickly(kname):
     """
 
     wipe_error = 0
-    print_flush(f"{kname.decode("ascii")}: starting quick wipe.")
+    print_flush(f"{kname.decode('ascii')}: starting quick wipe.")
 
     # First clean each partition individually
     partitions = list_partitions(kname.decode("ascii"))
@@ -420,11 +420,11 @@ def wipe_quickly(kname):
         try:
             subprocess.check_output(["wipefs", "-f", "-a", DEV_PATH % part])
             print_flush(
-                f"{part.decode("ascii")}: partition was wiped successfully"
+                f"{part.decode('ascii')}: partition was wiped successfully"
             )
         except subprocess.CalledProcessError as exc:
             print_flush(
-                f"{part.decode("ascii")}: partition wipefs failed ({exc.returncode})"
+                f"{part.decode('ascii')}: partition wipefs failed ({exc.returncode})"
             )
 
     # Then it is sufficient to clean the partition table or direct filesystem
@@ -433,7 +433,7 @@ def wipe_quickly(kname):
         wipe_error -= 1
     except subprocess.CalledProcessError as exc:
         print_flush(
-            f"{kname.decode("ascii")}: wipefs failed ({exc.returncode})"
+            f"{kname.decode('ascii')}: wipefs failed ({exc.returncode})"
         )
         wipe_error += 1
 
@@ -446,14 +446,14 @@ def wipe_quickly(kname):
         wipe_error -= 1
     except OSError as exc:
         print_flush(
-            f"{kname.decode("ascii")}: OS error while wiping beginning/end of disk ({exc.strerror})"
+            f"{kname.decode('ascii')}: OS error while wiping beginning/end of disk ({exc.strerror})"
         )
         wipe_error += 1
 
     if wipe_error > 0:
-        print_flush(f"{kname.decode("ascii")}: failed to be quickly wiped.")
+        print_flush(f"{kname.decode('ascii')}: failed to be quickly wiped.")
     else:
-        print_flush(f"{kname.decode("ascii")}: successfully quickly wiped.")
+        print_flush(f"{kname.decode('ascii')}: successfully quickly wiped.")
 
 
 def nvme_write_zeroes(kname, info):
@@ -465,13 +465,13 @@ def nvme_write_zeroes(kname, info):
 
     if not info["writez_supported"]:
         print(
-            f"NVMe drive {kname.decode("ascii")} does not support write-zeroes"
+            f"NVMe drive {kname.decode('ascii')} does not support write-zeroes"
         )
         fallback = True
 
     if info["nsze"] <= 0:
         print(
-            f"Bad namespace information collected on NVMe drive {kname.decode("ascii")}"
+            f"Bad namespace information collected on NVMe drive {kname.decode('ascii')}"
         )
         fallback = True
 
@@ -500,7 +500,7 @@ def nvme_write_zeroes(kname, info):
         return False
 
     print_flush(
-        f"{kname.decode("ascii")}: successfully zeroed (using write-zeroes)."
+        f"{kname.decode('ascii')}: successfully zeroed (using write-zeroes)."
     )
     return True
 
@@ -518,7 +518,7 @@ def zero_disk(kname, info):
         fp.seek(0, 2)
         size = fp.tell()
 
-    print_flush(f"{kname.decode("ascii")}: started zeroing.")
+    print_flush(f"{kname.decode('ascii')}: started zeroing.")
 
     # Write 1MiB at a time.
     buf = b"\0" * 1024 * 1024
@@ -534,7 +534,7 @@ def zero_disk(kname, info):
             buf = b"\0" * remaining
             fp.write(buf)
 
-    print_flush(f"{kname.decode("ascii")}: successfully zeroed.")
+    print_flush(f"{kname.decode('ascii')}: successfully zeroed.")
 
 
 def stop_bcache():
@@ -577,34 +577,34 @@ def clean_mdadm():
     raids = list_raids()
     for raid in raids:
         # Quite important when dealing with bcache or lvm signatures
-        print_flush(f"Cleaning filesystem above raid {raid.decode("ascii")}")
+        print_flush(f"Cleaning filesystem above raid {raid.decode('ascii')}")
         try:
             subprocess.check_output(["wipefs", "-f", "-a", DEV_PATH % raid])
             wipe_error = 0
         except subprocess.CalledProcessError as exc:
             print_flush(
-                f"{raid.decode("ascii")}: wipefs failed ({exc.returncode})"
+                f"{raid.decode('ascii')}: wipefs failed ({exc.returncode})"
             )
             wipe_error = 1
 
         if wipe_error > 0:
             print_flush(
-                f"raid {raid.decode("ascii")}: filesystem failed to be quickly wiped."
+                f"raid {raid.decode('ascii')}: filesystem failed to be quickly wiped."
             )
         else:
             print_flush(
-                f"raid {raid.decode("ascii")}: filesystem successfully quickly wiped."
+                f"raid {raid.decode('ascii')}: filesystem successfully quickly wiped."
             )
             # It is safe to deactivate the raid
             try:
                 subprocess.check_output(["mdadm", "--stop", raid])
                 print_flush(
-                    f"raid {raid.decode("ascii")}: successfully deactivated."
+                    f"raid {raid.decode('ascii')}: successfully deactivated."
                 )
             # If this happens, most likely a filesystem is still active above
             except subprocess.CalledProcessError as exc:
                 print_flush(
-                    f"{raid.decode("ascii")}: mdadm --stop failed ({exc.returncode})"
+                    f"{raid.decode('ascii')}: mdadm --stop failed ({exc.returncode})"
                 )
 
 

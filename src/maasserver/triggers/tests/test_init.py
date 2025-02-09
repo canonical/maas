@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.triggers`."""
 
-
 from contextlib import closing
 
 from django.db import connection
@@ -303,7 +302,7 @@ class TestTriggersUsed(MAASServerTestCase):
             cursor.execute(
                 "SELECT tgname::text FROM pg_trigger WHERE NOT tgisinternal"
             )
-            return {tgname for tgname, in cursor.fetchall()}
+            return {tgname for (tgname,) in cursor.fetchall()}
 
     def check_triggers_in_database(self):
         # Note: if this test fails, a trigger may have been added, but not

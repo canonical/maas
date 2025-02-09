@@ -59,9 +59,9 @@ class ZonesHandler(Handler):
     )
     async def list_zones(
         self,
-        pagination_params: PaginationParams = Depends(),
-        filters: ZonesFiltersParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: ZonesFiltersParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         zones = await services.zones.list(
             page=pagination_params.page,
@@ -106,8 +106,8 @@ class ZonesHandler(Handler):
     )
     async def list_zones_with_summary(
         self,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ZonesWithSummaryListResponse:
         zones_with_summary = await services.zones.list_with_summary(
             page=pagination_params.page,
@@ -154,7 +154,7 @@ class ZonesHandler(Handler):
         self,
         response: Response,
         zone_request: ZoneRequest,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         zone = await services.zones.create(zone_request.to_builder())
         response.headers["ETag"] = zone.etag()
@@ -184,7 +184,7 @@ class ZonesHandler(Handler):
         self,
         zone_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         zone = await services.zones.get_by_id(zone_id)
         if not zone:
@@ -218,7 +218,7 @@ class ZonesHandler(Handler):
         zone_id: int,
         zone_request: ZoneRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         zone = await services.zones.update_by_id(
             zone_id, zone_request.to_builder()
@@ -252,7 +252,7 @@ class ZonesHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.zones.delete_by_id(zone_id, etag_if_match)
         return Response(status_code=status.HTTP_204_NO_CONTENT)

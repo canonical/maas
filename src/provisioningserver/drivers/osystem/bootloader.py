@@ -3,7 +3,6 @@
 
 """Operating System class used for bootloaders."""
 
-
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,

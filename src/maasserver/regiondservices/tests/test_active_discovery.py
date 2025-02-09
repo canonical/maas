@@ -3,7 +3,6 @@
 
 """Tests for service monitoring in the regiond."""
 
-
 import random
 from unittest.mock import Mock
 

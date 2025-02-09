@@ -12,12 +12,12 @@ from lxml import etree
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.drivers.power import amt as amt_module
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
     PowerFatalError,
 )
-from provisioningserver.drivers.power import amt as amt_module
 from provisioningserver.drivers.power.amt import AMT_ERRORS, AMTPowerDriver
 from provisioningserver.utils.shell import has_command_available, ProcessResult
 from provisioningserver.utils.snap import SnapPaths
@@ -170,7 +170,7 @@ class TestAMTPowerDriver(MAASTestCase):
             *command,
             stdin=stdin,
             extra_environ={"AMT_PASSWORD": power_pass},
-            decode=False
+            decode=False,
         )
         self.assertEqual(result, b"stdout")
 
@@ -363,9 +363,9 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
     def test_issue_wsman_has_config_file_from_snap(self):
-        self.patch(amt_module.snap.SnapPaths, "from_environ").return_value = (
-            SnapPaths(snap=Path("/snap/maas/current"))
-        )
+        self.patch(
+            amt_module.snap.SnapPaths, "from_environ"
+        ).return_value = SnapPaths(snap=Path("/snap/maas/current"))
         ip_address = factory.make_ipv4_address()
         power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
@@ -464,9 +464,9 @@ class TestAMTPowerDriver(MAASTestCase):
         power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         port = factory.pick_port()
-        self.patch(amt_power_driver, "_issue_amttool_command").return_value = (
-            b""
-        )
+        self.patch(
+            amt_power_driver, "_issue_amttool_command"
+        ).return_value = b""
         self.assertRaises(
             PowerActionError,
             amt_power_driver.amttool_query_state,

@@ -3,7 +3,6 @@
 
 """Tests for ScriptResult status transition event."""
 
-
 import random
 
 from maasserver.models import Event

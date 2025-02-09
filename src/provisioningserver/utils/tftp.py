@@ -3,7 +3,6 @@
 
 """Utilities for working with TFTP and ``python-tx-tftp``."""
 
-
 from twisted.python.context import get
 
 # Paths in TFTP are always byte strings.

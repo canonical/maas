@@ -3,7 +3,6 @@
 
 """Security-related code, primarily relating to TLS."""
 
-
 from datetime import datetime
 import os
 

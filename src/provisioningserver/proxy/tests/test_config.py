@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.proxy.config`."""
 
-
 import os
 from pathlib import Path
 import random

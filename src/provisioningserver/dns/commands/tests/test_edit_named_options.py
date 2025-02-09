@@ -3,7 +3,6 @@
 
 """Tests for the edit_named_options command."""
 
-
 from argparse import ArgumentParser
 import io
 import os

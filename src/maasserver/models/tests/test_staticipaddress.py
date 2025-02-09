@@ -547,8 +547,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             full_hostname: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (iface2.name, full_hostname): HostnameIPMapping(
+            "%s.%s" % (iface2.name, full_hostname): HostnameIPMapping(
                 node.system_id, 30, {sip2.ip}, node.node_type
             ),
         }
@@ -588,8 +587,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             full_hostname: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (sanitized_if2name, full_hostname): HostnameIPMapping(
+            "%s.%s" % (sanitized_if2name, full_hostname): HostnameIPMapping(
                 node.system_id, 30, {sip2.ip}, node.node_type
             ),
         }
@@ -733,8 +731,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (newer_nic.name, node.fqdn): HostnameIPMapping(
+            "%s.%s" % (newer_nic.name, node.fqdn): HostnameIPMapping(
                 node.system_id, 30, {newer_ip.ip}, node.node_type
             ),
         }
@@ -762,8 +759,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (nic.name, node.fqdn): HostnameIPMapping(
+            "%s.%s" % (nic.name, node.fqdn): HostnameIPMapping(
                 node.system_id, 30, {auto_ip.ip}, node.node_type
             ),
         }
@@ -907,8 +903,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (iface.name, node.fqdn): HostnameIPMapping(
+            "%s.%s" % (iface.name, node.fqdn): HostnameIPMapping(
                 node.system_id, 30, {ula_ip.ip}, node.node_type
             ),
         }
@@ -948,8 +943,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {bond_staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (iface.name, node.fqdn): HostnameIPMapping(
+            "%s.%s" % (iface.name, node.fqdn): HostnameIPMapping(
                 node.system_id, 30, {iface_ip.ip}, node.node_type
             ),
         }
@@ -1014,8 +1008,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {boot_staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (bondif.name, node.fqdn): HostnameIPMapping(
+            "%s.%s" % (bondif.name, node.fqdn): HostnameIPMapping(
                 node.system_id, 30, {bondip.ip}, node.node_type
             ),
         }
@@ -1048,8 +1041,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {boot_sip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (iface.name, node.fqdn): HostnameIPMapping(
+            "%s.%s" % (iface.name, node.fqdn): HostnameIPMapping(
                 node.system_id, 30, {iface_ip.ip}, node.node_type
             ),
         }
@@ -1082,8 +1074,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {boot_sip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (iface.name, node.fqdn): HostnameIPMapping(
+            "%s.%s" % (iface.name, node.fqdn): HostnameIPMapping(
                 node.system_id, 30, {iface_ip.ip}, node.node_type
             ),
         }
@@ -1408,8 +1399,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             full_hostname: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (iface2.name, full_hostname): HostnameIPMapping(
+            "%s.%s" % (iface2.name, full_hostname): HostnameIPMapping(
                 node.system_id, 30, {sip2.ip}, node.node_type
             ),
             full_dnsrrname: HostnameIPMapping(
@@ -1426,8 +1416,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             full_hostname: HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (iface2.name, full_hostname): HostnameIPMapping(
+            "%s.%s" % (iface2.name, full_hostname): HostnameIPMapping(
                 node.system_id, 30, {sip2.ip}, node.node_type
             ),
             full_dnsrrname: HostnameIPMapping(None, 30, {sip3.ip}, None),
@@ -1769,12 +1758,10 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         self.assertEqual(
             mappings,
             {
-                "%s.%s"
-                % (name1, domain1.name): HostnameIPMapping(
+                "%s.%s" % (name1, domain1.name): HostnameIPMapping(
                     None, 30, {ip.ip}, None, domain1_rr_id
                 ),
-                "%s.%s"
-                % (name2, domain2.name): HostnameIPMapping(
+                "%s.%s" % (name2, domain2.name): HostnameIPMapping(
                     None, 30, {ip.ip}, None, domain2_rr_id
                 ),
             },

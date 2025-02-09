@@ -3,7 +3,6 @@
 
 """Utilities for working with DHCP packets."""
 
-
 from collections import namedtuple
 from io import BytesIO
 import struct

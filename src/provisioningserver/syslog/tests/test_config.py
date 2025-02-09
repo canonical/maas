@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.syslog.config`."""
 
-
 import os
 from pathlib import Path
 

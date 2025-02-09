@@ -3,7 +3,6 @@
 
 """Tests for `InstanceListField`."""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.forms import InstanceListField

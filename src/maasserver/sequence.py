@@ -3,7 +3,6 @@
 
 """SQL Sequence."""
 
-
 from textwrap import dedent
 
 from django.db import connection, transaction, utils
@@ -36,7 +35,7 @@ class Sequence:
         maxvalue: int = None,
         start: int = None,
         cycle: bool = True,
-        owner: str = None
+        owner: str = None,
     ):
         """Initialise a new `Sequence`.
 

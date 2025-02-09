@@ -3,7 +3,6 @@
 
 """Django-specific logging stuff."""
 
-
 import warnings
 
 from provisioningserver.logger._common import (

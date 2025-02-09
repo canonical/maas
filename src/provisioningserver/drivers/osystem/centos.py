@@ -3,7 +3,6 @@
 
 """CentOS Operating System."""
 
-
 import re
 
 from provisioningserver.drivers.osystem import (
@@ -60,9 +59,13 @@ class CentOS(OperatingSystem):
         # from the stream and the minor version doesn't match to what
         # we publish. As such, we ensure that we only return minor
         # if we have any other version other that X.0, 7.0 and 6.6.
-        if major is not None and minor is None or minor == "0":
-            ret = f"{ret} {major}"
-        elif major == "6" and minor == "6":
+        if (
+            major is not None
+            and minor is None
+            or minor == "0"
+            or major == "6"
+            and minor == "6"
+        ):
             ret = f"{ret} {major}"
         elif None not in (major, minor):
             ret = f"{ret} {major}.{minor}"

@@ -3,7 +3,6 @@
 
 """Test ISC configuration file parser/generator."""
 
-
 from collections import OrderedDict
 from textwrap import dedent
 

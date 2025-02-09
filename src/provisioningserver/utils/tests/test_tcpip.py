@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.tcpip``."""
 
-
 from io import BytesIO
 from random import randint
 import time
@@ -274,7 +273,7 @@ GOOD_ETHERNET_HEADER_IPV4 = b"\x01\x00^\x00\x00v\x00\x16>\x91zz\x08\x00"
 GOOD_ETHERNET_HEADER_IPV6 = b"\x01\x00^\x00\x00v\x00\x16>\x91zz\x86\xdd"
 
 BAD_ETHERNET_HEADER_WRONG_ETHERTYPE = (
-    b"\x01\x00^\x00\x00v\x00\x16>\x91zz\x07\xFF"
+    b"\x01\x00^\x00\x00v\x00\x16>\x91zz\x07\xff"
 )
 
 BAD_ETHERNET_TRUNCATED_HEADER = b"\x01\x00^\x00\x00v"

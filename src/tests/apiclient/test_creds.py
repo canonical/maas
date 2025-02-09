@@ -3,7 +3,6 @@
 
 """Tests for handling of MAAS API credentials."""
 
-
 from unittest import TestCase
 
 from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string

@@ -115,7 +115,6 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
     async def test_list_with_summary(
         self, repository_instance: ZonesRepository, fixture: Fixture
     ) -> None:
-
         zone = await repository_instance.get_default_zone()
 
         # 2 machines
@@ -143,7 +142,6 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
     async def test_list_with_summary_pagination(
         self, repository_instance: ZonesRepository, fixture: Fixture
     ) -> None:
-
         zone_names = [str(x) for x in range(4)]
         [
             await create_test_zone(fixture=fixture, name=name)

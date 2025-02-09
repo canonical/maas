@@ -3,7 +3,6 @@
 
 """API handler: `CommissioningResult`."""
 
-
 from base64 import b64encode
 
 from django.urls import reverse

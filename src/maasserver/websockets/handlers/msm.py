@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The MAAS Site Manager handler for the WebSocket connection."""
+
 from maasserver.enum import MSM_STATUS
 from maasserver.msm import msm_status
 from maasserver.websockets.base import Handler

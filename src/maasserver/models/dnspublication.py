@@ -3,7 +3,6 @@
 
 """DNS publication model objects."""
 
-
 from datetime import datetime
 
 from django.core.validators import MaxValueValidator, MinValueValidator

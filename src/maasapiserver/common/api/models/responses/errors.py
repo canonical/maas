@@ -144,7 +144,6 @@ class ServiceUnavailableErrorResponse(JSONResponse):
 
 
 class DischargeRequiredErrorResponse(JSONResponse):
-
     def __init__(self, macaroon: Macaroon):
         content, headers = httpbakery.discharge_required_response(
             macaroon=macaroon, path="/", cookie_suffix_name="maas"

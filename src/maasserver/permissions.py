@@ -3,7 +3,6 @@
 
 """Permission enumerations."""
 
-
 import enum
 
 

@@ -3,7 +3,6 @@
 
 """Listens for NOTIFY events from the postgres database."""
 
-
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from errno import ENOENT
@@ -304,7 +303,7 @@ class PostgresListenerService(Service):
 
         return self.connecting
 
-    def loseConnection(self, reason=Failure(error.ConnectionDone())):
+    def loseConnection(self, reason=Failure(error.ConnectionDone())):  # noqa: B008
         """Request that the connection be dropped."""
         if self.disconnecting is None:
             self.registeredChannels.clear()

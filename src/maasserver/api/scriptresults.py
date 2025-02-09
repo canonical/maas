@@ -3,7 +3,6 @@
 
 """API handlers: `ScriptResults`."""
 
-
 from base64 import b64encode
 from collections import OrderedDict
 from email.utils import format_datetime
@@ -131,7 +130,7 @@ class NodeScriptResultsHandler(OperationsHandler):
             try:
                 result_type = translate_result_type(result_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
             else:
                 qs = ScriptSet.objects.filter(
                     node=node, result_type=result_type
@@ -144,7 +143,7 @@ class NodeScriptResultsHandler(OperationsHandler):
             try:
                 hardware_type = translate_hardware_type(hardware_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
 
         ret = []
         for script_set in qs:
@@ -321,7 +320,7 @@ class NodeScriptResultHandler(OperationsHandler):
             try:
                 hardware_type = translate_hardware_type(hardware_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
         script_set.include_output = include_output
         script_set.filters = filters
         script_set.hardware_type = hardware_type
@@ -427,7 +426,7 @@ class NodeScriptResultHandler(OperationsHandler):
             try:
                 hardware_type = translate_hardware_type(hardware_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
 
         bin_regex = re.compile(r".+\.tar(\..+)?")
         for script_result in filter_script_results(
@@ -560,7 +559,7 @@ class NodeScriptResultHandler(OperationsHandler):
             try:
                 hardware_type = translate_hardware_type(hardware_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
         script_set.include_output = include_output
         script_set.filters = filters
         script_set.hardware_type = hardware_type

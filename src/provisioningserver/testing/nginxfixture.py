@@ -3,7 +3,6 @@
 
 """Server fixture for nginx."""
 
-
 import argparse
 import os
 from shutil import copy

@@ -11,6 +11,7 @@ The IP:
 - if the subnet and vlan are not provided, the model will try to identify the
   best fit for the given IP.
 """
+
 from __future__ import annotations
 
 from django.db.models import (

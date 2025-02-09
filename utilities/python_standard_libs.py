@@ -12,7 +12,6 @@ By default it combines the module lists for Python 2.7 and Python 3.5 so that
 reformatting most modern Python source files should DTRT.
 """
 
-
 # Run this to generate a new module list.
 if __name__ == "__main__":
     from operator import methodcaller
@@ -25,7 +24,7 @@ if __name__ == "__main__":
     try:
         content = urlopen(modindex_url).read()
     except OSError:
-        raise SystemExit(f"Could not obtain module list from {modindex_url}")
+        raise SystemExit(f"Could not obtain module list from {modindex_url}")  # noqa: B904
     else:
         root = html.fromstring(content)
         modules = set(

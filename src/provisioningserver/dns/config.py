@@ -3,7 +3,6 @@
 
 """DNS configuration."""
 
-
 from collections import namedtuple
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -349,7 +348,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
     try:
         rendered = template.substitute(kwargs)
     except NameError as error:
-        raise DNSConfigFail(*error.args)
+        raise DNSConfigFail(*error.args)  # noqa: B904
     else:
         # The rendered configuration is Unicode text but should contain only
         # ASCII characters. Non-ASCII records should have been treated using
@@ -389,7 +388,7 @@ def render_dns_template(template_name, *parameters):
     try:
         return template.substitute(combined_params)
     except NameError as error:
-        raise DNSConfigFail(*error.args)
+        raise DNSConfigFail(*error.args)  # noqa: B904
 
 
 @contextmanager
@@ -404,7 +403,7 @@ def report_missing_config_dir():
         yield
     except OSError as e:
         if e.errno == errno.ENOENT:
-            raise DNSConfigDirectoryMissing(
+            raise DNSConfigDirectoryMissing(  # noqa: B904
                 "The directory where the DNS config files should be "
                 "written does not exist.  Make sure the 'maas-dns' "
                 "package is installed on this region controller."

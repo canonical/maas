@@ -3,7 +3,6 @@
 
 """Django-enabled test cases."""
 
-
 from time import sleep, time
 
 from django.core.signals import request_started

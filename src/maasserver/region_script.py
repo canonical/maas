@@ -18,7 +18,7 @@ def set_group():
     try:
         gr_maas = grp.getgrnam("maas")
     except KeyError:
-        raise SystemExit("No such group: maas")
+        raise SystemExit("No such group: maas")  # noqa: B904
     else:
         os.setegid(gr_maas.gr_gid)
 

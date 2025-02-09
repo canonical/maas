@@ -3,7 +3,6 @@
 
 """Node user-data for cloud-init's use."""
 
-
 from django.db.models import CASCADE, Manager, Model, OneToOneField
 
 from maasserver.models.cleansave import CleanSave

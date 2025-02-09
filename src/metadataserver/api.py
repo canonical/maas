@@ -134,7 +134,7 @@ def get_node_for_request(request):
     try:
         return NodeKey.objects.get_node_for_key(key)
     except NodeKey.DoesNotExist:
-        raise PermissionDenied("Not authenticated as a known node.")
+        raise PermissionDenied("Not authenticated as a known node.")  # noqa: B904
 
 
 def get_node_for_mac(mac):
@@ -354,7 +354,7 @@ def store_node_power_parameters(node, request):
         try:
             power_parameters = json.loads(power_parameters)
         except ValueError:
-            raise MAASAPIBadRequest("Failed to parse JSON power_parameters")
+            raise MAASAPIBadRequest("Failed to parse JSON power_parameters")  # noqa: B904
     else:
         power_parameters = node.get_power_parameters()
     if power_type == "redfish":

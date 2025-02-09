@@ -114,7 +114,7 @@ def get_ip_modes(requested_machine):
 
 
 def create_bmc(**kwargs):
-    power_type = kwargs.get("power_type", None)
+    power_type = kwargs.get("power_type")
     power_parameters = kwargs.get("power_parameters", {})
 
     power_parameters, secrets = sanitise_power_parameters(
@@ -134,7 +134,7 @@ def create_bmc(**kwargs):
 
 
 def get_or_create_bmc(**kwargs):
-    power_type = kwargs.get("power_type", None)
+    power_type = kwargs.get("power_type")
     power_parameters = kwargs.get("power_parameters", {})
 
     power_parameters, secrets = sanitise_power_parameters(
@@ -450,8 +450,7 @@ class BMC(CleanSave, TimestampedModel):
                         )
                 except Exception as error:
                     maaslog.info(
-                        "BMC could not save extracted IP "
-                        "address '%s': '%s'",
+                        "BMC could not save extracted IP address '%s': '%s'",
                         new_ip,
                         error,
                     )
@@ -723,7 +722,7 @@ class PodManager(BaseBMCManager):
 
 
 def create_pod(**kwargs):
-    power_type = kwargs.get("power_type", None)
+    power_type = kwargs.get("power_type")
     power_parameters = kwargs.get("power_parameters", {})
 
     power_parameters, secrets = sanitise_power_parameters(
@@ -968,9 +967,9 @@ class Pod(BMC):
         if discovered_machine.hostname:
             if Node.objects.filter(
                 hostname=discovered_machine.hostname
-            ).exists():
-                discovered_machine.hostname = None
-            elif not self._machine_name_re.match(discovered_machine.hostname):
+            ).exists() or not self._machine_name_re.match(
+                discovered_machine.hostname
+            ):
                 discovered_machine.hostname = None
 
         # Set the zone for the machine.

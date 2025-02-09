@@ -3,7 +3,6 @@
 
 """Model for a cache of images available in a boot source."""
 
-
 from django.db.models import (
     CASCADE,
     CharField,

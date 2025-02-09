@@ -3,7 +3,6 @@
 
 """Facebook's Wedge Power Driver."""
 
-
 from socket import error as SOCKETError
 
 from paramiko import AutoAddPolicy, SSHClient, SSHException
@@ -52,7 +51,7 @@ class WedgePowerDriver(PowerDriver):
         power_address=None,
         power_user=None,
         power_pass=None,
-        **extra
+        **extra,
     ):
         """Run a single command and return unparsed text from stdout."""
         try:
@@ -64,7 +63,7 @@ class WedgePowerDriver(PowerDriver):
             _, stdout, _ = ssh_client.exec_command(command)
             output = stdout.read().decode("utf-8").strip()
         except (SSHException, EOFError, SOCKETError) as e:
-            raise PowerConnError(
+            raise PowerConnError(  # noqa: B904
                 "Could not make SSH connection to Wedge for "
                 "%s on %s - %s" % (power_user, power_address, e)
             )
@@ -80,7 +79,7 @@ class WedgePowerDriver(PowerDriver):
                 "/usr/local/bin/wedge_power.sh on", **context
             )
         except PowerConnError:
-            raise PowerActionError("Wedge Power Driver unable to power on")
+            raise PowerActionError("Wedge Power Driver unable to power on")  # noqa: B904
 
     def power_off(self, system_id, context):
         """Power off Wedge."""
@@ -89,7 +88,7 @@ class WedgePowerDriver(PowerDriver):
                 "/usr/local/bin/wedge_power.sh off", **context
             )
         except PowerConnError:
-            raise PowerActionError("Wedge Power Driver unable to power off")
+            raise PowerActionError("Wedge Power Driver unable to power off")  # noqa: B904
 
     def power_query(self, system_id, context):
         """Power query Wedge."""
@@ -98,7 +97,7 @@ class WedgePowerDriver(PowerDriver):
                 "/usr/local/bin/wedge_power.sh status", **context
             )
         except PowerConnError:
-            raise PowerActionError("Wedge Power Driver unable to power query")
+            raise PowerActionError("Wedge Power Driver unable to power query")  # noqa: B904
         else:
             if power_state in WedgeState.OFF:
                 return "off"

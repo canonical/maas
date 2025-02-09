@@ -3,7 +3,6 @@
 
 """The domain handler for the WebSocket connection."""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.forms.dnsdata import DNSDataForm

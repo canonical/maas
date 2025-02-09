@@ -3,7 +3,6 @@
 
 """Tests for `SSLKeyForm`."""
 
-
 from django.http import HttpRequest
 
 from maascommon.events import AUDIT

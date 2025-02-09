@@ -23,9 +23,15 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES_DICT,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.models import Config, Event
+from maasserver.models import (
+    Config,
+    Event,
+    Notification,
+    ScriptSet,
+    signals,
+    StaticIPAddress,
+)
 from maasserver.models import node as node_module
-from maasserver.models import Notification, ScriptSet, signals, StaticIPAddress
 from maasserver.models.signals.testing import SignalsDisabled
 import maasserver.node_action as node_action_module
 from maasserver.node_action import (
@@ -797,8 +803,8 @@ class TestDeployAction(MAASServerTestCase):
         with pytest.raises(NodeActionError) as exception:
             Deploy(node, admin, request).execute(**extra)
         assert (
-            "A machine can not be a VM host if it is deployed to memory."
-            == str(exception.value)
+            str(exception.value)
+            == "A machine can not be a VM host if it is deployed to memory."
         )
 
         extra = {
@@ -810,8 +816,8 @@ class TestDeployAction(MAASServerTestCase):
         with pytest.raises(NodeActionError) as exception:
             Deploy(node, admin, request).execute(**extra)
         assert (
-            "A machine can not be a VM host if it is deployed to memory."
-            == str(exception.value)
+            str(exception.value)
+            == "A machine can not be a VM host if it is deployed to memory."
         )
 
     def test_Deploy_sets_osystem_and_series_and_ephemeral_deploy(self):
@@ -864,8 +870,8 @@ class TestDeployAction(MAASServerTestCase):
         with pytest.raises(NodeActionError) as exception:
             Deploy(node, user, request).execute(**extra)
         assert (
-            "Can’t deploy to disk in a diskless machine. Deploy to memory must be used instead."
-            == str(exception.value)
+            str(exception.value)
+            == "Can’t deploy to disk in a diskless machine. Deploy to memory must be used instead."
         )
 
     def test_Deploy_sets_osystem_and_series_and_ephemeral_deploy_to_default(
@@ -2287,9 +2293,9 @@ class TestActionsErrorHandling(MAASServerTestCase):
                 ]
             ),
         )
-        self.patch(action.node, "start_rescue_mode").side_effect = (
-            self.make_exception()
-        )
+        self.patch(
+            action.node, "start_rescue_mode"
+        ).side_effect = self.make_exception()
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
@@ -2310,9 +2316,9 @@ class TestActionsErrorHandling(MAASServerTestCase):
                 ]
             ),
         )
-        self.patch(action.node, "stop_rescue_mode").side_effect = (
-            self.make_exception()
-        )
+        self.patch(
+            action.node, "stop_rescue_mode"
+        ).side_effect = self.make_exception()
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(

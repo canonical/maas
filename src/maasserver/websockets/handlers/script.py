@@ -3,7 +3,6 @@
 
 """The Script handler for the WebSocket connection."""
 
-
 from maasserver.models import Script
 from maasserver.permissions import NodePermission
 from maasserver.websockets.base import (

@@ -3,7 +3,6 @@
 
 """MAAS web."""
 
-
 import sys
 import warnings
 

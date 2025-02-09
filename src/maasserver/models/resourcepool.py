@@ -33,7 +33,7 @@ class ResourcePoolQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
 

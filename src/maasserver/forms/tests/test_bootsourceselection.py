@@ -3,7 +3,6 @@
 
 """Tests for `BootSourceSelectionForm`."""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.forms import BootSourceSelectionForm

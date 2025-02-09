@@ -3,7 +3,6 @@
 
 """API credentials for node-group workers."""
 
-
 from provisioningserver.path import get_maas_data_path
 
 

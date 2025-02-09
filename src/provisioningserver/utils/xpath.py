@@ -3,7 +3,6 @@
 
 """XPath-related utilities."""
 
-
 import logging
 
 from lxml import etree

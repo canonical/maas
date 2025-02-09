@@ -59,11 +59,11 @@ class SSLKeysHandler(Handler):
     )
     async def get_user_sslkeys(
         self,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SSLKeyListResponse:
         assert authenticated_user is not None
 
@@ -116,10 +116,10 @@ class SSLKeysHandler(Handler):
         self,
         sslkey_id: int,
         response: Response,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SSLKeyResponse:
         assert authenticated_user is not None
 
@@ -165,10 +165,10 @@ class SSLKeysHandler(Handler):
         self,
         sslkey_request: SSLKeyRequest,
         response: Response,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SSLKeyResponse:
         assert authenticated_user is not None
 
@@ -195,13 +195,13 @@ class SSLKeysHandler(Handler):
     async def delete_user_sslkey(
         self,
         sslkey_id: int,
-        authenticated_user: AuthenticatedUser | None = Depends(
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         assert authenticated_user is not None
 

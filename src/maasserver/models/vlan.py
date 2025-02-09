@@ -3,7 +3,6 @@
 
 """VLAN objects."""
 
-
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
@@ -45,7 +44,7 @@ def validate_vid(vid):
     """Raises a ValidationError if the given VID is not valid."""
     if vid < 0 or vid >= 0xFFF:
         raise ValidationError(
-            "VLAN tag (VID) out of range " "(0-4094; 0 for untagged.)"
+            "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"
         )
 
 
@@ -112,7 +111,7 @@ class VLANQueriesMixin(MAASQueriesMixin):
         try:
             self.filter_by_specifiers(specifiers)
         except (ValueError, AddrFormatError) as e:
-            raise ValidationError(e.message)
+            raise ValidationError(e.message)  # noqa: B904
 
 
 class VLANQuerySet(QuerySet, VLANQueriesMixin):
@@ -288,15 +287,12 @@ class VLAN(CleanSave, TimestampedModel):
             self._previous_dhcp_on != self.dhcp_on
             or self._previous_relay_vlan_id != self.relay_vlan_id
             or (
-                (
-                    (self.dhcp_on or self.relay_vlan_id)
-                    and (
-                        self._previous_mtu != self.mtu
-                        or self._previous_primary_rack_id
-                        != self.primary_rack_id
-                        or self._previous_secondary_rack_id
-                        != self.secondary_rack_id
-                    )
+                (self.dhcp_on or self.relay_vlan_id)
+                and (
+                    self._previous_mtu != self.mtu
+                    or self._previous_primary_rack_id != self.primary_rack_id
+                    or self._previous_secondary_rack_id
+                    != self.secondary_rack_id
                 )
             )
         )

@@ -3,7 +3,6 @@
 
 """Tests for the ESXi module."""
 
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.drivers.osystem.esxi import ESXi

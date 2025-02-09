@@ -3,7 +3,6 @@
 
 """Proxy config management module."""
 
-
 import datetime
 import os
 import socket
@@ -83,7 +82,7 @@ def write_config(
     try:
         content = template.substitute(context)
     except NameError as error:
-        raise ProxyConfigFail(*error.args)
+        raise ProxyConfigFail(*error.args)  # noqa: B904
 
     # Squid prefers ascii.
     content = content.encode("ascii")

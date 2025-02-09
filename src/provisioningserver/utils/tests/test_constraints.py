@@ -3,7 +3,6 @@
 
 """Tests for constraints helpers."""
 
-
 from unittest import TestCase
 
 from maastesting.testcase import MAASTestCase

@@ -3,7 +3,6 @@
 
 """Tests for the `Boot Resources` API."""
 
-
 import hashlib
 import http.client
 from io import BytesIO

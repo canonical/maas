@@ -3,7 +3,6 @@
 
 """Test for the system user that represents node-group workers."""
 
-
 from django.contrib.auth.models import User
 
 from maasserver.models import UserProfile

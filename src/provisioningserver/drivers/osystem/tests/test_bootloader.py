@@ -3,7 +3,6 @@
 
 """Tests for the Bootloader module."""
 
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE

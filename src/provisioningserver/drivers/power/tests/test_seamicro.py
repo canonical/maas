@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.seamicro`."""
 
-
 from random import choice
 
 from maastesting.factory import factory

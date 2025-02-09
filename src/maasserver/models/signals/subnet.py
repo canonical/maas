@@ -3,7 +3,6 @@
 
 """Respond to Subnet CIDR changes."""
 
-
 from django.db.models.signals import post_save
 
 from maasserver.enum import IPADDRESS_TYPE

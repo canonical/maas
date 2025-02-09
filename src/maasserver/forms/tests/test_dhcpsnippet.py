@@ -3,7 +3,6 @@
 
 """Tests for DHCP snippets forms."""
 
-
 from django.http import HttpRequest
 
 from maascommon.events import AUDIT

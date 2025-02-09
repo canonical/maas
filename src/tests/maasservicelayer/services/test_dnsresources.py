@@ -65,7 +65,6 @@ class TestCommonDNSResourcesService(ServiceCommonTests):
 
 @pytest.mark.asyncio
 class TestDNSResourcesService:
-
     async def test_create(self) -> None:
         mock_domains_service = Mock(DomainsService)
         mock_dnspublications_service = Mock(DNSPublicationsService)
@@ -364,7 +363,6 @@ class TestDNSResourcesService:
         )
 
     async def test_update_dynamic_hostname(self) -> None:
-
         mock_domains_service = Mock(DomainsService)
         mock_dnspublications_service = Mock(DNSPublicationsService)
         domain = Domain(

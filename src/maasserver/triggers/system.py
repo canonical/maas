@@ -9,7 +9,6 @@ will raise a notify message in Postgres that a regiond process is listening
 for.
 """
 
-
 from textwrap import dedent
 
 from maasserver.enum import NODE_TYPE

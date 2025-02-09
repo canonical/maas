@@ -3,7 +3,6 @@
 
 """Tests for controller forms."""
 
-
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.forms import ControllerForm
 from maasserver.testing.factory import factory

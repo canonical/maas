@@ -12,7 +12,7 @@ async def create_test_ip_range_entry(
     subnet: dict[str, Any],
     offset: int = 0,
     size: int = 5,
-    **extra_details: Any
+    **extra_details: Any,
 ) -> dict[str, Any]:
     created_at = datetime.now(timezone.utc).astimezone()
     updated_at = datetime.now(timezone.utc).astimezone()

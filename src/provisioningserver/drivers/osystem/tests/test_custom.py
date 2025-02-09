@@ -3,7 +3,6 @@
 
 """Tests for the Custom module."""
 
-
 import os
 
 from maastesting.factory import factory

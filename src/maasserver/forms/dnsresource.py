@@ -3,7 +3,6 @@
 
 """DNSResource form."""
 
-
 from collections.abc import Iterable
 
 from django import forms
@@ -52,14 +51,14 @@ class DNSResourceForm(MAASModelForm):
         request=None,
         user=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         # Always save the user, in case we create a StaticIPAddress in save().
         if request is not None:
             self.user = request.user
         if user is not None:
             self.user = user
-        super().__init__(data=data, instance=instance, *args, **kwargs)
+        super().__init__(data=data, instance=instance, *args, **kwargs)  # noqa: B026
 
     def clean_ip(self, ipaddr):
         """Process one IP address (id or address) and return the id."""
@@ -67,9 +66,11 @@ class DNSResourceForm(MAASModelForm):
         # If it's an IPAddress, then look up the id.
         # Otherwise, just return the input, which is likely to result in an
         # error later.
-        if isinstance(ipaddr, int):
-            return int(ipaddr)
-        elif isinstance(ipaddr, str) and ipaddr.isdigit():
+        if (
+            isinstance(ipaddr, int)
+            or isinstance(ipaddr, str)
+            and ipaddr.isdigit()
+        ):
             return int(ipaddr)
         elif isinstance(ipaddr, StaticIPAddress):
             # In Django 1.11, instead of getting an object ID, Django will

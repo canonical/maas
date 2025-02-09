@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Keyring management functions for the import boot images job and script."""
 
-
 import hashlib
 import os
 

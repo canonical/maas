@@ -3,7 +3,6 @@
 
 """Tests for `ResourcePoolForm`."""
 
-
 from maasserver.forms import ResourcePoolForm
 from maasserver.models import ResourcePool
 from maasserver.testing.factory import factory

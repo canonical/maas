@@ -114,7 +114,7 @@ class TransactionalHelpersMixin:
         vlan = factory.make_VLAN(space=factory.make_Space())
         node = factory.make_Node(vlan=vlan, **params)
         # prefetch the config so it doesn't cause queries in main thread
-        node.current_config
+        node.current_config  # noqa: B018
         return node
 
     @transactional
@@ -149,7 +149,7 @@ class TransactionalHelpersMixin:
         params["parent"] = parent
         device = factory.make_Node(vlan=vlan, **params)
         # prefetch the config so it doesn't cause queries in main thread
-        device.current_config
+        device.current_config  # noqa: B018
         return device, parent
 
     @transactional

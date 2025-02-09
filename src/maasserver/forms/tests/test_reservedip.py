@@ -99,7 +99,6 @@ class TestReservedIPForm(MAASServerTestCase):
             ("192.168.0.11", "00:11:22:33:44:gg", {"mac_address": [msgs[0]]}),
             ("192.168.0.15", "0011:22:33:44:55", {"mac_address": [msgs[1]]}),
         ]:
-
             form = ReservedIPForm(
                 data={"ip": ip_value, "mac_address": mac_value, "comment": msg}
             )

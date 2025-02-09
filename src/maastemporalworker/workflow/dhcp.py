@@ -393,7 +393,6 @@ class DHCPConfigActivity(ActivityBase):
 
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
-
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
         # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
@@ -438,7 +437,6 @@ class ConfigureDHCPForAgentWorkflow:
 
 @workflow.defn(name=CONFIGURE_DHCP_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPWorkflow:
-
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPParam) -> None:
         agent_system_ids_for_update = await workflow.execute_activity(

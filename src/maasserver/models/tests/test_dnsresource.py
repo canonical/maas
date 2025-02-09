@@ -208,7 +208,7 @@ class TestDNSResource(MAASServerTestCase):
         self.assertRaisesRegex(
             ValidationError,
             re.escape(
-                "{'__all__': " "['Labels must be unique within their zone.']"
+                "{'__all__': ['Labels must be unique within their zone.']"
             ),
             dnsresource2.save,
             force_update=True,
@@ -218,7 +218,7 @@ class TestDNSResource(MAASServerTestCase):
         self.assertRaisesRegex(
             ValidationError,
             re.escape(
-                "{'__all__': " "['Invalid dnsresource name: invalid*name.']"
+                "{'__all__': ['Invalid dnsresource name: invalid*name.']"
             ),
             factory.make_DNSResource,
             name="invalid*name",
@@ -240,7 +240,7 @@ class TestDNSResource(MAASServerTestCase):
         dnsrr.ip_addresses.add(ipaddress)
         self.assertRaisesRegex(
             ValidationError,
-            re.escape("{'__all__': " "['Cannot add address: CNAME present.']"),
+            re.escape("{'__all__': ['Cannot add address: CNAME present.']"),
             dnsrr.save,
             force_update=True,
         )

@@ -3,7 +3,6 @@
 
 """Osystem Drivers."""
 
-
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
@@ -241,7 +240,7 @@ def validate_license_key(osystem: str, release: str, key: str) -> bool:
     try:
         osystem = OperatingSystemRegistry[osystem]
     except KeyError:
-        raise exceptions.NoSuchOperatingSystem(osystem)
+        raise exceptions.NoSuchOperatingSystem(osystem)  # noqa: B904
     else:
         return osystem.validate_license_key(release, key)
 

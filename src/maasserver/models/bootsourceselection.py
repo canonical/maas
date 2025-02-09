@@ -3,7 +3,6 @@
 
 """Model for filtering a selection of boot resources."""
 
-
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField

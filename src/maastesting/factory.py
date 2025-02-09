@@ -3,7 +3,6 @@
 
 """Test object factories."""
 
-
 import datetime
 from enum import Enum
 from functools import partial
@@ -622,7 +621,7 @@ class Factory:
 
         The returned hostname is lowercase because python's urlparse
         implicitely lowercases the hostnames."""
-        return self.make_name(prefix=prefix, *args, **kwargs).lower()
+        return self.make_name(prefix=prefix, *args, **kwargs).lower()  # noqa: B026
 
     # Always select from a scheme that allows parameters in the URL so
     # that we can round-trip a URL with params successfully (otherwise
@@ -841,8 +840,7 @@ class Factory:
             # Hardware address length: 6
             b"\x06"
             # Hops: 0
-            b"\x00"
-            +
+            b"\x00" +
             # Transaction ID
             transaction_id
             +
@@ -857,15 +855,12 @@ class Factory:
             # Next server IP address: 0.0.0.0
             b"\x00\x00\x00\x00"
             # Relay agent IP address: 0.0.0.0
-            b"\x00\x00\x00\x00"
-            +
+            b"\x00\x00\x00\x00" +
             # Client hardware address
             b"\x01\x02\x03\x04\x05\x06"
             # Hardware address padding
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            +
-            # Server host name
-            (b"\x00" * 67)
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"  # Server host name
+            + (b"\x00" * 67)
             +
             # Boot filename
             (b"\x00" * 125)

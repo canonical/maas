@@ -3,7 +3,6 @@
 
 """Tests for the region controller service."""
 
-
 from operator import attrgetter
 import random
 from unittest import TestCase
@@ -41,7 +40,7 @@ wait_for_reactor = wait_for()
 class TestRegionControllerService(MAASServerTestCase):
     assertRaises = TestCase.assertRaises
 
-    def make_service(self, listener=MagicMock(), dbtasks=MagicMock()):
+    def make_service(self, listener=MagicMock(), dbtasks=MagicMock()):  # noqa: B008
         # Don't retry on failure or the tests will loop forever.
         return RegionControllerService(listener, dbtasks, retryOnFailure=False)
 

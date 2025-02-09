@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for regions."""
+
 from collections import defaultdict
 import copy
 import json
@@ -77,7 +78,8 @@ class Region(SecuredRPCProtocol):
     """
 
     def __init__(
-        self, auth_status: ConnectionAuthStatus = ConnectionAuthStatus(False)
+        self,
+        auth_status: ConnectionAuthStatus = ConnectionAuthStatus(False),  # noqa: B008
     ):
         super().__init__(
             unauthenticated_commands=[region.Authenticate.commandName],
@@ -696,7 +698,7 @@ class RegionServer(Region):
             )
             log.err(None, msg)
             # Finally, tell the callers.
-            raise exceptions.CannotRegisterRackController(msg)
+            raise exceptions.CannotRegisterRackController(msg)  # noqa: B904
         else:
             # Done registering the rack controller and connection.
             def get_cluster_certificate() -> bytes | None:

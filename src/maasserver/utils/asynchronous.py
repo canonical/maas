@@ -3,7 +3,6 @@
 
 """Utilities for working with asynchronous operations."""
 
-
 import asyncio
 from collections import deque
 from contextlib import contextmanager
@@ -63,7 +62,7 @@ def gather(calls, timeout=10.0):
     result) tuple. Thus, callers can only match up the original call with the
     result by calling `gatherCallResults()`.
     """
-    for call, result in gatherCallResults(calls, timeout=timeout):
+    for call, result in gatherCallResults(calls, timeout=timeout):  # noqa: B007
         yield result
 
 

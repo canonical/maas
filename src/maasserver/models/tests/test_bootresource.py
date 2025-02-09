@@ -3,7 +3,6 @@
 
 """Tests for `BootResource`."""
 
-
 from collections.abc import Iterable
 import random
 
@@ -158,7 +157,7 @@ class TestBootResourceManager(MAASServerTestCase):
         for _ in range(3):
             arch = factory.make_name("arch")
             platform = [factory.make_name("platform") for _ in range(3)]
-            for i, platform in enumerate(platform):
+            for i, platform in enumerate(platform):  # noqa: B020
                 arches.add(f"{arch}/{platform}")
                 arches.add(f"{arch}/{platform}-supported")
                 arches.add(f"{arch}/{platform}-also-supported")

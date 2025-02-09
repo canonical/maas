@@ -7,7 +7,6 @@ Each region controller process starts its own RPC endpoint, and this
 provides the means for clusters to discover what they are.
 """
 
-
 import json
 
 from django.http import HttpResponse

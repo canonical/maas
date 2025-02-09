@@ -60,8 +60,8 @@ class SubnetsHandler(Handler):
         self,
         fabric_id: int,
         vlan_id: int,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SubnetsListResponse:
         vlan_exists = await services.vlans.exists(
             QuerySpec(
@@ -138,7 +138,7 @@ class SubnetsHandler(Handler):
         vlan_id: int,
         subnet_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         subnet = await services.subnets.get_one(
             query=QuerySpec(
@@ -184,7 +184,7 @@ class SubnetsHandler(Handler):
         vlan_id: int,
         subnet_request: SubnetRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         vlan_exists = await services.vlans.exists(
             QuerySpec(
@@ -238,7 +238,7 @@ class SubnetsHandler(Handler):
         id: int,
         subnet_request: SubnetRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
             where=SubnetClauseFactory.and_clauses(
@@ -282,7 +282,7 @@ class SubnetsHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
             where=SubnetClauseFactory.and_clauses(

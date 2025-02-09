@@ -3,7 +3,6 @@
 
 """Service to periodically query the power state on this cluster's nodes."""
 
-
 from datetime import timedelta
 
 from twisted.application.internet import TimerService

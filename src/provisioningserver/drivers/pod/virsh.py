@@ -3,7 +3,6 @@
 
 """Virsh pod driver."""
 
-
 from contextlib import suppress
 from math import floor
 import os
@@ -556,7 +555,7 @@ class VirshSSH(pexpect.spawn):
                 # to perform calculations. This prevents this information from
                 # being sent to the region, which isn't needed.
                 pool_available = int(evaluator(XPATH_POOL_AVAILABLE)[0].text)
-                setattr(pool, "available", pool_available)
+                setattr(pool, "available", pool_available)  # noqa: B010
 
             pools.append(pool)
         return pools
@@ -767,7 +766,7 @@ class VirshSSH(pexpect.spawn):
             # Delete the domain.
             self.delete_domain(machine)
             # Raise the error.
-            raise VirshError(f"Unable to compose {machine}: {e}")
+            raise VirshError(f"Unable to compose {machine}: {e}")  # noqa: B904
         else:
             # No errors, so set machine back to 'shut off' state.
             self.run(["destroy", machine])
@@ -1359,7 +1358,7 @@ class VirshPodDriver(PodDriver):
         try:
             return VM_STATE_TO_POWER_STATE[state]
         except KeyError:
-            raise VirshError("Unknown state: %s" % state)
+            raise VirshError("Unknown state: %s" % state)  # noqa: B904
 
     @asynchronous
     def power_on(self, system_id, context):

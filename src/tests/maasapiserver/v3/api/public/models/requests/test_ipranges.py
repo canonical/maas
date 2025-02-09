@@ -27,7 +27,6 @@ from maasservicelayer.services import ReservedIPsService, ServiceCollectionV3
 
 @pytest.mark.asyncio
 class TestIPRangeCreateRequest:
-
     TEST_IPV4_SUBNET = Subnet(
         id=0,
         cidr=IPv4Network("10.0.0.0/24"),

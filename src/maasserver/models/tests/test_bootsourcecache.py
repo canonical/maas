@@ -3,7 +3,6 @@
 
 """Tests for `BootSourceCache`."""
 
-
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory

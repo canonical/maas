@@ -3,7 +3,6 @@
 
 """Tests for interface link form."""
 
-
 import random
 
 from netaddr import IPAddress

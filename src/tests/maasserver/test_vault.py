@@ -188,7 +188,7 @@ class TestNoProxySettingForHVAC:
         # AttributeErrors, we just want to see the request that was
         # attempted
         with suppress(AttributeError):
-            hvac_client.seal_status
+            hvac_client.seal_status  # noqa: B018
         assert scheme not in adapter.proxies[0]
 
 
@@ -299,9 +299,9 @@ class TestUnwrapSecret:
     def test_unwrap_secret_reraises_hvac_exceptions(
         self, mocker, mock_hvac_client
     ):
-        mocker.patch.object(mock_hvac_client.sys, "unwrap").side_effect = (
-            HVACVaultError("Test")
-        )
+        mocker.patch.object(
+            mock_hvac_client.sys, "unwrap"
+        ).side_effect = HVACVaultError("Test")
         with pytest.raises(VaultError):
             vault.unwrap_secret("http://vault:8200", "token")
 

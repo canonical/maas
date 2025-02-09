@@ -52,7 +52,6 @@ you want to do.
 For example, to list all machines, you might GET "/MAAS/api/2.0/machines/".
 """
 
-
 from copy import deepcopy
 from functools import partial
 from inspect import getdoc
@@ -85,9 +84,7 @@ api_doc_title = dedent(
     ========
     MAAS API
     ========
-    """.lstrip(
-        "\n"
-    )
+    """.lstrip("\n")
 )
 
 

@@ -3,7 +3,6 @@
 
 """NTP service configuration."""
 
-
 from contextlib import nullcontext
 from functools import partial
 from itertools import dropwhile, groupby
@@ -200,7 +199,7 @@ def _clean_whitespace(lines):
     :return: An iterable of lines.
     """
     lines = dropwhile(_is_line_blank, lines)
-    for blank, lines in groupby(lines, _is_line_blank):
+    for blank, lines in groupby(lines, _is_line_blank):  # noqa: B020
         if not blank:
             yield from lines
             yield "\n"

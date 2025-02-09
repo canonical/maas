@@ -25,7 +25,7 @@ class DummyConnection:
 @attr.s(eq=False, order=False)
 @implementer(IConnection)
 class FakeConnection:
-    "A fake `IConnection`." ""
+    "A fake `IConnection`."
 
     ident = attr.ib(default=sentinel.ident)
     hostCertificate = attr.ib(default=sentinel.hostCertificate)
@@ -42,7 +42,7 @@ verifyObject(IConnection, FakeConnection())
 @attr.s(eq=False, order=False)
 @implementer(IConnectionToRegion)
 class FakeConnectionToRegion:
-    "A fake `IConnectionToRegion`." ""
+    "A fake `IConnectionToRegion`."
 
     ident = attr.ib(default=sentinel.ident)
     localIdent = attr.ib(default=sentinel.localIdent)
@@ -61,7 +61,7 @@ verifyObject(IConnectionToRegion, FakeConnectionToRegion())
 @attr.s(eq=False, order=False)
 @implementer(IConnectionToRegion)
 class FakeBusyConnectionToRegion:
-    "A fake `IConnectionToRegion` that appears busy." ""
+    "A fake `IConnectionToRegion` that appears busy."
 
     ident = attr.ib(default=sentinel.ident)
     localIdent = attr.ib(default=sentinel.localIdent)

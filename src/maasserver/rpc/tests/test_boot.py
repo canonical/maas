@@ -34,8 +34,6 @@ from maasserver.rpc.boot import (
     event_log_pxe_request,
     get_boot_config_for_machine,
     get_boot_filenames,
-)
-from maasserver.rpc.boot import (
     get_node_from_mac_or_hardware_uuid,
     merge_kparams_with_extra,
 )
@@ -55,9 +53,9 @@ from provisioningserver.utils.network import get_source_address
 
 def get_config(*args, query_count=42, **kwargs):
     count, result = count_queries(orig_get_config, *args, **kwargs)
-    assert (
-        count <= query_count
-    ), f"Query count should be at most {query_count}, got {count}"
+    assert count <= query_count, (
+        f"Query count should be at most {query_count}, got {count}"
+    )
     return result
 
 

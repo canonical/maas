@@ -130,7 +130,7 @@ class EventsHandler(OperationsHandler):
         # Limit what we'll return to avoid being swamped.
         if limit > MAX_EVENT_LOG_COUNT:
             raise MAASAPIBadRequest(
-                ("Requested number of events %d is greater than" " limit: %d")
+                ("Requested number of events %d is greater than limit: %d")
                 % (limit, MAX_EVENT_LOG_COUNT)
             )
         else:
@@ -193,7 +193,7 @@ class EventsHandler(OperationsHandler):
         events = list(events)
 
         # Helper for building prev_uri and next_uri.
-        def make_uri(params, base=reverse("events_handler")):
+        def make_uri(params, base=reverse("events_handler")):  # noqa: B008
             query = urllib.parse.urlencode(params, doseq=True)
             url = urllib.parse.urlparse(base)._replace(query=query)
             return url.geturl()

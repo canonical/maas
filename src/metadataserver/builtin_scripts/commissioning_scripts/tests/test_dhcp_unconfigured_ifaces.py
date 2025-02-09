@@ -142,9 +142,9 @@ class TestDHCPExplore(MAASTestCase):
         self.patch(dhcp_unconfigured_ifaces, "sleep")
 
     def test_calls_dhclient_on_unconfigured_interfaces(self):
-        self.patch(dhcp_unconfigured_ifaces, "which").return_value = (
-            "/usr/sbin/dhclient"
-        )
+        self.patch(
+            dhcp_unconfigured_ifaces, "which"
+        ).return_value = "/usr/sbin/dhclient"
         check_output = self.patch(dhcp_unconfigured_ifaces, "check_output")
         check_output.side_effect = [
             ip_link_show_all,

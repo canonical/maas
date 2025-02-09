@@ -3,7 +3,6 @@
 
 """Testing utilities for the region event-loop."""
 
-
 from fixtures import Fixture
 from twisted.application.service import Service
 from twisted.internet import defer

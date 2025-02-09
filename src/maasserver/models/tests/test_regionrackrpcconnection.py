@@ -3,7 +3,6 @@
 
 """Tests for `RegionRackRPCConnection`."""
 
-
 import random
 
 from django.core.exceptions import ValidationError

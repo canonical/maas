@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.boot`."""
 
-
 import errno
 import os
 from unittest import mock

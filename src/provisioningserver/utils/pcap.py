@@ -3,7 +3,6 @@
 
 """Utilities for working with PCAP format streams."""
 
-
 from collections import namedtuple
 from pprint import pprint
 import struct

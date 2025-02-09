@@ -46,7 +46,7 @@ def get_partition_by_id_or_name__or_404(node_config, partition_id):
             node_config, partition_id
         )
     except Partition.DoesNotExist:
-        raise Http404()
+        raise Http404()  # noqa: B904
     return partition
 
 

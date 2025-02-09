@@ -3,7 +3,6 @@
 
 """Tests for Space API."""
 
-
 import http.client
 import json
 import random
@@ -166,7 +165,7 @@ class TestSpaceAPI(APITestCase.ForUser):
 
     def test_read_undefined(self):
         for _ in range(3):
-            factory.make_VLAN(space=None).id
+            factory.make_VLAN(space=None).id  # noqa: B018
         vlan_ids = VLAN.objects.all().values_list("id", flat=True)
         uri = get_undefined_space_uri()
         response = self.client.get(uri)

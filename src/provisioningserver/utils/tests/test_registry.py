@@ -3,7 +3,6 @@
 
 """Tests for the Registry"""
 
-
 from unittest.mock import sentinel
 
 from maastesting.testcase import MAASTestCase

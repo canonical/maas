@@ -3,7 +3,6 @@
 
 """Helpers for operating systems in testing."""
 
-
 from random import randint
 
 from maasserver.enum import BOOT_RESOURCE_TYPE

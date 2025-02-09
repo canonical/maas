@@ -3,7 +3,6 @@
 
 """Resources for testing the MAAS region application."""
 
-
 from contextlib import contextmanager
 from itertools import count
 import os
@@ -261,9 +260,9 @@ class DjangoDatabasesManager(TestResourceManager):
                 for database in databases:
                     dbname = database["NAME"]
                     maybe_match = re.search(self.DB_NAME_REGEX, dbname)
-                    assert (
-                        maybe_match is not None
-                    ), f"Unable to extract original name from {dbname}"
+                    assert maybe_match is not None, (
+                        f"Unable to extract original name from {dbname}"
+                    )
                     template = maybe_match.group("template")
                     self._stopOtherActivity(cursor, dbname)
                     self._dropDatabase(cursor, dbname)

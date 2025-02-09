@@ -3,7 +3,6 @@
 
 """Testing helpers for `provisioningserver.boot`."""
 
-
 from typing import Dict, Optional, Tuple
 
 from provisioningserver.utils.tftp import TFTPPath

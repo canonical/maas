@@ -290,7 +290,7 @@ class TestDNSDataMapping(MAASServerTestCase):
             dnsrr = factory.make_DNSResource(
                 name=name, domain=domain, no_ip_addresses=True
             )
-            for count in range(random.randint(1, 5)):
+            for count in range(random.randint(1, 5)):  # noqa: B007
                 factory.make_DNSData(dnsresource=dnsrr, ip_addresses=True)
             expected_mapping.update(self.make_mapping(dnsrr))
         # Add one resource to the domain which has no data, so it should not be

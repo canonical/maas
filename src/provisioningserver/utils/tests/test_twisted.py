@@ -1239,7 +1239,7 @@ class TestDeferToNewThread(MAASTestCase):
         value = factory.make_name("value")
 
         def break_something():
-            0 / 0
+            0 / 0  # noqa: B018
 
         def check_context_in_errback(_):
             self.assertEqual(value, context.get(name))

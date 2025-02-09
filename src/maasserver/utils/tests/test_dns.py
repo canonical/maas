@@ -26,7 +26,7 @@ class TestURLValidator(MAASTestCase):
         try:
             validate_url(url)
         except ValidationError as e:
-            raise AssertionError(str(e))
+            raise AssertionError(str(e))  # noqa: B904
 
     def test_accepts_domain_without_explicit_top_level_domain(self):
         self.assertAccepts("http://foo")
@@ -118,7 +118,7 @@ class TestHostnameValidator(MAASTestCase):
         try:
             validate_hostname(hostname)
         except ValidationError as e:
-            raise AssertionError(str(e))
+            raise AssertionError(str(e))  # noqa: B904
 
     def assertRejects(self, hostname):
         """Assertion: the validator rejects `hostname`."""
@@ -129,7 +129,7 @@ class TestHostnameValidator(MAASTestCase):
         try:
             validate_domain_name(domain_name)
         except ValidationError as e:
-            raise AssertionError(str(e))
+            raise AssertionError(str(e))  # noqa: B904
 
     def assertDomainValidatorRejects(self, hostname):
         """Assertion: the validator rejects `hostname`."""

@@ -3,7 +3,6 @@
 
 """Manual Power Driver."""
 
-
 from twisted.internet.defer import maybeDeferred
 
 from provisioningserver.drivers.power import PowerDriver

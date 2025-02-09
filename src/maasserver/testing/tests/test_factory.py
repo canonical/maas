@@ -3,7 +3,6 @@
 
 """Test the factory where appropriate.  Don't overdo this."""
 
-
 import random
 
 from maasserver.testing.factory import factory

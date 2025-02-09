@@ -252,7 +252,7 @@ EndSection
         self.assertFalse(self.ipmi.detected())
 
     def test_generate_random_password(self):
-        for attempt in range(0, 100):
+        for attempt in range(0, 100):  # noqa: B007
             password = self.ipmi._generate_random_password()
             self.assertTrue(10 <= len(password) <= 15)
             self.assertIsNotNone(
@@ -260,7 +260,7 @@ EndSection
             )
 
     def test_generate_random_password_with_length(self):
-        for attempt in range(0, 10):
+        for attempt in range(0, 10):  # noqa: B007
             password = self.ipmi._generate_random_password(
                 min_length=16, max_length=20
             )
@@ -272,7 +272,7 @@ EndSection
     def test_generate_random_password_with_special_chars(self):
         # Huawei and Lenovo use a non-standard IPMI password policy
         special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
-        for attempt in range(0, 100):
+        for attempt in range(0, 100):  # noqa: B007
             password = self.ipmi._generate_random_password(
                 with_special_chars=True
             )
@@ -824,9 +824,9 @@ EndSection
     def test_get_credentials_lan_new(self):
         self.ipmi.username = factory.make_name("username")
         self.ipmi.password = factory.make_name("password")
-        self.patch(bmc_config, "_get_ipmi_locate_output").return_value = (
-            "IPMI Version: 2.0"
-        )
+        self.patch(
+            bmc_config, "_get_ipmi_locate_output"
+        ).return_value = "IPMI Version: 2.0"
         self.patch(bmc_config.platform, "machine").return_value = "ppc64le"
         self.patch(bmc_config.os.path, "isdir").return_value = True
         ip = factory.make_ip_address()
@@ -851,9 +851,9 @@ EndSection
     def test_get_credentials_lan_old(self):
         self.ipmi.username = factory.make_name("username")
         self.ipmi.password = factory.make_name("password")
-        self.patch(bmc_config, "_get_ipmi_locate_output").return_value = (
-            "IPMI Version: 1.0"
-        )
+        self.patch(
+            bmc_config, "_get_ipmi_locate_output"
+        ).return_value = "IPMI Version: 1.0"
         self.patch(bmc_config.platform, "machine").return_value = "x86_64"
         self.patch(bmc_config.os.path, "isdir").return_value = False
         ip = factory.make_ip_address()
@@ -879,9 +879,9 @@ EndSection
         self.ipmi.username = factory.make_name("username")
         self.ipmi.password = factory.make_name("password")
         self.ipmi._cipher_suite_id = "17"
-        self.patch(bmc_config, "_get_ipmi_locate_output").return_value = (
-            "IPMI Version: 1.0"
-        )
+        self.patch(
+            bmc_config, "_get_ipmi_locate_output"
+        ).return_value = "IPMI Version: 1.0"
         self.patch(bmc_config.platform, "machine").return_value = "x86_64"
         self.patch(bmc_config.os.path, "isdir").return_value = False
         ip = factory.make_ip_address()
@@ -1598,14 +1598,16 @@ class TestRedfish(MAASTestCase):
         )
 
     def test_detected_unknown_exception(self):
-        self.patch(self.redfish, "_detect").side_effect = (
-            factory.make_exception_type((ValueError,))
-        )
+        self.patch(
+            self.redfish, "_detect"
+        ).side_effect = factory.make_exception_type((ValueError,))
         self.assertRaises(ValueError, self.redfish.detected)
 
     def test_detected_known_exception(self):
-        self.patch(self.redfish, "_detect").side_effect = (
-            factory.make_exception_type((bmc_config.ConfigurationError,))
+        self.patch(
+            self.redfish, "_detect"
+        ).side_effect = factory.make_exception_type(
+            (bmc_config.ConfigurationError,)
         )
         self.assertFalse(self.redfish.detected())
 
@@ -1708,16 +1710,16 @@ class TestWedge(MAASTestCase):
         self.assertFalse(self.wedge.detected())
 
     def test_detected_dmidecode_error(self):
-        self.patch(self.wedge, "_detect_known_switch").side_effect = (
-            random.choice(
-                [
-                    CalledProcessError(
-                        cmd="cmd", returncode=random.randint(1, 255)
-                    ),
-                    TimeoutExpired(cmd="cmd", timeout=random.randint(1, 100)),
-                    FileNotFoundError(),
-                ]
-            )
+        self.patch(
+            self.wedge, "_detect_known_switch"
+        ).side_effect = random.choice(
+            [
+                CalledProcessError(
+                    cmd="cmd", returncode=random.randint(1, 255)
+                ),
+                TimeoutExpired(cmd="cmd", timeout=random.randint(1, 100)),
+                FileNotFoundError(),
+            ]
         )
         self.assertFalse(self.wedge.detected())
 
@@ -1731,9 +1733,9 @@ class TestWedge(MAASTestCase):
 
     def test_detected_ip(self):
         self.patch(self.wedge, "_detect_known_switch").return_value = "accton"
-        self.patch(self.wedge, "get_bmc_ip").return_value = (
-            factory.make_ip_address()
-        )
+        self.patch(
+            self.wedge, "get_bmc_ip"
+        ).return_value = factory.make_ip_address()
         self.assertTrue(self.wedge.detected())
 
     def test_detected_false(self):
@@ -1814,9 +1816,9 @@ class TestDetectAndConfigure(MAASTestCase):
         args.user = factory.make_name("user")
         args.password = factory.make_name("password")
         self.patch(bmc_config.HPMoonshot, "detected").return_value = True
-        self.patch(bmc_config.HPMoonshot, "get_credentials").return_value = (
-            creds
-        )
+        self.patch(
+            bmc_config.HPMoonshot, "get_credentials"
+        ).return_value = creds
 
         bmc_config.detect_and_configure(args, bmc_config_path)
 

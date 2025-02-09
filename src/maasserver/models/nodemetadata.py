@@ -3,7 +3,6 @@
 
 """NodeMetadata objects."""
 
-
 from django.db.models import CASCADE, CharField, ForeignKey, TextField
 
 from maasserver.models.cleansave import CleanSave

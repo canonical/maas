@@ -3,7 +3,6 @@
 
 """PackageRepository objects."""
 
-
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import (

@@ -600,8 +600,9 @@ class TestCommissionForm(MAASServerTestCase):
             data={
                 "commissioning_scripts": commissioning_script.name,
                 "testing_scripts": testing_script.name,
-                "%s_storage"
-                % commissioning_script.name: factory.make_name("bad"),
+                "%s_storage" % commissioning_script.name: factory.make_name(
+                    "bad"
+                ),
                 "%s_storage" % testing_script.name: factory.make_name("bad"),
             },
         )
@@ -696,8 +697,9 @@ class TestCommissionForm(MAASServerTestCase):
             data={
                 "commissioning_scripts": commissioning_script.name,
                 "testing_scripts": testing_script.name,
-                "%s_interface"
-                % commissioning_script.name: factory.make_name("bad"),
+                "%s_interface" % commissioning_script.name: factory.make_name(
+                    "bad"
+                ),
                 "%s_interface" % testing_script.name: factory.make_name("bad"),
             },
         )
@@ -764,8 +766,9 @@ class TestCommissionForm(MAASServerTestCase):
             data={
                 "commissioning_scripts": commissioning_script.name,
                 "testing_scripts": testing_script.name,
-                "%s_runtime"
-                % commissioning_script.name: factory.make_name("bad"),
+                "%s_runtime" % commissioning_script.name: factory.make_name(
+                    "bad"
+                ),
                 "%s_runtime" % testing_script.name: factory.make_name("bad"),
             },
         )

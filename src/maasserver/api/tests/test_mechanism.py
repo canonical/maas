@@ -5,7 +5,6 @@
 export API methods.
 """
 
-
 from maasserver.api.support import operation
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase

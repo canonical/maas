@@ -53,8 +53,8 @@ class FabricsHandler(Handler):
     )
     async def list_fabrics(
         self,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> FabricsListResponse:
         fabrics = await services.fabrics.list(
             page=pagination_params.page,
@@ -101,7 +101,7 @@ class FabricsHandler(Handler):
         self,
         fabric_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         fabric = await services.fabrics.get_by_id(fabric_id)
         if not fabric:
@@ -134,7 +134,7 @@ class FabricsHandler(Handler):
         self,
         fabric_request: FabricRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> None:
         fabric = await services.fabrics.create(fabric_request.to_builder())
         response.headers["ETag"] = fabric.etag()
@@ -166,7 +166,7 @@ class FabricsHandler(Handler):
         fabric_id: int,
         fabric_request: FabricRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         fabric = await services.fabrics.update_by_id(
             id=fabric_id,
@@ -198,7 +198,7 @@ class FabricsHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.fabrics.delete_by_id(
             id=fabric_id,

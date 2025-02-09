@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.utils.dbtasks`."""
 
-
 import random
 import threading
 from unittest.mock import sentinel

@@ -3,7 +3,6 @@
 
 """Test monkey patches."""
 
-
 from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.threads import deferToThread
 

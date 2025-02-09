@@ -3,7 +3,6 @@
 
 """Fixtures for working with local configuration in the region."""
 
-
 from maasserver.config import RegionConfiguration
 from provisioningserver.testing.config import ConfigurationFixtureBase
 

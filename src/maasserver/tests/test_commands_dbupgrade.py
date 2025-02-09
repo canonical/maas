@@ -3,7 +3,6 @@
 
 """Tests for the `dbupgrade` management command."""
 
-
 from django.core.management import call_command
 
 from maasserver.testing.testcase import MAASTransactionServerTestCase

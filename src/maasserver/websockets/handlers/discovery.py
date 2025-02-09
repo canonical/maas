@@ -3,7 +3,6 @@
 
 """The Discovery handler for the WebSocket connection."""
 
-
 from datetime import datetime
 import time
 

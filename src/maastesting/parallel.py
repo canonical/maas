@@ -220,9 +220,7 @@ class TestScriptUnselectable(TestScriptBase):
             """\
             WARNING: {script.script} will _never_ be selected when using
             selectors at the command-line. Run {script.script} directly.
-        """.format(
-                script=self
-            )
+        """.format(script=self)
         )
         for line in textwrap.wrap(warning, 72):
             print(line, file=sys.stderr)
@@ -265,7 +263,7 @@ def make_splitter(splits):
 
     def split(test):
         for script in testtools.iterate_tests(test):
-            for script in script.split(splits):
+            for script in script.split(splits):  # noqa: B020
                 backlog.put(script)
         for _ in procs:
             backlog.put(None)
@@ -337,7 +335,7 @@ def make_argument_parser(scripts):
         try:
             processes = int(string)
         except ValueError:
-            raise argparse.ArgumentTypeError("%r is not an integer" % string)
+            raise argparse.ArgumentTypeError("%r is not an integer" % string)  # noqa: B904
         else:
             if processes < 1:
                 raise argparse.ArgumentTypeError(

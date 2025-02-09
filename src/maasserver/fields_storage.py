@@ -3,7 +3,6 @@
 
 """Fields for storage API."""
 
-
 from math import ceil
 import re
 

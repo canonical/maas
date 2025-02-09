@@ -26,7 +26,7 @@ class LeasesHandler(Handler):
         self,
         response: Response,
         lease_info_request: LeaseInfoRequest,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.leases.store_lease_info(
             Lease(

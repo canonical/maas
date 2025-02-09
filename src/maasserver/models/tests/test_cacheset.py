@@ -3,7 +3,6 @@
 
 """Tests for `CacheSet`."""
 
-
 import random
 
 from django.core.exceptions import PermissionDenied

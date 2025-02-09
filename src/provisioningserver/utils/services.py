@@ -3,7 +3,6 @@
 
 """Networks monitoring service."""
 
-
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from datetime import timedelta
@@ -216,9 +215,9 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
         env = get_env_with_bytes_locale()
         log.msg("%s started." % self.getDescription())
         args = self.getProcessParameters()
-        assert all(
-            isinstance(arg, bytes) for arg in args
-        ), "Process arguments must all be bytes, got: %s" % repr(args)
+        assert all(isinstance(arg, bytes) for arg in args), (
+            "Process arguments must all be bytes, got: %s" % repr(args)
+        )
         self._protocol = self.createProcessProtocol()
         self._process = self.reactor.spawnProcess(
             self._protocol, args[0], args, env=env

@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.timestampedmodel`"""
 
-
 from django.utils import timezone
 
 from maasserver.websockets.base import DATETIME_FORMAT

@@ -3,7 +3,6 @@
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
 
-
 from collections import defaultdict
 from datetime import timedelta
 import fnmatch
@@ -725,7 +724,7 @@ def _process_machine_extra(node, extra):
 
     if "platform" in extra:
         node.architecture = (
-            f'{node.architecture.split("/", 2)[0]}/{extra["platform"]}'
+            f"{node.architecture.split('/', 2)[0]}/{extra['platform']}"
         )
 
     node.save()
@@ -844,7 +843,7 @@ def _condense_luns(disks):
         else:
             processed_disks.append(disk)
 
-    for (serial, lun), paths in serial_lun_map.items():
+    for (serial, lun), paths in serial_lun_map.items():  # noqa: B007
         mpaths = sorted(paths, key=itemgetter("id"))
         condensed_disk = mpaths[0]
         if len(mpaths) > 1:
@@ -1182,7 +1181,7 @@ def process_lxd_results(node, output, exit_status):
         data = json.loads(output.decode("utf-8"))
     except ValueError as e:
         log_failure_event("invalid JSON data")
-        raise ValueError(f"{e}: {output}")
+        raise ValueError(f"{e}: {output}")  # noqa: B904
 
     assert data.get("api_version") == "1.0", "Data not from LXD API 1.0!"
 
@@ -1200,9 +1199,9 @@ def process_lxd_results(node, output, exit_status):
     missing_extensions = required_extensions - set(
         data.get("api_extensions", ())
     )
-    assert (
-        not missing_extensions
-    ), f"Missing required LXD API extensions {sorted(missing_extensions)}"
+    assert not missing_extensions, (
+        f"Missing required LXD API extensions {sorted(missing_extensions)}"
+    )
 
     # If there is a change in the Rack controller configuration, we should
     # trigger configure-agent workflow execution, so MAAS Agent can consume
@@ -1339,9 +1338,7 @@ def detect_switch_vendor_model(dmi_data):
         if 'pn"MSN2100-CB2FO"' in dmi_data:
             model = "sn2100"
     elif vendor == "accton":
-        if "pnEPGSVR" in dmi_data:
-            model = "wedge40"
-        elif "pnWedge-AC-F20-001329" in dmi_data:
+        if "pnEPGSVR" in dmi_data or "pnWedge-AC-F20-001329" in dmi_data:
             model = "wedge40"
         elif "pnTobefilledbyO.E.M." in dmi_data:
             if "rnPCOM-B632VG-ECC-FB-ACCTON-D" in dmi_data:
@@ -1626,11 +1623,11 @@ def _link_dpu(node):
 
 
 # Register the post processing hooks.
-NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME][
-    "hook"
-] = update_node_fruid_metadata
-NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME][
-    "hook"
-] = create_metadata_by_modalias
+NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]["hook"] = (
+    update_node_fruid_metadata
+)
+NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]["hook"] = (
+    create_metadata_by_modalias
+)
 NODE_INFO_SCRIPTS[COMMISSIONING_OUTPUT_NAME]["hook"] = process_lxd_results
 NODE_INFO_SCRIPTS[KERNEL_CMDLINE_OUTPUT_NAME]["hook"] = update_boot_interface

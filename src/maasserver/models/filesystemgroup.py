@@ -4,7 +4,6 @@
 """Model for a filesystem group. Contains a set of filesystems that create
 a virtual block device. E.g. LVM Volume Group."""
 
-
 from itertools import chain
 from uuid import uuid4
 
@@ -202,10 +201,10 @@ class RAIDManager(BaseFilesystemGroupManager):
         level,
         name=None,
         uuid=None,
-        block_devices=[],
-        partitions=[],
-        spare_devices=[],
-        spare_partitions=[],
+        block_devices=None,
+        partitions=None,
+        spare_devices=None,
+        spare_partitions=None,
     ):
         from maasserver.models.filesystem import Filesystem
 
@@ -213,13 +212,20 @@ class RAIDManager(BaseFilesystemGroupManager):
         raid = RAID(group_type=level, name=name, uuid=uuid)
         raid.save()
 
+        if block_devices is None:
+            block_devices = []
+        if partitions is None:
+            partitions = []
+        if spare_devices is None:
+            spare_devices = []
+        if spare_partitions is None:
+            spare_partitions = []
+
         if block_devices:
             bdev = block_devices[0]
         elif spare_devices:
             bdev = spare_devices[0]
-        elif partitions:
-            bdev = partitions[0].partition_table.block_device
-        elif spare_partitions:
+        elif partitions or spare_partitions:
             bdev = partitions[0].partition_table.block_device
         else:
             bdev = None  # this only happens if there are no devices at all, in
@@ -291,8 +297,7 @@ class BcacheManager(BaseFilesystemGroupManager):
 
         if not backing_device and not backing_partition:
             raise ValidationError(
-                "Either backing_device or backing_partition must be "
-                "specified."
+                "Either backing_device or backing_partition must be specified."
             )
 
     def create_bcache(
@@ -416,8 +421,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         """
         if self.is_lvm():
             raise AttributeError(
-                "virtual_device should not be called when "
-                "group_type = LVM_VG."
+                "virtual_device should not be called when group_type = LVM_VG."
             )
         else:
             # Return the first `VirtualBlockDevice` since it is the only one.
@@ -581,12 +585,14 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         else:
             return backing_filesystem.get_size()
 
-    def get_lvm_allocated_size(self, skip_volumes=[]):
+    def get_lvm_allocated_size(self, skip_volumes=None):
         """Returns the space already allocated to virtual block devices.
 
         Calculated from the total size of all virtual block devices in this
         group.
         """
+        if skip_volumes is None:
+            skip_volumes = []
         if self.pk is None:
             return 0
         return sum(
@@ -595,7 +601,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             if logical_volume not in skip_volumes
         )
 
-    def get_lvm_free_space(self, skip_volumes=[]):
+    def get_lvm_free_space(self, skip_volumes=None):
         """Returns the total unallocated space on this FilesystemGroup"""
         return self.get_lvm_size() - self.get_lvm_allocated_size(
             skip_volumes=skip_volumes

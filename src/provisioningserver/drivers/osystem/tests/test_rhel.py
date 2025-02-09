@@ -29,7 +29,6 @@ class TestRHEL(MAASTestCase):
             "rhel65": "Redhat Enterprise Linux 6.5",
             "rhel7": "Redhat Enterprise Linux 7",
             "rhel71": "Redhat Enterprise Linux 7.1",
-            "rhel65": "Redhat Enterprise Linux 6.5",
             "cent": "Redhat Enterprise Linux cent",
             "rhel711": "Redhat Enterprise Linux 7.1 1",
             "rhel71-custom": "Redhat Enterprise Linux 7.1 custom",

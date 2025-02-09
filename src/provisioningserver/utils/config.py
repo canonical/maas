@@ -25,7 +25,7 @@ class ByteString(formencode.FancyValidator):
     messages = {
         "noneType": "The input must be a byte string (not None)",
         "badType": (
-            "The input must be a byte string (not a " "%(type)s: %(value)r)"
+            "The input must be a byte string (not a %(type)s: %(value)r)"
         ),
     }
 
@@ -60,7 +60,7 @@ class UnicodeString(formencode.FancyValidator):
     messages = {
         "noneType": "The input must be a Unicode string (not None)",
         "badType": (
-            "The input must be a Unicode string (not a " "%(type)s: %(value)r)"
+            "The input must be a Unicode string (not a %(type)s: %(value)r)"
         ),
     }
 
@@ -100,7 +100,7 @@ class UUIDString(formencode.FancyValidator):
             try:
                 uuid.UUID(value)
             except Exception:
-                raise formencode.Invalid(
+                raise formencode.Invalid(  # noqa: B904
                     self.message("notUUID", state, value=value), value, state
                 )
             else:

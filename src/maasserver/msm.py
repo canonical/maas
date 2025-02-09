@@ -4,6 +4,7 @@
 """
 MAAS Site Manager Connector service
 """
+
 import asyncio
 import time
 from typing import Any
@@ -57,7 +58,7 @@ def msm_enrol(encoded: str, metainfo: str | None = None) -> str:
             options={"verify_signature": False},
         )
     except JWTClaimsError as ex:
-        raise MSMException(f"invalid JWT: {str(ex)}")
+        raise MSMException(f"invalid JWT: {str(ex)}")  # noqa: B904
 
     url = claims.get("service-url", None)
     if not url:

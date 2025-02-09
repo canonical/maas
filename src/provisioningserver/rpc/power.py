@@ -168,7 +168,7 @@ def maaslog_report_failure(node, failure):
         )
     elif failure.check(NoSuchNode):
         log.debug(
-            "{hostname}: Could not update power state: " "no such node.",
+            "{hostname}: Could not update power state: no such node.",
             hostname=node["hostname"],
         )
     else:

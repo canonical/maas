@@ -3,7 +3,6 @@
 
 """Arguments parser for `maascli`."""
 
-
 import argparse
 import os
 import sys
@@ -37,9 +36,9 @@ class ArgumentParser(argparse.ArgumentParser):
         super().__init__(*args, **kwargs)
 
     def add_subparsers(self, title="drill down", metavar="COMMAND", **kwargs):
-        assert (
-            self.__subparsers is None
-        ), "Only one group of subparsers allowed."
+        assert self.__subparsers is None, (
+            "Only one group of subparsers allowed."
+        )
         self.__subparsers = super().add_subparsers(
             title=title, metavar=metavar, **kwargs
         )

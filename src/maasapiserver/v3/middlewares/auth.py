@@ -112,7 +112,7 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
                 )
             )
         except InvalidToken:
-            raise UnauthorizedException(
+            raise UnauthorizedException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
                         type=INVALID_TOKEN_VIOLATION_TYPE,
@@ -156,7 +156,7 @@ class MacaroonAuthenticationProvider:
             )
             await self._raise_discharge_exception(request, caveats, ops)
         except bakery.PermissionDenied:
-            raise ForbiddenException(
+            raise ForbiddenException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
                         type=MISSING_PERMISSIONS_VIOLATION_TYPE,
@@ -256,17 +256,13 @@ class MacaroonAuthenticationProvider:
         try:
             match auth_config.type:
                 case ExternalAuthType.CANDID:
-                    client = (
-                        await request.state.services.external_auth.get_candid_client()
-                    )
+                    client = await request.state.services.external_auth.get_candid_client()
                     validate_user_response = await self._validate_user_candid(
                         client, auth_config, user.username
                     )
 
                 case ExternalAuthType.RBAC:
-                    client = (
-                        await request.state.services.external_auth.get_rbac_client()
-                    )
+                    client = await request.state.services.external_auth.get_rbac_client()
                     validate_user_response = await self._validate_user_rbac(
                         client, user.username
                     )
@@ -393,7 +389,7 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        providers_cache: AuthenticationProvidersCache = AuthenticationProvidersCache(),
+        providers_cache: AuthenticationProvidersCache = AuthenticationProvidersCache(),  # noqa: B008
     ):
         super().__init__(app)
         self.providers_cache = providers_cache
@@ -421,8 +417,11 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
             user = await self._session_authentication(request, sessionid)
         elif auth_header and auth_header.lower().startswith("bearer "):
             user = await self._jwt_authentication(request, auth_header)
-        elif macaroons := self.providers_cache.get_macaroon_provider().extract_macaroons(
-            request
+        elif (
+            macaroons
+            := self.providers_cache.get_macaroon_provider().extract_macaroons(
+                request
+            )
         ):
             user = await self._macaroon_authentication(request, macaroons)
         request.state.authenticated_user = user
@@ -442,7 +441,7 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         try:
             header = jwt.get_unverified_claims(token)
         except JWTError:
-            raise BadRequestException(
+            raise BadRequestException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
                         type=INVALID_TOKEN_VIOLATION_TYPE,

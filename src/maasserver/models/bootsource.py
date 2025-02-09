@@ -3,7 +3,6 @@
 
 """Model for a source of boot resources."""
 
-
 from django.core.exceptions import ValidationError
 from django.db.models import BinaryField, CharField, URLField
 

@@ -3,7 +3,6 @@
 
 """The controller handler for the WebSocket connection."""
 
-
 from collections import Counter
 from functools import cached_property
 import logging

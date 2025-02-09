@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.workers`"""
 
-
 import os
 import random
 import sys
@@ -46,7 +45,7 @@ class TestWorkersService(MAASTestCase):
 
         from maasserver.workers import MAX_WORKERS_COUNT
 
-        assert MAX_WORKERS_COUNT == len(service.get_worker_ids())
+        assert len(service.get_worker_ids()) == MAX_WORKERS_COUNT
         assert sys.argv[0] == service.worker_cmd
 
     def test_calls_spawnWorkers_on_start(self):
@@ -109,9 +108,9 @@ class TestWorkersService(MAASTestCase):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
 
-        self.patch(service, "unregisterWorker").side_effect = (
-            mock_unregisterWorker
-        )
+        self.patch(
+            service, "unregisterWorker"
+        ).side_effect = mock_unregisterWorker
 
         try:
             service.startService()
@@ -138,9 +137,9 @@ class TestWorkersService(MAASTestCase):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
 
-        self.patch(service, "unregisterWorker").side_effect = (
-            mock_unregisterWorker
-        )
+        self.patch(
+            service, "unregisterWorker"
+        ).side_effect = mock_unregisterWorker
 
         try:
             service.startService()
@@ -167,9 +166,9 @@ class TestWorkersService(MAASTestCase):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
 
-        self.patch(service, "unregisterWorker").side_effect = (
-            mock_unregisterWorker
-        )
+        self.patch(
+            service, "unregisterWorker"
+        ).side_effect = mock_unregisterWorker
 
         try:
             service.startService()

@@ -74,7 +74,7 @@ class InterfaceForm(MAASModelForm):
         try:
             return INTERFACE_FORM_MAPPING[type]
         except KeyError:
-            raise ValidationError(
+            raise ValidationError(  # noqa: B904
                 {"type": ["Invalid interface type '%s'." % type]}
             )
 
@@ -101,9 +101,9 @@ class InterfaceForm(MAASModelForm):
             raise ValueError(
                 "instance or node is required for the InterfaceForm"
             )
-        self.fields["parents"].queryset = (
-            self.node.current_config.interface_set.all()
-        )
+        self.fields[
+            "parents"
+        ].queryset = self.node.current_config.interface_set.all()
 
     def _get_validation_exclusions(self):
         # The instance is created just before this in django. The only way to
@@ -375,8 +375,7 @@ class VLANInterfaceForm(InterfaceForm):
             )
         if parents[0].type == INTERFACE_TYPE.VLAN:
             raise ValidationError(
-                "A VLAN interface can't have another VLAN interface as "
-                "parent."
+                "A VLAN interface can't have another VLAN interface as parent."
             )
         parent_has_bond_children = [
             rel.child
@@ -608,13 +607,15 @@ class BondInterfaceForm(ChildInterfaceForm):
             value = self.cleaned_data.get(bond_field)
             params = interface.params.copy()
             if (
-                value is not None
-                and isinstance(value, str)
-                and len(value) > 0
-                and not value.isspace()
+                (
+                    value is not None
+                    and isinstance(value, str)
+                    and len(value) > 0
+                    and not value.isspace()
+                )
+                or value is not None
+                and not isinstance(value, str)
             ):
-                params[bond_field] = value
-            elif value is not None and not isinstance(value, str):
                 params[bond_field] = value
             elif created:
                 params[bond_field] = self.fields[bond_field].initial
@@ -712,13 +713,15 @@ class BridgeInterfaceForm(ChildInterfaceForm):
             value = self.cleaned_data.get(bridge_field)
             params = interface.params.copy()
             if (
-                value is not None
-                and isinstance(value, str)
-                and len(value) > 0
-                and not value.isspace()
+                (
+                    value is not None
+                    and isinstance(value, str)
+                    and len(value) > 0
+                    and not value.isspace()
+                )
+                or value is not None
+                and not isinstance(value, str)
             ):
-                params[bridge_field] = value
-            elif value is not None and not isinstance(value, str):
                 params[bridge_field] = value
             elif created:
                 params[bridge_field] = self.fields[bridge_field].initial

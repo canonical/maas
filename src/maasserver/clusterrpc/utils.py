@@ -3,7 +3,6 @@
 
 """Common code for MAAS Cluster RPC operations."""
 
-
 from collections import namedtuple
 from functools import partial
 
@@ -95,7 +94,7 @@ def call_clusters(
     success_callback=_none,
     failed_callback=_none,
     failure_callback=_none,
-    timeout_callback=_none
+    timeout_callback=_none,
 ):
     """Make an RPC call to all rack controllers in parallel.
 
@@ -160,7 +159,7 @@ def call_clusters(
             )
             unavailable_callback(controller)
             if not ignore_errors:
-                raise ClusterUnavailable(
+                raise ClusterUnavailable(  # noqa: B904
                     "Unable to get RPC connection for rack controller "
                     "'%s' (%s)" % (controller.hostname, controller.system_id)
                 )

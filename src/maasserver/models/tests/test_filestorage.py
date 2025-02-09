@@ -3,7 +3,6 @@
 
 """Tests for the FileStorage model."""
 
-
 from io import BytesIO
 
 from maasserver.models import FileStorage

@@ -3,7 +3,6 @@
 
 """Tests for lxd utilities."""
 
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.lxd import (
     lxd_cpu_speed,

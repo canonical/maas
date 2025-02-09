@@ -3,7 +3,6 @@
 
 """Test builtin_script fio."""
 
-
 import os
 from pathlib import Path
 import random

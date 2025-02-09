@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.staticrange`"""
 
-
 import random
 
 from maasserver.models.staticroute import StaticRoute

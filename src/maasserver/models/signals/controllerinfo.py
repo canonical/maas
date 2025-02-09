@@ -3,7 +3,6 @@
 
 """Respond to ControllerInfo changes."""
 
-
 from django.db.models.signals import post_delete, post_save
 
 from maasserver.models import ControllerInfo, RackController, RegionController

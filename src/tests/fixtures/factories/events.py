@@ -15,7 +15,7 @@ async def create_test_event_entry(
     fixture: Fixture,
     event_type: EventType | None = None,
     machine: Machine = None,
-    **extra_details: Any
+    **extra_details: Any,
 ) -> Event:
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc)

@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `NodeDevice`."""
+
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
@@ -82,7 +83,7 @@ class NodeDevicesHandler(OperationsHandler):
             try:
                 bus = translate_bus(bus)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
             else:
                 qs = qs.filter(bus=bus)
 
@@ -91,7 +92,7 @@ class NodeDevicesHandler(OperationsHandler):
             try:
                 hardware_type = translate_hardware_type(hardware_type)
             except ValidationError as e:
-                raise MAASAPIValidationError(e)
+                raise MAASAPIValidationError(e)  # noqa: B904
             else:
                 qs = qs.filter(hardware_type=hardware_type)
 
@@ -201,7 +202,7 @@ class NodeDeviceHandler(OperationsHandler):
                         pci_address=id,
                     )
             except Exception:
-                raise MAASAPIValidationError("Invalid id format!")
+                raise MAASAPIValidationError("Invalid id format!")  # noqa: B904
 
     def read(self, request, system_id, id):
         """@description-title Return a specific node device

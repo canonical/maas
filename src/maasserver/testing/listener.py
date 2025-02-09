@@ -3,7 +3,6 @@
 
 """PostgresListener test helpers."""
 
-
 from twisted.internet.defer import succeed
 
 from maasserver.listener import PostgresListenerService

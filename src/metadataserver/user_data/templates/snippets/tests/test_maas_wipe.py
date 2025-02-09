@@ -3,7 +3,6 @@
 
 """Tests for maas_wipe.py."""
 
-
 import argparse
 import builtins
 import subprocess
@@ -201,9 +200,9 @@ class TestMAASWipe(MAASTestCase):
             }
             for _ in range(3)
         ]
-        self.patch(maas_wipe, "get_hdparm_security_info").side_effect = (
-            security_info
-        )
+        self.patch(
+            maas_wipe, "get_hdparm_security_info"
+        ).side_effect = security_info
         observed = get_disk_info()
         self.assertEqual(
             {disk_names[i]: security_info[i] for i in range(3)}, observed
@@ -419,9 +418,9 @@ class TestMAASWipe(MAASTestCase):
             }
             for _ in range(3)
         ]
-        self.patch(maas_wipe, "get_nvme_security_info").side_effect = (
-            security_info
-        )
+        self.patch(
+            maas_wipe, "get_nvme_security_info"
+        ).side_effect = security_info
         observed = get_disk_info()
         self.assertEqual(
             {disk_names[i]: security_info[i] for i in range(3)}, observed
@@ -719,9 +718,9 @@ class TestMAASWipe(MAASTestCase):
 
         # Fail to get disk info just to exit early.
         exception_type = factory.make_exception_type()
-        self.patch(maas_wipe, "get_hdparm_security_info").side_effect = (
-            exception_type()
-        )
+        self.patch(
+            maas_wipe, "get_hdparm_security_info"
+        ).side_effect = exception_type()
 
         self.assertRaises(exception_type, secure_erase_hdparm, dev_name)
         mock_check_output.assert_called_once_with(
@@ -951,7 +950,7 @@ class TestMAASWipe(MAASTestCase):
         maas_wipe.main()
 
         try_calls = [call(disk, info) for disk, info in disks.items()]
-        wipe_calls = [call(disk) for disk in disks.keys()]
+        wipe_calls = [call(disk) for disk in disks]
         mock_try.assert_has_calls(try_calls)
         wipe_quickly.assert_has_calls(wipe_calls)
 
@@ -975,7 +974,7 @@ class TestMAASWipe(MAASTestCase):
         mock_try.return_value = False
         maas_wipe.main()
 
-        wipe_calls = [call(disk) for disk in disks.keys()]
+        wipe_calls = [call(disk) for disk in disks]
         mock_try.assert_not_called()
         wipe_quickly.assert_has_calls(wipe_calls)
 

@@ -3,7 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.dhcp`."""
 
-
 import copy
 from operator import itemgetter
 from unittest import TestCase

@@ -3,7 +3,6 @@
 
 """Template objects."""
 
-
 import sys
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager

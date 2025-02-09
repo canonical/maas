@@ -3,7 +3,6 @@
 
 """DNS zone generator."""
 
-
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from itertools import chain
@@ -158,7 +157,7 @@ def get_dns_server_addresses(
             default_region_ip=default_region_ip,
         )
     except OSError as e:
-        raise UnresolvableHost(
+        raise UnresolvableHost(  # noqa: B904
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "
             "requires this IP address for the NS records in its zone files. "
             "Make sure that the configuration setting for the MAAS URL has "
@@ -506,11 +505,17 @@ class ZoneGenerator:
         network: IPNetwork,
         existing: dict[IPNetwork, DNSReverseZoneConfig],
         mapping: dict[str, HostnameIPMapping],
-        dynamic_ranges: list[IPRange] | None = [],
-        dynamic_updates: list[DynamicDNSUpdate] | None = [],
-        glue: set[IPNetwork] | None = set(),
+        dynamic_ranges: list[IPRange] | None = None,
+        dynamic_updates: list[DynamicDNSUpdate] | None = None,
+        glue: set[IPNetwork] | None = None,
         is_glue_net: bool = False,
     ):
+        if dynamic_ranges is None:
+            dynamic_ranges = []
+        if dynamic_updates is None:
+            dynamic_updates = []
+        if glue is None:
+            glue = set()
         # since all dynamic updates are passed and we then filter for those belonging
         # in the network, the existing config already has all updates and we do not need
         # to merge them, just add them if they haven't already
@@ -541,9 +546,12 @@ class ZoneGenerator:
         default_ttl,
         dynamic_updates,
         force_config_write,
-        existing_subnet_cfgs={},
+        existing_subnet_cfgs=None,
     ):
         """Generator of reverse zones, sorted by network."""
+
+        if existing_subnet_cfgs is None:
+            existing_subnet_cfgs = {}
 
         subnets = set(subnets)
 
@@ -688,7 +696,7 @@ class ZoneGenerator:
         """
         # For testing and such it's fine if we don't have a serial, but once
         # we get to this point, we really need one.
-        assert not (self.serial is None), "No serial number specified."
+        assert self.serial is not None, "No serial number specified."
 
         mappings = self._get_mappings()
         ns_host_name = self.default_domain.name

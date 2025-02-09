@@ -3,7 +3,6 @@
 
 """Tests for API annotations."""
 
-
 import os
 
 from maasserver.api.annotations import APIDocstringParser
@@ -265,7 +264,7 @@ class TestAPIAnnotations(APITestCase.ForUser):
     def test_parse_annotations_indent_descriptions(self):
         """Indentation should be kept when present in descriptions."""
         docstring = self.sample_api_annotated_docstring
-        ref_string = "Longer description with\n" "    multiple lines.\n\n    "
+        ref_string = "Longer description with\n    multiple lines.\n\n    "
         api_docstring_parser = APIDocstringParser()
         api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
         d = api_docstring_parser.get_dict()

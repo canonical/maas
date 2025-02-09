@@ -3,7 +3,6 @@
 
 """Utilities for working with Ethernet packets."""
 
-
 from collections import namedtuple
 import struct
 

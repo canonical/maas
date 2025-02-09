@@ -3,7 +3,6 @@
 
 """Helpers for inspecting processes."""
 
-
 from functools import lru_cache
 import os
 

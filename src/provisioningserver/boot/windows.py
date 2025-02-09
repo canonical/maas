@@ -5,7 +5,6 @@
 
 """Windows PXE Boot Method"""
 
-
 import os.path
 import re
 import shutil

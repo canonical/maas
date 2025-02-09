@@ -48,6 +48,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
 from maasserver.workflow import start_workflow
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.network import IPRANGE_TYPE as MAASIPRANGE_TYPE
 from provisioningserver.utils.network import (
     IPRangeStatistics,
     MAASIPSet,
@@ -56,7 +57,6 @@ from provisioningserver.utils.network import (
     MaybeIPAddress,
     parse_integer,
 )
-from provisioningserver.utils.network import IPRANGE_TYPE as MAASIPRANGE_TYPE
 
 maaslog = get_maas_logger("subnet")
 
@@ -89,7 +89,7 @@ def create_cidr(network, subnet_mask=None):
         if "/" in network:
             return str(IPNetwork(network).cidr)
         else:
-            assert False, "Network passed as CIDR string must contain '/'."
+            assert False, "Network passed as CIDR string must contain '/'."  # noqa: B011
     network = str(make_ipaddress(network))
     if isinstance(subnet_mask, int):
         mask = str(subnet_mask)
@@ -159,7 +159,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         try:
             self.filter_by_specifiers(specifiers)
         except (ValueError, AddrFormatError) as e:
-            raise ValidationError(e.message)
+            raise ValidationError(e.message)  # noqa: B904
 
     def get_specifiers_q(self, specifiers, separator=":", **kwargs):
         """Returns a Q object for objects matching the given specifiers.
@@ -259,7 +259,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         try:
             item = parse_integer(item)
         except ValueError:
-            raise ValidationError("Subnet ID must be numeric.")
+            raise ValidationError("Subnet ID must be numeric.")  # noqa: B904
         else:
             current_q = op(current_q, Q(id=item))
             return current_q

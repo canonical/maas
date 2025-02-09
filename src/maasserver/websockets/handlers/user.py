@@ -3,7 +3,6 @@
 
 """The user handler for the WebSocket connection."""
 
-
 from django.contrib.auth.forms import (
     AdminPasswordChangeForm,
     PasswordChangeForm,
@@ -114,7 +113,7 @@ class UserHandler(Handler):
         try:
             result = super().create(params=params)
         except HandlerDoesNotExistError:
-            raise HandlerPermissionError()
+            raise HandlerPermissionError()  # noqa: B904
         self.create_audit_event(
             EVENT_TYPES.AUTHORISATION,
             "Created {} '{}'.".format(
@@ -129,7 +128,7 @@ class UserHandler(Handler):
         try:
             result = super().update(params=params)
         except HandlerDoesNotExistError:
-            raise HandlerPermissionError()
+            raise HandlerPermissionError()  # noqa: B904
         self.create_audit_event(
             EVENT_TYPES.AUTHORISATION,
             (
@@ -154,7 +153,7 @@ class UserHandler(Handler):
             )
             result = super().delete(params=params)
         except HandlerDoesNotExistError:
-            raise HandlerPermissionError()
+            raise HandlerPermissionError()  # noqa: B904
         return result
 
     def dehydrate(self, obj, data, for_list=False):

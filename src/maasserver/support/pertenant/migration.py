@@ -26,7 +26,6 @@ allocated after this migration will permit access from any of the users with
 SSH keys prior to the migration.
 """
 
-
 from django.contrib.auth.models import User
 
 from maasserver.models import FileStorage, Node, SSHKey

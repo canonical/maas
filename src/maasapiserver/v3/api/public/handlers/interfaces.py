@@ -43,8 +43,8 @@ class InterfacesHandler(Handler):
     async def list_interfaces(
         self,
         node_id: int,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         interfaces = await services.interfaces.list(
             node_id=node_id,

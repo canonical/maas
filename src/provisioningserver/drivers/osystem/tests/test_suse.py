@@ -3,7 +3,6 @@
 
 """Tests for the SUSEOS module."""
 
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem.suse import (
     BOOT_IMAGE_PURPOSE,

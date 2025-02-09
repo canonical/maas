@@ -3,7 +3,6 @@
 
 """Tests for Domain forms."""
 
-
 import random
 
 from maasserver.forms.domain import DomainForm

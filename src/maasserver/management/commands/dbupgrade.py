@@ -5,7 +5,6 @@
 Django command: Upgrade MAAS regiond database.
 """
 
-
 import argparse
 import os
 import subprocess

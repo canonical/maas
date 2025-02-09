@@ -6,7 +6,6 @@
 Workers access the MAAS API under this user identity.
 """
 
-
 from django.contrib.auth.models import User
 
 user_name = "MAAS"

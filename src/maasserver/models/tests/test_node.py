@@ -63,6 +63,8 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
 )
 from maasserver.models import (
+    Bcache,
+    BMC,
     BMCRoutableRackControllerRelationship,
     BridgeInterface,
     Config,
@@ -76,8 +78,6 @@ from maasserver.models import (
     Machine,
     Neighbour,
     Node,
-)
-from maasserver.models import (
     NodeDevice,
     NodeUserData,
     Notification,
@@ -97,7 +97,6 @@ from maasserver.models import (
     VLAN,
     VolumeGroup,
 )
-from maasserver.models import Bcache, BMC
 from maasserver.models import bmc as bmc_module
 from maasserver.models import node as node_module
 from maasserver.models.config import NetworkDiscoveryConfig
@@ -285,7 +284,7 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
         latest_script_results = []
         for _ in range(5):
             script = factory.make_Script()
-            for run in range(10):
+            for run in range(10):  # noqa: B007
                 script_set = factory.make_ScriptSet(
                     result_type=script.script_type, node=node
                 )
@@ -357,7 +356,7 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
         latest_script_results = []
         for _ in range(5):
             script = factory.make_Script()
-            for run in range(10):
+            for run in range(10):  # noqa: B007
                 script_set = factory.make_ScriptSet(
                     result_type=script.script_type, node=node
                 )
@@ -381,7 +380,7 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
         latest_script_results = []
         for _ in range(5):
             script = factory.make_Script()
-            for run in range(10):
+            for run in range(10):  # noqa: B007
                 script_set = factory.make_ScriptSet(
                     result_type=script.script_type, node=node
                 )
@@ -6589,10 +6588,10 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
         d1 = defer.succeed(client2)
         self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
         self.patch(node_module, "getClientFromIdentifiers").return_value = d1
-        self.patch(node_module, "power_query_all").return_value = (
-            defer.succeed(
-                (POWER_STATE.ON, set([other_rack_controller.system_id]), set())
-            )
+        self.patch(
+            node_module, "power_query_all"
+        ).return_value = defer.succeed(
+            (POWER_STATE.ON, set([other_rack_controller.system_id]), set())
         )
 
         power_info = yield deferToDatabase(node.get_effective_power_info)
@@ -6823,9 +6822,9 @@ class TestDecomposeMachineMixin:
     def fake_rpc_client(self):
         client = Mock()
         client.return_value = defer.succeed({})
-        self.patch(node_module, "getClientFromIdentifiers").return_value = (
-            defer.succeed(client)
-        )
+        self.patch(
+            node_module, "getClientFromIdentifiers"
+        ).return_value = defer.succeed(client)
         return client
 
 
@@ -8213,9 +8212,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             alloc_type = IPADDRESS_TYPE.AUTO
         elif default_mode == INTERFACE_LINK_TYPE.DHCP:
             alloc_type = IPADDRESS_TYPE.DHCP
-        elif default_mode == INTERFACE_LINK_TYPE.LINK_UP:
-            alloc_type = IPADDRESS_TYPE.STICKY
-        elif default_mode == INTERFACE_LINK_TYPE.STATIC:
+        elif (
+            default_mode == INTERFACE_LINK_TYPE.LINK_UP
+            or default_mode == INTERFACE_LINK_TYPE.STATIC
+        ):
             alloc_type = IPADDRESS_TYPE.STICKY
         default_ip = boot_interface.ip_addresses.filter(
             alloc_type=alloc_type
@@ -10794,9 +10794,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
                 missing_packages[-1],
             ]
         package_list = " and ".join(missing_packages)
-        self.patch(node_module, "power_driver_check").return_value = (
-            defer.succeed(missing_packages)
-        )
+        self.patch(
+            node_module, "power_driver_check"
+        ).return_value = defer.succeed(missing_packages)
 
         # Testing only allows one thread at a time, but the way we are testing
         # this would actually require multiple to be started at once. To
@@ -10948,9 +10948,11 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         mock_power_query_all.assert_called_once_with(
             node.system_id, node.hostname, power_info
         )
-        mock_getClientFromIdentifiers.assert_called_once_with(
-            routable_racks_system_ids
-        ),
+        (
+            mock_getClientFromIdentifiers.assert_called_once_with(
+                routable_racks_system_ids
+            ),
+        )
         mock_confirm_power_driver.assert_called_once_with(
             client, power_info.power_type, client.ident
         )
@@ -11472,9 +11474,9 @@ class TestRackController(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         fixture.makeCluster(rackcontroller, DisableAndShutoffRackd)
-        self.patch(crochet._eventloop.EventualResult, "wait").side_effect = (
-            TimeoutError()
-        )
+        self.patch(
+            crochet._eventloop.EventualResult, "wait"
+        ).side_effect = TimeoutError()
 
         rackcontroller.delete()
         self.assertIsNone(reload_object(rackcontroller))
@@ -11488,9 +11490,9 @@ class TestRackController(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         fixture.makeCluster(rackcontroller, DisableAndShutoffRackd)
-        self.patch(crochet._eventloop.EventualResult, "wait").side_effect = (
-            ConnectionDone()
-        )
+        self.patch(
+            crochet._eventloop.EventualResult, "wait"
+        ).side_effect = ConnectionDone()
 
         rackcontroller.delete()
         self.assertIsNone(reload_object(rackcontroller))

@@ -3,7 +3,6 @@
 
 """Services monitored on regiond."""
 
-
 from maasserver.models.config import Config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase

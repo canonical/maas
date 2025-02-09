@@ -97,7 +97,7 @@ class Certificate(NamedTuple):
             )
             cert = crypto.load_certificate(crypto.FILETYPE_PEM, material)
         except crypto.Error:
-            raise CertificateError("Invalid PEM material")
+            raise CertificateError("Invalid PEM material")  # noqa: B904
         cls._check_key_match(key, cert)
 
         ca_certs = cls._split_ca_certs(ca_certs_material)
@@ -299,7 +299,7 @@ class Certificate(NamedTuple):
         try:
             crypto.verify(cert, signature, data, "sha512")
         except crypto.Error:
-            raise CertificateError("Private and public keys don't match")
+            raise CertificateError("Private and public keys don't match")  # noqa: B904
 
     @staticmethod
     def _split_ca_certs(ca_certs_material: str) -> Tuple[crypto.X509]:

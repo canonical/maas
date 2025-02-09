@@ -6,6 +6,7 @@
 For example, hardware information as reported by ``lshw`` and network
 topology information derived from LLDP.
 """
+
 from __future__ import annotations
 
 import base64

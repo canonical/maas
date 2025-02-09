@@ -458,9 +458,9 @@ class BootResourceFileUploadHandler(OperationsHandler):
             if lfile.complete:
                 post_commit_do(filestore_add_file, rfile)
         except LocalStoreWriteBeyondEOF:
-            raise MAASAPIBadRequest("Too much data received.")
+            raise MAASAPIBadRequest("Too much data received.")  # noqa: B904
         except LocalStoreInvalidHash:
-            raise MAASAPIBadRequest(
+            raise MAASAPIBadRequest(  # noqa: B904
                 "Saved content does not match given SHA256 value."
             )
         return rc.ALL_OK

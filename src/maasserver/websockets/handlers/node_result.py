@@ -3,7 +3,6 @@
 
 """The NodeResult handler for the WebSocket connection."""
 
-
 from operator import attrgetter
 
 from django.core.exceptions import ValidationError
@@ -150,7 +149,7 @@ class NodeResultHandler(TimestampedModelHandler):
         try:
             node = Node.objects.get(system_id=params["system_id"])
         except Node.DoesNotExist:
-            raise HandlerDoesNotExistError(
+            raise HandlerDoesNotExistError(  # noqa: B904
                 f"Node with system id ({params['system_id']}) does not exist"
             )
 

@@ -3,7 +3,6 @@
 
 """Tests for dhcp/detect.py"""
 
-
 import errno
 import random
 import socket
@@ -60,9 +59,9 @@ class TestMakeDHCPTransactionID(MAASTestCase):
 class TestDHCPDiscoverPacket(MAASTestCase):
     def test_init_sets_transaction_id(self):
         transaction_id = make_dhcp_transaction_id()
-        self.patch(detect_module, "make_dhcp_transaction_id").return_value = (
-            transaction_id
-        )
+        self.patch(
+            detect_module, "make_dhcp_transaction_id"
+        ).return_value = transaction_id
         discover = DHCPDiscoverPacket(factory.make_mac_address())
         self.assertEqual(transaction_id, discover.transaction_id)
 
@@ -208,9 +207,9 @@ class TestSendDHCPRequestPacket(MAASTestCase):
         mock_socket.bind = mock.MagicMock()
         mock_socket.sendto = mock.MagicMock()
         self.patch(detect_module.get_interface_ip).return_value = "127.0.0.1"
-        self.patch(detect_module.get_interface_mac).return_value = (
-            "00:00:00:00:00:00"
-        )
+        self.patch(
+            detect_module.get_interface_mac
+        ).return_value = "00:00:00:00:00:00"
         request = DHCPDiscoverPacket()
         send_dhcp_request_packet(request, "lo")
         mock_socket.bind.assert_called_once_with(

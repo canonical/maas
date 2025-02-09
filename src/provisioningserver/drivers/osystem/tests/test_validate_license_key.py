@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.osystem`."""
 
-
 import random
 from unittest.mock import sentinel
 

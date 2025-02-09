@@ -3,7 +3,6 @@
 
 """The SSLKey handler for the WebSocket connection."""
 
-
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
@@ -48,7 +47,7 @@ class SSLKeyHandler(TimestampedModelHandler):
                 try:
                     raise HandlerValidationError(e.message_dict)
                 except AttributeError:
-                    raise HandlerValidationError({"__all__": e.message})
+                    raise HandlerValidationError({"__all__": e.message})  # noqa: B904
             return self.full_dehydrate(obj)
         else:
             raise HandlerValidationError(form.errors)

@@ -339,7 +339,6 @@ class TestAuthenticationProvidersCache:
 
 
 class TestDjangoSessionAuthenticationProvider:
-
     def mock_request(self, user) -> Mock:
         request = Mock(Request)
         request.state.services.users = Mock(UsersService)
@@ -379,7 +378,6 @@ class TestDjangoSessionAuthenticationProvider:
 
 
 class TestLocalAuthenticationProvider:
-
     async def test_dispatch(self) -> None:
         jwt = JWT.create("123", "test", 0, [UserRole.USER])
         request = Mock(Request)
@@ -414,7 +412,6 @@ class TestMacaroonAuthenticationProvider:
         return request
 
     async def test_dispatch_with_headers(self) -> None:
-
         user = _make_user()
         request = self.mock_request()
         request.state.services.external_auth.login.return_value = user
@@ -488,9 +485,7 @@ class TestMacaroonAuthenticationProvider:
         )
 
         macaroon_mock = Mock(bakery.Macaroon)
-        request.state.services.external_auth.generate_discharge_macaroon.return_value = (
-            macaroon_mock
-        )
+        request.state.services.external_auth.generate_discharge_macaroon.return_value = macaroon_mock
 
         request.headers = {}
         request.base_url = "http://test:5240/"
@@ -524,9 +519,7 @@ class TestMacaroonAuthenticationProvider:
             bakery_mock
         )
         macaroon_mock = Mock(bakery.Macaroon)
-        request.state.services.external_auth.generate_discharge_macaroon.return_value = (
-            macaroon_mock
-        )
+        request.state.services.external_auth.generate_discharge_macaroon.return_value = macaroon_mock
 
         request.headers = {}
         request.base_url = "http://test:5240/"
@@ -578,7 +571,6 @@ class TestMacaroonAuthenticationProvider:
 
 @pytest.mark.usefixtures("ensuremaasdb")
 class TestValidateUserExternalAuthCandid:
-
     @pytest.fixture(autouse=True)
     async def prepare(self, db_connection: AsyncConnection, enable_candid):
         self.client = Mock(CandidAsyncClient)
@@ -717,7 +709,6 @@ class TestValidateUserExternalAuthCandid:
 
 @pytest.mark.usefixtures("ensuremaasdb")
 class TestValidateUserExternalAuthRbac:
-
     @pytest.fixture(autouse=True)
     async def prepare(self, db_connection: AsyncConnection, enable_rbac):
         self.client = Mock(RbacAsyncClient)

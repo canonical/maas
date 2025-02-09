@@ -3,7 +3,6 @@
 
 """URL and DNS-related utilities."""
 
-
 import re
 
 from django.core.exceptions import ValidationError

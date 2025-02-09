@@ -3,7 +3,6 @@
 
 """Tests for the setup-dns command."""
 
-
 from argparse import ArgumentParser
 import io
 import os

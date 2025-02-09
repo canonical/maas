@@ -419,7 +419,7 @@ def _render_oapi_paths() -> dict[str, str | Any]:
         return resource.handler.__class__.__name__
 
     def _export_key(
-        export: tuple[tuple[str, str], object]
+        export: tuple[tuple[str, str], object],
     ) -> tuple[str, object]:
         (http_method, op), function = export
         return http_method, op or "", function

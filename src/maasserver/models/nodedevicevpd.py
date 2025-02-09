@@ -3,7 +3,6 @@
 
 """NodeDeviceVPD objects."""
 
-
 from django.db.models import CASCADE, ForeignKey, Index, Model, TextField
 
 from maasserver.models.cleansave import CleanSave

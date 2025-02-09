@@ -3,7 +3,6 @@
 
 """DNSData form."""
 
-
 from django import forms
 
 from maasserver.forms import APIEditMixin, MAASModelForm

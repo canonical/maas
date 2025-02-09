@@ -3,7 +3,6 @@
 
 """Test utilities for URL handling."""
 
-
 from random import randint
 
 from maastesting.factory import factory

@@ -48,7 +48,7 @@ def merge_scenarios(*scenario_lists):
 class APITestType(abc.ABCMeta):
     """Base type for MAAS's Web API test cases."""
 
-    @functools.lru_cache(maxsize=None)
+    @functools.lru_cache(maxsize=None)  # noqa: B019
     def forUsers(cls, **userfactories):
         """Create a new test class for the given users.
 
@@ -220,9 +220,9 @@ class APITransactionTestCase(APITestCaseBase, MAASTransactionServerTestCase):
 
 def make_worker_client(rack_controller):
     """Create a test client logged in as if it were `rack_controller`."""
-    assert (
-        get_worker_user() == rack_controller.owner
-    ), "Rack controller owner should be the MAAS worker user."
+    assert get_worker_user() == rack_controller.owner, (
+        "Rack controller owner should be the MAAS worker user."
+    )
     token = create_auth_token(rack_controller.owner)
     return MAASSensibleOAuthClient(rack_controller.owner, token=token)
 

@@ -3,7 +3,6 @@
 
 """Ubuntu Operating System."""
 
-
 from distro_info import UbuntuDistroInfo
 
 from provisioningserver.drivers.osystem import (

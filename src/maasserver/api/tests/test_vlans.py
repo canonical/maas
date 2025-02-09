@@ -3,7 +3,6 @@
 
 """Tests for VLAN API."""
 
-
 import http.client
 import json
 import random

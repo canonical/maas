@@ -3,7 +3,6 @@
 
 """Boot Methods."""
 
-
 from abc import ABCMeta
 from errno import ENOENT
 from functools import lru_cache

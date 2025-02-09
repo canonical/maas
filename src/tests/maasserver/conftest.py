@@ -56,7 +56,7 @@ class MockKVStore:
             # include only relevant fields in response
             return {"data": {"data": self.store[path]}}
         except KeyError:
-            raise hvac.exceptions.InvalidPath(
+            raise hvac.exceptions.InvalidPath(  # noqa: B904
                 url=f"http://localhost:8200/v1/secret/data/{path}",
                 method="get",
             )

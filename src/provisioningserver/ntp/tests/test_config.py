@@ -3,7 +3,6 @@
 
 """Tests for NTP service configuration."""
 
-
 from functools import partial
 from itertools import chain
 import os.path

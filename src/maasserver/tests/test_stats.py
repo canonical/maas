@@ -709,14 +709,18 @@ class TestMAASStats(MAASServerTestCase):
 
     def test_get_custom_static_images_uploaded_stats(self):
         for _ in range(0, 2):
+            (
+                factory.make_usable_boot_resource(
+                    name="custom/%s" % factory.make_name("name"),
+                    base_image="ubuntu/focal",
+                ),
+            )
+        (
             factory.make_usable_boot_resource(
                 name="custom/%s" % factory.make_name("name"),
-                base_image="ubuntu/focal",
+                base_image="ubuntu/bionic",
             ),
-        factory.make_usable_boot_resource(
-            name="custom/%s" % factory.make_name("name"),
-            base_image="ubuntu/bionic",
-        ),
+        )
         stats = get_custom_images_uploaded_stats()
         total = 0
         for stat in stats:

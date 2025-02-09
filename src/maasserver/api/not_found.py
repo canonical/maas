@@ -3,7 +3,6 @@
 
 """Not found API handler."""
 
-
 from maasserver.exceptions import MAASAPINotFound
 
 

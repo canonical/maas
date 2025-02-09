@@ -88,7 +88,7 @@ def main():
 
     # Warnings.
     warnings.formatwarning = lambda message, *_, **__: str(message)
-    warnings.warn("This is a warning!")
+    warnings.warn("This is a warning!")  # noqa: B028
 
     # Make sure everything is flushed.
     sys.stdout.flush()

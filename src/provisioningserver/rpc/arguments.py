@@ -87,7 +87,7 @@ class ParsedURL(amp.Argument):
         try:
             geturl = inObject.geturl
         except AttributeError:
-            raise TypeError(f"Not a URL-like object: {inObject!r}")
+            raise TypeError(f"Not a URL-like object: {inObject!r}")  # noqa: B904
         else:
             return ascii_url(geturl())
 

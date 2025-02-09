@@ -3,7 +3,6 @@
 
 """Drivers."""
 
-
 from jsonschema import validate
 
 from provisioningserver.utils.registry import Registry

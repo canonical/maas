@@ -639,7 +639,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with self.assertRaisesRegex(
             AttributeError, "should not be called when group_type = LVM_VG"
         ):
-            fsgroup.virtual_device
+            fsgroup.virtual_device  # noqa: B018
 
     def test_virtual_device_returns_VirtualBlockDevice_for_group(self):
         fsgroup = factory.make_FilesystemGroup(
@@ -1156,8 +1156,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with self.assertRaisesRegex(
             ValidationError,
             re.escape(
-                "['Volume group cannot be smaller than its "
-                "logical volumes.']"
+                "['Volume group cannot be smaller than its logical volumes.']"
             ),
         ):
             volume_group.save()
@@ -1526,8 +1525,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with self.assertRaisesRegex(
             ValidationError,
             re.escape(
-                "{'__all__': ['Bcache can only contain one backing "
-                "device.']}"
+                "{'__all__': ['Bcache can only contain one backing device.']}"
             ),
         ):
             factory.make_FilesystemGroup(
@@ -1569,7 +1567,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         )
         fsgroup.save()
         block_size = 4096
-        for i in range(5):
+        for i in range(5):  # noqa: B007
             block_device = factory.make_BlockDevice(
                 node=node, size=backing_volume_size, block_size=block_size
             )

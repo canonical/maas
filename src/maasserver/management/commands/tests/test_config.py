@@ -3,7 +3,6 @@
 
 """Test the `local_config_{get,reset,set}` management commands."""
 
-
 from functools import partial
 import json
 import random

@@ -3,7 +3,6 @@
 
 """Tests for :class:`NodeKey` model and manager."""
 
-
 from maasserver.models import NodeKey
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

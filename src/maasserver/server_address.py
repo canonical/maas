@@ -3,7 +3,6 @@
 
 """Helper to obtain the MAAS server's address."""
 
-
 from urllib.parse import urlparse
 
 from maasserver.config import RegionConfiguration

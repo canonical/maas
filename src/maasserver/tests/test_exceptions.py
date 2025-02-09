@@ -3,7 +3,6 @@
 
 """Tests for the exceptions module."""
 
-
 import http.client
 import json
 

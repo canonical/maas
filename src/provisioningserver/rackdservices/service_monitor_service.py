@@ -4,7 +4,6 @@
 """Service to periodically check that all the other services that MAAS depends
 on stays running."""
 
-
 from datetime import timedelta
 
 from twisted.application.internet import TimerService
@@ -63,7 +62,7 @@ class ServiceMonitorService(TimerService):
     def _getConnection(self):
         """Get a connection to the region."""
         client = None
-        for elapsed, remaining, wait in retries(30, 10, self.clock):
+        for elapsed, remaining, wait in retries(30, 10, self.clock):  # noqa: B007
             try:
                 client = yield self.client_service.getClientNow()
                 break
@@ -71,8 +70,7 @@ class ServiceMonitorService(TimerService):
                 yield pause(wait, self.clock)
         else:
             maaslog.error(
-                "Can't update service statuses, no RPC "
-                "connection to region."
+                "Can't update service statuses, no RPC connection to region."
             )
         return client
 

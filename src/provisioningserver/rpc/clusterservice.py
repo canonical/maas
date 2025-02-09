@@ -256,7 +256,8 @@ class Cluster(SecuredRPCProtocol):
     """
 
     def __init__(
-        self, auth_status: ConnectionAuthStatus = ConnectionAuthStatus()
+        self,
+        auth_status: ConnectionAuthStatus = ConnectionAuthStatus(),  # noqa: B008
     ):
         super().__init__(
             unauthenticated_commands=[cluster.Authenticate.commandName],
@@ -341,8 +342,10 @@ class Cluster(SecuredRPCProtocol):
         shared_networks,
         hosts,
         interfaces,
-        global_dhcp_snippets=[],
+        global_dhcp_snippets=None,
     ):
+        if global_dhcp_snippets is None:
+            global_dhcp_snippets = []
         server = dhcp.DHCPv4Server(omapi_key)
         if concurrency.dhcpv4.locked:
             log.debug(
@@ -386,8 +389,10 @@ class Cluster(SecuredRPCProtocol):
         shared_networks,
         hosts,
         interfaces,
-        global_dhcp_snippets=[],
+        global_dhcp_snippets=None,
     ):
+        if global_dhcp_snippets is None:
+            global_dhcp_snippets = []
         server = dhcp.DHCPv6Server(omapi_key)
         if concurrency.dhcpv6.locked:
             log.debug(
@@ -651,7 +656,7 @@ class Cluster(SecuredRPCProtocol):
             lock.acquire()
         except lock.NotAvailable:
             # Scan is already running; don't do anything.
-            raise exceptions.ScanNetworksAlreadyInProgress(
+            raise exceptions.ScanNetworksAlreadyInProgress(  # noqa: B904
                 "Only one concurrent network scan is allowed."
             )
         else:
@@ -696,7 +701,7 @@ class Cluster(SecuredRPCProtocol):
             # (-15) and do not raise an error.
             if not (running_in_snap() and e.returncode == -15):
                 maaslog.error("Unable to disable and stop the rackd service")
-                raise exceptions.CannotDisableAndShutoffRackd(
+                raise exceptions.CannotDisableAndShutoffRackd(  # noqa: B904
                     e.output_as_unicode
                 )
         return {}

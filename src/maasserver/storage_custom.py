@@ -3,7 +3,6 @@
 
 """Parse format for custom storage configuration."""
 
-
 import dataclasses
 from pathlib import Path
 from typing import Any, cast, Dict, List, Optional, Set
@@ -309,13 +308,13 @@ def _flatten(config: Config) -> List[StorageEntry]:
             device_type = data["type"]
             flattener = _FLATTENERS[device_type]
         except KeyError:
-            raise ConfigError(f"Unsupported device type '{device_type}'")
+            raise ConfigError(f"Unsupported device type '{device_type}'")  # noqa: B904
 
         try:
             items.extend(flattener(name, data))
         except KeyError as e:
             key = e.args[0]
-            raise ConfigError(f"Missing required key '{key}' for '{name}'")
+            raise ConfigError(f"Missing required key '{key}' for '{name}'")  # noqa: B904
     return items
 
 
@@ -519,7 +518,7 @@ def _set_mountpoints(entries: Dict[str, StorageEntry], config: Config):
         try:
             fs = cast(FileSystem, entries[f"{device}[fs]"])
         except KeyError:
-            raise ConfigError(f"Filesystem not found for device '{device}'")
+            raise ConfigError(f"Filesystem not found for device '{device}'")  # noqa: B904
         fs.mount = mount
         fs.mount_options = data.get("options", "")
     # all special filesystems must have a mount point
@@ -551,7 +550,7 @@ def _get_size(size: str) -> int:
         value = float(value)
         bytes_value = int(value * multipliers[multiplier])
     except (IndexError, KeyError, ValueError):
-        raise ConfigError(f"Invalid size '{size}'")
+        raise ConfigError(f"Invalid size '{size}'")  # noqa: B904
     if bytes_value <= 0:
         raise ConfigError(f"Invalid negative size '{size}'")
     return bytes_value
@@ -566,4 +565,4 @@ def _validate_schema(data: Config):
         path = "/".join(str(item) for item in e.absolute_path)
         if not path:
             path = "top level"
-        raise ConfigError(f"Invalid config at {path}: {e.message}")
+        raise ConfigError(f"Invalid config at {path}: {e.message}")  # noqa: B904

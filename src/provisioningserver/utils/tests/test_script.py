@@ -3,7 +3,6 @@
 
 """Tests for the subcommand utilities."""
 
-
 from argparse import ArgumentParser, Namespace
 from random import randint
 from subprocess import CalledProcessError

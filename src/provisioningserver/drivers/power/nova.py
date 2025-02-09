@@ -3,7 +3,6 @@
 
 """Nova Power Driver."""
 
-
 from importlib import import_module, invalidate_caches
 import urllib
 
@@ -67,7 +66,7 @@ class NovaPowerDriver(PowerDriver):
         os_username=None,
         os_password=None,
         os_authurl=None,
-        **extra
+        **extra,
     ):
         """Control power of nova instances."""
         if not self.try_novaapi_import():
@@ -79,11 +78,11 @@ class NovaPowerDriver(PowerDriver):
         try:
             urllib.request.urlopen(os_authurl)
         except urllib.error.URLError:
-            raise PowerError("%s: URL error" % os_authurl)
+            raise PowerError("%s: URL error" % os_authurl)  # noqa: B904
         try:
             nova.authenticate()
         except self.nova_api.exceptions.Unauthorized:
-            raise PowerAuthError("Failed to authenticate with OpenStack")
+            raise PowerAuthError("Failed to authenticate with OpenStack")  # noqa: B904
         try:
             pwr_stateStr = "OS-EXT-STS:power_state"
             tsk_stateStr = "OS-EXT-STS:task_state"
@@ -92,7 +91,7 @@ class NovaPowerDriver(PowerDriver):
             task_state = getattr(nova.servers.get(nova_id), tsk_stateStr)
             vm_state = getattr(nova.servers.get(nova_id), vm_stateStr)
         except self.nova_api.exceptions.NotFound:
-            raise PowerError("%s: Instance id not found" % nova_id)
+            raise PowerError("%s: Instance id not found" % nova_id)  # noqa: B904
 
         if power_state == NovaPowerState.NOSTATE:
             raise PowerFatalError("%s: Failed to get power state" % nova_id)

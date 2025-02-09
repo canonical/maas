@@ -729,9 +729,9 @@ class TestAdminMachineForm(MAASServerTestCase):
 class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
     def test_generate_certs_for_lxd_power_type(self):
         sample_cert = get_sample_cert()
-        self.patch_autospec(forms, "generate_certificate").return_value = (
-            sample_cert
-        )
+        self.patch_autospec(
+            forms, "generate_certificate"
+        ).return_value = sample_cert
         hostname = factory.make_string()
         form = AdminMachineWithMACAddressesForm(
             data={

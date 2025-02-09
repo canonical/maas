@@ -50,7 +50,6 @@ def migrate_20_maas_03_machine_resources_script(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0332_node_enable_kernel_crash_dump"),
     ]

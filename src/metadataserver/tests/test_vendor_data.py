@@ -339,9 +339,9 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
     def test_yields_configuration_when_machine_install_kvm_true(self):
         password = "123secure"
         self.patch(vendor_data, "_generate_password").return_value = password
-        self.patch(vendor_data.sha512_crypt, "hash").return_value = (
-            "123crypted"
-        )
+        self.patch(
+            vendor_data.sha512_crypt, "hash"
+        ).return_value = "123crypted"
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             osystem="ubuntu",

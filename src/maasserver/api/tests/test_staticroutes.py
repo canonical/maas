@@ -3,7 +3,6 @@
 
 """Tests for static route API."""
 
-
 import http.client
 import random
 

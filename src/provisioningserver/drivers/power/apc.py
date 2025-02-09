@@ -6,7 +6,6 @@
 Support for managing American Power Conversion (APC) PDU outlets via SNMP.
 """
 
-
 import re
 from time import sleep
 

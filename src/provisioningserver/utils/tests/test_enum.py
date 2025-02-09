@@ -3,7 +3,6 @@
 
 """Tests for enum-related utilities."""
 
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.enum import map_enum, map_enum_reverse
 

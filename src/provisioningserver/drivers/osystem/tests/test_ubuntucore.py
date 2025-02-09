@@ -3,7 +3,6 @@
 
 """Tests for the UbuntuCore module."""
 
-
 import os
 
 from maastesting.factory import factory

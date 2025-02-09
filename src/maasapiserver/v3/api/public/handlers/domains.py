@@ -47,8 +47,8 @@ class DomainsHandler(Handler):
     )
     async def list_domains(
         self,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         domains = await services.domains.list(
             page=pagination_params.page,
@@ -91,7 +91,7 @@ class DomainsHandler(Handler):
         self,
         domain_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         domain = await services.domains.get_by_id(domain_id)
         if not domain:

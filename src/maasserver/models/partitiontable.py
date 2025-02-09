@@ -3,7 +3,6 @@
 
 """Model for a block devices partition table."""
 
-
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey
 
@@ -91,8 +90,10 @@ class PartitionTable(CleanSave, TimestampedModel):
             extra_space += BIOS_GRUB_PARTITION_SIZE
         return extra_space
 
-    def get_used_size(self, ignore_partitions=[]):
+    def get_used_size(self, ignore_partitions=None):
         """Return the used size of partitions on the table."""
+        if ignore_partitions is None:
+            ignore_partitions = []
         if self.pk is None:
             return self.get_overhead_size()
         ignore_ids = [
@@ -108,8 +109,10 @@ class PartitionTable(CleanSave, TimestampedModel):
         # The extra space taken by the partition table header is used space.
         return used_size + self.get_overhead_size()
 
-    def get_available_size(self, ignore_partitions=[]):
+    def get_available_size(self, ignore_partitions=None):
         """Return the remaining size available for partitions."""
+        if ignore_partitions is None:
+            ignore_partitions = []
         used_size = self.get_used_size(ignore_partitions=ignore_partitions)
         # Only report 'alignable' space as available for new partitions
         return round_size_to_nearest_block(

@@ -3,7 +3,6 @@
 
 """Tests for `MachineWithMACAddressesForm`."""
 
-
 from unittest.mock import MagicMock
 
 from django.http import QueryDict

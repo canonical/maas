@@ -44,7 +44,6 @@ async def insert_app(
     db_connection: AsyncConnection,
     mocker: MockerFixture,
 ) -> FastAPI:
-
     class InsertHandler(Handler):
         @handler(path="/success", methods=["GET"])
         async def success(self, request: Request) -> None:

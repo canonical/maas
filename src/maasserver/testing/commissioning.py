@@ -284,8 +284,10 @@ class FakeCommissioningData:
         product,
         driver,
         driver_version,
-        vpd={},
+        vpd=None,
     ):
+        if vpd is None:
+            vpd = {}
         device = LXDPCIDevice(
             addr,
             vendor_id,

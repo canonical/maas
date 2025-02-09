@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.routablepairs`."""
 
-
 from itertools import product, takewhile
 import random
 
@@ -59,7 +58,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         space = factory.make_Space()
 
         lefts, rights = [], []
-        for index in range(3):
+        for index in range(3):  # noqa: B007
             network1 = factory.make_ip4_or_6_network()
             network2 = factory.make_ip4_or_6_network(version=network1.version)
             lefts.append(self.make_node_with_address(space, network1))

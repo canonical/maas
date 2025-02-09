@@ -3,7 +3,6 @@
 
 """RPC helpers relating to services."""
 
-
 from logging import getLogger
 
 from maasserver.models.node import RackController
@@ -29,7 +28,7 @@ def update_services(system_id, services):
     try:
         rack = RackController.objects.get(system_id=system_id)
     except RackController.DoesNotExist:
-        raise NoSuchCluster.from_uuid(system_id)
+        raise NoSuchCluster.from_uuid(system_id)  # noqa: B904
 
     # Update each service. For now, when a service is not recognised, log it
     # and move on, but what we really need is as UpdateServicesV2 RPC call in

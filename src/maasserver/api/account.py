@@ -3,7 +3,6 @@
 
 """API handler: `Account`."""
 
-
 import http.client
 import json
 

@@ -3,6 +3,7 @@
 
 It assumes that the current user may sudo to the postgres user.
 """
+
 import argparse
 import subprocess
 import sys

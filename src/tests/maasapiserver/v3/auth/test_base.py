@@ -75,7 +75,7 @@ def auth_app(
 
     @app.post(f"{V3_API_PREFIX}/user")
     async def get_user(
-        authenticated_user: Optional[AuthenticatedUser] = Depends(
+        authenticated_user: Optional[AuthenticatedUser] = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> Optional[AuthenticatedUser]:
@@ -116,7 +116,7 @@ def auth_app(
         ],
     )
     async def rbac_pools(
-        authenticated_user: Optional[AuthenticatedUser] = Depends(
+        authenticated_user: Optional[AuthenticatedUser] = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> Optional[AuthenticatedUser]:
@@ -134,7 +134,7 @@ def auth_app(
         ],
     )
     async def rbac_admin_pools(
-        authenticated_user: Optional[AuthenticatedUser] = Depends(
+        authenticated_user: Optional[AuthenticatedUser] = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> Optional[AuthenticatedUser]:
@@ -151,7 +151,7 @@ def auth_app(
         ],
     )
     async def rbac_no_permissions(
-        authenticated_user: Optional[AuthenticatedUser] = Depends(
+        authenticated_user: Optional[AuthenticatedUser] = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> Optional[AuthenticatedUser]:

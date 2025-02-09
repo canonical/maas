@@ -3,7 +3,6 @@
 
 """Twisted Application Plugin for the MAAS TFTP server."""
 
-
 from functools import partial
 from socket import AF_INET, AF_INET6
 from time import time

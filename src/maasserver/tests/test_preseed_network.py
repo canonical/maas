@@ -133,9 +133,12 @@ class AssertNetworkConfigMixin:
 
         def set_gateway_ip(iface, subnet, ret, ipv4_set, ipv6_set):
             ip_family = subnet.get_ipnetwork().version
-            if ip_family == IPADDRESS_FAMILY.IPv4 and ipv4_set:
-                return (ret, ipv4_set, ipv6_set)
-            elif ip_family == IPADDRESS_FAMILY.IPv6 and ipv6_set:
+            if (
+                ip_family == IPADDRESS_FAMILY.IPv4
+                and ipv4_set
+                or ip_family == IPADDRESS_FAMILY.IPv6
+                and ipv6_set
+            ):
                 return (ret, ipv4_set, ipv6_set)
             for gateway in gateways:
                 if gateway is None:

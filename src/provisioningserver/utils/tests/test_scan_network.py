@@ -3,7 +3,6 @@
 
 """Tests for ``provisioningserver.utils.scan_network``."""
 
-
 from argparse import ArgumentParser, Namespace
 import io
 import os
@@ -61,25 +60,33 @@ class TestScanNetworkCommand(MAASTestCase):
 
     def test_interprets_long_arguments(self):
         self.run_command("--ping", "--threads", "37", "--slow")
-        self.scan_networks_mock.assert_called_once_with(
-            Namespace(
-                threads=37, slow=True, ping=True, interface=None, cidr=[]
+        (
+            self.scan_networks_mock.assert_called_once_with(
+                Namespace(
+                    threads=37, slow=True, ping=True, interface=None, cidr=[]
+                ),
+                ANY,
+                ANY,
+                ANY,
             ),
-            ANY,
-            ANY,
-            ANY,
-        ),
+        )
 
     def test_default_arguments(self):
         self.run_command()
-        self.scan_networks_mock.assert_called_once_with(
-            Namespace(
-                threads=None, slow=False, ping=False, interface=None, cidr=[]
+        (
+            self.scan_networks_mock.assert_called_once_with(
+                Namespace(
+                    threads=None,
+                    slow=False,
+                    ping=False,
+                    interface=None,
+                    cidr=[],
+                ),
+                ANY,
+                ANY,
+                ANY,
             ),
-            ANY,
-            ANY,
-            ANY,
-        ),
+        )
 
     def test_scans_all_interface_cidrs_when_zero_parameters_passed(self):
         self.run_command()

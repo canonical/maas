@@ -11,7 +11,6 @@ trigger "node_create" followed by "notify".
 E.g. "maasserver_node_node_create_notify".
 """
 
-
 import logging
 from textwrap import dedent
 

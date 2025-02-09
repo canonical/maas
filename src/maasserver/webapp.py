@@ -3,7 +3,6 @@
 
 """The MAAS Web Application."""
 
-
 import copy
 from functools import partial
 import os

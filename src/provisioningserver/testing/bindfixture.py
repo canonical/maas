@@ -3,7 +3,6 @@
 
 """Server fixture for BIND."""
 
-
 import argparse
 import os
 from shutil import copy

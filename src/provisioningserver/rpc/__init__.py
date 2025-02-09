@@ -3,7 +3,6 @@
 
 """Cluster Controller RPC."""
 
-
 import provisioningserver
 from provisioningserver.rpc import exceptions
 
@@ -21,7 +20,7 @@ def getRegionClient():
     try:
         rpc_service = provisioningserver.services.getServiceNamed("rpc")
     except KeyError:
-        raise exceptions.NoConnectionsAvailable(
+        raise exceptions.NoConnectionsAvailable(  # noqa: B904
             "Cluster services are unavailable."
         )
     else:

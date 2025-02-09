@@ -3,7 +3,6 @@
 
 """Tests for DNSResourceRecord API."""
 
-
 import http.client
 import json
 import random

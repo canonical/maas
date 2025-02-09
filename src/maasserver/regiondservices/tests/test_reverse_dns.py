@@ -3,7 +3,6 @@
 
 """Tests for reverse-DNS service."""
 
-
 from unittest.mock import Mock
 
 from twisted.internet import defer

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.utils.znums`."""
 
-
 from hypothesis import given
 from hypothesis.strategies import integers
 

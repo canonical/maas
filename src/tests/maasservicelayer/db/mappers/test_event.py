@@ -5,7 +5,6 @@ from maasservicelayer.models.events import EventType, LoggingLevelEnum
 
 
 class TestEventDomainDataMapper:
-
     def test_build_resource(self):
         evt = EventType(
             id=1,

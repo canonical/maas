@@ -3,7 +3,6 @@
 
 """Model for a running service on regiond or rackd."""
 
-
 from django.db.models import CASCADE, CharField, ForeignKey, Manager
 
 from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES

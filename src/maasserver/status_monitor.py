@@ -3,7 +3,6 @@
 
 """Status monitoring service."""
 
-
 from datetime import timedelta
 
 from django.db.models import Prefetch

@@ -3,7 +3,6 @@
 
 """Classes for generating BIND zone config files."""
 
-
 from datetime import datetime
 from itertools import chain
 import os

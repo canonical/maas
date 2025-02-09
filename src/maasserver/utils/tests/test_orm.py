@@ -3,7 +3,6 @@
 
 """Test ORM utilities."""
 
-
 from contextlib import contextmanager
 from itertools import islice, repeat
 from random import randint
@@ -91,7 +90,7 @@ class FakeModel:
         pass
 
     def __init__(self, name):
-        self.name == name
+        self.name == name  # noqa: B015
 
     def __repr__(self):
         return self.name
@@ -728,7 +727,7 @@ class CrashEntryContext:
     """A simple context manager that crashes on entry."""
 
     def __enter__(self):
-        0 / 0  # Divide by zero and break everything.
+        0 / 0  # Divide by zero and break everything.  # noqa: B018
 
     def __exit__(self, *exc_info):
         pass  # Nothing left to break.
@@ -741,7 +740,7 @@ class CrashExitContext:
         pass  # What a lovely day this is...
 
     def __exit__(self, *exc_info):
-        0 / 0  # Nah, destroy everything.
+        0 / 0  # Nah, destroy everything.  # noqa: B018
 
 
 class TestRetryStack(MAASTestCase):

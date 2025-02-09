@@ -72,8 +72,8 @@ class ReservedIPsHandler(Handler):
         fabric_id: int,
         vlan_id: int,
         subnet_id: int,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ReservedIPsListResponse:
         query = QuerySpec(
             where=ReservedIPsClauseFactory.and_clauses(
@@ -135,7 +135,7 @@ class ReservedIPsHandler(Handler):
         subnet_id: int,
         reservedip_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         reservedip = await services.reservedips.get_one(
             query=QuerySpec(
@@ -184,7 +184,7 @@ class ReservedIPsHandler(Handler):
         subnet_id: int,
         reservedip_request: ReservedIPCreateRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         subnet = await services.subnets.get_one(
             query=QuerySpec(
@@ -244,7 +244,7 @@ class ReservedIPsHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
             where=ReservedIPsClauseFactory.and_clauses(
@@ -295,7 +295,7 @@ class ReservedIPsHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
             where=ReservedIPsClauseFactory.and_clauses(

@@ -3,7 +3,6 @@
 
 """Large file storage."""
 
-
 from django.db.models import BigIntegerField, CharField, Manager
 
 from maasserver.fields import LargeObjectField

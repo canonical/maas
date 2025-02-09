@@ -266,7 +266,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 "name": "mymaas",
                 "$uri": "/api/rbac/v1/service/4",
                 "pending": True,
-                "product": {"$ref" "/api/rbac/v1/product/2"},
+                "product": {"$ref/api/rbac/v1/product/2"},
             }
         ]
         call_command(
@@ -327,13 +327,13 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 "name": "mymaas",
                 "$uri": "/api/rbac/v1/service/4",
                 "pending": False,
-                "product": {"$ref" "/api/rbac/v1/product/2"},
+                "product": {"$ref/api/rbac/v1/product/2"},
             },
             {
                 "name": "mymaas2",
                 "$uri": "/api/rbac/v1/service/12",
                 "pending": True,
-                "product": {"$ref" "/api/rbac/v1/product/2"},
+                "product": {"$ref/api/rbac/v1/product/2"},
             },
         ]
         # The index of the service to register is prompted
@@ -357,7 +357,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 "name": "mymaas",
                 "$uri": "/api/rbac/v1/service/4",
                 "pending": True,
-                "product": {"$ref" "/api/rbac/v1/product/2"},
+                "product": {"$ref/api/rbac/v1/product/2"},
             }
         ]
         self.read_input.side_effect = ["2"]
@@ -414,7 +414,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 "name": "mymaas",
                 "$uri": "/api/rbac/v1/service/4",
                 "pending": True,
-                "product": {"$ref" "/api/rbac/v1/product/2"},
+                "product": {"$ref/api/rbac/v1/product/2"},
             }
         ]
         call_command(

@@ -3,7 +3,6 @@
 
 """Tests for `MAASTestCase`."""
 
-
 import os.path
 from shutil import rmtree
 from tempfile import mkdtemp

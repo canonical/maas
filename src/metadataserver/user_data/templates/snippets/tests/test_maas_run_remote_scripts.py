@@ -218,9 +218,9 @@ def make_fake_os_path_exists(testcase, exists=True):
             return exists
         return orig_os_path_exists(path)
 
-    testcase.patch(maas_run_remote_scripts.os.path, "exists").side_effect = (
-        fake_os_path_exists
-    )
+    testcase.patch(
+        maas_run_remote_scripts.os.path, "exists"
+    ).side_effect = fake_os_path_exists
 
 
 class TestOutputAndSend(MAASTestCase):
@@ -280,7 +280,8 @@ class TestOutputAndSend(MAASTestCase):
         for script in scripts:
             script_error = "%s\n" % error.format(**script)
             self.assertEqual(
-                script_error, open(script["combined_path"]).read()
+                script_error,
+                open(script["combined_path"]).read(),
             )
             self.assertEqual(script_error, open(script["stderr_path"]).read())
 
@@ -317,7 +318,8 @@ class TestInstallDependencies(MAASTestCase):
         self.assertEqual(script["stdout"], open(script["stdout_path"]).read())
         self.assertEqual(script["stderr"], open(script["stderr_path"]).read())
         self.assertEqual(
-            script["combined"], open(script["combined_path"]).read()
+            script["combined"],
+            open(script["combined_path"]).read(),
         )
 
     def test_run_and_check_errors(self):
@@ -342,7 +344,8 @@ class TestInstallDependencies(MAASTestCase):
         self.assertEqual(script["stdout"], open(script["stdout_path"]).read())
         self.assertEqual(script["stderr"], open(script["stderr_path"]).read())
         self.assertEqual(
-            script["combined"], open(script["combined_path"]).read()
+            script["combined"],
+            open(script["combined_path"]).read(),
         )
         for script in scripts:
             self.mock_output_and_send.assert_any_call(
@@ -381,7 +384,8 @@ class TestInstallDependencies(MAASTestCase):
         self.assertEqual(script["stdout"], open(script["stdout_path"]).read())
         self.assertEqual(script["stderr"], open(script["stderr_path"]).read())
         self.assertEqual(
-            script["combined"], open(script["combined_path"]).read()
+            script["combined"],
+            open(script["combined_path"]).read(),
         )
 
     def test_sudo_run_and_check(self):
@@ -507,7 +511,7 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"apt": packages}
 
         self.assertFalse(install_dependencies(scripts))
-        for script in scripts:
+        for script in scripts:  # noqa: B007
             self.mock_output_and_send_scripts.assert_any_call(
                 "Installing apt packages for {msg_name}",
                 scripts,
@@ -657,7 +661,7 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"snap": packages}
 
         self.assertFalse(install_dependencies(scripts))
-        for script in scripts:
+        for script in scripts:  # noqa: B007
             self.mock_output_and_send_scripts.assert_any_call(
                 "Installing snap packages for {msg_name}",
                 scripts,
@@ -691,7 +695,7 @@ class TestInstallDependencies(MAASTestCase):
                 "INSTALLING",
                 True,
             )
-        for script in scripts:
+        for script in scripts:  # noqa: B007
             self.mock_output_and_send_scripts.assert_any_call(
                 "Downloading and extracting URLs for {msg_name}",
                 scripts,
@@ -715,7 +719,7 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"url": packages}
 
         self.assertFalse(install_dependencies(scripts))
-        for script in scripts:
+        for script in scripts:  # noqa: B007
             self.mock_output_and_send_scripts.assert_any_call(
                 "Downloading and extracting URLs for {msg_name}",
                 scripts,
@@ -1510,9 +1514,9 @@ class TestParseParameters(MAASTestCase):
         )
 
     def test_get_storage_model_from_udev(self):
-        self.patch(maas_run_remote_scripts.os.path, "exists").return_value = (
-            True
-        )
+        self.patch(
+            maas_run_remote_scripts.os.path, "exists"
+        ).return_value = True
         self.patch(
             maas_run_remote_scripts,
             "open",

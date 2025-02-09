@@ -3,7 +3,6 @@
 
 """Simplestreams code to download boot resources."""
 
-
 import os.path
 import tarfile
 
@@ -92,7 +91,7 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
     # the cache directory for files containing the given tag. Since the tag is
     # the SHA256 this will always be unique and if files are added/removed from
     # the archive we'll get a new tag.
-    for root, dirs, files in os.walk(cache_dir):
+    for root, dirs, files in os.walk(cache_dir):  # noqa: B007
         for f in files:
             if f.endswith(tag):
                 # Strip out the tag
@@ -356,12 +355,14 @@ def download_all_boot_resources(
     # complete_callback, which can be used for progress reporting.
 
     for source in sources:
-        download_boot_resources(
-            source["url"],
-            store,
-            snapshot_path,
-            product_mapping,
-            keyring_file=source.get("keyring"),
-        ),
+        (
+            download_boot_resources(
+                source["url"],
+                store,
+                snapshot_path,
+                product_mapping,
+                keyring_file=source.get("keyring"),
+            ),
+        )
 
     return snapshot_path

@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.msftocs`."""
 
-
 from io import StringIO
 from random import randint
 from textwrap import dedent
@@ -18,12 +17,12 @@ from twisted.internet.threads import deferToThread
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from provisioningserver.drivers.power import msftocs as msftocs_module
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
     PowerFatalError,
 )
-from provisioningserver.drivers.power import msftocs as msftocs_module
 from provisioningserver.drivers.power.msftocs import (
     MicrosoftOCSPowerDriver,
     MicrosoftOCSState,
@@ -302,9 +301,11 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
             domain,
         )
 
-        mock_create_node.assert_called_once_with(
-            macs, "amd64", "msftocs", context, domain
-        ),
+        (
+            mock_create_node.assert_called_once_with(
+                macs, "amd64", "msftocs", context, domain
+            ),
+        )
         mock_commission_node.assert_called_once_with(system_id, user)
 
     @inlineCallbacks

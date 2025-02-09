@@ -3,7 +3,6 @@
 
 """Tests for `provisioningserver.drivers`."""
 
-
 import random
 import re
 from unittest.mock import sentinel

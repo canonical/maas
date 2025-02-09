@@ -3,7 +3,6 @@
 
 """Test the utilities of the per-tenant file storage work."""
 
-
 from django.urls import reverse
 
 from maasserver.support.pertenant.utils import (

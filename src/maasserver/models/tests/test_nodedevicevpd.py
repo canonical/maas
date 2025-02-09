@@ -3,7 +3,6 @@
 
 """Test maasserver NodeDeviceVPD model."""
 
-
 from django.core.exceptions import ValidationError
 
 from maasserver.testing.factory import factory

@@ -3,7 +3,6 @@
 
 """Tests for the BIND fixture."""
 
-
 import os
 from subprocess import check_output
 

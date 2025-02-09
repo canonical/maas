@@ -3,7 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.user`"""
 
-
 from django.contrib.auth.models import User
 from django.utils import timezone
 from testtools.testcase import TestCase

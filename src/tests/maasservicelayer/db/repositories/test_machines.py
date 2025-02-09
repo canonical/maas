@@ -391,7 +391,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         bmc = await create_test_bmc(fixture)
         user = await create_test_user(fixture)
         for status, count in machines_to_be_created_with_status.items():
-            for i in range(count):
+            for i in range(count):  # noqa: B007
                 await create_test_machine(
                     fixture, bmc=bmc, user=user, status=status
                 )

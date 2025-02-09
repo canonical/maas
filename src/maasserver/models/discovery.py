@@ -3,7 +3,6 @@
 
 """Model definition for a `Discovery` (a discovered network device)."""
 
-
 from django.db.models import (
     BooleanField,
     CharField,

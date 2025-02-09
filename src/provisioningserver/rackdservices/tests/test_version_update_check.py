@@ -44,18 +44,18 @@ class TestVersionUpdateCheckService(MAASTestCase):
     @inlineCallbacks
     def test_process_version_info_not_called_without_versions(self):
         service = SampleVersionUpdateCheckService()
-        self.patch(version_update_check, "get_versions_info").return_value = (
-            None
-        )
+        self.patch(
+            version_update_check, "get_versions_info"
+        ).return_value = None
         yield service.do_action()
         self.assertEqual(service.calls, [])
 
     @inlineCallbacks
     def test_process_version_called_with_versions(self):
         service = SampleVersionUpdateCheckService()
-        self.patch(version_update_check, "get_versions_info").return_value = (
-            sentinel.versions_info
-        )
+        self.patch(
+            version_update_check, "get_versions_info"
+        ).return_value = sentinel.versions_info
         yield service.do_action()
         self.assertEqual(service.calls, [sentinel.versions_info])
 
@@ -126,9 +126,9 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
                 revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
             ),
         )
-        self.patch(version_update_check, "get_versions_info").return_value = (
-            versions_info
-        )
+        self.patch(
+            version_update_check, "get_versions_info"
+        ).return_value = versions_info
         service.startService()
         yield service.stopService()
         protocol.UpdateControllerState.assert_called_once_with(
@@ -145,9 +145,9 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
         protocol = yield self.create_fake_rpc_service()
         rpc_service = services.getServiceNamed("rpc")
         service = RackVersionUpdateCheckService(rpc_service)
-        self.patch(version_update_check, "get_versions_info").return_value = (
-            sentinel.version_info
-        )
+        self.patch(
+            version_update_check, "get_versions_info"
+        ).return_value = sentinel.version_info
 
         self.patch(service._getRPCClient).return_value = None
         service.startService()

@@ -3,7 +3,6 @@
 
 """IPXE Boot Method"""
 
-
 from itertools import repeat
 import os
 import re

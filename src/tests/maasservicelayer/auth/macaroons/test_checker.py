@@ -55,7 +55,6 @@ class _DischargerLocator(AsyncThirdPartyLocator):
 
 
 class _OpStore(RootKeyStore):
-
     def __init__(self, key):
         self.key = to_bin(key)
 

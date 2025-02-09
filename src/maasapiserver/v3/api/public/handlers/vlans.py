@@ -60,7 +60,7 @@ class VlansHandler(Handler):
         fabric_id: int,
         vlan_request: VlanCreateRequest,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         vlan_builder = await vlan_request.to_builder(services)
         vlan_builder.fabric_id = fabric_id
@@ -88,8 +88,8 @@ class VlansHandler(Handler):
     async def list_fabric_vlans(
         self,
         fabric_id: int,
-        pagination_params: PaginationParams = Depends(),
-        services: ServiceCollectionV3 = Depends(services),
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> VlansListResponse:
         vlans = await services.vlans.list(
             page=pagination_params.page,
@@ -140,7 +140,7 @@ class VlansHandler(Handler):
         fabric_id: int,
         vlan_id: int,
         response: Response,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         vlan = await services.vlans.get_one(
             query=QuerySpec(
@@ -185,7 +185,7 @@ class VlansHandler(Handler):
         vlan_id: int,
         response: Response,
         vlan_request: VlanUpdateRequest,
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         resource_builder = await vlan_request.to_builder(services, vlan_id)
         vlan = await services.vlans.update_one(
@@ -226,7 +226,7 @@ class VlansHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
-        services: ServiceCollectionV3 = Depends(services),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.vlans.delete_one(
             query=QuerySpec(

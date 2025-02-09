@@ -3,7 +3,6 @@
 
 """RPC helpers relating to configuration settings."""
 
-
 from urllib.parse import urlparse
 
 from maasserver.models.packagerepository import PackageRepository

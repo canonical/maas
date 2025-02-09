@@ -270,7 +270,7 @@ class FakeThirdPartyServer:
         )
         runner = web.AppRunner(app)
         await runner.setup()
-        host, port = self.url.lstrip("http://").split(":")
+        host, port = self.url.removeprefix("http://").split(":")
         site = web.TCPSite(runner, host, int(port))
         await site.start()
         return site
@@ -913,7 +913,7 @@ class TestDischargeAll:
             id = 1
 
         def add_caveats(m):
-            for i in range(0, 1):
+            for i in range(0, 1):  # noqa: B007
                 if State.total_required == 0:
                     break
                 cid = "id{}".format(State.id)
@@ -976,7 +976,7 @@ class TestDischargeAll:
             caveats = []
             if ci.condition != "something":
                 self.fail("unexpected condition")
-            for i in range(0, 2):
+            for i in range(0, 2):  # noqa: B007
                 if M.still_required <= 0:
                     break
                 caveats.append(

@@ -3,7 +3,6 @@
 
 """Tests for :class:`LicenseKey`."""
 
-
 from django.db import IntegrityError
 
 from maasserver.models import LicenseKey

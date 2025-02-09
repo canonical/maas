@@ -10,7 +10,6 @@ Its contents are not customizable.  To inject custom code, use the
 :class:`Script` model.
 """
 
-
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import os.path

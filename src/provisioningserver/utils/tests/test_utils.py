@@ -3,7 +3,6 @@
 
 """Test `provisioningserver.utils`."""
 
-
 from collections.abc import Iterator
 from copy import deepcopy
 import os

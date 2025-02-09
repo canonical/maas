@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Services monitored on rackd."""
+
 from abc import ABC
 
 from provisioningserver.utils.service_monitor import (

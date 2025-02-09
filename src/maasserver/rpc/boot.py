@@ -3,7 +3,6 @@
 
 """RPC helpers for getting the configuration for a booting machine."""
 
-
 import re
 import shlex
 

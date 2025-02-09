@@ -3,7 +3,6 @@
 
 """Test builtin_script 7z."""
 
-
 import io
 import os
 import re

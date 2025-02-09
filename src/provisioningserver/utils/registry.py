@@ -3,7 +3,6 @@
 
 """Registry base class for registry singletons."""
 
-
 from collections import defaultdict, OrderedDict
 
 # Uses `OrderedDict` so iterating registry occurs in the order of addition.

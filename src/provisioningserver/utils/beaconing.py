@@ -187,20 +187,20 @@ def read_beacon_payload(beacon_bytes):
                     payload_bytes, ttl=60, raw=True
                 )
             except InvalidToken:
-                raise InvalidBeaconingPacket(
+                raise InvalidBeaconingPacket(  # noqa: B904
                     "Failed to decrypt inner payload: check MAAS secret key."
                 )
             try:
                 decompressed_data = decompress(decrypted_data)
             except OSError:
-                raise InvalidBeaconingPacket(
+                raise InvalidBeaconingPacket(  # noqa: B904
                     "Failed to decompress inner payload: %r" % decrypted_data
                 )
             try:
                 # Replace the data in the dictionary with its decrypted form.
                 payload = BSON.decode(decompressed_data)
             except BSONError:
-                raise InvalidBeaconingPacket(
+                raise InvalidBeaconingPacket(  # noqa: B904
                     "Inner beacon payload is not BSON: %r" % decompressed_data
                 )
     else:

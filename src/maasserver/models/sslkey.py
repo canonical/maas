@@ -5,7 +5,6 @@
 
 """:class:`SSLKey` and friends."""
 
-
 from html import escape
 
 from django.conf import settings
@@ -38,7 +37,7 @@ def validate_ssl_key(value):
         # method only aims at validating keys and not return the exact cause of
         # the failure.
         logger.exception("Invalid SSL key.")
-        raise ValidationError("Invalid SSL key.")
+        raise ValidationError("Invalid SSL key.")  # noqa: B904
 
 
 def find_ssl_common_name(subject):

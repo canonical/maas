@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0333_migrate_20_maas_03_machine_resources"),
     ]

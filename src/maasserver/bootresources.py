@@ -712,9 +712,9 @@ class BootResourceStore(ObjectStore):
             self._cancel_finalize = True
             self.finalize(notify=notify)
         else:
-            assert (
-                notify is None
-            ), "notify is not supported if finalization already started."
+            assert notify is None, (
+                "notify is not supported if finalization already started."
+            )
             # Finalization is already started so cancel the finalization.
             self._cancel_finalize = True
             cancel_workflow(self.WORKFLOW_ID)
@@ -1006,8 +1006,7 @@ def _import_resources_internal(notify=None):
         sources = get_boot_sources()
         sources = write_all_keyrings(keyrings_path, sources)
         msg = (
-            "Started importing of boot images from "
-            f"{len(sources)} source(s)."
+            f"Started importing of boot images from {len(sources)} source(s)."
         )
         Event.objects.create_region_event(EVENT_TYPES.REGION_IMPORT_INFO, msg)
         maaslog.info(msg)
@@ -1277,11 +1276,11 @@ def export_images_from_db(region: RegionController, target_dir: Path):
             lfile = file.local_file()
 
             def msg(message: str):
-                maaslog.info(f"{file.filename}: {message}")
+                maaslog.info(f"{file.filename}: {message}")  # noqa: B023
 
             def set_sync_status():
-                file.bootresourcefilesync_set.update_or_create(
-                    defaults=dict(size=lfile.size),
+                file.bootresourcefilesync_set.update_or_create(  # noqa: B023
+                    defaults=dict(size=lfile.size),  # noqa: B023
                     region=region,
                 )
 

@@ -3,7 +3,6 @@
 
 """Tests for the edit_named_options command."""
 
-
 from collections import OrderedDict
 from io import StringIO
 import os

@@ -3,7 +3,6 @@
 
 """Configuration for the MAAS region."""
 
-
 from formencode.validators import Int
 
 from provisioningserver.config import (

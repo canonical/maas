@@ -670,9 +670,9 @@ def get_field_argument_type(field):
         return f"list[{ftype}]"
     elif isinstance(field, (MultipleChoiceField)):
         return "list[str]"
-    elif isinstance(field, (LabeledConstraintMapField)):
-        return "str"
-    elif isinstance(field, (forms.ChoiceField,)):
+    elif isinstance(field, (LabeledConstraintMapField)) or isinstance(
+        field, (forms.ChoiceField,)
+    ):
         return "str"
     else:
         return "str"
