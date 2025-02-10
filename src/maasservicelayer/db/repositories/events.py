@@ -56,14 +56,14 @@ class EventTypesRepository(BaseRepository[EventType]):
     async def ensure(
         self, event_type: EventTypeEnum, detail: EventDetail
     ) -> EventType:
-        async with self._connection.begin_nested():
+        query = QuerySpec(
+            where=EventTypesClauseFactory.with_name(event_type.value)
+        )
+        if t := await self.get_one(query):
+            return t
+        else:
             try:
-                query = QuerySpec(
-                    where=EventTypesClauseFactory.with_name(event_type.value)
-                )
-                if t := await self.get_one(query):
-                    return t
-                else:
+                async with self._connection.begin_nested():
                     return await self.create(
                         EventTypeBuilder(
                             name=event_type.value,
