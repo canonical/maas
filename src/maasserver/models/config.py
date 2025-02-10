@@ -14,7 +14,13 @@ from django.db.models import CharField, JSONField, Manager, Model
 from django.db.models.signals import post_save
 
 from maascommon.constants import NODE_TIMEOUT
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver.listener import notify_action
+from maasserver.utils.orm import post_commit_do
+from maasserver.workflow import start_workflow
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.events import EVENT_TYPES
 
@@ -348,6 +354,25 @@ class Config(Model):
     value = JSONField(null=True)
 
     objects = ConfigManager()
+
+    def save(self, *args, **kwargs):
+        from maasserver.models.vlan import VLAN
+
+        super().save(*args, **kwargs)
+        if self.id and (
+            self.name == "ntp_servers" or self.name == "ntp_external_only"
+        ):
+            vlan_ids = [vlan.id for vlan in VLAN.objects.filter(dhcp_on=True)]
+
+            if vlan_ids:
+                post_commit_do(
+                    start_workflow,
+                    workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                    param=ConfigureDHCPParam(
+                        vlan_ids=vlan_ids,
+                    ),
+                    task_queue="region",
+                )
 
     def __str__(self):
         return f"{self.name}: {self.value}"

@@ -57,9 +57,6 @@ class TestTriggersUsed(MAASServerTestCase):
     """Tests relating to those triggers the MAAS application uses."""
 
     triggers_system = {
-        "config_sys_dhcp_config_ntp_servers_delete",
-        "config_sys_dhcp_config_ntp_servers_insert",
-        "config_sys_dhcp_config_ntp_servers_update",
         "config_sys_dns_config_insert",
         "config_sys_dns_config_update",
         "dnsdata_sys_dns_dnsdata_delete",

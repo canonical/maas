@@ -522,54 +522,6 @@ DHCP_ALERT = dedent(
     """
 )
 
-DHCP_CONFIG_NTP_SERVERS_INSERT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_insert()
-    RETURNS trigger as $$
-    BEGIN
-      IF NEW.name = 'ntp_servers' THEN
-        PERFORM sys_dhcp_update_all_vlans();
-      ELSIF NEW.name = 'ntp_external_only' THEN
-        PERFORM sys_dhcp_update_all_vlans();
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-DHCP_CONFIG_NTP_SERVERS_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_update()
-    RETURNS trigger as $$
-    BEGIN
-      IF OLD.name IN ('ntp_servers', 'ntp_external_only')
-      OR NEW.name IN ('ntp_servers', 'ntp_external_only') THEN
-        IF OLD.value != NEW.value THEN
-          PERFORM sys_dhcp_update_all_vlans();
-        END IF;
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-DHCP_CONFIG_NTP_SERVERS_DELETE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_delete()
-    RETURNS trigger as $$
-    BEGIN
-      IF OLD.name IN ('ntp_servers', 'ntp_external_only') THEN
-        PERFORM sys_dhcp_update_all_vlans();
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
 # Triggered when DNS needs to be published. In essense this means on insert
 # into maasserver_dnspublication.
 DNS_PUBLISH = dedent(
@@ -1935,20 +1887,6 @@ def register_system_triggers():
 
     # DHCP
     register_procedure(DHCP_ALERT)
-
-    # - Config/ntp_servers (and ntp_external_only)
-    register_procedure(DHCP_CONFIG_NTP_SERVERS_INSERT)
-    register_trigger(
-        "maasserver_config", "sys_dhcp_config_ntp_servers_insert", "insert"
-    )
-    register_procedure(DHCP_CONFIG_NTP_SERVERS_UPDATE)
-    register_trigger(
-        "maasserver_config", "sys_dhcp_config_ntp_servers_update", "update"
-    )
-    register_procedure(DHCP_CONFIG_NTP_SERVERS_DELETE)
-    register_trigger(
-        "maasserver_config", "sys_dhcp_config_ntp_servers_delete", "delete"
-    )
 
     # DNS
     # The zone serial is used in the 'sys_dns' triggers. Ensure that it exists

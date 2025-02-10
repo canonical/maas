@@ -10,13 +10,19 @@ from django.http import HttpRequest
 from fixtures import TestWithFixtures
 
 from maascommon.events import AUDIT
+from maascommon.workflows.dhcp import (
+    CONFIGURE_DHCP_WORKFLOW_NAME,
+    ConfigureDHCPParam,
+)
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Config, Event, signals
 import maasserver.models.config
 from maasserver.models.config import ensure_uuid_in_config, get_default_config
+from maasserver.models.vlan import VLAN
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.utils.testing import MAASIDFixture
 
 
@@ -236,6 +242,46 @@ class TestSettingConfig(MAASServerTestCase):
         Config.objects.set_config(self.name, None)
         Config.objects.set_config(self.name, self.value)
         self.assertEqual(self.value, Config.objects.get_config(self.name))
+
+    def test_changing_ntp_servers_calls_configure_dhcp(self):
+        mock_start_workflow = self.patch(
+            maasserver.models.config, "start_workflow"
+        )
+
+        factory.make_VLAN(dhcp_on=True)
+
+        with post_commit_hooks:
+            Config.objects.set_config("ntp_servers", "127.0.0.1")
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(
+                vlan_ids=[
+                    vlan.id for vlan in VLAN.objects.filter(dhcp_on=True)
+                ]
+            ),
+            task_queue="region",
+        )
+
+    def test_changing_ntp_external_only_calls_configure_dhcp(self):
+        mock_start_workflow = self.patch(
+            maasserver.models.config, "start_workflow"
+        )
+
+        factory.make_VLAN(dhcp_on=True)
+
+        with post_commit_hooks:
+            Config.objects.set_config("ntp_external_only", True)
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(
+                vlan_ids=[
+                    vlan.id for vlan in VLAN.objects.filter(dhcp_on=True)
+                ]
+            ),
+            task_queue="region",
+        )
 
 
 class TestEnsureUUIDInConfig(MAASServerTestCase):
