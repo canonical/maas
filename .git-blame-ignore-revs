@@ -23,3 +23,5 @@ c5feaeb51ae224fd57d422dee960c919822e7b1e
 00db9545688914bd947ff00181a5936622d3b80e
 # Reformat after Black update to 24.4.2
 7e8a43dc0ce15c2772d76167edca3a6bba08f61d
+# Introduce ruff
+728c4c40ac0b1cf732227bb380b9bdeadae30a5e
