@@ -37,6 +37,7 @@ import (
 	"go.temporal.io/sdk/testsuite"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
+	"maas.io/core/src/maasagent/internal/atomicfile"
 	"maas.io/core/src/maasagent/internal/dhcpd"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
@@ -83,6 +84,19 @@ func (m *MockDHCPController) Restart(ctx context.Context) error {
 
 func (m *MockDHCPController) Status(ctx context.Context) (servicecontroller.ServiceStatus, error) {
 	return 0, nil
+}
+
+// fakeWriteConfigFile writes the file using the UID and GID of the process running the tests
+func fakeWriteConfigFile(path string, data []byte, mode os.FileMode, userName string, groupName string) error {
+	if err := atomicfile.WriteFile(path, data, mode); err != nil {
+		return err
+	}
+
+	if err := os.Chown(path, os.Getuid(), os.Getgid()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type DHCPServiceTestSuite struct {
@@ -132,6 +146,8 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 	mockControllerV4 := NewMockDHCPController(serviceV4)
 	serviceV6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
 	mockControllerV6 := NewMockDHCPController(serviceV6)
+
+	writeConfigFile = fakeWriteConfigFile
 
 	s.svc = NewDHCPService(
 		s.T().Name(),

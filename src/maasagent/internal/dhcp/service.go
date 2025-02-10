@@ -25,6 +25,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/user"
+	"strconv"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -54,6 +56,33 @@ var (
 	ErrV6NotActive               = errors.New("dhcpd6 is not active and cannot configure IPv6 hosts")
 	ErrFailedToPostNotifications = errors.New("error processing lease notifications")
 )
+
+var writeConfigFile = func(path string, data []byte, mode os.FileMode, userName string, groupName string) error {
+	userID, err := user.Lookup(userName)
+	if err != nil {
+		return err
+	}
+
+	groupID, err := user.LookupGroup(groupName)
+	if err != nil {
+		return err
+	}
+
+	//nolint:errcheck // On POSIX systems, this is a decimal number representing the uid
+	uid, _ := strconv.Atoi(userID.Uid)
+	//nolint:errcheck // On POSIX systems, this is a decimal number representing the gid
+	gid, _ := strconv.Atoi(groupID.Gid)
+
+	if err := atomicfile.WriteFile(path, data, mode); err != nil {
+		return err
+	}
+
+	if err := os.Chown(path, uid, gid); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // DHCPService is a service that is responsible for setting up DHCP on MAAS Agent.
 type DHCPService struct {
@@ -432,6 +461,8 @@ func (s *DHCPService) configureViaFile(ctx context.Context) error {
 		"dhcpd6-interfaces": config.DHCPv6Interfaces,
 	}
 
+	mode := os.FileMode(0o640)
+
 	v4 := []bool{false, false}
 	v6 := []bool{false, false}
 
@@ -459,7 +490,10 @@ func (s *DHCPService) configureViaFile(ctx context.Context) error {
 			v6[1] = hasData
 		}
 
-		if err := s.writeConfigFile(file, data); err != nil {
+		// write and own file by root:root to allow dhcpd service to access the files in DEB
+		// see: https://bugs.launchpad.net/maas/+bug/2097505
+		path := s.dataPathFactory(file)
+		if err := writeConfigFile(path, data, mode, "root", "root"); err != nil {
 			return err
 		}
 	}
@@ -516,12 +550,6 @@ func (s *DHCPService) getConfig(ctx context.Context) (*dhcpConfig, error) {
 	}
 
 	return &config, json.Unmarshal(body, &config)
-}
-
-func (s *DHCPService) writeConfigFile(path string, data []byte) error {
-	path = s.dataPathFactory(path)
-
-	return atomicfile.WriteFile(path, data, 0o644)
 }
 
 func (s *DHCPService) Error() error {
