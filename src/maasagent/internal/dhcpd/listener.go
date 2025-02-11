@@ -50,7 +50,7 @@ type NotificationListenerOption func(*NotificationListener)
 func NewNotificationListener(conn net.Conn, fn func(context.Context, []*Notification) error,
 	options ...NotificationListenerOption) *NotificationListener {
 	pool := &sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			s := make([]*Notification, 0, 1024)
 			return &s
 		},

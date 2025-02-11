@@ -57,8 +57,8 @@ type HostInfo struct {
 }
 
 type AllInfo struct {
-	Resources *lxdapi.Resources      `json:"resources" yaml:"resources"`
-	Networks  map[string]interface{} `json:"networks" yaml:"networks"`
+	Resources *lxdapi.Resources `json:"resources" yaml:"resources"`
+	Networks  map[string]any    `json:"networks" yaml:"networks"`
 	HostInfo
 }
 
@@ -180,13 +180,13 @@ func getResources() (*lxdapi.Resources, error) {
 	return resources.GetResources()
 }
 
-func getNetworks() (map[string]interface{}, error) {
+func getNetworks() (map[string]any, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
 
-	data := make(map[string]interface{}, len(ifaces))
+	data := make(map[string]any, len(ifaces))
 
 	for _, iface := range ifaces {
 		netDetails, err := resources.GetNetworkState(iface.Name)

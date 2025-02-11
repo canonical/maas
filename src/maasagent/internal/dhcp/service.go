@@ -186,12 +186,12 @@ func queueFlush(c *apiclient.APIClient, interval time.Duration) func(context.Con
 	}
 }
 
-func (s *DHCPService) ConfigurationWorkflows() map[string]interface{} {
-	return map[string]interface{}{"configure-dhcp-service": s.configure}
+func (s *DHCPService) ConfigurationWorkflows() map[string]any {
+	return map[string]any{"configure-dhcp-service": s.configure}
 }
 
-func (s *DHCPService) ConfigurationActivities() map[string]interface{} {
-	return map[string]interface{}{
+func (s *DHCPService) ConfigurationActivities() map[string]any {
+	return map[string]any{
 		// This activity should be called to force DHCP configuration update.
 		"apply-dhcp-config-via-file":  s.configureViaFile,
 		"apply-dhcp-config-via-omapi": s.configureViaOMAPI,

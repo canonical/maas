@@ -82,12 +82,12 @@ type getRegionEndpointsResult struct {
 	Endpoints []string `json:"endpoints"`
 }
 
-func (s *HTTPProxyService) ConfigurationWorkflows() map[string]interface{} {
-	return map[string]interface{}{"configure-httpproxy-service": s.configure}
+func (s *HTTPProxyService) ConfigurationWorkflows() map[string]any {
+	return map[string]any{"configure-httpproxy-service": s.configure}
 }
 
-func (s *HTTPProxyService) ConfigurationActivities() map[string]interface{} {
-	return map[string]interface{}{}
+func (s *HTTPProxyService) ConfigurationActivities() map[string]any {
+	return map[string]any{}
 }
 
 func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) error {

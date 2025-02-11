@@ -95,6 +95,11 @@ linters-settings:
   errcheck:
     check-type-assertions: true
     check-blank: true
+  gofmt:
+    simplify: true
+    rewrite-rules:
+      - pattern: interface{}
+        replacement: any
   goheader:
     values:
       regexp:

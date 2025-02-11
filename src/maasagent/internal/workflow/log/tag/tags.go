@@ -16,7 +16,7 @@
 package tag
 
 type builder struct {
-	KeyVals []interface{}
+	KeyVals []any
 }
 
 func Builder() *builder {
@@ -33,7 +33,7 @@ func (b *builder) Error(err error) *builder {
 	return b.KV("error", err)
 }
 
-func (b *builder) KV(key, value interface{}) *builder {
+func (b *builder) KV(key, value any) *builder {
 	b.KeyVals = append(b.KeyVals, key, value)
 	return b
 }

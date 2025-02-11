@@ -33,26 +33,26 @@ func NewZerologAdapter(logger zerolog.Logger) *Logger {
 }
 
 // Debug implements Temporal log.Logger interface
-func (l *Logger) Debug(msg string, keyvals ...interface{}) {
+func (l *Logger) Debug(msg string, keyvals ...any) {
 	sendEvent(l.logger.Debug(), msg, keyvals)
 }
 
 // Info implements Temporal log.Logger interface
-func (l *Logger) Info(msg string, keyvals ...interface{}) {
+func (l *Logger) Info(msg string, keyvals ...any) {
 	sendEvent(l.logger.Info(), msg, keyvals)
 }
 
 // Warn implements Temporal log.Logger interface
-func (l *Logger) Warn(msg string, keyvals ...interface{}) {
+func (l *Logger) Warn(msg string, keyvals ...any) {
 	sendEvent(l.logger.Warn(), msg, keyvals)
 }
 
 // Error implements Temporal log.Logger interface
-func (l *Logger) Error(msg string, keyvals ...interface{}) {
+func (l *Logger) Error(msg string, keyvals ...any) {
 	sendEvent(l.logger.Error(), msg, keyvals)
 }
 
-func sendEvent(event *zerolog.Event, msg string, keyvals ...interface{}) {
+func sendEvent(event *zerolog.Event, msg string, keyvals ...any) {
 	if len(keyvals) > 0 {
 		event.Fields(keyvals[0])
 	}

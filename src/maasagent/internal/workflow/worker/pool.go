@@ -35,10 +35,10 @@ var (
 type Configurator interface {
 	// ConfigurationWorkflows should return a collection of functions to be registered
 	// as Temporal workflows for service configuration.
-	ConfigurationWorkflows() map[string]interface{}
+	ConfigurationWorkflows() map[string]any
 	// ConfigurationActivities should return a collection of functions to be registered
 	// as Temporal activities for service configuration.
-	ConfigurationActivities() map[string]interface{}
+	ConfigurationActivities() map[string]any
 }
 
 type workerConstructor func(client.Client, string, worker.Options) worker.Worker
@@ -54,8 +54,8 @@ type WorkerPool struct {
 	main              worker.Worker
 	workerConstructor workerConstructor
 	workers           map[string][]worker.Worker
-	workflows         map[string]interface{}
-	activities        map[string]interface{}
+	workflows         map[string]any
+	activities        map[string]any
 	systemID          string
 	taskQueue         string
 	mutex             sync.Mutex
@@ -71,8 +71,8 @@ func NewWorkerPool(systemID string, client client.Client,
 		taskQueue:         fmt.Sprintf("%s@main", systemID),
 		client:            client,
 		workers:           make(map[string][]worker.Worker),
-		workflows:         make(map[string]interface{}),
-		activities:        make(map[string]interface{}),
+		workflows:         make(map[string]any),
+		activities:        make(map[string]any),
 		workerConstructor: defaultWorkerConstructor,
 	}
 
@@ -127,7 +127,7 @@ func (p *WorkerPool) Error() error {
 // If there is a need to remove workers, usage of a group might be handy,
 // because RemoveWorkers method is doing removal of all workers inside the group.
 func (p *WorkerPool) AddWorker(group, taskQueue string,
-	workflows, activities map[string]interface{}, opts worker.Options) error {
+	workflows, activities map[string]any, opts worker.Options) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -170,7 +170,7 @@ func (p *WorkerPool) RemoveWorkers(group string) {
 	}
 }
 
-func (p *WorkerPool) RegisterActivityWithOptions(a interface{},
+func (p *WorkerPool) RegisterActivityWithOptions(a any,
 	options activity.RegisterOptions) {
 	p.main.RegisterActivityWithOptions(a, options)
 }

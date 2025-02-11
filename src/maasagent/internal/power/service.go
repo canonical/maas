@@ -55,12 +55,12 @@ func NewPowerService(systemID string, pool *worker.WorkerPool) *PowerService {
 	}
 }
 
-func (s *PowerService) ConfigurationWorkflows() map[string]interface{} {
-	return map[string]interface{}{"configure-power-service": s.configure}
+func (s *PowerService) ConfigurationWorkflows() map[string]any {
+	return map[string]any{"configure-power-service": s.configure}
 }
 
-func (s *PowerService) ConfigurationActivities() map[string]interface{} {
-	return map[string]interface{}{}
+func (s *PowerService) ConfigurationActivities() map[string]any {
+	return map[string]any{}
 }
 
 func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
@@ -100,7 +100,7 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 		return err
 	}
 
-	activities := map[string]interface{}{
+	activities := map[string]any{
 		"power-on":       s.PowerOn,
 		"power-off":      s.PowerOff,
 		"power-query":    s.PowerQuery,
@@ -109,7 +109,7 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 	}
 
 	// TODO: register workflows once they are moved to the Agent
-	workflows := map[string]interface{}{}
+	workflows := map[string]any{}
 
 	// Register workers listening VLAN specific task queue and a common one
 	// for fallback scenario for routable access.
@@ -141,8 +141,8 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 
 // PowerParam is a generic activity parameter for power management of a host
 type PowerParam struct {
-	DriverOpts map[string]interface{} `json:"driver_opts"`
-	DriverType string                 `json:"driver_type"`
+	DriverOpts map[string]any `json:"driver_opts"`
+	DriverType string         `json:"driver_type"`
 }
 
 // PowerOnParam is the activity parameter for power management of a host
@@ -240,9 +240,9 @@ func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*
 }
 
 type SetBootOrderParam struct {
-	SystemID    string                   `json:"system_id"`
-	PowerParams PowerParam               `json:"power_param"`
-	Order       []map[string]interface{} `json:"order"`
+	SystemID    string           `json:"system_id"`
+	PowerParams PowerParam       `json:"power_param"`
+	Order       []map[string]any `json:"order"`
 }
 
 func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam) error {
@@ -255,7 +255,7 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 	return err
 }
 
-func powerCommand(ctx context.Context, action, driver string, opts map[string]interface{}, bootOrder ...map[string]interface{}) (string, error) {
+func powerCommand(ctx context.Context, action, driver string, opts map[string]any, bootOrder ...map[string]any) (string, error) {
 	log := activity.GetLogger(ctx)
 
 	maasPowerCLI, err := exec.LookPath(powerCLIExecutableName())
@@ -325,7 +325,7 @@ func powerCLIExecutableName() string {
 	return "maas-power"
 }
 
-func fmtPowerOpts(opts map[string]interface{}) []string {
+func fmtPowerOpts(opts map[string]any) []string {
 	var res []string
 
 	for k, v := range opts {
