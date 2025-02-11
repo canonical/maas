@@ -529,8 +529,8 @@ UI configuration
 -----------------
 
 1. Ensure your maas environment is running. 
-2. On your host machine, copy your TLS certificates and keys from your container to your
-   host. Assuming the container name is ``maas-dev``:
+2. On your **host** machine, copy your TLS certificates and keys from your container
+   to your host. Assuming the container name is ``maas-dev``:
    ::
     
     cd ~/path_to_repos/maas/
@@ -541,12 +541,11 @@ UI configuration
 
     ls -la ./.dev-certificates/certificates/
 
-4. Open a new terminal on your **host**, navigate to the temporal directory to run
-   the ui, making sure to specify the MAAS IP address: 
+4. Navigate to utilities and run the ui, making sure to specify the MAAS IP address: 
    ::
 
     cd utilities
-    sudo ./run_temporal_ui <maas_ip_address>
+    sudo ./run_temporal_ui <maas_ip_address> # e.g. 10.10.0.20
 
 5. Access the temporal UI on your browser at http://localhost:8080 to verify
    the setup. You should see a list of workflows that have run.
@@ -564,8 +563,9 @@ To run the Codec Server:
 
 1. ON YOUR MACHINE: clone this repository https://git.launchpad.net/~maas-committers/maas/+git/temporalio-maas-codecserver
 2. ON THE REGION: extract the MAAS secret from one of the regions from 
-   `/var/snap/maas/common/maas/secret`
-3. ON YOUR MACHINE: in the codecserver directory, `go run main.go --key <SECRET> --port 8090`
+   ``/var/snap/maas/common/maas/secret``
+
+3. ON YOUR MACHINE: in the codecserver directory, ``go run main.go --key <SECRET> --port 8090``
 4. The terminal process will be blocked when the codec server is running.
 
 Running Workflows
