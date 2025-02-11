@@ -56,6 +56,7 @@ MAX_STATUS_REQUEST_RETRIES = 7
 class PowerChange(str, Enum):
     OFF = "ForceOff"
     ON = "On"
+    RESET = "GracefulRestart"
 
 
 class RedfishPowerDriverBase(PowerDriver):
@@ -462,7 +463,8 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
     @inlineCallbacks
     def power_reset(self, system_id, context):
         """Power reset machine."""
-        raise NotImplementedError()
+        url, node_id, headers = yield self.process_redfish_context(context)
+        yield self.power(PowerChange.RESET, url, node_id, headers)
 
     @inlineCallbacks
     def _wait_for_status(self, desired_status, url, node_id, headers):

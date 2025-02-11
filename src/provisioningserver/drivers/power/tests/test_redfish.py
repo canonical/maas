@@ -985,3 +985,22 @@ class TestRedfishPowerDriver(MAASTestCase):
 
         power_state = yield driver._power_query(url, node_id, headers)
         self.assertEqual(power_state, POWER_STATE.ERROR)
+
+    @inlineCallbacks
+    def test_power_reset_gracefulrestart_when_on(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        node_id = b"1"
+
+        mock_redfish_context = self.patch(driver, "process_redfish_context")
+        mock_redfish_context.return_value = (url, node_id, headers)
+        mock_power = self.patch(driver, "power")
+
+        yield driver.power_reset(node_id, context)
+
+        mock_redfish_context.assert_called_with(context)
+        mock_power.assert_called_once_with(
+            "GracefulRestart", url, node_id, headers
+        )
