@@ -26,6 +26,8 @@ menuentry 'Local' {
                 redhat/grubx64.efi \
                 rhel/shimx64.efi \
                 rhel/grubx64.efi \
+                rocky/shimx64.efi \
+                rocky/grubx64.efi \
                 suse/shim.efi \
                 suse/grubx64.efi \
                 ol/shim.efi \
