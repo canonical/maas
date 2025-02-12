@@ -50,7 +50,6 @@ from maasserver.models.tag import Tag
 from maasserver.models.user import create_auth_token
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
-from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.triggers import register_trigger
 from maasserver.utils.orm import reload_object, transactional
@@ -307,21 +306,6 @@ class TransactionalHelpersMixin:
     def delete_vlan(self, id):
         vlan = VLAN.objects.get(id=id)
         vlan.delete()
-
-    @transactional
-    def create_zone(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_Zone(**params)
-
-    @transactional
-    def update_zone(self, id, params, **kwargs):
-        return apply_update_to_model(Zone, id, params, **kwargs)
-
-    @transactional
-    def delete_zone(self, id):
-        zone = Zone.objects.get(id=id)
-        zone.delete()
 
     @transactional
     def create_resource_pool(self, params=None):

@@ -2186,24 +2186,6 @@ def register_websocket_triggers():
         "delete",
     )
 
-    # Zone table
-    register_procedure(
-        render_notification_procedure(
-            "zone_create_notify", "zone_create", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "zone_update_notify", "zone_update", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "zone_delete_notify", "zone_delete", "OLD.id"
-        )
-    )
-    register_triggers("maasserver_zone", "zone")
-
     # ResourcePool table
     register_procedure(
         render_notification_procedure(
