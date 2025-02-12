@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom test-case classes."""
@@ -34,6 +34,7 @@ from maasserver.models import signals
 from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models import subnet as subnet_module
 from maasserver.models import vlan as vlan_module
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,
     PackageRepositoryFixture,
@@ -120,6 +121,9 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
             "Default connection is engaged in a transaction.",
         )
 
+    def close_service_layer(self):
+        service_layer.close()
+
     def _set_db_application_name(self):
         """Set the application name to the current test, for debug."""
         testname = f"{strclass(self.__class__)}.{self._testMethodName}"
@@ -159,6 +163,8 @@ class MAASLegacyTransactionServerTestCase(
         super().setUpFixtures()
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(PackageRepositoryFixture())
+        self.addCleanup(self.close_service_layer)
+        service_layer.init()
 
 
 class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
@@ -172,12 +178,14 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     def setUp(self):
         super().setUp()
         self.beginTransaction()
+        self.addCleanup(self.closeServiceLayer)
         self.addCleanup(self.endTransaction)
         self.setUpFixtures()
         if maas_data := os.getenv("MAAS_DATA"):
             os.mkdir(f"{maas_data}/image-storage")
         if maas_root := os.getenv("MAAS_ROOT"):
             os.mkdir(f"{maas_root}/certificates")
+        service_layer.init()
 
     def beginTransaction(self):
         """Begin new transaction using Django's `atomic`."""
@@ -201,6 +209,9 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.__atomic.__exit__(None, None, None)
         self.assertNotInTransaction()
 
+    def closeServiceLayer(self):
+        service_layer.close()
+
 
 class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     """:class:`TestCase` variant for *transaction* region testing."""
@@ -213,8 +224,10 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     def setUp(self):
         super().setUp()
         self.assertNotInTransaction()
+        self.addCleanup(self.close_service_layer)
         self.addCleanup(self.assertNotInTransaction)
         self.setUpFixtures()
+        service_layer.init()
         if maas_data := os.getenv("MAAS_DATA"):
             os.mkdir(f"{maas_data}/image-storage")
         if maas_root := os.getenv("MAAS_ROOT"):

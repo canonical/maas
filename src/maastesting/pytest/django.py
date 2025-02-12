@@ -12,6 +12,7 @@ from maasapiserver.client import APIServerClient
 from maasapiserver.main import run
 from maasapiserver.settings import Config, DatabaseConfig
 from maasserver.djangosettings import development
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.resources import close_all_connections
 from maasserver.utils.orm import enable_all_database_connections
 from maastesting.pytest.database import cluster_stash
@@ -75,6 +76,7 @@ def maasdb(ensuremaasdjangodb, request, pytestconfig):
     allow_transactions = (
         request.node.get_closest_marker("allow_transactions") is not None
     )
+    service_layer.init()
 
     if allow_transactions:
         yield
@@ -92,6 +94,8 @@ def maasdb(ensuremaasdjangodb, request, pytestconfig):
         # have to recreate the DB.
         transaction.rollback()
         close_all_connections()
+
+    service_layer.close()
 
 
 @pytest.fixture

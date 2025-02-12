@@ -63,7 +63,8 @@ class EventTypesRepository(BaseRepository[EventType]):
             return t
         else:
             try:
-                async with self._connection.begin_nested():
+                # TODO: adapt for sync connections
+                async with self.context.get_connection().begin_nested():
                     return await self.create(
                         EventTypeBuilder(
                             name=event_type.value,

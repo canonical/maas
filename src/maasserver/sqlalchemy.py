@@ -1,3 +1,6 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 """Make SQLALchemy available from within the Django app.
 
 See the docstring for get_sqlalchemy_django_connection() for more info.
@@ -5,8 +8,8 @@ See the docstring for get_sqlalchemy_django_connection() for more info.
 
 import asyncio
 from asyncio import AbstractEventLoop
-from contextlib import contextmanager
-from typing import Any, Callable, Coroutine, Iterator, Self, TypeVar
+import threading
+from typing import Any, Callable, Coroutine, TypeVar
 
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine.base import Connection, Engine
@@ -18,7 +21,9 @@ from maasservicelayer.context import Context
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.base import Service
 
-T = TypeVar("T")
+
+class ServiceLayerNotInitialized(Exception):
+    """Service Layer must be initialized first"""
 
 
 class SyncServiceCollectionV3Adapter:
@@ -33,6 +38,10 @@ class SyncServiceCollectionV3Adapter:
         self._service_collection = service_collection
 
     def __getattr__(self, name: str) -> Any:
+        """
+        Intercept attribute access.
+        If the attribute is a service, wrap it in a synchronous adapter.
+        """
         attr = getattr(self._service_collection, name)
 
         if isinstance(attr, Service):
@@ -41,6 +50,8 @@ class SyncServiceCollectionV3Adapter:
         return attr
 
     def _wrap_service(self, service: Service):
+        """Wraps an async service so its methods can be called synchronously."""
+
         class SyncServiceWrapper:
             def __init__(
                 self, event_loop: AbstractEventLoop, service: Service
@@ -49,11 +60,18 @@ class SyncServiceCollectionV3Adapter:
                 self._service = service
 
             def __getattr__(self, method_name: str) -> Callable:
+                """
+                Intercept method access. If the method is async, wrap it to run synchronously.
+                """
                 method = getattr(self._service, method_name)
 
                 if asyncio.iscoroutinefunction(method):
 
                     def sync_wrapper(*args, **kwargs):
+                        """
+                        Executes async functions synchronously using the event loop.
+                        Prevents execution if the event loop is already running.
+                        """
                         if self._event_loop.is_running():
                             raise RuntimeError(
                                 "Cannot call async function from a running event loop"
@@ -69,38 +87,74 @@ class SyncServiceCollectionV3Adapter:
         return SyncServiceWrapper(self._event_loop, service)
 
 
-class ServiceLayerAdapter:
+T = TypeVar("T")
+
+
+class ServiceLayerAdapter(threading.local):
     def __init__(self):
+        super().__init__()
+        self.initialized = False
+        self.event_loop = None
+        self.cache_for_services = None
+        self.context = None
+        self._services = None
+
+    def init(self):
+        """Initializes the service layer adapter with necessary components."""
+        self.initialized = True
         self.event_loop = asyncio.new_event_loop()
         self.cache_for_services = CacheForServices()
-        # Set ServiceCollectionV3 just to help developers to use the service layer from the django application even if it's
-        # technically not the right type. However, it's fine because this adapter is supposed to be used only in the django
-        # application and we will never run this process with mypy.
-        self.services: ServiceCollectionV3 = SyncServiceCollectionV3Adapter(
+        self.context = Context(connection=get_sqlalchemy_django_connection())
+        self._services = SyncServiceCollectionV3Adapter(
             event_loop=self.event_loop,
             service_collection=self.exec_async(
                 ServiceCollectionV3.produce(
-                    Context(connection=get_sqlalchemy_django_connection()),
+                    self.context,
                     self.cache_for_services,
                 )
             ),
         )
 
-    @classmethod
-    @contextmanager
-    def build(cls) -> Iterator[Self]:
-        instance = cls()
-        try:
-            yield instance
-        finally:
-            instance.close()
+    # Set ServiceCollectionV3 just to help developers to use the service layer from the django application even if it's
+    # technically not the right type. However, it's fine because this adapter is supposed to be used only in the django
+    # application and we will never run this process with mypy.
+    @property
+    def services(self) -> ServiceCollectionV3:
+        """Provides access to the service collection, ensuring initialization."""
+        self._guard_initialization()
+        return self._services
+
+    def ensure_connection(self):
+        """Ensures the database connection is active and updates it if necessary."""
+        self._guard_initialization()
+        # If the connection has been closed and our orm.py has reopened it, we have to pick the new one.
+        if self.context.get_connection().connection.dbapi_connection.closed:
+            self.context.set_connection(get_sqlalchemy_django_connection())
 
     def exec_async(self, coro: Coroutine[Any, Any, T]) -> T:
+        """Executes an asynchronous coroutine synchronously within the event loop."""
+        self._guard_initialization()
         return self.event_loop.run_until_complete(coro)
 
     def close(self):
-        self.exec_async(self.cache_for_services.close())
-        self.event_loop.close()
+        """Closes the service layer adapter, releasing resources."""
+        if self.initialized:
+            self.exec_async(self.cache_for_services.close())
+            self.event_loop.close()
+        self.initialized = False
+
+    def _guard_initialization(self):
+        """Checks if the adapter has been initialized before allowing access to resources."""
+        if not self.initialized:
+            raise ServiceLayerNotInitialized(
+                "Service layer not initialized in this thread. This is likely to be a programming error and should never happen."
+            )
+
+    def __del__(self):
+        self.close()
+
+
+service_layer = ServiceLayerAdapter()
 
 
 def get_sqlalchemy_django_connection() -> Connection:

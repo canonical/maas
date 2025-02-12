@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`SSHKey` and friends."""
@@ -14,7 +14,7 @@ from django.utils.safestring import mark_safe
 from maasserver.enum import KEYS_PROTOCOL_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.sqlalchemy import ServiceLayerAdapter
+from maasserver.sqlalchemy import service_layer
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.sshkeys import SshKey
 
@@ -45,29 +45,27 @@ class SSHKeyManager(Manager):
         :return: List of imported `SSHKey`s.
         """
 
-        with ServiceLayerAdapter.build() as servicelayer:
-            try:
-                return servicelayer.services.sshkeys.import_keys(
-                    protocol, auth_id, user.id
-                )
-            except ValidationException as e:
-                # The new service layer uses different exceptions. So the following logic ensure backwards compatibility with
-                # the legacy code.
-                if len(e.details) > 0:
-                    detail = e.details[0]
-                    if detail.field == "key":
-                        raise OpenSSHKeyError(detail.message)  # noqa: B904
-                    elif detail.field == "auth_id":
-                        raise ImportSSHKeysError(detail.message)  # noqa: B904
+        try:
+            return service_layer.services.sshkeys.import_keys(
+                protocol, auth_id, user.id
+            )
+        except ValidationException as e:
+            # The new service layer uses different exceptions. So the following logic ensure backwards compatibility with
+            # the legacy code.
+            if len(e.details) > 0:
+                detail = e.details[0]
+                if detail.field == "key":
+                    raise OpenSSHKeyError(detail.message) from None
+                elif detail.field == "auth_id":
+                    raise ImportSSHKeysError(detail.message) from None
 
 
 def validate_ssh_public_key(value):
     """Validate that the given value contains a valid SSH public key."""
     try:
-        with ServiceLayerAdapter.build() as servicelayer:
-            return servicelayer.services.sshkeys.normalize_openssh_public_key(
-                key=value
-            )
+        return service_layer.services.sshkeys.normalize_openssh_public_key(
+            key=value
+        )
     except Exception as error:
         raise ValidationError("Invalid SSH public key: " + str(error))  # noqa: B904
 

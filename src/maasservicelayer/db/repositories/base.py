@@ -53,30 +53,30 @@ T = TypeVar("T", bound=MaasBaseModel)
 class Repository(ABC):  # noqa: B024
     def __init__(self, context: Context):
         self.context = context
-        self._connection = context.get_connection()
 
     # TODO: remove this when the connection in context is changed back to the
     # AsyncConnection type only.
     async def execute_stmt(self, stmt) -> CursorResult[Any]:
         """Execute the statement synchronously or asynchronously based on the
         type of the connection."""
-        if isinstance(self._connection, Connection):
+        connection = self.context.get_connection()
+        if isinstance(connection, Connection):
             # Django wants to get jsonb columns as strings so to load the json programmatically in JsonField. Instead,
             # in the servicelayer/sqlalchemy we want the driver to return a dictionary, so we register the handler on the connection.
             try:
                 psycopg2.extras.register_default_jsonb(
-                    conn_or_curs=self._connection.connection.dbapi_connection
+                    conn_or_curs=connection.connection.dbapi_connection
                 )
-                return self._connection.execute(stmt)
+                return connection.execute(stmt)
             finally:
                 # Give this connection back to django and reset the default jsonb handler
                 # https://github.com/django/django/blob/f609a2da868b2320ecdc0551df3cca360d5b5bc3/django/db/backends/postgresql/base.py#L339
                 psycopg2.extras.register_default_jsonb(
-                    conn_or_curs=self._connection.connection.dbapi_connection,
+                    conn_or_curs=connection.connection.dbapi_connection,
                     loads=lambda x: x,
                 )
         else:
-            return await self._connection.execute(stmt)
+            return await connection.execute(stmt)
 
 
 class BaseRepository(Repository, Generic[T]):

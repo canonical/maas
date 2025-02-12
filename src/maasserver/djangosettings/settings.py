@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django settings for maas project."""
@@ -251,6 +251,8 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     # Used for rendering and logging exceptions.
     "maasserver.middleware.ExceptionMiddleware",
+    # Ensure the connection of the service layer is open.
+    "maasserver.middleware.ServiceLayerMiddleware",
     # Used to clear the RBAC thread-local cache.
     "maasserver.middleware.RBACMiddleware",
     # Handle errors that should really be handled in application code:

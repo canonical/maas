@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
@@ -25,9 +25,11 @@ from maasserver.middleware import (
     is_public_path,
     RBACMiddleware,
     RPCErrorsMiddleware,
+    ServiceLayerMiddleware,
 )
 from maasserver.rbac import rbac
 from maasserver.secrets import SecretManager
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -596,3 +598,18 @@ class TestRBACMiddleware(MAASServerTestCase):
         request = factory.make_fake_request(factory.make_string(), "GET")
         self.process_request(request)
         mock_clear.assert_called_once_with()
+
+
+class TestServiceLayerMiddleware(MAASServerTestCase):
+    def process_request(self, request):
+        def get_response(request):
+            return None
+
+        middleware = ServiceLayerMiddleware(get_response)
+        return middleware(request)
+
+    def test_calls_rbac_clear(self):
+        mock_ensure_connection = self.patch(service_layer, "ensure_connection")
+        request = factory.make_fake_request(factory.make_string(), "GET")
+        self.process_request(request)
+        mock_ensure_connection.assert_called_once_with()

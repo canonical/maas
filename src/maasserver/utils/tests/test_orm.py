@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test ORM utilities."""
@@ -30,6 +30,7 @@ from twisted.internet.defer import _failthru, CancelledError, Deferred
 from twisted.python.failure import Failure
 
 from maasserver.models import Node
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -1414,10 +1415,12 @@ class TestExclusivelyConnected(MAASTransactionServerTestCase):
     def test_exit_closes_open_connections(self):
         self.addCleanup(connection.close)
         connection.ensure_connection()
+        service_layer.init()
         self.assertIsNotNone(connection.connection)
         context = ExclusivelyConnected()
         context.__exit__()
         self.assertIsNone(connection.connection)
+        self.assertFalse(service_layer.initialized)
 
 
 class TestFullyConnected(MAASTransactionServerTestCase):
@@ -1450,6 +1453,19 @@ class TestFullyConnected(MAASTransactionServerTestCase):
                 self.assertOpen(alias)
         for alias in connections:
             self.assertClosed(alias)
+
+    def test_service_layer_initialized_and_closed(self):
+        self.patch(service_layer, "init")
+        self.patch(service_layer, "close")
+        for alias in connections:
+            connections[alias].ensure_connection()
+        for alias in connections:
+            self.assertOpen(alias)
+
+        with FullyConnected():
+            pass
+        service_layer.init.assert_called_once()
+        service_layer.close.assert_called_once()
 
 
 class TestGetModelObjectName(MAASServerTestCase):

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Access middleware."""
@@ -29,7 +29,7 @@ from maasserver import logger
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.exceptions import MAASAPIException
 from maasserver.rbac import rbac
-from maasserver.sqlalchemy import ServiceLayerAdapter
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import is_retryable_failure
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.shell import ExternalProcessError
@@ -419,10 +419,9 @@ class ExternalAuthInfoMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        with ServiceLayerAdapter.build() as servicelayer:
-            request.external_auth_info = (
-                servicelayer.services.external_auth.get_external_auth()
-            )
+        request.external_auth_info = (
+            service_layer.services.external_auth.get_external_auth()
+        )
         return self.get_response(request)
 
 
@@ -444,3 +443,14 @@ class RBACMiddleware:
         # state of the RBAC connection.
         rbac.clear()
         return result
+
+
+class ServiceLayerMiddleware:
+    """Middleware that ensures the connection in the service layer is usable."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        service_layer.ensure_connection()
+        return self.get_response(request)

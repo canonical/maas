@@ -1,11 +1,11 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
 import json
 import os
 from unittest import mock
-from unittest.mock import ANY, AsyncMock
+from unittest.mock import AsyncMock
 
 import aiohttp
 from django.contrib.auth.models import User
@@ -838,7 +838,6 @@ class TestMacaroonDischargeRequest(
         )
         mock_auth_request.assert_called_with(
             mock_bakery,
-            ANY,  # service layer object
             auth_endpoint="https://auth.example.com",
             auth_domain="",
             req_headers={"cookie": ""},

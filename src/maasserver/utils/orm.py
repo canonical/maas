@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """ORM-related utilities."""
@@ -62,6 +62,7 @@ from psycopg2.errorcodes import (
 from twisted.internet.defer import Deferred
 
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIForbidden
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.asynchronous import DeferredHooks
 from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import exponential_growth, full_jitter
@@ -936,19 +937,21 @@ class ExclusivelyConnected:
     def __enter__(self):
         """Assert that no connections are yet open."""
         for alias in connections:
+            service_layer.init()
             if connections[alias].connection is not None:
                 raise AssertionError(f"Connection {alias} is open.")
 
     def __exit__(self, *exc_info):
         """Close database connections in the current thread."""
         for alias in connections:
+            service_layer.close()
             connections[alias].close()
 
 
 class FullyConnected:
     """Context to ensure that all databases are connected.
 
-    On entry, connections will be establed to all defined databases. On exit,
+    On entry, connections will be established to all defined databases and the service layer adapter is initialized. On exit,
     they'll all be closed again. Simple.
     """
 
@@ -956,10 +959,13 @@ class FullyConnected:
         """Assert that no connections are yet open."""
         for alias in connections:
             connections[alias].ensure_connection()
+            service_layer.init()
 
     def __exit__(self, *exc_info):
         """Close database connections in the current thread."""
         for alias in connections:
+            # Close the service layer so to close also all the client sessions and the asyncio event loop.
+            service_layer.close()
             connections[alias].close()
 
 

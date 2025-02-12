@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Backend for Macaroon-based authentication."""
@@ -28,7 +28,7 @@ from maasserver.auth import MAASAuthorizationBackend
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasserver.models.rootkey import RootKey
 from maasserver.models.user import SYSTEM_USERS
-from maasserver.sqlalchemy import ServiceLayerAdapter
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.views import request_headers
 from maasservicelayer.auth.external_auth import ExternalAuthType
 from provisioningserver.security import to_bin, to_hex
@@ -85,22 +85,19 @@ class MacaroonAPIAuthentication:
             return False
 
         req_headers = request_headers(request)
-        with ServiceLayerAdapter.build() as servicelayer:
-            macaroon_bakery = servicelayer.services.external_auth.get_bakery(
-                request.build_absolute_uri("/")
-            )
-            auth_checker = macaroon_bakery.checker.auth(
-                httpbakery.extract_macaroons(req_headers)
-            )
+        macaroon_bakery = service_layer.services.external_auth.get_bakery(
+            request.build_absolute_uri("/")
+        )
+        auth_checker = macaroon_bakery.checker.auth(
+            httpbakery.extract_macaroons(req_headers)
+        )
 
-            try:
-                auth_info = servicelayer.exec_async(
-                    auth_checker.allow(
-                        checkers.AuthContext(), [bakery.LOGIN_OP]
-                    )
-                )
-            except (bakery.DischargeRequiredError, bakery.PermissionDenied):
-                return False
+        try:
+            auth_info = service_layer.exec_async(
+                auth_checker.allow(checkers.AuthContext(), [bakery.LOGIN_OP])
+            )
+        except (bakery.DischargeRequiredError, bakery.PermissionDenied):
+            return False
 
         # set the user in the request so that it's considered authenticated. If
         # a user is not found with the username from the identity, it's
@@ -127,16 +124,14 @@ class MacaroonAPIAuthentication:
             # as the name implies.
             return rc.FORBIDDEN
 
-        with ServiceLayerAdapter.build() as servicelayer:
-            macaroon_bakery = servicelayer.services.external_auth.get_bakery(
-                request.build_absolute_uri("/")
-            )
-            return _authorization_request(
-                macaroon_bakery,
-                servicelayer,
-                auth_endpoint=request.external_auth_info.url,
-                auth_domain=request.external_auth_info.domain,
-            )
+        macaroon_bakery = service_layer.services.external_auth.get_bakery(
+            request.build_absolute_uri("/")
+        )
+        return _authorization_request(
+            macaroon_bakery,
+            auth_endpoint=request.external_auth_info.url,
+            auth_domain=request.external_auth_info.domain,
+        )
 
 
 class MacaroonDischargeRequest:
@@ -146,38 +141,33 @@ class MacaroonDischargeRequest:
         if not request.external_auth_info:
             return HttpResponseNotFound("Not found")
 
-        with ServiceLayerAdapter.build() as servicelayer:
-            macaroon_bakery = servicelayer.services.external_auth.get_bakery(
-                request.build_absolute_uri("/")
-            )
-            req_headers = request_headers(request)
-            auth_checker = macaroon_bakery.checker.auth(
-                httpbakery.extract_macaroons(req_headers)
-            )
+        macaroon_bakery = service_layer.services.external_auth.get_bakery(
+            request.build_absolute_uri("/")
+        )
+        req_headers = request_headers(request)
+        auth_checker = macaroon_bakery.checker.auth(
+            httpbakery.extract_macaroons(req_headers)
+        )
 
-            try:
-                auth_info = servicelayer.exec_async(
-                    auth_checker.allow(
-                        checkers.AuthContext(), [bakery.LOGIN_OP]
-                    )
-                )
-            except bakery.DischargeRequiredError as err:
-                return _authorization_request(
-                    macaroon_bakery,
-                    servicelayer,
-                    derr=err,
-                    req_headers=req_headers,
-                )
-            except bakery.VerificationError:
-                return _authorization_request(
-                    macaroon_bakery,
-                    servicelayer,
-                    req_headers=req_headers,
-                    auth_endpoint=request.external_auth_info.url,
-                    auth_domain=request.external_auth_info.domain,
-                )
-            except bakery.PermissionDenied:
-                return HttpResponseForbidden()
+        try:
+            auth_info = service_layer.exec_async(
+                auth_checker.allow(checkers.AuthContext(), [bakery.LOGIN_OP])
+            )
+        except bakery.DischargeRequiredError as err:
+            return _authorization_request(
+                macaroon_bakery,
+                derr=err,
+                req_headers=req_headers,
+            )
+        except bakery.VerificationError:
+            return _authorization_request(
+                macaroon_bakery,
+                req_headers=req_headers,
+                auth_endpoint=request.external_auth_info.url,
+                auth_domain=request.external_auth_info.domain,
+            )
+        except bakery.PermissionDenied:
+            return HttpResponseForbidden()
 
         user = authenticate(request, identity=auth_info.identity)
         if user is None:
@@ -532,7 +522,6 @@ def _candid_login(credentials):
 
 def _authorization_request(
     bakery,
-    servicelayer,
     derr=None,
     auth_endpoint=None,
     auth_domain=None,
@@ -549,7 +538,7 @@ def _authorization_request(
     else:
         caveats, ops = _get_macaroon_caveats_ops(auth_endpoint, auth_domain)
     expiration = datetime.now(timezone.utc) + MACAROON_LIFESPAN
-    macaroon = servicelayer.exec_async(
+    macaroon = service_layer.exec_async(
         bakery.oven.macaroon(bakery_version, expiration, caveats, ops)
     )
     content, headers = httpbakery.discharge_required_response(
