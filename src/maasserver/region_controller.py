@@ -44,7 +44,6 @@ from maasserver.dns.config import (
     dns_update_all_zones,
     process_dns_update_notify,
 )
-from maasserver.macaroon_auth import get_auth_info
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.models.resourcepool import ResourcePool
@@ -52,6 +51,7 @@ from maasserver.proxyconfig import proxy_update_config
 from maasserver.rbac import RBACClient, Resource, SyncConflictError
 from maasserver.secrets import SecretManager
 from maasserver.service_monitor import service_monitor
+from maasserver.sqlalchemy import service_layer
 from maasserver.triggers.models.dns_notifications import (
     DynamicDNSUpdateNotification,
 )
@@ -432,7 +432,7 @@ class RegionControllerService(Service):
             self.rbacClient = None
             return None
 
-        auth_info = get_auth_info()
+        auth_info = service_layer.services.external_auth.get_auth_info()
         if (
             self.rbacClient is None
             or self.rbacClient._url != url

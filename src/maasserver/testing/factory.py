@@ -7,7 +7,6 @@ import hashlib
 from io import BytesIO
 from itertools import chain, repeat
 import logging
-import os
 import random
 import time
 from typing import Dict, Iterable, List
@@ -87,7 +86,6 @@ from maasserver.models import (
     RegionRackRPCConnection,
     ReservedIP,
     ResourcePool,
-    RootKey,
     Script,
     ScriptResult,
     ScriptSet,
@@ -117,7 +115,6 @@ from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
-from maasserver.secrets import SecretManager
 from maasserver.sessiontimeout import SessionStore
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
@@ -147,7 +144,6 @@ from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.security import to_hex
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import inet_ntop
 
@@ -3486,17 +3482,6 @@ class Factory(maastesting.factory.Factory):
         notification.save()
 
         return notification
-
-    def make_RootKey(self, material=None, expiration=None):
-        if material is None:
-            material = os.urandom(24)
-        if expiration is None:
-            expiration = timezone.now() + timedelta(days=1)
-        key = RootKey.objects.create(expiration=expiration)
-        SecretManager().set_simple_secret(
-            "material", to_hex(material), obj=key
-        )
-        return key
 
     def make_PodStoragePool(
         self,

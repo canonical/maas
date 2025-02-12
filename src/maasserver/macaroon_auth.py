@@ -7,7 +7,6 @@ from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from functools import partial
 import os
-from typing import Optional
 from urllib.parse import quote
 
 from django.contrib.auth import authenticate, login
@@ -20,18 +19,16 @@ from django.http import (
 )
 from macaroonbakery import bakery, checkers, httpbakery
 from macaroonbakery._utils import visit_page_with_browser
-from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
+from macaroonbakery.httpbakery.agent import AgentInteractor
 from piston3.utils import rc
 import requests
 
 from maasserver.auth import MAASAuthorizationBackend
 from maasserver.macaroons import _get_macaroon_caveats_ops
-from maasserver.models.rootkey import RootKey
 from maasserver.models.user import SYSTEM_USERS
-from maasserver.sqlalchemy import service_layer
+from maasserver.sqlalchemy import service_layer, ServiceLayerAdapter
 from maasserver.utils.views import request_headers
 from maasservicelayer.auth.external_auth import ExternalAuthType
-from provisioningserver.security import to_bin, to_hex
 
 MACAROON_LIFESPAN = timedelta(days=1)
 
@@ -188,127 +185,6 @@ class MacaroonDischargeRequest:
         )
 
 
-class KeyStore:
-    """A database-backed RootKeyStore for root keys.
-
-    :param expiry_duration: the minimum length of time that root keys will be
-        valid for after they are returned. The maximum length of time that they
-        will be valid for expiry_duration + generate_interval.
-    :type expiry_duration: datetime.timedelta
-
-    :param generate_interval: the maximum length of time for which a root key
-        will be returned. If None, it defaults to expiry_duration.
-    :type generate_interval: datetime.timedelta
-
-    """
-
-    # size in bytes of the key
-    KEY_LENGTH = 24
-
-    def __init__(
-        self,
-        expiry_duration,
-        generate_interval=None,
-        now=lambda: datetime.now(timezone.utc),
-    ):
-        self.expiry_duration = expiry_duration
-        self.generate_interval = generate_interval
-        if generate_interval is None:
-            self.generate_interval = expiry_duration
-        self._now = now
-
-    def get(self, id):
-        """Return the key with the specified bytes string id."""
-        try:
-            key = RootKey.objects.get(pk=int(id))
-        except (ValueError, RootKey.DoesNotExist):
-            return None
-
-        if key.expiration < self._now():
-            key.delete()
-            self._delete_keys_material(key)
-            return None
-        return self._get_key_material(key)
-
-    def root_key(self):
-        """Return the root key and its id as a byte string."""
-        key = self._find_best_key()
-        if not key:
-            # delete expired keys (if any)
-            now = self._now()
-            old_keys = RootKey.objects.filter(expiration__lt=now)
-            self._delete_keys_material(*old_keys)
-            old_keys.delete()
-            key = self._new_key()
-
-        return self._get_key_material(key), str(key.id).encode("ascii")
-
-    def _find_best_key(self):
-        now = self._now()
-        qs = RootKey.objects.filter(
-            created__gte=now - self.generate_interval,
-            expiration__gte=now - self.expiry_duration,
-            expiration__lte=(
-                now + self.expiry_duration + self.generate_interval
-            ),
-        )
-        qs = qs.order_by("-created")
-        return qs.first()
-
-    def _new_key(self):
-        now = self._now()
-        expiration = now + self.expiry_duration + self.generate_interval
-        key = RootKey.objects.create(
-            created=now,
-            expiration=expiration,
-        )
-        key.save()
-        material = os.urandom(self.KEY_LENGTH)
-        self._set_key_material(key, material)
-        return key
-
-    def _get_key_material(self, key: RootKey) -> Optional[bytes]:
-        secret = self._secret_manager.get_simple_secret(
-            "material", obj=key, default=None
-        )
-        if not secret:
-            return None
-        return to_bin(secret)
-
-    def _set_key_material(self, key: RootKey, material: bytes):
-        self._secret_manager.set_simple_secret(
-            "material", to_hex(material), obj=key
-        )
-
-    def _delete_keys_material(self, *keys: list[RootKey]):
-        manager = self._secret_manager
-        for key in keys:
-            manager.delete_all_object_secrets(key)
-
-    @property
-    def _secret_manager(self):
-        from maasserver.secrets import SecretManager
-
-        return SecretManager()
-
-
-def get_auth_info():
-    """Return the `AuthInfo` to authentication with Candid."""
-    from maasserver.secrets import SecretManager
-
-    config = SecretManager().get_composite_secret(
-        "external-auth", default=None
-    )
-    if config is None:
-        return None
-    key = bakery.PrivateKey.deserialize(config["key"])
-    agent = Agent(
-        url=config["url"],
-        username=config["user"],
-    )
-    return AuthInfo(key=key, agents=[agent])
-
-
 class APIError(Exception):
     """A `MacaroonClient` API error."""
 
@@ -353,7 +229,9 @@ class CandidClient(MacaroonClient):
 
     def __init__(self, auth_info=None):
         if auth_info is None:
-            auth_info = get_auth_info()
+            with ServiceLayerAdapter() as sl:
+                # Do not use sqlalchemy.service_layer, we want to create/delete RBACClients multiple times within the same thread.
+                auth_info = sl.services.external_auth.get_auth_info()
         url = auth_info.agents[0].url
         super().__init__(url, auth_info)
 

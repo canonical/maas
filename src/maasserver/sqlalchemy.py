@@ -150,6 +150,14 @@ class ServiceLayerAdapter(threading.local):
                 "Service layer not initialized in this thread. This is likely to be a programming error and should never happen."
             )
 
+    def __enter__(self):
+        # Use a context if you need a dedicated instance of the adapter.
+        self.init()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def __del__(self):
         self.close()
 

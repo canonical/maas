@@ -545,7 +545,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertIsNone(service.rbacClient)
 
     def test_getRBACClient_creates_new_client_and_uses_it_again(self):
-        self.patch(region_controller, "get_auth_info")
+        self.patch(region_controller, "service_layer")
         SecretManager().set_composite_secret(
             "external-auth", {"rbac-url": "http://rbac.example.com"}
         )
@@ -556,7 +556,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertIs(client, service._getRBACClient())
 
     def test_getRBACClient_creates_new_client_when_url_changes(self):
-        self.patch(region_controller, "get_auth_info")
+        self.patch(region_controller, "service_layer")
         SecretManager().set_composite_secret(
             "external-auth", {"rbac-url": "http://rbac.example.com"}
         )
@@ -571,13 +571,13 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertIs(new_client, service._getRBACClient())
 
     def test_getRBACClient_creates_new_client_when_auth_info_changes(self):
-        mock_get_auth_info = self.patch(region_controller, "get_auth_info")
+        mock_service_layer = self.patch(region_controller, "service_layer")
         SecretManager().set_composite_secret(
             "external-auth", {"rbac-url": "http://rbac.example.com"}
         )
         service = self.make_service(sentinel.listener, sentinel.dbtasks)
         client = service._getRBACClient()
-        mock_get_auth_info.return_value = MagicMock()
+        mock_service_layer.services.external_auth.get_auth_info.return_value = MagicMock()
         new_client = service._getRBACClient()
         self.assertIsNotNone(new_client)
         self.assertIsNot(new_client, client)

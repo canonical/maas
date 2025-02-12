@@ -6,16 +6,12 @@ from typing import Mapping, Sequence, Union
 from urllib.parse import parse_qs, quote, urlparse
 
 import attr
+from macaroonbakery.httpbakery.agent import AuthInfo
 
-from maasserver.macaroon_auth import (
-    APIError,
-    AuthInfo,
-    get_auth_info,
-    MacaroonClient,
-    UserDetails,
-)
+from maasserver.macaroon_auth import APIError, MacaroonClient, UserDetails
 from maasserver.models import ResourcePool
 from maasserver.secrets import SecretManager
+from maasserver.sqlalchemy import service_layer, ServiceLayerAdapter
 
 
 class SyncConflictError(Exception):
@@ -52,7 +48,9 @@ class RBACClient(MacaroonClient):
         if url is None:
             url = _get_rbac_url_from_secrets()
         if auth_info is None:
-            auth_info = get_auth_info()
+            # Do not use sqlalchemy.service_layer, we want to create/delete RBACClients multiple times within the same thread.
+            with ServiceLayerAdapter() as sl:
+                auth_info = sl.services.external_auth.get_auth_info()
         super().__init__(auth_info=auth_info, url=url)
 
     def _get_resource_type_url(self, resource_type: str):
@@ -257,7 +255,9 @@ class RBACWrapper:
             # Check that the `rbac_url` and the credentials match.
             url = self._get_rbac_url()
             if url:
-                auth_info = get_auth_info()
+                auth_info = (
+                    service_layer.services.external_auth.get_auth_info()
+                )
                 if client is NO_CLIENT:
                     # Previously no client was created, create a new client
                     # now that RBAC is enabled.

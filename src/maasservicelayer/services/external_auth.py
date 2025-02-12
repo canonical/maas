@@ -49,7 +49,6 @@ MACAROON_LIFESPAN = timedelta(days=1)
 @dataclass(slots=True)
 class ExternalAuthServiceCache(ServiceCache):
     external_auth_config: ExternalAuthConfig | None = None
-    auth_info: AuthInfo | None = None
     bakery_key: bakery.PrivateKey | None = None
     candid_client: CandidAsyncClient | None = None
     rbac_client: RbacAsyncClient | None = None
@@ -133,7 +132,8 @@ class ExternalAuthService(Service, RootKeyStore):
             admin_group=auth_admin_group,
         )
 
-    @Service.from_cache_or_execute(attr="auth_info")
+    # Django is using this and we can't cache the object. This is because when the external auth is configured the regions are
+    # not restarted and we don't have a mechanism to invalidate the cache (yet).
     async def get_auth_info(self) -> AuthInfo | None:
         """
         Same logic of maasserver.macaroon_auth.get_auth_info

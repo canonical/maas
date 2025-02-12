@@ -752,17 +752,6 @@ class TestExternalAuthService:
         external_auth_service.cache.clear()
         secrets_service_mock.reset_mock()
 
-        # auth_info
-        auth_info1 = await external_auth_service.get_auth_info()
-        assert external_auth_service.cache.auth_info is not None
-        auth_info2 = await external_auth_service.get_auth_info()
-        assert (
-            auth_info1 == auth_info2 == external_auth_service.cache.auth_info
-        )
-        secrets_service_mock.get_composite_secret.assert_called_once()
-        external_auth_service.cache.clear()
-        secrets_service_mock.reset_mock()
-
         # bakery_key
         bakery_key = await external_auth_service.get_or_create_bakery_key()
         assert external_auth_service.cache.bakery_key is not None
