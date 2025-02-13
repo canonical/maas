@@ -243,6 +243,51 @@ class TestTagEvaluationActivities:
     Test class gathering all the tests for tag evaluation activities.
     """
 
+    async def _retrieve_node_tag_entries(self, db_connection: AsyncConnection):
+        """
+        Method that retrieves the entries of the node-tag "through"
+        (many-to-many) table using a db connection.
+
+        NodeTagTable contains a registry of all the relations between node
+        and tags. Indeed, the final outcome of the tag evaluation algorithm
+        is to update this table adding or removing entries based on the
+        result of the evaluation.
+        """
+        nodetag_query = select(
+            NodeTagTable.c.node_id, NodeTagTable.c.tag_id
+        ).select_from(NodeTagTable)
+
+        cursor_result = await db_connection.execute(nodetag_query)
+        rows = cursor_result.all()
+        return rows
+
+    @pytest.mark.parametrize("batch_size", [1000, 2, 1])
+    async def test_tag_evaluation_activity_no_nodes(
+        self,
+        db: Database,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+        batch_size: int,
+    ):
+        """
+        Test the tag evaluation activity when there are no nodes in the
+        database, to ensure it does not fail.
+        """
+        services_cache = CacheForServices()
+        tag_evaluation_activity = TagEvaluationActivity(
+            db, services_cache, connection=db_connection
+        )
+        tag = await create_test_tag_entry(
+            fixture, name="tag_01", definition="//node"
+        )
+        param_tag = TagEvaluationParam(
+            tag["id"], tag["definition"], batch_size=batch_size
+        )
+        rows = await self._retrieve_node_tag_entries(db_connection)
+        assert len(rows) == 0
+        result = await tag_evaluation_activity.evaluate_tag(param_tag)
+        assert result == TagEvaluationResult(inserted=0, deleted=0)
+
     @pytest.mark.parametrize("batch_size", [1000, 2, 1])
     async def test_tag_evaluation_activity(
         self,
@@ -279,25 +324,6 @@ class TestTagEvaluationActivities:
         Additional tests:
         - TEST 7: same as TEST 1 but using the LLDP_OUTPUT_NAME script
         """
-
-        async def _retrieve_node_tag_entries():
-            """
-            Closure that retrieves the entries of the node-tag "through"
-            (many-to-many) table.
-
-            NodeTagTable contains a registry of all the relations between node
-            and tags. Indeed, the final outcome of the tag evaluation algorithm
-            is to update this table adding or removing entries based on the
-            result of the evaluation.
-            """
-            nodetag_query = select(
-                NodeTagTable.c.node_id, NodeTagTable.c.tag_id
-            ).select_from(NodeTagTable)
-
-            cursor_result = await db_connection.execute(nodetag_query)
-            rows = cursor_result.all()
-            return rows
-
         services_cache = CacheForServices()
         tag_evaluation_activity = TagEvaluationActivity(
             db, services_cache, connection=db_connection
@@ -319,7 +345,7 @@ class TestTagEvaluationActivities:
         #   tag_01 should match against the output of the script
         #   LSHW_OUTPUT_NAME. Thus, NodeTagTable should have an entry for the
         #   new node-tag relation
-        rows = await _retrieve_node_tag_entries()
+        rows = await self._retrieve_node_tag_entries(db_connection)
         assert result == TagEvaluationResult(inserted=2, deleted=0)
         assert len(rows) == 2
         assert set(rows) == {
@@ -338,7 +364,7 @@ class TestTagEvaluationActivities:
         #   tag_02 should not match against the output of the script
         #   LSHW_OUTPUT_NAME. Thus, NodeTagTable should not have new entries,
         #   remaining as it was
-        rows = await _retrieve_node_tag_entries()
+        rows = await self._retrieve_node_tag_entries(db_connection)
         assert result == TagEvaluationResult(inserted=0, deleted=0)
         assert len(rows) == 2
         assert set(rows) == {
@@ -366,7 +392,7 @@ class TestTagEvaluationActivities:
         #   tag_02 should match against the output of the script
         #   LSHW_OUTPUT_NAME. Thus, NodeTagTable should have an entry for the
         #   new node-tag relation
-        rows = await _retrieve_node_tag_entries()
+        rows = await self._retrieve_node_tag_entries(db_connection)
         assert result == TagEvaluationResult(inserted=1, deleted=0)
         assert len(rows) == 3
         assert set(rows) == {
@@ -395,7 +421,7 @@ class TestTagEvaluationActivities:
         #   tag_01 should not match anymore the output of the script
         #   LSHW_OUTPUT_NAME. Thus, NodeTagTable should have fewer entries due
         #   to the lots of node-tag relations
-        rows = await _retrieve_node_tag_entries()
+        rows = await self._retrieve_node_tag_entries(db_connection)
         assert result == TagEvaluationResult(inserted=0, deleted=2)
         assert len(rows) == 1
         assert set(rows) == {(machine_1["id"], tag_02.id)}
@@ -411,7 +437,7 @@ class TestTagEvaluationActivities:
         #   tag_03 should match against the output of the script
         #   LLDP_OUTPUT_NAME. Thus, NodeTagTable should have an entry for the
         #   new node-tag relation
-        rows = await _retrieve_node_tag_entries()
+        rows = await self._retrieve_node_tag_entries(db_connection)
 
         assert result == TagEvaluationResult(inserted=1, deleted=0)
         assert len(rows) == 2
