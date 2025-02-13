@@ -34,8 +34,6 @@ class TestTriggers(MAASServerTestCase):
     def test_register_system_triggers(self):
         register_system_triggers()
         triggers = [
-            "regionrackrpcconnection_sys_core_rpc_insert",
-            "regionrackrpcconnection_sys_core_rpc_delete",
             "domain_sys_dns_domain_insert",
             "domain_sys_dns_domain_update",
             "domain_sys_dns_domain_delete",

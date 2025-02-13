@@ -16,7 +16,6 @@ from maasserver import (
     eventloop,
     ipc,
     nonces_cleanup,
-    rack_controller,
     region_controller,
     stats,
     status_monitor,
@@ -507,25 +506,6 @@ class TestFactories(MAASServerTestCase):
         self.assertIs(
             eventloop.loop.factories["version-check"]["factory"],
             eventloop.make_VersionUpdateCheckService,
-        )
-
-    def test_make_RackControllerService(self):
-        service = eventloop.make_RackControllerService(
-            FakePostgresListenerService(), sentinel.rpc_advertise
-        )
-        self.assertIsInstance(service, rack_controller.RackControllerService)
-        # It is registered as a factory in RegionEventLoop.
-        self.assertIs(
-            eventloop.make_RackControllerService,
-            eventloop.loop.factories["rack-controller"]["factory"],
-        )
-        # Has a dependency of ipc-worker and postgres-listener.
-        self.assertEqual(
-            ["ipc-worker", "postgres-listener-worker"],
-            eventloop.loop.factories["rack-controller"]["requires"],
-        )
-        self.assertFalse(
-            eventloop.loop.factories["rack-controller"]["only_on_master"]
         )
 
     def test_make_ServiceMonitorService(self):

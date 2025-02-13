@@ -489,39 +489,6 @@ CORE_RELOAD_DNS_NOTIFICATION_FORMAT = dedent(
     """
 )
 
-# Helper that alerts the primary and secondary rack controller for a VLAN.
-DHCP_ALERT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_alert(vlan maasserver_vlan)
-    RETURNS void AS $$
-    DECLARE
-      relay_vlan maasserver_vlan;
-    BEGIN
-      IF vlan.dhcp_on THEN
-        PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.primary_rack_id), '');
-        IF vlan.secondary_rack_id IS NOT NULL THEN
-          PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.secondary_rack_id), '');
-        END IF;
-      END IF;
-      IF vlan.relay_vlan_id IS NOT NULL THEN
-        SELECT maasserver_vlan.* INTO relay_vlan
-        FROM maasserver_vlan
-        WHERE maasserver_vlan.id = vlan.relay_vlan_id;
-        IF relay_vlan.dhcp_on THEN
-          PERFORM pg_notify(CONCAT(
-            'sys_dhcp_', relay_vlan.primary_rack_id), '');
-          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-            PERFORM pg_notify(CONCAT(
-              'sys_dhcp_', relay_vlan.secondary_rack_id), '');
-          END IF;
-        END IF;
-      END IF;
-      RETURN;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
 # Triggered when DNS needs to be published. In essense this means on insert
 # into maasserver_dnspublication.
 DNS_PUBLISH = dedent(
@@ -1884,9 +1851,6 @@ def register_system_triggers():
     register_trigger(
         "maasserver_regionrackrpcconnection", "sys_core_rpc_delete", "delete"
     )
-
-    # DHCP
-    register_procedure(DHCP_ALERT)
 
     # DNS
     # The zone serial is used in the 'sys_dns' triggers. Ensure that it exists

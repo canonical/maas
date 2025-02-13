@@ -114,7 +114,6 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         expected_services = {
             "database-tasks",
             "postgres-listener-worker",
-            "rack-controller",
             "rpc",
             "status-worker",
             "web",
@@ -148,7 +147,6 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         expected_services = {
             "database-tasks",
             "postgres-listener-worker",
-            "rack-controller",
             "rpc",
             "status-worker",
             "web",
@@ -351,7 +349,6 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             # Worker services.
             "database-tasks",
             "postgres-listener-worker",
-            "rack-controller",
             "rpc",
             "service-monitor",
             "status-worker",

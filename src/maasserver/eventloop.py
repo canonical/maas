@@ -129,12 +129,6 @@ def make_PostgresListenerService():
     return PostgresListenerService()
 
 
-def make_RackControllerService(ipcWorker, postgresListener):
-    from maasserver.rack_controller import RackControllerService
-
-    return RackControllerService(ipcWorker, postgresListener)
-
-
 def make_StatusWorkerService(dbtasks):
     from metadataserver.api_twisted import StatusWorkerService
 
@@ -397,11 +391,6 @@ class RegionEventLoop:
             "only_on_master": True,
             "factory": make_ReverseDNSService,
             "requires": ["postgres-listener-master"],
-        },
-        "rack-controller": {
-            "only_on_master": False,
-            "factory": make_RackControllerService,
-            "requires": ["ipc-worker", "postgres-listener-worker"],
         },
         "ntp": {
             "only_on_master": True,
