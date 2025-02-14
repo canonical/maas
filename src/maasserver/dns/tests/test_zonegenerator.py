@@ -260,7 +260,9 @@ class TestGetHostnameMapping(MAASServerTestCase):
                 node2.system_id, ttl, {dynamic_ip.ip}, node2.node_type
             ),
         }
-        actual = get_hostname_ip_mapping(Domain.objects.get_default_domain())
+        actual = get_hostname_ip_mapping(
+            Domain.objects.get_default_domain().id
+        )
         self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_contains_node_and_non_node(self):

@@ -417,7 +417,9 @@ class StaticIPAddressManager(Manager):
                 requested_address, alloc_type, user=user, subnet=subnet
             )
 
-    def _get_special_mappings(self, domain, raw_ttl=False):
+    def _get_special_mappings(
+        self, domain_id: int | None = None, raw_ttl: bool = False
+    ):
         """Get the special mappings, possibly limited to a single Domain.
 
         This function is responsible for creating these mappings:
@@ -539,9 +541,11 @@ class StaticIPAddressManager(Manager):
                 """
         )
 
+        default_domain = Domain.objects.get_default_domain()
+
         query_parms = []
-        if isinstance(domain, Domain):
-            if domain.is_default():
+        if domain_id is not None:
+            if domain_id == default_domain.id:
                 # The default domain is extra special, since it needs to have
                 # A/AAAA RRs for any USER_RESERVED addresses that have no name
                 # otherwise attached to them.
@@ -574,14 +578,13 @@ class StaticIPAddressManager(Manager):
                         node.dom2_id = %s OR
                         dnsrr.domain_id = %s OR
                         node.domain_id = %s))"""
-            query_parms += [domain.id, domain.id, domain.id, domain.id]
+            query_parms += [domain_id, domain_id, domain_id, domain_id]
         else:
             # In the subnet map, addresses attached to nodes only map back to
             # the node, since some things don't like multiple PTR RRs in
             # answers from the DNS.
             # Since that is handled in get_hostname_ip_mapping, we exclude
             # anything where the node also has a link to the address.
-            domain = None
             sql_query += """ ((
                     node.fqdn IS NULL AND dnsrr.fqdn IS NOT NULL
                 ) OR (
@@ -590,7 +593,6 @@ class StaticIPAddressManager(Manager):
                     node.fqdn IS NULL))"""
             query_parms += [IPADDRESS_TYPE.USER_RESERVED]
 
-        default_domain = Domain.objects.get_default_domain()
         mapping = defaultdict(HostnameIPMapping)
         cursor = connection.cursor()
         cursor.execute(sql_query, query_parms)
@@ -620,7 +622,9 @@ class StaticIPAddressManager(Manager):
             entry.dnsresource_id = result.dnsresource_id
         return mapping
 
-    def get_hostname_ip_mapping(self, domain_or_subnet, raw_ttl=False):
+    def get_hostname_ip_mapping(
+        self, domain_id: int | None = None, raw_ttl: bool = False
+    ):
         """Return hostname mappings for `StaticIPAddress` entries.
 
         Returns a mapping `{hostnames -> (ttl, [ips])}` corresponding to
@@ -708,7 +712,7 @@ class StaticIPAddressManager(Manager):
                 staticip.id = link.staticipaddress_id
             """
         )
-        if isinstance(domain_or_subnet, Domain):
+        if domain_id is not None:
             # The model has nodes in the parent domain, but they actually live
             # in the child domain.  And the parent needs the glue.  So we
             # return such nodes addresses in _BOTH_ the parent and the child
@@ -722,7 +726,7 @@ class StaticIPAddressManager(Manager):
             WHERE
                 (domain2.id = %s OR node.domain_id = %s) AND
             """
-            query_parms = [domain_or_subnet.id, domain_or_subnet.id]
+            query_parms = [domain_id, domain_id]
         else:
             # For subnets, we need ALL the names, so that we can correctly
             # identify which ones should have the FQDN.  dns/zonegenerator.py
@@ -789,7 +793,7 @@ class StaticIPAddressManager(Manager):
                 staticip.id = link.staticipaddress_id
             """
         )
-        if isinstance(domain_or_subnet, Domain):
+        if domain_id is not None:
             # This logic is similar to the logic in sql_query above.
             iface_sql_query += """
             LEFT JOIN maasserver_domain AS domain2 ON
@@ -820,7 +824,7 @@ class StaticIPAddressManager(Manager):
             """
         # We get user reserved et al mappings first, so that we can overwrite
         # TTL as we process the return from the SQL horror above.
-        mapping = self._get_special_mappings(domain_or_subnet, raw_ttl)
+        mapping = self._get_special_mappings(domain_id, raw_ttl)
         # All of the mappings that we got mean that we will only want to add
         # addresses for the boot interface (is_boot == True).
         iface_is_boot = defaultdict(

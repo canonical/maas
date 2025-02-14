@@ -426,7 +426,7 @@ class TestRenderRRData(MAASServerTestCase):
             domain, raw_ttl=True
         )
         ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
-            domain, raw_ttl=True
+            domain.id, raw_ttl=True
         )
         for hostname, info in ip_map.items():
             hostname = hostname[: -len(domain.name) - 1]

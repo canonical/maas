@@ -37,7 +37,7 @@ class TestDomainHandler(MAASServerTestCase):
             "is_default": domain.is_default(),
         }
         ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
-            domain, raw_ttl=True
+            domain.id, raw_ttl=True
         )
         rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
             domain, raw_ttl=True, with_ids=True

@@ -64,11 +64,11 @@ def sequence(thing):
         return [thing]
 
 
-def get_hostname_ip_mapping(domain_or_subnet):
+def get_hostname_ip_mapping(domain_id: int | None = None):
     """Return a mapping {hostnames -> info} for the allocated nodes in
     `domain` or `subnet`.  Info contains: ttl, ips, system_id.
     """
-    return StaticIPAddress.objects.get_hostname_ip_mapping(domain_or_subnet)
+    return StaticIPAddress.objects.get_hostname_ip_mapping(domain_id)
 
 
 def get_hostname_dnsdata_mapping(domain):
@@ -271,7 +271,7 @@ class ZoneGenerator:
             # discard that part of the return.
             mapping = {
                 separate_fqdn(hostname, domainname=domain.name)[0]: info
-                for hostname, info in mappings[domain].items()
+                for hostname, info in mappings[domain.id].items()
             }
             # 2a. Create non-address records.  Specifically ignore any CNAME
             # records that collide with addresses in mapping.
@@ -557,10 +557,10 @@ class ZoneGenerator:
 
         rfc2317_glue = ZoneGenerator._generate_glue_nets(subnets)
 
-        # Since get_hostname_ip_mapping(Subnet) ignores Subnet.id, so we can
-        # just do it once and be happy.  LP#1600259
+        # get_hostname_ip_mapping expects a domain_id or None, just pass None
+        # if the mapping is not related to a domain.
         if len(subnets):
-            mappings["reverse"] = mappings[Subnet.objects.first()]
+            mappings["reverse"] = mappings[None]
 
         # For each of the zones that we are generating (one or more per
         # subnet), compile the zone from:

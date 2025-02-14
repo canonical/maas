@@ -437,7 +437,7 @@ class Domain(CleanSave, TimestampedModel):
         # Smash the IP Addresses in the rrset mapping, so that the far end
         # only needs to worry about one thing.
         ip_mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
-            self, raw_ttl=True
+            self.id, raw_ttl=True
         )
         for hostname, info in ip_mapping.items():
             if (
