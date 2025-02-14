@@ -82,4 +82,9 @@ class TestBootSourceSelection(MAASServerTestCase):
         commissioning_osystem.save()
         commissioning_series.value = boot_source_selection.release
         commissioning_series.save()
-        self.assertRaises(ValidationError, boot_source_selection.delete)
+        expected = (
+            f"Unable to delete {commissioning_osystem.value} {commissioning_series.value}. "
+            "It is the operating system used for commissioning."
+        )
+        with self.assertRaisesRegex(ValidationError, expected):
+            boot_source_selection.delete()

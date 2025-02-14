@@ -70,8 +70,8 @@ class BootSourceSelection(CleanSave, TimestampedModel):
             and commissioning_series == self.release
         ):
             raise ValidationError(
-                "Unable to delete %s %s. "
-                "It is the operating system used in ephemeral environments."
+                f"Unable to delete {self.os} {self.release}. "
+                "It is the operating system used for commissioning."
             )
         else:
             return super().delete(*args, **kwargs)
