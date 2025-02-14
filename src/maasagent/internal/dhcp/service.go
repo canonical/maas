@@ -25,8 +25,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/user"
-	"strconv"
+	"os/exec"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -57,27 +56,45 @@ var (
 	ErrFailedToPostNotifications = errors.New("error processing lease notifications")
 )
 
-var writeConfigFile = func(path string, data []byte, mode os.FileMode, userName string, groupName string) error {
-	userID, err := user.Lookup(userName)
+var writeConfigFile func(path string, data []byte, mode os.FileMode) error
+
+var writeConfigFileSnap = atomicfile.WriteFile
+
+var writeConfigFileDeb = func(path string, data []byte, mode os.FileMode) error {
+	scriptPath := "/usr/lib/maas/maas-write-file"
+	fileName := path
+	modeStr := fmt.Sprintf("%d", mode)
+
+	// create the command that runs maas-write-file
+	// #nosec G204: the inputs are sanitized and validated by `maas-write-file`
+	cmd := exec.Command(scriptPath, fileName, modeStr)
+
+	// feed the script by piping the data to stdin
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
 	}
 
-	groupID, err := user.LookupGroup(groupName)
-	if err != nil {
+	// start script
+	if err = cmd.Start(); err != nil {
 		return err
 	}
 
-	//nolint:errcheck // On POSIX systems, this is a decimal number representing the uid
-	uid, _ := strconv.Atoi(userID.Uid)
-	//nolint:errcheck // On POSIX systems, this is a decimal number representing the gid
-	gid, _ := strconv.Atoi(groupID.Gid)
-
-	if err := atomicfile.WriteFile(path, data, mode); err != nil {
+	// write to stdin
+	if err = func() error {
+		defer func() {
+			if closeErr := stdin.Close(); closeErr != nil {
+				err = closeErr
+			}
+		}()
+		_, err = stdin.Write(data)
+		return err
+	}(); err != nil {
 		return err
 	}
 
-	if err := os.Chown(path, uid, gid); err != nil {
+	// wait for the script to finish
+	if err = cmd.Wait(); err != nil {
 		return err
 	}
 
@@ -108,6 +125,15 @@ type omapiClientFactory func(net.Conn, omapi.Authenticator) (omapi.OMAPI, error)
 type dataPathFactory func(string) string
 
 type DHCPServiceOption func(*DHCPService)
+
+// Initialize the writeConfigFile based on the MAAS installation method
+func init() {
+	if _, isSnap := os.LookupEnv("SNAP"); isSnap {
+		writeConfigFile = writeConfigFileSnap
+	} else {
+		writeConfigFile = writeConfigFileDeb
+	}
+}
 
 func NewDHCPService(
 	systemID string,
@@ -490,10 +516,8 @@ func (s *DHCPService) configureViaFile(ctx context.Context) error {
 			v6[1] = hasData
 		}
 
-		// write and own file by root:root to allow dhcpd service to access the files in DEB
-		// see: https://bugs.launchpad.net/maas/+bug/2097505
 		path := s.dataPathFactory(file)
-		if err := writeConfigFile(path, data, mode, "root", "root"); err != nil {
+		if err := writeConfigFile(path, data, mode); err != nil {
 			return err
 		}
 	}
