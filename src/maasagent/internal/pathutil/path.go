@@ -31,3 +31,13 @@ func GetDataPath(path string) string {
 
 	return filepath.Join("/var/lib/maas", path)
 }
+
+func GetMAASDataPath(path string) string {
+	maasDir := os.Getenv("MAAS_DATA")
+
+	if maasDir != "" {
+		return filepath.Join(filepath.Clean(maasDir), path)
+	}
+
+	return filepath.Join("/var/lib/maas", path)
+}

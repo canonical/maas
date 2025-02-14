@@ -147,7 +147,7 @@ func NewDHCPService(
 		controllerV6:       controllerV6,
 		omapiConnFactory:   net.Dial,
 		omapiClientFactory: omapi.NewClient,
-		dataPathFactory:    pathutil.GetDataPath,
+		dataPathFactory:    pathutil.GetMAASDataPath,
 		runningV4:          &atomic.Bool{},
 		runningV6:          &atomic.Bool{},
 		running:            &atomic.Bool{},

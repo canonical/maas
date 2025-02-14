@@ -50,3 +50,33 @@ func TestGetDataPath(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMAASDataPath(t *testing.T) {
+	testcases := map[string]struct {
+		in  func(t *testing.T)
+		out string
+	}{
+		"snap": {
+			in: func(t *testing.T) {
+				t.Setenv("MAAS_DATA", "/var/snap/maas/common")
+			},
+			out: "/var/snap/maas/common/foo",
+		},
+		"deb": {
+			in: func(t *testing.T) {
+				t.Setenv("MAAS_DATA", "")
+			}, out: "/var/lib/maas/foo",
+		},
+	}
+
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			tc.in(t)
+
+			res := GetMAASDataPath("foo")
+			assert.Equal(t, tc.out, res)
+		})
+	}
+}
