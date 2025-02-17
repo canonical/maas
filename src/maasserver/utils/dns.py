@@ -7,7 +7,6 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import _lazy_re_compile, URLValidator
-from netaddr import AddrFormatError, IPAddress, ipv6_full
 
 
 def validate_domain_name(name):
@@ -71,42 +70,6 @@ def validate_hostname(hostname):
             "Host label cannot contain underscore: %r." % host_part
         )
     validate_domain_name(hostname)
-
-
-def get_ip_based_hostname(ip):
-    """Given the specified IP address (which must be suitable to convert to
-    a netaddr.IPAddress), creates an automatically generated hostname by
-    converting the '.' or ':' characters in it to '-' characters.
-
-    For IPv6 address which represent an IPv4-compatible or IPv4-mapped
-    address, the IPv4 representation will be used.
-
-    :param ip: The IPv4 or IPv6 address (can be an integer or string)
-    """
-    try:
-        hostname = IPAddress(ip, version=4).format().replace(".", "-")
-    except AddrFormatError:
-        hostname = IPAddress(ip, version=6).format(ipv6_full).replace(":", "-")
-    return hostname
-
-
-def get_iface_name_based_hostname(iface_name):
-    """Given the specified interface name, creates an automatically generated
-    hostname by converting the '_' characters in it to '-' characters, and by
-    removing any non-letters in the beginning of the name, and
-    non-letters-or-digits from the end.
-
-    Note that according to RFC 952 <http://www.faqs.org/rfcs/rfc952.html> the
-    lexical grammar of a name is given by
-
-    <name>  ::= <let>[*[<let-or-digit-or-hyphen>]<let-or-digit>]
-
-    :param iface_name: Input value for the interface name.
-    """
-    hostname = iface_name.replace("_", "-")
-    hostname = re.sub(r"^[^a-zA-Z]+", "", hostname)
-    hostname = re.sub(r"[^a-zA-Z0-9]+$", "", hostname)
-    return hostname
 
 
 def validate_url(url, schemes=("http", "https")):

@@ -32,6 +32,7 @@ from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import MAASQueriesMixin
 
 # Labels are at most 63 octets long, and a name can be many of them.
@@ -423,7 +424,7 @@ class Domain(CleanSave, TimestampedModel):
         suitable for converting to JSON.
 
         :return: data"""
-        from maasserver.models import DNSData, StaticIPAddress
+        from maasserver.models import DNSData
 
         if include_dnsdata is True:
             rr_mapping = DNSData.objects.get_hostname_dnsdata_mapping(
@@ -436,8 +437,10 @@ class Domain(CleanSave, TimestampedModel):
             rr_mapping = defaultdict(HostnameRRsetMapping)
         # Smash the IP Addresses in the rrset mapping, so that the far end
         # only needs to worry about one thing.
-        ip_mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
-            self.id, raw_ttl=True
+        ip_mapping = (
+            service_layer.services.staticipaddress.get_hostname_ip_mapping(
+                int(self.id), raw_ttl=True
+            )
         )
         for hostname, info in ip_mapping.items():
             if (

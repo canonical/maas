@@ -14,8 +14,8 @@ from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import DEFAULT_DOMAIN_NAME, Domain
-from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.permissions import NodePermission
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -425,8 +425,10 @@ class TestRenderRRData(MAASServerTestCase):
         rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
             domain, raw_ttl=True
         )
-        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
-            domain.id, raw_ttl=True
+        ip_map = (
+            service_layer.services.staticipaddress.get_hostname_ip_mapping(
+                domain.id, raw_ttl=True
+            )
         )
         for hostname, info in ip_map.items():
             hostname = hostname[: -len(domain.name) - 1]

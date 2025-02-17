@@ -21,8 +21,10 @@ class ConfigurationsService(Service):
 
     # We inherit this from the django legacy implementation. When we will have moved away, we can refactor the way we store the
     # configurations and provide a proper typing. For the time being, the consumer has to know how to consume the configuration.
-    async def get(self, name: str) -> Any:
+    async def get(self, name: str, default=None) -> Any:
         configuration = await self.configurations_repository.get(name)
+        # TODO: get the value from the default config (src/maasserver/models/config.py)
+        # if the value is not in the db.
         if not configuration:
-            return None
+            return default
         return configuration.value

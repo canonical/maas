@@ -8,7 +8,8 @@ from random import choice, randint
 from django.core.exceptions import ValidationError
 from netaddr import IPAddress
 
-from maasserver.models import DNSData, DNSResource, Domain, StaticIPAddress
+from maasserver.models import DNSData, DNSResource, Domain
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks, reload_object
@@ -36,8 +37,10 @@ class TestDomainHandler(MAASServerTestCase):
             "created": dehydrate_datetime(domain.created),
             "is_default": domain.is_default(),
         }
-        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
-            domain.id, raw_ttl=True
+        ip_map = (
+            service_layer.services.staticipaddress.get_hostname_ip_mapping(
+                domain.id, raw_ttl=True
+            )
         )
         rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
             domain, raw_ttl=True, with_ids=True

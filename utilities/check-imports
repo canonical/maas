@@ -236,6 +236,7 @@ CommonRule = Rule(
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
     Allow("OpenSSL|OpenSSL.**"),
+    Allow("netaddr|netaddr.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")

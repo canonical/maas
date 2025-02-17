@@ -276,9 +276,22 @@ class ServiceCollectionV3:
                 context
             ),
         )
+        services.dnspublications = DNSPublicationsService(
+            context=context,
+            temporal_service=services.temporal,
+            dnspublication_repository=DNSPublicationRepository(context),
+        )
+        services.domains = DomainsService(
+            context=context,
+            configurations_service=services.configurations,
+            dnspublications_service=services.dnspublications,
+            domains_repository=DomainsRepository(context),
+        )
         services.staticipaddress = StaticIPAddressService(
             context=context,
             temporal_service=services.temporal,
+            configurations_service=services.configurations,
+            domains_service=services.domains,
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
         services.subnets = SubnetsService(
@@ -298,17 +311,6 @@ class ServiceCollectionV3:
             subnets_service=services.subnets,
             interfaces_service=services.interfaces,
             fabrics_repository=FabricsRepository(context),
-        )
-        services.dnspublications = DNSPublicationsService(
-            context=context,
-            temporal_service=services.temporal,
-            dnspublication_repository=DNSPublicationRepository(context),
-        )
-        services.domains = DomainsService(
-            context=context,
-            configurations_service=services.configurations,
-            dnspublications_service=services.dnspublications,
-            domains_repository=DomainsRepository(context),
         )
         services.dnsresources = DNSResourcesService(
             context=context,

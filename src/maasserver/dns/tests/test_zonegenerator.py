@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from netaddr import IPAddress, IPNetwork
 from testtools import TestCase
 
+from maascommon.dns import HostnameIPMapping
 from maasserver import server_address
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
@@ -30,10 +31,7 @@ from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import Config, Domain, Subnet
 from maasserver.models.dnsdata import HostnameRRsetMapping
-from maasserver.models.staticipaddress import (
-    HostnameIPMapping,
-    StaticIPAddress,
-)
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (

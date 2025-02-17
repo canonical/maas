@@ -10,6 +10,7 @@ from itertools import chain
 import attr
 from netaddr import IPAddress, IPNetwork
 
+from maascommon.dns import HostnameIPMapping
 from maasserver import logger
 from maasserver.enum import IPRANGE_TYPE, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
@@ -18,12 +19,9 @@ from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
 from maasserver.models.iprange import IPRange
-from maasserver.models.staticipaddress import (
-    HostnameIPMapping,
-    StaticIPAddress,
-)
 from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_addresses
+from maasserver.sqlalchemy import service_layer
 from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
@@ -68,7 +66,9 @@ def get_hostname_ip_mapping(domain_id: int | None = None):
     """Return a mapping {hostnames -> info} for the allocated nodes in
     `domain` or `subnet`.  Info contains: ttl, ips, system_id.
     """
-    return StaticIPAddress.objects.get_hostname_ip_mapping(domain_id)
+    return service_layer.services.staticipaddress.get_hostname_ip_mapping(
+        domain_id
+    )
 
 
 def get_hostname_dnsdata_mapping(domain):
