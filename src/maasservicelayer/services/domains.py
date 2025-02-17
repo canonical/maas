@@ -1,25 +1,56 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+import re
 from typing import List
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import DomainsRepository
+from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
+
+# Labels are at most 63 octets long, and a name can be many of them
+LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
+NAMESPEC = rf"({LABEL}[.])*{LABEL}[.]?"
 
 
 class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
     def __init__(
         self,
         context: Context,
+        configurations_service: ConfigurationsService,
         dnspublications_service: DNSPublicationsService,
         domains_repository: DomainsRepository,
     ):
         super().__init__(context, domains_repository)
         self.dnspublications_service = dnspublications_service
+        self.configurations_service = configurations_service
+
+    async def pre_create_hook(self, builder: DomainBuilder) -> None:
+        # Same name validation as maasserver.models.domain.validate_domain_name
+        namespec = re.compile(f"^{NAMESPEC}$")
+        name = builder.name
+        assert isinstance(name, str)
+        if len(name) > 255:
+            raise ValidationException.build_for_field(
+                field="name",
+                message="Domain name cannot exceed 255 characters.",
+            )
+        if not namespec.match(name):
+            disallowed_chars = re.sub("[a-zA-Z0-9-.]*", "", name)
+            if disallowed_chars:
+                raise ValueError("Domain name contains invalid characters.")
+            raise ValueError("Invalid domain name.")
+        if name == await self.configurations_service.get(
+            "maas_internal_domain"
+        ):
+            raise ValueError(
+                "Domain name cannot duplicate MAAS internal domain."
+            )
 
     async def post_create_hook(self, resource: Domain) -> None:
         if resource.authoritative:

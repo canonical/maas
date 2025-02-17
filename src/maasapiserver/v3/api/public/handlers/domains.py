@@ -5,11 +5,13 @@ from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.domains import DomainRequest
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -97,6 +99,36 @@ class DomainsHandler(Handler):
         if not domain:
             return NotFoundResponse()
 
+        response.headers["ETag"] = domain.etag()
+        return DomainResponse.from_model(
+            domain=domain, self_base_hyperlink=f"{V3_API_PREFIX}/domains"
+        )
+
+    @handler(
+        path="/domains",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {
+                "model": DomainResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            409: {"model": ConflictBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def create_domain(
+        self,
+        response: Response,
+        domain_request: DomainRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        domain = await services.domains.create(domain_request.to_builder())
         response.headers["ETag"] = domain.etag()
         return DomainResponse.from_model(
             domain=domain, self_base_hyperlink=f"{V3_API_PREFIX}/domains"

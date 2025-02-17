@@ -306,6 +306,7 @@ class ServiceCollectionV3:
         )
         services.domains = DomainsService(
             context=context,
+            configurations_service=services.configurations,
             dnspublications_service=services.dnspublications,
             domains_repository=DomainsRepository(context),
         )

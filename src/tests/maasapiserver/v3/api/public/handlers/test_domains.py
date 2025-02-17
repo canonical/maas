@@ -3,16 +3,25 @@
 
 from unittest.mock import Mock
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.domains import DomainRequest
 from maasapiserver.v3.api.public.models.responses.domains import (
     DomainResponse,
     DomainsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services import ServiceCollectionV3
@@ -47,7 +56,9 @@ class TestDomainsApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
+        ]
 
     async def test_list_domains_one_page(
         self,
@@ -138,6 +149,89 @@ class TestDomainsApi(ApiCommonTests):
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    async def test_post_valid_domain_401(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        domain_request = DomainRequest(
+            name=TEST_DOMAIN.name, authoritative=TEST_DOMAIN.authoritative
+        )
+        services_mock.domains = Mock(DomainsService)
+        services_mock.domains.create.return_value = TEST_DOMAIN
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(domain_request)
+        )
+        assert response.status_code == 201
+        assert len(response.headers["ETag"]) > 0
+        domain_response = DomainResponse(**response.json())
+        assert domain_response.id > 1
+        assert domain_response.name == domain_request.name
+        assert domain_response.authoritative == domain_request.authoritative
+        assert (
+            domain_response.hal_links.self.href
+            == f"{self.BASE_PATH}/{domain_response.id}"
+        )
+
+    async def test_post_duplicate_409(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        domain_request = DomainRequest(name="domain")
+        services_mock.domains = Mock(DomainsService)
+        services_mock.domains.create.side_effect = [
+            TEST_DOMAIN,
+            AlreadyExistsException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                        message="A resource with such identifiers already exists.",
+                    )
+                ]
+            ),
+        ]
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(domain_request)
+        )
+
+        assert response.status_code == 201
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(domain_request)
+        )
+        assert response.status_code == 409
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+        assert len(error_response.details) == 1
+        assert error_response.details[0].type == "UniqueConstraintViolation"
+        assert "already exists" in error_response.details[0].message
+
+    @pytest.mark.parametrize(
+        "domain_request",
+        [{"name": ""}, {"name": "$domain"}],
+    )
+    async def test_post_invalid_name_422(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        domain_request: dict[str, str],
+    ) -> None:
+        services_mock.domains = Mock(DomainsService)
+        services_mock.domains.create.side_effect = ValueError(
+            "Invalid domain name."
+        )
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=domain_request
+        )
+        assert response.status_code == 422
 
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
