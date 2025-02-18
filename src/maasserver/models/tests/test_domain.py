@@ -9,9 +9,10 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import ProtectedError
 from netaddr import IPAddress
 
+from maascommon.dns import HostnameRRsetMapping
 from maasserver.dns.zonegenerator import get_hostname_dnsdata_mapping, lazydict
 from maasserver.models.config import Config
-from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
+from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import DEFAULT_DOMAIN_NAME, Domain
 from maasserver.permissions import NodePermission
@@ -233,7 +234,7 @@ class TestDomain(MAASServerTestCase):
         default_name = Domain.objects.get_default_domain().name
         factory.make_Domain(name=f"{name}.{parent.name}")
         mappings = lazydict(get_hostname_dnsdata_mapping)
-        mapping = mappings[parent]
+        mapping = mappings[parent.id]
         parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(rrset={(30, "NS", default_name)})
         self.assertEqual(expected_map, mapping[name])
@@ -259,7 +260,7 @@ class TestDomain(MAASServerTestCase):
             rrdata=f"{other_name}.{parent.name}.",
         )
         mappings = lazydict(get_hostname_dnsdata_mapping)
-        mapping = mappings[parent]
+        mapping = mappings[parent.id]
         parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = {
             name: HostnameRRsetMapping(
@@ -304,7 +305,7 @@ class TestDomain(MAASServerTestCase):
             rrdata=f"{other_name}.{parent.name}.",
         )
         mappings = lazydict(get_hostname_dnsdata_mapping)
-        mapping = mappings[parent]
+        mapping = mappings[parent.id]
         expected_map = {
             name: HostnameRRsetMapping(
                 rrset={
@@ -333,7 +334,7 @@ class TestDomain(MAASServerTestCase):
         factory.make_Domain(name=f"{name}.{parent.name}")
         default_name = Domain.objects.get_default_domain().name
         mappings = lazydict(get_hostname_dnsdata_mapping)
-        mapping = mappings[parent]
+        mapping = mappings[parent.id]
         parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(rrset={(30, "NS", default_name)})
         self.assertEqual(expected_map, mapping[name])
@@ -345,7 +346,7 @@ class TestDomain(MAASServerTestCase):
         default_name = Domain.objects.get_default_domain().name
         factory.make_Domain(name=f"{factory.make_name()}.{child.name}")
         mappings = lazydict(get_hostname_dnsdata_mapping)
-        mapping = mappings[parent]
+        mapping = mappings[parent.id]
         parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(rrset={(30, "NS", default_name)})
         self.assertEqual(expected_map, mapping[name])
@@ -364,7 +365,7 @@ class TestDomain(MAASServerTestCase):
             name="@", domain=child, rrtype="NS", rrdata=ns_name
         )
         mappings = lazydict(get_hostname_dnsdata_mapping)
-        mapping = mappings[parent]
+        mapping = mappings[parent.id]
         parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(rrset={(30, "NS", ns_name)})
         self.assertEqual(expected_map, mapping[name])
@@ -422,8 +423,8 @@ class TestDomain(MAASServerTestCase):
 
 class TestRenderRRData(MAASServerTestCase):
     def render_rrdata(self, domain, for_list=False):
-        rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
-            domain, raw_ttl=True
+        rr_map = service_layer.services.domains.get_hostname_dnsdata_mapping(
+            domain.id, raw_ttl=True
         )
         ip_map = (
             service_layer.services.staticipaddress.get_hostname_ip_mapping(

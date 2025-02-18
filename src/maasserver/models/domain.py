@@ -28,6 +28,7 @@ from django.db.models.query import QuerySet
 from django.utils import timezone
 from netaddr import IPAddress
 
+from maascommon.dns import HostnameRRsetMapping
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -424,16 +425,14 @@ class Domain(CleanSave, TimestampedModel):
         suitable for converting to JSON.
 
         :return: data"""
-        from maasserver.models import DNSData
 
         if include_dnsdata is True:
-            rr_mapping = DNSData.objects.get_hostname_dnsdata_mapping(
-                self, raw_ttl=True
+            rr_mapping = (
+                service_layer.services.domains.get_hostname_dnsdata_mapping(
+                    self.id, raw_ttl=True
+                )
             )
         else:
-            # Circular imports.
-            from maasserver.models.dnsdata import HostnameRRsetMapping
-
             rr_mapping = defaultdict(HostnameRRsetMapping)
         # Smash the IP Addresses in the rrset mapping, so that the far end
         # only needs to worry about one thing.

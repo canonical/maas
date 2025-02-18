@@ -7,11 +7,13 @@ import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
 
+from maascommon.dns import HostnameRRsetMapping
 from maasserver.models.config import Config
-from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
+from maasserver.models.dnsdata import DNSData
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
 from maasserver.permissions import NodePermission
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -296,7 +298,9 @@ class TestDNSDataMapping(MAASServerTestCase):
         # Add one resource to the domain which has no data, so it should not be
         # in the returned mapping.
         factory.make_DNSResource(domain=domain, no_ip_addresses=True)
-        actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        actual = service_layer.services.domains.get_hostname_dnsdata_mapping(
+            domain.id
+        )
         self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_includes_node_owner_id(self):
@@ -308,7 +312,9 @@ class TestDNSDataMapping(MAASServerTestCase):
         )
         dnsrr = factory.make_DNSResource(domain=domain, name=node_name)
         factory.make_DNSData(dnsresource=dnsrr, ip_addresses=True)
-        mapping = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        mapping = service_layer.services.domains.get_hostname_dnsdata_mapping(
+            domain.id
+        )
         self.assertEqual(mapping[node_name].user_id, user.id)
 
     def test_get_hostname_dnsdata_mapping_returns_mapping_at_domain(self):
@@ -329,14 +335,20 @@ class TestDNSDataMapping(MAASServerTestCase):
         # Add one resource to the domain which has no data, so it should not be
         # in the returned mapping.
         factory.make_DNSResource(domain=domain, no_ip_addresses=True)
-        actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        actual = service_layer.services.domains.get_hostname_dnsdata_mapping(
+            domain.id
+        )
         self.assertEqual(expected_mapping, actual)
         # We are done with dnsrr from the child domain's perspective, make it
         # look like it would if it were in the parent domain.
         dnsrr.name = name
         dnsrr.domain = parent
         expected_parent = self.make_mapping(dnsrr)
-        actual_parent = DNSData.objects.get_hostname_dnsdata_mapping(parent)
+        actual_parent = (
+            service_layer.services.domains.get_hostname_dnsdata_mapping(
+                parent.id
+            )
+        )
         self.assertEqual(expected_parent, actual_parent)
 
     def test_get_hostname_dnsdata_mapping_handles_ttl(self):
@@ -354,7 +366,11 @@ class TestDNSDataMapping(MAASServerTestCase):
             expected_mapping = {}
             for dnsrr in dom.dnsresource_set.all():
                 expected_mapping.update(self.make_mapping(dnsrr))
-            actual = DNSData.objects.get_hostname_dnsdata_mapping(dom)
+            actual = (
+                service_layer.services.domains.get_hostname_dnsdata_mapping(
+                    dom.id
+                )
+            )
             self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_returns_raw_ttl(self):
@@ -374,7 +390,9 @@ class TestDNSDataMapping(MAASServerTestCase):
             expected_mapping = {}
             for dnsrr in dom.dnsresource_set.all():
                 expected_mapping.update(self.make_mapping(dnsrr, raw_ttl=True))
-            actual = DNSData.objects.get_hostname_dnsdata_mapping(
-                dom, raw_ttl=True
+            actual = (
+                service_layer.services.domains.get_hostname_dnsdata_mapping(
+                    dom.id, raw_ttl=True
+                )
             )
             self.assertEqual(expected_mapping, actual)

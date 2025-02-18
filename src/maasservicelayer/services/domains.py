@@ -3,6 +3,7 @@
 import re
 from typing import List
 
+from maascommon.dns import HostnameRRsetMapping
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
@@ -97,3 +98,13 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
 
     async def get_default_domain(self) -> Domain:
         return await self.repository.get_default_domain()
+
+    async def get_hostname_dnsdata_mapping(
+        self, domain_id: int, raw_ttl=False, with_ids=True
+    ) -> dict[str, HostnameRRsetMapping]:
+        default_ttl = await self.configurations_service.get(
+            "default_dns_ttl", default=30
+        )
+        return await self.repository.get_hostname_dnsdata_mapping(
+            domain_id, default_ttl, raw_ttl, with_ids
+        )

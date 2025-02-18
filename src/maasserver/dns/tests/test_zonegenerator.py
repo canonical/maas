@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from netaddr import IPAddress, IPNetwork
 from testtools import TestCase
 
-from maascommon.dns import HostnameIPMapping
+from maascommon.dns import HostnameIPMapping, HostnameRRsetMapping
 from maasserver import server_address
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
@@ -30,7 +30,6 @@ from maasserver.dns.zonegenerator import (
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import Config, Domain, Subnet
-from maasserver.models.dnsdata import HostnameRRsetMapping
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -281,7 +280,7 @@ class TestGetHostnameMapping(MAASServerTestCase):
                 None, {(ttl, dnsdata2.rrtype, dnsdata2.rrdata)}, None
             ),
         }
-        actual = get_hostname_dnsdata_mapping(node.domain)
+        actual = get_hostname_dnsdata_mapping(node.domain.id)
         self.assertEqual(expected_mapping, actual)
 
 

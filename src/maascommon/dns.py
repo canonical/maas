@@ -50,6 +50,48 @@ class HostnameIPMapping:
         return self.__dict__ == other.__dict__
 
 
+class HostnameRRsetMapping:
+    """This is used to return non-address information for a hostname in a way
+    that keeps life simple for the callers.  Rrset is a set of (ttl, rrtype,
+    rrdata) tuples."""
+
+    # NOTE: you MUST preserve the order of this arguments, in order not to break
+    # v2 API. Make sure the order is always (system_id, rrset, node_type,
+    # dnsresource_id, user_id). If you want to add any additional argument, do
+    # so after user_id.
+    def __init__(
+        self,
+        system_id: str | None = None,
+        rrset: set | None = None,
+        node_type: NodeTypeEnum | None = None,
+        dnsresource_id: int | None = None,
+        user_id: int | None = None,
+        # Additional arguments
+        node_id: int | None = None,
+    ):
+        self.system_id = system_id
+        self.node_type = node_type
+        self.dnsresource_id = dnsresource_id
+        self.user_id = user_id
+        self.rrset = set() if rrset is None else rrset.copy()
+        self.node_id = node_id
+
+    def __repr__(self):
+        return (
+            "HostnameRRSetMapping({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+                self.system_id,
+                self.rrset,
+                self.node_type,
+                self.dnsresource_id,
+                self.user_id,
+                self.node_id,
+            )
+        )
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+
 def get_ip_based_hostname(ip) -> str:
     """Given the specified IP address (which must be suitable to convert to
     a netaddr.IPAddress), creates an automatically generated hostname by

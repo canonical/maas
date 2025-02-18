@@ -10,12 +10,11 @@ from itertools import chain
 import attr
 from netaddr import IPAddress, IPNetwork
 
-from maascommon.dns import HostnameIPMapping
+from maascommon.dns import HostnameIPMapping, HostnameRRsetMapping
 from maasserver import logger
 from maasserver.enum import IPRANGE_TYPE, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models.config import Config
-from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
 from maasserver.models.iprange import IPRange
@@ -71,12 +70,14 @@ def get_hostname_ip_mapping(domain_id: int | None = None):
     )
 
 
-def get_hostname_dnsdata_mapping(domain):
+def get_hostname_dnsdata_mapping(domain_id: int):
     """Return a mapping {hostnames -> info} for the allocated nodes in
     `domain`.  Info contains: system_id and rrsets (which contain (ttl, rrtype,
     rrdata) tuples.
     """
-    return DNSData.objects.get_hostname_dnsdata_mapping(domain, with_ids=False)
+    return service_layer.services.domains.get_hostname_dnsdata_mapping(
+        domain_id, with_ids=False
+    )
 
 
 WARNING_MESSAGE = (
@@ -275,7 +276,7 @@ class ZoneGenerator:
             }
             # 2a. Create non-address records.  Specifically ignore any CNAME
             # records that collide with addresses in mapping.
-            other_mapping = rrset_mappings[domain]
+            other_mapping = rrset_mappings[domain.id]
 
             # 2b. Capture NS RRsets for anything that is a child of this domain
             domain.add_delegations(

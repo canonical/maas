@@ -3,11 +3,9 @@
 
 """DNSData objects."""
 
-from collections import defaultdict
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import connection
 from django.db.models import (
     CASCADE,
     CharField,
@@ -19,7 +17,6 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.config import Config
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import validate_domain_name
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -57,38 +54,6 @@ def validate_rrtype(value):
             "%s is not one of %s."
             % (value.upper(), " ".join(SUPPORTED_RRTYPES))
         )
-
-
-class HostnameRRsetMapping:
-    """This is used to return non-address information for a hostname in a way
-    that keeps life simple for the callers.  Rrset is a set of (ttl, rrtype,
-    rrdata) tuples."""
-
-    def __init__(
-        self,
-        system_id=None,
-        rrset: set = None,
-        node_type=None,
-        dnsresource_id=None,
-        user_id=None,
-    ):
-        self.system_id = system_id
-        self.node_type = node_type
-        self.dnsresource_id = dnsresource_id
-        self.user_id = user_id
-        self.rrset = set() if rrset is None else rrset.copy()
-
-    def __repr__(self):
-        return "HostnameRRSetMapping({!r}, {!r}, {!r}, {!r}, {!r})".format(
-            self.system_id,
-            self.rrset,
-            self.node_type,
-            self.dnsresource_id,
-            self.user_id,
-        )
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
 
 
 class DNSDataQueriesMixin(MAASQueriesMixin):
@@ -139,136 +104,6 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
             return dnsdata
         else:
             raise PermissionDenied()
-
-    def get_hostname_dnsdata_mapping(
-        self, domain, raw_ttl=False, with_ids=True
-    ):
-        """Return hostname to RRset mapping for this domain."""
-        cursor = connection.cursor()
-        default_ttl = "%d" % Config.objects.get_config("default_dns_ttl")
-        if raw_ttl:
-            ttl_clause = """dnsdata.ttl"""
-        else:
-            ttl_clause = (
-                """
-                COALESCE(
-                    dnsdata.ttl,
-                    domain.ttl,
-                    %s)"""
-                % default_ttl
-            )
-        sql_query = (
-            """
-            SELECT
-                dnsresource.id,
-                dnsresource.name,
-                domain.name,
-                node.system_id,
-                node.node_type,
-                node.user_id,
-                dnsdata.id,
-                """
-            + ttl_clause
-            + """ AS ttl,
-                dnsdata.rrtype,
-                dnsdata.rrdata
-            FROM maasserver_dnsdata AS dnsdata
-            JOIN maasserver_dnsresource AS dnsresource ON
-                dnsdata.dnsresource_id = dnsresource.id
-            JOIN maasserver_domain as domain ON
-                dnsresource.domain_id = domain.id
-            LEFT JOIN
-                (
-                    /* Create a "node" that has the fields we care about and
-                     * also has a "fqdn" field.
-                     * The fqdn requires that we fetch domain[node.domain_id]
-                     * which, in turn, means that we need this inner select.
-                     */
-                    SELECT
-                        nd.hostname AS hostname,
-                        nd.system_id AS system_id,
-                        nd.node_type AS node_type,
-                        nd.owner_id AS user_id ,
-                        nd.domain_id AS domain_id,
-                        CONCAT(nd.hostname, '.', dom.name) AS fqdn
-                    FROM maasserver_node AS nd
-                    JOIN maasserver_domain AS dom ON
-                        nd.domain_id = dom.id
-                ) AS node ON (
-                    /* We get the various node fields in the final result for
-                     * any resource records that have an FQDN equal to the
-                     * respective node.  Because of how names at the top of a
-                     * domain are handled (we hide the fact from the user and
-                     * put the node in the parent domain, but all the actual
-                     * data lives in the child domain), we need to merge the
-                     * two views of the world.
-                     * If either this is the right node (node name and domain
-                     * match, or dnsresource name is '@' and the node fqdn is
-                     * the domain name), then we include the information about
-                     * the node.
-                     */
-                    (
-                        dnsresource.name = node.hostname AND
-                        dnsresource.domain_id = node.domain_id
-                    ) OR
-                    (
-                        dnsresource.name = '@' AND
-                        node.fqdn = domain.name
-                    )
-                )
-            WHERE
-                /* The entries must be in this domain (though node.domain_id
-                 * may be out-of-domain and that's OK.
-                 * Additionally, if there is a CNAME and a node, then the node
-                 * wins, and we drop the CNAME until the node no longer has the
-                 * same name.
-                 */
-                (dnsresource.domain_id = %s OR node.fqdn IS NOT NULL) AND
-                (dnsdata.rrtype != 'CNAME' OR node.fqdn IS NULL)
-            ORDER BY
-                dnsresource.name,
-                dnsdata.rrtype,
-                dnsdata.rrdata
-            """
-        )
-        # N.B.: The "node.hostname IS NULL" above is actually checking that
-        # no node exists with the same name, in order to make sure that we do
-        # not spill CNAME and other data.
-        mapping = defaultdict(HostnameRRsetMapping)
-        cursor.execute(sql_query, (domain.id,))
-        for (
-            dnsresource_id,
-            name,
-            d_name,
-            system_id,
-            node_type,
-            user_id,
-            dnsdata_id,
-            ttl,
-            rrtype,
-            rrdata,
-        ) in cursor.fetchall():
-            if name == "@" and d_name != domain.name:
-                name, d_name = d_name.split(".", 1)
-                # Since we don't allow more than one label in dnsresource
-                # names, we should never ever be wrong in this assertion.
-                assert d_name == domain.name, (
-                    "Invalid domain; expected '{}' == '{}'".format(
-                        d_name,
-                        domain.name,
-                    )
-                )
-            entry = mapping[name]
-            entry.node_type = node_type
-            entry.system_id = system_id
-            entry.user_id = user_id
-            if with_ids:
-                entry.dnsresource_id = dnsresource_id
-                rrtuple = (ttl, rrtype, rrdata, dnsdata_id)
-            else:
-                rrtuple = (ttl, rrtype, rrdata)
-            entry.rrset.add(rrtuple)
-        return mapping
 
 
 class DNSData(CleanSave, TimestampedModel):
