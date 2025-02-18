@@ -365,6 +365,15 @@ class PowerDriver(PowerDriverBase):
             raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
     @inlineCallbacks
+    def reset(self, system_id, context):
+        """Performs the power reset action for `system_id`.
+
+        Do not override `cycle` method unless you want to provide custom logic
+        on how retries and error detection is handled.
+        """
+        yield self.perform_power(self.power_reset, "on", system_id, context)
+
+    @inlineCallbacks
     def perform_power(self, power_func, state_desired, system_id, context):
         """Provides the logic to perform the power actions.
 

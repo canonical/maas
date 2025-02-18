@@ -60,7 +60,7 @@ def add_arguments(parser):
     parser.add_argument(
         "command",
         help="Power driver command.",
-        choices=["status", "on", "cycle", "off"],
+        choices=["status", "on", "cycle", "off", "reset"],
     )
 
     # NOTE: In python 3.7 and above required=True can be passed to add_subparsers.
@@ -91,6 +91,8 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
         await driver.cycle(None, context)
     elif command == "off":
         await driver.off(None, context)
+    elif command == "reset":
+        await driver.reset(None, context)
     elif command == "set-boot-order" and driver.can_set_boot_order:
         order = []
         if hasattr(args, "order"):
