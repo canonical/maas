@@ -10,6 +10,11 @@ MISSING_PERMISSIONS_VIOLATION_TYPE = "MissingPermissionViolation"
 NOT_AUTHENTICATED_VIOLATION_TYPE = "NotAuthenticatedViolation"
 USER_EXTERNAL_VALIDATION_FAILED = "UserExternalValidationFailed"
 
+# Domains
+CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE = (
+    "CannotDeleteDefaultDomainViolation"
+)
+
 # Fabrics
 CANNOT_DELETE_DEFAULT_FABRIC_VIOLATION_TYPE = (
     "CannotDeleteDefaultFabricViolation"

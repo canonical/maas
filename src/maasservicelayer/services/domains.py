@@ -8,7 +8,14 @@ from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import DomainsRepository
-from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE,
+)
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
@@ -85,6 +92,18 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
 
     async def post_update_many_hook(self, resources: List[Domain]) -> None:
         raise NotImplementedError("Not implemented yet.")
+
+    async def pre_delete_hook(self, resource: Domain) -> None:
+        default_domain = await self.get_default_domain()
+        if resource.id == default_domain.id:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE,
+                        message="The default domain cannot be deleted.",
+                    )
+                ]
+            )
 
     async def post_delete_hook(self, resource: Domain) -> None:
         if resource.authoritative:

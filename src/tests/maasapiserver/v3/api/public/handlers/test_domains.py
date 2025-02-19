@@ -18,8 +18,10 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -58,6 +60,7 @@ class TestDomainsApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/2"),
         ]
 
     async def test_list_domains_one_page(
@@ -236,3 +239,55 @@ class TestDomainsApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_delete_domain_with_id(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.domains = Mock(DomainsService)
+        services_mock.domains.delete_by_id.side_effect = None
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/10")
+        assert response.status_code == 204
+
+    async def test_delete_domain_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.domains = Mock(DomainsService)
+        services_mock.domains.delete_by_id.side_effect = None
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/10",
+            headers={"if-match": "my_etag"},
+        )
+        assert response.status_code == 204
+
+    async def test_delete_domain_wrong_etag_error(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.domains = Mock(DomainsService)
+        services_mock.domains.delete_by_id.side_effect = [
+            PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                        message="The etag 'wrong_etag' did not match etag 'my_etag'.",
+                    )
+                ]
+            ),
+            None,
+        ]
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/10",
+            headers={"if-match": "wrong_etag"},
+        )
+        assert response.status_code == 412
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 412
+        assert error_response.message == "A precondition has failed."
+        assert (
+            error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
+        )

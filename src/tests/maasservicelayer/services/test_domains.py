@@ -9,7 +9,13 @@ from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import DomainsRepository
-from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services.base import BaseService
@@ -384,3 +390,27 @@ class TestDomainsService:
             source="removed zone example.com",
             action=DnsUpdateAction.RELOAD,
         )
+
+    async def test_delete_default_domain_error(self) -> None:
+        domains_repository = Mock(DomainsRepository)
+
+        domain = Domain(
+            id=1,
+            name="default_domain",
+            authoritative=True,
+        )
+        domains_repository.get_by_id.return_value = domain
+        domains_repository.get_default_domain.return_value = domain
+        domains_service = DomainsService(
+            context=Context(),
+            configurations_service=Mock(ConfigurationsService),
+            dnspublications_service=Mock(DNSPublicationsService),
+            domains_repository=domains_repository,
+        )
+        with pytest.raises(BadRequestException) as e:
+            await domains_service.delete_by_id(domain.id)
+        assert (
+            e.value.details[0].type
+            == CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE
+        )
+        domains_repository.delete_by_id.assert_not_called()

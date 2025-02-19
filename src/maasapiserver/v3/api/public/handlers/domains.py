@@ -1,10 +1,14 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response
+from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
@@ -133,3 +137,28 @@ class DomainsHandler(Handler):
         return DomainResponse.from_model(
             domain=domain, self_base_hyperlink=f"{V3_API_PREFIX}/domains"
         )
+
+    @handler(
+        path="/domains/{domain_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            400: {"model": BadRequestBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_domain(
+        self,
+        domain_id: int,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.domains.delete_by_id(domain_id, etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
