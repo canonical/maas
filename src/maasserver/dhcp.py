@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DHCP management module."""
@@ -9,22 +9,15 @@ from itertools import groupby
 from operator import itemgetter
 from typing import Iterable, Optional, Union
 
-from django.conf import settings
 from django.db.models import Q
 from netaddr import IPAddress, IPNetwork
-from twisted.internet.defer import inlineCallbacks
 
 from maascommon.workflows.dhcp import CONFIGURE_DHCP_WORKFLOW_NAME
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
     get_dns_server_addresses,
 )
-from maasserver.enum import (
-    INTERFACE_TYPE,
-    IPADDRESS_TYPE,
-    IPRANGE_TYPE,
-    SERVICE_STATUS,
-)
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, IPRANGE_TYPE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import (
     Config,
@@ -32,26 +25,21 @@ from maasserver.models import (
     Domain,
     RackController,
     ReservedIP,
-    Service,
     StaticIPAddress,
     Subnet,
     VLAN,
 )
 from maasserver.models.subnet import get_boot_rackcontroller_ips
-from maasserver.rpc import getClientFor
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
-from maasserver.utils.threads import deferToDatabase
 from maasserver.workflow import start_workflow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 from provisioningserver.dhcp.config import get_config_v4, get_config_v6
 from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.rpc.cluster import ConfigureDHCPv4, ConfigureDHCPv6
-from provisioningserver.rpc.clusterservice import DHCP_TIMEOUT
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.text import split_string_list
-from provisioningserver.utils.twisted import asynchronous, synchronous
+from provisioningserver.utils.twisted import synchronous
 
 log = LegacyLogger()
 
@@ -896,124 +884,6 @@ def generate_dhcp_configuration(rack_controller):
     ).decode("utf-8")
 
     return result
-
-
-@asynchronous
-@inlineCallbacks
-def configure_dhcp(rack_controller):
-    """Write the DHCP configuration files and restart the DHCP servers.
-
-    :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when there
-        are no open connections to the specified cluster controller.
-    """
-    # Let's get this out of the way first up shall we?
-    if not settings.DHCP_CONNECT:
-        # For the uninitiated, DHCP_CONNECT is set, by default, to False
-        # in all tests and True in non-tests.  This avoids unnecessary
-        # calls to async tasks.
-        return
-
-    # Get the client early; it's a cheap operation that may raise an
-    # exception, meaning we can avoid some work if it fails.
-    client = yield getClientFor(rack_controller.system_id)
-
-    # Get configuration for both IPv4 and IPv6.
-    config = yield deferToDatabase(get_dhcp_configuration, rack_controller)
-
-    # Fix interfaces to go over the wire.
-    interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
-    interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
-
-    # Configure both IPv4 and IPv6.
-    ipv4_exc, ipv6_exc = None, None
-    ipv4_status, ipv6_status = SERVICE_STATUS.UNKNOWN, SERVICE_STATUS.UNKNOWN
-
-    try:
-        yield client(
-            ConfigureDHCPv4,
-            _timeout=DHCP_TIMEOUT + 5,
-            failover_peers=config.failover_peers_v4,
-            interfaces=interfaces_v4,
-            shared_networks=config.shared_networks_v4,
-            hosts=config.hosts_v4,
-            global_dhcp_snippets=config.global_dhcp_snippets,
-            omapi_key=config.omapi_key,
-        )
-    except Exception as exc:
-        ipv4_exc = exc
-        ipv4_status = SERVICE_STATUS.DEAD
-        log.err(
-            None,
-            "Error configuring DHCPv4 on rack controller '%s (%s)': %s"
-            % (rack_controller.hostname, rack_controller.system_id, exc),
-        )
-    else:
-        if len(config.shared_networks_v4) > 0:
-            ipv4_status = SERVICE_STATUS.RUNNING
-        else:
-            ipv4_status = SERVICE_STATUS.OFF
-        log.msg(
-            "Successfully configured DHCPv4 on rack controller '%s (%s)'."
-            % (rack_controller.hostname, rack_controller.system_id)
-        )
-
-    try:
-        yield client(
-            ConfigureDHCPv6,
-            _timeout=DHCP_TIMEOUT + 5,
-            failover_peers=config.failover_peers_v6,
-            interfaces=interfaces_v6,
-            shared_networks=config.shared_networks_v6,
-            hosts=config.hosts_v6,
-            global_dhcp_snippets=config.global_dhcp_snippets,
-            omapi_key=config.omapi_key,
-        )
-    except Exception as exc:
-        ipv6_exc = exc
-        ipv6_status = SERVICE_STATUS.DEAD
-        log.err(
-            None,
-            "Error configuring DHCPv6 on rack controller '%s (%s)': %s"
-            % (rack_controller.hostname, rack_controller.system_id, exc),
-        )
-    else:
-        if len(config.shared_networks_v6) > 0:
-            ipv6_status = SERVICE_STATUS.RUNNING
-        else:
-            ipv6_status = SERVICE_STATUS.OFF
-        log.msg(
-            "Successfully configured DHCPv6 on rack controller '%s (%s)'."
-            % (rack_controller.hostname, rack_controller.system_id)
-        )
-
-    # Update the status for both services so the user is always seeing the
-    # most up to date status.
-    @transactional
-    def update_services():
-        if ipv4_exc is None:
-            ipv4_status_info = ""
-        else:
-            ipv4_status_info = str(ipv4_exc)
-        if ipv6_exc is None:
-            ipv6_status_info = ""
-        else:
-            ipv6_status_info = str(ipv6_exc)
-        Service.objects.update_service_for(
-            rack_controller, "dhcpd", ipv4_status, ipv4_status_info
-        )
-        Service.objects.update_service_for(
-            rack_controller, "dhcpd6", ipv6_status, ipv6_status_info
-        )
-
-    yield deferToDatabase(update_services)
-
-    # Raise the exceptions to the caller, it might want to retry. This raises
-    # IPv4 before IPv6 if they both fail. No specific reason for this, if
-    # the function is called again both will be performed.
-    if ipv4_exc:
-        raise ipv4_exc
-    elif ipv6_exc:
-        raise ipv6_exc
 
 
 def get_racks_by_subnet(subnet):

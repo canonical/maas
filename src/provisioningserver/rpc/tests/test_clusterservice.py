@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from hashlib import sha256
 from hmac import HMAC
@@ -21,7 +21,6 @@ from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
 from twisted.internet.testing import StringTransportWithDisconnection
 from twisted.python.failure import Failure
-from twisted.python.threadable import isInIOThread
 from twisted.web.client import Headers
 from zope.interface.verify import verifyObject
 
@@ -35,18 +34,10 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
-from provisioningserver import concurrency
 from provisioningserver.certificates import (
     Certificate,
     CertificateRequest,
     get_maas_cluster_cert_paths,
-)
-from provisioningserver.dhcp.testing.config import (
-    fix_shared_networks_failover,
-    make_failover_peer_config,
-    make_host,
-    make_interface,
-    make_shared_network,
 )
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
@@ -63,7 +54,6 @@ from provisioningserver.rpc import (
     cluster,
     clusterservice,
     common,
-    dhcp,
     exceptions,
     getRegionClient,
     pods,
@@ -95,10 +85,7 @@ from provisioningserver.utils.env import MAAS_ID, MAAS_SECRET, MAAS_UUID
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
-from provisioningserver.utils.twisted import (
-    makeDeferredWithProcessProtocol,
-    pause,
-)
+from provisioningserver.utils.twisted import makeDeferredWithProcessProtocol
 from provisioningserver.utils.version import get_running_version
 
 TIMEOUT = get_testing_timeout()
@@ -2011,171 +1998,6 @@ class TestClusterProtocol_SetBootOrder(MAASTestCase):
         )
 
         mock_get_item.return_value.set_boot_order.assert_not_called()
-
-
-class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
-    scenarios = (
-        (
-            "DHCPv4",
-            {
-                "dhcp_server": (dhcp, "DHCPv4Server"),
-                "command": cluster.ConfigureDHCPv4,
-                "make_network": factory.make_ipv4_network,
-                "make_shared_network": make_shared_network,
-                "make_shared_network_kwargs": {"with_interface": True},
-                "concurrency_lock": concurrency.dhcpv4,
-            },
-        ),
-        (
-            "DHCPv6",
-            {
-                "dhcp_server": (dhcp, "DHCPv6Server"),
-                "command": cluster.ConfigureDHCPv6,
-                "make_network": factory.make_ipv6_network,
-                "make_shared_network": make_shared_network,
-                "make_shared_network_kwargs": {"with_interface": True},
-                "concurrency_lock": concurrency.dhcpv6,
-            },
-        ),
-    )
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    assertRaises = TestCase.assertRaises
-
-    def test_is_registered(self):
-        self.assertIsNotNone(
-            Cluster().locateResponder(self.command.commandName)
-        )
-
-    @inlineCallbacks
-    def test_executes_configure_dhcp(self):
-        DHCPServer = self.patch_autospec(*self.dhcp_server)
-        configure = self.patch_autospec(dhcp, "configure")
-
-        omapi_key = factory.make_name("key")
-        failover_peers = [make_failover_peer_config()]
-        shared_networks = [
-            self.make_shared_network(**self.make_shared_network_kwargs)
-        ]
-        shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers
-        )
-        hosts = [make_host()]
-        interfaces = [make_interface()]
-
-        yield call_responder(
-            Cluster(),
-            self.command,
-            {
-                "omapi_key": omapi_key,
-                "failover_peers": failover_peers,
-                "shared_networks": shared_networks,
-                "hosts": hosts,
-                "interfaces": interfaces,
-            },
-        )
-
-        DHCPServer.assert_called_once_with(omapi_key)
-        configure.assert_called_once_with(
-            DHCPServer.return_value,
-            failover_peers,
-            shared_networks,
-            hosts,
-            interfaces,
-            [],
-        )
-
-    @inlineCallbacks
-    def test_limits_concurrency(self):
-        self.patch_autospec(*self.dhcp_server)
-
-        def check_dhcp_locked(
-            server,
-            failover_peers,
-            shared_networks,
-            hosts,
-            interfaces,
-            global_dhcp_snippets,
-        ):
-            self.assertTrue(self.concurrency_lock.locked)
-            # While we're here, check this is the IO thread.
-            self.assertTrue(isInIOThread())
-
-        self.patch(dhcp, "configure", check_dhcp_locked)
-
-        self.assertFalse(self.concurrency_lock.locked)
-        yield call_responder(
-            Cluster(),
-            self.command,
-            {
-                "omapi_key": factory.make_name("key"),
-                "failover_peers": [],
-                "shared_networks": [],
-                "hosts": [],
-                "interfaces": [],
-            },
-        )
-        self.assertFalse(self.concurrency_lock.locked)
-
-    @inlineCallbacks
-    def test_propagates_CannotConfigureDHCP(self):
-        configure = self.patch_autospec(dhcp, "configure")
-        configure.side_effect = exceptions.CannotConfigureDHCP(
-            "Deliberate failure"
-        )
-        omapi_key = factory.make_name("key")
-        failover_peers = [make_failover_peer_config()]
-        shared_networks = [self.make_shared_network()]
-        shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers
-        )
-        hosts = [make_host()]
-        interfaces = [make_interface()]
-
-        with self.assertRaises(exceptions.CannotConfigureDHCP):
-            yield call_responder(
-                Cluster(),
-                self.command,
-                {
-                    "omapi_key": omapi_key,
-                    "failover_peers": failover_peers,
-                    "shared_networks": shared_networks,
-                    "hosts": hosts,
-                    "interfaces": interfaces,
-                },
-            )
-
-    @inlineCallbacks
-    def test_times_out(self):
-        self.patch_autospec(*self.dhcp_server)
-        self.patch(clusterservice, "DHCP_TIMEOUT", 0.001)
-
-        def check_dhcp_locked(
-            server,
-            failover_peers,
-            shared_networks,
-            hosts,
-            interfaces,
-            global_dhcp_snippets,
-        ):
-            # Pause longer than the timeout.
-            return pause(0.01)
-
-        self.patch(dhcp, "configure", check_dhcp_locked)
-
-        with self.assertRaises(exceptions.CannotConfigureDHCP):
-            yield call_responder(
-                Cluster(),
-                self.command,
-                {
-                    "omapi_key": factory.make_name("key"),
-                    "failover_peers": [],
-                    "shared_networks": [],
-                    "hosts": [],
-                    "interfaces": [],
-                },
-            )
 
 
 class MAASTestCaseThatWaitsForDeferredThreads(MAASTestCase):

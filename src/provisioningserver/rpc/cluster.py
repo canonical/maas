@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for clusters.
@@ -8,10 +8,6 @@ These are commands that a cluster controller ought to respond to.
 
 __all__ = [
     "Authenticate",
-    "ConfigureDHCPv4",
-    "ConfigureDHCPv4",
-    "ConfigureDHCPv6",
-    "ConfigureDHCPv6",
     "DescribePowerTypes",
     "Identify",
     "PowerDriverCheck",
@@ -264,20 +260,6 @@ class _ConfigureDHCP(amp.Command):
     ]
     response = []
     errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}
-
-
-class ConfigureDHCPv4(_ConfigureDHCP):
-    """Configure the DHCPv4 server.
-
-    :since: 2.1
-    """
-
-
-class ConfigureDHCPv6(_ConfigureDHCP):
-    """Configure the DHCPv6 server.
-
-    :since: 2.1
-    """
 
 
 class AddChassis(amp.Command):

@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for clusters."""
@@ -16,7 +16,6 @@ from netaddr import IPAddress
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
-    CancelledError,
     DeferredList,
     inlineCallbacks,
     maybeDeferred,
@@ -30,7 +29,6 @@ from twisted.web.http_headers import Headers
 from zope.interface import implementer
 
 from apiclient.utils import ascii_url
-from provisioningserver import concurrency
 from provisioningserver.certificates import (
     Certificate,
     get_maas_cluster_cert_paths,
@@ -52,21 +50,13 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.prometheus.metrics import set_global_labels
-from provisioningserver.rpc import (
-    cluster,
-    common,
-    dhcp,
-    exceptions,
-    pods,
-    region,
-)
+from provisioningserver.rpc import cluster, common, exceptions, pods, region
 from provisioningserver.rpc.common import (
     ConnectionAuthStatus,
     Ping,
     SecuredRPCProtocol,
 )
 from provisioningserver.rpc.connectionpool import ConnectionPool
-from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.power import get_power_state
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
@@ -96,7 +86,6 @@ from provisioningserver.utils.twisted import (
     callOut,
     deferred,
     DeferredValue,
-    deferWithTimeout,
     makeDeferredWithProcessProtocol,
     suppress,
 )
@@ -333,100 +322,6 @@ class Cluster(SecuredRPCProtocol):
             d = driver.set_boot_order(system_id, context, order)
             d.addCallback(lambda _: {})
             return d
-
-    @cluster.ConfigureDHCPv4.responder
-    def configure_dhcpv4(
-        self,
-        omapi_key,
-        failover_peers,
-        shared_networks,
-        hosts,
-        interfaces,
-        global_dhcp_snippets=None,
-    ):
-        if global_dhcp_snippets is None:
-            global_dhcp_snippets = []
-        server = dhcp.DHCPv4Server(omapi_key)
-        if concurrency.dhcpv4.locked:
-            log.debug(
-                "DHCPv4 configure triggered; another is already processing, "
-                "scheduled next"
-            )
-        else:
-            log.debug("DHCPv4 configure triggered; processing immediately")
-
-        # LP:1785078 - DHCP updating gets stuck and prevents sequential updates
-        # from occurring. Being defensive here and only allowing the DHCP
-        # configure 30 seconds to perform its work.
-        d = concurrency.dhcpv4.run(
-            deferWithTimeout,
-            DHCP_TIMEOUT,
-            dhcp.configure,
-            server,
-            failover_peers,
-            shared_networks,
-            hosts,
-            interfaces,
-            global_dhcp_snippets,
-        )
-        d.addCallback(lambda _: {})
-
-        # Catch the cancelled error, which means the work timed out.
-        def _timeoutEb(failure):
-            failure.trap(CancelledError)
-            log.err(failure, "DHCPv4 configure timed out")
-            raise CannotConfigureDHCP("timed out") from failure.value
-
-        d.addErrback(_timeoutEb)
-
-        return d
-
-    @cluster.ConfigureDHCPv6.responder
-    def configure_dhcpv6(
-        self,
-        omapi_key,
-        failover_peers,
-        shared_networks,
-        hosts,
-        interfaces,
-        global_dhcp_snippets=None,
-    ):
-        if global_dhcp_snippets is None:
-            global_dhcp_snippets = []
-        server = dhcp.DHCPv6Server(omapi_key)
-        if concurrency.dhcpv6.locked:
-            log.debug(
-                "DHCPv6 configure triggered; another is already processing, "
-                "scheduled next"
-            )
-        else:
-            log.debug("DHCPv6 configure triggered; processing immediately")
-
-        # LP:1785078 - DHCP updating gets stuck and prevents sequential updates
-        # from occurring. Being defensive here and only allowing the DHCP
-        # configure 30 seconds to perform its work.
-        d = concurrency.dhcpv6.run(
-            deferWithTimeout,
-            DHCP_TIMEOUT,
-            dhcp.configure,
-            server,
-            failover_peers,
-            shared_networks,
-            hosts,
-            interfaces,
-            global_dhcp_snippets,
-        )
-        d.addCallback(lambda _: {})
-
-        # Catch the cancelled error, which means the work timed out.
-        def _timeoutEb(failure):
-            failure.trap(CancelledError)
-            log.err(failure, "DHCPv6 configure timed out")
-            raise CannotConfigureDHCP("timed out") from failure.value
-
-        d.addErrback(_timeoutEb)
-
-        return d
 
     @cluster.AddChassis.responder
     def add_chassis(
