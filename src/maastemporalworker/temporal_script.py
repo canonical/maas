@@ -125,6 +125,7 @@ async def main() -> None:
                 # Configuration activities
                 configure_activity.get_rack_controller_vlans,
                 configure_activity.get_region_controller_endpoints,
+                configure_activity.get_resolver_config,
                 # Deploy activities
                 deploy_activity.set_node_status,
                 deploy_activity.get_boot_order,

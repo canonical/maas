@@ -59,6 +59,7 @@ import (
 	"maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/power"
+	"maas.io/core/src/maasagent/internal/resolver"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
@@ -482,15 +483,19 @@ func Run() int {
 		return 1
 	}
 
+	resolverHandler := resolver.NewRecursiveHandler() // TODO pass cache in
+
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
 	dhcpService := dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, dhcp.WithAPIClient(apiClient))
+	resolverService := resolver.NewResolverService(resolverHandler)
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
 		worker.WithConfigurator(powerService),
 		worker.WithConfigurator(httpProxyService),
 		worker.WithConfigurator(dhcpService),
+		worker.WithConfigurator(resolverService),
 	)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
