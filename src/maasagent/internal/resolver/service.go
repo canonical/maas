@@ -34,6 +34,10 @@ var (
 	ErrInvalidBindIP = errors.New("provided bind value is not a valid IP")
 )
 
+var (
+	RackBindActive = true // public to be able to overriden by the compiler for testing
+)
+
 type Handler interface {
 	dns.Handler
 	SetUpstreams(string, []string) error
@@ -56,12 +60,13 @@ type ResolverServiceOption func(*ResolverService)
 
 type GetResolverConfigParam struct {
 	SystemID string `json:"system_id"`
+	UseBind  bool   `json:"use_bind"`
 }
 
 type GetResolverConfigResult struct {
-	Servers []string `json:"servers"`
-	BindIPs []string `json:"bind_ips"`
-	Enabled bool     `json:"enabled"`
+	AuthoritativeIPs []string `json:"authoritative_ips"`
+	BindIPs          []string `json:"bind_ips"`
+	Enabled          bool     `json:"enabled"`
 }
 
 func NewResolverService(handler Handler, options ...ResolverServiceOption) *ResolverService {
@@ -107,7 +112,7 @@ func (s *ResolverService) configure(ctx tworkflow.Context, systemID string) erro
 			},
 		),
 		"get-resolver-config",
-		GetResolverConfigParam{SystemID: systemID},
+		GetResolverConfigParam{SystemID: systemID, UseBind: RackBindActive},
 	).Get(ctx, &resolverConfigResult); err != nil {
 		return err
 	}
@@ -124,7 +129,7 @@ func (s *ResolverService) configure(ctx tworkflow.Context, systemID string) erro
 		return nil
 	}
 
-	s.authoritativeServers = resolverConfigResult.Servers
+	s.authoritativeServers = resolverConfigResult.AuthoritativeIPs
 	s.bindIPs = resolverConfigResult.BindIPs
 
 	if err := workflow.RunAsLocalActivity(ctx, func(ctx context.Context) error {

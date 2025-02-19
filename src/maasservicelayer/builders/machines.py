@@ -6,7 +6,11 @@ from typing import Union
 
 from pydantic import Field
 
-from maascommon.enums.node import HardwareDeviceTypeEnum, NodeStatus
+from maascommon.enums.node import (
+    HardwareDeviceTypeEnum,
+    NodeStatus,
+    NodeTypeEnum,
+)
 from maascommon.enums.power import PowerState
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
@@ -43,6 +47,9 @@ class MachineBuilder(ResourceBuilder):
     id: Union[int, Unset] = Field(default=UNSET, required=False)
     locked: Union[bool, Unset] = Field(default=UNSET, required=False)
     memory: Union[int, Unset] = Field(default=UNSET, required=False)
+    node_type: Union[NodeTypeEnum, Unset] = Field(
+        default=UNSET, required=False
+    )
     osystem: Union[str, Unset] = Field(default=UNSET, required=False)
     owner: Union[str, None, Unset] = Field(default=UNSET, required=False)
     owner_id: Union[int, None, Unset] = Field(default=UNSET, required=False)

@@ -70,6 +70,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
                 NodeTable.c.locked,
                 NodeTable.c.cpu_count,
                 NodeTable.c.status,
+                NodeTable.c.node_type,
                 NodeTable.c.hostname,
                 NodeTable.c.power_state,
                 NodeTable.c.owner_id,

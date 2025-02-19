@@ -47,9 +47,19 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         return Clause(condition=eq(NodeTable.c.node_type, type))
 
     @classmethod
+    def with_node_system_id(cls, system_id: str) -> Clause:
+        return Clause(condition=eq(NodeTable.c.system_id, system_id))
+
+    @classmethod
     def with_subnet_id(cls, subnet_id: int) -> Clause:
         return Clause(
             condition=eq(StaticIPAddressTable.c.subnet_id, subnet_id)
+        )
+
+    @classmethod
+    def with_subnet_id_in(cls, subnet_ids: list[int]) -> Clause:
+        return Clause(
+            condition=StaticIPAddressTable.c.subnet_id.in_(subnet_ids)
         )
 
     @classmethod

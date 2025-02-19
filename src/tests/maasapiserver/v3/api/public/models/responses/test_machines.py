@@ -9,7 +9,7 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     UsbDeviceResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.bmc import Bmc
@@ -36,6 +36,7 @@ class TestMachineResponse:
             locked=False,
             cpu_count=8,
             status=NodeStatus.NEW,
+            node_type=NodeTypeEnum.MACHINE,
             power_type=None,
             fqdn="maas.local",
             hostname="hostname",

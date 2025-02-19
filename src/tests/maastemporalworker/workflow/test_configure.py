@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
+from temporalio.testing import ActivityEnvironment
 
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import NodeTypeEnum
@@ -30,7 +31,20 @@ from maastemporalworker.workflow.configure import (
     GetRackControllerVLANsInput,
     GetRackControllerVLANsResult,
     GetRegionControllerEndpointsResult,
+    GetResolverConfigInput,
 )
+from tests.fixtures.factories.interface import create_test_interface_entry
+from tests.fixtures.factories.node import (
+    create_test_rack_and_region_controller_entry,
+    create_test_rack_controller_entry,
+    create_test_region_controller_entry,
+)
+from tests.fixtures.factories.staticipaddress import (
+    create_test_staticipaddress_entry,
+)
+from tests.fixtures.factories.subnet import create_test_subnet_entry
+from tests.fixtures.factories.vlan import create_test_vlan_entry
+from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.mark.asyncio
@@ -138,3 +152,146 @@ class TestConfigureAgentActivity:
                 )
             )
         )
+
+    async def test_get_resolver_config_rack_and_region(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ):
+        env = ActivityEnvironment()
+
+        agent_node = await create_test_rack_and_region_controller_entry(
+            fixture
+        )
+
+        services_cache = CacheForServices()
+        activities = ConfigureAgentActivity(
+            db, services_cache, connection=db_connection
+        )
+
+        result = await env.run(
+            activities.get_resolver_config,
+            GetResolverConfigInput(
+                system_id=agent_node["system_id"], use_bind=False
+            ),
+        )
+
+        assert not result.enabled
+        assert not result.bind_ips
+        assert not result.authoritative_ips
+
+    async def test_get_resolver_config_region(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ):
+        env = ActivityEnvironment()
+
+        agent_node = await create_test_region_controller_entry(fixture)
+
+        services_cache = CacheForServices()
+        activities = ConfigureAgentActivity(
+            db, services_cache, connection=db_connection
+        )
+
+        result = await env.run(
+            activities.get_resolver_config,
+            GetResolverConfigInput(
+                system_id=agent_node["system_id"], use_bind=False
+            ),
+        )
+
+        assert not result.enabled
+        assert not result.bind_ips
+        assert not result.authoritative_ips
+
+    async def test_get_resolver_config_rack(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ):
+        env = ActivityEnvironment()
+
+        vlan = await create_test_vlan_entry(fixture)
+        dns_subnet = await create_test_subnet_entry(
+            fixture, allow_dns=True, vlan=vlan
+        )
+        no_dns_subnet = await create_test_subnet_entry(
+            fixture, allow_dns=False, vlan=vlan
+        )
+        regions = [
+            await create_test_region_controller_entry(fixture)
+            for _ in range(3)
+        ]
+        sips = [
+            (await create_test_staticipaddress_entry(fixture, subnet=subnet))[
+                0
+            ]
+            for subnet in [dns_subnet, no_dns_subnet]
+            for _ in regions
+        ]
+        [
+            await create_test_interface_entry(
+                fixture, node=regions[i % len(regions)], ips=[sip]
+            )
+            for i, sip in enumerate(sips)
+        ]
+
+        agent_node = await create_test_rack_controller_entry(fixture)
+        agent_ips = [
+            (await create_test_staticipaddress_entry(fixture, subnet=subnet))[
+                0
+            ]
+            for subnet in [dns_subnet, no_dns_subnet]
+        ]
+        [
+            await create_test_interface_entry(
+                fixture, node=agent_node, ips=[sip]
+            )
+            for sip in agent_ips
+        ]
+
+        services_cache = CacheForServices()
+        activities = ConfigureAgentActivity(
+            db, services_cache, connection=db_connection
+        )
+
+        result = await env.run(
+            activities.get_resolver_config,
+            GetResolverConfigInput(
+                system_id=agent_node["system_id"], use_bind=False
+            ),
+        )
+
+        assert result.enabled
+        assert set(result.bind_ips) == set(
+            [
+                str(sip["ip"])
+                for sip in agent_ips
+                if sip["subnet_id"] == dns_subnet["id"]
+            ]
+        )
+        assert set(result.authoritative_ips) == set(
+            [
+                str(sip["ip"])
+                for sip in sips
+                if sip["subnet_id"] == dns_subnet["id"]
+            ]
+        )
+
+    async def test_get_resolver_config_use_bind(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ):
+        env = ActivityEnvironment()
+
+        agent_node = await create_test_rack_controller_entry(fixture)
+
+        services_cache = CacheForServices()
+        activities = ConfigureAgentActivity(
+            db, services_cache, connection=db_connection
+        )
+
+        result = await env.run(
+            activities.get_resolver_config,
+            GetResolverConfigInput(
+                system_id=agent_node["system_id"], use_bind=True
+            ),
+        )
+
+        assert not result.enabled
+        assert not result.bind_ips
+        assert not result.authoritative_ips

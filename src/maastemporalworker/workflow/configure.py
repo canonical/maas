@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import List
+from typing import List, Optional
 
 from netaddr import IPAddress
 from temporalio import workflow
@@ -15,13 +15,16 @@ from maascommon.workflows.configure import (
     CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
     CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
     CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
+    CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME,
     ConfigureAgentParam,
     ConfigureDHCPServiceParam,
 )
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
 )
+from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
@@ -42,12 +45,19 @@ GET_RACK_CONTROLLER_VLANS_ACTIVITY_NAME = "get-rack-controller-vlans"
 GET_REGION_CONTROLLER_ENDPOINTS_ACTIVITY_NAME = (
     "get-region-controller-endpoints"
 )
+GET_RESOLVER_CONFIG_ACTIVITY_NAME = "get-resolver-config"
 
 
 # Activities parameters
 @dataclass
 class GetRackControllerVLANsInput:
     system_id: str
+
+
+@dataclass
+class GetResolverConfigInput:
+    system_id: str
+    use_bind: bool
 
 
 @dataclass
@@ -58,6 +68,13 @@ class GetRackControllerVLANsResult:
 @dataclass
 class GetRegionControllerEndpointsResult:
     endpoints: List[str]
+
+
+@dataclass
+class GetResolverConfigResult:
+    enabled: bool
+    bind_ips: Optional[list[str]] = None
+    authoritative_ips: Optional[list[str]] = None
 
 
 class ConfigureAgentActivity(ActivityBase):
@@ -116,6 +133,82 @@ class ConfigureAgentActivity(ActivityBase):
                 [_format_endpoint(str(ipaddress.ip)) for ipaddress in result]
             )
 
+    @activity_defn_with_context(name=GET_RESOLVER_CONFIG_ACTIVITY_NAME)
+    async def get_resolver_config(
+        self, param: GetResolverConfigInput
+    ) -> GetResolverConfigResult:
+        async with self.start_transaction() as services:
+            agent_node = await services.nodes.get_one(
+                query=QuerySpec(
+                    where=NodeClauseFactory.with_system_id(param.system_id),
+                )
+            )
+
+            # TODO remove BIND check once recursive resolver is fully functional
+            # and BIND can be removed from the rack controller
+            if (
+                agent_node.node_type == NodeTypeEnum.REGION_CONTROLLER
+                or agent_node.node_type
+                == NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                or param.use_bind
+            ):
+                return GetResolverConfigResult(
+                    enabled=False,
+                )
+
+            dns_enabled_subnets = await services.subnets.get_many(
+                query=QuerySpec(
+                    where=SubnetClauseFactory.with_allow_dns(True),
+                )
+            )
+
+            dns_enabled_subnet_ids = [
+                subnet.id for subnet in dns_enabled_subnets
+            ]
+
+            agent_ips = await services.staticipaddress.get_for_nodes(
+                query=QuerySpec(
+                    where=StaticIPAddressClauseFactory.and_clauses(
+                        [
+                            StaticIPAddressClauseFactory.with_node_system_id(
+                                param.system_id
+                            ),
+                            StaticIPAddressClauseFactory.with_subnet_id_in(
+                                dns_enabled_subnet_ids
+                            ),
+                        ]
+                    ),
+                )
+            )
+
+            region_ips = await services.staticipaddress.get_for_nodes(
+                query=QuerySpec(
+                    where=StaticIPAddressClauseFactory.and_clauses(
+                        [
+                            StaticIPAddressClauseFactory.or_clauses(
+                                [
+                                    StaticIPAddressClauseFactory.with_node_type(
+                                        NodeTypeEnum.REGION_CONTROLLER
+                                    ),
+                                    StaticIPAddressClauseFactory.with_node_type(
+                                        NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                                    ),
+                                ]
+                            ),
+                            StaticIPAddressClauseFactory.with_subnet_id_in(
+                                dns_enabled_subnet_ids
+                            ),
+                        ]
+                    ),
+                ),
+            )
+
+            return GetResolverConfigResult(
+                enabled=True,
+                bind_ips=list(set(str(sip.ip) for sip in agent_ips)),
+                authoritative_ips=list(set(str(sip.ip) for sip in region_ips)),
+            )
+
 
 def _format_endpoint(ip: str) -> str:
     addr = IPAddress(ip)
@@ -156,6 +249,13 @@ class ConfigureAgentWorkflow:
             CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
             ConfigureDHCPServiceParam(enabled=True),
             id=f"configure-dhcp-service:{param.system_id}",
+            task_queue=f"{param.system_id}@agent:main",
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
+
+        await workflow.execute_child_workflow(
+            CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME,
+            param.system_id,
             task_queue=f"{param.system_id}@agent:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )

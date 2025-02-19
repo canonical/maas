@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maasservicelayer.models.base import (
     generate_builder,
@@ -17,6 +17,7 @@ class Node(MaasTimestampedBaseModel):
     system_id: str
     hostname: str
     status: NodeStatus
+    node_type: NodeTypeEnum
     power_state: PowerState
     power_state_updated: datetime | None
     owner_id: Optional[int] = None

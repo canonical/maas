@@ -6,7 +6,7 @@ from typing import Union
 
 from pydantic import Field
 
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 
@@ -31,6 +31,9 @@ class NodeBuilder(ResourceBuilder):
     error_description: Union[str, Unset] = Field(default=UNSET, required=False)
     hostname: Union[str, Unset] = Field(default=UNSET, required=False)
     id: Union[int, Unset] = Field(default=UNSET, required=False)
+    node_type: Union[NodeTypeEnum, Unset] = Field(
+        default=UNSET, required=False
+    )
     owner_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
     power_state: Union[PowerState, Unset] = Field(
         default=UNSET, required=False

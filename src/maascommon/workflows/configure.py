@@ -10,6 +10,7 @@ CONFIGURE_AGENT_WORKFLOW_NAME = "configure-agent"
 CONFIGURE_POWER_SERVICE_WORKFLOW_NAME = "configure-power-service"
 CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME = "configure-httpproxy-service"
 CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME = "configure-dhcp-service"
+CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME = "configure-resolver-service"
 
 
 # Workflows parameters

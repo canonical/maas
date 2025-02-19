@@ -41,6 +41,10 @@ class SubnetClauseFactory(ClauseFactory):
             ],
         )
 
+    @classmethod
+    def with_allow_dns(cls, allow_dns: bool) -> Clause:
+        return Clause(condition=eq(SubnetTable.c.allow_dns, allow_dns))
+
 
 class SubnetsRepository(BaseRepository[Subnet]):
     def get_repository_table(self) -> Table:

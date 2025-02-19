@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.context import Context
@@ -52,6 +52,7 @@ class TestCommonMachinesService(ServiceCommonTests):
             locked=False,
             cpu_count=8,
             status=NodeStatus.NEW,
+            node_type=NodeTypeEnum.MACHINE,
             power_type=None,
             fqdn="maas.local",
             hostname="hostname",

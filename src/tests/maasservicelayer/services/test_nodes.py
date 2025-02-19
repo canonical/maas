@@ -6,7 +6,7 @@ from unittest.mock import call, Mock
 import pytest
 
 from maascommon.enums.events import EventTypeEnum
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maascommon.enums.scriptresult import ScriptStatus
 from maascommon.node import NODE_STATUS_LABELS
@@ -48,6 +48,7 @@ class TestCommonNodesService(ServiceCommonTests):
             system_id="systemid",
             hostname="hostname",
             status=NodeStatus.NEW,
+            node_type=NodeTypeEnum.MACHINE,
             power_state=PowerState.ON,
         )
 
@@ -133,6 +134,7 @@ class TestNodesService:
             system_id="systemid",
             hostname="hostname",
             status=NodeStatus.DEPLOYING,
+            node_type=NodeTypeEnum.MACHINE,
             power_state=PowerState.ON,
             current_commissioning_script_set_id=100,
             current_installation_script_set_id=101,

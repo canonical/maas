@@ -11,7 +11,7 @@ from maasapiserver.v3.api.public.models.requests.vlans import (
     VlanUpdateRequest,
 )
 from maascommon.enums.ipranges import IPRangeType
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maascommon.enums.service import ServiceName, ServiceStatusEnum
 from maasservicelayer.exceptions.catalog import ValidationException
@@ -238,6 +238,7 @@ class TestVlanUpdateRequest:
                 id=0,
                 system_id="",
                 status=NodeStatus.DEPLOYED,
+                node_type=NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
                 power_state=PowerState.ON,
                 hostname="hostname",
             )
@@ -265,6 +266,7 @@ class TestVlanUpdateRequest:
                 id=0,
                 system_id="",
                 status=NodeStatus.DEPLOYED,
+                node_type=NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
                 power_state=PowerState.ON,
                 hostname="hostname",
             )
@@ -305,6 +307,7 @@ class TestVlanUpdateRequest:
                 id=0,
                 system_id="",
                 status=NodeStatus.DEPLOYED,
+                node_type=NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
                 power_state=PowerState.ON,
                 hostname="hostname1",
             ),
@@ -312,6 +315,7 @@ class TestVlanUpdateRequest:
                 id=2,
                 system_id="",
                 status=NodeStatus.DEPLOYED,
+                node_type=NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
                 power_state=PowerState.ON,
                 hostname="hostname2",
             ),

@@ -74,9 +74,9 @@ func TestConfigurationWorkflow(t *testing.T) {
 
 			env.OnActivity("get-resolver-config", mock.Anything, mock.Anything).Return(
 				GetResolverConfigResult{
-					Enabled: true,
-					BindIPs: bindIPs,
-					Servers: []string{"127.0.0.1:5353"},
+					Enabled:          true,
+					BindIPs:          bindIPs,
+					AuthoritativeIPs: []string{"127.0.0.1:5353"},
 				},
 				nil,
 			)

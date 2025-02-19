@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -214,6 +214,7 @@ class TestVlansService:
             system_id="abc",
             hostname="hostname",
             status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
             power_state=PowerState.ON,
             created=now,
             updated=now,
