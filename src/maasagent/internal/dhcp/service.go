@@ -67,7 +67,7 @@ var writeConfigFileDeb = func(path string, data []byte, mode os.FileMode) error 
 
 	// create the command that runs maas-write-file
 	// #nosec G204: the inputs are sanitized and validated by `maas-write-file`
-	cmd := exec.Command(scriptPath, fileName, modeStr)
+	cmd := exec.Command("sudo", scriptPath, fileName, modeStr)
 
 	// feed the script by piping the data to stdin
 	stdin, err := cmd.StdinPipe()
