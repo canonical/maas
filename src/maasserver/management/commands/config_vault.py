@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: configure vault integration."""
@@ -8,13 +8,14 @@ from textwrap import dedent
 import time
 from typing import Optional
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 import yaml
 
 from maascli.init import prompt_yes_no
 from maasserver.enum import NODE_TYPE
 from maasserver.listener import notify
 from maasserver.locks import startup
+from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.models import (
     Config,
     ControllerInfo,
@@ -24,7 +25,7 @@ from maasserver.models import (
     VaultSecret,
 )
 from maasserver.utils import synchronised
-from maasserver.utils.orm import transactional, with_connection
+from maasserver.utils.orm import transactional
 from maasserver.vault import (
     configure_region_with_vault,
     get_region_vault_client,
@@ -34,7 +35,7 @@ from maasserver.vault import (
 from provisioningserver.utils.env import MAAS_ID
 
 
-class Command(BaseCommand):
+class Command(BaseCommandWithConnection):
     help = "Configure MAAS Region Vault integration."
     CONFIGURE_COMMAND = "configure"
     MIGRATE_COMMAND = "migrate"
@@ -167,7 +168,6 @@ class Command(BaseCommand):
             .order_by("node__hostname")
         )
 
-    @with_connection  # Needed by the following lock.
     @synchronised(startup)
     def _handle_migrate(self, options):
         if Config.objects.get_config("vault_enabled", False):
@@ -201,7 +201,6 @@ class Command(BaseCommand):
 
         return "Successfully migrated cluster secrets to Vault"
 
-    @with_connection
     def _handle_status(self, options):
         vault_enabled = Config.objects.get_config("vault_enabled", False)
         report = {"status": "enabled" if vault_enabled else "disabled"}

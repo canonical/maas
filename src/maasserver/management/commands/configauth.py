@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: configure the authentication source."""
@@ -8,7 +8,7 @@ import json
 
 from django.contrib.sessions.models import Session
 from django.core.exceptions import ValidationError
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 from macaroonbakery.bakery import generate_key
 
 from maascli.init import (
@@ -18,6 +18,7 @@ from maascli.init import (
     read_input,
 )
 from maasserver.macaroon_auth import APIError
+from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.rbac import RBACUserClient
 from maasserver.secrets import SecretManager
@@ -185,7 +186,7 @@ def clear_user_sessions():
     Session.objects.all().delete()
 
 
-class Command(BaseCommand):
+class Command(BaseCommandWithConnection):
     help = "Configure external authentication."
 
     def add_arguments(self, parser):

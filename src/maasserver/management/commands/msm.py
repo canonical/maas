@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Commands for managing enrolment with a Site Manager instance."""
@@ -9,19 +9,19 @@ from datetime import datetime
 from ssl import CertificateError
 from urllib.parse import urlparse
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 from jose import ExpiredSignatureError, JOSEError, jwt
 from jsonschema import validate, ValidationError
 import yaml
 
 from maascli.init import prompt_yes_no
 from maasserver.enum import MSM_STATUS
+from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.msm import msm_enrol, msm_status, msm_withdraw
 from maasserver.utils.certificates import get_ssl_certificate
-from maasserver.utils.orm import with_connection
 
 
-class Command(BaseCommand):
+class Command(BaseCommandWithConnection):
     help = "Configure enrolment with a Site Manager instance"
     ENROL_COMMAND = "enrol"
     STATUS_COMMAND = "status"
@@ -78,7 +78,6 @@ class Command(BaseCommand):
                 # something is wrong
                 print("Could not determine the status of enrolment")
 
-    @with_connection
     def _enrol(self, options):
         # We don't know exactly what to expect from these claims, so don't verify them
         decode_opts = {

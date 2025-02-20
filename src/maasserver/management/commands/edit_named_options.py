@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: Edit the named.conf.options file so that it includes
@@ -10,8 +10,9 @@ from collections import OrderedDict
 import sys
 from textwrap import dedent
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 
+from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.models import Config
 from provisioningserver.dns.commands.edit_named_options import (
     add_arguments,
@@ -19,7 +20,7 @@ from provisioningserver.dns.commands.edit_named_options import (
 )
 
 
-class Command(BaseCommand):
+class Command(BaseCommandWithConnection):
     help = " ".join(
         dedent(
             """\

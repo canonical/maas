@@ -1,17 +1,17 @@
-# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: configure regiond listener."""
 
 import argparse
 
-from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
 from maascli.init import prompt_yes_no
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.listener import notify
+from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.models import Config
 from maasserver.regiondservices.certificate_expiration_check import (
     clear_tls_notifications,
@@ -47,7 +47,7 @@ def _update_tls_config(
     notify("sys_reverse_proxy")
 
 
-class Command(BaseCommand):
+class Command(BaseCommandWithConnection):
     help = "Configure MAAS Region TLS."
 
     def add_arguments(self, parser):

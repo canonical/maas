@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: Batch update multiple passwords non-interactively."""
@@ -8,12 +8,13 @@ from fileinput import input as fileinput
 from textwrap import dedent
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 
+from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.utils.orm import transactional
 
 
-class Command(BaseCommand):
+class Command(BaseCommandWithConnection):
     help = dedent(
         """\
         Update passwords in batch mode.
