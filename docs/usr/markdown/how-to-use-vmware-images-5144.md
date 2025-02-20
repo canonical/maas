@@ -1,10 +1,10 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/integrating-vmware-images" target = "_blank">Let us know.</a>*
+## Deploy VMWare images
 
 To deploy VMware ESXi through MAAS, you'll need to create a specialised image using an official VMware ISO. Canonical offers a [GitHub repository](https://github.com/canonical/packer-maas) of community-contributed [packer](https://www.packer.io/) templates to automate this process.
 
 > **Note**: VMware [does not support cloning boot devices](https://kb.vmware.com/s/article/84280). This may lead to [issues](https://kb.vmware.com/s/article/84349) like data corruption on VMFS data stores with cloned boot devices.
 
-## Prerequisites
+### Prerequisites
 
 To create and deploy a VMware image, you'll need:
 
@@ -18,11 +18,11 @@ To create and deploy a VMware image, you'll need:
 - Tested with Packer 1.3.4 64-bit Linux binaries
 - [Packer template for MAAS](https://github.com/canonical/packer-maas) custom image
 
-## Cloning VMware images
+### Cloning VMware images
 
 As previously mentioned, VMware [does not support cloning boot devices](https://kb.vmware.com/s/article/84280). This limitation may cause data corruption issues on VMFS data stores.
 
-## VMware + MAAS networks
+### VMware + MAAS networks
 
 - ESXi doesn't support Linux bridges.
 - Supported bond modes are mapped as follows:
@@ -32,19 +32,19 @@ As previously mentioned, VMware [does not support cloning boot devices](https://
 - No other bond modes are currently supported.
 - A PortGroup with a VMK attached cannot be used for VMs.
 
-## VMware + MAAS storage
+### VMware + MAAS storage
 
 Custom storage configurations are unsupported; MAAS will extend `datastore1` to the full size of the deployment disk.
 
-## ESXi H/W support
+### ESXi H/W support
 
 VMware has [specific hardware requirements](https://www.vmware.com/resources/compatibility/search.php). Running ESXi in a virtual machine or MAAS virsh Pod is not supported.
 
-## Customising images
+### Customising images
 
 Modify the `packer-maas/vmware-esxi/http/vmware-esxi-ks.cfg` file to customise the image.
 
-## Building an image
+### Building an image
 
 Load the `nbd` kernel module:
 
@@ -64,7 +64,7 @@ Build the image:
 sudo packer build -var 'vmware_esxi_iso_path=/path/to/VMware-VMvisor-Installer-6.7.0-8169922.x86_64.iso' vmware-esxi.json
 ```
 
-## Uploading an image
+### Uploading an image
 
 To upload the image to MAAS, use:
 

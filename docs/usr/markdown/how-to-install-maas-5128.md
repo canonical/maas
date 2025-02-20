@@ -1,6 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/fresh-installation-of-maas" target = "_blank">Let us know.</a>*
-
-
 ## Install MAAS (snap or packages)
 
 * **Install from [snap](https://snapcraft.io/maas):**
@@ -47,30 +44,6 @@ There is a proof-of-concept configuration defined ***for the MAAS snap version o
    sudo maas create admin --username=$PROFILE --email=$EMAIL_ADDRESS
    ```
 
-## Upgrading MAAS
-
-* **Upgrade MAAS (snap):**
-   ```bash
-   sudo snap refresh maas --channel=<version>/stable
-   ```
-
-* **Upgrade MAAS (packages):**
-   ```bash
-   sudo apt-add-repository ppa:maas/<version>
-   sudo do-release-upgrade --allow-third-party
-   ```
-
-### Notes
-
-- For PostgreSQL 12 users, [upgrade to PostgreSQL 14](/t/how-to-upgrade-postgresql-v12-to-v14/7203) before installing or upgrading to MAAS 3.5+.
-- Review the new PostgreSQL requirements in the [installation requirements document](/t/reference-installation-requirements/6233) before installing MAAS.
-- For Ubuntu 20.04 LTS users, upgrade to Ubuntu 22.04 before moving to MAAS 3.5+.
-- Always [back up your MAAS](/t/how-to-back-up-maas/5096) server before upgrading.
-
-## Special upgrade situations
-
-For multi-node setups, upgrade rack nodes before region nodes. For BMC setups with duplicate IP/username combos, ensure unique combinations to avoid migration failures.
-
 ## Configuring and starting MAAS
 
 ### Checking MAAS status
@@ -113,12 +86,12 @@ postgresql   RUNNING   pid 8001, uptime 0:09:17
 
 ## Enabling DHCP
 
-### UI
+**UI**
 1. **Navigate to Subnets > VLAN > Configure DHCP.**
 2. **Select the appropriate DHCP options (Managed or Relay).**
 3. **Save and apply changes.**
 
-### CLI
+**CLI**
 1. **Enable DHCP:**
    ```bash
    maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True \
@@ -128,3 +101,108 @@ postgresql   RUNNING   pid 8001, uptime 0:09:17
    ```bash
    maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
    ```
+## Notes on upgrading MAAS
+
+The following general notes apply to an upgrade:
+
+- **Review PostgreSQL Requirements:** MAAS 3.5 and later require PostgreSQL 14. [Upgrade instructions here](/t/how-to-upgrade-postgresql-v12-to-v14/7203).
+- **Upgrade Ubuntu if needed:** Ensure you're running Ubuntu 22.04 (Jammy) before upgrading MAAS.
+- **Backup your data:** Always create a backup before upgrading.
+- **Multi-node setups:** Upgrade rack nodes first, then region nodes.
+
+##  Upgrade to MAAS 3.5
+
+### Upgrade Snap (region + rack)
+```nohighlight
+sudo snap refresh maas --channel=3.5/stable
+```
+
+### Upgrade package (PPA-based installations)
+```nohighlight
+sudo apt-add-repository ppa:maas/3.5
+sudo apt update && sudo apt upgrade maas
+```
+
+###  Upgrade packages from MAAS versions 2.9-3.3
+
+1. **Upgrade PostgreSQL**: If running PostgreSQL 12, [upgrade to 14](/t/how-to-upgrade-postgresql-v12-to-v14/7203).
+2. **Ensure Ubuntu 22.04 (Jammy)**:
+   ```nohighlight
+   lsb_release -a
+   ```
+   If on Ubuntu 20.04, upgrade:
+   ```nohighlight
+   sudo do-release-upgrade --allow-third-party
+   ```
+3. **Add PPA and Upgrade:**
+   ```nohighlight
+   sudo apt-add-repository ppa:maas/3.5
+   sudo apt update && sudo apt upgrade maas
+   ```
+4. **Verify Installation:**
+   ```nohighlight
+   maas --version
+   ```
+
+### Upgrade packages from MAAS 2.8 or earlier
+
+1. **Backup your system** completely.
+2. **Ensure Ubuntu 22.04** (see steps above).
+3. **Add PPA and Upgrade:**
+   ```nohighlight
+   sudo apt-add-repository ppa:maas/3.5
+   sudo apt update && sudo apt upgrade maas
+   ```
+4. **If the upgrade fails**, restore from backup and consider a fresh installation.
+   
+## Upgrade to MAAS 3.4
+
+### Upgrade snap
+```nohighlight
+sudo snap refresh maas --channel=3.4/stable
+```
+
+### Upgrade package
+```nohighlight
+sudo apt-add-repository ppa:maas/3.4
+sudo apt update && sudo apt upgrade maas
+```
+
+- **Follow the same Ubuntu and PostgreSQL upgrade steps as above.**
+
+## Upgrade to MAAS 3.3
+
+### Upgrade snap
+```nohighlight
+sudo snap refresh maas --channel=3.3/stable
+```
+
+### Upgrade packages
+```nohighlight
+sudo apt-add-repository ppa:maas/3.3
+sudo apt update && sudo apt upgrade maas
+```
+
+- **PostgreSQL 12 is deprecated in MAAS 3.3 and unsupported in 3.5.** Upgrade to PostgreSQL 14 before proceeding.
+
+## Additional notes
+
+### Avoiding NTP conflicts
+
+If you experience time synchronization issues:
+
+```nohighlight
+sudo systemctl disable --now systemd-timesyncd
+```
+
+### BMC migration issue (MAAS 3.3+)
+
+Ensure unique BMC IP/username/password combinations before upgrading to avoid migration failures.
+
+### Verification steps
+
+After upgrading, confirm MAAS is running correctly:
+```nohighlight
+lsb_release -a  # Ensure Ubuntu version is correct
+maas --version  # Verify MAAS version
+```

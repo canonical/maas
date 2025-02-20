@@ -1,12 +1,12 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/contributing-to-maas-documentation" target = "_blank">Let us know.</a>*
-
 Welcome contributors! This guide provides step-by-step instructions to help you master the mechanics of MAAS documentation, so that you can contribute more easily.
+
+> *Learn about the [MAAS documentation style](https://maas.io/docs/documentation-style-guide)*
 
 ## Preparing
 
-First, make sure your contribution is respectful, constructive.  Don't worry so much about the value or the technical correctness; our editors can deal with those as they come up.  The most important thing is to get your thoughts down -- and remember, if you're not sure, you can use the <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/contributing-to-maas-documentation" target = "_blank">survey form</a> to share your ideas before changing a document.
+First, make sure your contribution is respectful, constructive.  Don't worry so much about the value or the technical correctness; our editors can deal with those as they come up.  The most important thing is to get your thoughts down.
 
-At some point, you'll want to familiarise yourself with the MAAS documentation style guide, linked above, but that is also something you can learn over time.
+At some point, you'll want to familiarize yourself with the MAAS documentation style guide, linked above, but that is also something you can learn over time.
 
 ## Edit documents
 
@@ -17,7 +17,7 @@ There are a few steps here; let's take them one at a time:
 3. **Pop up the editor**: Click the pencil icon below the title bar. A pop-up window will open.
 4. **Start editing**: Select "Edit Wiki" at the bottom right. An editor-preview split screen will appear. 
 5. **Make your changes**: Make your changes in the left pane.  The right pane will let you preview your changes, though you may have to scroll a little sometimes to see them.
-6. **Save and submit**: Click "Save Edit" to finalise. Updates may take up to 24 hours to appear on the main documentation site, so you might have to come back tomorrow to see your published changes.
+6. **Save and submit**: Click "Save Edit" to finalize. Updates may take up to 24 hours to appear on the main documentation site, so you might have to come back tomorrow to see your published changes.
 
 ## Leave comments
 

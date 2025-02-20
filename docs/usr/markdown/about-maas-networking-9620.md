@@ -4,9 +4,11 @@ MAAS provisions bare metal servers and virtual machines. It creates a single poi
 
 ## Network discovery
 
-One of the first ways that MAAS cuts down on manual errors is called network discovery. MAAS listens passively to IP traffic on any network it can see. As it does so, it observes other devices receiving and responding to TCP packets, and it captures each device's IP address. MAAS also captures any other identifying information that's available. For example, it also uses mDNS to collect and present the hostname, if available. All of the captured information is summarized in a discovery dashboard.
-
-Discovery runs periodically to capture any network changes. This feature, which can be toggled, helps ensure that you quickly catch every device change in your local MAAS network.
+MAAS passively monitors ARP traffic to detect devices on the
+network. It records IP and MAC addresses, tracking changes over
+time. If available, it also captures hostnames via mDNS. Discovery
+runs periodically and updates a dashboard with detected devices. This
+feature can be enabled or disabled.
 
 ## IPMI networking
 
@@ -73,6 +75,10 @@ Managed switches can assign VLANs to each logical “port” in either a “tagg
 You can also use tagged VLANs with MAAS nodes. If a switch port is configured to allow tagged VLAN frames from a MAAS node, that node can automatically access interfaces on that VLAN. Nodes connected to tagged VLANs must support VLAN tagging and be configured to tag traffic with the correct VLAN ID. Tagged VLANs are useful for nodes that require access to multiple VLANs or for advanced networking setups, such as traffic segregation.
 
 MAAS allows you to create and manage VLANs from a single interface, enabling secure and scalable segmentation without additional infrastructure. VLANs and subnets are embedded into the provisioning workflow, so tagged and untagged VLANs, as well as subnets contained within them, can be managed from a single interface. A clean, clear interface ensures the correct network settings, which in turn reduces errors.
+
+## Subnets
+
+A subnet in MAAS is an L3 IP segment (192.168.1.0/24), tied to a VLAN within a fabric.  MAAS manages DHCP, DNS, and IP assignments per subnet.  Subnets can be managed (MAAS controls IP allocation) or unmanaged (manual configuration).
 
 ## Spaces and fabrics
 

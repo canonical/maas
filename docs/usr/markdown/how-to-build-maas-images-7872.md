@@ -1,36 +1,38 @@
-This guide covers building custom images for the following operating systems using **Packer** for deployment in MAAS:
+This guide covers building custom images for the following operating systems using Packer for deployment in MAAS:
 
-- **RHEL 7**
-- **RHEL 8**
-- **CentOS 7**
-- **Oracle Linux 8**
-- **Oracle Linux 9**
-- **VMware ESXi**
+- RHEL 7
+- RHEL 8
+- CentOS 7
+- Oracle Linux 8
+- Oracle Linux 9
+- VMware ESXi
 
-You can also build Windows images, covered in a separate section at the end of this page.
+You can also build deployment [Windows](https://maas.io/docs/how-to-build-maas-images#p-17423-build-windows-images) images.
 
-## 1. Verify Requirements
+## Build Linux images
 
-You need a machine running **Ubuntu 18.04+** or **22.04+** with the ability to run KVM virtual machines. Ensure the following components are available:
+### Verify requirements
+
+You need a machine running Ubuntu 18.04+ or 22.04+ with the ability to run KVM virtual machines. Ensure the following components are available:
 
 | **OS**              | **Additional Requirements**                                                                 |
 |---------------------|---------------------------------------------------------------------------------------------|
-| **RHEL 7**          | MAAS 2.3+, Curtin 18.1-59+, RHEL 7 DVD ISO                                                 |
-| **RHEL 8**          | MAAS 2.3+, Curtin 18.1-59+, RHEL 8 DVD ISO                                                 |
-| **CentOS 7**        | MAAS 2.3+, Curtin 18.1-59+                                                                 |
-| **Oracle Linux 8**  | MAAS 3.5+, Curtin 23.1+, libnbd-bin, nbdkit, fuse2fs, Oracle Linux 8 DVD ISO               |
-| **Oracle Linux 9**  | MAAS 3.5+, Curtin 23.1+, libnbd-bin, nbdkit, fuse2fs, Oracle Linux 9 DVD ISO               |
-| **VMware ESXi**     | MAAS 2.5+, qemu-kvm, qemu-utils, VMware ESXi ISO                                           |
+| RHEL 7          | MAAS 2.3+, Curtin 18.1-59+, RHEL 7 DVD ISO                                                 |
+| RHEL 8          | MAAS 2.3+, Curtin 18.1-59+, RHEL 8 DVD ISO                                                 |
+| CentOS 7        | MAAS 2.3+, Curtin 18.1-59+                                                                 |
+| Oracle Linux 8  | MAAS 3.5+, Curtin 23.1+, libnbd-bin, nbdkit, fuse2fs, Oracle Linux 8 DVD ISO               |
+| Oracle Linux 9  | MAAS 3.5+, Curtin 23.1+, libnbd-bin, nbdkit, fuse2fs, Oracle Linux 9 DVD ISO               |
+| VMware ESXi     | MAAS 2.5+, qemu-kvm, qemu-utils, VMware ESXi ISO                                           |
 
-## 2. Install Packer
+### Install Packer
 
-### For Ubuntu 18.04+
+#### For Ubuntu 18.04+
 
 ```bash
 sudo apt install packer
 ```
 
-### For Ubuntu 22.04+ (Required for Oracle Linux 8/9)
+#### For Ubuntu 22.04+ (Required for Oracle Linux 8/9)
 
 ```bash
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
@@ -38,7 +40,7 @@ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(l
 sudo apt-get update && sudo apt-get install packer
 ```
 
-## 3. Install Dependencies
+### Install dependencies
 
 Install dependencies required for image building:
 
@@ -46,77 +48,77 @@ Install dependencies required for image building:
 sudo apt install qemu-utils
 ```
 
-For **Oracle Linux 8/9** and **VMware ESXi**, install additional dependencies:
+For Oracle Linux 8/9 and VMware ESXi, install additional dependencies:
 
 ```bash
 sudo apt install libnbd-bin nbdkit fuse2fs qemu-utils
 ```
 
-For **VMware ESXi**, install Python pip:
+For VMware ESXi, install Python pip:
 
 ```bash
 sudo apt install pip
 ```
 
-## 4. Get Packer Templates
+### Get Packer templates
 
-Clone the **Packer templates** repository:
+Clone the Packer templates repository:
 
 ```bash
 git clone https://github.com/canonical/packer-maas.git
 ```
 
-## 5. Download ISO Files
+### Download ISO files
 
 Download the appropriate ISO for your desired OS version and place it in the corresponding subdirectory:
 
 | **OS**              | **ISO Location**                    | **Subdirectory**  |
 |---------------------|--------------------------------------|-------------------|
-| **RHEL 7**          | RHEL 7 DVD ISO                      | `rhel7`           |
-| **RHEL 8**          | RHEL 8 DVD ISO                      | `rhel8`           |
-| **CentOS 7**        | Downloaded via template             | `centos7`         |
-| **Oracle Linux 8**  | Oracle Linux 8 DVD ISO              | `ol8`             |
-| **Oracle Linux 9**  | Oracle Linux 9 DVD ISO              | `ol9`             |
-| **VMware ESXi**     | VMware ESXi ISO                     | `vmware-esxi`     |
+| RHEL 7          | RHEL 7 DVD ISO                      | `rhel7`           |
+| RHEL 8          | RHEL 8 DVD ISO                      | `rhel8`           |
+| CentOS 7        | Downloaded via template             | `centos7`         |
+| Oracle Linux 8  | Oracle Linux 8 DVD ISO              | `ol8`             |
+| Oracle Linux 9  | Oracle Linux 9 DVD ISO              | `ol9`             |
+| VMware ESXi     | VMware ESXi ISO                     | `vmware-esxi`     |
 
-## 6. Customize the Image
+### Customize the image
 
-Modify the **Kickstart file** to customize the deployment image:
+Modify the Kickstart file to customize the deployment image:
 
 | **OS**              | **Kickstart File**            |
 |---------------------|-------------------------------|
-| **RHEL 7**          | `http/rhel7.ks`               |
-| **RHEL 8**          | `http/rhel8.ks`               |
-| **CentOS 7**        | `http/centos7.ks`             |
-| **Oracle Linux 8**  | `http/ol8.ks`                 |
-| **Oracle Linux 9**  | `http/ol9.ks`                 |
-| **VMware ESXi**     | `packer-maas/vmware-esxi/KS.CFG` |
+| RHEL 7          | `http/rhel7.ks`               |
+| RHEL 8          | `http/rhel8.ks`               |
+| CentOS 7        | `http/centos7.ks`             |
+| Oracle Linux 8  | `http/ol8.ks`                 |
+| Oracle Linux 9  | `http/ol9.ks`                 |
+| VMware ESXi     | `packer-maas/vmware-esxi/KS.CFG` |
 
-Refer to the respective **Kickstart documentation** for detailed customization options.
+Refer to the respective Kickstart documentation for detailed customization options.
 
-## 7. Optional Proxy Configuration
+### Optional proxy configuration
 
 To use a proxy during the build process:
 
-1. **Set the HTTP Proxy**:
+1. Set the HTTP proxy:
 
    ```bash
    export HTTP_PROXY=http://your-proxy-server:port
    ```
 
-2. **Modify Kickstart Files**:
+2. Modify Kickstart Files:
 
    Add `--proxy=$HTTP_PROXY` to lines starting with `url` or `repo`.
 
-For **Oracle Linux 8/9**, set the `KS_PROXY` variable:
+For Oracle Linux 8/9, set the `KS_PROXY` variable:
 
 ```bash
 export KS_PROXY=$HTTP_PROXY
 ```
 
-## 8. Build the Image
+### Build the image
 
-### Using the Makefile
+#### Using the makefile
 
 Run the following command in the appropriate subdirectory (`rhel7`, `rhel8`, `centos7`, `ol8`, `ol9`, `vmware-esxi`):
 
@@ -124,63 +126,64 @@ Run the following command in the appropriate subdirectory (`rhel7`, `rhel8`, `ce
 make ISO=/PATH/TO/your-iso-file.iso
 ```
 
-### Manually Using Packer
+#### Manually, Using Packer
 
-Alternatively, manually run **Packer**:
+Alternatively, manually run Packer:
 
-For **RHEL 7/8**:
+For RHEL 7/8:
 
 ```bash
 sudo PACKER_LOG=1 packer build -var 'iso_path=/PATH/TO/your-iso-file.iso' rhel7.json  # or rhel8.json
 ```
 
-For **CentOS 7**:
+For CentOS 7:
 
 ```bash
 sudo PACKER_LOG=1 packer build centos7.json
 ```
 
-For **Oracle Linux 8/9**:
+For Oracle Linux 8/9:
 
 ```bash
 packer init .
 PACKER_LOG=1 packer build .
 ```
 
-For **VMware ESXi**:
+For VMware ESXi:
 
 ```bash
 sudo PACKER_LOG=1 packer build -var 'vmware_esxi_iso_path=/PATH/TO/your-esxi-iso-file.iso' vmware-esxi.json
 ```
 
-**Note:** Packer runs in headless mode by default. To view the installation output, connect via **VNC** or set `headless` to `false`.
+Note: Packer runs in headless mode by default. To view the installation output, connect via VNC or set `headless` to `false`.
 
-## 9. Upload the Image to MAAS
+### Upload the image to MAAS
 
-### Commands for Each OS
+#### Commands for each OS
 
 | **OS**              | **Upload Command**                                                                                       |
 |---------------------|---------------------------------------------------------------------------------------------------------|
-| **RHEL 7**          | `maas $PROFILE boot-resources create name='rhel/7-custom' title='RHEL 7 Custom' ...`                   |
-| **RHEL 8**          | `maas $PROFILE boot-resources create name='rhel/8-custom' title='RHEL 8 Custom' ...`                   |
-| **CentOS 7**        | `maas $PROFILE boot-resources create name='centos/7-custom' title='CentOS 7 Custom' ...`               |
-| **Oracle Linux 8**  | `maas $PROFILE boot-resources create name='ol/8.8' title='Oracle Linux 8.8' ...`                       |
-| **Oracle Linux 9**  | `maas $PROFILE boot-resources create name='ol/9.2' title='Oracle Linux 9.2' ...`                       |
-| **VMware ESXi**     | `maas $PROFILE boot-resources create name='esxi/6.7' title='VMware ESXi 6.7' ...`                      |
+| RHEL 7          | `maas $PROFILE boot-resources create name='rhel/7-custom' title='RHEL 7 Custom' ...`                   |
+| RHEL 8          | `maas $PROFILE boot-resources create name='rhel/8-custom' title='RHEL 8 Custom' ...`                   |
+| CentOS 7        | `maas $PROFILE boot-resources create name='centos/7-custom' title='CentOS 7 Custom' ...`               |
+| Oracle Linux 8  | `maas $PROFILE boot-resources create name='ol/8.8' title='Oracle Linux 8.8' ...`                       |
+| Oracle Linux 9  | `maas $PROFILE boot-resources create name='ol/9.2' title='Oracle Linux 9.2' ...`                       |
+| VMware ESXi     | `maas $PROFILE boot-resources create name='esxi/6.7' title='VMware ESXi 6.7' ...`                      |
 
 
-## 10. Verify and Log In
+### Verify and log in
 
 Deploy the image and log in to verify customizations:
 
 | **OS**              | **Default Username** |
 |---------------------|----------------------|
-| **RHEL 7/8**        | `cloud-user`         |
-| **CentOS 7**        | `centos`             |
-| **Oracle Linux 8/9**| `cloud-user`         |
-| **VMware ESXi**     | `root`               |
+| RHEL 7/8        | `cloud-user`         |
+| CentOS 7        | `centos`             |
+| Oracle Linux 8/9| `cloud-user`         |
+| VMware ESXi     | `root`               |
 
-## Building Windows images with packer
+
+## Build Windows images
 
 Since Windows is a proprietary operating system, MAAS can't download these images. You need to manually generate images to use with MAAS by using Windows ISO images. On the upside, the end result will be much simpler, since there are CLI and WebUI tools to upload a Windows image -- which _helps_ automate the process.
 
@@ -205,7 +208,7 @@ Note that Ubuntu 22.04+ is required to build Windows 11 images due to ```swtpm``
 * [Curtin](https://launchpad.net/curtin) 21.0+
 
 
-### Supported Microsoft Windows Versions
+### Supported Microsoft Windows versions
 
 This process has been build and deployment tested with the following versions of Microsoft Windows:
 
@@ -249,7 +252,7 @@ Example:
 sudo make ISO=/mnt/iso/Windows_Server_2025_SERVER_EVAL_x64FRE_en-us.iso VERSION=2025
 ```
 
-### Makefile Parameters
+### Makefile parameters
 
 #### EDIT
 
@@ -257,7 +260,7 @@ The edition of a targeted ISO image. It defaults to PRO for Microsoft Windows 10
 
 #### HEADLESS
 
-Whether VNC viewer should not be launched. Default is set to false. This is useful when building images on machiens that do not have graphical libraries such as SDL/GTK installed. Headless mode does include an open VNC port to monitor the build process if needed.
+Whether VNC viewer should not be launched. Default is set to false. This is useful when building images on machines that do not have graphical libraries such as SDL/GTK installed. Headless mode does include an open VNC port to monitor the build process if needed.
 
 #### ISO
 

@@ -30,7 +30,7 @@ This page documents the metadata fields associated with MAAS commissioning scrip
 | `hardware_type` | Defines the type of hardware the script configures or tests. Types are `node`, `cpu`, `memory`, `storage`, `network`. |
 | `for_hardware`  | Specifies the hardware that must be on the machine for the script to run. Various formats accepted. |
 
-#### for_hardware sub-parameters
+#### For_hardware sub-parameters
 
 | Sub-Parameter       | Description                                                                                       |
 |---------------------|---------------------------------------------------------------------------------------------------|
@@ -80,13 +80,13 @@ echo "Model: $1"
 echo "Serial: $2"
 ```
 
-## Available Environment Variables
+## Available environment variables
 
 - **OUTPUT_STDOUT_PATH**: Log path for STDOUT.
 - **OUTPUT_STDERR_PATH**: Log path for STDERR.
 - **RESULT_PATH**: Where to write result YAML.
 
-## Real-world Example: Intel C610/X99 HPA Controller
+## Real-world example: Intel C610/X99 HPA Controller
 
 Here's how to configure an Intel C610/X99 HPA controller on HP systems:
 
