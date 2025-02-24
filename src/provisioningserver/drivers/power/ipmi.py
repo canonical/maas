@@ -3,10 +3,10 @@
 
 """IPMI Power Driver."""
 
-import enum
 import re
 from tempfile import NamedTemporaryFile
 
+from maascommon.enums.ipmi import IPMIPrivilegeLevel
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -238,17 +238,10 @@ IPMI_POWER_OFF_MODE_CHOICES = [
 ]
 
 
-@enum.unique
-class IPMI_PRIVILEGE_LEVEL(enum.Enum):
-    USER = "USER"
-    OPERATOR = "OPERATOR"
-    ADMIN = "ADMIN"
-
-
 IPMI_PRIVILEGE_LEVEL_CHOICES = [
-    [IPMI_PRIVILEGE_LEVEL.USER.name, "User"],
-    [IPMI_PRIVILEGE_LEVEL.OPERATOR.name, "Operator"],
-    [IPMI_PRIVILEGE_LEVEL.ADMIN.name, "Administrator"],
+    [IPMIPrivilegeLevel.USER.name, "User"],
+    [IPMIPrivilegeLevel.OPERATOR.name, "Operator"],
+    [IPMIPrivilegeLevel.ADMIN.name, "Administrator"],
 ]
 
 
@@ -302,7 +295,7 @@ class IPMIPowerDriver(PowerDriver):
             field_type="choice",
             choices=IPMI_PRIVILEGE_LEVEL_CHOICES,
             # All MAAS operations can be done as operator.
-            default=IPMI_PRIVILEGE_LEVEL.OPERATOR.name,
+            default=IPMIPrivilegeLevel.OPERATOR.name,
         ),
         make_setting_field(
             "workaround_flags",
@@ -447,7 +440,7 @@ class IPMIPowerDriver(PowerDriver):
             common_args.extend(("-l", privilege_level))
         else:
             # LP:1889788 - Default to communicate at operator level.
-            common_args.extend(("-l", IPMI_PRIVILEGE_LEVEL.OPERATOR.name))
+            common_args.extend(("-l", IPMIPrivilegeLevel.OPERATOR.name))
 
         # Update the power commands with common args.
         ipmipower_command.extend(common_args)

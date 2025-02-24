@@ -1,14 +1,14 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Load all pod drivers."""
 
 from jsonschema import validate
 
+from maascommon.utils.registry import Registry
 from provisioningserver.drivers.pod import JSON_POD_DRIVERS_SCHEMA
 from provisioningserver.drivers.pod.lxd import LXDPodDriver
 from provisioningserver.drivers.pod.virsh import VirshPodDriver
-from provisioningserver.utils.registry import Registry
 
 
 class PodDriverRegistry(Registry):

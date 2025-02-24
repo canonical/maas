@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resources."""
@@ -33,6 +33,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.python.failure import Failure
 
+from maascommon.constants import IMPORT_RESOURCES_SERVICE_PERIOD
 from maasserver import locks
 from maasserver.bootsources import (
     cache_boot_sources,
@@ -1136,10 +1137,6 @@ def stop_import_resources():
         if not running:
             break
         yield pause(1)
-
-
-# How often the import service runs.
-IMPORT_RESOURCES_SERVICE_PERIOD = timedelta(hours=1)
 
 
 class ImportResourcesService(TimerService):

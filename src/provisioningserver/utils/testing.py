@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from pathlib import Path
@@ -6,8 +6,8 @@ from pathlib import Path
 from fixtures import Fixture, TempDir
 from twisted.internet import defer
 
+from maascommon.utils.registry import _registry
 from provisioningserver.utils.env import MAAS_ID, MAAS_UUID
-from provisioningserver.utils.registry import _registry
 from provisioningserver.utils.twisted import call, callOut
 
 

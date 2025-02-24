@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed` and related bits and bobs."""
@@ -17,6 +17,9 @@ from django.conf import settings
 from django.urls import reverse
 import yaml
 
+from maascommon.osystem import BOOT_IMAGE_PURPOSE, OperatingSystemRegistry
+from maascommon.osystem.custom import CustomOS
+from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import preseed as preseed_module
 from maasserver.compose_preseed import get_archive_config, make_clean_repo_name
 from maasserver.enum import (
@@ -77,12 +80,6 @@ from maasserver.third_party_drivers import DriversConfig
 from maasserver.utils.curtin import curtin_supports_webhook_events
 from maastesting.http import make_HttpRequest
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.osystem import (
-    BOOT_IMAGE_PURPOSE,
-    OperatingSystemRegistry,
-)
-from provisioningserver.drivers.osystem.custom import CustomOS
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils.enum import map_enum
 
 

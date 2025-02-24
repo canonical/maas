@@ -2,7 +2,8 @@
 
 from django.contrib.sessions.backends.db import SessionStore as DBStore
 
-from maasserver.models.config import Config, DEFAULT_CONFIG
+from maasserver.models import Config
+from maasservicelayer.models.configurations import ConfigFactory
 
 
 class SessionStore(DBStore):
@@ -19,5 +20,5 @@ def _get_session_length() -> int:
     """Return the session duration."""
     return (
         Config.objects.get_config("session_length")
-        or DEFAULT_CONFIG["session_length"]
+        or ConfigFactory.get_config_model("session_length").default
     )

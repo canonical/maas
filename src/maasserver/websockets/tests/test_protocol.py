@@ -1,4 +1,4 @@
-# Copyright 2015-2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -16,6 +16,7 @@ from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.server import NOT_DONE_YET
 
 from apiclient.utils import ascii_url
+from maascommon.utils.url import splithost
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.listener import FakePostgresListenerService
@@ -38,7 +39,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from provisioningserver.utils.twisted import synchronous
-from provisioningserver.utils.url import splithost
 
 wait_for_reactor = wait_for()
 

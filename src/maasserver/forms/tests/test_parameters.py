@@ -9,9 +9,9 @@ from maasserver.forms.parameters import (
     ParametersForm,
 )
 from maasserver.models import Config
-from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasservicelayer.models.configurations import ConfigFactory
 from provisioningserver.drivers.power.ipmi import IPMI_PRIVILEGE_LEVEL_CHOICES
 
 
@@ -1321,5 +1321,5 @@ class TestParametersForm(MAASServerTestCase):
         )
 
     def test_default_config_keys_exist(self):
-        defaults_all = get_default_config().keys()
+        defaults_all = ConfigFactory.ALL_CONFIGS.keys()
         self.assertGreaterEqual(defaults_all, DEFAULTS_FROM_MAAS_CONFIG)

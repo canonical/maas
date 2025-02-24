@@ -6,7 +6,7 @@
 import random
 
 from maasserver.forms.settings import CONFIG_ITEMS, get_config_field
-from maasserver.models.config import Config, get_default_config
+from maasserver.models.config import Config
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -20,6 +20,7 @@ from maasserver.websockets.handlers.config import (
     ConfigHandler,
     get_config_keys,
 )
+from maasservicelayer.models.configurations import ConfigFactory
 
 
 class TestConfigHandler(MAASServerTestCase):
@@ -95,7 +96,7 @@ class TestConfigHandler(MAASServerTestCase):
     def test_get_must_be_in_config_items(self):
         admin = factory.make_admin()
         allowed_keys = set(get_config_keys(admin))
-        all_keys = set(get_default_config().keys())
+        all_keys = set(ConfigFactory.ALL_CONFIGS.keys())
         not_allowed_keys = all_keys.difference(allowed_keys)
         key = random.choice(list(not_allowed_keys))
         handler = ConfigHandler(admin, {}, None)

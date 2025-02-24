@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
@@ -8,16 +8,14 @@ from django.conf import settings
 from django.urls import reverse
 from testtools.content import text_content
 
-from maasserver.forms.settings import CONFIG_ITEMS_KEYS
 from maasserver.models import PackageRepository
-from maasserver.models.config import Config, DEFAULT_CONFIG
+from maasserver.models.config import Config
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import (
     make_osystem_with_releases,
     make_usable_osystem,
 )
-from maastesting.testcase import MAASTestCase
 
 # Names forbidden for use via the Web API.
 FORBIDDEN_NAMES = {
@@ -30,16 +28,6 @@ FORBIDDEN_NAMES = {
     "uuid",
     "vault_enabled",
 }
-
-
-class TestForbiddenNames(MAASTestCase):
-    def test_forbidden_names(self):
-        # The difference between the set of possible configuration keys and
-        # those permitted via the Web API is small but important to security.
-        self.assertCountEqual(
-            set(DEFAULT_CONFIG).difference(CONFIG_ITEMS_KEYS),
-            FORBIDDEN_NAMES,
-        )
 
 
 class TestMAASHandlerAPI(APITestCase.ForUser):

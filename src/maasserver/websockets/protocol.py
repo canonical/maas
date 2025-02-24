@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The MAAS WebSockets protocol."""
@@ -22,6 +22,7 @@ from twisted.internet.task import LoopingCall
 from twisted.python.modules import getModule
 from twisted.web.server import NOT_DONE_YET
 
+from maascommon.utils.url import splithost
 from maasserver.eventloop import services
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -29,7 +30,6 @@ from maasserver.websockets import handlers
 from maasserver.websockets.websockets import STATUSES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import synchronous
-from provisioningserver.utils.url import splithost
 
 log = LegacyLogger()
 

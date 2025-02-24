@@ -1,13 +1,14 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test utilities for URL handling."""
 
 from random import randint
 
+from maascommon.utils.url import splithost
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.url import compose_URL, get_domain, splithost
+from provisioningserver.utils.url import compose_URL, get_domain
 
 
 class TestComposeURL(MAASTestCase):

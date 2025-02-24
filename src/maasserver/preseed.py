@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation."""
@@ -17,6 +17,8 @@ from django.urls import reverse
 import tempita
 import yaml
 
+from maascommon.osystem import BOOT_IMAGE_PURPOSE, OperatingSystemRegistry
+from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver.compose_preseed import (
     build_metadata_url,
     compose_debconf_cloud_init_preseed,
@@ -51,11 +53,6 @@ from maasserver.utils.curtin import (
 )
 from maasserver.utils.osystems import get_release_version_from_string
 from metadataserver.user_data.snippets import get_snippet_context
-from provisioningserver.drivers.osystem import (
-    BOOT_IMAGE_PURPOSE,
-    OperatingSystemRegistry,
-)
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.url import compose_URL
 

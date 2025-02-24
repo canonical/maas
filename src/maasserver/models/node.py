@@ -1,4 +1,4 @@
-# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -76,6 +76,8 @@ from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
 from maascommon.constants import NODE_TIMEOUT
+from maascommon.osystem import BOOT_IMAGE_PURPOSE
+from maascommon.utils.time import systemd_interval_to_seconds
 from maascommon.workflows.deploy import DEPLOY_MANY_WORKFLOW_NAME
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -167,7 +169,6 @@ from maasserver.storage_layouts import (
     VMFS6StorageLayout,
     VMFS7StorageLayout,
 )
-from maasserver.utils.converters import parse_systemd_interval
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.orm import (
     get_one,
@@ -200,7 +201,6 @@ from metadataserver.user_data import (
     generate_user_data_for_status,
 )
 from metadataserver.user_data.snippets import get_userdata_template_dir
-from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import (
@@ -2125,7 +2125,7 @@ class Node(CleanSave, TimestampedModel):
                 kwargs["update_fields"].append("status_expires")
 
         if self.enable_hw_sync and self.sync_interval is None:
-            self.sync_interval = parse_systemd_interval(
+            self.sync_interval = systemd_interval_to_seconds(
                 Config.objects.get_config("hardware_sync_interval")
             )
 

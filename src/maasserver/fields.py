@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom model and form fields."""
@@ -20,13 +20,17 @@ from django.db.models import (
 )
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_str
-from netaddr import AddrFormatError, IPAddress, IPNetwork
+from netaddr import AddrFormatError, IPNetwork
 
 from maascommon.fields import MAC_FIELD_RE, MAC_RE, normalise_macaddress
 from maasserver.models.versionedtextfile import VersionedTextFile
-from maasserver.utils.converters import parse_systemd_interval
-from maasserver.utils.dns import validate_domain_name, validate_hostname
+from maasserver.utils.dns import validate_domain_name
 from maasserver.utils.orm import get_one, validate_in_transaction
+from maasservicelayer.models.configurations import (
+    DNSTrustedAclConfig,
+    HardwareSyncIntervalConfig,
+    NTPServersConfig,
+)
 
 # Validator for the name attribute of model entities.
 MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")
@@ -389,51 +393,11 @@ class HostListFormField(forms.CharField):
     This field normalizes the list to a space-separated list.
     """
 
-    separators = re.compile(r"[,\s]+")
-
-    # Regular expressions to sniff out things that look like IP addresses;
-    # additional and more robust validation ought to be done to make sure.
-    pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
-    pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % pt_ipv4
-    pt_ip = re.compile(rf"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
-
     def clean(self, value):
-        if value is None:
-            return None
-        else:
-            values = map(str.strip, self.separators.split(value))
-            values = (value for value in values if len(value) != 0)
-            values = map(self._clean_addr_or_host, values)
-            return " ".join(values)
-
-    def _clean_addr_or_host(self, value):
-        looks_like_ip = self.pt_ip.match(value) is not None
-        if looks_like_ip:
-            return self._clean_addr(value)
-        elif ":" in value:
-            # This is probably an IPv6 address. It's definitely not a
-            # hostname.
-            return self._clean_addr(value)
-        else:
-            return self._clean_host(value)
-
-    def _clean_addr(self, addr):
         try:
-            addr = IPAddress(addr)
-        except AddrFormatError as error:
-            message = str(error)  # netaddr has good messages.
-            message = message[:1].upper() + message[1:] + "."
-            raise ValidationError(message)  # noqa: B904
-        else:
-            return str(addr)
-
-    def _clean_host(self, host):
-        try:
-            validate_hostname(host)
-        except ValidationError as error:
-            raise ValidationError("Invalid hostname: " + error.message)  # noqa: B904
-        else:
-            return host
+            return NTPServersConfig.validate_value(value)
+        except ValueError as e:
+            raise ValidationError(str(e))  # noqa: B904
 
 
 class SubnetListFormField(forms.CharField):
@@ -442,61 +406,11 @@ class SubnetListFormField(forms.CharField):
     This field normalizes the list to a space-separated list.
     """
 
-    separators = re.compile(r"[,\s]+")
-
-    # Regular expressions to sniff out things that look like IP addresses;
-    # additional and more robust validation ought to be done to make sure.
-    pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
-    pt_ipv6 = r"(?: (|[0-9A-Fa-f]{1,4}) [:] (|[0-9A-Fa-f]{1,4}) [:] (.*))"
-    pt_ip = re.compile(rf"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
-    pt_subnet = re.compile(
-        rf"^ (?: {pt_ipv4} | {pt_ipv6} ) \/\d+$", re.VERBOSE
-    )
-
     def clean(self, value):
-        if value is None:
-            return None
-        else:
-            values = map(str.strip, self.separators.split(value))
-            values = (value for value in values if len(value) != 0)
-            values = map(self._clean_addr_or_host, values)
-            return " ".join(values)
-
-    def _clean_addr_or_host(self, value):
-        looks_like_ip = self.pt_ip.match(value) is not None
-        looks_like_subnet = self.pt_subnet.match(value) is not None
-        if looks_like_subnet:
-            return self._clean_subnet(value)
-        elif looks_like_ip:
-            return self._clean_addr(value)
-        else:
-            return self._clean_host(value)
-
-    def _clean_addr(self, value):
         try:
-            addr = IPAddress(value)
-        except ValueError:
-            return
-        except AddrFormatError:
-            raise ValidationError("Invalid IP address: %s." % value)  # noqa: B904
-        else:
-            return str(addr)
-
-    def _clean_subnet(self, value):
-        try:
-            cidr = IPNetwork(value)
-        except AddrFormatError:
-            raise ValidationError("Invalid network: %s." % value)  # noqa: B904
-        else:
-            return str(cidr)
-
-    def _clean_host(self, host):
-        try:
-            validate_hostname(host)
-        except ValidationError as error:
-            raise ValidationError("Invalid hostname: " + error.message)  # noqa: B904
-        else:
-            return host
+            return DNSTrustedAclConfig.validate_value(value)
+        except ValueError as e:
+            raise ValidationError(str(e)) from e
 
 
 class CaseInsensitiveChoiceField(forms.ChoiceField):
@@ -677,11 +591,9 @@ class URLOrPPAField(URLField):
 class SystemdIntervalField(forms.CharField):
     def clean(self, value):
         try:
-            parse_systemd_interval(value)
+            HardwareSyncIntervalConfig.validate_systemd_interval(value)
         except ValueError as e:
-            raise ValidationError(  # noqa: B904
-                f"{e}: {value}, only 'h|hr|hour|hours, m|min|minute|minutes, s|sec|second|seconds' are valid units"
-            )
+            raise ValidationError(e) from e
         else:
             return value
 

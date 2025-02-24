@@ -1,9 +1,8 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Conversion utilities."""
 
-from datetime import timedelta
 import json
 import re
 
@@ -135,15 +134,6 @@ def json_load_bytes(input: bytes, encoding=None) -> dict:
 _duration_re = re.compile(
     r"((?P<hours>\d+?)(\s?(hour(s?)|hr|h))\s?)?((?P<minutes>\d+?)(\s?(minute(s?)|min|m))\s?)?((?P<seconds>\d+?)(\s?(second(s?)|sec|s))\s?)?"
 )
-
-
-def parse_systemd_interval(interval):
-    duration = _duration_re.match(interval)
-    if not duration.group():
-        raise ValueError("value is not a valid interval")
-    duration = duration.groupdict()
-    params = {name: int(t) for name, t in duration.items() if t}
-    return timedelta(**params).total_seconds()
 
 
 def systemd_interval_to_calendar(interval):

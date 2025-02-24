@@ -233,6 +233,7 @@ APIServerRule = Rule(
 Common = files("src/maascommon/**/*.py")
 CommonRule = Rule(
     Allow(StandardLibraries),
+    Allow("distro_info|distro_info.*"),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
     Allow("OpenSSL|OpenSSL.**"),

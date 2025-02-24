@@ -1,10 +1,11 @@
-# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Load all power drivers."""
 
 from jsonschema import validate
 
+from maascommon.utils.registry import Registry
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.amt import AMTPowerDriver
@@ -29,7 +30,6 @@ from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 from provisioningserver.drivers.power.webhook import WebhookPowerDriver
 from provisioningserver.drivers.power.wedge import WedgePowerDriver
-from provisioningserver.utils.registry import Registry
 
 
 class PowerDriverRegistry(Registry):

@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Low-level composition code for preseeds."""
@@ -10,6 +10,12 @@ from urllib.parse import urlencode, urlparse
 from django.urls import reverse
 import yaml
 
+from maascommon.osystem import (
+    Node,
+    NoSuchOperatingSystem,
+    OperatingSystemRegistry,
+    Token,
+)
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import NODE_STATUS, PRESEED_TYPE
 from maasserver.models import PackageRepository
@@ -18,13 +24,7 @@ from maasserver.models.subnet import get_boot_rackcontroller_ips, Subnet
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import get_default_region_ip, get_remote_ip
-from provisioningserver.drivers.osystem import (
-    Node,
-    OperatingSystemRegistry,
-    Token,
-)
 from provisioningserver.enum import POWER_STATE
-from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
 from provisioningserver.utils.url import compose_URL
 
 # Default port for RSYSLOG

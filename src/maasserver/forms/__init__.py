@@ -1,4 +1,4 @@
-# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -92,6 +92,7 @@ from formencode.validators import StringBool
 from lxml import etree
 from netaddr import IPNetwork, valid_ipv6
 
+from maascommon.osystem import OperatingSystemRegistry, validate_license_key
 from maasserver.api.utils import get_optional_param, get_overridden_query_dict
 from maasserver.audit import create_audit_event
 from maasserver.clusterrpc.driver_parameters import (
@@ -179,10 +180,6 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     list_release_choices,
     validate_min_hwe_kernel,
-)
-from provisioningserver.drivers.osystem import (
-    OperatingSystemRegistry,
-    validate_license_key,
 )
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger

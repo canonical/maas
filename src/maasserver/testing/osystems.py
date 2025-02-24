@@ -1,17 +1,14 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for operating systems in testing."""
 
 from random import randint
 
+from maascommon.osystem import CustomOS, OperatingSystemRegistry
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import Node
 from maasserver.testing.factory import factory
-from provisioningserver.drivers.osystem import (
-    CustomOS,
-    OperatingSystemRegistry,
-)
 
 
 def make_osystem_with_releases(

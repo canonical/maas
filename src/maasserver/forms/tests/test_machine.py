@@ -4,6 +4,7 @@
 
 from crochet import TimeoutError
 
+from maascommon.osystem import NoSuchOperatingSystem
 from maasserver import forms
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS
@@ -28,10 +29,7 @@ from maasserver.testing.osystems import (
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.certificates import Certificate
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    NoSuchOperatingSystem,
-)
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.testing.certificates import get_sample_cert
 from provisioningserver.testing.os import make_osystem
 

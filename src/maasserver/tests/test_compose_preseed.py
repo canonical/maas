@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import ip_address
@@ -7,6 +7,7 @@ import random
 from django.urls import reverse
 import yaml
 
+from maascommon.osystem import BOOT_IMAGE_PURPOSE, NoSuchOperatingSystem
 import maasserver.compose_preseed as cp_module
 from maasserver.compose_preseed import (
     build_metadata_url,
@@ -22,9 +23,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.http import make_HttpRequest
-from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.enum import POWER_STATE
-from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
 from provisioningserver.testing.os import make_osystem
 
 

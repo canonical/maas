@@ -3,7 +3,7 @@
 from django.db import migrations
 
 from maasserver.enum import BOOT_RESOURCE_TYPE
-from provisioningserver.drivers.osystem import UbuntuOS
+from maascommon.osystem import UbuntuOS
 
 
 def populate_distro_aliases(apps, schema_editor):

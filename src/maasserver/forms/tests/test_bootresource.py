@@ -7,6 +7,7 @@ import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from maascommon.osystem import CustomOS, OperatingSystemRegistry
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.forms import BootResourceForm, get_uploaded_filename
 from maasserver.models import (
@@ -20,10 +21,6 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from provisioningserver.drivers.osystem import (
-    CustomOS,
-    OperatingSystemRegistry,
-)
 from provisioningserver.utils.env import MAAS_ID
 
 

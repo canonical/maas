@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
@@ -6,6 +6,7 @@
 import random
 from unittest.mock import ANY, call, sentinel
 
+from maascommon.enums.ipmi import IPMIPrivilegeLevel
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import ipmi as ipmi_module
@@ -17,7 +18,6 @@ from provisioningserver.drivers.power.ipmi import (
     IPMI_CONFIG,
     IPMI_CONFIG_WITH_BOOT_TYPE,
     IPMI_ERRORS,
-    IPMI_PRIVILEGE_LEVEL,
     IPMI_PRIVILEGE_LEVEL_CHOICES,
     IPMI_WORKAROUND_FLAG_CHOICES,
     IPMIPowerDriver,
@@ -80,7 +80,7 @@ def make_ipmi_chassis_config_command(
     if privilege_level:
         ret += ("-l", privilege_level)
     else:
-        ret += ("-l", IPMI_PRIVILEGE_LEVEL.OPERATOR.name)
+        ret += ("-l", IPMIPrivilegeLevel.OPERATOR.name)
     ret += (
         "--commit",
         "--filename",
@@ -121,7 +121,7 @@ def make_ipmipower_command(
     if privilege_level:
         ret += ("-l", privilege_level)
     else:
-        ret += ("-l", IPMI_PRIVILEGE_LEVEL.OPERATOR.name)
+        ret += ("-l", IPMIPrivilegeLevel.OPERATOR.name)
     return ret
 
 

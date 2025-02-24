@@ -1,4 +1,4 @@
-# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The BootResource handler for the WebSocket connection."""
@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from twisted.internet.defer import Deferred
 
+from maascommon.osystem import OperatingSystemRegistry
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -52,7 +53,6 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER

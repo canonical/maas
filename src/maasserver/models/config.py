@@ -1,19 +1,15 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items."""
 
 from collections import defaultdict, namedtuple
 from contextlib import suppress
-import copy
-from datetime import timedelta
-from socket import gethostname
 import uuid
 
 from django.db.models import CharField, JSONField, Manager, Model
 from django.db.models.signals import post_save
 
-from maascommon.constants import NODE_TIMEOUT
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -21,10 +17,14 @@ from maascommon.workflows.dhcp import (
 from maasserver.listener import notify_action
 from maasserver.utils.orm import post_commit_do
 from maasserver.workflow import start_workflow
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from maasservicelayer.models.configurations import (
+    ActiveDiscoveryIntervalEnum,
+    ConfigFactory,
+)
 from provisioningserver.events import EVENT_TYPES
+from provisioningserver.logger import LegacyLogger
 
-DEFAULT_OS = UbuntuOS()
+log = LegacyLogger()
 
 DNSSEC_VALIDATION_CHOICES = [
     ("auto", "Automatic (use default root key)"),
@@ -34,145 +34,17 @@ DNSSEC_VALIDATION_CHOICES = [
 
 NETWORK_DISCOVERY_CHOICES = [("enabled", "Enabled"), ("disabled", "Disabled")]
 
-
-def _timedelta_to_whole_seconds(**kwargs) -> int:
-    """Convert arbitrary timedelta to whole seconds."""
-    return int(timedelta(**kwargs).total_seconds())
-
-
 ACTIVE_DISCOVERY_INTERVAL_CHOICES = [
-    (0, "Never (disabled)"),
-    (_timedelta_to_whole_seconds(days=7), "Every week"),
-    (_timedelta_to_whole_seconds(days=1), "Every day"),
-    (_timedelta_to_whole_seconds(hours=12), "Every 12 hours"),
-    (_timedelta_to_whole_seconds(hours=6), "Every 6 hours"),
-    (_timedelta_to_whole_seconds(hours=3), "Every 3 hours"),
-    (_timedelta_to_whole_seconds(hours=1), "Every hour"),
-    (_timedelta_to_whole_seconds(minutes=30), "Every 30 minutes"),
-    (_timedelta_to_whole_seconds(minutes=10), "Every 10 minutes"),
+    (ActiveDiscoveryIntervalEnum.NEVER.value, "Never (disabled)"),
+    (ActiveDiscoveryIntervalEnum.EVERY_WEEK.value, "Every week"),
+    (ActiveDiscoveryIntervalEnum.EVERY_DAY.value, "Every day"),
+    (ActiveDiscoveryIntervalEnum.EVERY_12_HOURS.value, "Every 12 hours"),
+    (ActiveDiscoveryIntervalEnum.EVERY_6_HOURS.value, "Every 6 hours"),
+    (ActiveDiscoveryIntervalEnum.EVERY_3_HOURS.value, "Every 3 hours"),
+    (ActiveDiscoveryIntervalEnum.EVERY_HOUR.value, "Every hour"),
+    (ActiveDiscoveryIntervalEnum.EVERY_30_MINUTES.value, "Every 30 minutes"),
+    (ActiveDiscoveryIntervalEnum.EVERY_10_MINUTES.value, "Every 10 minutes"),
 ]
-
-
-def get_default_config():
-    """
-    :return: A dictionary mapping default settings keys to default values.
-    """
-    return {
-        # Ubuntu section configuration.
-        "commissioning_osystem": DEFAULT_OS.name,
-        "commissioning_distro_series": DEFAULT_OS.get_default_commissioning_release(),
-        "default_dns_ttl": 30,
-        "default_min_hwe_kernel": "",
-        "default_storage_layout": "flat",
-        # kernel options
-        "kernel_opts": None,
-        # Network section configuration.
-        "maas_url": "http://localhost:5240/MAAS",
-        "maas_name": gethostname(),
-        "theme": "",
-        "default_osystem": DEFAULT_OS.name,
-        "default_distro_series": DEFAULT_OS.get_default_release(),
-        # Proxy settings
-        "enable_http_proxy": True,
-        "maas_proxy_port": 8000,
-        "use_peer_proxy": False,
-        "http_proxy": None,
-        "prefer_v4_proxy": False,
-        # DNS settings
-        "upstream_dns": None,
-        "dnssec_validation": "auto",
-        "dns_trusted_acl": None,
-        "maas_internal_domain": "maas-internal",
-        # NTP settings
-        "ntp_servers": "ntp.ubuntu.com",
-        "ntp_external_only": False,
-        "omapi_key": "",
-        # Syslog settings
-        "remote_syslog": None,
-        "maas_syslog_port": 5247,
-        # Network discovery.
-        "network_discovery": "enabled",
-        "active_discovery_interval": _timedelta_to_whole_seconds(hours=3),
-        "active_discovery_last_scan": 0,
-        # IP Mode setting
-        "default_boot_interface_link_type": "auto",
-        # RPC configuration.
-        "rpc_shared_secret": None,
-        "uuid": None,
-        # Images.
-        "boot_images_auto_import": True,
-        "boot_images_no_proxy": False,
-        # Third Party
-        "enable_third_party_drivers": True,
-        # Default deployment options
-        "enable_kernel_crash_dump": False,
-        # Disk erasing.
-        "enable_disk_erasing_on_release": False,
-        "disk_erase_with_secure_erase": True,
-        "disk_erase_with_quick_erase": False,
-        # Curtin.
-        "curtin_verbose": True,
-        # Netplan
-        "force_v1_network_yaml": False,
-        # Analytics.
-        "enable_analytics": True,
-        # First admin journey.
-        "completed_intro": False,
-        "max_node_commissioning_results": 10,
-        "max_node_testing_results": 10,
-        "max_node_installation_results": 3,
-        "max_node_release_results": 3,
-        # Notifications.
-        "subnet_ip_exhaustion_threshold_count": 16,
-        "release_notifications": True,
-        # MAAS Architecture.
-        "use_rack_proxy": True,
-        "node_timeout": NODE_TIMEOUT,
-        # prometheus.
-        "prometheus_enabled": False,
-        "prometheus_push_gateway": None,
-        "prometheus_push_interval": 60,
-        # Loki Promtail
-        "promtail_enabled": False,
-        "promtail_port": 5238,
-        # Enlistment options
-        "enlist_commissioning": True,
-        "maas_auto_ipmi_user": "maas",
-        "maas_auto_ipmi_user_privilege_level": "ADMIN",
-        "maas_auto_ipmi_k_g_bmc_key": "",
-        "maas_auto_ipmi_cipher_suite_id": "3",
-        "maas_auto_ipmi_workaround_flags": None,
-        # VMware vCenter crednetials
-        "vcenter_server": "",
-        "vcenter_username": "",
-        "vcenter_password": "",
-        "vcenter_datacenter": "",
-        # Hardware Sync options
-        "hardware_sync_interval": "15m",
-        # TLS certificate options
-        "tls_port": None,
-        "tls_cert_expiration_notification_enabled": False,
-        "tls_cert_expiration_notification_interval": 30,
-        "vault_enabled": False,
-        # Windows settings
-        "windows_kms_host": None,
-        # Session timeout length (s)
-        "session_length": 1209600,
-        "auto_vlan_creation": True,
-    }
-
-
-# Default values for config options.
-DEFAULT_CONFIG = get_default_config()
-
-# Map config keys that are secrets to their path in the Secret model (as
-# they're actually stored there)
-CONFIG_SECRETS = {
-    "rpc_shared_secret": "rpc-shared",
-    "omapi_key": "omapi-key",
-    "maas_auto_ipmi_k_g_bmc_key": "ipmi-k_g-key",
-    "vcenter_password": "vcenter-password",
-}
 
 # Encapsulates the possible states for network discovery
 NetworkDiscoveryConfig = namedtuple(
@@ -205,13 +77,24 @@ class ConfigManager(Manager):
         """
         from maasserver.secrets import SecretManager, SecretNotFound
 
-        secret_name = CONFIG_SECRETS.get(name)
+        config_model = None
         try:
-            if secret_name:
-                return SecretManager().get_simple_secret(secret_name)
+            config_model = ConfigFactory.get_config_model(name)
+        except ValueError:
+            log.warn(
+                f"The configuration '{name}' is not known. Using the default {default} if the config does not exist in the DB."
+            )
+            default_value = default
+        else:
+            default_value = config_model.default
+        try:
+            if config_model and config_model.stored_as_secret:
+                return SecretManager().get_simple_secret(
+                    config_model.secret_name
+                )
             return self.get(name=name).value
         except (Config.DoesNotExist, SecretNotFound):
-            return copy.deepcopy(DEFAULT_CONFIG.get(name, default))
+            return default_value
 
     def get_configs(self, names):
         """Return the config values corresponding to the given config names.
@@ -220,27 +103,33 @@ class ConfigManager(Manager):
         """
         from maasserver.secrets import SecretManager, SecretNotFound
 
-        # set defaults
-        configs = {
-            key: copy.deepcopy(value)
-            for key, value in get_default_config().items()
-            if key in names
+        config_models = {
+            name: ConfigFactory.get_config_model(name)
+            for name in names
+            if name in ConfigFactory.ALL_CONFIGS
         }
+
+        # Build a first result with all the default values, then look in the secrets/configs in the db for overrides.
+        configs = {
+            name: config_model.default
+            for name, config_model in config_models.items()
+        }
+
+        # What configs we should lookup from the DB
+        regular_configs = set(names)
 
         # secrets configs
         secret_manager = SecretManager()
-        regular_configs = []
-        for name in names:
-            secret_name = CONFIG_SECRETS.get(name)
-            if secret_name:
+        for name, model in config_models.items():
+            if model.stored_as_secret:
                 with suppress(SecretNotFound):
                     configs[name] = secret_manager.get_simple_secret(
-                        secret_name
+                        model.secret_name
                     )
-            else:
-                regular_configs.append(name)
+                    # The config was found and added to the result: remove it from the regular config.
+                    regular_configs.remove(name)
 
-        # other configs
+        # Lookup the remaining configs from the DB.
         configs.update(
             self.filter(name__in=regular_configs).values_list("name", "value")
         )
@@ -261,9 +150,15 @@ class ConfigManager(Manager):
         from maasserver.audit import create_audit_event
         from maasserver.secrets import SecretManager
 
-        secret_name = CONFIG_SECRETS.get(name)
-        if secret_name:
-            SecretManager().set_simple_secret(secret_name, value)
+        config_model = None
+        try:
+            config_model = ConfigFactory.get_config_model(name)
+        except ValueError:
+            log.warn(
+                f"The configuration '{name}' is not known. Anyways, it's going to be stored in the DB."
+            )
+        if config_model and config_model.stored_as_secret:
+            SecretManager().set_simple_secret(config_model.secret_name, value)
         else:
             self.update_or_create(name=name, defaults={"value": value})
         self._handle_config_value_changed(name, value)

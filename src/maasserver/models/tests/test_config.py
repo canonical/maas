@@ -1,9 +1,7 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Config` class and friends."""
-
-from socket import gethostname
 
 from django.db import IntegrityError
 from django.http import HttpRequest
@@ -17,30 +15,24 @@ from maascommon.workflows.dhcp import (
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Config, Event, signals
 import maasserver.models.config
-from maasserver.models.config import ensure_uuid_in_config, get_default_config
+from maasserver.models.config import ensure_uuid_in_config
 from maasserver.models.vlan import VLAN
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
+from maasservicelayer.models.configurations import ConfigFactory
 from provisioningserver.utils.testing import MAASIDFixture
 
 
+def _get_default_config():
+    models = ConfigFactory.ALL_CONFIGS.values()
+    return {config.name: config.default for config in models}
+
+
 class TestConfigDefault(MAASServerTestCase, TestWithFixtures):
-    def test_default_config_maas_name(self):
-        default_config = get_default_config()
-        self.assertEqual(gethostname(), default_config["maas_name"])
-
-    def test_default_config_maas_ipmi_user(self):
-        default_config = get_default_config()
-        self.assertEqual("maas", default_config["maas_auto_ipmi_user"])
-
-    def test_default_config_maas_ipmi_cipher_suite_id(self):
-        default_config = get_default_config()
-        self.assertEqual("3", default_config["maas_auto_ipmi_cipher_suite_id"])
-
     def test_defaults(self):
-        expected = get_default_config()
+        expected = _get_default_config()
         observed = {name: Config.objects.get_config(name) for name in expected}
 
         # Test isolation is not what it ought to be, so we have to exclude
@@ -98,27 +90,8 @@ class TestConfig(MAASServerTestCase):
         config = Config.objects.get_config("name")
         self.assertIsNone(config)
 
-    def test_manager_get_config_not_found_in_default_config(self):
-        name = factory.make_string()
-        value = factory.make_string()
-        self.patch(maasserver.models.config, "DEFAULT_CONFIG", {name: value})
-        config = Config.objects.get_config(name, None)
-        self.assertEqual(value, config)
-
-    def test_default_config_cannot_be_changed(self):
-        name = factory.make_string()
-        self.patch(
-            maasserver.models.config,
-            "DEFAULT_CONFIG",
-            {name: {"key": "value"}},
-        )
-        config = Config.objects.get_config(name)
-        config.update({"key2": "value2"})
-
-        self.assertEqual({"key": "value"}, Config.objects.get_config(name))
-
     def test_manager_get_configs_returns_configs_dict(self):
-        expected = get_default_config()
+        expected = _get_default_config()
         # Only get a subset of all the configs.
         expected_names = list(expected)[:5]
         # Set a config value to test that is over the default.
@@ -223,7 +196,7 @@ class TestSettingConfig(MAASServerTestCase):
 
     scenarios = tuple(
         (name, {"name": name, "value": value})
-        for name, value in get_default_config().items()
+        for name, value in _get_default_config().items()
     )
 
     def setUp(self):

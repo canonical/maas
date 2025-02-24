@@ -1,7 +1,7 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from enum import Enum
+from enum import Enum, StrEnum
 
 
 class DnsUpdateAction(str, Enum):
@@ -14,6 +14,15 @@ class DnsUpdateAction(str, Enum):
     DELETE = "DELETE"
     DELETE_IP = "DELETE-IP"
     DELETE_IFACE_IP = "DELETE-IFACE-IP"
+
+    def __str__(self):
+        return str(self.value)
+
+
+class DNSSECEnumm(StrEnum):
+    AUTO = "auto"
+    YES = "yes"
+    NO = "no"
 
     def __str__(self):
         return str(self.value)

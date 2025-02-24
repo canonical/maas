@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Sources."""
@@ -19,6 +19,7 @@ from requests.exceptions import ConnectionError
 from simplestreams import util as sutil
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -41,7 +42,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.arch import get_architecture
 from provisioningserver.utils.fs import tempdir

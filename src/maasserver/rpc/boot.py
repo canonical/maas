@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers for getting the configuration for a booting machine."""
@@ -10,6 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Q
 from netaddr import IPAddress
 
+from maascommon.utils.url import splithost
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, INTERFACE_TYPE
@@ -36,7 +37,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.twisted import synchronous, undefined
-from provisioningserver.utils.url import splithost
 
 maaslog = get_maas_logger("rpc.boot")
 

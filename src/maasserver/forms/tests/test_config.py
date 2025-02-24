@@ -1,5 +1,6 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+from typing import Optional
 
 from django import forms
 from django.http import HttpRequest
@@ -7,9 +8,10 @@ from django.http import HttpRequest
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms import ConfigForm
 from maasserver.models import Config
-from maasserver.models.config import DEFAULT_CONFIG
+import maasserver.models.config as config_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+import maasservicelayer.models.configurations as maascommon_configuration
 
 
 class TestOptionForm(ConfigForm):
@@ -29,6 +31,24 @@ class TestCompositeForm(ConfigForm):
 
 
 class TestConfigForm(MAASServerTestCase):
+    def _get_config_stub(self, config_name, default_value):
+        class Field1Stub(maascommon_configuration.Config[Optional[str]]):
+            name = config_name
+            default = default_value
+
+        return Field1Stub
+
+    def _get_factory_config_stub(self, config_name, default_value):
+        class ConfigFactoryStub(maascommon_configuration.ConfigFactory):
+            @classmethod
+            def get_config_model(cls, name):
+                if name == config_name:
+                    return self._get_config_stub(config_name, default_value)
+                else:
+                    raise ValueError("Unkwnown config.")
+
+        return ConfigFactoryStub
+
     def test_form_valid_saves_into_db(self):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()
@@ -65,6 +85,11 @@ class TestConfigForm(MAASServerTestCase):
 
     def test_form_loads_initial_values(self):
         value = factory.make_string()
+        self.patch(
+            config_module,
+            "ConfigFactory",
+            value=self._get_factory_config_stub("field1", None),
+        )
         Config.objects.set_config("field1", value)
         form = TestOptionForm()
 
@@ -72,12 +97,12 @@ class TestConfigForm(MAASServerTestCase):
 
     def test_form_loads_initial_values_from_default_value(self):
         value = factory.make_string()
-        DEFAULT_CONFIG["field1"] = value
-        # Remove the added config from the DEFAULT_CONFIG or it will
-        # break other tests.
-        self.addCleanup(lambda: DEFAULT_CONFIG.pop("field1"))
+        self.patch(
+            config_module,
+            "ConfigFactory",
+            value=self._get_factory_config_stub("field1", value),
+        )
         form = TestOptionForm()
-
         self.assertEqual({"field1": value}, form.initial)
 
     def test_validates_composite_form(self):

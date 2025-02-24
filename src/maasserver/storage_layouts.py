@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Storage layouts."""
@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.forms import Form
 from django.utils import timezone
 
+from maascommon.enums.storage import StorageLayoutEnum
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     CACHE_MODE_TYPE_CHOICES,
@@ -334,7 +335,7 @@ class FlatStorageLayout(StorageLayoutBase):
       sda2      99.5G       part    ext4           /
     """
 
-    name = "flat"
+    name = StorageLayoutEnum.FLAT.value
     title = "Flat layout"
 
     def configure_storage(self, allow_fallback):
@@ -393,7 +394,7 @@ class LVMStorageLayout(StorageLayoutBase):
       lvroot    99.5G       lvm     ext4           /
     """
 
-    name = "lvm"
+    name = StorageLayoutEnum.LVM.value
     title = "LVM layout"
 
     DEFAULT_VG_NAME = "vgroot"
@@ -552,7 +553,7 @@ class BcacheStorageLayout(FlatStorageLayout):
     bcache0     99.5G       disk    ext4           /
     """
 
-    name = "bcache"
+    name = StorageLayoutEnum.BACACHE.value
     title = "Bcache layout"
 
     DEFAULT_CACHE_MODE = CACHE_MODE_TYPE.WRITETHROUGH
@@ -794,7 +795,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
     VMFS                3           Remaining 7555          End of disk
     """
 
-    name = "vmfs6"
+    name = StorageLayoutEnum.VMFS6.value
     title = "VMFS6 layout"
 
     _default_layout = "default"
@@ -922,7 +923,7 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
     VMFS                8           Remaining
     """
 
-    name = "vmfs7"
+    name = StorageLayoutEnum.VMFS7.value
     title = "VMFS7 layout"
 
     base_partitions = {
@@ -974,7 +975,7 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
 class CustomStorageLayout(StorageLayoutBase):
     """Layout from custom commissioning data."""
 
-    name = "custom"
+    name = StorageLayoutEnum.CUSTOM.value
     title = "Custom layout (from commissioning storage config)"
 
     def configure_storage(self, allow_fallback):
@@ -1014,7 +1015,7 @@ class BlankStorageLayout(StorageLayoutBase):
     not based on any existing layout.
     """
 
-    name = "blank"
+    name = StorageLayoutEnum.BLANK.value
     title = "No storage (blank) layout"
 
     def configure_storage(self, allow_fallback):

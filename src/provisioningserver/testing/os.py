@@ -1,13 +1,13 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for testing operating systems-related code."""
 
-from maastesting.factory import factory
-from provisioningserver.drivers.osystem import (
+from maascommon.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
     OperatingSystemRegistry,
 )
+from maastesting.factory import factory
 
 
 class FakeOS(OperatingSystem):

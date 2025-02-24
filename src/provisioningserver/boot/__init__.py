@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Methods."""
@@ -15,6 +15,7 @@ from tftp.backend import IReader
 from zope.interface import implementer
 
 from maascommon.bootmethods import BootMethodMetadata
+from maascommon.utils.registry import Registry
 from provisioningserver.config import debug_enabled
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import (
@@ -27,7 +28,6 @@ from provisioningserver.utils.network import (
     convert_host_to_uri_str,
     find_mac_via_arp,
 )
-from provisioningserver.utils.registry import Registry
 
 maaslog = get_maas_logger("bootloaders")
 

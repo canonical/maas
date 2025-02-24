@@ -1,4 +1,4 @@
-# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -19,6 +19,7 @@ from django.utils import timezone
 from netaddr import IPAddress, IPNetwork
 import yaml
 
+from maascommon.osystem import OperatingSystemRegistry
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
@@ -141,7 +142,6 @@ from metadataserver.enum import (
 )
 from metadataserver.fields import Bin
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.utils.enum import map_enum

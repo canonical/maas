@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items definition and utilities."""
@@ -11,14 +11,11 @@ __all__ = [
     "validate_config_name",
 ]
 
-from datetime import timedelta
 import re
-from socket import gethostname
 
 from django import forms
 from django.core.exceptions import ValidationError
 
-from maasserver.bootresources import IMPORT_RESOURCES_SERVICE_PERIOD
 from maasserver.enum import INTERFACE_LINK_TYPE_CHOICES
 from maasserver.fields import (
     HostListFormField,
@@ -30,7 +27,6 @@ from maasserver.models import BootResource
 from maasserver.models.config import (
     ACTIVE_DISCOVERY_INTERVAL_CHOICES,
     Config,
-    DEFAULT_OS,
     DNSSEC_VALIDATION_CHOICES,
     NETWORK_DISCOVERY_CHOICES,
 )
@@ -44,13 +40,79 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     release_a_newer_than_b,
 )
+from maasservicelayer.models.configurations import (
+    ActiveDiscoveryIntervalConfig,
+    AutoVlanCreationConfig,
+    BootImagesAutoImportConfig,
+    BootImagesNoProxyConfig,
+    CommissioningDistroSeriesConfig,
+    CompletedIntroConfig,
+    CurtinVerboseConfig,
+    DEFAULT_OS,
+    DefaultBootInterfaceLinkTypeConfig,
+    DefaultDistroSeriesConfig,
+    DefaultDnsTtlConfig,
+    DefaultMinHweKernelConfig,
+    DefaultOSystemConfig,
+    DefaultStorageLayoutConfig,
+    DiskEraseWithQuickEraseConfig,
+    DiskEraseWithSecureEraseConfig,
+    DNSSECValidationConfig,
+    DNSTrustedAclConfig,
+    EnableAnalyticsConfig,
+    EnableDiskErasingOnReleaseConfig,
+    EnableHttpProxyConfig,
+    EnableKernelCrashDumpConfig,
+    EnableThirdPartyDriversConfig,
+    EnlistCommissioningConfig,
+    ForceV1NetworkYamlConfig,
+    HardwareSyncIntervalConfig,
+    HttpProxyConfig,
+    KernelOptsConfig,
+    MAASAutoIPMICipherSuiteIDConfig,
+    MAASAutoIPMIKGBmcKeyConfig,
+    MAASAutoIPMIUserConfig,
+    MAASAutoIPMIUserPrivilegeLevelConfig,
+    MAASAutoIPMIWorkaroundFlagsConfig,
+    MAASInternalDomainConfig,
+    MAASNameConfig,
+    MAASProxyPortConfig,
+    MAASSyslogPortConfig,
+    MaxNodeCommissioningResultsConfig,
+    MaxNodeInstallationResultsConfig,
+    MaxNodeReleaseResultsConfig,
+    MaxNodeTestingResultsConfig,
+    NetworkDiscoveryConfig,
+    NodeTimeoutConfig,
+    NTPExternalOnlyConfig,
+    NTPServersConfig,
+    PreferV4ProxyConfig,
+    PrometheusEnabledConfig,
+    PrometheusPushGatewayConfig,
+    PrometheusPushIntervalConfig,
+    PromtailEnabledConfig,
+    PromtailPortConfig,
+    ReleaseNotificationsConfig,
+    RemoteSyslogConfig,
+    SessionLengthConfig,
+    SubnetIPExhaustionThresholdCountConfig,
+    ThemeConfig,
+    TlsCertExpirationNotificationEnabledConfig,
+    TLSCertExpirationNotificationIntervalConfig,
+    UpstreamDnsConfig,
+    UsePeerProxyConfig,
+    UseRackProxyConfig,
+    VCenterDatacenterConfig,
+    VCenterPasswordConfig,
+    VCenterServerConfig,
+    VCenterUsernameConfig,
+    WindowsKmsHostConfig,
+)
 from provisioningserver.drivers.power.ipmi import (
     IPMI_CIPHER_SUITE_ID_CHOICES,
     IPMI_PRIVILEGE_LEVEL_CHOICES,
     IPMI_WORKAROUND_FLAG_CHOICES,
 )
-from provisioningserver.utils.text import normalise_whitespace
-from provisioningserver.utils.url import splithost
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
 
@@ -86,37 +148,6 @@ def make_default_osystem_field(*args, **kwargs):
     return field
 
 
-def validate_port(value, allow_ports=None):
-    """Raise `ValidationError` when the value is set to a port number. that is
-    either reserved for known services, or for MAAS services to ensure this
-    doesn't break MAAS or other applications."""
-    if allow_ports and value in allow_ports:
-        # Value is in the allowed ports override.
-        return
-    msg = "Unable to change port number"
-    if value > 65535 or value <= 0:
-        raise ValidationError(
-            "%s. Port number is not between 0 - 65535." % msg
-        )
-    if value >= 0 and value <= 1023:
-        raise ValidationError(
-            "%s. Port number is reserved for system services." % msg
-        )
-    # 5240 -> reserved for region HTTP.
-    # 5241 - 4247 -> reserved for other MAAS services.
-    # 5248 -> reserved for rack HTTP.
-    # 5250+ -> reserved for region workers (RPC).
-    if value >= 5240 and value <= 5270:
-        raise ValidationError(
-            "%s. Port number is reserved for MAAS services." % msg
-        )
-
-
-def validate_syslog_port(value):
-    """A `validate_port` that allows the internal syslog port."""
-    return validate_port(value, allow_ports=[5247])
-
-
 def get_default_usable_osystem(default_osystem):
     """Return the osystem from the clusters that matches the default_osystem."""
     usable_oses = list_all_usable_osystems()
@@ -131,9 +162,23 @@ def list_choices_for_releases(releases):
     return [(release.name, release.title) for release in releases]
 
 
+def validate_proxy_port(port: int):
+    try:
+        return MAASProxyPortConfig.validate_port(port)
+    except ValueError as e:
+        raise ValidationError(str(e)) from e
+
+
 def make_maas_proxy_port_field(*args, **kwargs):
     """Build and return the maas_proxy_port field."""
-    return forms.IntegerField(validators=[validate_port], **kwargs)
+    return forms.IntegerField(validators=[validate_proxy_port], **kwargs)
+
+
+def validate_syslog_port(port: int):
+    try:
+        return MAASSyslogPortConfig.validate_port(port)
+    except ValueError as e:
+        raise ValidationError(str(e)) from e
 
 
 def make_maas_syslog_port_field(*args, **kwargs):
@@ -275,16 +320,10 @@ def validate_ipmi_k_g(value):
     test both for valid encoding (regular or hexadecimal) and to ensure input
     is 20 characters long (or 40 in hexadecimal plus '0x' prefix).
     """
-    valid_k_g_match = re.search(r"^(0x[a-fA-F0-9]{40}|[\w\W]{20})$", value)
-    if not valid_k_g_match:
-        raise ValidationError(
-            (
-                "Error: K_g must either be 20 characters in length, or "
-                '40 hexadecimal characters prefixed with "0x" (current '
-                "length is %d)."
-            )
-            % len(value)
-        )
+    try:
+        return MAASAutoIPMIKGBmcKeyConfig.validate_value(value)
+    except ValueError as e:
+        raise ValidationError(str(e)) from e
 
 
 def make_ipmi_k_g_field(*args, **kwargs):
@@ -302,693 +341,495 @@ class RemoteSyslogField(forms.CharField):
 
     def clean(self, value):
         value = super().clean(value)
-        if not value:
-            return None
-        host, port = splithost(value)
-        if not port:
-            port = 514
-        return "%s:%d" % (host, port)
+        return RemoteSyslogConfig.validate_value(value)
 
 
 CONFIG_ITEMS = {
-    "maas_name": {
-        "default": gethostname(),
+    MAASNameConfig.name: {
+        "default": MAASNameConfig.default,
         "form": forms.CharField,
-        "form_kwargs": {"label": "MAAS name"},
+        "form_kwargs": {"label": MAASNameConfig.description},
     },
-    "theme": {
-        "default": "",
+    ThemeConfig.name: {
+        "default": ThemeConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "MAAS theme",
+            "label": ThemeConfig.description,
             "required": False,
         },
     },
-    "kernel_opts": {
-        "default": None,
+    KernelOptsConfig.name: {
+        "default": KernelOptsConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "Boot parameters to pass to the kernel by default",
+            "label": KernelOptsConfig.description,
             "required": False,
         },
     },
-    "enable_http_proxy": {
-        "default": True,
+    EnableHttpProxyConfig.name: {
+        "default": EnableHttpProxyConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Enable the use of an APT or YUM and HTTP/HTTPS proxy",
+            "label": EnableHttpProxyConfig.description,
             "required": False,
-            "help_text": (
-                "Provision nodes to use the built-in HTTP proxy (or "
-                "user specified proxy) for APT or YUM. MAAS also uses the "
-                "proxy for downloading boot images."
-            ),
+            "help_text": EnableHttpProxyConfig.help_text,
         },
     },
-    "maas_proxy_port": {
-        "default": 8000,
+    MAASProxyPortConfig.name: {
+        "default": MAASProxyPortConfig.default,
         "form": make_maas_proxy_port_field,
         "form_kwargs": {
-            "label": "Port to bind the MAAS built-in proxy (default: 8000)",
+            "label": MAASProxyPortConfig.description,
             "required": False,
-            "help_text": (
-                "Defines the port used to bind the built-in proxy. The "
-                "default port is 8000."
-            ),
+            "help_text": MAASProxyPortConfig.help_text,
         },
     },
-    "use_peer_proxy": {
-        "default": False,
+    UsePeerProxyConfig.name: {
+        "default": UsePeerProxyConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Use the built-in proxy with an external proxy as a peer",
+            "label": UsePeerProxyConfig.description,
             "required": False,
-            "help_text": (
-                "If enable_http_proxy is set, the built-in proxy will be "
-                "configured to use http_proxy as a peer proxy. The deployed "
-                "machines will be configured to use the built-in proxy."
-            ),
+            "help_text": UsePeerProxyConfig.help_text,
         },
     },
-    "prefer_v4_proxy": {
-        "default": False,
+    PreferV4ProxyConfig.name: {
+        "default": PreferV4ProxyConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Sets IPv4 DNS resolution before IPv6",
+            "label": PreferV4ProxyConfig.description,
             "required": False,
-            "help_text": (
-                "If prefer_v4_proxy is set, the proxy will be set to prefer "
-                "IPv4 DNS resolution before it attempts to perform IPv6 DNS "
-                "resolution."
-            ),
+            "help_text": PreferV4ProxyConfig.help_text,
         },
     },
-    "http_proxy": {
-        "default": None,
+    HttpProxyConfig.name: {
+        "default": HttpProxyConfig.default,
         "form": forms.URLField,
         "form_kwargs": {
-            "label": "Proxy for APT or YUM and HTTP/HTTPS",
+            "label": HttpProxyConfig.description,
             "required": False,
-            "help_text": (
-                "This will be passed onto provisioned nodes to use as a "
-                "proxy for APT or YUM traffic. MAAS also uses the proxy for "
-                "downloading boot images. If no URL is provided, the built-in "
-                "MAAS proxy will be used."
-            ),
+            "help_text": HttpProxyConfig.help_text,
         },
     },
-    "default_dns_ttl": {
-        "default": 30,
+    DefaultDnsTtlConfig.name: {
+        "default": DefaultDnsTtlConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
-            "label": "Default Time-To-Live for the DNS",
+            "label": DefaultDnsTtlConfig.description,
             "required": False,
-            "help_text": (
-                "If no TTL value is specified at a more specific point "
-                "this is how long DNS responses are valid, in seconds."
-            ),
+            "help_text": DefaultDnsTtlConfig.help_text,
         },
     },
-    "upstream_dns": {
-        "default": None,
+    UpstreamDnsConfig.name: {
+        "default": UpstreamDnsConfig.default,
         "form": IPListFormField,
         "form_kwargs": {
-            "label": (
-                "Upstream DNS used to resolve domains not managed by this "
-                "MAAS (space-separated IP addresses)"
-            ),
+            "label": UpstreamDnsConfig.description,
             "required": False,
-            "help_text": (
-                "Only used when MAAS is running its own DNS server. This "
-                "value is used as the value of 'forwarders' in the DNS "
-                "server config."
-            ),
+            "help_text": UpstreamDnsConfig.help_text,
         },
     },
-    "dnssec_validation": {
-        "default": "auto",
+    DNSSECValidationConfig.name: {
+        "default": DNSSECValidationConfig.default,
         "form": make_dnssec_validation_field,
         "form_kwargs": {
-            "label": "Enable DNSSEC validation of upstream zones",
+            "label": DNSSECValidationConfig.description,
             "required": False,
-            "help_text": (
-                "Only used when MAAS is running its own DNS server. This "
-                "value is used as the value of 'dnssec_validation' in the DNS "
-                "server config."
-            ),
+            "help_text": DNSSECValidationConfig.help_text,
         },
     },
-    "maas_internal_domain": {
-        "default": "_maas_internal",
+    MAASInternalDomainConfig.name: {
+        "default": MAASInternalDomainConfig.default,
         "form": make_maas_internal_domain_field,
         "form_kwargs": {
-            "label": (
-                "Domain name used by MAAS for internal mapping of MAAS "
-                "provided services."
-            ),
+            "label": MAASInternalDomainConfig.description,
             "required": False,
-            "help_text": (
-                "This domain should not collide with an upstream domain "
-                "provided by the set upstream DNS."
-            ),
+            "help_text": MAASInternalDomainConfig.help_text,
         },
     },
-    "dns_trusted_acl": {
-        "default": None,
+    DNSTrustedAclConfig.name: {
+        "default": DNSTrustedAclConfig.default,
         "form": SubnetListFormField,
         "form_kwargs": {
-            "label": (
-                "List of external networks (not previously known), that will "
-                "be allowed to use MAAS for DNS resolution."
-            ),
+            "label": DNSTrustedAclConfig.description,
             "required": False,
-            "help_text": (
-                "MAAS keeps a list of networks that are allowed to use MAAS "
-                "for DNS resolution. This option allows to add extra "
-                "networks (not previously known) to the trusted ACL where "
-                "this list of networks is kept. It also supports specifying "
-                "IPs or ACL names."
-            ),
+            "help_text": DNSTrustedAclConfig.help_text,
         },
     },
-    "ntp_servers": {
-        "default": None,
+    NTPServersConfig.name: {
+        "default": NTPServersConfig.default,
         "form": HostListFormField,
         "form_kwargs": {
-            "label": "Addresses of NTP servers",
+            "label": NTPServersConfig.description,
             "required": False,
-            "help_text": normalise_whitespace(
-                """\
-                NTP servers, specified as IP addresses or hostnames delimited
-                by commas and/or spaces, to be used as time references for
-                MAAS itself, the machines MAAS deploys, and devices that make
-                use of MAAS's DHCP services.
-            """
-            ),
+            "help_text": NTPServersConfig.help_text,
         },
     },
-    "ntp_external_only": {
-        "default": False,
+    NTPExternalOnlyConfig.name: {
+        "default": NTPExternalOnlyConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Use external NTP servers only",
+            "label": NTPExternalOnlyConfig.description,
             "required": False,
-            "help_text": normalise_whitespace(
-                """\
-                Configure all region controller hosts, rack controller hosts,
-                and subsequently deployed machines to refer directly to the
-                configured external NTP servers. Otherwise only region
-                controller hosts will be configured to use those external NTP
-                servers, rack contoller hosts will in turn refer to the
-                regions' NTP servers, and deployed machines will refer to the
-                racks' NTP servers.
-            """
-            ),
+            "help_text": NTPExternalOnlyConfig.help_text,
         },
     },
-    "remote_syslog": {
-        "default": None,
+    RemoteSyslogConfig.name: {
+        "default": RemoteSyslogConfig.default,
         "form": RemoteSyslogField,
         "form_kwargs": {
-            "label": "Remote syslog server to forward machine logs",
+            "label": RemoteSyslogConfig.description,
             "required": False,
-            "help_text": normalise_whitespace(
-                """\
-                A remote syslog server that MAAS will set on enlisting,
-                commissioning, testing, and deploying machines to send all
-                log messages. Clearing this value will restore the default
-                behaviour of forwarding syslog to MAAS.
-            """
-            ),
+            "help_text": RemoteSyslogConfig.help_text,
         },
     },
-    "maas_syslog_port": {
-        "default": 5247,
+    MAASSyslogPortConfig.name: {
+        "default": MAASSyslogPortConfig.default,
         "form": make_maas_syslog_port_field,
         "form_kwargs": {
-            "label": "Port to bind the MAAS built-in syslog (default: 5247)",
+            "label": MAASSyslogPortConfig.description,
             "required": False,
-            "help_text": (
-                "Defines the port used to bind the built-in syslog. The "
-                "default port is 5247."
-            ),
+            "help_text": MAASSyslogPortConfig.help_text,
         },
     },
-    "network_discovery": {
-        "default": "enabled",
+    NetworkDiscoveryConfig.name: {
+        "default": NetworkDiscoveryConfig.default,
         "form": make_network_discovery_field,
         "form_kwargs": {
-            "label": "",
+            "label": NetworkDiscoveryConfig.description,
             "required": False,
-            "help_text": (
-                "When enabled, MAAS will use passive techniques (such as "
-                "listening to ARP requests and mDNS advertisements) to "
-                "observe networks attached to rack controllers. Active "
-                "subnet mapping will also be available to be enabled on the "
-                "configured subnets."
-            ),
+            "help_text": NetworkDiscoveryConfig.help_text,
         },
     },
-    "active_discovery_interval": {
-        "default": int(timedelta(hours=3).total_seconds()),
+    ActiveDiscoveryIntervalConfig.name: {
+        "default": ActiveDiscoveryIntervalConfig.default,
         "form": make_active_discovery_interval_field,
         "form_kwargs": {
-            "label": "Active subnet mapping interval",
+            "label": ActiveDiscoveryIntervalConfig.description,
             "required": False,
-            "help_text": (
-                "When enabled, each rack will scan subnets enabled for active "
-                "mapping. This helps ensure discovery information is accurate "
-                "and complete."
-            ),
+            "help_text": ActiveDiscoveryIntervalConfig.help_text,
         },
     },
-    "default_boot_interface_link_type": {
-        "default": "auto",
+    DefaultBootInterfaceLinkTypeConfig.name: {
+        "default": DefaultBootInterfaceLinkTypeConfig.default,
         "form": forms.ChoiceField,
         "form_kwargs": {
-            "label": "Default boot interface IP Mode",
+            "label": DefaultBootInterfaceLinkTypeConfig.description,
             "choices": INTERFACE_LINK_TYPE_CHOICES,
-            "help_text": (
-                "IP Mode that is applied to the boot interface on a node when "
-                "it is commissioned."
-            ),
+            "help_text": DefaultBootInterfaceLinkTypeConfig.help_text,
         },
     },
-    "default_osystem": {
+    DefaultOSystemConfig.name: {
         "form": make_default_osystem_field,
         "form_kwargs": {
-            "label": "Default operating system used for deployment",
+            "label": DefaultOSystemConfig.description,
             "required": False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
         },
     },
-    "default_distro_series": {
+    DefaultDistroSeriesConfig.name: {
         "form": make_default_distro_series_field,
         "form_kwargs": {
-            "label": "Default OS release used for deployment",
+            "label": DefaultDistroSeriesConfig.description,
             "required": False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
         },
     },
-    "default_min_hwe_kernel": {
-        "default": None,
+    DefaultMinHweKernelConfig.name: {
+        "default": DefaultMinHweKernelConfig.default,
         "form": make_default_min_hwe_kernel_field,
         "form_kwargs": {
-            "label": "Default Minimum Kernel Version",
+            "label": DefaultMinHweKernelConfig.description,
             "required": False,
-            "help_text": (
-                "The default minimum kernel version used on all new and"
-                " commissioned nodes."
-            ),
+            "help_text": DefaultMinHweKernelConfig.help_text,
         },
     },
-    "enable_kernel_crash_dump": {
-        "default": False,
+    EnableKernelCrashDumpConfig.name: {
+        "default": EnableKernelCrashDumpConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": "Enable the kernel crash dump feature in deployed machines.",
-            "help_text": "Enable the collection of kernel crash dump when a machine is deployed.",
+            "label": EnableKernelCrashDumpConfig.description,
+            "help_text": EnableKernelCrashDumpConfig.help_text,
         },
     },
-    "default_storage_layout": {
-        "default": "lvm",
+    DefaultStorageLayoutConfig.name: {
+        "default": DefaultStorageLayoutConfig.default,
         "form": forms.ChoiceField,
         "form_kwargs": {
-            "label": "Default storage layout",
+            "label": DefaultStorageLayoutConfig.description,
             "choices": STORAGE_LAYOUT_CHOICES,
-            "help_text": (
-                "Storage layout that is applied to a node when it is "
-                "commissioned."
-            ),
+            "help_text": DefaultStorageLayoutConfig.help_text,
         },
     },
-    "commissioning_distro_series": {
+    CommissioningDistroSeriesConfig.name: {
         "default": DEFAULT_OS.get_default_commissioning_release(),
         "form": make_commissioning_distro_series_field,
         "form_kwargs": {
-            "label": "Default Ubuntu release used for commissioning",
+            "label": CommissioningDistroSeriesConfig.description,
             "required": False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
         },
     },
-    "enable_third_party_drivers": {
-        "default": False,
+    EnableThirdPartyDriversConfig.name: {
+        "default": EnableThirdPartyDriversConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Enable the installation of proprietary drivers (i.e. HPVSA)"
-            ),
+            "label": EnableThirdPartyDriversConfig.description,
         },
     },
-    "windows_kms_host": {
-        "default": None,
+    WindowsKmsHostConfig.name: {
+        "default": WindowsKmsHostConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
             "required": False,
-            "label": "Windows KMS activation host",
-            "help_text": (
-                "FQDN or IP address of the host that provides the KMS Windows "
-                "activation service. (Only needed for Windows deployments "
-                "using KMS activation.)"
-            ),
+            "label": WindowsKmsHostConfig.description,
+            "help_text": WindowsKmsHostConfig.help_text,
         },
     },
-    "enable_disk_erasing_on_release": {
-        "default": False,
+    EnableDiskErasingOnReleaseConfig.name: {
+        "default": EnableDiskErasingOnReleaseConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": "Erase nodes' disks prior to releasing",
-            "help_text": "Forces users to always erase disks when releasing.",
+            "label": EnableDiskErasingOnReleaseConfig.description,
+            "help_text": EnableDiskErasingOnReleaseConfig.help_text,
         },
     },
-    "disk_erase_with_secure_erase": {
-        "default": True,
+    DiskEraseWithSecureEraseConfig.name: {
+        "default": DiskEraseWithSecureEraseConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": "Use secure erase by default when erasing disks",
-            "help_text": (
-                "Will only be used on devices that support secure erase.  "
-                "Other devices will fall back to full wipe or quick erase "
-                "depending on the selected options."
-            ),
+            "label": DiskEraseWithSecureEraseConfig.description,
+            "help_text": DiskEraseWithSecureEraseConfig.help_text,
         },
     },
-    "disk_erase_with_quick_erase": {
-        "default": False,
+    DiskEraseWithQuickEraseConfig.name: {
+        "default": DiskEraseWithQuickEraseConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": "Use quick erase by default when erasing disks.",
-            "help_text": (
-                "This is not a secure erase; it wipes only the beginning and "
-                "end of each disk."
-            ),
+            "label": DiskEraseWithQuickEraseConfig.description,
+            "help_text": DiskEraseWithQuickEraseConfig.help_text,
         },
     },
-    "boot_images_auto_import": {
-        "default": True,
+    BootImagesAutoImportConfig.name: {
+        "default": BootImagesAutoImportConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Automatically import/refresh the boot images "
-                "every %d minutes"
-                % (IMPORT_RESOURCES_SERVICE_PERIOD.total_seconds() / 60.0)
-            ),
+            "label": BootImagesAutoImportConfig.description,
         },
     },
-    "boot_images_no_proxy": {
-        "default": False,
+    BootImagesNoProxyConfig.name: {
+        "default": BootImagesNoProxyConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Set no_proxy with the image repository address when MAAS "
-                "is behind (or set with) a proxy."
-            ),
-            "help_text": (
-                "By default, when MAAS is behind (and set with) a proxy, it "
-                "is used to download images from the image repository. In "
-                "some situations (e.g. when using a local image repository) "
-                "it doesn't make sense for MAAS to use the proxy to download "
-                "images because it can access them directly. Setting this "
-                "option allows MAAS to access the (local) image repository "
-                "directly by setting the no_proxy variable for the MAAS env "
-                "with the address of the image repository."
-            ),
+            "label": BootImagesNoProxyConfig.description,
+            "help_text": BootImagesNoProxyConfig.help_text,
         },
     },
-    "curtin_verbose": {
-        "default": False,
+    CurtinVerboseConfig.name: {
+        "default": CurtinVerboseConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Run the fast-path installer with higher verbosity. This "
-                "provides more detail in the installation logs"
-            ),
+            "label": CurtinVerboseConfig.description,
         },
     },
-    "force_v1_network_yaml": {
-        "default": False,
+    ForceV1NetworkYamlConfig.name: {
+        "default": ForceV1NetworkYamlConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Always use the legacy v1 YAML (rather than Netplan format, "
-                "also known as v2 YAML) when composing the network "
-                "configuration for a machine."
-            ),
+            "label": ForceV1NetworkYamlConfig.description,
         },
     },
-    "enable_analytics": {
-        "default": True,
+    EnableAnalyticsConfig.name: {
+        "default": EnableAnalyticsConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Enable Google Analytics in MAAS UI to shape improvements "
-                "in user experience"
-            ),
+            "label": EnableAnalyticsConfig.description,
         },
     },
-    "completed_intro": {
-        "default": True,
+    CompletedIntroConfig.name: {
+        "default": CompletedIntroConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Marks if the initial intro has been completed",
+            "label": CompletedIntroConfig.description,
             "required": False,
         },
     },
-    "max_node_commissioning_results": {
-        "default": 10,
+    MaxNodeCommissioningResultsConfig.name: {
+        "default": MaxNodeCommissioningResultsConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "The maximum number of commissioning results runs which are "
-                "stored"
-            ),
+            "label": MaxNodeCommissioningResultsConfig.description,
             "min_value": 1,
         },
     },
-    "max_node_testing_results": {
-        "default": 10,
+    MaxNodeTestingResultsConfig.name: {
+        "default": MaxNodeTestingResultsConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "The maximum number of testing results runs which are stored"
-            ),
+            "label": MaxNodeTestingResultsConfig.description,
             "min_value": 1,
         },
     },
-    "max_node_installation_results": {
-        "default": 3,
+    MaxNodeInstallationResultsConfig.name: {
+        "default": MaxNodeInstallationResultsConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "The maximum number of installation result runs which are "
-                "stored"
-            ),
+            "label": MaxNodeInstallationResultsConfig.description,
             "min_value": 1,
         },
     },
-    "max_node_release_results": {
-        "default": 3,
+    MaxNodeReleaseResultsConfig.name: {
+        "default": MaxNodeReleaseResultsConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
             "required": False,
-            "label": "The maximum number of release result runs which are stored",
+            "label": MaxNodeReleaseResultsConfig.description,
             "min_value": 1,
         },
     },
-    "subnet_ip_exhaustion_threshold_count": {
-        "default": 16,
+    SubnetIPExhaustionThresholdCountConfig.name: {
+        "default": SubnetIPExhaustionThresholdCountConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "If the number of free IP addresses on a subnet becomes less "
-                "than or equal to this threshold, an IP exhaustion warning "
-                "will appear for that subnet"
-            ),
+            "label": SubnetIPExhaustionThresholdCountConfig.description,
             "min_value": 1,
         },
     },
-    "release_notifications": {
-        "default": True,
+    ReleaseNotificationsConfig.name: {
+        "default": ReleaseNotificationsConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Enable or disable notifications for new MAAS releases."
-            ),
+            "label": ReleaseNotificationsConfig.description,
         },
     },
-    "use_rack_proxy": {
-        "default": True,
+    UseRackProxyConfig.name: {
+        "default": UseRackProxyConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": (
-                "Use DNS and HTTP metadata proxy on the rack controllers "
-                "when a machine is booted."
-            ),
+            "label": UseRackProxyConfig.description,
             "required": False,
-            "help_text": (
-                "All DNS and HTTP metadata traffic will flow through the "
-                "rack controller that a machine is booting from. This "
-                "isolated region controllers from machines."
-            ),
+            "help_text": UseRackProxyConfig.help_text,
         },
     },
-    "node_timeout": {
-        "default": 30,
+    NodeTimeoutConfig.name: {
+        "default": NodeTimeoutConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
             "required": False,
-            "label": (
-                "Time, in minutes, until the node times out during "
-                "commissioning, testing, deploying, or entering rescue mode."
-            ),
-            "help_text": (
-                "Commissioning, testing, deploying, and entering rescue mode "
-                "all set a timeout when beginning. If MAAS does not hear from "
-                "the node within the specified number of minutes the node is "
-                "powered off and set into a failed status."
-            ),
+            "label": NodeTimeoutConfig.description,
+            "help_text": NodeTimeoutConfig.help_text,
             "min_value": 1,
         },
     },
-    "prometheus_enabled": {
-        "default": False,
+    PrometheusEnabledConfig.name: {
+        "default": PrometheusEnabledConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Enable Prometheus exporter",
+            "label": PrometheusEnabledConfig.description,
             "required": False,
-            "help_text": (
-                "Whether to enable Prometheus exporter functions, including "
-                "Cluster metrics endpoint and Push gateway (if configured)."
-            ),
+            "help_text": PrometheusEnabledConfig.help_text,
         },
     },
-    "prometheus_push_gateway": {
-        "default": None,
+    PrometheusPushGatewayConfig.name: {
+        "default": PrometheusPushGatewayConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "Address or hostname of the Prometheus push gateway.",
+            "label": PrometheusPushGatewayConfig.description,
             "required": False,
-            "help_text": (
-                "Defines the address or hostname of the Prometheus push "
-                "gateway where MAAS will send data to."
-            ),
+            "help_text": PrometheusPushGatewayConfig.help_text,
         },
     },
-    "prometheus_push_interval": {
-        "default": 60,
+    PrometheusPushIntervalConfig.name: {
+        "default": PrometheusPushIntervalConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
-            "label": (
-                "Interval of how often to send data to Prometheus "
-                "(default: to 60 minutes)."
-            ),
+            "label": PrometheusPushIntervalConfig.description,
             "required": False,
-            "help_text": (
-                "The internal of how often MAAS will send stats to Prometheus "
-                "in minutes."
-            ),
+            "help_text": PrometheusPushIntervalConfig.help_text,
         },
     },
-    "promtail_enabled": {
-        "default": False,
+    PromtailEnabledConfig.name: {
+        "default": PromtailEnabledConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Enable streaming logs to Promtail.",
+            "label": PromtailEnabledConfig.description,
             "required": False,
-            "help_text": ("Whether to stream logs to Promtail"),
+            "help_text": PromtailEnabledConfig.help_text,
         },
     },
-    "promtail_port": {
-        "default": 5238,
+    PromtailPortConfig.name: {
+        "default": PromtailPortConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
-            "label": "TCP port of the Promtail Push API.",
+            "label": PromtailPortConfig.description,
             "required": False,
-            "help_text": (
-                "Defines the TCP port of the Promtail push "
-                "API where MAAS will stream logs to."
-            ),
+            "help_text": PromtailPortConfig.help_text,
         },
     },
-    "enlist_commissioning": {
-        "default": True,
+    EnlistCommissioningConfig.name: {
+        "default": EnlistCommissioningConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Whether to run commissioning during enlistment.",
+            "label": EnlistCommissioningConfig.description,
             "required": False,
-            "help_text": (
-                "Enables running all built-in commissioning scripts during "
-                "enlistment."
-            ),
+            "help_text": EnlistCommissioningConfig.help_text,
         },
     },
-    "maas_auto_ipmi_user": {
-        "default": "maas",
+    MAASAutoIPMIUserConfig.name: {
+        "default": MAASAutoIPMIUserConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "MAAS IPMI user.",
+            "label": MAASAutoIPMIUserConfig.description,
             "required": False,
             "max_length": 20,
-            "help_text": (
-                "The name of the IPMI user that MAAS automatically creates "
-                "during enlistment/commissioning."
-            ),
+            "help_text": MAASAutoIPMIUserConfig.help_text,
         },
     },
-    "maas_auto_ipmi_user_privilege_level": {
-        "default": "ADMIN",
+    MAASAutoIPMIUserPrivilegeLevelConfig.name: {
+        "default": MAASAutoIPMIUserPrivilegeLevelConfig.default,
         "form": forms.ChoiceField,
         "form_kwargs": {
-            "label": "MAAS IPMI privilege level",
+            "label": MAASAutoIPMIUserPrivilegeLevelConfig.description,
             "required": False,
             "choices": IPMI_PRIVILEGE_LEVEL_CHOICES,
             "error_messages": {
                 "invalid_choice": "Valid choices are ADMIN, OPERATOR, or USER",
             },
-            "help_text": (
-                "The default IPMI privilege level to use when creating the "
-                "MAAS user and talking IPMI BMCs"
-            ),
+            "help_text": MAASAutoIPMIUserPrivilegeLevelConfig.help_text,
         },
     },
-    "maas_auto_ipmi_k_g_bmc_key": {
-        "default": "",
+    MAASAutoIPMIKGBmcKeyConfig.name: {
+        "default": MAASAutoIPMIKGBmcKeyConfig.default,
         "form": make_ipmi_k_g_field,
         "form_kwargs": {
-            "label": "The IPMI K_g key to set during BMC configuration.",
+            "label": MAASAutoIPMIKGBmcKeyConfig.description,
             "required": False,
-            "help_text": (
-                "This IPMI K_g BMC key is used to encrypt all IPMI traffic to "
-                "a BMC. Once set, all clients will REQUIRE this key upon being "
-                "commissioned. Any current machines that were previously "
-                "commissioned will not require this key until they are "
-                "recommissioned."
-            ),
+            "help_text": MAASAutoIPMIKGBmcKeyConfig.help_text,
         },
     },
-    "maas_auto_ipmi_cipher_suite_id": {
-        "default": "3",
+    MAASAutoIPMICipherSuiteIDConfig.name: {
+        "default": MAASAutoIPMICipherSuiteIDConfig.default,
         "form": forms.ChoiceField,
         "form_kwargs": {
-            "label": "MAAS IPMI Default Cipher Suite ID",
+            "label": MAASAutoIPMICipherSuiteIDConfig.description,
             "required": False,
             "choices": IPMI_CIPHER_SUITE_ID_CHOICES,
             "error_messages": {
@@ -998,17 +839,14 @@ CONFIG_ITEMS = {
                     )
                 ),
             },
-            "help_text": (
-                "The default IPMI cipher suite ID to use when connecting "
-                "to the BMC via ipmitools"
-            ),
+            "help_text": MAASAutoIPMICipherSuiteIDConfig.help_text,
         },
     },
-    "maas_auto_ipmi_workaround_flags": {
-        "default": ["opensesspriv"],
+    MAASAutoIPMIWorkaroundFlagsConfig.name: {
+        "default": MAASAutoIPMIWorkaroundFlagsConfig.default,
         "form": forms.MultipleChoiceField,
         "form_kwargs": {
-            "label": "IPMI Workaround Flags",
+            "label": MAASAutoIPMIWorkaroundFlagsConfig.description,
             "required": False,
             "choices": IPMI_WORKAROUND_FLAG_CHOICES,
             "error_messages": {
@@ -1018,123 +856,92 @@ CONFIG_ITEMS = {
                     )
                 ),
             },
-            "help_text": (
-                "The default workaround flag (-W options) to use for "
-                "ipmipower commands"
-            ),
+            "help_text": MAASAutoIPMIWorkaroundFlagsConfig.help_text,
         },
     },
-    "vcenter_server": {
-        "default": "",
+    VCenterServerConfig.name: {
+        "default": VCenterServerConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "VMware vCenter server FQDN or IP address",
+            "label": VCenterServerConfig.description,
             "required": False,
-            "help_text": (
-                "VMware vCenter server FQDN or IP address which is passed "
-                "to a deployed VMware ESXi host."
-            ),
+            "help_text": VCenterServerConfig.help_text,
         },
     },
-    "vcenter_username": {
-        "default": "",
+    VCenterUsernameConfig.name: {
+        "default": VCenterUsernameConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "VMware vCenter username",
+            "label": VCenterUsernameConfig.description,
             "required": False,
-            "help_text": (
-                "VMware vCenter server username which is passed to a deployed "
-                "VMware ESXi host."
-            ),
+            "help_text": VCenterUsernameConfig.help_text,
         },
     },
-    "vcenter_password": {
-        "default": "",
+    VCenterPasswordConfig.name: {
+        "default": VCenterPasswordConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "VMware vCenter password",
+            "label": VCenterPasswordConfig.description,
             "required": False,
-            "help_text": (
-                "VMware vCenter server password which is passed to a deployed "
-                "VMware ESXi host."
-            ),
+            "help_text": VCenterPasswordConfig.help_text,
         },
     },
-    "vcenter_datacenter": {
-        "default": "",
+    VCenterDatacenterConfig.name: {
+        "default": VCenterDatacenterConfig.default,
         "form": forms.CharField,
         "form_kwargs": {
-            "label": "VMware vCenter datacenter",
+            "label": VCenterDatacenterConfig.description,
             "required": False,
-            "help_text": (
-                "VMware vCenter datacenter which is passed to a deployed "
-                "VMware ESXi host."
-            ),
+            "help_text": VCenterDatacenterConfig.help_text,
         },
     },
-    "hardware_sync_interval": {
-        "default": "15m",
+    HardwareSyncIntervalConfig.name: {
+        "default": HardwareSyncIntervalConfig.default,
         "form": SystemdIntervalField,
         "form_kwargs": {
-            "label": "Hardware Sync Interval",
+            "label": HardwareSyncIntervalConfig.description,
             "required": False,
-            "help_text": (
-                "The interval to send hardware info to MAAS from"
-                "hardware sync enabled machines, in systemd time span syntax."
-            ),
+            "help_text": HardwareSyncIntervalConfig.help_text,
         },
     },
-    "tls_cert_expiration_notification_enabled": {
-        "default": False,
+    TlsCertExpirationNotificationEnabledConfig.name: {
+        "default": TlsCertExpirationNotificationEnabledConfig.description,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Notify when the certificate is due to expire",
+            "label": TlsCertExpirationNotificationEnabledConfig.description,
             "required": False,
-            "help_text": (
-                "Enable/Disable notification about certificate expiration."
-            ),
+            "help_text": TlsCertExpirationNotificationEnabledConfig.help_text,
         },
     },
-    "tls_cert_expiration_notification_interval": {
-        "default": 30,
+    TLSCertExpirationNotificationIntervalConfig.name: {
+        "default": TLSCertExpirationNotificationIntervalConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
-            "label": "Certificate expiration reminder (days)",
+            "label": TLSCertExpirationNotificationIntervalConfig.description,
             "required": False,
-            "help_text": (
-                "Configure notification when certificate is "
-                "due to expire in (days)."
-            ),
+            "help_text": TLSCertExpirationNotificationIntervalConfig.help_text,
             "min_value": 1,
             "max_value": 90,
         },
     },
-    "session_length": {
-        "default": 1209600,
+    SessionLengthConfig.name: {
+        "default": SessionLengthConfig.default,
         "form": forms.IntegerField,
         "form_kwargs": {
-            "label": "Session timeout (seconds)",
+            "label": SessionLengthConfig.description,
             "required": False,
-            "help_text": (
-                "Configure timeout of session (seconds). "
-                "Minimum 10s, maximum 2 weeks (1209600s)."
-            ),
+            "help_text": SessionLengthConfig.help_text,
             "min_value": 10,
             "max_value": 1209600,
         },
     },
-    "auto_vlan_creation": {
-        "default": True,
+    AutoVlanCreationConfig.name: {
+        "default": AutoVlanCreationConfig.default,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Automatically create VLANs and Fabrics for interfaces",
+            "label": AutoVlanCreationConfig.description,
             "required": False,
-            "help_text": (
-                "Enables the creation of a default VLAN and Fabric for "
-                "discovered network interfaces when MAAS cannot connect it "
-                "to an existing one. When disabled, the interface is left "
-                "disconnected in these cases."
-            ),
+            "help_text": AutoVlanCreationConfig.help_text,
         },
     },
 }

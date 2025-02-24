@@ -1,4 +1,4 @@
-# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource."""
@@ -22,6 +22,7 @@ from django.db.models import (
     Sum,
 )
 
+from maascommon.osystem import OperatingSystemRegistry
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -35,7 +36,6 @@ from maasserver.models.config import Config
 from maasserver.models.event import Event, EventType
 from maasserver.models.timestampedmodel import now, TimestampedModel
 from maasserver.utils.orm import get_first, get_one
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.utils.twisted import undefined
 

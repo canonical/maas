@@ -1,10 +1,6 @@
 import pytest
 
-from provisioningserver.drivers.osystem.ol import (
-    BOOT_IMAGE_PURPOSE,
-    DISTRO_SERIES_DEFAULT,
-    OL,
-)
+from maascommon.osystem.ol import BOOT_IMAGE_PURPOSE, DISTRO_SERIES_DEFAULT, OL
 
 
 @pytest.fixture

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Domain objects."""
@@ -27,15 +27,13 @@ from django.db.models.query import QuerySet
 from django.utils import timezone
 from netaddr import IPAddress
 
+from maascommon.utils.dns import NAMESPEC
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
-
-# Labels are at most 63 octets long, and a name can be many of them.
-LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
-NAMESPEC = rf"({LABEL}[.])*{LABEL}[.]?"
+from maasservicelayer.models.configurations import MAASInternalDomainConfig
 
 
 def validate_domain_name(value):
@@ -58,9 +56,10 @@ def validate_domain_name(value):
 
 def validate_internal_domain_name(value):
     """Django validator: `value` must be a valid DNS Zone name."""
-    namespec = re.compile("^%s$" % NAMESPEC)
-    if not namespec.search(value) or len(value) > 255:
-        raise ValidationError("Invalid domain name: %s." % value)
+    try:
+        return MAASInternalDomainConfig.validate_value(value)
+    except ValueError as e:
+        raise ValidationError(str(e)) from e
 
 
 NAME_VALIDATOR = RegexValidator("^%s$" % NAMESPEC)

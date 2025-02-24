@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Start-up utilities for the MAAS server."""
@@ -8,6 +8,7 @@ import logging
 from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import locks, security
 from maasserver.bootresources import initialize_image_storage
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
@@ -49,7 +50,6 @@ from provisioningserver.certificates import (
     get_maas_cluster_cert_paths,
     store_maas_cluster_cert_tuple,
 )
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.env import (
     MAAS_SECRET,

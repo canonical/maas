@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Errors arising from the RPC system."""
@@ -54,10 +54,6 @@ class NoSuchCluster(Exception):
         return cls(
             "The rack controller with UUID %s could not be found." % uuid
         )
-
-
-class NoSuchOperatingSystem(Exception):
-    """The specified OS was not found."""
 
 
 class CommissionNodeFailed(Exception):

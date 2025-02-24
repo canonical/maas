@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from pathlib import Path
@@ -6,6 +6,7 @@ import random
 from unittest.mock import call, MagicMock
 from uuid import uuid4
 
+from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import deprecations, eventloop, locks, start_up, vault
 from maasserver.config import RegionConfiguration
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
@@ -40,7 +41,6 @@ from provisioningserver.certificates import (
     get_maas_cluster_cert_paths,
 )
 from provisioningserver.config import ConfigurationFile
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.security import to_hex
 from provisioningserver.utils import ipaddr
 from provisioningserver.utils.deb import DebVersionsInfo

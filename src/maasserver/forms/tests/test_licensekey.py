@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `LicenseKeyForm`."""
@@ -6,6 +6,8 @@
 from operator import itemgetter
 import random
 
+from maascommon.osystem import OperatingSystemRegistry, WindowsOS
+from maascommon.osystem.windows import REQUIRE_LICENSE_KEY
 from maasserver import forms
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import LicenseKeyForm
@@ -13,11 +15,6 @@ from maasserver.models import LicenseKey
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from provisioningserver.drivers.osystem import (
-    OperatingSystemRegistry,
-    WindowsOS,
-)
-from provisioningserver.drivers.osystem.windows import REQUIRE_LICENSE_KEY
 
 
 class TestLicenseKeyForm(MAASServerTestCase):
