@@ -292,7 +292,10 @@ class TestRedfishPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test_get_node_id_trailing_slash(self):
         driver = RedfishPowerDriver()
-        url = driver.get_url(make_context())
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+
         mock_agent = self.patch(redfish_module, "Agent")
         mock_agent.return_value.request = Mock()
         expected_headers = Mock()
@@ -308,13 +311,16 @@ class TestRedfishPowerDriver(MAASTestCase):
             ).encode("utf-8")
         )
 
-        node_id = yield driver.get_node_id(url, {})
+        node_id = yield driver.get_node_id(url, headers)
         self.assertEqual(b"1", node_id)
 
     @inlineCallbacks
     def test_get_node_id_no_trailing_slash(self):
         driver = RedfishPowerDriver()
-        url = driver.get_url(make_context())
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+
         mock_agent = self.patch(redfish_module, "Agent")
         mock_agent.return_value.request = Mock()
         expected_headers = Mock()
@@ -330,7 +336,7 @@ class TestRedfishPowerDriver(MAASTestCase):
             ).encode("utf-8")
         )
 
-        node_id = yield driver.get_node_id(url, {})
+        node_id = yield driver.get_node_id(url, headers)
         self.assertEqual(b"1", node_id)
 
     @inlineCallbacks
@@ -851,6 +857,43 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
         self.assertEqual(
             get_bodyProducer, mock_redfish_request.mock_calls[1].args[3]
+        )
+
+    @inlineCallbacks
+    def test_redfish_request_unset_etag(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        headers.addRawHeader(b"If-Match", b"oldetag")
+
+        def get_bodyProducer():
+            return FileBodyProducer(
+                BytesIO(
+                    json.dumps(
+                        {
+                            "Boot": {
+                                "BootSourceOverrideEnabled": "Once",
+                                "BootSourceOverrideTarget": "Pxe",
+                            }
+                        }
+                    ).encode("utf-8")
+                )
+            )
+
+        get_etag = MagicMock()
+        get_etag.return_value = succeed(None)
+
+        mock_redfish_request = self.patch(driver, "_redfish_request")
+        mock_redfish_request.return_value = succeed(True)
+        yield driver.redfish_request(
+            b"POST", url, headers, get_bodyProducer, get_etag
+        )
+        self.assertEqual(
+            None,
+            mock_redfish_request.mock_calls[0]
+            .args[2]
+            .getRawHeaders(b"If-Match"),
         )
 
     @inlineCallbacks
