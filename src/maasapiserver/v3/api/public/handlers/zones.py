@@ -12,7 +12,6 @@ from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -49,7 +48,6 @@ class ZonesHandler(Handler):
             200: {
                 "model": ZonesListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -93,7 +91,6 @@ class ZonesHandler(Handler):
             200: {
                 "model": ZonesWithSummaryListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         summary="List zones with a summary. ONLY FOR INTERNAL USAGE.",
         description="List zones with a summary. This endpoint is only for internal usage and might be changed or removed "
@@ -142,7 +139,6 @@ class ZonesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=201,
@@ -172,7 +168,6 @@ class ZonesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -205,7 +200,6 @@ class ZonesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,

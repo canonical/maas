@@ -9,7 +9,6 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
     NotFoundResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -55,7 +54,6 @@ class ReservedIPsHandler(Handler):
             200: {
                 "model": ReservedIPsListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         status_code=200,
         response_model_exclude_none=True,
@@ -120,7 +118,6 @@ class ReservedIPsHandler(Handler):
                 },
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -169,7 +166,6 @@ class ReservedIPsHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=201,
@@ -225,7 +221,6 @@ class ReservedIPsHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -278,7 +273,6 @@ class ReservedIPsHandler(Handler):
         responses={
             204: {},
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,

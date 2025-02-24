@@ -12,7 +12,6 @@ from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.fabrics import FabricRequest
@@ -43,7 +42,6 @@ class FabricsHandler(Handler):
             200: {
                 "model": FabricsListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -89,7 +87,6 @@ class FabricsHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -122,7 +119,6 @@ class FabricsHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         status_code=201,
         response_model_exclude_none=True,
@@ -153,7 +149,6 @@ class FabricsHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,

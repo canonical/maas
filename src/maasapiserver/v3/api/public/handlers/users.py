@@ -14,7 +14,6 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundResponse,
     PreconditionFailedBodyResponse,
     UnauthorizedBodyResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -118,7 +117,6 @@ class UsersHandler(Handler):
             200: {
                 "model": UsersListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -164,7 +162,6 @@ class UsersHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -198,7 +195,6 @@ class UsersHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         status_code=201,
         response_model_exclude_none=True,
@@ -232,7 +228,6 @@ class UsersHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         status_code=200,
         response_model_exclude_none=True,
@@ -266,7 +261,6 @@ class UsersHandler(Handler):
             400: {"model": BadRequestBodyResponse},
             404: {"model": NotFoundBodyResponse},
             412: {"model": PreconditionFailedBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         status_code=204,
         response_model_exclude_none=True,

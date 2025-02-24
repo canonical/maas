@@ -9,8 +9,8 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
     NotFoundResponse,
+    PreconditionFailedBodyResponse,
     UnauthorizedBodyResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -143,7 +143,6 @@ class SshKeysHandler(Handler):
             201: {"model": SshKeyResponse},
             401: {"model": UnauthorizedBodyResponse},
             409: {"model": ConflictBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=201,
@@ -176,7 +175,6 @@ class SshKeysHandler(Handler):
         responses={
             201: {"model": SshKeysListResponse},
             401: {"model": UnauthorizedBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=201,
@@ -213,7 +211,11 @@ class SshKeysHandler(Handler):
         path="/users/me/sshkeys/{id}",
         methods=["DELETE"],
         tags=TAGS,
-        responses={204: {}, 401: {"model": UnauthorizedBodyResponse}},
+        responses={
+            204: {},
+            401: {"model": UnauthorizedBodyResponse},
+            412: {"model": PreconditionFailedBodyResponse},
+        },
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[

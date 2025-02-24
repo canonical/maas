@@ -9,7 +9,6 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
     NotFoundResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.ipranges import (
@@ -61,7 +60,6 @@ class IPRangesHandler(Handler):
             200: {
                 "model": IPRangeListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -119,7 +117,6 @@ class IPRangesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=201,
@@ -195,7 +192,6 @@ class IPRangesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -240,7 +236,6 @@ class IPRangesHandler(Handler):
         responses={
             204: {},
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=204,
@@ -303,7 +298,6 @@ class IPRangesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,

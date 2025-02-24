@@ -7,7 +7,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     UnauthorizedBodyResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
@@ -39,7 +38,6 @@ class AuthHandler(Handler):
                 "model": AccessTokenResponse,
             },
             401: {"model": UnauthorizedBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,

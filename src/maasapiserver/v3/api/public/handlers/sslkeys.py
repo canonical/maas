@@ -12,7 +12,6 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
     NotFoundResponse,
     UnauthorizedBodyResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -153,7 +152,6 @@ class SSLKeysHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         status_code=201,
         response_model_exclude_none=True,

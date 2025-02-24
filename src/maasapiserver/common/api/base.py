@@ -1,5 +1,9 @@
 from fastapi import APIRouter
 
+from maasapiserver.common.api.models.responses.errors import (
+    ValidationErrorBodyResponse,
+)
+
 
 class Handler:
     """An API handler for an entity."""
@@ -28,6 +32,12 @@ def handler(**config):
     def register_handler(func):
         # Use the name of the python function as operationId in the openapi spec.
         config["operation_id"] = func.__name__
+        if "responses" in config:
+            # if 422 is not registered, FastAPI would automatically add HTTPValidationError. So let's set our error definition
+            # by default.
+            config["responses"].update(
+                {422: {"model": ValidationErrorBodyResponse}}
+            )
         func.__handler_config = config
         return func
 

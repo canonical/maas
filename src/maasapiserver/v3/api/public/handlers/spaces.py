@@ -12,7 +12,6 @@ from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -41,7 +40,6 @@ class SpacesHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": SpacesListResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -86,7 +84,6 @@ class SpacesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -119,7 +116,6 @@ class SpacesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             409: {"model": ConflictBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=201,
@@ -151,7 +147,6 @@ class SpacesHandler(Handler):
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,

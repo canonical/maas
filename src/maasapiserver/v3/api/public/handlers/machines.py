@@ -7,7 +7,6 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
     NotFoundResponse,
-    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -46,7 +45,6 @@ class MachinesHandler(Handler):
             200: {
                 "model": MachinesListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -143,7 +141,6 @@ class MachinesHandler(Handler):
             200: {
                 "model": UsbDevicesListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -189,7 +186,6 @@ class MachinesHandler(Handler):
             200: {
                 "model": PciDevicesListResponse,
             },
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -236,7 +232,6 @@ class MachinesHandler(Handler):
                 "model": PowerDriverResponse,
             },
             404: {"model": NotFoundBodyResponse},
-            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
