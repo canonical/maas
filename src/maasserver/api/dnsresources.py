@@ -14,6 +14,7 @@ from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.models import DNSResource, Domain
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.permissions import NodePermission
+from maasserver.sqlalchemy import service_layer
 
 DISPLAYED_DNSRESOURCE_FIELDS = (
     "id",
@@ -45,8 +46,12 @@ class DNSResourcesQuerySet(QuerySet):
             yield from self._generate_synthetic_rrdata(domain)
 
     def _generate_synthetic_rrdata(self, domain):
-        rrdata = domain.render_json_for_related_rrdata(
-            include_dnsdata=False, as_dict=True, user=self._user_filter
+        user_id = None if self._user_filter is None else self._user_filter.id
+        rrdata = service_layer.services.domains.render_json_for_related_rrdata(
+            domain_id=domain.id,
+            user_id=user_id,
+            include_dnsdata=False,
+            as_dict=True,
         )
         for name, value in rrdata.items():
             name = name.split(".")[0]

@@ -281,17 +281,10 @@ class ServiceCollectionV3:
             temporal_service=services.temporal,
             dnspublication_repository=DNSPublicationRepository(context),
         )
-        services.domains = DomainsService(
-            context=context,
-            configurations_service=services.configurations,
-            dnspublications_service=services.dnspublications,
-            domains_repository=DomainsRepository(context),
-        )
         services.staticipaddress = StaticIPAddressService(
             context=context,
             temporal_service=services.temporal,
             configurations_service=services.configurations,
-            domains_service=services.domains,
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
         services.subnets = SubnetsService(
@@ -311,28 +304,6 @@ class ServiceCollectionV3:
             subnets_service=services.subnets,
             interfaces_service=services.interfaces,
             fabrics_repository=FabricsRepository(context),
-        )
-        services.dnsresources = DNSResourcesService(
-            context=context,
-            domains_service=services.domains,
-            dnspublications_service=services.dnspublications,
-            dnsresource_repository=DNSResourceRepository(context),
-        )
-        services.dnsdata = DNSDataService(
-            context=context,
-            dnspublications_service=services.dnspublications,
-            domains_service=services.domains,
-            dnsresources_service=services.dnsresources,
-            dnsdata_repository=DNSDataRepository(context),
-        )
-        services.leases = LeasesService(
-            context=context,
-            dnsresource_service=services.dnsresources,
-            node_service=services.nodes,
-            staticipaddress_service=services.staticipaddress,
-            subnet_service=services.subnets,
-            interface_service=services.interfaces,
-            iprange_service=services.ipranges,
         )
         services.sshkeys = SshKeysService(
             context=context,
@@ -366,6 +337,35 @@ class ServiceCollectionV3:
             notification_service=services.notifications,
             notification_dismissal_service=services.notifications_dismissal,
             filestorage_service=services.filestorage,
+        )
+        services.domains = DomainsService(
+            context=context,
+            configurations_service=services.configurations,
+            dnspublications_service=services.dnspublications,
+            users_service=services.users,
+            domains_repository=DomainsRepository(context),
+        )
+        services.dnsresources = DNSResourcesService(
+            context=context,
+            domains_service=services.domains,
+            dnspublications_service=services.dnspublications,
+            dnsresource_repository=DNSResourceRepository(context),
+        )
+        services.dnsdata = DNSDataService(
+            context=context,
+            dnspublications_service=services.dnspublications,
+            domains_service=services.domains,
+            dnsresources_service=services.dnsresources,
+            dnsdata_repository=DNSDataRepository(context),
+        )
+        services.leases = LeasesService(
+            context=context,
+            dnsresource_service=services.dnsresources,
+            node_service=services.nodes,
+            staticipaddress_service=services.staticipaddress,
+            subnet_service=services.subnets,
+            interface_service=services.interfaces,
+            iprange_service=services.ipranges,
         )
         services.auth = AuthService(
             context=context,

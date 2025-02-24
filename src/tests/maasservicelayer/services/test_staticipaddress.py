@@ -24,7 +24,6 @@ from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
-from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
@@ -40,7 +39,6 @@ class TestCommonStaticIPAddressService(ServiceCommonTests):
             context=Context(),
             temporal_service=Mock(TemporalService),
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=Mock(StaticIPAddressRepository),
         )
 
@@ -108,7 +106,6 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=repository_mock,
         )
 
@@ -156,7 +153,6 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -199,7 +195,6 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=repository_mock,
         )
 
@@ -245,7 +240,6 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -304,7 +298,6 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -365,7 +358,6 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -416,7 +408,6 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             configurations_service=Mock(ConfigurationsService),
-            domains_service=Mock(DomainsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 

@@ -3,15 +3,12 @@
 
 from collections.abc import Sequence
 from ipaddress import IPv4Address
-import random
-from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.enums.node import NodeTypeEnum
-from maasserver.models.domain import Domain
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -260,23 +257,3 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             [MacAddress(i.mac_address) for i in interfaces]
         )
         assert sorted(result) == expected_mac_addresses
-
-    async def test_user_reserved_addresses_have_default_hostnames(
-        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
-    ):
-        # Moved from src/maasserver/models/tests/test_staticipaddress.py
-        # Reserved IPs get default hostnames when none are given.
-        subnet = await create_test_subnet_entry(fixture)
-        num_ips = random.randint(3, 5)
-        ips = [
-            await create_test_staticipaddress_entry(
-                fixture,
-                subnet=subnet,
-                alloc_type=IpAddressType.USER_RESERVED.value,
-            )
-            for _ in range(num_ips)
-        ]
-        mappings = await repository_instance._get_special_mappings(
-            default_domain=Mock(Domain), default_ttl=30
-        )
-        assert len(mappings) == len(ips)

@@ -12,7 +12,6 @@ __all__ = [
     "validate_domain_name",
 ]
 
-from collections import defaultdict, OrderedDict
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -28,12 +27,10 @@ from django.db.models.query import QuerySet
 from django.utils import timezone
 from netaddr import IPAddress
 
-from maascommon.dns import HostnameRRsetMapping
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import MAASQueriesMixin
 
 # Labels are at most 63 octets long, and a name can be many of them.
@@ -417,77 +414,3 @@ class Domain(CleanSave, TimestampedModel):
         super().clean(*args, **kwargs)
         self.clean_name()
         self.validate_authority()
-
-    def render_json_for_related_rrdata(
-        self, for_list=False, include_dnsdata=True, as_dict=False, user=None
-    ):
-        """Render a representation of this domain's related non-IP data,
-        suitable for converting to JSON.
-
-        :return: data"""
-
-        if include_dnsdata is True:
-            rr_mapping = (
-                service_layer.services.domains.get_hostname_dnsdata_mapping(
-                    self.id, raw_ttl=True
-                )
-            )
-        else:
-            rr_mapping = defaultdict(HostnameRRsetMapping)
-        # Smash the IP Addresses in the rrset mapping, so that the far end
-        # only needs to worry about one thing.
-        ip_mapping = (
-            service_layer.services.staticipaddress.get_hostname_ip_mapping(
-                int(self.id), raw_ttl=True
-            )
-        )
-        for hostname, info in ip_mapping.items():
-            if (
-                user is not None
-                and not user.is_superuser
-                and info.user_id is not None
-                and info.user_id != user.id
-            ):
-                continue
-            entry = rr_mapping[hostname[: -len(self.name) - 1]]
-            entry.dnsresource_id = info.dnsresource_id
-            if info.system_id is not None:
-                entry.system_id = info.system_id
-                entry.node_type = info.node_type
-            if info.user_id is not None:
-                entry.user_id = info.user_id
-            for ip in info.ips:
-                record_type = "AAAA" if IPAddress(ip).version == 6 else "A"
-                entry.rrset.add((info.ttl, record_type, ip, None))
-        if as_dict is True:
-            result = OrderedDict()
-        else:
-            result = []
-        for hostname, info in rr_mapping.items():
-            data = [
-                {
-                    "name": hostname,
-                    "system_id": info.system_id,
-                    "node_type": info.node_type,
-                    "user_id": info.user_id,
-                    "dnsresource_id": info.dnsresource_id,
-                    "ttl": ttl,
-                    "rrtype": rrtype,
-                    "rrdata": rrdata,
-                    "dnsdata_id": dnsdata_id,
-                }
-                for ttl, rrtype, rrdata, dnsdata_id in info.rrset
-                if (
-                    info.user_id is None
-                    or user is None
-                    or user.is_superuser
-                    or (info.user_id is not None and info.user_id == user.id)
-                )
-            ]
-            if as_dict is True:
-                existing = result.get(hostname, [])
-                existing.extend(data)
-                result[hostname] = existing
-            else:
-                result.extend(data)
-        return result

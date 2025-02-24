@@ -426,10 +426,8 @@ class TestRenderRRData(MAASServerTestCase):
         rr_map = service_layer.services.domains.get_hostname_dnsdata_mapping(
             domain.id, raw_ttl=True
         )
-        ip_map = (
-            service_layer.services.staticipaddress.get_hostname_ip_mapping(
-                domain.id, raw_ttl=True
-            )
+        ip_map = service_layer.services.domains.get_hostname_ip_mapping(
+            domain.id, raw_ttl=True
         )
         for hostname, info in ip_map.items():
             hostname = hostname[: -len(domain.name) - 1]
@@ -469,10 +467,14 @@ class TestRenderRRData(MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(domain=domain)
         factory.make_DNSResource(name=node.hostname, domain=domain)
         expected = self.render_rrdata(domain, for_list=True)
-        actual = domain.render_json_for_related_rrdata(for_list=True)
+        actual = service_layer.services.domains.render_json_for_related_rrdata(
+            domain_id=domain.id
+        )
         self.assertCountEqual(expected, actual)
         expected = self.render_rrdata(domain, for_list=False)
-        actual = domain.render_json_for_related_rrdata(for_list=False)
+        actual = service_layer.services.domains.render_json_for_related_rrdata(
+            domain_id=domain.id
+        )
         self.assertCountEqual(expected, actual)
 
     def test_render_json_for_related_rrdata_includes_user_id(self):
@@ -485,7 +487,9 @@ class TestRenderRRData(MAASServerTestCase):
         dnsrr = factory.make_DNSResource(domain=domain, name=node_name)
         factory.make_DNSData(dnsresource=dnsrr, ip_addresses=True)
         expected = self.render_rrdata(domain, for_list=False)
-        actual = domain.render_json_for_related_rrdata(for_list=True)
+        actual = service_layer.services.domains.render_json_for_related_rrdata(
+            domain_id=domain.id
+        )
         self.assertEqual(actual, expected)
         for record in actual:
             self.assertEqual(record["user_id"], user.id)
@@ -495,12 +499,24 @@ class TestRenderRRData(MAASServerTestCase):
         name1 = factory.make_name(prefix="a")
         name2 = factory.make_name(prefix="b")
         factory.make_DNSData(name=name1, domain=domain, rrtype="MX")
-        rrdata_list = domain.render_json_for_related_rrdata(as_dict=False)
-        rrdata_dict = domain.render_json_for_related_rrdata(as_dict=True)
+        rrdata_list = (
+            service_layer.services.domains.render_json_for_related_rrdata(
+                domain_id=domain.id, as_dict=False
+            )
+        )
+        rrdata_dict = (
+            service_layer.services.domains.render_json_for_related_rrdata(
+                domain_id=domain.id, as_dict=True
+            )
+        )
         self.assertEqual([rrdata_list[0]], rrdata_dict[name1])
         self.assertEqual(len(rrdata_dict[name1]), 1)
         factory.make_DNSData(name=name1, domain=domain, rrtype="MX")
         factory.make_DNSData(name=name2, domain=domain, rrtype="NS")
-        rrdata_dict = domain.render_json_for_related_rrdata(as_dict=True)
+        rrdata_dict = (
+            service_layer.services.domains.render_json_for_related_rrdata(
+                domain_id=domain.id, as_dict=True
+            )
+        )
         self.assertEqual(len(rrdata_dict[name1]), 2)
         self.assertEqual(len(rrdata_dict[name2]), 1)

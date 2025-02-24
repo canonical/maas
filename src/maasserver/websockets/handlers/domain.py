@@ -11,6 +11,7 @@ from maasserver.forms.domain import DomainForm
 from maasserver.models import DNSData, DNSResource, GlobalDefault
 from maasserver.models.domain import Domain
 from maasserver.permissions import NodePermission
+from maasserver.sqlalchemy import service_layer
 from maasserver.websockets.base import (
     AdminOnlyMixin,
     HandlerPermissionError,
@@ -48,8 +49,8 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
         listen_channels = ["domain"]
 
     def dehydrate(self, domain, data, for_list=False):
-        rrsets = domain.render_json_for_related_rrdata(
-            for_list=for_list, user=self.user
+        rrsets = service_layer.services.domains.render_json_for_related_rrdata(
+            domain_id=domain.id, user_id=self.user.id
         )
         if not for_list:
             data["rrsets"] = rrsets

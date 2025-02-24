@@ -1,9 +1,12 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+from collections import defaultdict, OrderedDict
 import re
 from typing import List
 
-from maascommon.dns import HostnameRRsetMapping
+from netaddr import IPAddress
+
+from maascommon.dns import HostnameIPMapping, HostnameRRsetMapping
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
@@ -11,15 +14,18 @@ from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
+    NotFoundException,
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
+from maasservicelayer.services.users import UsersService
 
 # Labels are at most 63 octets long, and a name can be many of them
 LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
@@ -32,11 +38,13 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         context: Context,
         configurations_service: ConfigurationsService,
         dnspublications_service: DNSPublicationsService,
+        users_service: UsersService,
         domains_repository: DomainsRepository,
     ):
         super().__init__(context, domains_repository)
         self.dnspublications_service = dnspublications_service
         self.configurations_service = configurations_service
+        self.users_service = users_service
 
     async def pre_create_hook(self, builder: DomainBuilder) -> None:
         # Same name validation as maasserver.models.domain.validate_domain_name
@@ -118,6 +126,16 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
     async def get_default_domain(self) -> Domain:
         return await self.repository.get_default_domain()
 
+    async def get_hostname_ip_mapping(
+        self, domain_id: int | None = None, raw_ttl: bool = False
+    ) -> dict[str, HostnameIPMapping]:
+        default_ttl = await self.configurations_service.get(
+            "default_dns_ttl", default=30
+        )
+        return await self.repository.get_hostname_ip_mapping(
+            default_ttl, domain_id, raw_ttl
+        )
+
     async def get_hostname_dnsdata_mapping(
         self, domain_id: int, raw_ttl=False, with_ids=True
     ) -> dict[str, HostnameRRsetMapping]:
@@ -127,3 +145,110 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         return await self.repository.get_hostname_dnsdata_mapping(
             domain_id, default_ttl, raw_ttl, with_ids
         )
+
+    async def render_json_for_related_rrdata(
+        self,
+        domain_id: int,
+        user_id: int | None = None,
+        include_dnsdata=True,
+        as_dict=False,
+    ) -> dict | list:
+        """Render a representation of a domain's related non-IP data,
+        suitable for converting to JSON.
+
+        NOTE: This has been moved from src/maasserver/models/domain.py and the
+        relative tests are still in src/maasserver/models/tests/test_domain.py
+
+        Params:
+            domain_id: The domain to calculate dns resources for
+            user_id: Restrict the data to what the user can see
+            include_dnsdata: Whether to include dns data or not
+            as_dict: Whether to return the data as a dict or as a list
+        """
+
+        domain = await self.get_by_id(domain_id)
+        if domain is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Domain with id {domain_id} does not exist.",
+                    )
+                ]
+            )
+
+        if user_id is not None:
+            user = await self.users_service.get_by_id(user_id)
+            if user is None:
+                raise NotFoundException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                            message=f"User with id {user_id} does not exist.",
+                        )
+                    ]
+                )
+        else:
+            user = None
+
+        if include_dnsdata is True:
+            rr_mapping = await self.get_hostname_dnsdata_mapping(
+                domain_id, raw_ttl=True
+            )
+        else:
+            rr_mapping = defaultdict(HostnameRRsetMapping)
+        # Smash the IP Addresses in the rrset mapping, so that the far end
+        # only needs to worry about one thing.
+        ip_mapping = await self.get_hostname_ip_mapping(
+            domain_id, raw_ttl=True
+        )
+        for hostname, info in ip_mapping.items():
+            if (
+                user is not None
+                and not user.is_superuser
+                and info.user_id is not None
+                and info.user_id != user.id
+            ):
+                continue
+            entry = rr_mapping[hostname[: -len(domain.name) - 1]]
+            entry.dnsresource_id = info.dnsresource_id
+            if info.system_id is not None:
+                entry.system_id = info.system_id
+                entry.node_type = info.node_type
+            if info.user_id is not None:
+                entry.user_id = info.user_id
+            for ip in info.ips:
+                record_type = "AAAA" if IPAddress(ip).version == 6 else "A"
+                entry.rrset.add((info.ttl, record_type, ip, None))
+        if as_dict:
+            result = OrderedDict()
+        else:
+            result = []
+        for hostname, info in rr_mapping.items():
+            data = [
+                {
+                    "name": hostname,
+                    "system_id": info.system_id,
+                    "node_type": info.node_type,
+                    "user_id": info.user_id,
+                    "dnsresource_id": info.dnsresource_id,
+                    "ttl": ttl,
+                    "rrtype": rrtype,
+                    "rrdata": rrdata,
+                    "dnsdata_id": dnsdata_id,
+                }
+                for ttl, rrtype, rrdata, dnsdata_id in info.rrset
+                if (
+                    info.user_id is None
+                    or user is None
+                    or user.is_superuser
+                    or (info.user_id is not None and info.user_id == user.id)
+                )
+            ]
+            if isinstance(result, OrderedDict):
+                existing = result.get(hostname, [])
+                existing.extend(data)
+                result[hostname] = existing
+            else:
+                result.extend(data)
+        return result

@@ -65,9 +65,7 @@ def get_hostname_ip_mapping(domain_id: int | None = None):
     """Return a mapping {hostnames -> info} for the allocated nodes in
     `domain` or `subnet`.  Info contains: ttl, ips, system_id.
     """
-    return service_layer.services.staticipaddress.get_hostname_ip_mapping(
-        domain_id
-    )
+    return service_layer.services.domains.get_hostname_ip_mapping(domain_id)
 
 
 def get_hostname_dnsdata_mapping(domain_id: int):
