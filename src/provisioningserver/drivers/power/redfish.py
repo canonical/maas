@@ -92,9 +92,10 @@ class RedfishPowerDriverBase(PowerDriver):
             yield pause(sleep_time)
             try:
                 etag = yield get_etag()
+
+                # Ensure the If-Match header is unset.
+                headers.removeHeader(b"If-Match")
                 if etag:
-                    # previous attempts might have added this header, hence we have to replace it.
-                    headers.removeHeader(b"If-Match")
                     headers.addRawHeader(b"If-Match", etag)
                 return (
                     yield self._redfish_request(
