@@ -36,6 +36,7 @@ from maasserver.models import (
     Config,
     Node,
 )
+from maasserver.models.bootresource import get_boot_resources_last_deployments
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
@@ -491,19 +492,6 @@ class BootResourceHandler(Handler):
             for resource in resources
         )
 
-    def get_last_deployed_for_resources(
-        self, resources: list[BootResource]
-    ) -> Optional[datetime]:
-        """Return the most recent deploy time for all resources."""
-        last_deployed = None
-        for resource in resources:
-            this_deploy = resource.get_last_deploy()
-            if this_deploy is not None:
-                last_deployed = self.pick_latest_datetime(
-                    last_deployed, this_deploy
-                )
-        return last_deployed
-
     def get_progress_for_resources(self, resources):
         """Return the overall progress for all resources."""
         size = 0
@@ -517,6 +505,14 @@ class BootResourceHandler(Handler):
             # Handle division by zero
             return 0
         return 100.0 * (size / float(total_size))
+
+    def get_last_deployed_for_resource(
+        self, resource: BootResource
+    ) -> Optional[datetime]:
+        """Return the most recent deploy time for the resource."""
+        return get_boot_resources_last_deployments().get(
+            f"{resource.name}/{resource.arch}"
+        )
 
     def get_resource_title(self, resource):
         """Return the title for the resource based on the type and name."""
@@ -551,7 +547,6 @@ class BootResourceHandler(Handler):
         )
         complete = self.are_all_resources_complete(group)
         progress = self.get_progress_for_resources(group)
-        last_deployed = self.get_last_deployed_for_resources(group)
         can_deploy_to_memory = self.get_can_deploy_to_memory(group)
 
         # Set the computed attributes on the first resource as that will
@@ -564,7 +559,7 @@ class BootResourceHandler(Handler):
         resource.last_update = last_update
         resource.number_of_nodes = number_of_nodes
         resource.machine_count = machine_count
-        resource.last_deployed = last_deployed
+        resource.last_deployed = self.get_last_deployed_for_resource(resource)
         resource.can_deploy_to_memory = can_deploy_to_memory
         resource.complete = complete
         if not complete:
