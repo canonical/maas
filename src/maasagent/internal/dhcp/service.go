@@ -249,7 +249,7 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 			return s.stop(ctx)
 		}
 
-		if err := s.start(ctx); err != nil {
+		if err := s.start(); err != nil {
 			return err
 		}
 
@@ -276,7 +276,7 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 	}).Get(ctx, nil)
 }
 
-func (s *DHCPService) start(ctx context.Context) error {
+func (s *DHCPService) start() error {
 	sockPath := s.dataPathFactory(dhcpdNotificationSocketName)
 
 	if err := syscall.Unlink(sockPath); err != nil {
@@ -303,7 +303,9 @@ func (s *DHCPService) start(ctx context.Context) error {
 	notificationListener := dhcpd.NewNotificationListener(s.notificationSock,
 		queueFlush(s.client, flushInterval), dhcpd.WithInterval(flushInterval))
 
-	ctx, s.notificationCancel = context.WithCancel(ctx)
+	var ctx context.Context
+
+	ctx, s.notificationCancel = context.WithCancel(context.Background())
 
 	go notificationListener.Listen(ctx)
 
