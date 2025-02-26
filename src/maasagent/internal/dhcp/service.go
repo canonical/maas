@@ -295,6 +295,11 @@ func (s *DHCPService) start(ctx context.Context) error {
 		return err
 	}
 
+	// The dhcpd socket must be world readable/writable
+	if err := os.Chmod(sockPath, 0666); err != nil { //nolint:gosec // ignore G302
+		return err
+	}
+
 	notificationListener := dhcpd.NewNotificationListener(s.notificationSock,
 		queueFlush(s.client, flushInterval), dhcpd.WithInterval(flushInterval))
 
