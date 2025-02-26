@@ -43,7 +43,10 @@ from maasserver.testing.commissioning import (
     LXDPCIDeviceVPD,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
@@ -1917,6 +1920,57 @@ class TestUpdateFruidMetadata(MAASServerTestCase):
             },
             metadata,
         )
+
+
+class TestProcessLXDResultsTransactional(MAASTransactionServerTestCase):
+    def test_gateway_ipv4_is_reset(self):
+        vlan = factory.make_VLAN("oam")
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        node = factory.make_Node()
+        iface = factory.make_Interface(subnet=subnet, name="eno1")
+        ip = factory.make_StaticIPAddress(
+            "10.0.0.2",
+            subnet=subnet,
+            interface=iface,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        node.gateway_link_ipv4 = ip
+        node.save()
+
+        lxd_output = make_lxd_output()
+        lxd_output["resources"]["network"]["cards"] = [
+            {
+                "ports": [
+                    {
+                        "id": "eno2",
+                        "address": str(iface.mac_address),
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "link_detected": False,
+                    }
+                ],
+                "numa_node": iface.numa_node.index,
+                "pci_address": "0000:01:00.0",
+                "vendor": iface.vendor,
+                "product": iface.product,
+                "firmware_version": iface.firmware_version,
+            },
+        ]
+        lxd_output["networks"]["eno2"] = {
+            "hwaddr": str(iface.mac_address),
+            "type": "broadcast",
+            "addresses": [],
+            "vlan": None,
+            "bridge": None,
+            "bond": None,
+            "state": "up",
+        }
+
+        with post_commit_hooks:
+            process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        node = reload_object(node)
+        self.assertIsNone(node.gateway_link_ipv4)
 
 
 class TestProcessLXDResults(MAASServerTestCase):
