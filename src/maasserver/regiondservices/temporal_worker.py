@@ -37,6 +37,7 @@ from maastemporalworker.workflow.power import (
     PowerOffWorkflow,
     PowerOnWorkflow,
     PowerQueryWorkflow,
+    PowerResetWorkflow,
 )
 from provisioningserver.utils.env import MAAS_ID
 
@@ -132,6 +133,7 @@ class TemporalWorkerService(Service):
                     PowerQueryWorkflow,
                     PowerManyWorkflow,
                     SyncBootResourcesWorkflow,
+                    PowerResetWorkflow,
                 ],
                 activities=[
                     # Boot resources activities

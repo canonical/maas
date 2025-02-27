@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
@@ -11,6 +11,7 @@ POWER_CYCLE_WORKFLOW_NAME = "power-cycle"
 POWER_OFF_WORKFLOW_NAME = "power-off"
 POWER_QUERY_WORKFLOW_NAME = "power-query"
 POWER_MANY_WORKFLOW_NAME = "power-many"
+POWER_RESET_WORKFLOW_NAME = "power-reset"
 
 
 # XXX: Once Python 3.11 switch to StrEnum
@@ -19,6 +20,7 @@ class PowerAction(Enum):
     POWER_OFF = POWER_OFF_WORKFLOW_NAME
     POWER_CYCLE = POWER_CYCLE_WORKFLOW_NAME
     POWER_QUERY = POWER_QUERY_WORKFLOW_NAME
+    POWER_RESET = POWER_RESET_WORKFLOW_NAME
 
 
 # Workflows parameters
@@ -80,3 +82,10 @@ class PowerManyParam:
     # XXX: params property should be removed, once we can fetch everything by system_id
     # change to list[str] (list of system_ids)
     params: list[PowerParam]
+
+
+@dataclass
+class PowerResetParam(PowerParam):
+    """
+    Parameters required by the PowerReset workflow
+    """

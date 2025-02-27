@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2025 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -105,6 +105,7 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 		"power-off":      s.PowerOff,
 		"power-query":    s.PowerQuery,
 		"power-cycle":    s.PowerCycle,
+		"power-reset":    s.PowerReset,
 		"set-boot-order": s.SetBootOrder,
 	}
 
@@ -185,6 +186,16 @@ type PowerQueryResult struct {
 	State string `json:"state"`
 }
 
+// PowerResetParam is the activity parameter for power management of a host
+type PowerResetParam struct {
+	PowerParam
+}
+
+// PowerResetResult is the result of power action
+type PowerResetResult struct {
+	State string `json:"state"`
+}
+
 func (s *PowerService) PowerOn(ctx context.Context, param PowerOnParam) (*PowerOnResult, error) {
 	out, err := powerCommand(ctx, "on", param.DriverType, param.DriverOpts)
 	if err != nil {
@@ -237,6 +248,21 @@ func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*
 	out = strings.TrimSpace(out)
 
 	return &PowerQueryResult{State: out}, nil
+}
+
+func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*PowerResetResult, error) {
+	out, err := powerCommand(ctx, "reset", param.DriverType, param.DriverOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	out = strings.TrimSpace(out)
+
+	if out != "on" {
+		return nil, ErrWrongPowerState
+	}
+
+	return &PowerResetResult{State: out}, nil
 }
 
 type SetBootOrderParam struct {

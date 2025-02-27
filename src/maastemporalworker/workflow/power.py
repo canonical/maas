@@ -16,12 +16,14 @@ from maascommon.workflows.power import (
     POWER_OFF_WORKFLOW_NAME,
     POWER_ON_WORKFLOW_NAME,
     POWER_QUERY_WORKFLOW_NAME,
+    POWER_RESET_WORKFLOW_NAME,
     PowerAction,
     PowerCycleParam,
     PowerManyParam,
     PowerOffParam,
     PowerOnParam,
     PowerQueryParam,
+    PowerResetParam,
 )
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 from maasservicelayer.builders.nodes import NodeBuilder
@@ -37,6 +39,7 @@ POWER_ON_ACTIVITY_NAME = "power-on"
 POWER_OFF_ACTIVITY_NAME = "power-off"
 POWER_CYCLE_ACTIVITY_NAME = "power-cycle"
 POWER_QUERY_ACTIVITY_NAME = "power-query"
+POWER_RESET_ACTIVITY_NAME = "power-reset"
 SET_POWER_STATE_ACTIVITY_NAME = "set-power-state"
 
 
@@ -72,6 +75,15 @@ class PowerCycleResult:
 class PowerQueryResult:
     """
     Result returned by PowerQuery workflow
+    """
+
+    state: str
+
+
+@dataclass
+class PowerResetResult:
+    """
+    Result returned by PowerReset workflow
     """
 
     state: str
@@ -219,6 +231,30 @@ class PowerManyWorkflow:
             )
 
 
+@workflow.defn(name=POWER_RESET_WORKFLOW_NAME, sandboxed=False)
+class PowerResetWorkflow:
+    """
+    PowerResetWorkflow is executed by the Region Controller itself.
+    """
+
+    # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
+    # @workflow_run_with_context
+    @workflow.run
+    async def run(self, param: PowerResetParam) -> PowerResetResult:
+        result = await workflow.execute_activity(
+            POWER_RESET_ACTIVITY_NAME,
+            {
+                "driver_type": param.driver_type,
+                "driver_opts": param.driver_opts,
+            },
+            task_queue=param.task_queue,
+            retry_policy=RetryPolicy(maximum_attempts=3),
+            start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
+        )
+
+        return result
+
+
 class UnroutablePowerWorkflowException(Exception):
     pass
 
@@ -301,6 +337,16 @@ def convert_power_action_to_power_workflow(
             return (
                 power_action,
                 PowerQueryParam(
+                    system_id=machine.system_id,
+                    task_queue=get_temporal_task_queue_for_bmc(machine),
+                    driver_type=extra_params.power_type,
+                    driver_opts=extra_params.power_parameters,
+                ),
+            )
+        case PowerAction.POWER_RESET.value:
+            return (
+                power_action,
+                PowerResetParam(
                     system_id=machine.system_id,
                     task_queue=get_temporal_task_queue_for_bmc(machine),
                     driver_type=extra_params.power_type,

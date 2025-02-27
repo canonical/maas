@@ -1,13 +1,17 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections import namedtuple
+from typing import Any
 from unittest.mock import Mock
+import uuid
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
-from temporalio.testing import ActivityEnvironment
+from temporalio import activity
+from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
+from temporalio.worker import Worker
 
 from maascommon.enums.node import NodeStatus
 from maascommon.enums.power import PowerState
@@ -16,6 +20,7 @@ from maascommon.workflows.power import (
     PowerOffParam,
     PowerOnParam,
     PowerQueryParam,
+    PowerResetParam,
 )
 from maasserver.models import bmc as model_bmc
 from maasservicelayer.db import Database
@@ -26,7 +31,10 @@ from maastemporalworker.workflow import power as power_workflow
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
     get_temporal_task_queue_for_bmc,
+    POWER_RESET_ACTIVITY_NAME,
     PowerActivity,
+    PowerResetResult,
+    PowerResetWorkflow,
     SetPowerStateParam,
     UnknownPowerActionException,
     UnroutablePowerWorkflowException,
@@ -105,6 +113,7 @@ class TestGetTemporalQueueForMachine:
             "power_off": PowerOffParam,
             "power_query": PowerQueryParam,
             "power_cycle": PowerCycleParam,
+            "power_reset": PowerResetParam,
         }
         machine = factory.make_Machine()
         params = namedtuple("params", ["power_type", "power_parameters"])(
@@ -189,3 +198,70 @@ class TestPowerActivity:
 
         assert result[0] == PowerState.ON
         assert result[1] == now
+
+
+@pytest.mark.asyncio
+class TestPowerResetWorkflow:
+    async def test_power_reset_workflow(self):
+        # The task queue here must be the same between the Worker below and in
+        # the PowerResetParam for this unit testing configuration to work.
+        # In actual MAAS, the workflow is submitted to the "region" task queue
+        # whilst the `task_queue` in the PowerResetParam specifies the specific
+        # power task queue on the controller (e.g. {controller_id}@agent:power)
+        # that manages the system_id you want to restart.
+        power_task_queue = "def456@agent:power"
+
+        calls = {}
+        param = PowerResetParam(
+            system_id="abc123",
+            task_queue=power_task_queue,
+            driver_type="redfish",
+            driver_opts={
+                "power_address": "0.0.0.0",
+                "power_user": "maas",
+                "power_pass": "maas",
+            },
+        )
+
+        # The PowerResetParam in the workflow in python is defined as:
+        # system_id: str,
+        # task_queue: str,
+        # driver_type: str,
+        # driver_opts: dict[str,str]
+        # but the activity in go maas-agent (src/maasagent/internal/power/service.go)
+        # only uses the driver information, so we change the receiving param here
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def mock_power_reset_activity(
+            param: dict[str, Any],
+        ) -> PowerResetResult:
+            calls[POWER_RESET_ACTIVITY_NAME] = param
+            return PowerResetResult(state="on")
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue=power_task_queue,
+                workflows=[PowerResetWorkflow],
+                activities=[mock_power_reset_activity],
+            ) as worker:
+                return_value = await env.client.execute_workflow(
+                    workflow=PowerResetWorkflow.run,
+                    arg=param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+                assert return_value.state == "on"
+
+        # Check that the passed-in parameters to the activity match those of
+        # the workflow's parameter.
+        # NOTE: If the power parameters in the maas-agent change, these
+        #       assertions will need to be updated.
+        assert (
+            calls[POWER_RESET_ACTIVITY_NAME]["driver_opts"]
+            == param.driver_opts
+        )
+        assert (
+            calls[POWER_RESET_ACTIVITY_NAME]["driver_type"]
+            == param.driver_type
+        )

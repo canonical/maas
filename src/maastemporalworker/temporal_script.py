@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -45,6 +45,7 @@ from maastemporalworker.workflow.power import (
     PowerOffWorkflow,
     PowerOnWorkflow,
     PowerQueryWorkflow,
+    PowerResetWorkflow,
 )
 from maastemporalworker.workflow.tag_evaluation import (
     TagEvaluationActivity,
@@ -118,6 +119,7 @@ async def main() -> None:
                 PowerCycleWorkflow,
                 PowerQueryWorkflow,
                 PowerManyWorkflow,
+                PowerResetWorkflow,
                 # Tag Evaluation workflows
                 TagEvaluationWorkflow,
             ],
