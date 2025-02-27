@@ -9,6 +9,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
 )
+from maasservicelayer.exceptions.catalog import BadRequestException
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.resource_pools import ResourcePool
 from maasservicelayer.services import ResourcePoolsService
@@ -49,3 +50,13 @@ class TestResourcePoolsService:
         ids_list = await resource_pools_service.list_ids()
         resource_pool_repository_mock.list_ids.assert_called_once()
         assert ids_list == {1, 2, 3}
+
+    async def test_cannot_delete_default_resourcepool(self) -> None:
+        resource_pools_repository = Mock(ResourcePoolRepository)
+        resource_pools_service = ResourcePoolsService(
+            context=Context(),
+            resource_pools_repository=resource_pools_repository,
+        )
+        resource_pool = ResourcePool(id=0, name="default", description="")
+        with pytest.raises(BadRequestException):
+            await resource_pools_service.pre_delete_hook(resource_pool)

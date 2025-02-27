@@ -33,6 +33,11 @@ UNEXISTING_RESOURCE_VIOLATION_TYPE = "UnexistingResourceViolation"
 INVALID_ARGUMENT_VIOLATION_TYPE = "InvalidArgumentViolation"
 PRECONDITION_FAILED = "PreconditionFailed"
 
+# Resource pools
+CANNOT_DELETE_DEFAULT_RESOURCEPOOL_VIOLATION_TYPE = (
+    "CannotDeleteDefaultResourcePoolViolation"
+)
+
 # VLANs
 CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE = (
     "CannotDeleteDefaultFabricVlanViolation"

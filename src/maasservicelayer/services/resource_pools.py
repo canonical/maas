@@ -6,6 +6,13 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
 )
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_RESOURCEPOOL_VIOLATION_TYPE,
+)
 from maasservicelayer.models.resource_pools import ResourcePool
 from maasservicelayer.services.base import BaseService
 
@@ -23,3 +30,15 @@ class ResourcePoolsService(
     async def list_ids(self) -> set[int]:
         """Returns all the ids of the resource pools in the db."""
         return await self.repository.list_ids()
+
+    async def pre_delete_hook(self, resource: ResourcePool) -> None:
+        # The default resource pool has id=0, and cannot be deleted
+        if resource.id == 0:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CANNOT_DELETE_DEFAULT_RESOURCEPOOL_VIOLATION_TYPE,
+                        message="The default resource pool cannot be deleted.",
+                    )
+                ]
+            )

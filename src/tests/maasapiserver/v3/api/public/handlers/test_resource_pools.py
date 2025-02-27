@@ -29,8 +29,10 @@ from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
+    PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
+    ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -74,6 +76,7 @@ class TestResourcePoolApi(ApiCommonTests):
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
     async def test_list_no_other_page(
@@ -508,3 +511,87 @@ class TestResourcePoolApi(ApiCommonTests):
             json=jsonable_encoder(update_resource_pool_request),
         )
         assert response.status_code == 403
+
+    async def test_delete_resourcepool_with_id(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.delete_by_id.side_effect = None
+        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/10")
+        assert response.status_code == 204
+
+    async def test_delete_resourcepool_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.delete_by_id.side_effect = None
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/10", headers={"if-match": "my_etag"}
+        )
+        assert response.status_code == 204
+
+    async def test_delete_resourcepool_wrong_etag_error(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.delete_by_id.side_effect = [
+            PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                        message="The etag 'wrong_etag' did not match etag 'my_etag'.",
+                    )
+                ]
+            ),
+            None,
+        ]
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/10",
+            headers={"if-match": "wrong_etag"},
+        )
+        assert response.status_code == 412
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 412
+        assert error_response.message == "A precondition has failed."
+        assert (
+            error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
+        )
+
+    async def test_delete_resourcepool_with_rbac(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin_rbac: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+
+        rbac_client_mock = Mock(RbacAsyncClient)
+
+        rbac_client_mock.get_resource_pool_ids.return_value = [
+            PermissionResourcesMapping(
+                permission=RbacPermission.EDIT, resources=[1]
+            ),
+        ]
+        services_mock.external_auth.get_rbac_client.return_value = (
+            rbac_client_mock
+        )
+
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.delete_by_id.side_effect = None
+        response = await mocked_api_client_admin_rbac.delete(
+            f"{self.BASE_PATH}/1",
+        )
+        assert response.status_code == 204
+        rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
+            user="username",
+            permissions={RbacPermission.EDIT},
+        )
+        forbidden_response = await mocked_api_client_admin_rbac.delete(
+            f"{self.BASE_PATH}/2",
+        )
+        assert forbidden_response.status_code == 403
