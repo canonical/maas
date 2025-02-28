@@ -163,6 +163,10 @@ test-go:
 	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c "make test" {} +
 .PHONY: test-go
 
+test-go-cover:
+	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c 'make test-cover' {} +
+.PHONY: test-go-cover
+
 test-perf: bin/pytest
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
 	GIT_HASH=$(shell git rev-parse HEAD) \

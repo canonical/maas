@@ -52,6 +52,10 @@ test: vendor
 	CGO_ENABLED=1 go test -race ./...
 .PHONY: test
 
+test-cover: vendor
+	CGO_ENABLED=1 go test -coverprofile=cover.out ./...
+.PHONY: test-cover
+
 vendor: vendor/modules.txt
 .PHONY: vendor
 

@@ -39,6 +39,10 @@ test: vendor
 test-race: vendor
 	CGO_ENABLED=1 $(GO) test -race ./...
 
+.PHONY: test-cover
+test-cover: vendor
+	CGO_ENABLED=1 $(GO) test -coverprofile=cover.out ./...
+
 .PHONY: generate
 generate:
 	$(GO) generate ./...
