@@ -6,7 +6,6 @@
 import base64
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
@@ -506,14 +505,6 @@ class BootResourceHandler(Handler):
             return 0
         return 100.0 * (size / float(total_size))
 
-    def get_last_deployed_for_resource(
-        self, resource: BootResource
-    ) -> Optional[datetime]:
-        """Return the most recent deploy time for the resource."""
-        return get_boot_resources_last_deployments().get(
-            f"{resource.name}/{resource.arch}"
-        )
-
     def get_resource_title(self, resource):
         """Return the title for the resource based on the type and name."""
         if title := resource.extra.get("title"):
@@ -534,7 +525,7 @@ class BootResourceHandler(Handler):
         else:
             return resource.name
 
-    def resource_group_to_resource(self, group):
+    def resource_group_to_resource(self, group, last_deployments):
         """Convert the list of resources into one resource to be used in
         the UI."""
         # Calculate all of the values using all of the resources for
@@ -559,7 +550,9 @@ class BootResourceHandler(Handler):
         resource.last_update = last_update
         resource.number_of_nodes = number_of_nodes
         resource.machine_count = machine_count
-        resource.last_deployed = self.get_last_deployed_for_resource(resource)
+        resource.last_deployed = last_deployments.get(
+            f"{resource.name}/{resource.arch}"
+        )
         resource.can_deploy_to_memory = can_deploy_to_memory
         resource.complete = complete
         if not complete:
@@ -581,12 +574,13 @@ class BootResourceHandler(Handler):
         """Return a list of resources combining all of subarchitecture
         resources into one resource."""
         resource_group = defaultdict(list)
+        last_deployments = get_boot_resources_last_deployments()
         for resource in resources:
             arch = resource.split_arch()[0]
             key = f"{resource.name}/{arch}"
             resource_group[key].append(resource)
         return [
-            self.resource_group_to_resource(group)
+            self.resource_group_to_resource(group, last_deployments)
             for _, group in resource_group.items()
         ]
 
