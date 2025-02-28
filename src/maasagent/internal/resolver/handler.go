@@ -18,11 +18,16 @@ package resolver
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
 	"net"
 	"net/netip"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -47,6 +52,10 @@ type ResolverClient interface {
 type systemConfig struct {
 	Nameservers   []netip.Addr
 	SearchDomains []string
+	EDNS0Enabled  bool
+	Rotate        bool
+	UseTCP        bool
+	TrustAD       bool
 }
 
 type RecursiveHandler struct {
@@ -70,6 +79,13 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 
 	h.authoritativeServers = authServers
 	h.systemResolvers = sysCfg
+
+	if h.systemResolvers.UseTCP {
+		client, ok := h.client.(*dns.Client)
+		if ok {
+			client.Net = "tcp"
+		}
+	}
 
 	return nil
 }
@@ -245,9 +261,73 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 	ctx, cancel = context.WithTimeout(ctx, attemptTimeout)
 	defer cancel()
 
+	if h.systemResolvers.EDNS0Enabled && !slices.ContainsFunc(r.Extra, checkForEDNS0Cookie) {
+		cookie, err := generateEDNS0Cookie()
+		if err != nil {
+			return nil, err
+		}
+
+		r.Extra = append(
+			r.Extra,
+			&dns.OPT{
+				Hdr: dns.RR_Header{},
+				Option: []dns.EDNS0{
+					&dns.EDNS0_COOKIE{
+						Code:   dns.EDNS0COOKIE,
+						Cookie: cookie,
+					},
+				},
+			},
+		)
+	}
+
+	if h.systemResolvers.TrustAD {
+		r.AuthenticatedData = true
+	}
+
+	if r.Id == 0 {
+		max := big.NewInt(int64(math.MaxUint16))
+
+		id, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return nil, err
+		}
+
+		r.Id = uint16(id.Int64())
+	}
+
+	r.RecursionDesired = true
+
 	msg, _, err := h.client.ExchangeContext(ctx, r, net.JoinHostPort(resolver.String(), "53"))
 
 	return msg, err
+}
+
+func generateEDNS0Cookie() (string, error) {
+	clientBytes := make([]byte, 8)
+
+	_, err := rand.Read(clientBytes)
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(clientBytes)[:16], nil
+}
+
+func checkForEDNS0Cookie(rr dns.RR) bool {
+	opt, ok := rr.(*dns.OPT)
+	if !ok {
+		return false
+	}
+
+	for _, option := range opt.Option {
+		_, ok := option.(*dns.EDNS0_COOKIE)
+		if ok {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (h *RecursiveHandler) nonAuthoritativeQuery(r *dns.Msg) (*dns.Msg, error) {
@@ -267,10 +347,7 @@ func (h *RecursiveHandler) nonAuthoritativeQuery(r *dns.Msg) (*dns.Msg, error) {
 }
 
 func (h *RecursiveHandler) parseResolvConf(resolvConf string) (*systemConfig, error) {
-	var (
-		resolvers     []netip.Addr
-		searchDomains []string
-	)
+	cfg := &systemConfig{}
 
 	//nolint:gosec // flags any file being opened via a variable
 	f, err := os.Open(resolvConf)
@@ -301,7 +378,7 @@ func (h *RecursiveHandler) parseResolvConf(resolvConf string) (*systemConfig, er
 				return nil, fmt.Errorf("error parsing nameserver address: %w", err)
 			}
 
-			resolvers = append(resolvers, ip)
+			cfg.Nameservers = append(cfg.Nameservers, ip)
 
 			continue // no need to check this line for search domains
 		}
@@ -330,13 +407,36 @@ func (h *RecursiveHandler) parseResolvConf(resolvConf string) (*systemConfig, er
 					domains = ""
 				}
 
-				searchDomains = append(searchDomains, dns.Fqdn(domain))
+				cfg.SearchDomains = append(cfg.SearchDomains, dns.Fqdn(domain))
+			}
+		}
+
+		if options, ok := strings.CutPrefix(line, "options"); ok {
+			opts := strings.TrimSpace(options)
+
+			if len(opts) == len(options) {
+				return nil, fmt.Errorf(
+					"%w: no space between \"options\" and set options",
+					ErrInvalidResolvConf,
+				)
+			}
+
+			optsList := strings.Split(opts, " ")
+
+			// we only care about a subset of resolv.conf options,
+			// see `man resolv.conf` for full list
+			for _, opt := range optsList {
+				switch opt {
+				case "edns0":
+					cfg.EDNS0Enabled = true
+				case "use-vc":
+					cfg.UseTCP = true
+				case "trust-ad":
+					cfg.TrustAD = true
+				}
 			}
 		}
 	}
 
-	return &systemConfig{
-		Nameservers:   resolvers,
-		SearchDomains: searchDomains,
-	}, nil
+	return cfg, nil
 }

@@ -156,19 +156,6 @@ search example.com`,
 				},
 			},
 		},
-		"valid with values ignored": {
-			in: `nameserver 127.0.0.53
-options edns0 trust-ad
-search example.com`,
-			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
-					Nameservers: []netip.Addr{
-						netip.MustParseAddr("127.0.0.53"),
-					},
-					SearchDomains: []string{"example.com."},
-				},
-			},
-		},
 		"nameservers missing space": {
 			in: "nameserver127.0.0.53",
 			out: parsedResolvConf{
@@ -191,6 +178,30 @@ search example.com`,
 						netip.MustParseAddr("127.0.0.53"),
 					},
 					SearchDomains: []string{"example.com."},
+				},
+			},
+		},
+		"options": {
+			in: "options edns0 trust-ad",
+			out: parsedResolvConf{
+				expectedCfg: &systemConfig{
+					EDNS0Enabled: true,
+					TrustAD:      true,
+				},
+			},
+		},
+		"all valid values": {
+			in: `nameserver 127.0.0.53
+options edns0 trust-ad
+search example.com`,
+			out: parsedResolvConf{
+				expectedCfg: &systemConfig{
+					Nameservers: []netip.Addr{
+						netip.MustParseAddr("127.0.0.53"),
+					},
+					SearchDomains: []string{"example.com."},
+					EDNS0Enabled:  true,
+					TrustAD:       true,
 				},
 			},
 		},
@@ -654,8 +665,9 @@ func TestServeDNS(t *testing.T) {
 			}{
 				msg: &dns.Msg{
 					MsgHdr: dns.MsgHdr{
-						Id:     1,
-						Opcode: dns.OpcodeQuery,
+						Id:               1,
+						Opcode:           dns.OpcodeQuery,
+						RecursionDesired: true,
 					},
 					Question: []dns.Question{
 						{
@@ -669,8 +681,9 @@ func TestServeDNS(t *testing.T) {
 					received: []*dns.Msg{
 						{
 							MsgHdr: dns.MsgHdr{
-								Id:     1,
-								Opcode: dns.OpcodeQuery,
+								Id:               1,
+								Opcode:           dns.OpcodeQuery,
+								RecursionDesired: true,
 							},
 							Question: []dns.Question{
 								{
@@ -707,8 +720,9 @@ func TestServeDNS(t *testing.T) {
 				sent: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Id:     0,
-							Opcode: dns.OpcodeQuery,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
 						},
 						Question: []dns.Question{
 							{
@@ -723,10 +737,11 @@ func TestServeDNS(t *testing.T) {
 					{
 
 						MsgHdr: dns.MsgHdr{
-							Id:       1,
-							Opcode:   dns.OpcodeQuery,
-							Response: true,
-							Rcode:    dns.RcodeSuccess,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
+							Response:         true,
+							Rcode:            dns.RcodeSuccess,
 						},
 						Question: []dns.Question{
 							{
@@ -761,7 +776,9 @@ func TestServeDNS(t *testing.T) {
 			}{
 				msg: &dns.Msg{
 					MsgHdr: dns.MsgHdr{
-						Opcode: dns.OpcodeQuery,
+						Id:               1,
+						Opcode:           dns.OpcodeQuery,
+						RecursionDesired: true,
 					},
 					Question: []dns.Question{
 						{
@@ -775,9 +792,11 @@ func TestServeDNS(t *testing.T) {
 					received: []*dns.Msg{
 						{
 							MsgHdr: dns.MsgHdr{
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeNameError,
+								Id:               1,
+								Opcode:           dns.OpcodeQuery,
+								RecursionDesired: true,
+								Response:         true,
+								Rcode:            dns.RcodeNameError,
 							},
 							Question: []dns.Question{
 								{
@@ -789,9 +808,11 @@ func TestServeDNS(t *testing.T) {
 						},
 						{
 							MsgHdr: dns.MsgHdr{
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeSuccess,
+								Id:               1,
+								Opcode:           dns.OpcodeQuery,
+								RecursionDesired: true,
+								Response:         true,
+								Rcode:            dns.RcodeSuccess,
 							},
 							Question: []dns.Question{
 								{
@@ -831,7 +852,9 @@ func TestServeDNS(t *testing.T) {
 				sent: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Opcode: dns.OpcodeQuery,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
 						},
 						Question: []dns.Question{
 							{
@@ -843,7 +866,9 @@ func TestServeDNS(t *testing.T) {
 					},
 					{
 						MsgHdr: dns.MsgHdr{
-							Opcode: dns.OpcodeQuery,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
 						},
 						Question: []dns.Question{
 							{
@@ -857,9 +882,11 @@ func TestServeDNS(t *testing.T) {
 				received: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Opcode:   dns.OpcodeQuery,
-							Response: true,
-							Rcode:    dns.RcodeSuccess,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
+							Response:         true,
+							Rcode:            dns.RcodeSuccess,
 						},
 						Question: []dns.Question{
 							{
@@ -894,7 +921,9 @@ func TestServeDNS(t *testing.T) {
 			}{
 				msg: &dns.Msg{
 					MsgHdr: dns.MsgHdr{
-						Opcode: dns.OpcodeQuery,
+						Id:               1,
+						Opcode:           dns.OpcodeQuery,
+						RecursionDesired: true,
 					},
 					Question: []dns.Question{
 						{
@@ -908,9 +937,11 @@ func TestServeDNS(t *testing.T) {
 					received: []*dns.Msg{
 						{
 							MsgHdr: dns.MsgHdr{
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeNameError,
+								Id:               1,
+								Opcode:           dns.OpcodeQuery,
+								RecursionDesired: true,
+								Response:         true,
+								Rcode:            dns.RcodeNameError,
 							},
 							Question: []dns.Question{
 								{
@@ -938,7 +969,9 @@ func TestServeDNS(t *testing.T) {
 				sent: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Opcode: dns.OpcodeQuery,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
 						},
 						Question: []dns.Question{
 							{
@@ -952,9 +985,11 @@ func TestServeDNS(t *testing.T) {
 				received: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Opcode:   dns.OpcodeQuery,
-							Response: true,
-							Rcode:    dns.RcodeNameError,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
+							Response:         true,
+							Rcode:            dns.RcodeNameError,
 						},
 						Question: []dns.Question{
 							{
@@ -978,7 +1013,9 @@ func TestServeDNS(t *testing.T) {
 			}{
 				msg: &dns.Msg{
 					MsgHdr: dns.MsgHdr{
-						Opcode: dns.OpcodeQuery,
+						Id:               1,
+						Opcode:           dns.OpcodeQuery,
+						RecursionDesired: true,
 					},
 					Question: []dns.Question{
 						{
@@ -1004,7 +1041,9 @@ func TestServeDNS(t *testing.T) {
 				sent: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Opcode: dns.OpcodeQuery,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
 						},
 						Question: []dns.Question{
 							{
@@ -1018,9 +1057,11 @@ func TestServeDNS(t *testing.T) {
 				received: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Opcode:   dns.OpcodeQuery,
-							Response: true,
-							Rcode:    dns.RcodeServerFailure,
+							Id:               1,
+							Opcode:           dns.OpcodeQuery,
+							RecursionDesired: true,
+							Response:         true,
+							Rcode:            dns.RcodeServerFailure,
 						},
 						Question: []dns.Question{
 							{
@@ -1053,10 +1094,20 @@ func TestServeDNS(t *testing.T) {
 			client := handler.client.(*mockClient)
 
 			for i, sent := range tc.out.sent {
+				assert.Greater(t, client.sent[i].Id, uint16(0))
+
+				// set id to 1 to avoid random generation
+				client.sent[i].Id = 1
+
 				assert.Equal(t, sent, client.sent[i], "mismatch sent query")
 			}
 
 			for i, received := range tc.out.received {
+				assert.Greater(t, responseWriter.sent[i].Id, uint16(0))
+
+				// set id to 1 to avoid random generation
+				responseWriter.sent[i].Id = 1
+
 				assert.Equal(t, received, responseWriter.sent[i], "mismatch response")
 			}
 		})
