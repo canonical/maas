@@ -7,7 +7,7 @@ from OpenSSL import crypto
 def is_valid_ssl_key(key: str):
     """Ascertain whether the given key value contains a valid SSL key."""
     try:
-        crypto.load_certificate(crypto.FILETYPE_PEM, key)
+        crypto.load_certificate(crypto.FILETYPE_PEM, key.encode("ascii"))
         return True
     except Exception:
         # crypto.load_certificate raises all sorts of exceptions.

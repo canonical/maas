@@ -11,7 +11,7 @@ _SYSTEMD_DURATION_RE = re.compile(
 
 def systemd_interval_to_seconds(interval):
     duration = _SYSTEMD_DURATION_RE.match(interval)
-    if not duration.group():
+    if duration is None or not duration.group():
         raise ValueError(
             f"'{interval}' is not a valid interval. Only 'h|hr|hour|hours, m|min|minute|minutes."
             f"s|sec|second|seconds' are valid units"

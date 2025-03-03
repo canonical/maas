@@ -257,6 +257,10 @@ lint-shell:
 		utilities/update-initial-sql
 .PHONY: lint-shell
 
+check-types:
+	@tox -e check-types
+.PHONY: check-types
+
 format.parallel:
 	@$(MAKE) -s -j format
 .PHONY: format.parallel

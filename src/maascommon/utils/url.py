@@ -3,7 +3,7 @@
 from urllib.parse import urlparse
 
 
-def splithost(host: str) -> tuple[str, int]:
+def splithost(host: str) -> tuple[str | None, int | None]:
     """Split `host` into hostname and port.
 
     If no :port is in `host` the port with return as None.
@@ -15,7 +15,7 @@ def splithost(host: str) -> tuple[str, int]:
         # Lets try again but add the brackets.
         parsed = urlparse("//[%s]" % host)
         hostname = parsed.hostname
-    if ":" in hostname:
+    if hostname is not None and ":" in hostname:
         # IPv6 hostname, place back into brackets.
         hostname = "[%s]" % hostname
     return hostname, parsed.port

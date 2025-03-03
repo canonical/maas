@@ -41,15 +41,10 @@ Token = namedtuple("Token", ("consumer_key", "token_key", "token_secret"))
 class OperatingSystem(metaclass=ABCMeta):
     """Skeleton for an operating system."""
 
-    @property
-    @abstractmethod
-    def name(self):
-        """Name of the operating system."""
-
-    @property
-    @abstractmethod
-    def title(self):
-        """Title of the operating system."""
+    # Name of the operating system
+    name: str
+    # Title of the operating system
+    title: str
 
     @property
     def default_fname(self) -> str | None:
@@ -57,14 +52,14 @@ class OperatingSystem(metaclass=ABCMeta):
         return None
 
     @abstractmethod
-    def get_default_release(self):
+    def get_default_release(self) -> str:
         """Return the default release to use when none is specified.
 
         :return: default release to use
         """
 
     @abstractmethod
-    def get_release_title(self, release):
+    def get_release_title(self, release) -> str | None:
         """Return the given release's title.
 
         :type release: unicode
@@ -78,7 +73,7 @@ class OperatingSystem(metaclass=ABCMeta):
         :return: list of supported purposes
         """
 
-    def is_release_supported(self, release):
+    def is_release_supported(self, release) -> bool:
         """Return True when the release is supported, False otherwise."""
         # If the osystem matches assume all releases are supported.
         return True
@@ -114,7 +109,7 @@ class OperatingSystem(metaclass=ABCMeta):
         """
         return []
 
-    def get_default_commissioning_release(self):
+    def get_default_commissioning_release(self) -> str | None:
         """Return operating system's default commissioning release.
 
         Typically this will only return something for Ubuntu, because
@@ -124,7 +119,7 @@ class OperatingSystem(metaclass=ABCMeta):
         """
         return None
 
-    def requires_license_key(self, release):
+    def requires_license_key(self, release) -> bool:
         """Return whether the given release requires a license key.
 
         :param release: Release
@@ -225,7 +220,7 @@ def validate_license_key(osystem: str, release: str, key: str) -> bool:
     except KeyError:
         raise NoSuchOperatingSystem(osystem)  # noqa: B904
     else:
-        return osystem.validate_license_key(release, key)
+        return osystem.validate_license_key(release, key)  # type: ignore
 
 
 builtin_osystems = [

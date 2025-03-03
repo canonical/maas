@@ -50,7 +50,7 @@ class UbuntuOS(OperatingSystem):
             name
             for name in self.ubuntu_distro_info.supported_esm()
             if name not in unsupported_releases
-            if self.ubuntu_distro_info.is_lts(name)
+            if self.ubuntu_distro_info.is_lts(str(name))
         ]
 
     def get_default_commissioning_release(self):
@@ -73,13 +73,13 @@ class UbuntuOS(OperatingSystem):
         row = self.get_distro_series_info_row(release)
         if row is None:
             return None
-        return self.ubuntu_distro_info._format("fullname", row)
+        return str(self.ubuntu_distro_info._format("fullname", row))
 
     def get_image_filetypes(self) -> dict[str, str]:
         return self._get_image_filetypes(tgz=True, squashfs=True)
 
-    def get_release_version(self, release) -> str | None:
-        if release not in self.ubuntu_distro_info.all:
-            return None
+    def get_release_version(self, release) -> str:
+        assert release in self.ubuntu_distro_info.all
         version = self.ubuntu_distro_info.version(release)
+        assert version is not None
         return version.replace(" LTS", "")

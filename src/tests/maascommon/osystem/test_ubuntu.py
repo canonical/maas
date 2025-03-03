@@ -155,7 +155,6 @@ class TestUbuntuOS:
             ("xenial", "16.04"),
             ("bionic", "18.04"),
             ("mantic", "23.10"),
-            ("unknown", None),
         ]
         for release, expected_version in tests:
             assert osystem.get_release_version(release) == expected_version

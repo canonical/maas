@@ -105,7 +105,7 @@ def get_ip_based_hostname(ip) -> str:
     try:
         hostname = IPAddress(ip, version=4).format().replace(".", "-")
     except AddrFormatError:
-        hostname = IPAddress(ip, version=6).format(ipv6_full).replace(":", "-")
+        hostname = IPAddress(ip, version=6).format(ipv6_full).replace(":", "-")  # type: ignore
     return hostname
 
 

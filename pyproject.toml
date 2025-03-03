@@ -185,6 +185,12 @@ asyncio_mode = "auto"
 filterwarnings = "error::BytesWarning"
 testpaths = [ "src/tests" ]
 
+[tool.pyright]
+include = [ "src/maascommon" ]
+executionEnvironments = [
+  { root = "src", reportMissingImports = "none", reportMissingModuleSource = "none" },
+]
+
 [tool.bandit]
 exclude_dirs = [ "src/tests" ]
 skips = [ "B311", "B101" ]
