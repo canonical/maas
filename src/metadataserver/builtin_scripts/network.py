@@ -152,7 +152,7 @@ def update_node_interfaces(node, data):
             node, current_interfaces[delete_id], HARDWARE_SYNC_ACTIONS.REMOVED
         )
         current_interfaces[delete_id].delete()
-    node.save()
+    node.save(update_fields=["boot_interface"])
 
 
 def update_interface(node, name, data, address_extra, hints=None):
