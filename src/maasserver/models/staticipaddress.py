@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model definition for StaticIPAddress.
@@ -22,16 +22,13 @@ from django.db import IntegrityError, transaction
 from django.db.models import (
     CASCADE,
     DateTimeField,
-    F,
     ForeignKey,
-    Func,
     GenericIPAddressField,
     IntegerField,
     Manager,
     PROTECT,
     Q,
     UniqueConstraint,
-    Value,
 )
 from netaddr import IPAddress
 
@@ -43,7 +40,6 @@ from maasserver import locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
-    IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
     IPADDRESS_TYPE_CHOICES_DICT,
 )
@@ -347,16 +343,6 @@ class StaticIPAddressManager(Manager):
             return self._attempt_allocation(
                 requested_address, alloc_type, user=user, subnet=subnet
             )
-
-    def filter_by_ip_family(self, family):
-        possible_families = map_enum_reverse(IPADDRESS_FAMILY)
-        if family not in possible_families:
-            raise ValueError(
-                f"IP address family {family} is not a member of IPADDRESS_FAMILY."
-            )
-        return self.annotate(
-            ip_family=Func(F("ip"), function="family")
-        ).filter(ip_family=Value(family))
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):

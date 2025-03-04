@@ -1,14 +1,11 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from datetime import timedelta
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.utils import timezone
 
-from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress
 from maasserver.models.dnsresource import DNSResource, separate_fqdn
 from maasserver.permissions import NodePermission
@@ -263,150 +260,6 @@ class TestDNSResource(MAASServerTestCase):
         self.assertCountEqual(
             (sip1.get_ip(), sip2.get_ip()), dnsresource.get_addresses()
         )
-
-
-class TestUpdateDynamicHostname(MAASServerTestCase):
-    def test_adds_new_hostname(self):
-        sip = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip, hostname)
-        dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertIn(sip, dnsrr.ip_addresses.all())
-
-    def test_coerces_to_valid_hostname(self):
-        sip = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = "no tea"
-        DNSResource.objects.update_dynamic_hostname(sip, hostname)
-        dnsrr = DNSResource.objects.get(name="no-tea")
-        self.assertIn(sip, dnsrr.ip_addresses.all())
-
-    def test_does_not_modify_existing_non_dynamic_records(self):
-        sip_reserved = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.USER_RESERVED
-        )
-        hostname = factory.make_name().lower()
-        factory.make_DNSResource(name=hostname, ip_addresses=[sip_reserved])
-        sip_dynamic = factory.make_StaticIPAddress(
-            ip="10.0.0.2", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        DNSResource.objects.update_dynamic_hostname(sip_dynamic, hostname)
-        dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertIn(sip_reserved, dnsrr.ip_addresses.all())
-        self.assertNotIn(sip_dynamic, dnsrr.ip_addresses.all())
-
-    def test_updates_existing_dynamic_record(self):
-        sip_before = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip_before, hostname)
-        sip_after = factory.make_StaticIPAddress(
-            ip="10.0.0.2", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        DNSResource.objects.update_dynamic_hostname(sip_after, hostname)
-        dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertIn(sip_after, dnsrr.ip_addresses.all())
-        self.assertIn(sip_before, dnsrr.ip_addresses.all())
-
-    def test_skips_updating_already_added_ip(self):
-        sip1 = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        sip2 = factory.make_StaticIPAddress(
-            ip="10.0.0.2", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
-        DNSResource.objects.update_dynamic_hostname(sip2, hostname)
-        dnsrr = DNSResource.objects.get(name=hostname)
-        # Create a date object for one week ago.
-        before = timezone.now() - timedelta(days=7)
-        dnsrr.save(_created=before, _updated=before, force_update=True)
-        dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertEqual(before, dnsrr.updated)
-        self.assertEqual(before, dnsrr.created)
-        # Test that the timestamps weren't updated after updating again.
-        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
-        DNSResource.objects.update_dynamic_hostname(sip2, hostname)
-        dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertEqual(before, dnsrr.updated)
-        self.assertEqual(before, dnsrr.created)
-
-    def test_update_releases_obsolete_hostnames(self):
-        sip = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname_old = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip, hostname_old)
-        hostname_new = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip, hostname_new)
-        dnsrr = DNSResource.objects.get(name=hostname_new)
-        self.assertIn(sip, dnsrr.ip_addresses.all())
-        self.assertIsNone(
-            DNSResource.objects.filter(name=hostname_old).first()
-        )
-
-
-class TestReleaseDynamicHostname(MAASServerTestCase):
-    def test_releases_dynamic_hostname(self):
-        sip = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip, hostname)
-        DNSResource.objects.release_dynamic_hostname(sip)
-        self.assertIsNone(DNSResource.objects.filter(name=hostname).first())
-
-    def test_releases_dynamic_hostname_keep_others(self):
-        sip1 = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        sip2 = factory.make_StaticIPAddress(
-            ip="10.0.0.2", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
-        DNSResource.objects.update_dynamic_hostname(sip2, hostname)
-        DNSResource.objects.release_dynamic_hostname(sip2)
-        dns_resource = DNSResource.objects.get(name=hostname)
-        self.assertEqual([sip1], list(dns_resource.ip_addresses.all()))
-
-    def test_no_update_not_there(self):
-        sip1 = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        sip2 = factory.make_StaticIPAddress(
-            ip="10.0.0.2", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip1, hostname)
-        before = timezone.now() - timedelta(days=7)
-        dns_resource = DNSResource.objects.get(name=hostname)
-        dns_resource.save(_created=before, _updated=before, force_update=True)
-        DNSResource.objects.release_dynamic_hostname(sip2)
-        dns_resource = DNSResource.objects.get(name=hostname)
-        self.assertEqual([sip1], list(dns_resource.ip_addresses.all()))
-        self.assertEqual(before, dns_resource.updated)
-
-    def test_leaves_static_hostnames_untouched(self):
-        sip = factory.make_StaticIPAddress(
-            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.DISCOVERED
-        )
-        hostname = factory.make_name().lower()
-        DNSResource.objects.update_dynamic_hostname(sip, hostname)
-        sip_reserved = factory.make_StaticIPAddress(
-            ip="10.0.0.2", alloc_type=IPADDRESS_TYPE.USER_RESERVED
-        )
-        dnsrr = DNSResource.objects.get(name=hostname)
-        dnsrr.ip_addresses.add(sip_reserved)
-        DNSResource.objects.release_dynamic_hostname(sip)
-        dnsrr = reload_object(dnsrr)
-        self.assertIn(sip_reserved, dnsrr.ip_addresses.all())
-        self.assertNotIn(sip, dnsrr.ip_addresses.all())
 
 
 class TestStaticIPAddressSignals(MAASServerTestCase):

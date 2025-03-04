@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
@@ -27,7 +27,6 @@ from maasserver import locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
-    IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
     IPADDRESS_TYPE_CHOICES_DICT,
     IPRANGE_TYPE,
@@ -57,42 +56,6 @@ from maasserver.websockets.base import dehydrate_datetime
 
 
 class TestStaticIPAddressManager(MAASServerTestCase):
-    def test_filter_by_ip_family_ipv4(self):
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        ip_v4 = factory.pick_ip_in_network(network_v4)
-        ip_v4 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v4, subnet=subnet_v4
-        )
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        ip_v6 = factory.pick_ip_in_network(network_v6)
-        ip_v6 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
-        )
-        self.assertCountEqual(
-            [ip_v4],
-            StaticIPAddress.objects.filter_by_ip_family(IPADDRESS_FAMILY.IPv4),
-        )
-
-    def test_filter_by_ip_family_ipv6(self):
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        ip_v4 = factory.pick_ip_in_network(network_v4)
-        ip_v4 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v4, subnet=subnet_v4
-        )
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        ip_v6 = factory.pick_ip_in_network(network_v6)
-        ip_v6 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
-        )
-        self.assertCountEqual(
-            [ip_v6],
-            StaticIPAddress.objects.filter_by_ip_family(IPADDRESS_FAMILY.IPv6),
-        )
-
     def test_allocate_new_returns_ip_in_correct_range(self):
         subnet = factory.make_managed_Subnet()
         with post_commit_hooks:

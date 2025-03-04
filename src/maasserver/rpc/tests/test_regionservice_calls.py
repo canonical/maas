@@ -1,4 +1,4 @@
-# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -8,7 +8,6 @@ from hmac import HMAC
 from json import dumps
 import random
 from random import randint
-import time
 
 from django.utils import timezone
 from twisted.internet.defer import inlineCallbacks, succeed
@@ -22,7 +21,6 @@ from maasserver.models import node as node_module
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc import events as events_module
-from maasserver.rpc import leases as leases_module
 from maasserver.rpc import regionservice
 from maasserver.rpc.nodes import get_controller_type, get_time_configuration
 from maasserver.rpc.regionservice import Region
@@ -59,8 +57,6 @@ from provisioningserver.rpc.region import (
     RequestRackRefresh,
     SendEvent,
     SendEventMACAddress,
-    UpdateLease,
-    UpdateLeases,
     UpdateNodePowerState,
     UpdateServices,
 )
@@ -122,92 +118,6 @@ class TestRegionProtocol_Authenticate(MAASTransactionServerTestCase):
         expected_digest = HMAC(secret, message + salt, sha256).digest()
         self.assertEqual(expected_digest, digest)
         self.assertEqual(len(salt), 16)
-
-
-class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.useFixture(RegionEventLoopFixture("database-tasks"))
-
-    def test_update_lease_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(UpdateLease.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_doesnt_raises_other_errors(self):
-        # Cause a random exception
-        self.patch(
-            leases_module, "update_lease"
-        ).side_effect = factory.make_exception()
-
-        yield eventloop.start()
-        try:
-            yield call_responder(
-                Region(),
-                UpdateLease,
-                {
-                    "action": "expiry",
-                    "mac": factory.make_mac_address(),
-                    "ip_family": "ipv4",
-                    "ip": factory.make_ipv4_address(),
-                    "timestamp": int(time.time()),
-                },
-            )
-        finally:
-            yield eventloop.reset()
-
-        # Test is that no exceptions are raised. If this test passes then all
-        # works as expected.
-
-
-class TestRegionProtocol_UpdateLeases(MAASTransactionServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.useFixture(RegionEventLoopFixture("database-tasks"))
-
-    def test_update_leases_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(UpdateLeases.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_update_lease_called_N_times(self):
-        update_lease_mock = self.patch_autospec(leases_module, "update_lease")
-        updates = [
-            {
-                "action": random.choice(["commit", "expiry", "release"]),
-                "mac": factory.make_mac_address(),
-                "ip_family": "ipv4",
-                "ip": factory.make_ipv4_address(),
-                "timestamp": int(time.time()),
-            }
-            for _ in range(3)
-        ]
-
-        yield eventloop.start()
-        try:
-            yield call_responder(
-                Region(),
-                UpdateLeases,
-                {
-                    "updates": updates,
-                },
-            )
-        finally:
-            yield eventloop.reset()
-        for upd in updates:
-            update_lease_mock.assert_any_call(
-                upd["action"],
-                upd["mac"],
-                upd["ip_family"],
-                upd["ip"],
-                upd["timestamp"],
-                None,
-                None,
-            )
 
 
 class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):

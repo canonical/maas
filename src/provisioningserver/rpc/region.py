@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for the region.
@@ -387,51 +387,6 @@ class RequestNodeInfoByMACAddress(amp.Command):
         (b"purpose", amp.Unicode()),
     ]
     errors = {NoSuchNode: b"NoSuchNode"}
-
-
-class UpdateLease(amp.Command):
-    """Report DHCP lease update from a cluster controller. Different from
-    `UpdateLeases` as this call only updates one lease at a time.
-
-    :since: 2.0
-    """
-
-    arguments = [
-        (b"action", amp.Unicode()),
-        (b"mac", amp.Unicode()),
-        (b"ip_family", amp.Unicode()),
-        (b"ip", amp.Unicode()),
-        (b"timestamp", amp.Integer()),
-        (b"lease_time", amp.Integer(optional=True)),
-        (b"hostname", amp.Unicode(optional=True)),
-    ]
-    response = []
-    errors = {NoSuchCluster: b"NoSuchCluster"}
-
-
-class UpdateLeases(amp.Command):
-    """Report DHCP lease updates from a cluster controller.
-    :since: 2.0
-    """
-
-    arguments = [
-        (
-            b"updates",
-            AmpList(
-                [
-                    (b"action", amp.Unicode()),
-                    (b"mac", amp.Unicode()),
-                    (b"ip_family", amp.Unicode()),
-                    (b"ip", amp.Unicode()),
-                    (b"timestamp", amp.Integer()),
-                    (b"lease_time", amp.Integer(optional=True)),
-                    (b"hostname", amp.Unicode(optional=True)),
-                ]
-            ),
-        ),
-    ]
-    response = []
-    errors = {NoSuchCluster: b"NoSuchCluster"}
 
 
 class UpdateServices(amp.Command):
