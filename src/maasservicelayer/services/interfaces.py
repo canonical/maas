@@ -19,6 +19,11 @@ from maasservicelayer.services.temporal import TemporalService
 
 
 class InterfacesService(Service):
+    """
+    WIP: We are rethinking the way we model interfaces and storage in the new LST.
+    In this service we have to add only what's really needed until we figure out the new model.
+    """
+
     def __init__(
         self,
         context: Context,
@@ -46,14 +51,11 @@ class InterfacesService(Service):
             fabric_id=fabric_id
         )
 
-    async def bulk_link_ip(
-        self, sip: StaticIPAddress, interfaces: List[Interface]
+    async def link_ip(
+        self, interfaces: List[Interface], sip: StaticIPAddress
     ) -> None:
         for interface in interfaces:
-            await self.interface_repository.add_ip(interface, sip)
-
-    async def add_ip(self, interface: Interface, sip: StaticIPAddress) -> None:
-        await self.interface_repository.add_ip(interface, sip)
+            await self.interface_repository.link_ip(interface, sip)
         if sip.alloc_type in (
             IpAddressType.AUTO,
             IpAddressType.STICKY,
@@ -65,3 +67,10 @@ class InterfacesService(Service):
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
             )
+
+    async def create_unkwnown_interface(
+        self, mac: str, vlan_id: int
+    ) -> Interface:
+        return await self.interface_repository.create_unknwown_interface(
+            mac, vlan_id
+        )

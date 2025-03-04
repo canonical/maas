@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import List, Optional
+from typing import List
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.workflows.dhcp import (
@@ -20,7 +20,6 @@ from maasservicelayer.models.staticipaddress import (
     StaticIPAddress,
     StaticIPAddressBuilder,
 )
-from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services._base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 
@@ -79,6 +78,14 @@ class StaticIPAddressService(
             )
         return ip
 
+    async def pre_delete_hook(
+        self, resource_to_be_deleted: StaticIPAddress
+    ) -> None:
+        # Remove this StaticIPAddress from the many to many relations first.
+        await self.repository.unlink_from_interfaces(
+            staticipaddress_id=resource_to_be_deleted.id
+        )
+
     async def post_delete_hook(self, resource: StaticIPAddress) -> None:
         if resource.alloc_type != IpAddressType.DISCOVERED:
             self.temporal_service.register_or_update_workflow_call(
@@ -104,17 +111,6 @@ class StaticIPAddressService(
             await self.repository.get_discovered_ips_in_family_for_interfaces(
                 interfaces, family=family
             )
-        )
-
-    async def get_for_interfaces(
-        self,
-        interfaces: list[Interface],
-        subnet: Optional[Subnet] = None,
-        ip: Optional[StaticIPAddress] = None,
-        alloc_type: Optional[int] = None,
-    ) -> StaticIPAddress | None:
-        return await self.repository.get_for_interfaces(
-            interfaces, subnet=subnet, ip=ip, alloc_type=alloc_type
         )
 
     async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:

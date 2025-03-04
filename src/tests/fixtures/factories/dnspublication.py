@@ -9,12 +9,10 @@ async def create_test_dnspublication_entry(
     fixture: Fixture, **extra_details: dict[str, Any]
 ) -> DNSPublication:
     created_at = datetime.now(timezone.utc).astimezone()
-    updated_at = datetime.now(timezone.utc).astimezone()
     dnspublication = {
         "created": created_at,
-        "updated": updated_at,
         "source": "",
-        "update_str": "",
+        "update": "",
         "serial": 1,
     }
     dnspublication.update(extra_details)

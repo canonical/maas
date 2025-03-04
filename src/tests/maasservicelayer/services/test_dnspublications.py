@@ -73,7 +73,6 @@ class TestDNSPublicationsService(ServiceCommonTests):
                 source="",
                 update=DnsUpdateAction.RELOAD,
                 created=now,
-                updated=now,
             )
         )
 
@@ -115,7 +114,6 @@ class TestDNSPublicationsService(ServiceCommonTests):
                 source="",
                 update="INSERT example.com test A 30 1.1.1.1",
                 created=now,
-                updated=now,
             )
         )
 
