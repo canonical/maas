@@ -86,7 +86,6 @@ class DNSPublicationsService(
                 update=update,
                 serial=next_serial,
                 created=timestamp,
-                updated=timestamp,
             )
         )
 

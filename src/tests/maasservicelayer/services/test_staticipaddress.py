@@ -418,6 +418,9 @@ class TestStaticIPAddressService:
         mock_staticipaddress_repository.delete_by_id.assert_called_once_with(
             id=sip.id,
         )
+        mock_staticipaddress_repository.unlink_from_interfaces.assert_called_once_with(
+            staticipaddress_id=sip.id
+        )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(

@@ -7,11 +7,13 @@ from math import ceil
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.interface import (
     create_test_interface,
@@ -400,3 +402,96 @@ class TestInterfaceRepository:
         )
 
         assert len(retrieved_interfaces) == 0
+
+    async def test_link_ip(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        vlan = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=0,
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+
+        static_ip = StaticIPAddress(
+            **(
+                await create_test_staticipaddress_entry(
+                    fixture=fixture,
+                    subnet=subnet,
+                    alloc_type=IpAddressType.DHCP,
+                )
+            )[0]
+        )
+        interface = await create_test_interface_entry(
+            fixture=fixture,
+            vlan=vlan,
+            name="test_interface",
+        )
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+
+        await interfaces_repository.link_ip(interface, static_ip)
+
+        link = (await fixture.get("maasserver_interface_ip_addresses"))[0]
+        assert link["interface_id"] == interface.id
+        assert link["staticipaddress_id"] == static_ip.id
+
+    async def test_link_ip_ignores_existing(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        vlan = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=0,
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+
+        static_ip = await create_test_staticipaddress_entry(
+            fixture=fixture,
+            subnet=subnet,
+            alloc_type=IpAddressType.DHCP,
+        )
+        interface = await create_test_interface_entry(
+            fixture=fixture,
+            ips=static_ip,
+            vlan=vlan,
+            name="test_interface",
+        )
+
+        static_ip_obj = StaticIPAddress(**static_ip[0])
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+
+        await interfaces_repository.link_ip(interface, static_ip_obj)
+
+        link = (await fixture.get("maasserver_interface_ip_addresses"))[0]
+        assert link["interface_id"] == interface.id
+        assert link["staticipaddress_id"] == static_ip_obj.id
+
+    async def test_create_unkwnown_interface(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        vlan = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=0,
+        )
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        unknown_interface = (
+            await interfaces_repository.create_unknwown_interface(
+                "00:00:00:00:00", vlan["id"]
+            )
+        )
+
+        assert unknown_interface.type == InterfaceType.UNKNOWN
+        assert unknown_interface.links == []
+        assert unknown_interface.name == "eth0"
+        assert unknown_interface.mac_address == "00:00:00:00:00"
+        assert unknown_interface.enabled is True
+        assert unknown_interface.link_connected is True
+        assert unknown_interface.interface_speed == 0
+        assert unknown_interface.link_speed == 0
+        assert unknown_interface.sriov_max_vf == 0

@@ -499,8 +499,8 @@ func TestQueueFlush(t *testing.T) {
 			notifications: []*dhcpd.Notification{
 				//nolint:gofmt // linter is expecting {} but we need a pointer
 				&dhcpd.Notification{
-					IP:  net.ParseIP("10.0.0.1"),
-					MAC: net.HardwareAddr{0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+					IP:  "10.0.0.1",
+					MAC: "00:00:00:00:00",
 				},
 			},
 			apiClient: apiclient.NewAPIClient(
@@ -521,8 +521,8 @@ func TestQueueFlush(t *testing.T) {
 			notifications: []*dhcpd.Notification{
 				//nolint:gofmt // linter is expecting {} but we need a pointer
 				&dhcpd.Notification{
-					IP:  net.ParseIP("10.0.0.1"),
-					MAC: net.HardwareAddr{0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+					IP:  "10.0.0.1",
+					MAC: "00:00:00:00:00",
 				},
 			},
 			apiClient: apiclient.NewAPIClient(

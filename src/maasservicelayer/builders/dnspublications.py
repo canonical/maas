@@ -21,4 +21,3 @@ class DNSPublicationBuilder(ResourceBuilder):
     serial: Union[int, Unset] = Field(default=UNSET, required=False)
     source: Union[str, Unset] = Field(default=UNSET, required=False)
     update: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

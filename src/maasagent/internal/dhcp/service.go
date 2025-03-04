@@ -199,7 +199,7 @@ func queueFlush(c *apiclient.APIClient, interval time.Duration) func(context.Con
 		}
 
 		return backoff.Retry(func() error {
-			resp, err := c.Request(ctx, http.MethodPost, "/v3internal/leases", body)
+			resp, err := c.Request(ctx, http.MethodPost, "/leases", body)
 			if err != nil {
 				return err
 			}

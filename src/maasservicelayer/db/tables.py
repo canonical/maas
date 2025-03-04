@@ -172,7 +172,7 @@ DNSPublicationTable = Table(
     Column("serial", BigInteger, nullable=False, unique=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("source", String(255), nullable=False),
-    Column("update", String(255), nullable=False, key="update_str"),
+    Column("update", String(255), nullable=False),
 )
 
 DNSResourceTable = Table(

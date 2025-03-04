@@ -57,6 +57,32 @@ class TestStaticIPAddressClauseFactory:
             "maasserver_staticipaddress.ip = :ip_1"
         )
 
+    def test_with_alloc_type(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_alloc_type(
+            alloc_type=IpAddressType.DISCOVERED
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticipaddress.alloc_type = 6")
+
+    def test_with_interface_ids(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_interface_ids(
+            interface_ids=[1]
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_interface.id IN (1)")
+        assert str(
+            clause.joins[0].compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "maasserver_staticipaddress JOIN maasserver_interface_ip_addresses ON maasserver_staticipaddress.id = maasserver_interface_ip_addresses.staticipaddress_id"
+        )
+        assert str(
+            clause.joins[1].compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "maasserver_interface_ip_addresses JOIN maasserver_interface ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id"
+        )
+
 
 @pytest.mark.asyncio
 class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
@@ -77,7 +103,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
                     await create_test_staticipaddress_entry(
                         fixture,
                         subnet=subnet,
-                        alloc_type=IpAddressType.DISCOVERED.value,
+                        alloc_type=IpAddressType.DISCOVERED,
                     )
                 )[0]
             )
@@ -92,7 +118,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             await create_test_staticipaddress_entry(
                 fixture,
                 subnet=subnet,
-                alloc_type=IpAddressType.DISCOVERED.value,
+                alloc_type=IpAddressType.DISCOVERED,
             )
         )[0]
         assert sip["lease_time"] == 600  # default value
@@ -122,7 +148,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             await create_test_staticipaddress_entry(
                 fixture,
                 subnet=subnet,
-                alloc_type=IpAddressType.DISCOVERED.value,
+                alloc_type=IpAddressType.DISCOVERED,
             )
         )[0]
 
@@ -153,7 +179,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
                 await create_test_staticipaddress_entry(
                     fixture,
                     subnet=v4_subnet,
-                    alloc_type=IpAddressType.DISCOVERED.value,
+                    alloc_type=IpAddressType.DISCOVERED,
                 )
             )[0]
             for _ in range(3)
@@ -163,7 +189,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
                 await create_test_staticipaddress_entry(
                     fixture,
                     subnet=v6_subnet,
-                    alloc_type=IpAddressType.DISCOVERED.value,
+                    alloc_type=IpAddressType.DISCOVERED,
                 )
             )[0]
             for _ in range(3)
@@ -242,7 +268,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             await create_test_staticipaddress_entry(
                 fixture,
                 subnet=v4_subnet,
-                alloc_type=IpAddressType.DISCOVERED.value,
+                alloc_type=IpAddressType.DISCOVERED,
             )
         )[0]
         ipv4 = IPv4Address(ip["ip"])
@@ -257,3 +283,59 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             [MacAddress(i.mac_address) for i in interfaces]
         )
         assert sorted(result) == expected_mac_addresses
+
+    async def test_get_with_interface_ids(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        interface = await create_test_interface_entry(fixture, ips=[ip])
+
+        ip2 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        interface2 = await create_test_interface_entry(fixture, ips=[ip2])
+
+        results = await repository_instance.get_many(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.with_interface_ids(
+                    interface_ids=[interface.id, interface2.id]
+                )
+            )
+        )
+
+        ips = [ip.ip for ip in results]
+        assert len(results) == 2
+        assert ip["ip"] in ips
+        assert ip2["ip"] in ips
+
+    async def test_unlink_from_interfaces(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        await create_test_interface_entry(fixture, ips=[ip])
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 1
+
+        await repository_instance.unlink_from_interfaces(ip["id"])
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 0

@@ -1,13 +1,15 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any, List
 
 from sqlalchemy import desc, insert, Select, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
 
+from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import (
@@ -21,6 +23,9 @@ from maasservicelayer.db.tables import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
 from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.utils.date import utcnow
+
+UNKNOWN_INTERFACE_NAME = "eth0"
 
 
 def build_interface_links(
@@ -114,13 +119,53 @@ class InterfaceRepository(Repository):
             ]
         ]
 
-    async def add_ip(self, interface: Interface, ip: StaticIPAddress) -> None:
-        stmt = insert(InterfaceIPAddressTable).values(
-            interface_id=interface.id,
-            staticipaddress_id=ip.id,
+    async def link_ip(self, interface: Interface, ip: StaticIPAddress) -> None:
+        stmt = (
+            pg_insert(InterfaceIPAddressTable)
+            .values(
+                interface_id=interface.id,
+                staticipaddress_id=ip.id,
+            )
+            .on_conflict_do_nothing()
         )
 
         await self.execute_stmt(stmt)
+
+    async def create_unknwown_interface(
+        self, mac: str, vlan_id: int
+    ) -> Interface:
+        """TODO: we are rethinking the way we manage interfaces and storage. The current domain model is still WIP and requires
+        some joins, so here we have to first insert and fetch again the instance even if it's suboptimal.
+        """
+        now = utcnow()
+        stmt = (
+            insert(InterfaceTable)
+            .returning(InterfaceTable.c.id)
+            .values(
+                name=UNKNOWN_INTERFACE_NAME,
+                mac_address=mac,
+                vlan_id=vlan_id,
+                type=InterfaceType.UNKNOWN,
+                params={},
+                enabled=True,
+                mdns_discovery_state=False,
+                neighbour_discovery_state=False,
+                acquired=False,
+                link_connected=True,
+                interface_speed=0,
+                link_speed=0,
+                sriov_max_vf=0,
+                created=now,
+                updated=now,
+            )
+        )
+        result = (await self.execute_stmt(stmt)).one()
+
+        get_instance = self._select_all_statement().where(
+            eq(InterfaceTable.c.id, result[0])
+        )
+        created_instance = (await self.execute_stmt(get_instance)).one()
+        return Interface(**build_interface_links(created_instance._asdict()))
 
     async def _find_discovered_ip_for_dhcp_links(
         self, interfaces, node_id
@@ -242,15 +287,15 @@ class InterfaceRepository(Repository):
                     )
                 ).label("links"),
             )
-            .select_from(NodeTable)
+            .select_from(InterfaceTable)
             .join(
                 NodeConfigTable,
-                eq(NodeTable.c.current_config_id, NodeConfigTable.c.id),
+                eq(NodeConfigTable.c.id, InterfaceTable.c.node_config_id),
                 isouter=True,
             )
             .join(
-                InterfaceTable,
-                eq(NodeConfigTable.c.id, InterfaceTable.c.node_config_id),
+                NodeTable,
+                eq(NodeTable.c.current_config_id, NodeConfigTable.c.id),
                 isouter=True,
             )
             # TODO

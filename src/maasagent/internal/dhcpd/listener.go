@@ -27,13 +27,13 @@ import (
 )
 
 type Notification struct {
-	Action    string           `json:"action"`
-	IPFamily  string           `json:"ip_family"`
-	Hostname  string           `json:"hostname"`
-	MAC       net.HardwareAddr `json:"mac"`
-	IP        net.IP           `json:"ip"`
-	Timestamp int64            `json:"timestamp"`
-	LeaseTime int64            `json:"lease_time"`
+	Action    string `json:"action"`
+	IPFamily  string `json:"ip_family"`
+	Hostname  string `json:"hostname"`
+	MAC       string `json:"mac"`
+	IP        string `json:"ip"`
+	Timestamp int64  `json:"timestamp"`
+	LeaseTime int64  `json:"lease_time"`
 }
 
 type NotificationListener struct {

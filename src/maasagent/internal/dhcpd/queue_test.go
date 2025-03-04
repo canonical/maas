@@ -17,7 +17,6 @@ package dhcpd
 
 import (
 	"container/heap"
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,47 +30,47 @@ func TestNotificationQueue(t *testing.T) {
 		"receive notifications out of order": {
 			in: []*Notification{
 				{
-					MAC: net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x01},
-					IP:  net.ParseIP("10.0.0.1"),
+					MAC: "00:00:00:00:00",
+					IP:  "10.0.0.1",
 					// Reporting leases in the order they were created is important,
 					// so here we test receiving them out of order
 					Timestamp: 3,
 				},
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x02},
-					IP:        net.ParseIP("10.0.0.2"),
+					MAC:       "00:00:00:00:00",
+					IP:        "10.0.0.2",
 					Timestamp: 1,
 				},
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x03},
-					IP:        net.ParseIP("10.0.0.3"),
+					MAC:       "00:00:00:00:00",
+					IP:        "10.0.0.3",
 					Timestamp: 4,
 				},
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x04},
-					IP:        net.ParseIP("10.0.0.4"),
+					MAC:       "00:00:00:00:00",
+					IP:        "10.0.0.4",
 					Timestamp: 0,
 				},
 			},
 			out: []*Notification{
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x04},
-					IP:        net.ParseIP("10.0.0.4"),
+					MAC:       "00:00:00:00:00",
+					IP:        "10.0.0.4",
 					Timestamp: 0,
 				},
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x02},
-					IP:        net.ParseIP("10.0.0.2"),
+					MAC:       "00:00:00:00:00",
+					IP:        "10.0.0.2",
 					Timestamp: 1,
 				},
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x01},
-					IP:        net.ParseIP("10.0.0.1"),
+					MAC:       "00:00:00:00:00",
+					IP:        "10.0.0.1",
 					Timestamp: 3,
 				},
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x03},
-					IP:        net.ParseIP("10.0.0.3"),
+					MAC:       "00:00:00:00:00",
+					IP:        "10.0.0.3",
 					Timestamp: 4,
 				},
 			},

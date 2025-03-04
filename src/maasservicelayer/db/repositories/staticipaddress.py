@@ -1,10 +1,10 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import List, Optional, Type
+from typing import List, Type
 
 from pydantic import IPvAnyAddress
-from sqlalchemy import and_, func, select, Table
+from sqlalchemy import and_, delete, func, join, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
@@ -24,7 +24,6 @@ from maasservicelayer.db.tables import (
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
-from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.utils.date import utcnow
 
 
@@ -54,12 +53,42 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         )
 
     @classmethod
-    def with_ip(cls, ip: IPvAnyAddress) -> Clause:
+    def with_ip(cls, ip: IPvAnyAddress | None) -> Clause:
         return Clause(condition=eq(StaticIPAddressTable.c.ip, ip))
 
     @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(StaticIPAddressTable.c.user_id, user_id))
+
+    @classmethod
+    def with_alloc_type(cls, alloc_type: IpAddressType) -> Clause:
+        return Clause(
+            condition=eq(StaticIPAddressTable.c.alloc_type, alloc_type)
+        )
+
+    @classmethod
+    def with_interface_ids(cls, interface_ids: List[int]) -> Clause:
+        return Clause(
+            condition=InterfaceTable.c.id.in_(interface_ids),
+            joins=[
+                join(
+                    StaticIPAddressTable,
+                    InterfaceIPAddressTable,
+                    eq(
+                        StaticIPAddressTable.c.id,
+                        InterfaceIPAddressTable.c.staticipaddress_id,
+                    ),
+                ),
+                join(
+                    InterfaceIPAddressTable,
+                    InterfaceTable,
+                    eq(
+                        InterfaceIPAddressTable.c.interface_id,
+                        InterfaceTable.c.id,
+                    ),
+                ),
+            ],
+        )
 
 
 class StaticIPAddressRepository(BaseRepository):
@@ -109,7 +138,7 @@ class StaticIPAddressRepository(BaseRepository):
                 and_(
                     eq(
                         func.family(StaticIPAddressTable.c.ip),
-                        IpAddressFamily.IPV4.value,
+                        family,
                     ),
                     InterfaceTable.c.id.in_(
                         [interface.id for interface in interfaces]
@@ -125,47 +154,6 @@ class StaticIPAddressRepository(BaseRepository):
         ).all()
 
         return [StaticIPAddress(**row._asdict()) for row in result]
-
-    async def get_for_interfaces(
-        self,
-        interfaces: List[Interface],
-        subnet: Optional[Subnet] = None,
-        ip: Optional[StaticIPAddress] = None,
-        alloc_type: Optional[IpAddressType] = None,
-    ) -> StaticIPAddress | None:
-        stmt = (
-            select(StaticIPAddressTable)
-            .select_from(InterfaceTable)
-            .join(
-                InterfaceIPAddressTable,
-                InterfaceIPAddressTable.c.interface_id == InterfaceTable.c.id,
-            )
-            .join(
-                StaticIPAddressTable,
-                StaticIPAddressTable.c.id
-                == InterfaceIPAddressTable.c.staticipaddress_id,
-            )
-            .filter(
-                InterfaceTable.c.id.in_([iface.id for iface in interfaces]),
-            )
-        )
-
-        if subnet:
-            stmt = stmt.filter(StaticIPAddressTable.c.subnet_id == subnet.id)
-
-        if ip:
-            stmt = stmt.filter(StaticIPAddressTable.c.ip == ip.ip)
-
-        if alloc_type:
-            stmt = stmt.filter(
-                StaticIPAddressTable.c.alloc_type == alloc_type.value
-            )
-
-        result = (await self.execute_stmt(stmt)).first()
-
-        if result:
-            return StaticIPAddress(**result._asdict())
-        return None
 
     async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
         stmt = (
@@ -216,3 +204,12 @@ class StaticIPAddressRepository(BaseRepository):
         stmt = query.enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [MacAddress(row._asdict()["mac_address"]) for row in results]
+
+    async def unlink_from_interfaces(self, staticipaddress_id: int):
+        stmt = delete(InterfaceIPAddressTable).where(
+            eq(
+                InterfaceIPAddressTable.c.staticipaddress_id,
+                staticipaddress_id,
+            )
+        )
+        await self.execute_stmt(stmt)

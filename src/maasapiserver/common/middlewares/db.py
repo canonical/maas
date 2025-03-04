@@ -41,6 +41,7 @@ class TransactionMiddleware(BaseHTTPMiddleware):
                     yield conn
         # Foreign key exceptions are raised only when the transaction is committed, so we have to capture them here.
         except IntegrityError as e:
+            logger.info(f"Failed to commit transaction due to {e}")
             raise ValidationException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
