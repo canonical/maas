@@ -2701,40 +2701,6 @@ def register_websocket_triggers():
         fields=["name"],
     )
 
-    # SSH key table, update to linked user.
-    register_procedure(
-        render_notification_procedure(
-            "user_sshkey_link_notify", "user_update", "NEW.user_id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "user_sshkey_unlink_notify", "user_update", "OLD.user_id"
-        )
-    )
-    register_trigger("maasserver_sshkey", "user_sshkey_link_notify", "insert")
-    register_trigger(
-        "maasserver_sshkey", "user_sshkey_unlink_notify", "delete"
-    )
-
-    # SSH key table.
-    register_procedure(
-        render_notification_procedure(
-            "sshkey_create_notify", "sshkey_create", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "sshkey_update_notify", "sshkey_update", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "sshkey_delete_notify", "sshkey_delete", "OLD.id"
-        )
-    )
-    register_triggers("maasserver_sshkey", "sshkey")
-
     # SSL key table, update to linked user.
     register_procedure(
         render_notification_procedure(

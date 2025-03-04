@@ -4,15 +4,10 @@
 import random
 
 from django.core.exceptions import ValidationError
-from django.utils.safestring import SafeString
 
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models import SSHKey, sshkey
-from maasserver.models.sshkey import (
-    get_html_display_for_key,
-    HELLIPSIS,
-    validate_ssh_public_key,
-)
+from maasserver.models.sshkey import validate_ssh_public_key
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -87,150 +82,6 @@ class TestSSHKeyValidator(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
 
-class TestGetHTMLDisplayForKey(MAASServerTestCase):
-    def make_comment(self, length):
-        """Create a comment of the desired length.
-
-        The comment may contain spaces, but not begin or end in them.  It
-        will be of the desired length both before and after stripping.
-        """
-        return "".join(
-            [
-                factory.make_string(1),
-                factory.make_string(max([length - 2, 0]), spaces=True),
-                factory.make_string(1),
-            ]
-        )[:length]
-
-    def make_key(self, type_len=7, key_len=360, comment_len=None):
-        """Produce a fake ssh public key containing arbitrary data.
-
-        :param type_len: The length of the "key type" field.  (Default is
-            sized for the real-life "ssh-rsa").
-        :param key_len: Length of the key text.  (With a roughly realistic
-            default).
-        :param comment_len: Length of the comment field.  The comment may
-            contain spaces.  Leave it None to omit the comment.
-        :return: A string representing the combined key-file contents.
-        """
-        fields = [factory.make_string(type_len), factory.make_string(key_len)]
-        if comment_len is not None:
-            fields.append(self.make_comment(comment_len))
-        return " ".join(fields)
-
-    def test_display_returns_unchanged_if_unknown_and_small(self):
-        # If the key does not look like a normal key (with three parts
-        # separated by spaces, it's returned unchanged if its size is <=
-        # size.
-        size = random.randint(101, 200)
-        key = factory.make_string(size - 100)
-        display = get_html_display_for_key(key, size)
-        self.assertLess(len(display), size)
-        self.assertEqual(key, display)
-
-    def test_display_returns_cropped_if_unknown_and_large(self):
-        # If the key does not look like a normal key (with three parts
-        # separated by spaces, it's returned cropped if its size is >
-        # size.
-        size = random.randint(20, 100)  # size cannot be < len(HELLIPSIS).
-        key = factory.make_string(size + 1)
-        display = get_html_display_for_key(key, size)
-        self.assertEqual(size, len(display))
-        self.assertEqual(
-            "%.*s%s" % (size - len(HELLIPSIS), key, HELLIPSIS), display
-        )
-
-    def test_display_escapes_commentless_key_for_html(self):
-        # The key's comment may contain characters that are not safe for
-        # including in HTML, and so get_html_display_for_key escapes the
-        # text.
-        # There are several code paths in get_html_display_for_key; this
-        # test is for the case where the key has no comment, and is
-        # brief enough to fit into the allotted space.
-        self.assertEqual(
-            "&lt;type&gt; &lt;text&gt;",
-            get_html_display_for_key("<type> <text>", 100),
-        )
-
-    def test_display_escapes_short_key_for_html(self):
-        # The key's comment may contain characters that are not safe for
-        # including in HTML, and so get_html_display_for_key escapes the
-        # text.
-        # There are several code paths in get_html_display_for_key; this
-        # test is for the case where the whole key is short enough to
-        # fit completely into the output.
-        key = "<type> <text> <comment>"
-        display = get_html_display_for_key(key, 100)
-        # This also verifies that the entire key fits into the string.
-        # Otherwise we might accidentally get one of the other cases.
-        self.assertTrue(display.endswith("&lt;comment&gt;"))
-        # And of course the check also implies that the text is
-        # HTML-escaped:
-        self.assertNotIn("<", display)
-        self.assertNotIn(">", display)
-
-    def test_display_escapes_long_key_for_html(self):
-        # The key's comment may contain characters that are not safe for
-        # including in HTML, and so get_html_display_for_key escapes the
-        # text.
-        # There are several code paths in get_html_display_for_key; this
-        # test is for the case where the comment is short enough to fit
-        # completely into the output.
-        key = "<type> %s <comment>" % ("<&>" * 50)
-        display = get_html_display_for_key(key, 50)
-        # This verifies that we are indeed getting an abbreviated
-        # display.  Otherwise we might accidentally get one of the other
-        # cases.
-        self.assertIn("&hellip;", display)
-        self.assertIn("comment", display)
-        # And now, on to checking that the text is HTML-safe.
-        self.assertNotIn("<", display)
-        self.assertNotIn(">", display)
-        self.assertTrue(display.endswith("&lt;comment&gt;"))
-
-    def test_display_limits_size_with_large_comment(self):
-        # If the key has a large 'comment' part, the key is simply
-        # cropped and HELLIPSIS appended to it.
-        key = self.make_key(10, 10, 100)
-        display = get_html_display_for_key(key, 50)
-        self.assertEqual(50, len(display))
-        self.assertEqual(
-            "%.*s%s" % (50 - len(HELLIPSIS), key, HELLIPSIS), display
-        )
-
-    def test_display_limits_size_with_large_key_type(self):
-        # If the key has a large 'key_type' part, the key is simply
-        # cropped and HELLIPSIS appended to it.
-        key = self.make_key(100, 10, 10)
-        display = get_html_display_for_key(key, 50)
-        self.assertEqual(50, len(display))
-        self.assertEqual(
-            "%.*s%s" % (50 - len(HELLIPSIS), key, HELLIPSIS), display
-        )
-
-    def test_display_cropped_key(self):
-        # If the key has a small key_type, a small comment and a large
-        # key_string (which is the 'normal' case), the key_string part
-        # gets cropped.
-        type_len = 10
-        comment_len = 10
-        key = self.make_key(type_len, 100, comment_len)
-        key_type, key_string, comment = key.split(" ", 2)
-        display = get_html_display_for_key(key, 50)
-        self.assertEqual(50, len(display))
-        self.assertEqual(
-            "%s %.*s%s %s"
-            % (
-                key_type,
-                50 - (type_len + len(HELLIPSIS) + comment_len + 2),
-                key_string,
-                HELLIPSIS,
-                comment,
-            ),
-            display,
-        )
-
-
 class TestSSHKey(MAASServerTestCase):
     def test_sshkey_validation_with_valid_key(self):
         key_string = get_data("data/test_rsa0.pub")
@@ -244,23 +95,6 @@ class TestSSHKey(MAASServerTestCase):
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user)
         self.assertRaises(ValidationError, key.full_clean)
-
-    def test_sshkey_display_with_real_life_key(self):
-        # With a real-life ssh-rsa key, the key_string part is cropped.
-        key_string = get_data("data/test_rsa0.pub")
-        user = factory.make_User()
-        key = SSHKey(key=key_string, user=user)
-        display = key.display_html()
-        self.assertEqual(
-            "ssh-rsa AAAAB3NzaC1yc&hellip; ubuntu@test_rsa0.pub", display
-        )
-
-    def test_sshkey_display_is_marked_as_HTML_safe(self):
-        key_string = get_data("data/test_rsa0.pub")
-        user = factory.make_User()
-        key = SSHKey(key=key_string, user=user)
-        display = key.display_html()
-        self.assertIsInstance(display, SafeString)
 
     def test_sshkey_user_and_key_unique_together_create(self):
         protocol = random.choice(
