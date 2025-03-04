@@ -60,7 +60,6 @@ from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.power import get_power_state
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
-from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
 from provisioningserver.utils.env import (
     MAAS_ID,
@@ -1455,23 +1454,6 @@ class ClusterClientService(TimerService):
         a regiond then dhcpd and dhcpd6 services will be turned off.
         """
         self.connections.remove_connection(eventloop, connection)
-        # Disable DHCP when no connections to a region controller.
-        if len(self.connections) == 0:
-            stopping_services = []
-            dhcp_v4 = service_monitor.getServiceByName("dhcpd")
-            if dhcp_v4.is_on():
-                dhcp_v4.off()
-                stopping_services.append("dhcpd")
-            dhcp_v6 = service_monitor.getServiceByName("dhcpd6")
-            if dhcp_v6.is_on():
-                dhcp_v6.off()
-                stopping_services.append("dhcpd6")
-            if len(stopping_services) > 0:
-                log.msg(
-                    "Lost all connections to region controllers. "
-                    "Stopping service(s) %s." % ",".join(stopping_services)
-                )
-                service_monitor.ensureServices()
         # Lower and reset the interval so a reconnection happens.
         self._update_interval(0, 0, reset=True)
 

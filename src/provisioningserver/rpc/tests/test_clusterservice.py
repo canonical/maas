@@ -78,7 +78,6 @@ from provisioningserver.rpc.testing.doubles import (
     FakeConnection,
 )
 from provisioningserver.security import fernet_encrypt_psk
-from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
 from provisioningserver.utils.env import MAAS_ID, MAAS_SECRET, MAAS_UUID
@@ -970,23 +969,6 @@ class TestClusterClientService(MAASTestCase):
         service.connections[endpoint] = {connection}
         service.remove_connection(endpoint, connection)
         self.assertEqual(service.step, service.INTERVAL_LOW)
-
-    def test_remove_connection_stops_both_dhcpd_and_dhcpd6(self):
-        service = make_inert_client_service()
-        service.startService()
-        endpoint = Mock()
-        connection = Mock()
-        service.connections[endpoint] = {connection}
-
-        # Enable both dhcpd and dhcpd6.
-        service_monitor.getServiceByName("dhcpd").on()
-        service_monitor.getServiceByName("dhcpd6").on()
-        mock_ensureServices = self.patch(service_monitor, "ensureServices")
-        service.remove_connection(endpoint, connection)
-
-        self.assertFalse(service_monitor.getServiceByName("dhcpd").is_on())
-        self.assertFalse(service_monitor.getServiceByName("dhcpd").is_on())
-        mock_ensureServices.assert_called_once_with()
 
     def test_getClient(self):
         service = ClusterClientService(Clock())

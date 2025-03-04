@@ -57,7 +57,8 @@ EMPTY_SET = frozenset()
 
 def pick_observed_state(*, but_not=EMPTY_SET):
     return factory.pick_enum(
-        SERVICE_STATE, but_not={SERVICE_STATE.ANY, *but_not}
+        SERVICE_STATE,
+        but_not={SERVICE_STATE.ANY, SERVICE_STATE.OBSERVE, *but_not},
     )
 
 
@@ -95,13 +96,13 @@ class TestServiceState(MAASTestCase):
     scenarios_observed = tuple(
         ("observed=%s" % state.name, dict(state_observed=state))
         for state in SERVICE_STATE
-        if state != SERVICE_STATE.ANY
+        if state != SERVICE_STATE.ANY and state != SERVICE_STATE.OBSERVE
     )
 
     scenarios_expected = tuple(
         ("expected=%s" % state.name, dict(state_expected=state))
         for state in SERVICE_STATE
-        if state != SERVICE_STATE.UNKNOWN
+        if state != SERVICE_STATE.UNKNOWN and state != SERVICE_STATE.OBSERVE
     )
 
     scenarios = multiply_scenarios(scenarios_observed, scenarios_expected)
@@ -1726,6 +1727,22 @@ class TestServiceMonitor(MAASTestCase):
             ServiceState(SERVICE_STATE.UNKNOWN),
         )
         service_monitor.getServiceState.assert_not_called()
+        service_monitor._performServiceAction.assert_not_called()
+
+    @inlineCallbacks
+    def test_ensureService_only_gets_state_when_observe_state_expected(self):
+        service = make_fake_service(SERVICE_STATE.OBSERVE)
+        service_monitor = self.make_service_monitor([service])
+
+        getState = self.patch_autospec(service_monitor, "getServiceState")
+        getState.return_value = succeed(ServiceState(SERVICE_STATE.ON))
+        self.patch_autospec(service_monitor, "_performServiceAction")
+
+        self.assertEqual(
+            (yield service_monitor._ensureService(service)),
+            ServiceState(SERVICE_STATE.ON),
+        )
+        service_monitor.getServiceState.assert_called()
         service_monitor._performServiceAction.assert_not_called()
 
 

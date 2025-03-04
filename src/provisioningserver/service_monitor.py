@@ -7,6 +7,7 @@ from abc import ABC
 
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
+    ObserveOnlyService,
     SERVICE_STATE,
     ServiceMonitor,
     ToggleableService,
@@ -21,13 +22,13 @@ class HTTPService(AlwaysOnService):
     snap_service_name = "http"
 
 
-class DHCPv4Service(ToggleableService):
+class DHCPv4Service(ObserveOnlyService):
     name = "dhcpd"
     service_name = "maas-dhcpd"
     snap_service_name = "dhcpd"
 
 
-class DHCPv6Service(ToggleableService):
+class DHCPv6Service(ObserveOnlyService):
     name = "dhcpd6"
     service_name = "maas-dhcpd6"
     snap_service_name = "dhcpd6"

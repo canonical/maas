@@ -72,6 +72,10 @@ class SERVICE_STATE(enum.Enum):
     # expected state, not as an observed state.
     ANY = "any"
 
+    # Don't care about the service state. This is only relevant as an
+    # expected state, not as an observed state.
+    OBSERVE = "observe"
+
 
 def _check_service_state_observed(state):
     if state not in {
@@ -89,6 +93,7 @@ def _check_service_state_expected(state):
         SERVICE_STATE.OFF,
         SERVICE_STATE.DEAD,
         SERVICE_STATE.ANY,
+        SERVICE_STATE.OBSERVE,
     }:
         raise AssertionError(f"Expected state should not be {state!r}.")
 
@@ -181,6 +186,16 @@ class AlwaysOnService(Service):
     def getExpectedState(self):
         """AlwaysOnService should always be on."""
         return (SERVICE_STATE.ON, None)
+
+
+class ObserveOnlyService(Service):
+    """
+    Service that is managed by the agent
+    and rackd only needs to observe state
+    """
+
+    def getExpectedState(self):
+        return (SERVICE_STATE.OBSERVE, None)
 
 
 class ToggleableService(Service):
@@ -800,6 +815,9 @@ class ServiceMonitor:
         if expected_state == SERVICE_STATE.OFF:
             # Service that should be off can also be dead.
             expected_states = [SERVICE_STATE.OFF, SERVICE_STATE.DEAD]
+        elif expected_state == SERVICE_STATE.OBSERVE:
+            state = yield self.getServiceState(service.name, now=True)
+            return state
         elif expected_state == SERVICE_STATE.ANY:
             # This service is (temporarily) not being monitored.
             return ServiceState(SERVICE_STATE.UNKNOWN)
