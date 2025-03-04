@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from netaddr import IPAddress
 from temporalio import workflow
-from temporalio.common import RetryPolicy
+from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.workflows.configure import (
@@ -251,6 +251,7 @@ class ConfigureAgentWorkflow:
             id=f"configure-dhcp-service:{param.system_id}",
             task_queue=f"{param.system_id}@agent:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
         await workflow.execute_child_workflow(
