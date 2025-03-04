@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/activity"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
@@ -261,8 +262,9 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 	}
 
 	childCtx := tworkflow.WithChildOptions(ctx, tworkflow.ChildWorkflowOptions{
-		WorkflowID: fmt.Sprintf("configure-dhcp:%s", s.systemID),
-		TaskQueue:  "region",
+		WorkflowID:            fmt.Sprintf("configure-dhcp:%s", s.systemID),
+		WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING,
+		TaskQueue:             "region",
 	})
 
 	return tworkflow.ExecuteChildWorkflow(childCtx, "configure-dhcp-for-agent", ConfigureDHCPForAgentParam{
