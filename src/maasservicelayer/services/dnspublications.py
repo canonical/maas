@@ -5,11 +5,13 @@ from datetime import datetime
 from typing import Optional
 
 from maascommon.enums.dns import DnsUpdateAction
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-    merge_configure_dns_params,
-)
+
+# Patch only for 3.6 given that we still have triggers in place that will take care of it.
+# from maascommon.workflows.dns import (
+#     CONFIGURE_DNS_WORKFLOW_NAME,
+#     ConfigureDNSParam,
+#     merge_configure_dns_params,
+# )
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
@@ -73,14 +75,15 @@ class DNSPublicationsService(
         if not timestamp:
             timestamp = utcnow()
 
-        self.temporal_service.register_or_update_workflow_call(
-            CONFIGURE_DNS_WORKFLOW_NAME,
-            ConfigureDNSParam(
-                need_full_reload=action == DnsUpdateAction.RELOAD
-            ),
-            parameter_merge_func=merge_configure_dns_params,
-            wait=False,
-        )
+        # Patch only for 3.6 given that we still have triggers in place that will take care of it.
+        # self.temporal_service.register_or_update_workflow_call(
+        #     CONFIGURE_DNS_WORKFLOW_NAME,
+        #     ConfigureDNSParam(
+        #         need_full_reload=action == DnsUpdateAction.RELOAD
+        #     ),
+        #     parameter_merge_func=merge_configure_dns_params,
+        #     wait=False,
+        # )
 
         return await self.create(
             DNSPublicationBuilder(

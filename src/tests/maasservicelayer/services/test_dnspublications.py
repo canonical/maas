@@ -6,11 +6,13 @@ from unittest.mock import Mock
 import pytest
 
 from maascommon.enums.dns import DnsUpdateAction
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-    merge_configure_dns_params,
-)
+
+# Patch only for 3.6 given that we still have triggers in place that will take care of it.
+# from maascommon.workflows.dns import (
+#     CONFIGURE_DNS_WORKFLOW_NAME,
+#     ConfigureDNSParam,
+#     merge_configure_dns_params,
+# )
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
@@ -60,12 +62,13 @@ class TestDNSPublicationsService(ServiceCommonTests):
             source="", action=DnsUpdateAction.RELOAD, timestamp=now
         )
 
-        temporal_service.register_or_update_workflow_call.assert_called_once_with(
-            CONFIGURE_DNS_WORKFLOW_NAME,
-            ConfigureDNSParam(need_full_reload=True),
-            parameter_merge_func=merge_configure_dns_params,
-            wait=False,
-        )
+        # Patch only for 3.6 given that we still have triggers in place that will take care of it.
+        # temporal_service.register_or_update_workflow_call.assert_called_once_with(
+        #     CONFIGURE_DNS_WORKFLOW_NAME,
+        #     ConfigureDNSParam(need_full_reload=True),
+        #     parameter_merge_func=merge_configure_dns_params,
+        #     wait=False,
+        # )
 
         dnspublication_repository.create.assert_called_once_with(
             builder=DNSPublicationBuilder(
@@ -101,12 +104,13 @@ class TestDNSPublicationsService(ServiceCommonTests):
             timestamp=now,
         )
 
-        temporal_service.register_or_update_workflow_call.assert_called_once_with(
-            CONFIGURE_DNS_WORKFLOW_NAME,
-            ConfigureDNSParam(need_full_reload=False),
-            parameter_merge_func=merge_configure_dns_params,
-            wait=False,
-        )
+        # Patch only for 3.6 given that we still have triggers in place that will take care of it.
+        # temporal_service.register_or_update_workflow_call.assert_called_once_with(
+        #     CONFIGURE_DNS_WORKFLOW_NAME,
+        #     ConfigureDNSParam(need_full_reload=False),
+        #     parameter_merge_func=merge_configure_dns_params,
+        #     wait=False,
+        # )
 
         dnspublication_repository.create.assert_called_once_with(
             builder=DNSPublicationBuilder(
