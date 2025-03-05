@@ -34,6 +34,24 @@ class TestDNSPublicationRepository:
 
         assert serial == third_publication.serial
 
+    async def test_get_latest(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        first_publication = await create_test_dnspublication_entry(fixture)
+        second_publication = await create_test_dnspublication_entry(
+            fixture, serial=first_publication.serial + 1
+        )
+        third_publication = await create_test_dnspublication_entry(
+            fixture, serial=second_publication.serial + 1
+        )
+        dnspublication_repository = DNSPublicationRepository(
+            Context(connection=db_connection)
+        )
+
+        latest = await dnspublication_repository.get_latest()
+
+        assert latest.id == third_publication.id
+
     async def test_get_publications_since_serial(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:

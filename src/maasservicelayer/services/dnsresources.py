@@ -226,3 +226,8 @@ class DNSResourcesService(
                 zone=domain.name,
                 answer=str(ip.ip),
             )
+
+    async def get_ips_for_dnsresource(
+        self, dnsrr: DNSResource
+    ) -> list[StaticIPAddress]:
+        return await self.repository.get_ips_for_dnsresource(dnsrr)

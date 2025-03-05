@@ -1,9 +1,10 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from collections.abc import Sequence
 from datetime import datetime, timezone
 import random
-from typing import Sequence
+from typing import TypeVar
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -15,14 +16,20 @@ from maasservicelayer.db.repositories.domains import (
     DomainsClauseFactory,
     DomainsRepository,
 )
+from maasservicelayer.models.base import MaasTimestampedBaseModel
 from maasservicelayer.models.domains import Domain
 from tests.fixtures.factories.domain import create_test_domain_entry
+from tests.fixtures.factories.forwarddnsserver import (
+    create_test_forwarddnsserver_entry,
+)
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+
+T = TypeVar("T", bound=MaasTimestampedBaseModel)
 
 
 class TestDomainsClauseFactory:
@@ -127,3 +134,33 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
             default_ttl=30
         )
         assert len(mappings) == len(ips)
+
+    @pytest.mark.skip(reason="Not applicable")
+    async def test_create_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        pass
+
+    async def test_get_forwarded_domains(
+        self, repository_instance: DomainsRepository, fixture: Fixture
+    ) -> None:
+        domains = [
+            await create_test_domain_entry(
+                fixture, name=f"test-domain-{i}", authoritative=False
+            )
+            for i in range(3)
+        ]
+        fwd_srvrs = [
+            await create_test_forwarddnsserver_entry(
+                fixture, ip_address=f"10.0.0.{i + 1}", domain=domain
+            )
+            for i, domain in enumerate(domains)
+        ]
+
+        fwd_domains = await repository_instance.get_forwarded_domains()
+
+        assert len(fwd_domains) == len(domains)
+
+        for fwd_domain, fwd_srvr in fwd_domains:
+            assert fwd_domain in domains
+            assert fwd_srvr in fwd_srvrs

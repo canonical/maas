@@ -4,10 +4,22 @@
 from typing import Type
 
 from sqlalchemy import Table
+from sqlalchemy.sql.operators import eq
 
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import DNSDataTable
 from maasservicelayer.models.dnsdata import DNSData
+
+
+class DNSDataClauseFactory(ClauseFactory):
+    @classmethod
+    def with_dnsresource_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(DNSDataTable.c.dnsresource_id, id))
+
+    @classmethod
+    def with_rtype(cls, rtype: str) -> Clause:
+        return Clause(condition=eq(DNSDataTable.c.rtype, rtype))
 
 
 class DNSDataRepository(BaseRepository[DNSData]):

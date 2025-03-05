@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
 from typing import Type
 
-from sqlalchemy import select, Table, text
+from sqlalchemy import and_, select, Table, text
 from sqlalchemy.sql.operators import eq
 
 from maascommon.dns import (
@@ -19,8 +19,14 @@ from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import DomainTable, GlobalDefaultTable
+from maasservicelayer.db.tables import (
+    DomainTable,
+    ForwardDNSServerDomainsTable,
+    ForwardDNSServerTable,
+    GlobalDefaultTable,
+)
 from maasservicelayer.models.domains import Domain
+from maasservicelayer.models.forwarddnsserver import ForwardDNSServer
 
 
 @dataclass
@@ -697,3 +703,54 @@ class DomainsRepository(BaseRepository[Domain]):
                 rrtuple = (row.ttl, row.rrtype, row.rrdata)
             entry.rrset.add(rrtuple)
         return mapping
+
+    async def get_forwarded_domains(
+        self,
+    ) -> list[tuple[Domain, ForwardDNSServer]]:
+        stmt = (
+            select(
+                DomainTable,
+                ForwardDNSServerTable.c.id.label("fdns_id"),
+                ForwardDNSServerTable.c.created.label("fdns_created"),
+                ForwardDNSServerTable.c.updated.label("fdns_updated"),
+                ForwardDNSServerTable.c.ip_address.label("fdns_ip_address"),
+                ForwardDNSServerTable.c.port.label("fdns_port"),
+            )
+            .select_from(DomainTable)
+            .join(
+                ForwardDNSServerDomainsTable,
+                ForwardDNSServerDomainsTable.c.domain_id == DomainTable.c.id,
+            )
+            .join(
+                ForwardDNSServerTable,
+                ForwardDNSServerTable.c.id
+                == ForwardDNSServerDomainsTable.c.forwarddnsserver_id,
+            )
+            .filter(
+                and_(
+                    eq(DomainTable.c.authoritative, False),
+                    ForwardDNSServerTable.c.id is not None,
+                )
+            )
+        )
+
+        rows = (await self.execute_stmt(stmt)).all()
+
+        result = []
+
+        for row in rows:
+            row_dict = row._asdict()
+            result.append(
+                (
+                    Domain(**row_dict),
+                    ForwardDNSServer(
+                        id=row_dict["fdns_id"],
+                        created=row_dict["fdns_created"],
+                        updated=row_dict["fdns_updated"],
+                        ip_address=row_dict["fdns_ip_address"],
+                        port=row_dict["fdns_port"],
+                    ),
+                )
+            )
+
+        return result

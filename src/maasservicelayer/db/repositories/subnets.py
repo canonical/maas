@@ -8,6 +8,7 @@ from netaddr import IPAddress
 from pydantic import IPvAnyAddress
 from sqlalchemy import desc, func, join, select, Table
 
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository, T
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
@@ -44,6 +45,14 @@ class SubnetClauseFactory(ClauseFactory):
     @classmethod
     def with_allow_dns(cls, allow_dns: bool) -> Clause:
         return Clause(condition=eq(SubnetTable.c.allow_dns, allow_dns))
+
+    @classmethod
+    def with_rdns_mode(cls, rdns_mode: RdnsMode) -> Clause:
+        return Clause(condition=eq(SubnetTable.c.rdns_mode, rdns_mode))
+
+    @classmethod
+    def with_not_rdns_mode(cls, rdns_mode: RdnsMode) -> Clause:
+        return Clause(condition=(SubnetTable.c.rdns_mode != rdns_mode))
 
 
 class SubnetsRepository(BaseRepository[Subnet]):

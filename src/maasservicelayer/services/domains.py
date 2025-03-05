@@ -22,6 +22,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.domains import Domain
+from maasservicelayer.models.forwarddnsserver import ForwardDNSServer
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
@@ -252,3 +253,8 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
             else:
                 result.extend(data)
         return result
+
+    async def get_forwarded_domains(
+        self,
+    ) -> List[tuple[Domain, ForwardDNSServer]]:
+        return await self.repository.get_forwarded_domains()

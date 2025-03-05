@@ -93,3 +93,10 @@ class DNSPublicationsService(
         self, serial: int
     ) -> list[DNSPublication]:
         return await self.repository.get_publications_since_serial(serial)
+
+    async def get_latest(self) -> DNSPublication:
+        return await self.repository.get_latest()
+
+    async def get_latest_serial(self) -> int:
+        result = await self.get_latest()
+        return result.serial

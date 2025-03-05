@@ -42,3 +42,12 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
         result = (await self.execute_stmt(stmt)).all()
 
         return [DNSPublication(**row._asdict()) for row in result]
+
+    async def get_latest(self) -> DNSPublication:
+        stmt = (
+            select(DNSPublicationTable)
+            .select_from(DNSPublicationTable)
+            .order_by(DNSPublicationTable.c.id.desc())
+        )
+
+        return (await self.execute_stmt(stmt)).first()

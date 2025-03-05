@@ -281,6 +281,34 @@ FileStorageTable = Table(
     UniqueConstraint("filename", "owner_id"),
 )
 
+ForwardDNSServerTable = Table(
+    "maasserver_forwarddnsserver",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("ip_address", INET, nullable=False, unique=True),
+    Column("port", BigInteger, nullable=False, unique=False),
+)
+
+ForwardDNSServerDomainsTable = Table(
+    "maasserver_forwarddnsserver_domains",
+    METADATA,
+    Column("id", Integer, primary_key=True, unique=True),
+    Column(
+        "domain_id",
+        Integer,
+        ForeignKey("maasserver_domain.id"),
+        nullable=False,
+    ),
+    Column(
+        "forwarddnsserver_id",
+        Integer,
+        ForeignKey("maasserver_forwarddnsserver.id"),
+        nullable=False,
+    ),
+)
+
 GlobalDefaultTable = Table(
     "maasserver_globaldefault",
     METADATA,
