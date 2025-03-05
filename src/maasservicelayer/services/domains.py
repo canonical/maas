@@ -102,9 +102,9 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
     async def post_update_many_hook(self, resources: List[Domain]) -> None:
         raise NotImplementedError("Not implemented yet.")
 
-    async def pre_delete_hook(self, resource: Domain) -> None:
+    async def pre_delete_hook(self, resource_to_be_deleted: Domain) -> None:
         default_domain = await self.get_default_domain()
-        if resource.id == default_domain.id:
+        if resource_to_be_deleted.id == default_domain.id:
             raise BadRequestException(
                 details=[
                     BaseExceptionDetail(

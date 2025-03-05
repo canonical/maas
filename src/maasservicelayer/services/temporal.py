@@ -113,12 +113,12 @@ class TemporalService(Service):
         key = self._make_key(workflow_name, workflow_id)
 
         if self.workflow_is_registered(workflow_name, workflow_id=workflow_id):
-            if not override_previous_parameters and not parameter_merge_func:
-                raise ValueError(
-                    "must either override or merge parameters with existing workflows"
-                )
-
             if not override_previous_parameters:
+                if parameter_merge_func is None:
+                    raise ValueError(
+                        "must either override or merge parameters with existing workflows"
+                    )
+
                 parameter = parameter_merge_func(
                     self._post_commit_workflows[key][1], parameter
                 )

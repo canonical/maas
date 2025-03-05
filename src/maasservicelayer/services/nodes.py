@@ -89,7 +89,7 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
                 node=node,
                 event_type=EventTypeEnum.REQUEST_NODE_MARK_FAILED_SYSTEM,
                 event_action="mark_failed",
-                event_description=message,
+                event_description=message or "",
             )
 
             await self.scriptresults_service.update_running_scripts(
@@ -113,7 +113,7 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
                 node = await self.repository.update_by_id(
                     node.id,
                     builder=NodeBuilder(
-                        status=new_status, error_description=message
+                        status=new_status, error_description=message or ""
                     ),
                 )
 

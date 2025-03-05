@@ -388,7 +388,7 @@ class AsyncAgentInteractor(AgentInteractor):
         if m is None:
             raise httpbakery.InteractionError("no macaroon in response")
         m = bakery.Macaroon.from_dict(m)
-        ms = await discharge_all(m, None, self._auth_info.key)
+        ms = await discharge_all(m, None, self._auth_info.key)  # type: ignore
         b = bytearray()
         for m in ms:
             b.extend(utils.b64decode(m.serialize()))

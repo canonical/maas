@@ -10,7 +10,7 @@ from sqlalchemy import desc, func, join, select, Table
 
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.base import BaseRepository, T
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -130,5 +130,5 @@ class SubnetsRepository(BaseRepository[Subnet]):
         query = QuerySpec(where=Clause(eq(SubnetTable.c.id, id)))
         return await self.delete_one(query)
 
-    async def delete_many(self, query: QuerySpec) -> List[T]:
+    async def delete_many(self, query: QuerySpec) -> List[Subnet]:
         raise NotImplementedError("delete_many is not implemented yet.")

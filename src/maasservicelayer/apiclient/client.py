@@ -7,13 +7,12 @@ from urllib.parse import urljoin
 
 from aiohttp import ClientSession, TCPConnector
 from oauthlib import oauth1
-from pydantic import HttpUrl
 
 from maascommon.constants import SYSTEM_CA_FILE
 
 
 class APIClient:
-    def __init__(self, base_url: HttpUrl, api_key: str):
+    def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url
         key, token, secret = api_key.split(":")
         self._oauth = oauth1.Client(

@@ -177,7 +177,7 @@ class ExternalAuthService(Service, RootKeyStore):
         # to handle them accordingly.
         auth_info = await auth_checker.allow(
             ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
-        )
+        )  # type: ignore
 
         username = auth_info.identity.id()
         user = await self.users_service.get_one(
@@ -204,7 +204,7 @@ class ExternalAuthService(Service, RootKeyStore):
 
     def _get_third_party_locator(self, auth_endpoint):
         if self.cache:
-            return self.cache.get_third_party_locator(auth_endpoint)
+            return self.cache.get_third_party_locator(auth_endpoint)  # type: ignore
         return AsyncThirdPartyLocator(
             allow_insecure=not auth_endpoint.startswith("https:")
         )
@@ -263,7 +263,7 @@ class ExternalAuthService(Service, RootKeyStore):
             return None
         return await self._get_key_material(id=key.id)
 
-    async def root_key(self):
+    async def root_key(self):  # type: ignore
         key = await self.external_auth_repository.find_best_key()
         if not key:
             # delete expired keys (if any)
@@ -311,7 +311,7 @@ class ExternalAuthService(Service, RootKeyStore):
     ) -> bakery.Macaroon:
         bakery_version = httpbakery.request_version(req_headers or {})
         expiration = utcnow() + MACAROON_LIFESPAN
-        macaroon = await macaroon_bakery.oven.macaroon(
+        macaroon = await macaroon_bakery.oven.macaroon(  # type: ignore
             bakery_version, expiration, caveats, ops
         )
         return macaroon
@@ -323,6 +323,8 @@ class ExternalAuthService(Service, RootKeyStore):
         req_headers: Headers | None = None,
     ):
         macaroon_bakery = await self.get_bakery(absolute_uri)
+
+        assert macaroon_bakery is not None
 
         caveats, ops = _get_macaroon_caveats_ops(
             external_auth_info.url, external_auth_info.domain
@@ -338,12 +340,15 @@ class ExternalAuthService(Service, RootKeyStore):
     @Service.from_cache_or_execute(attr="candid_client")
     async def get_candid_client(self) -> CandidAsyncClient:
         auth_info = await self.get_auth_info()
+        assert auth_info is not None
         return CandidAsyncClient(auth_info)
 
     @Service.from_cache_or_execute(attr="rbac_client")
     async def get_rbac_client(self) -> RbacAsyncClient:
         auth_info = await self.get_auth_info()
         auth_config = await self.get_external_auth()
+        assert auth_info is not None
+        assert auth_config is not None
         # auth_config.url comes with a /auth suffix used for some macaroon internals.
         # We don't want to diverge too much from the structure we have in maasserver, hence we simply remove the suffix here.
         return RbacAsyncClient(auth_config.url.rstrip("/auth"), auth_info)

@@ -172,7 +172,8 @@ class SecretsServiceFactory:
         if cls.IS_VAULT_ENABLED:
             vault_manager = get_region_vault_manager()
             return VaultSecretsService(
-                context=context, vault_manager=vault_manager
+                context=context,
+                vault_manager=vault_manager,  # type: ignore
             )
         return LocalSecretsStorageService(context=context)
 

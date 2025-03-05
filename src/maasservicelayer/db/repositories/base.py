@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from operator import eq
 from typing import Any, Generic, List, Sequence, TypeVar
 
-import psycopg2
+import psycopg2.extras
 from sqlalchemy import (
     Connection,
     CursorResult,
@@ -65,14 +65,14 @@ class Repository(ABC):  # noqa: B024
             # in the servicelayer/sqlalchemy we want the driver to return a dictionary, so we register the handler on the connection.
             try:
                 psycopg2.extras.register_default_jsonb(
-                    conn_or_curs=connection.connection.dbapi_connection
+                    conn_or_curs=connection.connection.dbapi_connection  # type: ignore
                 )
                 return connection.execute(stmt)
             finally:
                 # Give this connection back to django and reset the default jsonb handler
                 # https://github.com/django/django/blob/f609a2da868b2320ecdc0551df3cca360d5b5bc3/django/db/backends/postgresql/base.py#L339
                 psycopg2.extras.register_default_jsonb(
-                    conn_or_curs=connection.connection.dbapi_connection,
+                    conn_or_curs=connection.connection.dbapi_connection,  # type: ignore
                     loads=lambda x: x,
                 )
         else:

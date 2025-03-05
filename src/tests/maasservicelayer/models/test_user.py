@@ -27,7 +27,7 @@ class TestUserModel:
         )
 
         expected_etag = (
-            "4eec78f604a4adf4bea0077c807645856ad9d211c5bdc4d9e4748c0c81c81bcd"
+            "f66ac35f42647ee07da439699deea437f62b9875228d6852528da01bc144419a"
         )
         assert test_user.etag() == expected_etag
 

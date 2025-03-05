@@ -81,13 +81,14 @@ class VlansService(BaseService[Vlan, VlansRepository, VlanBuilder]):
     async def post_delete_hook(self, resource: Vlan) -> None:
         if resource.dhcp_on or resource.relay_vlan_id is not None:
             primary_rack = await self.nodes_service.get_by_id(
-                resource.primary_rack_id
+                resource.primary_rack_id  # type: ignore
             )
-            system_ids = [primary_rack.system_id]
+            system_ids = [primary_rack.system_id]  # type: ignore
             if resource.secondary_rack_id is not None:
                 secondary_rack = await self.nodes_service.get_by_id(
                     resource.secondary_rack_id
                 )
+                assert secondary_rack is not None
                 system_ids.append(secondary_rack.system_id)
 
             self.temporal_service.register_or_update_workflow_call(

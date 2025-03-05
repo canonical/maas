@@ -69,7 +69,8 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         raise NotImplementedError("Update is not supported for ssh keys")
 
     async def pre_create_hook(self, builder: SshKeyBuilder) -> None:
-        builder.key = await self.normalize_openssh_public_key(builder.key)
+        # TODO: remove type ignore after implementing safe get for builders
+        builder.key = await self.normalize_openssh_public_key(builder.key)  # type: ignore
 
         # skip the validation if it's a key imported by LP or GH.
         if builder.protocol is not None:
@@ -80,7 +81,8 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
                 where=SshKeyClauseFactory.and_clauses(
                     [
                         SshKeyClauseFactory.with_key(builder.key),
-                        SshKeyClauseFactory.with_user_id(builder.user_id),
+                        # TODO: remove type ignore after implementing safe get for builders
+                        SshKeyClauseFactory.with_user_id(builder.user_id),  # type: ignore
                     ]
                 )
             )

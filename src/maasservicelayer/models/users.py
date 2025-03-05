@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-import hashlib
 from typing import Optional
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
@@ -25,12 +24,6 @@ class User(MaasBaseModel):
     email: Optional[str] = None
     last_login: Optional[datetime] = None
 
-    def etag(self) -> str:
-        m = hashlib.sha256()
-        for item in self.__dict__:
-            m.update(str(item).encode("utf-8"))
-        return m.hexdigest()
-
     def check_password(self, password) -> bool:
         return PBKDF2PasswordHasher().verify(password, self.password)
 
@@ -42,9 +35,6 @@ class UserProfile(MaasBaseModel):
     is_local: bool
     user_id: int
 
-    def etag(self) -> str:
-        pass
-
 
 class Consumer(MaasBaseModel):
     name: str
@@ -53,9 +43,6 @@ class Consumer(MaasBaseModel):
     secret: str
     status: str
     user_id: Optional[int]
-
-    def etag(self) -> str:
-        pass
 
 
 class Token(MaasBaseModel):
@@ -69,6 +56,3 @@ class Token(MaasBaseModel):
     callback_confirmed: bool
     consumer_id: int
     user_id: Optional[int]
-
-    def etag(self) -> str:
-        pass

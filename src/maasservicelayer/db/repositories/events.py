@@ -143,7 +143,7 @@ class EventsRepository(BaseRepository[Event]):
             )
         )
 
-    async def _update(self, _query, _builder):
+    async def _update(self, query, builder):
         """Events should not be updated."""
         raise NotImplementedError(
             "The update of events is not a supported operation"

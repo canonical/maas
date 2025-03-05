@@ -87,4 +87,4 @@ class AuthService(Service):
                     self.MAAS_V3_JWT_KEY_SECRET_PATH, jwt_key
                 )
             AuthService.JWT_TOKEN_KEY = jwt_key
-        return self.JWT_TOKEN_KEY
+        return self.JWT_TOKEN_KEY  # type: ignore

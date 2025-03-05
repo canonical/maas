@@ -12,6 +12,3 @@ class FileStorage(MaasBaseModel):
     content: str
     key: str
     owner_id: Optional[int]
-
-    def etag(self) -> str:
-        pass

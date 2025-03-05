@@ -38,8 +38,8 @@ def build_interface_links(
         sorted_links = sorted(
             one_link_per_id.values(), key=lambda link: link.id, reverse=reverse
         )
-        interface["links"] = sorted_links
-    return interface
+        interface["links"] = sorted_links  # type: ignore
+    return interface  # type: ignore
 
 
 class InterfaceRepository(Repository):

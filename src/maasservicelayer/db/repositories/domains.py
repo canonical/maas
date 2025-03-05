@@ -686,7 +686,7 @@ class DomainsRepository(BaseRepository[Domain]):
         for row in results:
             row = DnsDataMappingQueryResult(**row._asdict())
             if row.name == "@" and row.d_name != domain.name:
-                row.name, row.d_name = row.d_name.split(".", 1)
+                row.name, row.d_name = row.d_name.split(".", 1)  # type: ignore
                 # Since we don't allow more than one label in dnsresource
                 # names, we should never ever be wrong in this assertion.
                 assert row.d_name == domain.name, (

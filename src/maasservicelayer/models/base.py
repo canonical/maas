@@ -1,7 +1,6 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 import hashlib
@@ -25,10 +24,10 @@ class ListResult(Generic[T]):
     total: int
 
     def has_next(self, page: int, size: int) -> bool:
-        return self.total and page * size < self.total
+        return bool(self.total) and page * size < self.total
 
 
-class MaasBaseModel(BaseModel, ABC):
+class MaasBaseModel(BaseModel):
     id: int
 
     def __eq__(self, other: Any) -> bool:
@@ -37,9 +36,10 @@ class MaasBaseModel(BaseModel, ABC):
             return self.dict() == other.dict()
         return False
 
-    @abstractmethod
     def etag(self) -> str:
-        pass
+        m = hashlib.sha256()
+        m.update(str(self.dict()).encode("utf-8"))
+        return m.hexdigest()
 
 
 class MaasTimestampedBaseModel(MaasBaseModel):

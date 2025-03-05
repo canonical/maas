@@ -111,6 +111,7 @@ class AsyncAuthChecker(AuthChecker):
             self._identity = identity
 
         if self._identity is None:
+            identity, cavs = None, None
             # No identity yet, so try to get one based on the context.
             try:
                 identity, cavs = (
@@ -280,6 +281,6 @@ class AsyncAuthChecker(AuthChecker):
         for i, is_used in enumerate(used):
             if not is_used:
                 continue
-            for cond in self._conditions[i]:
+            for cond in self._conditions[i]:  # type: ignore
                 squasher.add(cond)
         return squasher.final()

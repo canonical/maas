@@ -58,10 +58,11 @@ class IPRangesService(
             query=QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
                     [
-                        IPRangeClauseFactory.with_type(builder.type),
-                        IPRangeClauseFactory.with_start_ip(builder.start_ip),
-                        IPRangeClauseFactory.with_start_ip(builder.end_ip),
-                        IPRangeClauseFactory.with_subnet_id(builder.subnet_id),
+                        # TODO: remove type ignore after implementing safe get for builders
+                        IPRangeClauseFactory.with_type(builder.type),  # type: ignore
+                        IPRangeClauseFactory.with_start_ip(builder.start_ip),  # type: ignore
+                        IPRangeClauseFactory.with_start_ip(builder.end_ip),  # type: ignore
+                        IPRangeClauseFactory.with_subnet_id(builder.subnet_id),  # type: ignore
                     ]
                 )
             )

@@ -88,6 +88,7 @@ class AsyncVaultManager:
                 token_lookup_response.data.expire_time
             )
             logger.debug("New vault access token has been cached")
+        assert self._cached_token is not None
         return self._cached_token
 
     async def set(self, path: str, value: dict[str, Any]) -> None:
@@ -157,9 +158,9 @@ class AsyncVaultManager:
         )
 
     def _is_token_expired(self) -> bool:
-        has_expired = (
-            not self._cached_token
-            or self._cached_token_expire_time
+        has_expired = not self._cached_token or (
+            self._cached_token_expire_time is not None
+            and self._cached_token_expire_time
             <= (utcnow() - TOKEN_BEFORE_EXPIRY_LIMIT)
         )
         logger.debug("Vault access token was not set or has expired.")
@@ -181,9 +182,9 @@ def get_region_vault_manager() -> AsyncVaultManager | None:
         ):
             return None
         return AsyncVaultManager(
-            vault_api_client=AsyncVaultApiClient(base_url=config.vault_url),
-            role_id=config.vault_approle_id,
-            secret_id=config.vault_secret_id,
-            secrets_base_path=config.vault_secrets_path,
-            secrets_mount=config.vault_secrets_mount,
+            vault_api_client=AsyncVaultApiClient(base_url=config.vault_url),  # type: ignore
+            role_id=config.vault_approle_id,  # type: ignore
+            secret_id=config.vault_secret_id,  # type: ignore
+            secrets_base_path=config.vault_secrets_path,  # type: ignore
+            secrets_mount=config.vault_secrets_mount,  # type: ignore
         )

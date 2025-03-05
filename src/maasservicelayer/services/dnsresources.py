@@ -49,6 +49,7 @@ class DNSResourcesService(
         domain = await self.domains_service.get_one(
             QuerySpec(where=DomainsClauseFactory.with_id(resource.domain_id))
         )
+        assert domain is not None
         await self.dnspublications_service.create_for_config_update(
             source=f"zone {domain.name} added resource {resource.name}",
             action=DnsUpdateAction.INSERT_NAME,
@@ -64,9 +65,7 @@ class DNSResourcesService(
     ) -> None:
         old_domain = await self.domains_service.get_one(
             query=QuerySpec(
-                where=DNSResourceClauseFactory.with_domain_id(
-                    old_resource.domain_id
-                )
+                where=DomainsClauseFactory.with_id(old_resource.domain_id)
             )
         )
 
@@ -75,6 +74,9 @@ class DNSResourcesService(
                 where=DomainsClauseFactory.with_id(updated_resource.domain_id)
             )
         )
+
+        assert old_domain is not None
+        assert domain is not None
 
         if old_domain.id != domain.id:
             await self.dnspublications_service.create_for_config_update(
@@ -114,6 +116,7 @@ class DNSResourcesService(
                 where=DomainsClauseFactory.with_id(resource.domain_id)
             )
         )
+        assert domain is not None
 
         await self.dnspublications_service.create_for_config_update(
             source=f"zone {domain.name} removed resource {resource.name}",
@@ -176,7 +179,9 @@ class DNSResourcesService(
     async def update_dynamic_hostname(
         self, ip: StaticIPAddress, hostname: str
     ) -> None:
-        hostname = coerce_to_valid_hostname(hostname)
+        valid_hostname = coerce_to_valid_hostname(hostname)
+        assert valid_hostname is not None
+        hostname = valid_hostname
 
         await self.release_dynamic_hostname(ip)
 
@@ -185,6 +190,8 @@ class DNSResourcesService(
         dnsrr = await self.get_one(
             query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
         )
+
+        assert ip.ip is not None
         if not dnsrr:
             dnsrr = await self.create(
                 builder=DNSResourceBuilder(

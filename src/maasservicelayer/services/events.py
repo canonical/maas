@@ -37,6 +37,7 @@ class EventsService(BaseService[Event, EventsRepository, EventBuilder]):
         self, event_type: EventTypeEnum, detail: EventDetail | None = None
     ) -> EventType:
         detail = detail or EVENT_DETAILS_MAP.get(event_type)
+        assert detail is not None
         return await self.eventtypes_repository.ensure(event_type, detail)
 
     async def record_event(

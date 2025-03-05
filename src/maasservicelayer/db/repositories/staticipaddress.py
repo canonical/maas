@@ -182,8 +182,8 @@ class StaticIPAddressRepository(BaseRepository):
                 SubnetTable,
                 SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
             )
-            .where(query.where.condition)
         )
+        stmt = query.enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [StaticIPAddress(**row._asdict()) for row in results]
 

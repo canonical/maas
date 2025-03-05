@@ -189,7 +189,7 @@ sec: sec-py
 sec-py:
 	@tox -e bandit
 
-lint: lint-py-builders lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
+lint: lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
 
 # Check if service layer builders must be re-generated

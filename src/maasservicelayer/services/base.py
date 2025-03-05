@@ -289,5 +289,6 @@ class BaseService(Service, ABC, Generic[M, R, B]):
             await self.pre_delete_hook(resource)
 
         deleted_resource = await self.repository.delete_by_id(id=resource.id)
-        await self.post_delete_hook(deleted_resource)
+        if deleted_resource is not None:
+            await self.post_delete_hook(deleted_resource)
         return deleted_resource

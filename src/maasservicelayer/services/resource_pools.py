@@ -31,9 +31,11 @@ class ResourcePoolsService(
         """Returns all the ids of the resource pools in the db."""
         return await self.repository.list_ids()
 
-    async def pre_delete_hook(self, resource: ResourcePool) -> None:
+    async def pre_delete_hook(
+        self, resource_to_be_deleted: ResourcePool
+    ) -> None:
         # The default resource pool has id=0, and cannot be deleted
-        if resource.id == 0:
+        if resource_to_be_deleted.id == 0:
             raise BadRequestException(
                 details=[
                     BaseExceptionDetail(

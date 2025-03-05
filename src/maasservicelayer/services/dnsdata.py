@@ -49,7 +49,9 @@ class DNSDataService(BaseService[DNSData, DNSDataRepository, DNSDataBuilder]):
         dnsresource = await self.dnsresources_service.get_by_id(
             resource.dnsresource_id
         )
+        assert dnsresource is not None
         domain = await self.domains_service.get_by_id(dnsresource.domain_id)
+        assert domain is not None
 
         await self.dnspublications_service.create_for_config_update(
             source=f"added {resource.rrtype} to resource {dnsresource.name} on zone {domain.name}",
@@ -62,25 +64,25 @@ class DNSDataService(BaseService[DNSData, DNSDataRepository, DNSDataBuilder]):
         )
 
     async def post_update_hook(
-        self,
-        _: DNSData,
-        new_resource: DNSData,
+        self, old_resource: DNSData, updated_resource: DNSData
     ) -> None:
         dnsresource = await self.dnsresources_service.get_by_id(
-            new_resource.dnsresource_id,
+            updated_resource.dnsresource_id,
         )
+        assert dnsresource is not None
         domain = await self.domains_service.get_by_id(
             dnsresource.domain_id,
         )
+        assert domain is not None
 
         await self.dnspublications_service.create_for_config_update(
-            source=f"updated {new_resource.rrtype} in resource {dnsresource.name} on zone {domain.name}",
+            source=f"updated {updated_resource.rrtype} in resource {dnsresource.name} on zone {domain.name}",
             action=DnsUpdateAction.UPDATE,
             label=dnsresource.name,
             zone=domain.name,
-            rtype=new_resource.rrtype,
-            ttl=self._get_ttl(new_resource, dnsresource, domain),
-            answer=new_resource.rrdata,
+            rtype=updated_resource.rrtype,
+            ttl=self._get_ttl(updated_resource, dnsresource, domain),
+            answer=updated_resource.rrdata,
         )
 
     async def post_update_many_hook(self, resources: List[DNSData]) -> None:
@@ -90,9 +92,11 @@ class DNSDataService(BaseService[DNSData, DNSDataRepository, DNSDataBuilder]):
         dnsresource = await self.dnsresources_service.get_by_id(
             resource.dnsresource_id,
         )
+        assert dnsresource is not None
         domain = await self.domains_service.get_by_id(
             dnsresource.domain_id,
         )
+        assert domain is not None
 
         await self.dnspublications_service.create_for_config_update(
             source=f"removed {resource.rrtype} from resource {dnsresource.name} on zone {domain.name}",
@@ -104,7 +108,5 @@ class DNSDataService(BaseService[DNSData, DNSDataRepository, DNSDataBuilder]):
             answer=resource.rrdata,
         )
 
-    async def post_delete_many_hook(
-        self, resources: List[DNSResource]
-    ) -> None:
+    async def post_delete_many_hook(self, resources: List[DNSData]) -> None:
         raise NotImplementedError("Not implemented yet.")

@@ -29,7 +29,7 @@ class PostgresListenersTaskFactory:
 
     @classmethod
     async def create(
-        self, db_engine: AsyncEngine, listeners: List[PostgresListener]
+        cls, db_engine: AsyncEngine, listeners: List[PostgresListener]
     ) -> asyncio.Task:
         """Create a task to register PostgreSQL listeners asynchronously."""
 
@@ -37,6 +37,7 @@ class PostgresListenersTaskFactory:
             async with db_engine.connect() as conn:
                 raw_connection = await conn.get_raw_connection()
                 for listener in listeners:
+                    assert raw_connection.driver_connection is not None
                     await raw_connection.driver_connection.add_listener(
                         listener.channel, listener.handler
                     )

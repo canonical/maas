@@ -15,7 +15,6 @@ from pydantic import BaseModel
 class BaseVaultResponse(BaseModel):
     request_id: Optional[str]
     warnings: Optional[str] = None
-    auth: Optional[str] = None
 
 
 class AppRoleLoginDetailResponse(BaseModel):
@@ -32,6 +31,7 @@ class TokenLookupSelfDetailResponse(BaseModel):
 
 
 class TokenLookupSelfResponse(BaseVaultResponse):
+    auth: Optional[str] = None
     data: TokenLookupSelfDetailResponse
 
 
@@ -40,6 +40,7 @@ class KvV2ReadDetailResponse(BaseModel):
 
 
 class KvV2ReadResponse(BaseVaultResponse):
+    auth: Optional[str] = None
     data: KvV2ReadDetailResponse
 
 
@@ -50,4 +51,5 @@ class KvV2WriteDetailResponse(BaseModel):
 
 
 class KvV2WriteResponse(BaseVaultResponse):
+    auth: Optional[str] = None
     data: KvV2WriteDetailResponse

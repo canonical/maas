@@ -43,6 +43,8 @@ class AgentsService(Service):
         maas_url = await self.configurations_service.get("maas_url")
 
         apikeys = await self.users_service.get_user_apikeys("MAAS")
+        # API Key for MAAS is always present
+        assert apikeys is not None
         apikey = apikeys[0]
 
         apiclient = APIClient(f"{maas_url}/api/2.0/", apikey)

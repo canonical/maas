@@ -39,12 +39,12 @@ class IPv4v6Network(_BaseNetwork):
             except ValueError:
                 raise ValueError("Value is not a valid IPv4 or IPv6 network.")  # noqa: B904
 
-        if ip is not None:
-            if ip.prefixlen == 0:
-                raise ValueError(
-                    "The prefix length of the CIDR must be greater than 0."
-                )
-            return ip
+        if ip.prefixlen == 0:
+            raise ValueError(
+                "The prefix length of the CIDR must be greater than 0."
+            )
+
+        return ip
 
 
 class MacAddress(str):

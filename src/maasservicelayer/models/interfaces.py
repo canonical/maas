@@ -15,7 +15,7 @@ from maasservicelayer.models.base import (
 
 class Link(BaseModel):
     id: int
-    ip_type: int
+    ip_type: IpAddressType
     ip_address: Optional[IPvAnyAddress]
     ip_subnet: int
 
