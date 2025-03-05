@@ -69,6 +69,9 @@ from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.dnsdata import DNSDataService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
+from maasservicelayer.services.dnsresourcerecordsets import (
+    V3DNSResourceRecordSetsService,
+)
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.events import EventsService
@@ -168,6 +171,7 @@ class ServiceCollectionV3:
     subnets: SubnetsService
     temporal: TemporalService
     users: UsersService
+    v3dnsrrsets: V3DNSResourceRecordSetsService
     vlans: VlansService
     vmclusters: VmClustersService
     zones: ZonesService
@@ -389,5 +393,8 @@ class ServiceCollectionV3:
             cache=cache.get(
                 AgentsService.__name__, AgentsService.build_cache_object
             ),  # type: ignore
+        )
+        services.v3dnsrrsets = V3DNSResourceRecordSetsService(
+            domains_service=services.domains
         )
         return services

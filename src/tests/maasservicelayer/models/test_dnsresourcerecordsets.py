@@ -7,16 +7,16 @@ from pydantic import ValidationError
 import pytest
 
 from maasservicelayer.models.dnsresourcerecordsets import (
-    AaaaDnsRecord,
-    ADnsRecord,
-    CnameDnsRecord,
-    DnsResourceRecordSet,
-    DnsResourceTypeEnum,
-    MxDnsRecord,
-    NsDnsRecord,
-    SrvDnsRecord,
-    SshfpDnsRecord,
-    TxtDnsRecord,
+    AAAARecord,
+    ARecord,
+    CNAMERecord,
+    DNSResourceRecordSet,
+    DNSResourceTypeEnum,
+    MXRecord,
+    NSRecord,
+    SRVRecord,
+    SSHFPRecord,
+    TXTRecord,
     validate_domain_name,
 )
 
@@ -52,45 +52,44 @@ def test_validate_domain_name(name, should_raise: bool):
         validate_domain_name(name)
 
 
-class TestADnsRecord:
+class TestARecord:
     @pytest.mark.parametrize(
         "rrdata, should_raise",
-        [("  10.10.10.10 ", False), ("10.10.10.10", False)],
+        [("10.10.10.10", False)],
     )
     def test_from_text(self, rrdata: str, should_raise: bool) -> None:
         if should_raise:
             with pytest.raises(ValidationError):
-                ADnsRecord.from_text(rrdata)
+                ARecord.from_text(rrdata)
         else:
-            ADnsRecord.from_text(rrdata)
+            ARecord.from_text(rrdata)
 
     def test_to_text(self) -> None:
-        record = ADnsRecord(address=IPv4Address("10.10.10.10"))
+        record = ARecord(address=IPv4Address("10.10.10.10"))
         assert record.to_text() == "10.10.10.10"
 
 
-class TestAAAADnsRecord:
+class TestAAAARecord:
     @pytest.mark.parametrize(
         "rrdata, should_raise",
         [
             ("2001:0db8:0020:000a:0000:0000:0000:0004", False),
             ("2001:0db8::", False),
-            ("  2001:0db8::  ", False),
         ],
     )
     def test_from_text(self, rrdata: str, should_raise: bool) -> None:
         if should_raise:
             with pytest.raises(ValidationError):
-                AaaaDnsRecord.from_text(rrdata)
+                AAAARecord.from_text(rrdata)
         else:
-            AaaaDnsRecord.from_text(rrdata)
+            AAAARecord.from_text(rrdata)
 
     def test_to_text(self) -> None:
-        record = AaaaDnsRecord(address=IPv6Address("2001:db8::"))
+        record = AAAARecord(address=IPv6Address("2001:db8::"))
         assert record.to_text() == "2001:db8::"
 
 
-class TestCnameDnsRecord:
+class TestCNAMERecord:
     # cname validation already tested in `test_validate_domain_name`
     @pytest.mark.parametrize(
         "rrdata, should_raise", [(" cname  ", False), ("cname", False)]
@@ -98,16 +97,16 @@ class TestCnameDnsRecord:
     def test_from_text(self, rrdata: str, should_raise: bool) -> None:
         if should_raise:
             with pytest.raises(ValidationError):
-                CnameDnsRecord.from_text(rrdata)
+                CNAMERecord.from_text(rrdata)
         else:
-            CnameDnsRecord.from_text(rrdata)
+            CNAMERecord.from_text(rrdata)
 
     def test_to_text(self) -> None:
-        record = CnameDnsRecord(cname="cname")
+        record = CNAMERecord(cname="cname")
         assert record.to_text() == "cname"
 
 
-class TestMxDnsRecord:
+class TestMXRecord:
     # exchange validation already tested in `test_validate_domain_name`
     @pytest.mark.parametrize(
         "rrdata, should_raise",
@@ -123,16 +122,16 @@ class TestMxDnsRecord:
     def test_from_text(self, rrdata: str, should_raise: bool) -> None:
         if should_raise:
             with pytest.raises(ValueError):
-                MxDnsRecord.from_text(rrdata)
+                MXRecord.from_text(rrdata)
         else:
-            MxDnsRecord.from_text(rrdata)
+            MXRecord.from_text(rrdata)
 
     def test_to_text(self) -> None:
-        record = MxDnsRecord(preference=0, exchange="mailhost1.example.com")
+        record = MXRecord(preference=0, exchange="mailhost1.example.com")
         assert record.to_text() == "0 mailhost1.example.com"
 
 
-class TestNsDnsRecord:
+class TestNSRecord:
     # nsdname validation already tested in `test_validate_domain_name`
     @pytest.mark.parametrize(
         "rrdata, should_raise", [(" nsdname  ", False), ("nsdname", False)]
@@ -140,16 +139,16 @@ class TestNsDnsRecord:
     def test_from_text(self, rrdata: str, should_raise: bool) -> None:
         if should_raise:
             with pytest.raises(ValidationError):
-                NsDnsRecord.from_text(rrdata)
+                NSRecord.from_text(rrdata)
         else:
-            NsDnsRecord.from_text(rrdata)
+            NSRecord.from_text(rrdata)
 
     def test_to_text(self) -> None:
-        record = NsDnsRecord(nsdname="nsdname")
+        record = NSRecord(nsdname="nsdname")
         assert record.to_text() == "nsdname"
 
 
-class TestSrvDnsRecord:
+class TestSRVRecord:
     # target validation already tested in `test_validate_domain_name`
     # format: priority weight port target
     # target can also be "."
@@ -178,18 +177,18 @@ class TestSrvDnsRecord:
     def test_from_text(self, rrdata: str, should_raise: bool) -> None:
         if should_raise:
             with pytest.raises(ValueError):
-                SrvDnsRecord.from_text(rrdata)
+                SRVRecord.from_text(rrdata)
         else:
-            SrvDnsRecord.from_text(rrdata)
+            SRVRecord.from_text(rrdata)
 
     def test_to_text(self) -> None:
-        record = SrvDnsRecord(
+        record = SRVRecord(
             priority=10, weight=5, port=5223, target="server.example.com"
         )
         assert record.to_text() == "10 5 5223 server.example.com"
 
 
-class TestSshfpDnsRecord:
+class TestSSHFPRecord:
     # target validation already tested in `test_validate_domain_name`
     # format: algorithm fingerprint_type fingerprint
     @pytest.mark.parametrize(
@@ -217,12 +216,12 @@ class TestSshfpDnsRecord:
     def test_from_text(self, rrdata: str, should_raise: bool) -> None:
         if should_raise:
             with pytest.raises(ValueError):
-                SshfpDnsRecord.from_text(rrdata)
+                SSHFPRecord.from_text(rrdata)
         else:
-            SshfpDnsRecord.from_text(rrdata)
+            SSHFPRecord.from_text(rrdata)
 
     def test_to_text(self) -> None:
-        record = SshfpDnsRecord(
+        record = SSHFPRecord(
             algorithm=0,
             fingerprint_type=0,
             fingerprint="123456789abcdef67890123456789abcdef67890",
@@ -232,17 +231,17 @@ class TestSshfpDnsRecord:
         )
 
 
-class TestTxtDnsRecord:
+class TestTXTRecord:
     def test_from_text(self) -> None:
-        txt = TxtDnsRecord.from_text("Example data for txt record")
+        txt = TXTRecord.from_text("Example data for txt record")
         assert txt.txt_data == "Example data for txt record"
 
     def test_to_text(self) -> None:
-        txt = TxtDnsRecord(txt_data="Example data for txt record")
+        txt = TXTRecord(txt_data="Example data for txt record")
         assert txt.to_text() == "Example data for txt record"
 
 
-class TestDnsResourceRecordSet:
+class TestDNSResourceRecordSet:
     @pytest.mark.parametrize(
         "name, should_raise",
         [
@@ -255,19 +254,19 @@ class TestDnsResourceRecordSet:
     def test_domain_name_validation_srv(
         self, name: str, should_raise: bool
     ) -> None:
-        record = SrvDnsRecord(
+        record = SRVRecord(
             priority=10, weight=5, port=5223, target="server.example.com"
         )
         if should_raise:
             with pytest.raises(ValidationError):
-                DnsResourceRecordSet(
+                DNSResourceRecordSet(
                     name=name,
-                    rrtype=DnsResourceTypeEnum.SRV,
+                    rrtype=DNSResourceTypeEnum.SRV,
                     srv_records=[record],
                 )
         else:
-            DnsResourceRecordSet(
-                name=name, rrtype=DnsResourceTypeEnum.SRV, srv_records=[record]
+            DNSResourceRecordSet(
+                name=name, rrtype=DNSResourceTypeEnum.SRV, srv_records=[record]
             )
 
     @pytest.mark.parametrize(
@@ -282,44 +281,40 @@ class TestDnsResourceRecordSet:
     def test_domain_name_validation_others(
         self, name: str, should_raise: bool
     ) -> None:
-        record = ADnsRecord(address=IPv4Address("10.10.10.10"))
+        record = ARecord(address=IPv4Address("10.10.10.10"))
         if should_raise:
             with pytest.raises(ValidationError):
-                DnsResourceRecordSet(
-                    name=name, rrtype=DnsResourceTypeEnum.A, a_records=[record]
+                DNSResourceRecordSet(
+                    name=name, rrtype=DNSResourceTypeEnum.A, a_records=[record]
                 )
         else:
-            DnsResourceRecordSet(
-                name=name, rrtype=DnsResourceTypeEnum.A, a_records=[record]
+            DNSResourceRecordSet(
+                name=name, rrtype=DNSResourceTypeEnum.A, a_records=[record]
             )
 
     def test_ensure_only_one_record_set(self) -> None:
-        DnsResourceRecordSet(
+        DNSResourceRecordSet(
             name="foo",
-            rrtype=DnsResourceTypeEnum.A,
-            a_records=[ADnsRecord(address=IPv4Address("10.10.10.10"))],
+            rrtype=DNSResourceTypeEnum.A,
+            a_records=[ARecord(address=IPv4Address("10.10.10.10"))],
         )
         with pytest.raises(ValidationError):
-            DnsResourceRecordSet(
+            DNSResourceRecordSet(
                 name="foo",
-                rrtype=DnsResourceTypeEnum.A,
-                a_records=[ADnsRecord(address=IPv4Address("10.10.10.10"))],
-                aaaa_records=[
-                    AaaaDnsRecord(address=IPv6Address("2001:0db8::"))
-                ],
+                rrtype=DNSResourceTypeEnum.A,
+                a_records=[ARecord(address=IPv4Address("10.10.10.10"))],
+                aaaa_records=[AAAARecord(address=IPv6Address("2001:0db8::"))],
             )
 
     def test_rrtype_matches_records(self) -> None:
-        DnsResourceRecordSet(
+        DNSResourceRecordSet(
             name="foo",
-            rrtype=DnsResourceTypeEnum.A,
-            a_records=[ADnsRecord(address=IPv4Address("10.10.10.10"))],
+            rrtype=DNSResourceTypeEnum.A,
+            a_records=[ARecord(address=IPv4Address("10.10.10.10"))],
         )
         with pytest.raises(ValidationError):
-            DnsResourceRecordSet(
+            DNSResourceRecordSet(
                 name="foo",
-                rrtype=DnsResourceTypeEnum.A,
-                aaaa_records=[
-                    AaaaDnsRecord(address=IPv6Address("2001:0db8::"))
-                ],
+                rrtype=DNSResourceTypeEnum.A,
+                aaaa_records=[AAAARecord(address=IPv6Address("2001:0db8::"))],
             )

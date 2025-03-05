@@ -1,6 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address, IPv6Address
 import re
 
 from netaddr import AddrFormatError, IPAddress, ipv6_full
@@ -20,7 +21,7 @@ class HostnameIPMapping:
         self,
         system_id: str | None = None,
         ttl: int | None = None,
-        ips: set | None = None,
+        ips: set[IPv4Address | IPv6Address] | None = None,
         node_type: NodeTypeEnum | None = None,
         dnsresource_id: int | None = None,
         user_id: int | None = None,
@@ -30,7 +31,9 @@ class HostnameIPMapping:
         self.system_id = system_id
         self.node_type = node_type
         self.ttl = ttl
-        self.ips = set() if ips is None else ips.copy()
+        self.ips: set[IPv4Address | IPv6Address] = (
+            set() if ips is None else ips.copy()
+        )
         self.dnsresource_id = dnsresource_id
         self.user_id = user_id
         self.node_id = node_id
@@ -90,6 +93,54 @@ class HostnameRRsetMapping:
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
+
+
+class DomainDNSRecord:
+    """Output of `render_json_for_related_rrdata`.
+
+    `node_id` was added for the v3 api.
+
+    See src/maasservicelayer/services/domains.py"""
+
+    def __init__(
+        self,
+        name: str,
+        rrtype: str,
+        rrdata: str,
+        system_id: str | None = None,
+        node_type: NodeTypeEnum | None = None,
+        user_id: int | None = None,
+        dnsresource_id: int | None = None,
+        node_id: int | None = None,
+        ttl: int | None = None,
+        dnsdata_id: int | None = None,
+    ):
+        self.name = name
+        self.system_id = system_id
+        self.node_type = node_type
+        self.user_id = user_id
+        self.dnsresource_id = dnsresource_id
+        self.node_id = node_id
+        self.ttl = ttl
+        self.rrtype = rrtype
+        self.rrdata = rrdata
+        self.dnsdata_id = dnsdata_id
+
+    def to_dict(self, with_node_id: bool = True) -> dict:
+        d = {
+            "name": self.name,
+            "system_id": self.system_id,
+            "node_type": self.node_type,
+            "user_id": self.user_id,
+            "dnsresource_id": self.dnsresource_id,
+            "ttl": self.ttl,
+            "rrtype": self.rrtype,
+            "rrdata": self.rrdata,
+            "dnsdata_id": self.dnsdata_id,
+        }
+        if with_node_id:
+            d["node_id"] = self.node_id
+        return d
 
 
 def get_ip_based_hostname(ip) -> str:

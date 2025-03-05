@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from maascommon.dns import DomainDNSRecord
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
@@ -426,3 +427,41 @@ class TestDomainsService:
             == CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE
         )
         domains_repository.delete_by_id.assert_not_called()
+
+    async def test_render_json_for_related_rrdata(self) -> None:
+        domains_service = DomainsService(
+            context=Context(),
+            configurations_service=Mock(ConfigurationsService),
+            dnspublications_service=Mock(DNSPublicationsService),
+            users_service=Mock(UsersService),
+            domains_repository=Mock(DomainsRepository),
+        )
+        record = DomainDNSRecord(
+            name="example.com",
+            system_id="abcdef",
+            node_type=None,
+            user_id=None,
+            dnsresource_id=None,
+            node_id=1,
+            ttl=30,
+            rrtype="A",
+            rrdata="10.0.0.2",
+            dnsdata_id=None,
+        )
+
+        domains_service.v3_render_json_for_related_rrdata = AsyncMock(
+            side_effect=[[record], {"example.com": [record]}]
+        )
+        list_result = await domains_service.render_json_for_related_rrdata(
+            0, None
+        )
+        assert isinstance(list_result, list)
+        assert list_result == [record.to_dict(with_node_id=False)]
+
+        dict_result = await domains_service.render_json_for_related_rrdata(
+            0, None, as_dict=True
+        )
+        assert isinstance(dict_result, dict)
+        assert dict_result == {
+            "example.com": [record.to_dict(with_node_id=False)]
+        }

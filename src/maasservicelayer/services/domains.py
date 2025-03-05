@@ -6,7 +6,11 @@ from typing import List
 
 from netaddr import IPAddress
 
-from maascommon.dns import HostnameIPMapping, HostnameRRsetMapping
+from maascommon.dns import (
+    DomainDNSRecord,
+    HostnameIPMapping,
+    HostnameRRsetMapping,
+)
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
@@ -128,37 +132,49 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         return await self.repository.get_default_domain()
 
     async def get_hostname_ip_mapping(
-        self, domain_id: int | None = None, raw_ttl: bool = False
+        self,
+        domain_id: int | None = None,
+        raw_ttl: bool = False,
+        with_node_id: bool = False,
     ) -> dict[str, HostnameIPMapping]:
         default_ttl = await self.configurations_service.get(
             "default_dns_ttl", default=30
         )
         return await self.repository.get_hostname_ip_mapping(
-            default_ttl, domain_id, raw_ttl
+            default_ttl, domain_id, raw_ttl, with_node_id
         )
 
     async def get_hostname_dnsdata_mapping(
-        self, domain_id: int, raw_ttl=False, with_ids=True
+        self,
+        domain_id: int,
+        raw_ttl=False,
+        with_ids=True,
+        with_node_id: bool = False,
     ) -> dict[str, HostnameRRsetMapping]:
         default_ttl = await self.configurations_service.get(
             "default_dns_ttl", default=30
         )
         return await self.repository.get_hostname_dnsdata_mapping(
-            domain_id, default_ttl, raw_ttl, with_ids
+            domain_id, default_ttl, raw_ttl, with_ids, with_node_id
         )
 
-    async def render_json_for_related_rrdata(
+    async def v3_render_json_for_related_rrdata(
         self,
         domain_id: int,
         user_id: int | None = None,
         include_dnsdata=True,
         as_dict=False,
-    ) -> dict | list:
+        with_node_id=False,
+    ) -> OrderedDict[str, list[DomainDNSRecord]] | list[DomainDNSRecord]:
         """Render a representation of a domain's related non-IP data,
         suitable for converting to JSON.
 
         NOTE: This has been moved from src/maasserver/models/domain.py and the
         relative tests are still in src/maasserver/models/tests/test_domain.py
+
+        The v3 variant of this method just adds the node_id to the result and
+        modifies the result type. In order to not change the API contract in v2,
+        use `render_json_for_related_rrdata` below.
 
         Params:
             domain_id: The domain to calculate dns resources for
@@ -194,14 +210,14 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
 
         if include_dnsdata is True:
             rr_mapping = await self.get_hostname_dnsdata_mapping(
-                domain_id, raw_ttl=True
+                domain_id, raw_ttl=True, with_node_id=with_node_id
             )
         else:
             rr_mapping = defaultdict(HostnameRRsetMapping)
         # Smash the IP Addresses in the rrset mapping, so that the far end
         # only needs to worry about one thing.
         ip_mapping = await self.get_hostname_ip_mapping(
-            domain_id, raw_ttl=True
+            domain_id, raw_ttl=True, with_node_id=with_node_id
         )
         for hostname, info in ip_mapping.items():
             if (
@@ -216,10 +232,14 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
             if info.system_id is not None:
                 entry.system_id = info.system_id
                 entry.node_type = info.node_type
+                if with_node_id:
+                    entry.node_id = info.node_id
             if info.user_id is not None:
                 entry.user_id = info.user_id
             for ip in info.ips:
-                record_type = "AAAA" if IPAddress(ip).version == 6 else "A"
+                record_type = (
+                    "AAAA" if IPAddress(str(ip)).version == 6 else "A"
+                )
                 entry.rrset.add((info.ttl, record_type, ip, None))
         if as_dict:
             result = OrderedDict()
@@ -227,17 +247,18 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
             result = []
         for hostname, info in rr_mapping.items():
             data = [
-                {
-                    "name": hostname,
-                    "system_id": info.system_id,
-                    "node_type": info.node_type,
-                    "user_id": info.user_id,
-                    "dnsresource_id": info.dnsresource_id,
-                    "ttl": ttl,
-                    "rrtype": rrtype,
-                    "rrdata": rrdata,
-                    "dnsdata_id": dnsdata_id,
-                }
+                DomainDNSRecord(
+                    name=hostname,
+                    system_id=info.system_id,
+                    node_type=info.node_type,
+                    user_id=info.user_id,
+                    dnsresource_id=info.dnsresource_id,
+                    node_id=info.node_id,
+                    ttl=ttl,
+                    rrtype=rrtype,
+                    rrdata=rrdata,
+                    dnsdata_id=dnsdata_id,
+                )
                 for ttl, rrtype, rrdata, dnsdata_id in info.rrset
                 if (
                     info.user_id is None
@@ -253,6 +274,26 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
             else:
                 result.extend(data)
         return result
+
+    async def render_json_for_related_rrdata(
+        self,
+        domain_id: int,
+        user_id: int | None = None,
+        include_dnsdata=True,
+        as_dict=False,
+    ) -> OrderedDict[str, list[dict]] | list[dict]:
+        result = await self.v3_render_json_for_related_rrdata(
+            domain_id, user_id, include_dnsdata, as_dict
+        )
+        if isinstance(result, dict):
+            return OrderedDict(
+                {
+                    key: [v.to_dict(with_node_id=False) for v in values]
+                    for key, values in result.items()
+                }
+            )
+        else:
+            return [v.to_dict(with_node_id=False) for v in result]
 
     async def get_forwarded_domains(
         self,

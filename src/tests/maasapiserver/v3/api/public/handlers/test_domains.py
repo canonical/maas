@@ -1,6 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -11,6 +12,7 @@ import pytest
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.domains import DomainRequest
 from maasapiserver.v3.api.public.models.responses.domains import (
+    DomainResourceRecordSetListResponse,
     DomainResponse,
     DomainsListResponse,
 )
@@ -25,8 +27,17 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.dnsresourcerecordsets import (
+    ARecord,
+    DNSResourceRecordSet,
+    DNSResourceTypeEnum,
+    TXTRecord,
+)
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.dnsresourcerecordsets import (
+    V3DNSResourceRecordSetsService,
+)
 from maasservicelayer.services.domains import DomainsService
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -291,3 +302,30 @@ class TestDomainsApi(ApiCommonTests):
         assert (
             error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
+
+    async def test_get_rrsets_for_domain(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.v3dnsrrsets = Mock(V3DNSResourceRecordSetsService)
+        services_mock.v3dnsrrsets.get_rrsets_for_domain.return_value = [
+            DNSResourceRecordSet(
+                name="example.com",
+                rrtype=DNSResourceTypeEnum.A,
+                a_records=[ARecord(address=IPv4Address("10.0.0.2"))],
+            ),
+            DNSResourceRecordSet(
+                name="example.com",
+                rrtype=DNSResourceTypeEnum.TXT,
+                txt_records=[TXTRecord(txt_data="txt")],
+            ),
+        ]
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/0/rrsets"
+        )
+        assert response.status_code == 200
+        response = DomainResourceRecordSetListResponse(**response.json())
+        assert len(response.items) == 2
+        assert response.total == 2
+        assert response.next is None

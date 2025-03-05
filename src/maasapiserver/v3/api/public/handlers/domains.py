@@ -20,12 +20,18 @@ from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
 from maasapiserver.v3.api.public.models.responses.domains import (
+    DomainResourceRecordSetListResponse,
+    DomainResourceRecordSetResponse,
     DomainResponse,
     DomainsListResponse,
 )
-from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.auth.base import (
+    check_permissions,
+    get_authenticated_user,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -158,3 +164,40 @@ class DomainsHandler(Handler):
     ) -> Response:
         await services.domains.delete_by_id(domain_id, etag_if_match)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/domains/{domain_id}/rrsets",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": DomainResourceRecordSetListResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_domain_rrsets(
+        self,
+        domain_id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+    ) -> DomainResourceRecordSetListResponse:
+        assert authenticated_user is not None
+        rrsets = await services.v3dnsrrsets.get_rrsets_for_domain(
+            domain_id, authenticated_user.id
+        )
+        return DomainResourceRecordSetListResponse(
+            items=[
+                DomainResourceRecordSetResponse.from_model(
+                    rrset,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/domains/{domain_id}/rrsets",
+                )
+                for rrset in rrsets
+            ],
+            next=None,
+            total=len(rrsets),
+        )

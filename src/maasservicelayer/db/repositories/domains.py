@@ -117,6 +117,7 @@ class DomainsRepository(BaseRepository[Domain]):
         default_ttl: int,
         domain_id: int | None = None,
         raw_ttl: bool = False,
+        with_node_id: bool = False,
     ) -> dict[str, HostnameIPMapping]:
         """Get the special mappings, possibly limited to a single Domain.
 
@@ -308,11 +309,14 @@ class DomainsRepository(BaseRepository[Domain]):
             if result.system_id is not None:
                 entry.node_type = result.node_type
                 entry.system_id = result.system_id
+                if with_node_id:
+                    entry.node_id = result.node_id
             if result.ttl is not None:
                 entry.ttl = result.ttl
             if result.user_id is not None:
                 entry.user_id = result.user_id
-            entry.ips.add(result.ip)
+            if result.ip is not None:
+                entry.ips.add(result.ip)
             entry.dnsresource_id = result.dnsresource_id
         return mapping
 
@@ -321,6 +325,7 @@ class DomainsRepository(BaseRepository[Domain]):
         default_ttl: int,
         domain_id: int | None = None,
         raw_ttl: bool = False,
+        with_node_id: bool = False,
     ) -> dict[str, HostnameIPMapping]:
         """Return hostname mappings for `StaticIPAddress` entries.
 
@@ -553,13 +558,18 @@ class DomainsRepository(BaseRepository[Domain]):
             entry = mapping[result.fqdn]
             entry.node_type = result.node_type
             entry.system_id = result.system_id
+            if with_node_id:
+                entry.node_id = result.node_id
             if result.user_id is not None:
                 entry.user_id = result.user_id
             entry.ttl = result.ttl
             if result.is_boot:
                 iface_is_boot[result.fqdn] = True
             # If we have an IP on the right interface type, save it.
-            if result.is_boot == iface_is_boot[result.fqdn]:
+            if (
+                result.is_boot == iface_is_boot[result.fqdn]
+                and result.ip is not None
+            ):
                 entry.ips.add(result.ip)
         # Next, get all the addresses, on all the interfaces, and add the ones
         # that are not already present on the FQDN as $IFACE.$FQDN.  Exclude
@@ -579,14 +589,22 @@ class DomainsRepository(BaseRepository[Domain]):
                     entry = mapping[fqdn]
                     entry.node_type = result.node_type
                     entry.system_id = result.system_id
+                    if with_node_id:
+                        entry.node_id = result.node_id
                     if result.user_id is not None:
                         entry.user_id = result.user_id
                     entry.ttl = result.ttl
-                    entry.ips.add(result.ip)
+                    if result.ip is not None:
+                        entry.ips.add(result.ip)
         return mapping
 
     async def get_hostname_dnsdata_mapping(
-        self, domain_id: int, default_ttl: int, raw_ttl=False, with_ids=True
+        self,
+        domain_id: int,
+        default_ttl: int,
+        raw_ttl=False,
+        with_ids=True,
+        with_node_id=False,
     ) -> dict[str, HostnameRRsetMapping]:
         """Return hostname to RRset mapping for the specified domain.
 
@@ -696,6 +714,8 @@ class DomainsRepository(BaseRepository[Domain]):
             entry.node_type = row.node_type
             entry.system_id = row.system_id
             entry.user_id = row.user_id
+            if with_node_id:
+                entry.node_id = row.node_id
             if with_ids:
                 entry.dnsresource_id = row.dnsresource_id
                 rrtuple = (row.ttl, row.rrtype, row.rrdata, row.dnsdata_id)
