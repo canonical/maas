@@ -6,6 +6,10 @@ from dataclasses import dataclass
 CONFIGURE_DNS_WORKFLOW_NAME = "configure-dns"
 
 
+class InvalidDNSUpdateError(Exception):
+    pass
+
+
 @dataclass
 class ConfigureDNSParam:
     need_full_reload: bool

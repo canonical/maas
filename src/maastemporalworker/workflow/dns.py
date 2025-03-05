@@ -14,14 +14,16 @@ from typing import Any, Optional
 import aiodns
 import aiofiles
 import aiofiles.os as aiofiles_os
-from netaddr import IPAddress, IPNetwork
+from netaddr import AddrFormatError, IPAddress, IPNetwork
 from temporalio import activity, workflow
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.enums.subnet import RdnsMode
 from maascommon.workflows.dns import (
     CONFIGURE_DNS_WORKFLOW_NAME,
     ConfigureDNSParam,
+    InvalidDNSUpdateError,
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dnsdata import DNSDataClauseFactory
@@ -38,6 +40,7 @@ from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 from maastemporalworker.workflow.activity import ActivityBase
 from provisioningserver.dns.config import (
+    DynamicDNSUpdate,
     get_dns_config_dir,
     get_nsupdate_key_path,
     get_rndc_conf_path,
@@ -122,6 +125,207 @@ class DNSConfigActivity(ActivityBase):
                 if result:
                     return int(result[0])
 
+    async def _dnspublication_to_dnsupdate(
+        self,
+        svc: ServiceCollectionV3,
+        dnspublication: DNSPublication,
+        default_ttl: int,
+    ) -> list[DynamicDNSUpdate]:
+        update_content = dnspublication.update.split(" ")
+
+        if len(update_content) < 4:
+            if update_content[0] == DnsUpdateAction.RELOAD:
+                return [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.RELOAD,
+                        zone="",
+                        name="",
+                        rectype="",
+                    )
+                ]
+            else:
+                raise InvalidDNSUpdateError(
+                    f"invalid update: {dnspublication.update}"
+                )
+
+        op, zone_name, rec_name, rtype = update_content[:4]
+
+        ttl = default_ttl
+        answer = None
+
+        if len(update_content) > 4:
+            if len(update_content) > 5:
+                ttl = int(update_content[4])
+
+            answer = update_content[-1]
+            try:
+                ip = IPAddress(answer)
+            except AddrFormatError:
+                pass
+            else:
+                if ip.version == 6:
+                    rtype = "AAAA"
+
+        match op:
+            case DnsUpdateAction.RELOAD:
+                return [DynamicDNSUpdate(operation=op)]
+            case DnsUpdateAction.INSERT:
+                return [
+                    DynamicDNSUpdate(
+                        operation=op,
+                        zone=zone_name,
+                        name=rec_name,
+                        rectype=rtype,
+                        ttl=ttl,
+                        answer=answer,
+                    )
+                ]
+            case DnsUpdateAction.UPDATE:
+                return [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone=zone_name,
+                        name=rec_name,
+                        rectype=rtype,
+                        answer=answer,
+                    ),
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.INSERT,
+                        zone=zone_name,
+                        name=rec_name,
+                        rectype=rtype,
+                        ttl=ttl,
+                        answer=answer,
+                    ),
+                ]
+            case DnsUpdateAction.DELETE:
+                update = DynamicDNSUpdate(
+                    operation=DnsUpdateAction.DELETE,
+                    zone=zone_name,
+                    name=rec_name,
+                    rectype=rtype,
+                )
+                if ttl:
+                    update.ttl = ttl
+                if answer:
+                    update.answer = answer
+                return [update]
+            case DnsUpdateAction.DELETE_IP:
+                updates = [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone=zone_name,
+                        name=rec_name,
+                        rectype=rtype,
+                    )
+                ]
+                if rtype == "A":
+                    updates.append(
+                        DynamicDNSUpdate(
+                            operation=DnsUpdateAction.DELETE,
+                            zone=zone_name,
+                            name=rec_name,
+                            rectype="AAAA",
+                        )
+                    )
+                elif rtype == "AAAA":
+                    updates.append(
+                        DynamicDNSUpdate(
+                            operation=DnsUpdateAction.DELETE,
+                            zone=zone_name,
+                            name=rec_name,
+                            rectype="A",
+                        )
+                    )
+                domain = await svc.domains.get_one(
+                    query=QuerySpec(
+                        where=DomainsClauseFactory.with_name(zone_name)
+                    )
+                )
+                dnsrr = await svc.dnsresources.get_one(
+                    query=QuerySpec(
+                        where=DNSResourceClauseFactory.and_clauses(
+                            [
+                                DNSResourceClauseFactory.with_name(rec_name),
+                                DNSResourceClauseFactory.with_domain_id(
+                                    domain.id
+                                ),
+                            ]
+                        )
+                    )
+                )
+                remaining_ips = await svc.dnsresources.get_ips_for_dnsresource(
+                    dnsrr
+                )
+
+                for ip in remaining_ips:
+                    updates.append(
+                        DynamicDNSUpdate(
+                            operation=DnsUpdateAction.INSERT,
+                            zone=zone_name,
+                            name=rec_name,
+                            rectype=(
+                                "A"
+                                if isinstance(ip.ip, IPv4Address)
+                                else "AAAA"
+                            ),
+                            ttl=ttl,
+                            answer=str(ip.ip),
+                        )
+                    )
+                return updates
+            case DnsUpdateAction.DELETE_IFACE_IP:
+                updates = [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone=zone_name,
+                        name=rec_name,
+                        rectype=rtype,
+                    )
+                ]
+                if rtype == "A":
+                    updates.append(
+                        DynamicDNSUpdate(
+                            operation=DnsUpdateAction.DELETE,
+                            zone=zone_name,
+                            name=rec_name,
+                            rectype="AAAA",
+                        )
+                    )
+                elif rtype == "AAAA":
+                    updates.append(
+                        DynamicDNSUpdate(
+                            operation=DnsUpdateAction.DELETE,
+                            zone=zone_name,
+                            name=rec_name,
+                            rectype="A",
+                        )
+                    )
+
+                interface_id = int(update_content[-1])
+                interface = await svc.interfaces.get_by_id(interface_id)
+                ips = await svc.staticipaddress.get_for_interfaces(
+                    [interface.id]
+                )
+
+                if ips:
+                    for ip in ips:
+                        updates.append(
+                            DynamicDNSUpdate(
+                                operation=DnsUpdateAction.INSERT,
+                                zone=zone_name,
+                                name=rec_name,
+                                rectype=(
+                                    "A"
+                                    if isinstance(ip.ip, IPv4Address)
+                                    else "AAAA"
+                                ),
+                                ttl=ttl,
+                                answer=str(ip.ip),
+                            )
+                        )
+                return updates
+
     @activity.defn(name=GET_CHANGES_SINCE_CURRENT_SERIAL_NAME)
     async def get_changes_since_current_serial(
         self,
@@ -133,7 +337,16 @@ class DNSConfigActivity(ActivityBase):
                     current_serial
                 )
             )
-            return SerialChangesResult(updates=dnspublications)
+            default_ttl = await svc.configurations.get("default_dns_ttl")
+
+            updates = []
+
+            for dnspublication in dnspublications:
+                updates += await self._dnspublication_to_dnsupdate(
+                    svc, dnspublication, default_ttl
+                )
+
+            return SerialChangesResult(updates=updates)
 
     @activity.defn(name=GET_REGION_CONTROLLERS_NAME)
     async def get_region_controllers(self) -> RegionControllersResult:
@@ -613,12 +826,94 @@ class DNSConfigActivity(ActivityBase):
             )
         return DNSUpdateResult(serial=serial)
 
+    async def _nsupdate(
+        self,
+        updates: list[DynamicDNSUpdate],
+        domains: list[Domain],
+        subnets: list[Subnet],
+        serial: int,
+        server_address: Optional[str] = None,
+        default_ttl: Optional[int] = 30,
+    ) -> None:
+        stdin = []
+
+        def _fwd_updates(domain: Domain) -> list[str]:
+            ttl = domain.ttl if domain.ttl else default_ttl
+            return (
+                [f"zone {domain.name}"]
+                + [
+                    self._format_update(update)
+                    for update in updates
+                    if update.zone == domain.name
+                ]
+                + [
+                    f"update add {domain.name} {ttl} SOA {domain.name}. nobody.example.com. {serial} 600 1800 604800 {ttl}"
+                ]
+            )
+
+        def _rev_updates(subnet: Subnet) -> list[str]:
+            network = IPNetwork(str(subnet.cidr))
+            zone_name = self._get_rev_zone_name(network)
+            return (
+                [f"zone {zone_name}"]
+                + [
+                    self._format_update(DynamicDNSUpdate.as_rev_record(update))
+                    for update in updates
+                    if update.ip and update.ip in network
+                ]
+                + [
+                    f"update add {zone_name} {default_ttl} SOA {zone_name}. nobody.example.com. {serial} 600 1800 604800 {default_ttl}"
+                ]
+            )
+
+        for domain in domains:
+            stdin += _fwd_updates(domain)
+
+        for subnet in subnets:
+            stdin += _rev_updates(subnet)
+
+        stdin += ["send\n"]
+
+        if server_address:
+            stdin = [f"server {server_address}"] + stdin
+
+        cmd = ["nsupdate", "-k", self._get_nsupdate_keys_path()]
+        if len(updates) > 1:
+            cmd.append("-v")  # use TCP for bulk updates
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdin=asyncio.subprocess.PIPE
+        )
+        await proc.communicate(input="\n".join(stdin).encode("ascii"))
+
     @activity.defn(name=DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME)
     async def dynamic_update_dns_configuration(
         self, updates: DynamicUpdateParam
     ) -> DNSUpdateResult:
-        # TODO apply dynamic updates
-        return DNSUpdateResult(serial=1)
+        async with self.start_transaction() as svc:
+            domains = await svc.domains.get_many(
+                query=QuerySpec(
+                    where=DomainsClauseFactory.with_authoritative(True),
+                ),
+            )
+            subnets = await svc.subnets.get_many(
+                query=QuerySpec(
+                    where=SubnetClauseFactory.with_not_rdns_mode(
+                        RdnsMode.DISABLED
+                    ),
+                ),
+            )
+            default_ttl = await svc.configurations.get("default_dns_ttl")
+
+            await self._nsupdate(
+                updates.updates,
+                domains,
+                subnets,
+                updates.new_serial,
+                default_ttl,
+            )
+
+        return DNSUpdateResult(serial=updates.new_serial)
 
     def _get_resolver(self) -> aiodns.DNSResolver:
         loop = asyncio.get_event_loop()

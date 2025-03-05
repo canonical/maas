@@ -117,6 +117,11 @@ class StaticIPAddressService(
             )
         )
 
+    async def get_for_interfaces(
+        self, interface_ids: list[int]
+    ) -> list[StaticIPAddress]:
+        return await self.repository.get_for_interfaces(interface_ids)
+
     async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
         return await self.repository.get_for_nodes(query=query)
 

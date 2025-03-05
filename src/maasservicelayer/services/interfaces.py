@@ -9,16 +9,19 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.interfaces import InterfaceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
-from maasservicelayer.services.base import Service
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.temporal import TemporalService
 
 
-class InterfacesService(Service):
+class InterfacesService(
+    BaseService[Interface, InterfaceRepository, InterfaceBuilder]
+):
     """
     WIP: We are rethinking the way we model interfaces and storage in the new LST.
     In this service we have to add only what's really needed until we figure out the new model.
@@ -30,11 +33,11 @@ class InterfacesService(Service):
         temporal_service: TemporalService,
         interface_repository: InterfaceRepository,
     ):
-        super().__init__(context)
+        super().__init__(context, interface_repository)
         self.temporal_service = temporal_service
         self.interface_repository = interface_repository
 
-    async def list(
+    async def list(  # pyright: ignore [reportIncompatibleMethodOverride]
         self, node_id: int, page: int, size: int
     ) -> ListResult[Interface]:
         return await self.interface_repository.list(

@@ -14,6 +14,7 @@ from temporalio import activity
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.subnet import RdnsMode
 from maascommon.workflows.dns import (
     CONFIGURE_DNS_WORKFLOW_NAME,
@@ -37,12 +38,14 @@ from maastemporalworker.workflow.dns import (
     RegionControllersResult,
     SerialChangesResult,
 )
+from provisioningserver.dns.config import DynamicDNSUpdate
 from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnspublication import (
     create_test_dnspublication_entry,
 )
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
+from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
@@ -91,8 +94,12 @@ class TestDNSConfigActivity:
         mock_file.__aiter__.return_value = ["           1   ; serial"]
         mock_open = mocker.patch("aiofiles.open")
         mock_open.return_value.__aenter__.return_value = mock_file
-        dnspublications = [
-            await create_test_dnspublication_entry(fixture, serial=i + 1)
+        [
+            await create_test_dnspublication_entry(
+                fixture,
+                serial=i + 2,
+                update=f"INSERT {domain.name} rec{i + 1} A 30 10.0.0.{i + 1}",
+            )
             for i in range(5)
         ]
 
@@ -107,9 +114,162 @@ class TestDNSConfigActivity:
         )
 
         # from domain fixture
-        assert result.updates[0].source == f"added zone {domain.name}"
+        assert result.updates[0].operation == DnsUpdateAction.RELOAD
         # the dnspublication fixtures
-        assert result.updates[1:] == dnspublications[1:]
+        assert result.updates[1:] == [
+            DynamicDNSUpdate(
+                operation=DnsUpdateAction.INSERT,
+                zone=domain.name,
+                name=f"rec{i + 1}",
+                ttl=30,
+                rectype="A",
+                answer=f"10.0.0.{i + 1}",
+            )
+            for i in range(5)
+        ]
+
+    async def test__dnspublication_to_dnsupdate(
+        self, fixture: Fixture, db: Database, db_connection: AsyncConnection
+    ) -> None:
+        domain = await create_test_domain_entry(fixture, name="example.com")
+        iface = await create_test_interface_entry(fixture)
+        await create_test_dnsresource_entry(
+            fixture, name="test", domain=domain
+        )
+        testcases = [
+            (
+                await create_test_dnspublication_entry(
+                    fixture, update="RELOAD"
+                ),
+                [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.RELOAD,
+                        zone="",
+                        name="",
+                        rectype="",
+                    )
+                ],
+            ),
+            (
+                await create_test_dnspublication_entry(
+                    fixture, update="INSERT example.com test A 30 10.0.0.1"
+                ),
+                [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.INSERT,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                        ttl=30,
+                        answer="10.0.0.1",
+                    )
+                ],
+            ),
+            (
+                await create_test_dnspublication_entry(
+                    fixture, update="UPDATE example.com test A 30 10.0.0.1"
+                ),
+                [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                        ttl=None,
+                        answer="10.0.0.1",
+                    ),
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.INSERT,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                        ttl=30,
+                        answer="10.0.0.1",
+                    ),
+                ],
+            ),
+            (
+                await create_test_dnspublication_entry(
+                    fixture, update="DELETE example.com test A 30 10.0.0.1"
+                ),
+                [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                        ttl=30,
+                        answer="10.0.0.1",
+                    )
+                ],
+            ),
+            (
+                await create_test_dnspublication_entry(
+                    fixture, update="DELETE example.com test A"
+                ),
+                [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                        ttl=30,
+                    )
+                ],
+            ),
+            (
+                await create_test_dnspublication_entry(
+                    fixture, update="DELETE-IP example.com test A 10.0.0.1"
+                ),
+                [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                    ),
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone="example.com",
+                        name="test",
+                        rectype="AAAA",
+                    ),
+                ],
+            ),
+            (
+                await create_test_dnspublication_entry(
+                    fixture,
+                    update=f"DELETE-IFACE-IP example.com test A {iface.id}",
+                ),
+                [
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                    ),
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.DELETE,
+                        zone="example.com",
+                        name="test",
+                        rectype="AAAA",
+                    ),
+                ],
+            ),
+        ]
+
+        services_cache = CacheForServices()
+
+        activities = DNSConfigActivity(
+            db, services_cache, connection=db_connection
+        )
+
+        async with activities.start_transaction() as svc:
+            for testcase in testcases:
+                result = await activities._dnspublication_to_dnsupdate(
+                    svc, testcase[0], 30
+                )
+                assert result == testcase[1]
 
     async def test_get_region_controllers(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
@@ -567,8 +727,42 @@ a 30 IN A 10.0.0.1
         assert len(mock_file.write.mock_calls) == 3
         assert result.serial == latest_serial
 
-    async def test_dynamic_update_dns_configuration(self) -> None:
-        pass
+    async def test_dynamic_update_dns_configuration(
+        self,
+        mocker: MockerFixture,
+        db: Database,
+        db_connection: AsyncConnection,
+    ) -> None:
+        env = ActivityEnvironment()
+
+        mock_exec = mocker.patch("asyncio.create_subprocess_exec")
+
+        services_cache = CacheForServices()
+
+        activities = DNSConfigActivity(
+            db, services_cache, connection=db_connection
+        )
+
+        result = await env.run(
+            activities.dynamic_update_dns_configuration,
+            DynamicUpdateParam(
+                new_serial=1000,
+                updates=[
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.INSERT,
+                        zone="example.com",
+                        name="test",
+                        rectype="A",
+                        ttl=30,
+                        answer="10.0.0.1",
+                    ),
+                ],
+            ),
+        )
+
+        mock_exec.assert_called_once()
+
+        assert result.serial == 1000
 
     async def test_check_serial_update(
         self,

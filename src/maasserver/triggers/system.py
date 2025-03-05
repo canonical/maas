@@ -514,7 +514,7 @@ DNS_PUBLISH_UPDATE = dedent(
         (serial, created, source, update)
       VALUES
         (nextval('maasserver_zone_serial_seq'), now(),
-         substring(reason FOR 255), '');
+         substring(reason FOR 255), 'RELOAD');
     END;
     $$ LANGUAGE plpgsql;
     """
