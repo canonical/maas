@@ -398,6 +398,7 @@ RegionControllerRule = Rule(
 RegionControllerWorker = files("src/maastemporalworker/**/*.py")
 
 RegionControllerWorkerRule = Rule(
+    Allow("aiodns|aiodns.**"),
     Allow("aiofiles|aiofiles.**"),
     Allow("aiohttp|aiohttp.**"),
     Allow("jose|jose.**"),

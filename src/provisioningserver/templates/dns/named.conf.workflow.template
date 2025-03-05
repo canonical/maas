@@ -1,0 +1,36 @@
+include "{{named_rndc_conf_path}}";
+include "{{nsupdate_keys_conf_path}}";
+
+# Authoritative Zone declarations.
+{{for zone in zones}}
+zone "{{zone[0]}}" {
+    type master;
+    file "{{zone[1]}}";
+    allow-update {
+        key maas.;
+    };
+};
+{{endfor}}
+
+# Forwarded Zone declarations.
+{{for forwarded_zone in forwarded_zones}}
+zone "{{forwarded_zone[0]}}" {
+    type forward;
+    forward only;
+    forwarders {
+    {{for forward_server in forwarded_zone[1]}}
+        {{forward_server[0]}} port {{ forward_server[1] if forward_server[1] else 53 }};
+    {{endfor}}
+    };
+};
+{{endfor}}
+
+# Access control for recursive queries.  See named.conf.options.inside.maas
+# for the directives used on this ACL.
+acl "trusted" {
+{{for trusted_network in trusted_networks}}
+    {{trusted_network}};
+{{endfor}}
+    localnets;
+    localhost;
+};

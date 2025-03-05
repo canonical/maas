@@ -1,0 +1,16 @@
+; Zone file modified: {{modified}}.
+$TTL {{zone_ttl}}
+@   IN    SOA {{zone_name}}. nobody.example.com. (
+              {{serial}} ; serial
+              600 ; Refresh
+              1800 ; Retry
+              604800 ; Expire
+              {{zone_ttl}} ; NXTTL
+              )
+
+@   {{ns_ttl}} IN NS {{ns_host_name}}.
+{{for record_key, answers in zone_records.items()}}
+{{for answer in answers}}
+{{record_key[0]}} {{answer[1]}} IN {{record_key[1]}} {{answer[0]}}
+{{endfor}}
+{{endfor}}
