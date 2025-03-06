@@ -78,9 +78,9 @@ class TestInterfaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.list.return_value = ListResult[Interface](
-            items=[TEST_INTERFACE_2], total=2
-        )
+        services_mock.interfaces.list_for_node.return_value = ListResult[
+            Interface
+        ](items=[TEST_INTERFACE_2], total=2)
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         interfaces_response = InterfaceListResponse(**response.json())
@@ -94,9 +94,9 @@ class TestInterfaceApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.list.return_value = ListResult[Interface](
-            items=[TEST_INTERFACE_2, TEST_INTERFACE], total=2
-        )
+        services_mock.interfaces.list_for_node.return_value = ListResult[
+            Interface
+        ](items=[TEST_INTERFACE_2, TEST_INTERFACE], total=2)
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         interfaces_response = InterfaceListResponse(**response.json())

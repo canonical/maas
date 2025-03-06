@@ -49,7 +49,7 @@ class InterfaceRepository(BaseRepository):
     def get_model_factory(self) -> Type[Interface]:
         return Interface
 
-    async def list(  # pyright: ignore [reportIncompatibleMethodOverride]
+    async def list_for_node(
         self, node_id: int, page: int, size: int
     ) -> ListResult[Interface]:
         total_stmt = (

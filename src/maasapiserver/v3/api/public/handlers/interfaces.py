@@ -42,7 +42,7 @@ class InterfacesHandler(Handler):
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
-        interfaces = await services.interfaces.list(
+        interfaces = await services.interfaces.list_for_node(
             node_id=node_id,
             page=pagination_params.page,
             size=pagination_params.size,

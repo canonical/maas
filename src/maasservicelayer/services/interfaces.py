@@ -37,10 +37,10 @@ class InterfacesService(
         self.temporal_service = temporal_service
         self.interface_repository = interface_repository
 
-    async def list(  # pyright: ignore [reportIncompatibleMethodOverride]
+    async def list_for_node(
         self, node_id: int, page: int, size: int
     ) -> ListResult[Interface]:
-        return await self.interface_repository.list(
+        return await self.interface_repository.list_for_node(
             node_id=node_id, page=page, size=size
         )
 

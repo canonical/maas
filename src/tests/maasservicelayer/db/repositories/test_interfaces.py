@@ -67,7 +67,7 @@ class TestInterfaceRepository:
             IpAddressType.USER_RESERVED,
         ],
     )
-    async def test_list(
+    async def test_list_for_node(
         self,
         page_size: int,
         alloc_type: str,
@@ -102,7 +102,7 @@ class TestInterfaceRepository:
         total_pages = ceil(interface_count / page_size)
         total_retrieved = 0
         for page in range(1, total_pages + 1):
-            interfaces_result = await interfaces_repository.list(
+            interfaces_result = await interfaces_repository.list_for_node(
                 node_id=machine["id"], page=page, size=page_size
             )
             actual_page_size = len(interfaces_result.items)
@@ -178,11 +178,11 @@ class TestInterfaceRepository:
             for i in range(0, interface2_count)
         ][::-1]
 
-        interfaces1_result = await interfaces_repository.list(
+        interfaces1_result = await interfaces_repository.list_for_node(
             node_id=machine1["id"], page=1, size=20
         )
 
-        interfaces2_result = await interfaces_repository.list(
+        interfaces2_result = await interfaces_repository.list_for_node(
             node_id=machine2["id"], page=1, size=20
         )
 
@@ -227,7 +227,7 @@ class TestInterfaceRepository:
             for i in range(0, interface_count)
         ][::-1]
 
-        interfaces_result = await interfaces_repository.list(
+        interfaces_result = await interfaces_repository.list_for_node(
             node_id=machine["id"], page=1, size=interface_count
         )
 
@@ -320,7 +320,7 @@ class TestInterfaceRepository:
             )
             created_interfaces.insert(0, this_interface)
 
-        interfaces_result = await interfaces_repository.list(
+        interfaces_result = await interfaces_repository.list_for_node(
             node_id=machine["id"], page=1, size=interface_count
         )
 
