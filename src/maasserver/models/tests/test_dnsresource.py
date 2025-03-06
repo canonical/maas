@@ -6,6 +6,7 @@ import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
 
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress
 from maasserver.models.dnsresource import DNSResource, separate_fqdn
 from maasserver.permissions import NodePermission
@@ -260,6 +261,25 @@ class TestDNSResource(MAASServerTestCase):
         self.assertCountEqual(
             (sip1.get_ip(), sip2.get_ip()), dnsresource.get_addresses()
         )
+
+    def test_delete_dnsresource(self):
+        name = factory.make_name()
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, hostname=name, domain=domain
+        )
+        sip1 = factory.make_StaticIPAddress()
+        node.current_config.interface_set.first().ip_addresses.add(sip1)
+        sip2 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED
+        )
+        dnsresource.ip_addresses.add(sip2)
+        dnsresource.delete()
+        assert StaticIPAddress.objects.filter(ip=sip1.get_ip()).exists()
+        assert not StaticIPAddress.objects.filter(ip=sip2.get_ip()).exists()
 
 
 class TestStaticIPAddressSignals(MAASServerTestCase):

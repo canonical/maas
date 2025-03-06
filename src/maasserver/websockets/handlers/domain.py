@@ -10,6 +10,7 @@ from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.forms.domain import DomainForm
 from maasserver.models import DNSData, DNSResource, GlobalDefault
 from maasserver.models.domain import Domain
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.permissions import NodePermission
 from maasserver.sqlalchemy import service_layer
 from maasserver.websockets.base import (
@@ -161,6 +162,10 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
             # The previous_rrdata field will contain the original value
             # for the IP address in the edited row.
             ip_addresses.remove(params["previous_rrdata"])
+            # remove the IP if necessary
+            ip = StaticIPAddress.objects.get(ip=params["previous_rrdata"])
+            if ip.is_safe_to_delete():
+                ip.delete()
         ip_addresses.extend(params["ip_addresses"])
         params["ip_addresses"] = " ".join(ip_addresses)
         form = DNSResourceForm(
@@ -178,6 +183,10 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
         )
         ip_addresses = dnsresource.get_addresses()
         ip_addresses.remove(params["rrdata"])
+        # remove the IP if necessary
+        ip = StaticIPAddress.objects.get(ip=params["rrdata"])
+        if ip.is_safe_to_delete():
+            ip.delete()
         params["ip_addresses"] = " ".join(ip_addresses)
         form = DNSResourceForm(
             data=params, user=self.user, instance=dnsresource
