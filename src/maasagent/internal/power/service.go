@@ -41,7 +41,27 @@ var (
 	// ErrWrongPowerState is an error for when a power action executes
 	// and the machine is found in an incorrect power state
 	ErrWrongPowerState = errors.New("BMC is in the wrong power state")
+
+	// procFactory holds the implementation of a function that will return a
+	// command that can be called with Run(). This is used to inject the actual
+	// `os/exec`-based implementation within `configure()`, or a mocked
+	// implementation for unit testing.
+	procFactory powerProcFactory
+
+	// pathFactory holds the implementation of a function that will return a
+	// command that attempts to resolve the full path of a program binary.
+	// This is used to inject the actual `os/exec`-based implementation within
+	// `configure()`, or a mocked implementation for unit testing.
+	pathFactory osPathFactory
 )
+
+type powerProc interface {
+	Run() error
+}
+
+type powerProcFactory func(ctx context.Context, stdout, stderr *bytes.Buffer, name string, arg ...string) powerProc
+
+type osPathFactory func(file string) (string, error)
 
 // PowerService is a service that knows how to reach BMC to perform power
 // operations. Invocation of this service normally should happen via Temporal.
@@ -98,6 +118,19 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 
 	if err != nil {
 		return err
+	}
+
+	procFactory = func(ctx context.Context, stdout, stderr *bytes.Buffer, name string, arg ...string) powerProc {
+		cmd := exec.CommandContext(ctx, name, arg...)
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+
+		return cmd
+	}
+
+	//nolint:gocritic // The 'unlambda' check fails if enabled - this interface-based implementation is needed for dependency injection and unit testing
+	pathFactory = func(file string) (string, error) {
+		return exec.LookPath(file)
 	}
 
 	activities := map[string]any{
@@ -284,7 +317,7 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 func powerCommand(ctx context.Context, action, driver string, opts map[string]any, bootOrder ...map[string]any) (string, error) {
 	log := activity.GetLogger(ctx)
 
-	maasPowerCLI, err := exec.LookPath(powerCLIExecutableName())
+	maasPowerCLI, err := pathFactory(powerCLIExecutableName())
 
 	if err != nil {
 		log.Error("MAAS power CLI executable path lookup failure",
@@ -315,12 +348,9 @@ func powerCommand(ctx context.Context, action, driver string, opts map[string]an
 
 	log.Debug("Executing MAAS power CLI", tag.Builder().KV("args", args).KeyVals...)
 
-	//nolint:gosec // gosec's G204 flags any command execution using variables
-	cmd := exec.CommandContext(ctx, maasPowerCLI, args...)
-
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+
+	cmd := procFactory(ctx, &stdout, &stderr, maasPowerCLI, args...)
 
 	err = cmd.Run()
 	if err != nil {
