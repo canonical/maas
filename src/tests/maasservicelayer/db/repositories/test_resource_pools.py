@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.resource_pools import ResourcePoolBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -18,6 +19,11 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.models.resource_pools import ResourcePool
+from tests.fixtures.factories.node import (
+    create_test_device_entry,
+    create_test_machine_entry,
+    create_test_rack_controller_entry,
+)
 from tests.fixtures.factories.resource_pools import (
     create_n_test_resource_pools,
     create_test_resource_pool,
@@ -134,3 +140,151 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
         builder = ResourcePoolBuilder(name="test", description="test")
         with pytest.raises(NotFoundException):
             await repository_instance.update_by_id(1000, builder)
+
+
+class TestResourcePoolRepositoryListSummary:
+    @pytest.fixture
+    def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> ResourcePoolRepository:
+        return ResourcePoolRepository(Context(connection=db_connection))
+
+    async def test_list_with_summary_machine_count(
+        self, repository_instance: ResourcePoolRepository, fixture: Fixture
+    ) -> None:
+        # Controllers and devices should not be taken into account
+        await create_test_device_entry(fixture, pool_id=0)
+        await create_test_rack_controller_entry(fixture, pool_id=0)
+
+        # One machine ready and one testing
+        await create_test_machine_entry(
+            fixture, pool_id=0, status=NodeStatus.TESTING
+        )
+        await create_test_machine_entry(
+            fixture, pool_id=0, status=NodeStatus.READY
+        )
+
+        retrieved_resource_pools = await repository_instance.list_with_summary(
+            page=1, size=20, query=None
+        )
+        assert len(retrieved_resource_pools.items) == 1
+        assert retrieved_resource_pools.total == 1
+        assert retrieved_resource_pools.items[0].id == 0
+        assert retrieved_resource_pools.items[0].name == "default"
+        assert retrieved_resource_pools.items[0].machine_total_count == 2
+        assert retrieved_resource_pools.items[0].machine_ready_count == 1
+
+    async def test_list_with_summary_filters_for_resource_pool(
+        self, repository_instance: ResourcePoolRepository, fixture: Fixture
+    ) -> None:
+        created_resource_pool = await create_test_resource_pool(
+            fixture, name="test1"
+        )
+
+        # One machine deployed and one ready in the default resource pool
+        await create_test_machine_entry(
+            fixture, pool_id=0, status=NodeStatus.DEPLOYED
+        )
+        await create_test_machine_entry(
+            fixture, pool_id=0, status=NodeStatus.READY
+        )
+
+        # 3 machines commissioning and 2 ready in the new resource pool
+        [
+            await create_test_machine_entry(
+                fixture,
+                pool_id=created_resource_pool.id,
+                status=NodeStatus.COMMISSIONING,
+            )
+            for _ in range(3)
+        ]
+        [
+            await create_test_machine_entry(
+                fixture,
+                pool_id=created_resource_pool.id,
+                status=NodeStatus.READY,
+            )
+            for _ in range(2)
+        ]
+
+        retrieved_resource_pools = await repository_instance.list_with_summary(
+            page=1, size=20, query=None
+        )
+        assert len(retrieved_resource_pools.items) == 2
+        assert retrieved_resource_pools.total == 2
+
+        assert retrieved_resource_pools.items[0].id == created_resource_pool.id
+        assert (
+            retrieved_resource_pools.items[0].name
+            == created_resource_pool.name
+        )
+        assert retrieved_resource_pools.items[0].machine_total_count == 5
+        assert retrieved_resource_pools.items[0].machine_ready_count == 2
+
+        assert retrieved_resource_pools.items[1].id == 0
+        assert retrieved_resource_pools.items[1].name == "default"
+        assert retrieved_resource_pools.items[1].machine_total_count == 2
+        assert retrieved_resource_pools.items[1].machine_ready_count == 1
+
+    async def test_list_with_summary_filters_by_pool_id(
+        self, repository_instance: ResourcePoolRepository, fixture: Fixture
+    ) -> None:
+        created_resource_pool = await create_test_resource_pool(
+            fixture, name="test1"
+        )
+
+        # One machine deployed and one ready in the default resource pool
+        await create_test_machine_entry(
+            fixture, pool_id=0, status=NodeStatus.DEPLOYED
+        )
+        await create_test_machine_entry(
+            fixture, pool_id=0, status=NodeStatus.READY
+        )
+
+        # 3 machines commissioning and 1 ready in the new resource pool
+        [
+            await create_test_machine_entry(
+                fixture,
+                pool_id=created_resource_pool.id,
+                status=NodeStatus.COMMISSIONING,
+            )
+            for _ in range(3)
+        ]
+        await create_test_machine_entry(
+            fixture, pool_id=created_resource_pool.id, status=NodeStatus.READY
+        )
+
+        retrieved_resource_pools = await repository_instance.list_with_summary(
+            page=1,
+            size=20,
+            query=QuerySpec(
+                ResourcePoolClauseFactory.with_ids([created_resource_pool.id])
+            ),
+        )
+        assert len(retrieved_resource_pools.items) == 1
+        assert retrieved_resource_pools.total == 1
+
+        assert retrieved_resource_pools.items[0].id == created_resource_pool.id
+        assert (
+            retrieved_resource_pools.items[0].name
+            == created_resource_pool.name
+        )
+        assert retrieved_resource_pools.items[0].machine_total_count == 4
+        assert retrieved_resource_pools.items[0].machine_ready_count == 1
+
+    async def test_list_with_summary_pagination(
+        self, repository_instance: ResourcePoolRepository, fixture: Fixture
+    ) -> None:
+        await create_n_test_resource_pools(fixture, size=6)
+
+        retrieved_resource_pools = await repository_instance.list_with_summary(
+            page=1, size=2, query=None
+        )
+        assert len(retrieved_resource_pools.items) == 2
+        assert retrieved_resource_pools.total == 7
+
+        retrieved_resource_pools = await repository_instance.list_with_summary(
+            page=4, size=2, query=None
+        )
+        assert len(retrieved_resource_pools.items) == 1
+        assert retrieved_resource_pools.total == 7

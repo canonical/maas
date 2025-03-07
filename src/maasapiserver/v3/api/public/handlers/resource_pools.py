@@ -22,8 +22,11 @@ from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
 from maasapiserver.v3.api.public.models.responses.resource_pools import (
+    ResourcePoolPermission,
     ResourcePoolResponse,
     ResourcePoolsListResponse,
+    ResourcePoolsWithSummaryListResponse,
+    ResourcePoolWithSummaryResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
@@ -106,6 +109,96 @@ class ResourcePoolHandler(Handler):
             total=resource_pools.total,
             next=(
                 f"{V3_API_PREFIX}/resource_pools?"
+                f"{pagination_params.to_next_href_format()}"
+                if resource_pools.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+        )
+
+    @handler(
+        path="/resource_pools_with_summary",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": ResourcePoolsWithSummaryListResponse,
+            },
+        },
+        summary="List resource pools with a summary. ONLY FOR INTERNAL USAGE.",
+        description="List resource pools with a summary. This endpoint is only for internal usage and might be changed or removed without notice.",
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.USER},
+                    rbac_permissions={
+                        RbacPermission.VIEW,
+                        RbacPermission.VIEW_ALL,
+                        RbacPermission.EDIT,
+                    },
+                )
+            )
+        ],
+    )
+    async def list_resource_pools_with_summary(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        authenticated_user=Depends(get_authenticated_user),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> ResourcePoolsWithSummaryListResponse:
+        query = None
+        if authenticated_user.rbac_permissions:
+            query = QuerySpec(
+                where=ResourcePoolClauseFactory.with_ids(
+                    ids=(
+                        authenticated_user.rbac_permissions.visible_pools
+                        | authenticated_user.rbac_permissions.view_all_pools
+                    )
+                )
+            )
+        resource_pools = await services.resource_pools.list_with_summary(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=query,
+        )
+
+        resource_pools_with_summary_list_response_items = []
+        for resource_pool_with_summary in resource_pools.items:
+            permissions = set()
+            if authenticated_user.rbac_permissions:
+                if authenticated_user.rbac_permissions.can_edit_all_resource_pools:
+                    permissions = {
+                        ResourcePoolPermission.DELETE,
+                        ResourcePoolPermission.EDIT,
+                    }
+                elif (
+                    resource_pool_with_summary.id
+                    in authenticated_user.rbac_permissions.edit_pools
+                ):
+                    permissions = {ResourcePoolPermission.EDIT}
+            else:
+                if authenticated_user.is_admin():
+                    permissions = {
+                        ResourcePoolPermission.DELETE,
+                        ResourcePoolPermission.EDIT,
+                    }
+
+            resource_pools_with_summary_list_response_items.append(
+                ResourcePoolWithSummaryResponse.from_model_with_summary(
+                    resource_pool_with_summary=resource_pool_with_summary,
+                    permissions=permissions,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools",
+                )
+            )
+
+        return ResourcePoolsWithSummaryListResponse(
+            items=resource_pools_with_summary_list_response_items,
+            total=resource_pools.total,
+            next=(
+                f"{V3_API_PREFIX}/resource_pools_with_summary?"
                 f"{pagination_params.to_next_href_format()}"
                 if resource_pools.has_next(
                     pagination_params.page, pagination_params.size

@@ -11,3 +11,11 @@ from maasservicelayer.models.base import (
 class ResourcePool(MaasTimestampedBaseModel):
     name: str
     description: str
+
+    def is_default(self) -> bool:
+        return self.id == 0
+
+
+class ResourcePoolWithSummary(ResourcePool):
+    machine_total_count: int
+    machine_ready_count: int
