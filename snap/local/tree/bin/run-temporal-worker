@@ -8,5 +8,7 @@ export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"
 export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
+export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
+export MAAS_ZONE_FILE_CONFIG_DIR="$SNAP_DATA/bind"
 
 exec "$SNAP/bin/maas-temporal-worker"
