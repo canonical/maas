@@ -78,7 +78,7 @@ all: build ui go-bins doc
 .PHONY: all
 
 
-$(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.59.1
+$(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.60.1
 $(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
 	GOBIN="$(realpath $(dir $@))"
 	utilities/get_golangci-lint "v$(GOLANGCI_VERSION)"
