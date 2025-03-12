@@ -256,13 +256,18 @@ func (h *RecursiveHandler) srvFailResponse(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolver netip.Addr, r *dns.Msg) (*dns.Msg, error) {
-	var cancel context.CancelFunc
+	var (
+		cancel context.CancelFunc
+		err    error
+	)
 
 	ctx, cancel = context.WithTimeout(ctx, attemptTimeout)
 	defer cancel()
 
 	if h.systemResolvers.EDNS0Enabled && !slices.ContainsFunc(r.Extra, checkForEDNS0Cookie) {
-		cookie, err := generateEDNS0Cookie()
+		var cookie string
+
+		cookie, err = generateEDNS0Cookie()
 		if err != nil {
 			return nil, err
 		}
@@ -288,9 +293,13 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 	if r.Id == 0 {
 		max := big.NewInt(int64(math.MaxUint16))
 
-		id, err := rand.Int(rand.Reader, max)
-		if err != nil {
-			return nil, err
+		var id *big.Int
+
+		for id == nil || id.Int64() > math.MaxUint16 {
+			id, err = rand.Int(rand.Reader, max)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		r.Id = uint16(id.Int64())
