@@ -4,24 +4,24 @@
 from ipaddress import IPv4Address, IPv6Address
 from typing import Optional, Self
 
-from maasapiserver.v3.api.public.models.responses.base import (
-    BaseHal,
-    BaseHref,
-    HalResponse,
-    PaginatedResponse,
-)
-from maasservicelayer.models.dnsresourcerecordsets import (
+from maasapiserver.v3.api.public.models.dnsresourcerecordsets import (
     AAAARecord,
     ARecord,
     CNAMERecord,
-    DNSResourceRecordSet,
-    DNSResourceTypeEnum,
     MXRecord,
     NSRecord,
     SRVRecord,
     SSHFPRecord,
     TXTRecord,
 )
+from maasapiserver.v3.api.public.models.responses.base import (
+    BaseHal,
+    BaseHref,
+    HalResponse,
+    PaginatedResponse,
+)
+from maascommon.enums.dns import DNSResourceTypeEnum
+from maasservicelayer.models.dnsresourcerecordsets import GenericDNSRecord
 from maasservicelayer.models.domains import Domain
 
 
@@ -138,7 +138,7 @@ class TXTRecordResponse(HalResponse[BaseHal]):
 
     @classmethod
     def from_model(cls, txt_record: TXTRecord) -> Self:
-        return cls(data=txt_record.txt_data)
+        return cls(data=txt_record.data)
 
 
 class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
@@ -149,7 +149,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
     rrtype: DNSResourceTypeEnum
     a_records: list[ARecordResponse] | None
     aaaa_records: list[AAAARecordResponse] | None
-    cname_records: list[CNAMERecordResponse] | None
+    cname_record: CNAMERecordResponse | None
     mx_records: list[MXRecordResponse] | None
     ns_records: list[NSRecordResponse] | None
     sshfp_records: list[SSHFPRecordResponse] | None
@@ -159,56 +159,129 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
     @classmethod
     def from_model(
         cls,
-        rrset: DNSResourceRecordSet,
+        dns_record: GenericDNSRecord,
         self_base_hyperlink: str,
     ) -> Self:
-        return cls(
-            name=rrset.name,
-            node_id=rrset.node_id,
-            ttl=rrset.node_id,
-            rrtype=rrset.rrtype,
-            a_records=[ARecordResponse.from_model(r) for r in rrset.a_records]
-            if rrset.a_records is not None
-            else None,
-            aaaa_records=[
-                AAAARecordResponse.from_model(r) for r in rrset.aaaa_records
-            ]
-            if rrset.aaaa_records is not None
-            else None,
-            cname_records=[
-                CNAMERecordResponse.from_model(r) for r in rrset.cname_records
-            ]
-            if rrset.cname_records is not None
-            else None,
-            mx_records=[
-                MXRecordResponse.from_model(r) for r in rrset.mx_records
-            ]
-            if rrset.mx_records is not None
-            else None,
-            ns_records=[
-                NSRecordResponse.from_model(r) for r in rrset.ns_records
-            ]
-            if rrset.ns_records is not None
-            else None,
-            sshfp_records=[
-                SSHFPRecordResponse.from_model(r) for r in rrset.sshfp_records
-            ]
-            if rrset.sshfp_records is not None
-            else None,
-            srv_records=[
-                SRVRecordResponse.from_model(r) for r in rrset.srv_records
-            ]
-            if rrset.srv_records is not None
-            else None,
-            txt_records=[
-                TXTRecordResponse.from_model(r) for r in rrset.txt_records
-            ]
-            if rrset.txt_records is not None
-            else None,
-            hal_links=BaseHal(
-                self=BaseHref(href=f"{self_base_hyperlink.rstrip('/')}")
-            ),
-        )
+        match dns_record.rrtype:
+            case DNSResourceTypeEnum.A:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    a_records=[
+                        ARecordResponse.from_model(ARecord.from_text(rrdata))
+                        for rrdata in dns_record.rrdatas
+                    ],
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
+            case DNSResourceTypeEnum.AAAA:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    aaaa_records=[
+                        AAAARecordResponse.from_model(
+                            AAAARecord.from_text(rrdata)
+                        )
+                        for rrdata in dns_record.rrdatas
+                    ],
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
+            case DNSResourceTypeEnum.CNAME:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    cname_record=CNAMERecordResponse.from_model(
+                        CNAMERecord.from_text(dns_record.rrdatas[0])
+                    ),
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
+            case DNSResourceTypeEnum.MX:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    mx_records=[
+                        MXRecordResponse.from_model(MXRecord.from_text(rrdata))
+                        for rrdata in dns_record.rrdatas
+                    ],
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
+            case DNSResourceTypeEnum.NS:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    ns_records=[
+                        NSRecordResponse.from_model(NSRecord.from_text(rrdata))
+                        for rrdata in dns_record.rrdatas
+                    ],
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
+            case DNSResourceTypeEnum.SRV:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    srv_records=[
+                        SRVRecordResponse.from_model(
+                            SRVRecord.from_text(rrdata)
+                        )
+                        for rrdata in dns_record.rrdatas
+                    ],
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
+            case DNSResourceTypeEnum.SSHFP:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    sshfp_records=[
+                        SSHFPRecordResponse.from_model(
+                            SSHFPRecord.from_text(rrdata)
+                        )
+                        for rrdata in dns_record.rrdatas
+                    ],
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
+            case DNSResourceTypeEnum.TXT:
+                return cls(
+                    name=dns_record.name,
+                    node_id=dns_record.node_id,
+                    ttl=dns_record.ttl,
+                    rrtype=dns_record.rrtype,
+                    txt_records=[
+                        TXTRecordResponse.from_model(
+                            TXTRecord.from_text(rrdata)
+                        )
+                        for rrdata in dns_record.rrdatas
+                    ],
+                    hal_links=BaseHal(
+                        self=BaseHref(href=self_base_hyperlink.rstrip("/"))
+                    ),
+                )
 
 
 class DomainResourceRecordSetListResponse(

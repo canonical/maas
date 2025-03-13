@@ -26,3 +26,14 @@ class DNSSECEnumm(StrEnum):
 
     def __str__(self):
         return str(self.value)
+
+
+class DNSResourceTypeEnum(StrEnum):
+    A = "A"
+    AAAA = "AAAA"
+    CNAME = "CNAME"
+    MX = "MX"
+    NS = "NS"
+    SRV = "SRV"
+    SSHFP = "SSHFP"
+    TXT = "TXT"

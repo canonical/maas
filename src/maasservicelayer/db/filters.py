@@ -3,7 +3,16 @@
 from dataclasses import dataclass, field
 from typing import Union
 
-from sqlalchemy import and_, ColumnElement, Delete, Join, or_, Select, Update
+from sqlalchemy import (
+    and_,
+    ColumnElement,
+    Delete,
+    Join,
+    not_,
+    or_,
+    Select,
+    Update,
+)
 
 
 @dataclass
@@ -118,3 +127,7 @@ class ClauseFactory:
             condition=and_(*[clause.condition for clause in clauses]),
             joins=cls._combine_joins(clauses),
         )
+
+    @classmethod
+    def not_clause(cls, clause: Clause):
+        return Clause(condition=not_(clause.condition), joins=clause.joins)

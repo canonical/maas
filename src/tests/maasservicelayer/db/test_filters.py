@@ -173,7 +173,7 @@ class TestClauseFactory:
                     condition=literal(1),
                     joins=[join1],
                 ),
-                Clause(condition=literal(1), joins=None),
+                Clause(condition=literal(1)),
             ]
         )
 
@@ -196,6 +196,18 @@ class TestClauseFactory:
         )
 
         assert joins == [join1, join2]
+
+    def test_not_clause(self):
+        clause = Clause(condition=eq(A.c.id, 1))
+        not_clause = ClauseFactory.not_clause(clause)
+        assert (
+            str(
+                not_clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "test_table_a.id != 1"
+        )
 
 
 class TestQuerySpec:

@@ -145,8 +145,8 @@ class DNSResourcesService(
         )
 
         for dnsrr in resources:
-            result = await self.repository.get_ips_for_dnsresource(
-                dnsrr, discovered_only=True, matching=ip
+            result = await self.get_ips_for_dnsresource(
+                dnsrr.id, discovered_only=True, matching=ip
             )
 
             ip_ids = [row.id for row in result]
@@ -154,9 +154,7 @@ class DNSResourcesService(
             if ip.id in ip_ids:
                 await self.repository.remove_ip_relation(dnsrr, ip)
 
-            remaining_relations = (
-                await self.repository.get_ips_for_dnsresource(dnsrr)
-            )
+            remaining_relations = await self.get_ips_for_dnsresource(dnsrr.id)
             if len(remaining_relations) == 0:
                 await self.repository.delete_by_id(dnsrr.id)
 
@@ -199,7 +197,7 @@ class DNSResourcesService(
                     domain_id=domain.id,
                 )
             )
-            await self.repository.link_ip(dnsrr, ip)
+            await self.link_ip(dnsrr.id, ip.id)
             # Here we link an IP after the dnsresource was create,
             # so we create the DNSPublication here instead of in create()
             await self.dnspublications_service.create_for_config_update(
@@ -212,9 +210,9 @@ class DNSResourcesService(
                 answer=str(ip.ip),
             )
         else:
-            ips = await self.repository.get_ips_for_dnsresource(dnsrr)
-            dynamic_ips = await self.repository.get_ips_for_dnsresource(
-                dnsrr, discovered_only=True
+            ips = await self.get_ips_for_dnsresource(dnsrr.id)
+            dynamic_ips = await self.get_ips_for_dnsresource(
+                dnsrr.id, discovered_only=True
             )
 
             if len(ips) > len(dynamic_ips):  # has static IPs
@@ -223,7 +221,7 @@ class DNSResourcesService(
             if ip in dynamic_ips:
                 return
 
-            await self.repository.link_ip(dnsrr, ip)
+            await self.link_ip(dnsrr.id, ip.id)
             await self.dnspublications_service.create_for_config_update(
                 source=f"ip {ip.ip} linked to resource {dnsrr.name} on zone {domain.name}",
                 action=DnsUpdateAction.INSERT,
@@ -235,6 +233,16 @@ class DNSResourcesService(
             )
 
     async def get_ips_for_dnsresource(
-        self, dnsrr: DNSResource
+        self,
+        dnsrr_id: int,
+        discovered_only: Optional[bool] = False,
+        matching: Optional[StaticIPAddress] = None,
     ) -> list[StaticIPAddress]:
-        return await self.repository.get_ips_for_dnsresource(dnsrr)
+        return await self.repository.get_ips_for_dnsresource(
+            dnsrr_id=dnsrr_id,
+            discovered_only=discovered_only,
+            matching=matching,
+        )
+
+    async def link_ip(self, dnsrr_id: int, ip_id: int) -> None:
+        await self.repository.link_ip(dnsrr_id, ip_id)

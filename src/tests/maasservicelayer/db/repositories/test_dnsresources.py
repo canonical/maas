@@ -103,7 +103,7 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
 
         ip = StaticIPAddress(**sip)
 
-        await repository_instance.link_ip(dnsresource, ip)
+        await repository_instance.link_ip(dnsresource.id, ip.id)
 
         link = await repository_instance.get_dnsresources_in_domain_for_ip(
             domain, ip
@@ -130,9 +130,11 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
         for sip in sips:
-            await repository_instance.link_ip(dnsresource, sip)
+            await repository_instance.link_ip(dnsresource.id, sip.id)
 
-        result = await repository_instance.get_ips_for_dnsresource(dnsresource)
+        result = await repository_instance.get_ips_for_dnsresource(
+            dnsresource.id
+        )
 
         assert {ip.id for ip in sips} == {ip.id for ip in result}
 
@@ -151,6 +153,6 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
         )
 
         remaining = await repository_instance.get_ips_for_dnsresource(
-            dnsresource
+            dnsresource.id
         )
         assert len(remaining) == 0

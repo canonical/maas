@@ -5,6 +5,16 @@ from ipaddress import IPv4Address, IPv6Address
 
 import pytest
 
+from maasapiserver.v3.api.public.models.dnsresourcerecordsets import (
+    AAAARecord,
+    ARecord,
+    CNAMERecord,
+    MXRecord,
+    NSRecord,
+    SRVRecord,
+    SSHFPRecord,
+    TXTRecord,
+)
 from maasapiserver.v3.api.public.models.responses.domains import (
     AAAARecordResponse,
     ARecordResponse,
@@ -17,18 +27,8 @@ from maasapiserver.v3.api.public.models.responses.domains import (
     SSHFPRecordResponse,
     TXTRecordResponse,
 )
-from maasservicelayer.models.dnsresourcerecordsets import (
-    AAAARecord,
-    ARecord,
-    CNAMERecord,
-    DNSResourceRecordSet,
-    DNSResourceTypeEnum,
-    MXRecord,
-    NSRecord,
-    SRVRecord,
-    SSHFPRecord,
-    TXTRecord,
-)
+from maascommon.enums.dns import DNSResourceTypeEnum
+from maasservicelayer.models.dnsresourcerecordsets import GenericDNSRecord
 from maasservicelayer.models.domains import Domain
 
 
@@ -116,72 +116,61 @@ class TestSRVRecordResponse:
 
 class TestTXTRecordResponse:
     def test_from_model(self) -> None:
-        record = TXTRecord(txt_data="test")
+        record = TXTRecord(data="test")
         record_response = TXTRecordResponse.from_model(record)
         assert record_response.kind == "TXTRecord"
-        assert record_response.data == record.txt_data
+        assert record_response.data == record.data
 
 
 class TestDomainResourceRecordSetResponse:
     @pytest.mark.parametrize(
         "rrset",
         [
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.A,
-                a_records=[ARecord(address=IPv4Address("10.0.0.2"))],
+                rrdatas=["10.0.0.2"],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.AAAA,
-                aaaa_records=[AAAARecord(address=IPv6Address("2001:db8::"))],
+                rrdatas=["2001:db8::"],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.CNAME,
-                cname_records=[CNAMERecord(cname="example")],
+                rrdatas=["example"],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.MX,
-                mx_records=[
-                    MXRecord(exchange="mailhost.example.com", preference=1)
-                ],
+                rrdatas=["1 mailhost.example.com"],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.NS,
-                ns_records=[NSRecord(nsdname="example.com")],
+                rrdatas=["example.com"],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.SSHFP,
-                sshfp_records=[
-                    SSHFPRecord(
-                        algorithm=0, fingerprint_type=0, fingerprint="test"
-                    )
-                ],
+                rrdatas=["0 0 abcd"],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="_xmpp._tcp.example.com",
                 rrtype=DNSResourceTypeEnum.SRV,
-                srv_records=[
-                    SRVRecord(
-                        port=9000,
-                        priority=1,
-                        target="server.example.com",
-                        weight=5,
-                    )
+                rrdatas=[
+                    "10 5 5223 server.example.com",
                 ],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.TXT,
-                txt_records=[TXTRecord(txt_data="test")],
+                rrdatas=["test"],
             ),
         ],
     )
-    def test_from_model(self, rrset: DNSResourceRecordSet) -> None:
+    def test_from_model(self, rrset: GenericDNSRecord) -> None:
         response = DomainResourceRecordSetResponse.from_model(
             rrset, self_base_hyperlink="http://test"
         )
@@ -198,8 +187,7 @@ class TestDomainResourceRecordSetResponse:
                 assert response.aaaa_records is not None
                 assert len(response.aaaa_records) == 1
             case DNSResourceTypeEnum.CNAME:
-                assert response.cname_records is not None
-                assert len(response.cname_records) == 1
+                assert response.cname_record is not None
             case DNSResourceTypeEnum.MX:
                 assert response.mx_records is not None
                 assert len(response.mx_records) == 1

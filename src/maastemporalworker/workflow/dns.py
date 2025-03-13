@@ -255,7 +255,7 @@ class DNSConfigActivity(ActivityBase):
                     )
                 )
                 remaining_ips = await svc.dnsresources.get_ips_for_dnsresource(
-                    dnsrr
+                    dnsrr.id
                 )
 
                 for ip in remaining_ips:
@@ -399,7 +399,7 @@ class DNSConfigActivity(ActivityBase):
                 )
             )
             for dnsrr in dnsrrs:
-                ips = await svc.dnsresources.get_ips_for_dnsresource(dnsrr)
+                ips = await svc.dnsresources.get_ips_for_dnsresource(dnsrr.id)
                 dns_data = await svc.dnsdata.get_many(
                     query=QuerySpec(
                         where=DNSDataClauseFactory.with_dnsresource_id(

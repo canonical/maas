@@ -395,6 +395,11 @@ class ServiceCollectionV3:
             ),  # type: ignore
         )
         services.v3dnsrrsets = V3DNSResourceRecordSetsService(
-            domains_service=services.domains
+            context=context,
+            domains_service=services.domains,
+            dnsresource_service=services.dnsresources,
+            dnsdata_service=services.dnsdata,
+            staticipaddress_service=services.staticipaddress,
+            subnets_service=services.subnets,
         )
         return services

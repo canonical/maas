@@ -1,7 +1,6 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -10,6 +9,9 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.handlers.domains import (
+    DomainResourceRecordSetResponse,
+)
 from maasapiserver.v3.api.public.models.requests.domains import DomainRequest
 from maasapiserver.v3.api.public.models.responses.domains import (
     DomainResourceRecordSetListResponse,
@@ -20,18 +22,18 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    NotFoundException,
     PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.dnsresourcerecordsets import (
-    ARecord,
-    DNSResourceRecordSet,
     DNSResourceTypeEnum,
-    TXTRecord,
+    GenericDNSRecord,
 )
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.services import ServiceCollectionV3
@@ -65,6 +67,7 @@ class TestDomainsApi(ApiCommonTests):
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}"),
             Endpoint(method="GET", path=f"{self.BASE_PATH}/2"),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/rrsets"),
         ]
 
     @pytest.fixture
@@ -72,6 +75,7 @@ class TestDomainsApi(ApiCommonTests):
         return [
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/2"),
+            Endpoint(method="POST", path=f"{self.BASE_PATH}/1/rrsets"),
         ]
 
     async def test_list_domains_one_page(
@@ -309,16 +313,16 @@ class TestDomainsApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.v3dnsrrsets = Mock(V3DNSResourceRecordSetsService)
-        services_mock.v3dnsrrsets.get_rrsets_for_domain.return_value = [
-            DNSResourceRecordSet(
+        services_mock.v3dnsrrsets.get_dns_records_for_domain.return_value = [
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.A,
-                a_records=[ARecord(address=IPv4Address("10.0.0.2"))],
+                rrdatas=["10.0.0.2"],
             ),
-            DNSResourceRecordSet(
+            GenericDNSRecord(
                 name="example.com",
                 rrtype=DNSResourceTypeEnum.TXT,
-                txt_records=[TXTRecord(txt_data="txt")],
+                rrdatas=["txt"],
             ),
         ]
         response = await mocked_api_client_user.get(
@@ -329,3 +333,50 @@ class TestDomainsApi(ApiCommonTests):
         assert len(response.items) == 2
         assert response.total == 2
         assert response.next is None
+
+    async def test_post_rrsets_for_domain(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.v3dnsrrsets = Mock(V3DNSResourceRecordSetsService)
+        services_mock.v3dnsrrsets.create_dns_records_for_domain.return_value = None
+        request = {
+            "name": "example",
+            "rrtype": "TXT",
+            "txt_records": [{"data": "data1"}, {"data": "data2"}],
+        }
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/0/rrsets", json=request
+        )
+        assert response.status_code == 200
+        response = DomainResourceRecordSetResponse(**response.json())
+        assert response.name == "example"
+        assert response.rrtype == "TXT"
+        assert response.txt_records is not None
+
+    async def test_post_rrsets_for_domain_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.v3dnsrrsets = Mock(V3DNSResourceRecordSetsService)
+        services_mock.v3dnsrrsets.create_dns_records_for_domain.side_effect = (
+            NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message="Domain with id 100 does not exist.",
+                    )
+                ]
+            )
+        )
+        request = {
+            "name": "example",
+            "rrtype": "TXT",
+            "txt_records": [{"data": "data1"}, {"data": "data2"}],
+        }
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/100/rrsets", json=request
+        )
+        assert response.status_code == 404

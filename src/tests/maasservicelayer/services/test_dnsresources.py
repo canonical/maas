@@ -343,13 +343,17 @@ class TestDNSResourcesService:
             mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
                 0
             ]
-            == ((dnsresource,), {"discovered_only": True, "matching": sip})
+            == call(
+                dnsrr_id=dnsresource.id, discovered_only=True, matching=sip
+            )
         )
         assert (
             mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
                 1
             ]
-            == ((dnsresource,), {})
+            == call(
+                dnsrr_id=dnsresource.id, discovered_only=False, matching=None
+            )
         )
 
         mock_dnsresource_repository.remove_ip_relation.assert_called_once_with(
@@ -411,16 +415,20 @@ class TestDNSResourcesService:
             mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
                 0
             ]
-            == call(dnsresource)
+            == call(
+                dnsrr_id=dnsresource.id, discovered_only=False, matching=None
+            )
         )
         assert (
             mock_dnsresource_repository.get_ips_for_dnsresource.call_args_list[
                 1
             ]
-            == call(dnsresource, discovered_only=True)
+            == call(
+                dnsrr_id=dnsresource.id, discovered_only=True, matching=None
+            )
         )
         mock_dnsresource_repository.link_ip.assert_called_once_with(
-            dnsresource, sip
+            dnsresource.id, sip.id
         )
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(
             source="ip 10.0.0.1 linked to resource test_name on zone test_domain",

@@ -68,12 +68,12 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
 
     async def get_ips_for_dnsresource(
         self,
-        dnsrr: DNSResource,
+        dnsrr_id: int,
         discovered_only: Optional[bool] = False,
         matching: Optional[StaticIPAddress] = None,
     ) -> List[StaticIPAddress]:
         filters = [
-            DNSResourceIPAddressTable.c.dnsresource_id == dnsrr.id,
+            DNSResourceIPAddressTable.c.dnsresource_id == dnsrr_id,
         ]
 
         if discovered_only:
@@ -111,9 +111,9 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         )
         await self.execute_stmt(remove_relation_stmt)
 
-    async def link_ip(self, dnsrr: DNSResource, ip: StaticIPAddress) -> None:
+    async def link_ip(self, dnsrr_id: int, ip_id: int) -> None:
         stmt = insert(DNSResourceIPAddressTable).values(
-            dnsresource_id=dnsrr.id, staticipaddress_id=ip.id
+            dnsresource_id=dnsrr_id, staticipaddress_id=ip_id
         )
 
         await self.execute_stmt(stmt)
