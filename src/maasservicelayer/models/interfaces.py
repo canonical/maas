@@ -17,7 +17,7 @@ class Link(BaseModel):
     id: int
     ip_type: IpAddressType
     ip_address: Optional[IPvAnyAddress]
-    ip_subnet: int
+    ip_subnet: Optional[int]
 
     # derived from StaticIPAddress.get_interface_link_type
     @property
