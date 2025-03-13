@@ -1,10 +1,10 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv6Address
 from operator import eq
 from typing import List, Type
 
-from netaddr import IPAddress
 from pydantic import IPvAnyAddress
 from sqlalchemy import desc, func, join, select, Table
 
@@ -65,9 +65,8 @@ class SubnetsRepository(BaseRepository[Subnet]):
     async def find_best_subnet_for_ip(
         self, ip: IPvAnyAddress
     ) -> Subnet | None:
-        ip_addr = IPAddress(str(ip))
-        if ip_addr.is_ipv4_mapped():
-            ip_addr = ip_addr.ipv4()
+        if isinstance(ip, IPv6Address) and ip.ipv4_mapped is not None:
+            ip = ip.ipv4_mapped
 
         stmt = (
             select(
@@ -84,7 +83,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
                 desc(VlanTable.c.dhcp_on),
                 desc("prefixlen"),
             )
-            .where(SubnetTable.c.cidr.op(">>")(ip_addr))
+            .where(SubnetTable.c.cidr.op(">>")(ip))
         )
 
         result = (await self.execute_stmt(stmt)).first()

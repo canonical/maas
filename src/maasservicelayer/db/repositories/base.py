@@ -2,9 +2,12 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
+from ipaddress import IPv4Address, IPv6Address
 from operator import eq
 from typing import Any, Generic, List, Sequence, TypeVar
 
+from netaddr import IPAddress
+import psycopg2.extensions
 import psycopg2.extras
 from sqlalchemy import (
     Connection,
@@ -50,6 +53,14 @@ class MultipleResultsException(Exception):
 T = TypeVar("T", bound=MaasBaseModel)
 
 
+def psycopg2_ipaddress_adapter(ip: IPv4Address | IPv6Address):
+    return psycopg2.extensions.AsIs(repr(ip.exploded))
+
+
+def psycopg2_netaddr_adapter(ip: IPAddress):
+    return psycopg2.extensions.AsIs(repr(str(ip)))
+
+
 class Repository(ABC):  # noqa: B024
     def __init__(self, context: Context):
         self.context = context
@@ -61,11 +72,25 @@ class Repository(ABC):  # noqa: B024
         type of the connection."""
         connection = self.context.get_connection()
         if isinstance(connection, Connection):
-            # Django wants to get jsonb columns as strings so to load the json programmatically in JsonField. Instead,
+            # 1. Django wants to get jsonb columns as strings so to load the json programmatically in JsonField. Instead,
             # in the servicelayer/sqlalchemy we want the driver to return a dictionary, so we register the handler on the connection.
+            # 2. psycopg2 only sends and receive strings by default, so it can't deal with ipaddress types. If you don't
+            # register a custom adapter for those types, you will get `psycopg2.ProgrammingError: can't adapt type 'IPv4Address'`
             try:
                 psycopg2.extras.register_default_jsonb(
                     conn_or_curs=connection.connection.dbapi_connection  # type: ignore
+                )
+                psycopg2.extensions.register_adapter(
+                    IPv4Address, psycopg2_ipaddress_adapter
+                )
+                psycopg2.extensions.register_adapter(
+                    IPv6Address, psycopg2_ipaddress_adapter
+                )
+                # We should stick with IPv4Address/IPv6Address as they are from the standard library.
+                # However, there might be some cases where we return netaddr.IPAddress, so we
+                # register the adapter just to be sure.
+                psycopg2.extensions.register_adapter(
+                    IPAddress, psycopg2_netaddr_adapter
                 )
                 return connection.execute(stmt)
             finally:
@@ -75,6 +100,18 @@ class Repository(ABC):  # noqa: B024
                     conn_or_curs=connection.connection.dbapi_connection,  # type: ignore
                     loads=lambda x: x,
                 )
+                # Adapters are stored in the psycopg2.extensions.adapters dict and the
+                # key to access it is a tuple of (obj_type, ISQLQuote obj).
+                del psycopg2.extensions.adapters[
+                    (IPv4Address, psycopg2.extensions.ISQLQuote)
+                ]
+                del psycopg2.extensions.adapters[
+                    (IPv6Address, psycopg2.extensions.ISQLQuote)
+                ]
+                del psycopg2.extensions.adapters[
+                    (IPAddress, psycopg2.extensions.ISQLQuote)
+                ]
+
         else:
             return await connection.execute(stmt)
 

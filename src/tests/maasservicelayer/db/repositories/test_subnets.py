@@ -174,6 +174,8 @@ class TestSubnetsRepositoryMethods:
 
         subnets = SubnetsRepository(Context(connection=db_connection))
 
-        result = await subnets.find_best_subnet_for_ip(str(ip[0]["ip"]))
+        result = await subnets.find_best_subnet_for_ip(
+            IPv4Address(ip[0]["ip"])
+        )
         assert result is not None
         assert result.id == subnet2["id"]
