@@ -111,9 +111,7 @@ class TestHelpers(APITestCase.ForUser):
             get_boot_resource_uri(resource),
             dict_representation["resource_uri"],
         )
-        self.assertEqual(
-            resource.get_last_deploy(), dict_representation["last_deployed"]
-        )
+        self.assertIsNone(dict_representation["last_deployed"])
         self.assertNotIn("sets", dict_representation)
         self.assertNotIn("base_image", dict_representation)
 

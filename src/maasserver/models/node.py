@@ -1861,6 +1861,10 @@ class Node(CleanSave, TimestampedModel):
     def update_deployment_time(self) -> None:
         from maasserver.models.event import Event
 
+        # NOTE: as long as the latest deployment information of a boot resource is calculated
+        # based on the IMAGE_DEPLOYED events produced by this function, it is important to
+        # maintain the event_description with its current format. Otherwise, the function
+        # performing the calculation will fail.
         Event.objects.create_node_event(
             self,
             EVENT_TYPES.IMAGE_DEPLOYED,

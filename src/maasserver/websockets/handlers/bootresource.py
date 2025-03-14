@@ -6,7 +6,6 @@
 import base64
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
@@ -36,6 +35,7 @@ from maasserver.models import (
     Config,
     Node,
 )
+from maasserver.models.bootresource import get_boot_resources_last_deployments
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
@@ -492,19 +492,6 @@ class BootResourceHandler(Handler):
             for resource in resources
         )
 
-    def get_last_deployed_for_resources(
-        self, resources: list[BootResource]
-    ) -> Optional[datetime]:
-        """Return the most recent deploy time for all resources."""
-        last_deployed = None
-        for resource in resources:
-            this_deploy = resource.get_last_deploy()
-            if this_deploy is not None:
-                last_deployed = self.pick_latest_datetime(
-                    last_deployed, this_deploy
-                )
-        return last_deployed
-
     def get_progress_for_resources(self, resources):
         """Return the overall progress for all resources."""
         size = 0
@@ -539,7 +526,7 @@ class BootResourceHandler(Handler):
         else:
             return resource.name
 
-    def resource_group_to_resource(self, group):
+    def resource_group_to_resource(self, group, last_deployments):
         """Convert the list of resources into one resource to be used in
         the UI."""
         # Calculate all of the values using all of the resources for
@@ -552,7 +539,6 @@ class BootResourceHandler(Handler):
         )
         complete = self.are_all_resources_complete(group)
         progress = self.get_progress_for_resources(group)
-        last_deployed = self.get_last_deployed_for_resources(group)
         can_deploy_to_memory = self.get_can_deploy_to_memory(group)
 
         # Set the computed attributes on the first resource as that will
@@ -565,7 +551,9 @@ class BootResourceHandler(Handler):
         resource.last_update = last_update
         resource.number_of_nodes = number_of_nodes
         resource.machine_count = machine_count
-        resource.last_deployed = last_deployed
+        resource.last_deployed = last_deployments.get(
+            f"{resource.name}/{resource.arch}"
+        )
         resource.can_deploy_to_memory = can_deploy_to_memory
         resource.complete = complete
         if not complete:
@@ -587,12 +575,13 @@ class BootResourceHandler(Handler):
         """Return a list of resources combining all of subarchitecture
         resources into one resource."""
         resource_group = defaultdict(list)
+        last_deployments = get_boot_resources_last_deployments()
         for resource in resources:
             arch = resource.split_arch()[0]
             key = f"{resource.name}/{arch}"
             resource_group[key].append(resource)
         return [
-            self.resource_group_to_resource(group)
+            self.resource_group_to_resource(group, last_deployments)
             for _, group in resource_group.items()
         ]
 
