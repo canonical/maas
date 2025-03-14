@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "maas"
-version = "3.6.0rc3"
+version = "3.6.0rc4"
 description = "Metal As A Service"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 license = { file = "LICENSE" }
