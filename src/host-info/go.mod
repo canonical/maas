@@ -2,7 +2,7 @@ module host-info
 
 go 1.18
 
-require github.com/canonical/lxd v0.0.0-20231012155524-6433343602f5
+require github.com/canonical/lxd v0.0.0-20230929073242-10f6cd4bf1a0
 
 require (
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e // indirect
