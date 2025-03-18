@@ -99,17 +99,18 @@ func (s *sessionMap) ClearExpired() {
 type RecursiveHandler struct {
 	systemResolvers      *systemConfig
 	sessionMap           *sessionMap
+	recordCache          Cache
 	client               ResolverClient
 	authoritativeServers []netip.Addr
-	// TODO add cache
 }
 
-func NewRecursiveHandler() *RecursiveHandler { // TODO pass in cache
+func NewRecursiveHandler(cache Cache) *RecursiveHandler {
 	return &RecursiveHandler{
 		sessionMap: &sessionMap{
 			sessions: make(map[string]*session),
 		},
-		client: &dns.Client{}, // TODO provide client config
+		recordCache: cache,
+		client:      &dns.Client{}, // TODO provide client config
 	}
 }
 

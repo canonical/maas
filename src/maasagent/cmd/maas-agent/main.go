@@ -87,6 +87,9 @@ type config struct {
 		OTLPHTTPEndpoint string `yaml:"otlp_http_endpoint"`
 		Enabled          bool   `yaml:"enabled"`
 	} `yaml:"tracing"`
+	DNSResolver struct {
+		CacheSize int64 `yaml:"cache_size"`
+	} `yaml:"dns_resolver"`
 	Metrics struct {
 		Enabled bool `yaml:"enabled"`
 	} `yaml:"metrics"`
@@ -483,7 +486,13 @@ func Run() int {
 		return 1
 	}
 
-	resolverHandler := resolver.NewRecursiveHandler() // TODO pass cache in
+	resolverCache, err := resolver.NewCache(cfg.DNSResolver.CacheSize)
+	if err != nil {
+		log.Error().Err(err).Msg("Resolver cache initialisation error")
+		return 1
+	}
+
+	resolverHandler := resolver.NewRecursiveHandler(resolverCache)
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)

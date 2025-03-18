@@ -88,6 +88,16 @@ func (m *mockClient) ExchangeContext(_ context.Context, msg *dns.Msg, _ string) 
 	return resp, 0, err
 }
 
+type noopCache struct {
+	Cache
+}
+
+func (n noopCache) Get(_ string, _ uint16) (dns.RR, bool) {
+	return nil, false
+}
+
+func (n noopCache) Set(_ dns.RR) {}
+
 func TestParseResolvConf(t *testing.T) {
 	testcases := map[string]struct {
 		in  string
@@ -232,7 +242,7 @@ search example.com`,
 				t.Fatal(err)
 			}
 
-			handler := NewRecursiveHandler()
+			handler := NewRecursiveHandler(noopCache{})
 
 			cfg, err := handler.parseResolvConf(tmpFile.Name())
 			if err != nil {
@@ -587,7 +597,7 @@ func TestValidateQuery(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			handler := NewRecursiveHandler()
+			handler := NewRecursiveHandler(noopCache{})
 
 			responseWriter := &mockResponseWriter{}
 
@@ -636,7 +646,7 @@ func TestSrvFailResponse(t *testing.T) {
 		Extra:  []dns.RR{},
 	}
 
-	handler := NewRecursiveHandler()
+	handler := NewRecursiveHandler(noopCache{})
 
 	responseWriter := &mockResponseWriter{}
 
@@ -1574,7 +1584,7 @@ func TestServeDNS(t *testing.T) {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
-			handler := NewRecursiveHandler()
+			handler := NewRecursiveHandler(noopCache{})
 			handler.systemResolvers = tc.in.config
 			handler.client = tc.in.client
 			handler.authoritativeServers = tc.in.authoritativeServers
@@ -1720,7 +1730,7 @@ func TestGetNS(t *testing.T) {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
-			handler := NewRecursiveHandler()
+			handler := NewRecursiveHandler(noopCache{})
 			handler.client = tc.in.client
 
 			ns, err := handler.getNS(tc.in.name, netip.MustParseAddr("127.0.0.1"))
@@ -2193,7 +2203,7 @@ func TestQueryAliasType(t *testing.T) {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
-			handler := NewRecursiveHandler()
+			handler := NewRecursiveHandler(noopCache{})
 			handler.client = tc.in.client
 			handler.authoritativeServers = []netip.Addr{netip.MustParseAddr("127.0.0.1")}
 
@@ -2248,7 +2258,7 @@ func TestQueryAliasType(t *testing.T) {
 func FuzzServeDNSQuestion(f *testing.F) {
 	f.Add("example", uint16(5), uint16(1))
 
-	handler := NewRecursiveHandler()
+	handler := NewRecursiveHandler(noopCache{})
 	handler.systemResolvers = &systemConfig{
 		Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 	}
