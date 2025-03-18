@@ -22,13 +22,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math"
-	"math/big"
 	"net"
 	"net/netip"
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -58,15 +57,58 @@ type systemConfig struct {
 	TrustAD       bool
 }
 
+type sessionMap struct {
+	sessions map[string]*session
+	lock     sync.RWMutex
+}
+
+func (s *sessionMap) Load(key string) *session {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	return s.sessions[key]
+}
+
+func (s *sessionMap) Store(key string, sess *session) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.sessions[key] = sess
+}
+
+func (s *sessionMap) Delete(key string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	delete(s.sessions, key)
+}
+
+func (s *sessionMap) ClearExpired() {
+	now := time.Now()
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	for k, v := range s.sessions {
+		if v.Expired(now) {
+			delete(s.sessions, k)
+		}
+	}
+}
+
 type RecursiveHandler struct {
 	systemResolvers      *systemConfig
+	sessionMap           *sessionMap
 	client               ResolverClient
-	authoritativeServers []string
+	authoritativeServers []netip.Addr
 	// TODO add cache
 }
 
 func NewRecursiveHandler() *RecursiveHandler { // TODO pass in cache
 	return &RecursiveHandler{
+		sessionMap: &sessionMap{
+			sessions: make(map[string]*session),
+		},
 		client: &dns.Client{}, // TODO provide client config
 	}
 }
@@ -77,7 +119,15 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 		return err
 	}
 
-	h.authoritativeServers = authServers
+	authAddrs := make([]netip.Addr, len(authServers))
+	for i, server := range authServers {
+		authAddrs[i], err = netip.ParseAddr(server)
+		if err != nil {
+			return err
+		}
+	}
+
+	h.authoritativeServers = authAddrs
 	h.systemResolvers = sysCfg
 
 	if h.systemResolvers.UseTCP {
@@ -90,58 +140,87 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 	return nil
 }
 
+func (h *RecursiveHandler) ClearExpiredSessions() {
+	h.sessionMap.ClearExpired()
+}
+
 func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	ok := h.validateQuery(w, r)
 	if !ok {
 		return
 	}
 
+	sessionKey := sessionKeyFromRemoteAddr(w.RemoteAddr())
+	remoteSession := h.getOrCreateSession(sessionKey, w.RemoteAddr())
+
+	defer func() {
+		if remoteSession.Expired(time.Now()) {
+			h.sessionMap.Delete(sessionKey)
+		}
+	}()
+
 	resp := &dns.Msg{}
 
 	r.CopyTo(resp)
 
 	resp.Response = true
+	resp.RecursionAvailable = true
 
 	for _, q := range r.Question {
-		// TODO determine whether query is MAAS-authoritative, i.e the "recursive" part
-		nameSplit := strings.Split(q.Name, ".")
+		var msg *dns.Msg
 
-		if len(nameSplit) == 1 {
-			singleMsg := &dns.Msg{}
-			singleMsg.Question = []dns.Question{q}
+		q.Name = dns.Fqdn(q.Name)
+		qstate := newQueryState(q.Name)
 
-			msg, err := h.nonAuthoritativeQuery(singleMsg)
+		nameserver, err := h.findRecursiveNS(qstate)
+		if err != nil && !errors.Is(err, ErrNoAnswer) {
+			log.Err(err).Send()
 
+			h.srvFailResponse(w, r)
+
+			return
+		}
+
+		if nameserver != nil {
+			msg, err = h.handleAuthoritative(q, remoteSession, nameserver)
 			if err != nil {
 				log.Err(err).Send()
 
 				h.srvFailResponse(w, r)
 
 				return
-			} else if msg != nil && msg.Rcode != dns.RcodeSuccess {
-				for _, s := range h.systemResolvers.SearchDomains {
-					m := &dns.Msg{}
-					m.Question = []dns.Question{
-						{
-							Name:   dns.Fqdn(dns.Fqdn(q.Name) + s),
-							Qtype:  q.Qtype,
-							Qclass: q.Qclass,
-						},
-					}
+			}
 
-					msg, err = h.nonAuthoritativeQuery(m)
-					if err != nil {
-						log.Err(err).Send()
-
-						h.srvFailResponse(w, r)
-
-						return
-					}
-
-					if msg.Rcode == dns.RcodeSuccess {
-						break
-					}
+			if msg.Rcode != dns.RcodeSuccess {
+				err = w.WriteMsg(msg)
+				if err != nil {
+					log.Err(err).Send()
 				}
+
+				return
+			}
+
+			// non-auth queries can still come back without an answer, but no error,
+			// in this case often with an authority section, if this is the case,
+			// we should check if there is an answer, and assume it's non-authoritative
+			// if not
+			if msg.Rcode == dns.RcodeSuccess && len(msg.Answer) > 0 {
+				resp.Answer = append(resp.Answer, msg.Answer...)
+				resp.Ns = append(resp.Ns, msg.Ns...)
+				resp.Extra = append(resp.Extra, msg.Extra...)
+
+				continue
+			}
+		}
+
+		if qstate.UseSearch() {
+			msg, err = h.handleSearch(q)
+			if err != nil {
+				log.Err(err).Send()
+
+				h.srvFailResponse(w, r)
+
+				return
 			}
 
 			if msg != nil {
@@ -150,34 +229,361 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				resp.Ns = append(resp.Ns, msg.Ns...)
 				resp.Extra = append(resp.Extra, msg.Extra...)
 			}
-		} else {
-			m := &dns.Msg{}
-			m.Question = []dns.Question{q}
 
-			msg, err := h.nonAuthoritativeQuery(m)
+			continue
+		}
+
+		msg, err = h.handleNonAuthoritative(q)
+		if err != nil {
+			log.Err(err).Send()
+
+			h.srvFailResponse(w, r)
+
+			return
+		}
+
+		if msg.Rcode != dns.RcodeSuccess {
+			msg.RecursionAvailable = true
+
+			err = w.WriteMsg(msg)
 			if err != nil {
 				log.Err(err).Send()
-
-				h.srvFailResponse(w, r)
-
-				return
 			}
 
-			resp.Rcode = msg.Rcode
-			resp.Answer = append(resp.Answer, msg.Answer...)
-			resp.Ns = append(resp.Ns, msg.Ns...)
-			resp.Extra = append(resp.Extra, msg.Extra...)
+			return
 		}
-	}
 
-	if resp.Rcode == 0 {
-		resp.Rcode = dns.RcodeSuccess
+		resp.Answer = append(resp.Answer, msg.Answer...)
+		resp.Ns = append(resp.Ns, msg.Ns...)
+		resp.Extra = append(resp.Extra, msg.Extra...)
 	}
 
 	err := w.WriteMsg(resp)
 	if err != nil {
 		log.Err(err).Send()
 	}
+}
+
+func (h *RecursiveHandler) handleNonAuthoritative(q dns.Question) (*dns.Msg, error) {
+	m := &dns.Msg{}
+	m.Question = []dns.Question{q}
+
+	return h.nonAuthoritativeQuery(m)
+}
+
+func (h *RecursiveHandler) handleSearch(q dns.Question) (*dns.Msg, error) {
+	singleMsg := &dns.Msg{}
+	singleMsg.Question = []dns.Question{q}
+
+	msg, err := h.nonAuthoritativeQuery(singleMsg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if msg != nil && msg.Rcode == dns.RcodeSuccess {
+		return msg, nil
+	}
+
+	for _, s := range h.systemResolvers.SearchDomains {
+		m := &dns.Msg{}
+		m.Question = []dns.Question{
+			{
+				Name:   dns.Fqdn(dns.Fqdn(q.Name) + s),
+				Qtype:  q.Qtype,
+				Qclass: q.Qclass,
+			},
+		}
+
+		msg, err = h.nonAuthoritativeQuery(m)
+		if err != nil {
+			return nil, err
+		}
+
+		if msg.Rcode == dns.RcodeSuccess {
+			break
+		}
+	}
+
+	return msg, nil
+}
+
+func (h *RecursiveHandler) handleAuthoritative(q dns.Question, remoteSession *session, nameserver *dns.NS) (*dns.Msg, error) {
+	query := &dns.Msg{Question: []dns.Question{q}}
+
+	if q.Qtype == dns.TypeCNAME || q.Qtype == dns.TypeDNAME {
+		return h.queryAliasType(query, nameserver, remoteSession)
+	}
+
+	// we're not querying a CNAME / DNAME, so if there was a chain, it finished
+	remoteSession.Reset()
+
+	return h.authoritativeQuery(query, nameserver)
+}
+
+func (h *RecursiveHandler) getOrCreateSession(key string, remoteAddr net.Addr) *session {
+	remoteSession := h.sessionMap.Load(key)
+	if remoteSession == nil {
+		remoteSession = newSession(remoteAddr)
+
+		h.sessionMap.Store(key, remoteSession)
+	}
+
+	return remoteSession
+}
+
+func (h *RecursiveHandler) findRecursiveNS(qstate *queryState) (*dns.NS, error) {
+	var (
+		authServerIdx int
+		label         string
+	)
+
+	ok := true
+
+	for ok {
+		label, ok = qstate.NextLabel()
+		label = dns.Fqdn(label)
+		nameserver := qstate.Nameserver()
+
+		var (
+			nsAddr netip.Addr
+			err    error
+		)
+
+		if nameserver != nil {
+			nsAddr, err = h.resolveAuthoritativeArbitraryName(
+				context.Background(),
+				nameserver.Ns,
+			)
+		}
+
+		if err != nil || nameserver == nil { // if failed to find NS record's address or we haven't found one yet
+			if err != nil {
+				log.Debug().Msgf("retryable error: %s", err)
+			}
+
+			if authServerIdx == len(h.authoritativeServers) {
+				return nil, ErrNoAnswer
+			}
+
+			nsAddr = h.authoritativeServers[authServerIdx]
+			authServerIdx++
+		}
+
+		ns, err := h.getNS(label, nsAddr)
+		if err != nil {
+			log.Debug().Msgf("retryable err: %s", err)
+
+			continue
+		}
+
+		qstate.SetLastResponse(ns)
+
+		if ns == nil && nameserver != nil { // found most specific NS
+			break
+		}
+	}
+
+	return qstate.Nameserver(), nil
+}
+
+func (h *RecursiveHandler) getNS(name string, nameserver netip.Addr) (*dns.NS, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), exchangeTimeout)
+
+	defer cancel()
+
+	query := func(addr netip.Addr) (*dns.NS, error) {
+		id, err := generateTransactionID()
+		if err != nil {
+			return nil, err
+		}
+
+		q := prepareQueryMessage(id, name, dns.TypeNS)
+
+		resp, err := h.authoritativeExchange(ctx, addr, q)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, answer := range resp.Answer {
+			if ns, ok := answer.(*dns.NS); ok {
+				return ns, nil
+			}
+		}
+
+		// TODO cache Ns and Additional sections
+
+		return nil, ErrNoAnswer
+	}
+
+	if nameserver.IsValid() {
+		resp, err := query(nameserver)
+		if err != nil && !errors.Is(err, ErrNoAnswer) {
+			return nil, err
+		}
+
+		if resp != nil {
+			return resp, nil
+		}
+	}
+
+	// fallback to local servers in the event nameserver was possibly a forwarded external record
+	// and NXDOMAIN's or there was no namserver provided
+	for _, server := range h.authoritativeServers {
+		msg, err := query(server)
+		if err != nil {
+			log.Debug().Msgf("retryable err: %s", err)
+
+			continue
+		}
+
+		// TODO cache potential As/AAAAs returned in the Extras section
+		return msg, nil
+	}
+
+	return nil, ErrNoAnswer
+}
+
+func (h *RecursiveHandler) queryAliasType(query *dns.Msg, nameserver *dns.NS, remoteSession *session) (*dns.Msg, error) {
+	for _, q := range query.Question {
+		if q.Qtype == dns.TypeCNAME || q.Qtype == dns.TypeDNAME {
+			alreadyQueried, err := remoteSession.NameAlreadyQueried(q.Name)
+			if err != nil {
+				return nil, err
+			}
+
+			if alreadyQueried {
+				log.Warn().Msgf("detected a looping querying from %s", remoteSession.String())
+
+				msg := query.Copy()
+
+				msg.Response = true
+				msg.Rcode = dns.RcodeRefused
+
+				return msg, nil
+			}
+
+			err = remoteSession.StoreName(q.Name)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return h.authoritativeQuery(query, nameserver)
+}
+
+func (h *RecursiveHandler) authoritativeQuery(msg *dns.Msg, ns *dns.NS) (*dns.Msg, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), exchangeTimeout)
+	defer cancel()
+
+	nsAddr, err := h.resolveAuthoritativeArbitraryName(ctx, ns.Ns)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.authoritativeExchange(ctx, nsAddr, msg)
+}
+
+func (h *RecursiveHandler) resolveAuthoritativeArbitraryName(ctx context.Context, addrStr string) (netip.Addr, error) {
+	qstate := newQueryState(addrStr)
+
+	// create session for self, addr just needs to be something we wont see real traffic from
+	sess := newSession(&net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 0})
+
+outerLoop:
+	for {
+		addr, err := netip.ParseAddr(addrStr) // attempt to parse name if it is an IP already
+		if err == nil {
+			return addr, nil
+		}
+
+		if addrStr != "." {
+			seen, err := sess.NameAlreadyQueried(addrStr)
+			if err != nil {
+				return netip.Addr{}, err
+			} else if seen {
+				return netip.Addr{}, ErrCNAMELoop
+			}
+
+			err = sess.StoreName(addrStr)
+			if err != nil {
+				return netip.Addr{}, err
+			}
+		}
+
+		// not all should come back, but we should check
+		// for each when only given a name
+		msgs := []*dns.Msg{
+			prepareQueryMessage(0, addrStr, dns.TypeCNAME), // id will be set at exchange
+			prepareQueryMessage(0, addrStr, dns.TypeA),
+			prepareQueryMessage(0, addrStr, dns.TypeAAAA),
+		}
+
+		for _, msg := range msgs {
+			for _, server := range h.authoritativeServers {
+				resp, err := h.authoritativeExchange(ctx, server, msg)
+				if err != nil {
+					log.Err(err).Send()
+
+					continue
+				}
+
+				if resp.Rcode != dns.RcodeSuccess {
+					continue
+				}
+
+				// combine answer and extra as some servers (the root server in particular)
+				// will return A / AAAA in the extra section for its servers
+				for i, answer := range append(resp.Answer, resp.Extra...) {
+					if answer.Header().Name != addrStr {
+						continue
+					}
+
+					switch a := answer.(type) {
+					case *dns.CNAME:
+						if i < len(resp.Answer)-1 {
+							continue
+						}
+
+						addrStr = a.Target
+
+						qstate.SetLastResponse(a)
+
+						continue outerLoop
+					case *dns.A:
+						return netip.AddrFrom4([4]byte(a.A.To4())), nil
+					case *dns.AAAA:
+						return netip.AddrFrom16([16]byte(a.AAAA)), nil
+					}
+				}
+			}
+		}
+
+		return netip.Addr{}, ErrNoAnswer
+	}
+}
+
+func (h *RecursiveHandler) authoritativeExchange(ctx context.Context, server netip.Addr, r *dns.Msg) (*dns.Msg, error) {
+	ctx, cancel := context.WithTimeout(ctx, attemptTimeout)
+
+	defer cancel()
+
+	if r.Id == 0 {
+		id, err := generateTransactionID()
+		if err != nil {
+			return nil, err
+		}
+
+		r.Id = id
+	}
+
+	msg, _, err := h.client.ExchangeContext(ctx, r, net.JoinHostPort(server.String(), "53"))
+	if err != nil {
+		return nil, err
+	}
+
+	return msg, nil
 }
 
 func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool {
@@ -256,12 +662,9 @@ func (h *RecursiveHandler) srvFailResponse(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolver netip.Addr, r *dns.Msg) (*dns.Msg, error) {
-	var (
-		cancel context.CancelFunc
-		err    error
-	)
+	var err error
 
-	ctx, cancel = context.WithTimeout(ctx, attemptTimeout)
+	ctx, cancel := context.WithTimeout(ctx, attemptTimeout)
 	defer cancel()
 
 	if h.systemResolvers.EDNS0Enabled && !slices.ContainsFunc(r.Extra, checkForEDNS0Cookie) {
@@ -275,7 +678,13 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 		r.Extra = append(
 			r.Extra,
 			&dns.OPT{
-				Hdr: dns.RR_Header{},
+				Hdr: dns.RR_Header{
+					Name:     ".",
+					Rrtype:   dns.TypeOPT,
+					Class:    dns.ClassINET,
+					Ttl:      30,
+					Rdlength: 8,
+				},
 				Option: []dns.EDNS0{
 					&dns.EDNS0_COOKIE{
 						Code:   dns.EDNS0COOKIE,
@@ -291,18 +700,10 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 	}
 
 	if r.Id == 0 {
-		max := big.NewInt(int64(math.MaxUint16))
-
-		var id *big.Int
-
-		for id == nil || id.Int64() > math.MaxUint16 {
-			id, err = rand.Int(rand.Reader, max)
-			if err != nil {
-				return nil, err
-			}
+		r.Id, err = generateTransactionID()
+		if err != nil {
+			return nil, err
 		}
-
-		r.Id = uint16(id.Int64())
 	}
 
 	r.RecursionDesired = true
@@ -310,6 +711,31 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 	msg, _, err := h.client.ExchangeContext(ctx, r, net.JoinHostPort(resolver.String(), "53"))
 
 	return msg, err
+}
+
+func prepareQueryMessage(id uint16, name string, qtype uint16) *dns.Msg {
+	return &dns.Msg{
+		MsgHdr: dns.MsgHdr{
+			Id:     id,
+			Opcode: dns.OpcodeQuery,
+		},
+		Question: []dns.Question{
+			{
+				Name:   name,
+				Qtype:  qtype,
+				Qclass: dns.ClassINET,
+			},
+		},
+	}
+}
+
+func generateTransactionID() (uint16, error) {
+	var b [2]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0, err
+	}
+
+	return uint16(b[0])<<8 | uint16(b[1]), nil
 }
 
 func generateEDNS0Cookie() (string, error) {

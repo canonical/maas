@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -348,6 +349,50 @@ func TestSession_NameAlreadyQueried(t *testing.T) {
 			}
 
 			assert.Equal(t, queried, tc.out)
+		})
+	}
+}
+
+func TestSession_Expired(t *testing.T) {
+	testcases := map[string]struct {
+		in struct {
+			createdAt  time.Time
+			timePassed time.Duration
+		}
+		out bool
+	}{
+		"still valid": {
+			in: struct {
+				createdAt  time.Time
+				timePassed time.Duration
+			}{
+				createdAt:  time.Date(2025, time.January, 1, 1, 1, 1, 1, time.UTC),
+				timePassed: time.Second,
+			},
+			out: false,
+		},
+		"expired": {
+			in: struct {
+				createdAt  time.Time
+				timePassed time.Duration
+			}{
+				createdAt:  time.Date(2025, time.January, 1, 1, 1, 1, 1, time.UTC),
+				timePassed: time.Minute,
+			},
+			out: true,
+		},
+	}
+
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			s := newSession(&net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 53})
+			s.createdAt = tc.in.createdAt
+
+			timePassed := tc.in.createdAt.Add(tc.in.timePassed)
+
+			assert.Equal(t, tc.out, s.Expired(timePassed))
 		})
 	}
 }

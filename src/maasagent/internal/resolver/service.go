@@ -41,10 +41,12 @@ var (
 type Handler interface {
 	dns.Handler
 	SetUpstreams(string, []string) error
+	ClearExpiredSessions()
 }
 
 type ResolverService struct {
 	handler              Handler
+	sessionTicker        *time.Ticker
 	fatal                chan error
 	resolvConfPath       string
 	authoritativeServers []string
@@ -74,6 +76,7 @@ func NewResolverService(handler Handler, options ...ResolverServiceOption) *Reso
 		handler:        handler,
 		fatal:          make(chan error),
 		resolvConfPath: defaultResolvConfPath,
+		sessionTicker:  time.NewTicker(sessionTTL),
 	}
 
 	for _, opt := range options {
@@ -183,6 +186,7 @@ func (s *ResolverService) configure(ctx tworkflow.Context, systemID string) erro
 
 			go func() { s.fatal <- tcpServer.ListenAndServe() }()
 			go func() { s.fatal <- udpServer.ListenAndServe() }()
+			go s.sessionGC()
 		}
 
 		return nil
@@ -204,9 +208,17 @@ func (s *ResolverService) stop(ctx context.Context) error {
 
 	s.frontendServers = []*dns.Server{}
 
+	s.sessionTicker.Stop()
+
 	return nil
 }
 
 func (s *ResolverService) Error() error {
 	return <-s.fatal
+}
+
+func (s *ResolverService) sessionGC() {
+	for range s.sessionTicker.C {
+		s.handler.ClearExpiredSessions()
+	}
 }

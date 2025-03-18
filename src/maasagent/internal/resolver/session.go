@@ -21,19 +21,23 @@ import (
 	"errors"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 )
 
 const (
 	labelPointerShift = 0xC000
+	sessionTTL        = time.Minute
 )
 
 var (
 	ErrLabelTooLong = errors.New("label too long")
+	ErrCNAMELoop    = errors.New("a loop in CNAME resolution was detected")
 )
 
 type session struct {
+	createdAt  time.Time
 	remoteAddr net.Addr
 	// chains can be extremely long and still valid,
 	// we rely on label compression to reuse space
@@ -45,7 +49,12 @@ func newSession(remoteAddr net.Addr) *session {
 	return &session{
 		remoteAddr:   remoteAddr,
 		currentChain: []byte{},
+		createdAt:    time.Now(),
 	}
+}
+
+func sessionKeyFromRemoteAddr(a net.Addr) string {
+	return a.Network() + "://" + a.String()
 }
 
 func (s *session) String() string {
@@ -53,7 +62,7 @@ func (s *session) String() string {
 		return ""
 	}
 
-	return s.remoteAddr.Network() + "://" + s.remoteAddr.String()
+	return sessionKeyFromRemoteAddr(s.remoteAddr)
 }
 
 func (s *session) StoreName(name string) error {
@@ -82,7 +91,7 @@ func (s *session) StoreName(name string) error {
 		nameBytes = append(nameBytes, wire...)
 	}
 
-	if !bytes.Contains(s.currentChain, nameBytes) && !bytes.Contains(s.currentChain, uncompressed) {
+	if !s.contains(nameBytes, uncompressed) {
 		s.currentChain = append(s.currentChain, nameBytes...)
 	}
 
@@ -123,11 +132,28 @@ func (s *session) NameAlreadyQueried(name string) (bool, error) {
 		nameBytes = append(nameBytes, wire...)
 	}
 
-	return bytes.Contains(s.currentChain, nameBytes) || bytes.Contains(s.currentChain, uncompressed), nil
+	return s.contains(nameBytes, uncompressed), nil
 }
 
 func (s *session) Reset() {
 	s.currentChain = nil
+}
+
+func (s *session) Expired(ts time.Time) bool {
+	return ts.Sub(s.createdAt) >= sessionTTL
+}
+
+func (s *session) contains(compressed []byte, uncompressed []byte) bool {
+	compressedIdx := bytes.Index(s.currentChain, compressed)
+	uncompressedIdx := bytes.Index(s.currentChain, uncompressed)
+	compressedMatch := bytes.Contains(
+		s.currentChain, append([]byte{0x00}, compressed...), // 0 byte of previous name to ensure exact match
+	)
+	uncompressedMatch := bytes.Contains(
+		s.currentChain, append([]byte{0x00}, uncompressed...), // 0 byte of previous name to ensure exact match
+	)
+
+	return compressedIdx == 0 || uncompressedIdx == 0 || compressedMatch || uncompressedMatch
 }
 
 func (s *session) compress(buf []byte, label []byte) ([]byte, bool) {
