@@ -145,6 +145,10 @@ class StaticIPAddressRepository(BaseRepository):
                     InterfaceTable.c.id.in_(
                         [interface.id for interface in interfaces]
                     ),
+                    eq(
+                        StaticIPAddressTable.c.alloc_type,
+                        IpAddressType.DISCOVERED,
+                    ),
                 ),
             )
         )
