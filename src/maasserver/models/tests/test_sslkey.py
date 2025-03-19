@@ -7,12 +7,7 @@ from django.utils.safestring import SafeString
 
 from maasserver.models import SSLKey
 from maasserver.models import sslkey as sslkey_module
-from maasserver.models.sslkey import (
-    crypto,
-    find_ssl_common_name,
-    get_html_display_for_key,
-    validate_ssl_key,
-)
+from maasserver.models.sslkey import validate_ssl_key
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -27,31 +22,6 @@ class TestSSLKeyValidator(MAASServerTestCase):
     def test_does_not_validate_random_data(self):
         key_string = factory.make_string()
         self.assertRaises(ValidationError, validate_ssl_key, key_string)
-
-
-class TestGetHTMLDisplayForKey(MAASServerTestCase):
-    def test_display_returns_only_md5(self):
-        key_string = get_data("data/test_x509_0.pem")
-        cert = crypto.load_certificate(crypto.FILETYPE_PEM, key_string)
-        subject = cert.get_subject()
-        cn = find_ssl_common_name(subject)
-        self.patch(sslkey_module, "find_ssl_common_name").return_value = None
-        display = get_html_display_for_key(key_string)
-        self.assertNotIn(cn, display)
-
-    def test_display_returns_cn_and_md5(self):
-        key_string = get_data("data/test_x509_0.pem")
-        cert = crypto.load_certificate(crypto.FILETYPE_PEM, key_string)
-        subject = cert.get_subject()
-        cn = find_ssl_common_name(subject)
-        display = get_html_display_for_key(key_string)
-        self.assertIn(cn, display)
-
-    def test_decode_md5_as_ascii(self):
-        # the key MD5 is correctly printed (and not repr'd)
-        key_string = get_data("data/test_x509_0.pem")
-        display = get_html_display_for_key(key_string)
-        self.assertNotIn("b\\'", display)
 
 
 class TestSSLKey(MAASServerTestCase):
@@ -77,8 +47,10 @@ class TestSSLKey(MAASServerTestCase):
 
     def test_sslkey_display_is_HTML_safe(self):
         self.patch(
-            sslkey_module, "find_ssl_common_name"
-        ).return_value = "<escape>"
+            sslkey_module, "get_html_display_for_key"
+        ).return_value = (
+            "&lt;escape&gt; F6:2D:B4:FF:B8:27:C0:5D:26:32:43:F2:DE:37:EE:6E"
+        )
         key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)

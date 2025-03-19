@@ -5,15 +5,13 @@
 
 """:class:`SSLKey` and friends."""
 
-from html import escape
-
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, TextField
 from django.utils.safestring import mark_safe
 from OpenSSL import crypto
 
+from maascommon.sslkey import get_html_display_for_key
 from maasserver import logger
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -38,29 +36,6 @@ def validate_ssl_key(value):
         # the failure.
         logger.exception("Invalid SSL key.")
         raise ValidationError("Invalid SSL key.")  # noqa: B904
-
-
-def find_ssl_common_name(subject):
-    """Returns the common name for the ssl key."""
-    for component in subject.get_components():
-        if len(component) < 2:
-            continue
-        if component[0] == b"CN":
-            return component[1].decode(settings.DEFAULT_CHARSET)
-    return None
-
-
-def get_html_display_for_key(key):
-    """Returns the html escaped string for the key."""
-    cert = crypto.load_certificate(crypto.FILETYPE_PEM, key)
-    subject = cert.get_subject()
-    md5 = cert.digest("MD5").decode("ascii")
-    cn = find_ssl_common_name(subject)
-    if cn is not None:
-        key = f"{cn} {md5}"
-    else:
-        key = "%s" % md5
-    return escape(key, quote=True)
 
 
 class SSLKey(CleanSave, TimestampedModel):
