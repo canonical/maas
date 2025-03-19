@@ -174,12 +174,22 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         v6_subnet = await create_test_subnet_entry(
             fixture, cidr="fd42:be3f:b08a:3d6c::/64"
         )
-        v4_addrs = [
+        v4_discovered_addrs = [
             (
                 await create_test_staticipaddress_entry(
                     fixture,
                     subnet=v4_subnet,
                     alloc_type=IpAddressType.DISCOVERED,
+                )
+            )[0]
+            for _ in range(3)
+        ]
+        v4_other_addrs = [
+            (
+                await create_test_staticipaddress_entry(
+                    fixture,
+                    subnet=v4_subnet,
+                    alloc_type=IpAddressType.AUTO,
                 )
             )[0]
             for _ in range(3)
@@ -195,7 +205,9 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             for _ in range(3)
         ]
         interfaces = [
-            await create_test_interface_entry(fixture, ips=v4_addrs + v6_addrs)
+            await create_test_interface_entry(
+                fixture, ips=v4_discovered_addrs + v4_other_addrs + v6_addrs
+            )
             for _ in range(3)
         ]
 
@@ -204,7 +216,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         )
 
         assert {addr.id for addr in result} == {
-            addr["id"] for addr in v4_addrs
+            addr["id"] for addr in v4_discovered_addrs
         }
 
     async def test_get_for_nodes_not_found(
