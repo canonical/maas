@@ -198,6 +198,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "next_sync",
     "enable_hw_sync",
     "enable_kernel_crash_dump",
+    "is_dpu",
 )
 
 # Limited set of machine fields exposed on the anonymous API.

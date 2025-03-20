@@ -745,6 +745,7 @@ class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
                 "ephemeral_deploy",
                 "error_description",
                 "enable_kernel_crash_dump",
+                "is_dpu",
             },
             parsed_result.keys(),
         )
@@ -969,6 +970,7 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
                 "ephemeral_deploy",
                 "error_description",
                 "enable_kernel_crash_dump",
+                "is_dpu",
             },
             parsed_result.keys(),
         )

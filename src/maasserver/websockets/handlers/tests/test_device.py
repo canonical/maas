@@ -183,6 +183,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "zone": {"id": node.zone.id, "name": node.zone.name},
             "pool": None,
             "last_applied_storage_layout": node.last_applied_storage_layout,
+            "is_dpu": node.is_dpu,
         }
         if for_list:
             allowed_fields = DeviceHandler.Meta.list_fields + [

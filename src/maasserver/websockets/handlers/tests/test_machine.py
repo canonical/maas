@@ -361,6 +361,7 @@ class TestMachineHandlerUtils:
             "last_applied_storage_layout": node.last_applied_storage_layout,
             "ephemeral_deploy": node.ephemeral_deploy,
             "enable_kernel_crash_dump": node.enable_kernel_crash_dump,
+            "is_dpu": node.is_dpu,
         }
         if "module" in driver and "comment" in driver:
             data["third_party_driver"] = {
@@ -404,6 +405,7 @@ class TestMachineHandlerUtils:
                     "fabrics",
                     "fqdn",
                     "ip_addresses",
+                    "is_dpu",
                     "link_type",
                     "metadata",
                     "osystem",

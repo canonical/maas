@@ -40,6 +40,7 @@ from django.db.models import (
     BooleanField,
     CASCADE,
     CharField,
+    CheckConstraint,
     DateTimeField,
     ForeignKey,
     GenericIPAddressField,
@@ -1004,6 +1005,8 @@ class Node(CleanSave, TimestampedModel):
         commissioned.
     :ivar default_user: The username this `Node` will be configured with,
         None otherwise.
+    :ivar is_dpu: An optional flag to indicate whether this node is a
+        Data Processing Unit (DPU) or not.
     """
 
     system_id = CharField(
@@ -1097,6 +1100,8 @@ class Node(CleanSave, TimestampedModel):
     node_type = IntegerField(
         choices=NODE_TYPE_CHOICES, editable=False, default=NODE_TYPE.DEFAULT
     )
+
+    is_dpu = BooleanField(default=False)
 
     parent = ForeignKey(
         "Node",
@@ -6725,6 +6730,17 @@ class Node(CleanSave, TimestampedModel):
         machine anyway.
         """
         return self.dynamic and self.bmc_id is None
+
+    class Meta:
+        constraints = [
+            CheckConstraint(
+                check=(
+                    Q(is_dpu=False)
+                    | Q(is_dpu=True, node_type=NODE_TYPE.MACHINE)
+                ),
+                name="maasserver_node_dpu_is_machine",
+            ),
+        ]
 
 
 # Piston serializes objects based on the object class.

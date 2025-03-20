@@ -208,6 +208,7 @@ class MachineService(Service):
                 passed=-1,
                 failed=-1,
             ),
+            is_dpu=record["is_dpu"],
         )
         return machine
 
@@ -1596,6 +1597,7 @@ class MachineService(Service):
                     ),
                     else_=-1,
                 ).label("memory_test_status_combined"),
+                NodeTable.c.is_dpu,
             )
             .select_from(NodeTable)
             .join(

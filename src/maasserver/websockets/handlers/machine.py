@@ -319,6 +319,7 @@ class MachineHandler(NodeHandler):
             "domain",
             "pool",
             "zone",
+            "is_dpu",
         ]
         list_exclude = [
             "commissioning_start_time",

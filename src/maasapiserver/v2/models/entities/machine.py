@@ -75,3 +75,4 @@ class Machine(BaseModel):
     memory_test_status: Optional[TestStatus]
     network_test_status: Optional[TestStatus]
     storage_test_status: Optional[TestStatus]
+    is_dpu: bool

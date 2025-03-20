@@ -584,6 +584,7 @@ NodeTable = Table(
     Column("last_sync", DateTime(timezone=True), nullable=True),
     Column("sync_interval", Integer, nullable=True),
     Column("enable_kernel_crash_dump", Boolean, nullable=False),
+    Column("is_dpu", Boolean, nullable=False),
 )
 
 NodeTagTable = Table(
