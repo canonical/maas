@@ -78,6 +78,7 @@ from maasserver.models import (
 )
 from maasserver.node_action import compile_node_actions, get_node_action
 from maasserver.permissions import NodePermission
+from maasserver.sqlalchemy import service_layer
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutForm,
@@ -93,6 +94,7 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
+from maasservicelayer.services.machines_v2 import MachineListRequest
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE
 from provisioningserver.certificates import Certificate
 from provisioningserver.enum import POWER_STATE
@@ -354,7 +356,9 @@ class MachineHandler(NodeHandler):
 
     def _list_sqlalchemy(self, params):
         res = self.list_ids(params)
-        return self.api_client.post("machines", json=res).json()
+        return service_layer.services.machines_v2.list(
+            MachineListRequest(**res)
+        ).dict()
 
     def list(self, params):
         res = self._list_sqlalchemy(params)

@@ -32,8 +32,7 @@ class ServicesMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        # Just pass through the request if it's not a V3 endpoint. The other V2 endpoints have another authentication
-        # architecture/mechanism.
+        # Just pass through the request if it's not a V3 endpoint.
         if not request.url.path.startswith(V3_API_PREFIX):
             return await call_next(request)
 

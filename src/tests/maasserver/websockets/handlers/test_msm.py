@@ -18,9 +18,7 @@ class TestMSMHandler:
     def test_status_not_connected(self, mocker):
         owner, session = factory.make_User_with_session()
         mocker.patch.object(msm, "msm_status", return_value={})
-        handler = msm.MAASSiteManagerHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
         assert result["sm-url"] is None
         assert result["start-time"] is None
@@ -41,9 +39,7 @@ class TestMSMHandler:
                 "start-time": expected_started,
             },
         )
-        handler = msm.MAASSiteManagerHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
         assert result["sm-url"] == expected_url
         assert result["start-time"] == expected_started
@@ -64,9 +60,7 @@ class TestMSMHandler:
                 "start-time": expected_started,
             },
         )
-        handler = msm.MAASSiteManagerHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
         assert result["sm-url"] == expected_url
         assert result["start-time"] == expected_started

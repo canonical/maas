@@ -29,7 +29,6 @@ from maasapiserver.settings import (
     internal_api_service_socket_path,
     read_config,
 )
-from maasapiserver.v2.api.handlers import APIv2
 from maasapiserver.v3.api.internal.handlers import APIv3Internal
 from maasapiserver.v3.api.public.handlers import APIv3
 from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
@@ -158,7 +157,6 @@ async def create_app(
         "MAASAPIServer",
         "maasapiserver",
     )
-    APIv2.register(app.router)
     APIv3.register(app.router)
     return app
 

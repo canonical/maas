@@ -1,21 +1,13 @@
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 import logging
+from typing import Optional
 
+from pydantic import BaseModel
 from sqlalchemy import case, desc, distinct, or_, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.expression import ColumnOperators, func
 
-from maasapiserver.v2.models.entities.machine import (
-    IPAddress,
-    Machine,
-    ModelRef,
-    TestStatus,
-    Vlan,
-)
-from maasapiserver.v2.models.requests.machine import MachineListRequest
-from maasapiserver.v2.models.responses.machine import (
-    MachineListGroupResponse,
-    MachineListResponse,
-)
 from maascommon.enums.bmc import BmcType
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
@@ -24,6 +16,8 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     SIMPLIFIED_NODE_STATUSES_MAP_REVERSED,
 )
+from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import (
     BlockDeviceTable,
     BMCTable,
@@ -52,14 +46,138 @@ from maasservicelayer.services.base import Service
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
 
 
-class MachineService(Service):
+# Requests
+class MachineRequest(BaseModel):
+    id: int
+    actions: list[str]
+    permissions: list[str]
+
+
+class MachineListGroupRequest(BaseModel):
+    name: Optional[str]
+    value: Optional[str]
+    count: Optional[int]
+    collapsed: Optional[bool]
+    items: list[MachineRequest]
+
+
+class MachineListRequest(BaseModel):
+    count: int
+    cur_page: int
+    num_pages: int
+    groups: list[MachineListGroupRequest]
+
+
+# Entities
+class ModelRef(BaseModel):
+    id: int
+    name: str
+
+
+class TestStatus(BaseModel):
+    status: Optional[int]
+    pending: Optional[int]
+    running: Optional[int]
+    passed: Optional[int]
+    failed: Optional[int]
+
+
+class Vlan(BaseModel):
+    id: Optional[int]
+    name: Optional[str]
+    fabric_id: Optional[int]
+    fabric_name: Optional[str]
+
+
+class IPAddress(BaseModel):
+    ip: Optional[str]
+    is_boot: Optional[bool]
+
+
+class Machine(BaseModel):
+    # maasui/src/src/app/store/machine/types/base.ts
+
+    id: int
+    system_id: str
+    hostname: str
+    description: str
+    pool: ModelRef
+    pod: Optional[ModelRef]
+    domain: ModelRef
+    owner: str
+    parent: Optional[str]
+    error_description: str
+    zone: ModelRef
+    cpu_count: int
+    memory: int
+    power_state: str
+    locked: bool
+    permissions: list[str]
+    fqdn: str
+    actions: list[str]
+    link_type: str
+    tags: Optional[list[int]]
+    physical_disk_count: Optional[int]
+    storage: Optional[float]
+    testing_status: Optional[TestStatus]
+    architecture: str
+    osystem: str
+    distro_series: str
+    status: str
+    status_code: int
+    simple_status: str
+    ephemeral_deploy: bool
+    fabrics: Optional[list[str]]
+    spaces: Optional[list[str]]
+    extra_macs: Optional[list[str]]
+    status_message: Optional[str]
+    pxe_mac: Optional[str]
+    vlan: Optional[Vlan]
+    power_type: Optional[str]
+    ip_addresses: Optional[list[IPAddress]]
+    cpu_test_status: Optional[TestStatus]
+    memory_test_status: Optional[TestStatus]
+    network_test_status: Optional[TestStatus]
+    storage_test_status: Optional[TestStatus]
+    is_dpu: bool
+
+
+# Responses
+class MachineListGroupResponse(BaseModel):
+    name: Optional[str]
+    value: Optional[str]
+    count: Optional[int]
+    collapsed: Optional[bool]
+    items: Optional[list[Machine]]
+
+
+class MachineListResponse(BaseModel):
+    count: int
+    cur_page: int
+    num_pages: int
+    groups: Optional[list[MachineListGroupResponse]]
+
+
+class MachinesV2Service(Service, Repository):
+    """
+    TL;DR DO NOT USE THIS!
+
+    This service was part of the first iteration of the maasapiserver. maasserver used to make a POST query to the apiserver to
+    retrieve the machine listing. After that initial iteration, we decided to implement the v3 api and we integrated the
+    service layer with maasserver. For this reason, we moved that logic to the service layer so that the websocket handlers can call this method directly.
+    This service MUST be removed when the websocket handler for the machine list is removed - do not use this anymore!
+    """
+
+    def __init__(self, context: Context):
+        super().__init__(context)
+
     async def list(self, request: MachineListRequest) -> MachineListResponse:
         ids = []
         for group in request.groups:
             ids += list(map(lambda x: x.id, group.items))
 
         stmt = self._single_query(ids)
-        result = await self.context.get_connection().execute(stmt)
+        result = await self.execute_stmt(stmt)
 
         machines = {}
         for row in result.all():

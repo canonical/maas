@@ -193,7 +193,6 @@ APIServerRule = Rule(
     Allow("aiohttp|aiohttp.**"),
     Allow("asyncpg|asyncpg.**"),
     Allow("django.conf.*"),
-    Allow("django.core.*"),
     Allow("django.contrib.auth.hashers.*"),
     Allow("fastapi|fastapi.**"),
     Allow("jose|jose.**"),
@@ -201,12 +200,9 @@ APIServerRule = Rule(
     Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasserver.config.**"),
-    Allow("maasserver.enum.**"),
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
-    # TODO: Remove when we finally move everything to the maasservicelayer
-    Allow("metadataserver.enum.**"),
     Allow("netaddr|netaddr.**"),
     Allow("prometheus_client|prometheus_client.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
@@ -432,6 +428,8 @@ ServiceLayerRule = Rule(
     Allow("maascommon|maascommon.**"),
     # TODO: move remaining utils to maascommon
     Allow("maasserver.config.RegionConfiguration"),
+    Allow("maasserver.enum.NODE_STATUS_CHOICES_DICT"),
+    Allow("maasserver.enum.SIMPLIFIED_NODE_STATUSES_MAP_REVERSED"),
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
     Allow("maasserver.macaroons._IDClient"),
     Allow("maasserver.workflow.worker.**"),

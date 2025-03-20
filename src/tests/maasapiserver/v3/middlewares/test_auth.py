@@ -21,7 +21,6 @@ from starlette.responses import Response
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
-from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
 )
@@ -151,13 +150,6 @@ def auth_app(
             )
         return Response(content="authenticated_user is None", status_code=401)
 
-    @app.get(V2_API_PREFIX)
-    async def get_v2(request: Request) -> Response:
-        # Other endpoints should not have authenticated_user at all.
-        if hasattr(request.state, "authenticated_user"):
-            return Response(status_code=500)
-        return Response(status_code=200)
-
     yield app
 
 
@@ -169,10 +161,6 @@ async def auth_client(auth_app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 class TestV3AuthenticationMiddleware:
     async def test_authenticated_user(self, auth_client: AsyncClient) -> None:
-        # v2 endpoints should not have the authenticated_user in the request context
-        v2_response = await auth_client.get(V2_API_PREFIX)
-        assert v2_response.status_code == 200
-
         # v3 endpoints should have the authenticated_user in the request context if the request was not authenticated
         v3_response = await auth_client.get(f"{V3_API_PREFIX}/users/me")
         assert v3_response.text == "authenticated_user is None"

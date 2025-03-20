@@ -72,7 +72,6 @@ class TestHandlerMeta(MAASTestCase):
         self.assertIsNone(meta.list_fields)
         self.assertIsNone(meta.list_exclude)
         self.assertIsNone(meta.non_changeable)
-        self.assertEqual(meta.methods_using_apiserver, [])
         self.assertIsNone(meta.form)
 
     def test_creates_handler_with_options(self):
@@ -80,7 +79,6 @@ class TestHandlerMeta(MAASTestCase):
             "TestHandler",
             abstract=True,
             allowed_methods=["list"],
-            methods_using_apiserver=["list"],
             handler_name="testing",
             queryset=Node.objects.all(),
             pk="system_id",
@@ -106,7 +104,6 @@ class TestHandlerMeta(MAASTestCase):
         self.assertEqual(meta.list_fields, ["hostname"])
         self.assertEqual(meta.list_exclude, ["hostname"])
         self.assertEqual(meta.non_changeable, ["system_id"])
-        self.assertEqual(meta.methods_using_apiserver, ["list"])
         self.assertIs(meta.form, sentinel.form)
 
     def test_sets_handler_name_based_on_class_name(self):
@@ -456,22 +453,6 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         result = handler.execute("get", params).wait(TIMEOUT)
         self.assertIs(result, sentinel.thing)
         base.deferToDatabase.assert_called_once_with(ANY, params)
-
-    def test_apiserver_client_initialization(self):
-        # Methods are assumed by default to be synchronous and are called in a
-        # thread that originates from a specific threadpool.
-        handler = self.make_nodes_handler(methods_using_apiserver=["get"])
-        self.assertIsNotNone(handler.api_client)
-
-    def test_apiserver_execute_calls_in_thread_with_params(self):
-        # Methods are assumed by default to be synchronous and are called in a
-        # thread that originates from a specific threadpool.
-        handler = self.make_nodes_handler(methods_using_apiserver=["get"])
-        params = {"system_id": factory.make_name("system_id")}
-        self.patch(base, "deferToThread").return_value = sentinel.thing
-        result = handler.execute("get", params).wait(TIMEOUT)
-        self.assertIs(result, sentinel.thing)
-        base.deferToThread.assert_called_once_with(ANY, params)
 
     def test_execute_track_latency(self):
         mock_metrics = self.patch(PROMETHEUS_METRICS, "update")

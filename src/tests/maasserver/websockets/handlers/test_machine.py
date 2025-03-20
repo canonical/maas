@@ -71,9 +71,7 @@ class TestMachineHandler:
         mocker.patch("maasserver.utils.orm.post_commit_do")
 
         owner, session = self._populate_db_for_query_count(2)
-        handler = MachineHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(owner, {}, None)
         queries_one, _ = count_queries(handler.list_ids, {"page_size": 1})
         queries_total, _ = count_queries(handler.list_ids, {})
         # This check is to notify the developer that a change was made that
@@ -97,9 +95,7 @@ class TestMachineHandler:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = self._populate_db_for_query_count(2)
-        handler = MachineHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(owner, {}, None)
         base_params = {
             "filter": {},
             "group_collapsed": [],
@@ -165,9 +161,7 @@ class TestMachineHandler:
                     status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
                 )
 
-        handler = MachineHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(owner, {}, None)
         queries_one, _ = count_queries(handler.list_ids, {"page_size": 1})
         queries_total, _ = count_queries(handler.list_ids, {})
         # This check is to notify the developer that a change was made that
@@ -206,9 +200,7 @@ class TestMachineHandler:
                 status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
             )
 
-        handler = MachineHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(owner, {}, None)
         handler.list_ids({})
         handler.list_ids({})
 
@@ -227,27 +219,21 @@ class TestMachineHandler:
             owner=other_user, status=NODE_STATUS.ALLOCATED
         )
 
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         list_results = handler.list_ids({})
         assert len(list_results["groups"][0]["items"]) == 2
         assert {node.id, user_node.id} == {
             item["id"] for item in list_results["groups"][0]["items"]
         }
 
-        handler = MachineHandler(
-            other_user, {}, None, session_id=other_user_session_id.session_key
-        )
+        handler = MachineHandler(other_user, {}, None)
         list_results = handler.list_ids({})
         assert len(list_results["groups"][0]["items"]) == 2
         assert {node.id, other_user_node.id} == {
             item["id"] for item in list_results["groups"][0]["items"]
         }
 
-        handler = MachineHandler(
-            admin, {}, None, session_id=admin_session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         list_results = handler.list_ids({})
         assert len(list_results["groups"][0]["items"]) == 3
         assert {node.id, user_node.id, other_user_node.id} == {
@@ -275,15 +261,11 @@ class TestMachineHandler:
             owner=None, power_parameters=full_power_params
         )
 
-        handler = MachineHandler(
-            admin, {}, None, session_id=admin_session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         node_data = handler.get({"system_id": node.system_id})
         assert node_data["power_parameters"] == full_power_params
 
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         node_data = handler.get({"system_id": node.system_id})
         assert node_data["power_parameters"] == sanitised_power_params
 
@@ -312,15 +294,11 @@ class TestMachineHandler:
         full_power_params = sanitised_power_params | {"power_pass": power_pass}
         node = factory.make_Node(pool=pool, power_parameters=full_power_params)
 
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         node_data = handler.get({"system_id": node.system_id})
         assert node_data["power_parameters"] == full_power_params
 
-        handler = MachineHandler(
-            other_user, {}, None, session_id=other_user_session.session_key
-        )
+        handler = MachineHandler(other_user, {}, None)
         node_data = handler.get({"system_id": node.system_id})
         assert node_data["power_parameters"] == sanitised_power_params
 
@@ -335,9 +313,7 @@ class TestMachineHandlerNewSchema:
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
             for _ in range(3)
         ]
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "filter": {
@@ -357,9 +333,7 @@ class TestMachineHandlerNewSchema:
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
             for _ in range(3)
         ]
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "filter": {
@@ -378,9 +352,7 @@ class TestMachineHandlerNewSchema:
         user, session = factory.make_User_with_session()
         for _ in range(3):
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "filter": {
@@ -396,9 +368,7 @@ class TestMachineHandlerNewSchema:
         user, session = factory.make_User_with_session()
         for _ in range(3):
             factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         pytest.raises(
             HandlerValidationError,
             handler.list_ids,
@@ -416,9 +386,7 @@ class TestMachineHandlerNewSchema:
         factory.make_Node(
             owner=user, status=NODE_STATUS.NEW, with_boot_disk=False
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "filter": {
@@ -438,9 +406,7 @@ class TestMachineHandlerNewSchema:
         node_with_standard_deployment = factory.make_Node(
             owner=user, status=NODE_STATUS.NEW, ephemeral_deploy=False
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
 
         result = handler.list_ids({})
         assert result["groups"][0]["count"] == 2
@@ -478,9 +444,7 @@ class TestMachineHandlerNewSchema:
         nodes = [factory.make_Machine(owner=user) for _ in range(2)]
         for node in nodes:
             _ = [factory.make_PhysicalBlockDevice(node=node) for _ in range(3)]
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids({"group_key": "owner"})
         assert result["count"] == 2
         assert result["groups"][0]["count"] == 2
@@ -492,9 +456,7 @@ class TestMachineHandlerNewSchema:
         node = factory.make_Machine(owner=user)
         [node.tags.add(factory.make_Tag()) for _ in range(2)]
 
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids({"filter": {"free_text": node.hostname}})
 
         assert result["count"] == 1
@@ -514,9 +476,7 @@ class TestMachineHandlerNewSchema:
             status=NODE_STATUS.ALLOCATED,
             bmc=factory.make_Pod(pod_type="virsh"),
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "pod_type",
@@ -539,9 +499,7 @@ class TestMachineHandlerNewSchema:
             status=NODE_STATUS.ALLOCATED,
             bmc=factory.make_Pod(pod_type="virsh"),
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "pod_type",
@@ -565,9 +523,7 @@ class TestMachineHandlerNewSchema:
             owner=user,
             status=NODE_STATUS.NEW,
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "status",
@@ -589,9 +545,7 @@ class TestMachineHandlerNewSchema:
         ]
         for i in range(3):
             factory.make_Node(owner=user, status=statuses[i])
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "simple_status",
@@ -618,9 +572,7 @@ class TestMachineHandlerNewSchema:
             owner=user,
             power_state=POWER_STATE.OFF,
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "power_state",
@@ -641,9 +593,7 @@ class TestMachineHandlerNewSchema:
         factory.make_Node(
             owner=user1,
         )
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "owner",
@@ -659,9 +609,7 @@ class TestMachineHandlerNewSchema:
         parent = factory.make_Machine(owner=admin)
         for _ in range(2):
             factory.make_Machine(owner=admin, parent=parent)
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "parent",
@@ -682,9 +630,7 @@ class TestMachineHandlerNewSchema:
         parent = factory.make_Machine(owner=admin)
         factory.make_Machine(owner=admin, parent=parent)
         factory.make_Machine(owner=admin, parent=parent)
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "parent",
@@ -709,9 +655,7 @@ class TestMachineHandlerNewSchema:
         parent = factory.make_Machine(owner=admin)
         factory.make_Machine(owner=admin, parent=parent)
         factory.make_Machine(owner=admin, parent=parent)
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "parent",
@@ -737,9 +681,7 @@ class TestMachineHandlerNewSchema:
         factory.make_Machine(owner=admin, parent=parent1)
         factory.make_Machine(owner=admin, parent=parent1)
         factory.make_Machine(owner=admin, parent=parent2)
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "parent",
@@ -766,9 +708,7 @@ class TestMachineHandlerNewSchema:
         factory.make_Machine(owner=admin)
         factory.make_Machine(owner=admin)
         factory.make_Machine(owner=admin)
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "parent",
@@ -794,9 +734,7 @@ class TestMachineHandlerNewSchema:
             owner=user,
             zone=zones[0],
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "zone",
@@ -817,9 +755,7 @@ class TestMachineHandlerNewSchema:
             owner=user,
             status=NODE_STATUS.NEW,
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         result = handler.list_ids(
             {
                 "group_key": "status",
@@ -849,9 +785,7 @@ class TestMachineHandlerNewSchema:
             )
             node.tags.add(tag)
 
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         for filter_grp in handler.filter_groups({}):
             key = filter_grp["key"]
             if filter_grp["dynamic"] and not key.startswith("not_"):
@@ -866,9 +800,7 @@ class TestMachineHandlerNewSchema:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         node = factory.make_Node()
         handler.list_ids({})
         listen_result = handler.on_listen("machine", "update", node.system_id)
@@ -882,9 +814,7 @@ class TestMachineHandlerNewSchema:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         nodes = [factory.make_Node() for _ in range(3)]
         handler.list_ids({})
         resp = handler.unsubscribe(
@@ -896,9 +826,7 @@ class TestMachineHandlerNewSchema:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         node1 = factory.make_Node()
         node2 = factory.make_Node()
         handler.list_ids({})
@@ -922,9 +850,7 @@ class TestMachineHandlerNewSchema:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         admin, session = factory.make_admin_with_session()
-        handler = MachineHandler(
-            admin, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(admin, {}, None)
         node1 = factory.make_Node()
         node2 = factory.make_Node()
         handler.list_ids({})
@@ -950,8 +876,8 @@ class TestMachineHandlerNewSchema:
 
 
 @pytest.mark.allow_transactions
-@pytest.mark.usefixtures("maasapiserver")
-class TestMachineHandlerWithMaasApiServer:
+@pytest.mark.usefixtures("maasdb")
+class TestMachineHandlerWithServiceLayer:
     def test_list_no_power_params_certificate(self):
         user, session = factory.make_User_with_session()
         sample_cert = get_sample_cert()
@@ -964,9 +890,7 @@ class TestMachineHandlerWithMaasApiServer:
             },
         )
         transaction.commit()
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         list_results = handler.list({})
         [node_info] = list_results["groups"][0]["items"]
         assert "certificate" not in node_info
@@ -981,9 +905,7 @@ class TestMachineHandlerWithMaasApiServer:
             script_set=factory.make_ScriptSet(node=node),
             status=SCRIPT_STATUS.PASSED,
         )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         factory.make_PhysicalBlockDevice(node=node)
 
         assert node.id not in handler._script_results.keys()
@@ -1031,9 +953,7 @@ class TestMachineHandlerWithMaasApiServer:
             suppressed=True,
         )
 
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         factory.make_PhysicalBlockDevice(node=node)
         transaction.commit()
         list_results = handler.list({})
@@ -1065,9 +985,7 @@ class TestMachineHandlerWithMaasApiServer:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
-        handler = MachineHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(owner, {}, None)
         # Create a device.
         factory.make_Node(owner=owner, node_type=NODE_TYPE.DEVICE)
         node = factory.make_Node(owner=owner)
@@ -1083,9 +1001,7 @@ class TestMachineHandlerWithMaasApiServer:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
-        handler = MachineHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(owner, {}, None)
         node = factory.make_Node(
             owner=owner,
             node_type=NODE_TYPE.MACHINE,
@@ -1104,9 +1020,7 @@ class TestMachineHandlerWithMaasApiServer:
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
         owner, session = factory.make_User_with_session()
-        handler = MachineHandler(
-            owner, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(owner, {}, None)
         node = factory.make_Node(
             owner=owner,
             node_type=NODE_TYPE.MACHINE,
@@ -1127,9 +1041,7 @@ class TestMachineHandlerWithMaasApiServer:
         user, session = factory.make_User_with_session()
         pod = factory.make_Pod()
         node = factory.make_Node(owner=user, bmc=pod)
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         transaction.commit()
         list_results = handler.list({})
         assert list_results["groups"][0]["items"] == [
@@ -1159,9 +1071,7 @@ class TestMachineHandlerWithMaasApiServer:
                 factory.make_PhysicalBlockDevice(
                     node=node, size=MIN_BOOT_PARTITION_SIZE
                 )
-        handler = MachineHandler(
-            user, {}, None, session_id=session.session_key
-        )
+        handler = MachineHandler(user, {}, None)
         transaction.commit()
         for key in (
             "storage",

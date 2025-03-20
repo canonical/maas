@@ -10,7 +10,7 @@ from maasserver.websockets.handlers.machine import MachineHandler
 
 
 @pytest.mark.allow_transactions
-def test_perf_list_machines_Websocket_endpoint(perf, factory, maasapiserver):
+def test_perf_list_machines_Websocket_endpoint(perf, factory, maasdb):
     # This should test the websocket calls that are used to load
     # the machine listing page on the initial page load.
     admin, session = factory.make_admin_with_session()
@@ -39,9 +39,7 @@ def test_perf_list_machines_Websocket_endpoint(perf, factory, maasapiserver):
 
 
 @pytest.mark.allow_transactions
-def test_perf_list_machines_Websocket_endpoint_all(
-    perf, factory, maasapiserver
-):
+def test_perf_list_machines_Websocket_endpoint_all(perf, factory, maasdb):
     # How long would it take to list all the machines using the
     # websocket without any pagination.
     admin, session = factory.make_admin_with_session()

@@ -65,8 +65,6 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             ]
         )
         protocol.request = HttpRequest()
-        protocol.session = MagicMock()
-        protocol.session.session_key = ""
         if patch_authenticate:
             self.patch(protocol, "authenticate")
         return protocol, factory
@@ -542,10 +540,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         self.assertTrue(d.called)
         handler_class.assert_called_once_with(
-            protocol.user,
-            protocol.cache[handler_name],
-            protocol.request,
-            protocol.session.session_key,
+            protocol.user, protocol.cache[handler_name], protocol.request
         )
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
@@ -707,8 +702,6 @@ class MakeProtocolFactoryMixin:
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
         protocol.transport.cookies = b""
-        protocol.session = MagicMock()
-        protocol.session.session_key = ""
         if user is None:
             user = maas_factory.make_User()
 
@@ -886,7 +879,6 @@ class TestWebSocketFactoryTransactional(
             user,
             protocol.cache[handler_class._meta.handler_name],
             protocol.request,
-            protocol.session.session_key,
         )
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.

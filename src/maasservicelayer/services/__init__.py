@@ -82,6 +82,7 @@ from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService
 from maasservicelayer.services.machines import MachinesService
+from maasservicelayer.services.machines_v2 import MachinesV2Service
 from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
 )
@@ -154,6 +155,7 @@ class ServiceCollectionV3:
     ipranges: IPRangesService
     leases: LeasesService
     machines: MachinesService
+    machines_v2: MachinesV2Service
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
     notifications: NotificationsService
@@ -239,6 +241,7 @@ class ServiceCollectionV3:
             scriptresults_service=services.scriptresults,
             machines_repository=MachinesRepository(context),
         )
+        services.machines_v2 = MachinesV2Service(context=context)
         services.interfaces = InterfacesService(
             context=context,
             temporal_service=services.temporal,
