@@ -1,11 +1,13 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Classes for generating BIND zone config files."""
 
 from datetime import datetime
+from ipaddress import IPv4Address, IPv6Address
 from itertools import chain
 import os
+from typing import Iterator
 
 from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
@@ -34,7 +36,9 @@ def get_fqdn_or_ip_address(target):
         return target.rstrip(".") + "."
 
 
-def enumerate_ip_mapping(mapping):
+def enumerate_ip_mapping(
+    mapping,
+) -> Iterator[tuple[str, int, IPv4Address | IPv6Address]]:
     """Generate `(hostname, ttl, value)` tuples from `mapping`.
 
     :param mapping: A dict mapping host names to info about the host:
@@ -284,7 +288,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
         mapping = cls.get_mapping(mapping, addr_ttl)
         if mapping is None:
             return ()
-        return (item for item in mapping if IPAddress(item[2]).version == 4)
+        return (item for item in mapping if item[2].version == 4)
 
     @classmethod
     def get_AAAA_mapping(cls, mapping, addr_ttl):
@@ -301,7 +305,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
         mapping = cls.get_mapping(mapping, addr_ttl)
         if mapping is None:
             return ()
-        return (item for item in mapping if IPAddress(item[2]).version == 6)
+        return (item for item in mapping if item[2].version == 6)
 
     @classmethod
     def get_GENERATE_directives(cls, dynamic_range):
@@ -502,7 +506,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
         """
 
         def short_name(ip, network):
-            long_name = IPAddress(ip).reverse_dns
+            long_name = IPAddress(str(ip)).reverse_dns
             if network.version == 4:
                 short_name = ".".join(
                     long_name.split(".")[: (31 - network.prefixlen) // 8 + 1]
@@ -519,7 +523,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
             (short_name(ip, network), ttl, "%s." % hostname)
             for hostname, ttl, ip in enumerate_ip_mapping(mapping)
             # Filter out the IP addresses that are not in `network`.
-            if IPAddress(ip) in network
+            if IPAddress(str(ip)) in network
         )
 
     @classmethod

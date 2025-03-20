@@ -1,8 +1,9 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for BIND zone config generation."""
 
+import ipaddress
 from itertools import chain
 import os.path
 import random
@@ -34,7 +35,7 @@ class HostnameIPMapping:
     """This is used to return address information for a host in a way that
     keeps life simple for the callers."""
 
-    def __init__(self, system_id=None, ttl=None, ips=frozenset()):
+    def __init__(self, system_id=None, ttl=None, ips: set = frozenset()):
         self.system_id = system_id
         self.ttl = ttl
         self.ips = ips.copy()
@@ -56,7 +57,7 @@ class HostnameRRsetMapping:
     that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
     rrdata) tuples."""
 
-    def __init__(self, system_id=None, rrset=frozenset()):
+    def __init__(self, system_id=None, rrset: set = frozenset()):
         self.system_id = system_id
         self.rrset = rrset.copy()
 
@@ -123,18 +124,18 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ns_ttl = random.randint(10, 300)
         ipv4_mapping = {
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, [factory.make_ipv4_address()]
+                None, ttl, {ipaddress.ip_address(factory.make_ipv4_address())}
             ),
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, [factory.make_ipv4_address()]
+                None, ttl, {ipaddress.ip_address(factory.make_ipv4_address())}
             ),
         }
         ipv6_mapping = {
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, [factory.make_ipv6_address()]
+                None, ttl, {ipaddress.ip_address(factory.make_ipv6_address())}
             ),
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, [factory.make_ipv6_address()]
+                None, ttl, {ipaddress.ip_address(factory.make_ipv6_address())}
             ),
         }
         combined_mapping = {
@@ -157,18 +158,18 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ns_ttl = random.randint(10, 300)
         ipv4_mapping = {
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, {factory.make_ipv4_address()}
+                None, ttl, {ipaddress.ip_address(factory.make_ipv4_address())}
             ),
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, {factory.make_ipv4_address()}
+                None, ttl, {ipaddress.ip_address(factory.make_ipv4_address())}
             ),
         }
         ipv6_mapping = {
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, {factory.make_ipv6_address()}
+                None, ttl, {ipaddress.ip_address(factory.make_ipv6_address())}
             ),
             factory.make_name("host"): HostnameIPMapping(
-                None, ttl, {factory.make_ipv6_address()}
+                None, ttl, {ipaddress.ip_address(factory.make_ipv6_address())}
             ),
         }
         combined_mapping = {
@@ -191,10 +192,10 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_string()
         network = factory.make_ipv4_network()
         ipv4_hostname = factory.make_name("host")
-        ipv4_ip = factory.pick_ip_in_network(network)
-        range_ip = factory.pick_ip_in_network(network, but_not={ipv4_ip})
+        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
+        range_ip = factory.pick_ip_in_network(network, but_not={str(ipv4_ip)})
         ipv6_hostname = factory.make_name("host")
-        ipv6_ip = factory.make_ipv6_address()
+        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
         ttl = random.randint(10, 300)
         mapping = {
             ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
@@ -236,9 +237,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_string()
         network = factory.make_ipv4_network()
         ipv4_hostname = factory.make_name("host")
-        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
         ipv6_hostname = factory.make_name("host")
-        ipv6_ip = factory.make_ipv6_address()
+        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
         ttl = random.randint(10, 300)
         mapping = {
             ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
@@ -297,9 +298,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_string()
         network = factory.make_ipv4_network()
         ipv4_hostname = factory.make_name("host")
-        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
         ipv6_hostname = factory.make_name("host")
-        ipv6_ip = factory.make_ipv6_address()
+        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
         ipv6_network = factory.make_ipv6_network()
         dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
         ttl = random.randint(10, 300)
@@ -341,8 +342,12 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
         ttl = random.randint(10, 300)
         mapping = {
-            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
-            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
+            ipv4_hostname: HostnameIPMapping(
+                None, ttl, {ipaddress.ip_address(ipv4_ip)}
+            ),
+            ipv6_hostname: HostnameIPMapping(
+                None, ttl, {ipaddress.ip_address(ipv6_ip)}
+            ),
         }
         dns_zone_config = DNSForwardZoneConfig(
             domain,
@@ -365,9 +370,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_string()
         network = factory.make_ipv4_network()
         ipv4_hostname = factory.make_name("host")
-        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
         ipv6_hostname = factory.make_name("host")
-        ipv6_ip = factory.make_ipv6_address()
+        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
         ipv6_network = factory.make_ipv6_network()
         dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
         ttl = random.randint(10, 300)
@@ -424,9 +429,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_string()
         network = factory.make_ipv4_network()
         ipv4_hostname = factory.make_name("host")
-        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
         ipv6_hostname = factory.make_name("host")
-        ipv6_ip = factory.make_ipv6_address()
+        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
         ipv6_network = factory.make_ipv6_network()
         dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
         ttl = random.randint(10, 300)
@@ -473,9 +478,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_string()
         network = factory.make_ipv4_network()
         ipv4_hostname = factory.make_name("host")
-        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
         ipv6_hostname = factory.make_name("host")
-        ipv6_ip = factory.make_ipv6_address()
+        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
         ipv6_network = factory.make_ipv6_network()
         dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
         ttl = random.randint(10, 300)

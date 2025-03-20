@@ -436,7 +436,7 @@ class TestRenderRRData(MAASServerTestCase):
             if info.user_id is not None:
                 rr_map[hostname].user_id = info.user_id
             for ip in info.ips:
-                if IPAddress(ip).version == 4:
+                if IPAddress(str(ip)).version == 4:
                     rr_map[hostname].rrset.add((info.ttl, "A", ip, None))
                 else:
                     rr_map[hostname].rrset.add((info.ttl, "AAAA", ip, None))

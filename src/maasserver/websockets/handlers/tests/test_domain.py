@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.domain`"""
@@ -6,7 +6,6 @@
 from random import choice, randint
 
 from django.core.exceptions import ValidationError
-from netaddr import IPAddress
 
 from maasserver.models import DNSResource, Domain
 from maasserver.sqlalchemy import service_layer
@@ -51,7 +50,7 @@ class TestDomainHandler(MAASServerTestCase):
             if info.user_id is not None:
                 rr_map[name].user_id = info.user_id
             for ip in info.ips:
-                if IPAddress(ip).version == 4:
+                if ip.version == 4:
                     rr_map[name].rrset.add((info.ttl, "A", ip, None))
                 else:
                     rr_map[name].rrset.add((info.ttl, "AAAA", ip, None))

@@ -1,8 +1,9 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:module:`provisioningserver.dns.actions`."""
 
+import ipaddress
 import os
 from os.path import join
 import random
@@ -242,7 +243,9 @@ class TestConfiguration(MAASTestCase):
             domain,
             serial=random.randint(1, 100),
             mapping={
-                factory.make_string(): HostnameIPMapping(None, ttl, {ip})
+                factory.make_string(): HostnameIPMapping(
+                    None, ttl, {ipaddress.ip_address(ip)}
+                )
             },
             dns_ip_list=dns_ip_list,
         )

@@ -1,6 +1,6 @@
-# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
+import ipaddress
 import os
 import random
 import socket
@@ -251,10 +251,16 @@ class TestGetHostnameMapping(MAASServerTestCase):
         Config.objects.set_config("default_dns_ttl", ttl)
         expected_mapping = {
             "%s.maas" % node1.hostname: HostnameIPMapping(
-                node1.system_id, ttl, {static_ip.ip}, node1.node_type
+                node1.system_id,
+                ttl,
+                {ipaddress.ip_address(static_ip.ip)},
+                node1.node_type,
             ),
             "%s.maas" % node2.hostname: HostnameIPMapping(
-                node2.system_id, ttl, {dynamic_ip.ip}, node2.node_type
+                node2.system_id,
+                ttl,
+                {ipaddress.ip_address(dynamic_ip.ip)},
+                node2.node_type,
             ),
         }
         actual = get_hostname_ip_mapping(
@@ -598,14 +604,14 @@ class TestZoneGenerator(MAASServerTestCase):
                 node.hostname: HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {str(boot_ip.ip)},
+                    {ipaddress.ip_address(boot_ip.ip)},
                     node.node_type,
                 ),
                 "%s.%s"
                 % (interfaces[0].name, node.hostname): HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {str(sip.ip)},
+                    {ipaddress.ip_address(sip.ip)},
                     node.node_type,
                 ),
             },
@@ -624,13 +630,13 @@ class TestZoneGenerator(MAASServerTestCase):
                 node.fqdn: HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {str(boot_ip.ip)},
+                    {ipaddress.ip_address(boot_ip.ip)},
                     node.node_type,
                 ),
                 "%s.%s" % (interfaces[0].name, node.fqdn): HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {str(sip.ip)},
+                    {ipaddress.ip_address(sip.ip)},
                     node.node_type,
                 ),
             },
@@ -875,7 +881,7 @@ class TestZoneGenerator(MAASServerTestCase):
             mapping = {}
             for record in records:
                 if ip_set := set(
-                    ip.ip
+                    ipaddress.ip_address(ip.ip)
                     for ip in record.ip_addresses.all()
                     if IPAddress(ip.ip) in network
                 ):
@@ -898,7 +904,10 @@ class TestZoneGenerator(MAASServerTestCase):
                     record.name: HostnameIPMapping(
                         None,
                         record.address_ttl,
-                        set(record.ip_addresses.all()),
+                        {
+                            ipaddress.ip_address(ip.ip)
+                            for ip in record.ip_addresses.all()
+                        },
                         None,
                         1,
                         None,
@@ -1089,7 +1098,7 @@ class TestZoneGenerator(MAASServerTestCase):
             mapping = {}
             for record in records:
                 ip_set = set(
-                    ip.ip
+                    ipaddress.ip_address(ip.ip)
                     for ip in record.ip_addresses.all()
                     if IPAddress(ip.ip) in network
                     and (
@@ -1117,7 +1126,10 @@ class TestZoneGenerator(MAASServerTestCase):
                     record.name: HostnameIPMapping(
                         None,
                         record.address_ttl,
-                        set(ip.ip for ip in record.ip_addresses.all()),
+                        set(
+                            ipaddress.ip_address(ip.ip)
+                            for ip in record.ip_addresses.all()
+                        ),
                         None,
                         1,
                         None,
@@ -1196,12 +1208,18 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         [boot_ip] = boot_iface.claim_auto_ips()
         expected_forward = {
             node.hostname: HostnameIPMapping(
-                node.system_id, domain.ttl, {boot_ip.ip}, node.node_type
+                node.system_id,
+                domain.ttl,
+                {ipaddress.ip_address(boot_ip.ip)},
+                node.node_type,
             )
         }
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, domain.ttl, {boot_ip.ip}, node.node_type
+                node.system_id,
+                domain.ttl,
+                {ipaddress.ip_address(boot_ip.ip)},
+                node.node_type,
             )
         }
         zones = ZoneGenerator(
@@ -1229,12 +1247,18 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         [boot_ip] = boot_iface.claim_auto_ips()
         expected_forward = {
             node.hostname: HostnameIPMapping(
-                node.system_id, node.address_ttl, {boot_ip.ip}, node.node_type
+                node.system_id,
+                node.address_ttl,
+                {ipaddress.ip_address(boot_ip.ip)},
+                node.node_type,
             )
         }
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, node.address_ttl, {boot_ip.ip}, node.node_type
+                node.system_id,
+                node.address_ttl,
+                {ipaddress.ip_address(boot_ip.ip)},
+                node.node_type,
             )
         }
         zones = ZoneGenerator(
@@ -1269,8 +1293,12 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             domain=domain,
             address_ttl=random.randint(400, 499),
         )
-        ips = {ip.ip for ip in dnsrr.ip_addresses.all() if ip is not None}
-        ips.add(boot_ip.ip)
+        ips = {
+            ipaddress.ip_address(ip.ip)
+            for ip in dnsrr.ip_addresses.all()
+            if ip is not None
+        }
+        ips.add(ipaddress.ip_address(boot_ip.ip))
         expected_forward = {
             node.hostname: HostnameIPMapping(
                 node.system_id, node.address_ttl, ips, node.node_type, dnsrr.id
@@ -1292,7 +1320,7 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             if ip_set := set(
                 ip
                 for ip in expected_reverse[node.fqdn].ips
-                if IPAddress(ip) in zone._network
+                if IPAddress(str(ip)) in zone._network
             ):
                 expected_rev = {
                     node.fqdn: HostnameIPMapping(
@@ -1326,9 +1354,11 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         dnsrr = factory.make_DNSResource(
             domain=domain, address_ttl=random.randint(400, 499)
         )
-        node_ips = {boot_ip.ip}
+        node_ips = {ipaddress.ip_address(boot_ip.ip)}
         dnsrr_ips = {
-            ip.ip for ip in dnsrr.ip_addresses.all() if ip is not None
+            ipaddress.ip_address(ip.ip)
+            for ip in dnsrr.ip_addresses.all()
+            if ip is not None
         }
         expected_forward = {
             node.hostname: HostnameIPMapping(
@@ -1362,7 +1392,9 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             expected = {}
             for expected_label, expected_mapping in expected_reverse.items():
                 if ip_set := set(
-                    ip for ip in expected_mapping.ips if ip in zone._network
+                    ip
+                    for ip in expected_mapping.ips
+                    if IPAddress(str(ip)) in zone._network
                 ):
                     expected[expected_label] = HostnameIPMapping(
                         system_id=expected_mapping.system_id,

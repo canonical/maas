@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS zone generator."""
@@ -61,7 +61,9 @@ def sequence(thing):
         return [thing]
 
 
-def get_hostname_ip_mapping(domain_id: int | None = None):
+def get_hostname_ip_mapping(
+    domain_id: int | None = None,
+) -> dict[str, HostnameIPMapping]:
     """Return a mapping {hostnames -> info} for the allocated nodes in
     `domain` or `subnet`.  Info contains: ttl, ips, system_id.
     """
@@ -432,7 +434,7 @@ class ZoneGenerator:
         net_mappings = {}
         for k, v in mappings.items():
             if ips_in_net := set(
-                ip for ip in v.ips if IPAddress(ip) in network
+                ip for ip in v.ips if IPAddress(str(ip)) in network
             ):
                 net_mappings[k] = HostnameIPMapping(
                     v.system_id,
@@ -531,7 +533,9 @@ class ZoneGenerator:
         existing[network]._dynamic_ranges += dynamic_ranges
         for glue_net in glue.union(existing[network]._rfc2317_ranges):
             for k, v in existing[network]._mapping.copy().items():
-                if ip_set := set(ip for ip in v.ips if ip not in glue_net):
+                if ip_set := set(
+                    ip for ip in v.ips if IPAddress(str(ip)) not in glue_net
+                ):
                     existing[network]._mapping[k].ips = ip_set
                 else:
                     del existing[network]._mapping[k]

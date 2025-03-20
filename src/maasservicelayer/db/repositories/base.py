@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-
 from abc import ABC, abstractmethod
+import ipaddress
 from ipaddress import IPv4Address, IPv6Address
 from operator import eq
 from typing import Any, Generic, List, Sequence, TypeVar
@@ -61,37 +61,71 @@ def psycopg2_netaddr_adapter(ip: IPAddress):
     return psycopg2.extensions.AsIs(repr(str(ip)))
 
 
+def cast_ip(s, cur):
+    if s is None:
+        return None
+    return ipaddress.ip_address(str(s))
+
+
+def cast_cidr(s, cur):
+    if s is None:
+        return None
+    return ipaddress.ip_network(str(s))
+
+
 class Repository(ABC):  # noqa: B024
     def __init__(self, context: Context):
         self.context = context
 
-    # TODO: remove this when the connection in context is changed back to the
-    # AsyncConnection type only.
+    # TODO: remove this when the connection in context is changed back to the AsyncConnection type only.
     async def execute_stmt(self, stmt) -> CursorResult[Any]:
-        """Execute the statement synchronously or asynchronously based on the
-        type of the connection."""
+        """
+        Execute the given SQL statement, handling type conversions appropriately
+        based on the database driver used.
+
+        This method ensures consistent behavior between different database
+        drivers (asyncpg and psycopg2) by registering and restoring necessary
+        type casters on the connection executing the query.
+
+        Type Conversion Considerations:
+        1. JSONB Handling:
+           - Django expects `jsonb` columns as strings to allow programmatic
+             JSON parsing in `JsonField`.
+           - In contrast, asyncpg returns `jsonb` columns as dictionaries.
+
+        2. INET and CIDR Types:
+           - `asyncpg` automatically converts PostgreSQL `INET` and `CIDR`
+             types to `ipaddress.IPv4Address`, `ipaddress.IPv6Address`,
+             `ipaddress.IPv4Network`, or `ipaddress.IPv6Network`.
+           - `psycopg2`, by default, returns these types as plain strings.
+
+        Important:
+        - Given that the service layer and its domain models are the future, we want to keep the default behavior of asyncpg
+        and install/remove casters as needed for psycopg2.
+        - **DO NOT** use `register_adapter`, as it applies globally to all
+          connections, potentially causing race conditions.
+        - When you want to add more, find the pg_type with `SELECT * FROM pg_types`;
+        """
         connection = self.context.get_connection()
         if isinstance(connection, Connection):
-            # 1. Django wants to get jsonb columns as strings so to load the json programmatically in JsonField. Instead,
-            # in the servicelayer/sqlalchemy we want the driver to return a dictionary, so we register the handler on the connection.
-            # 2. psycopg2 only sends and receive strings by default, so it can't deal with ipaddress types. If you don't
-            # register a custom adapter for those types, you will get `psycopg2.ProgrammingError: can't adapt type 'IPv4Address'`
+            # This is a psycopg2 connection handled by django, attach the casters so that psycopg2 ends up with the same
+            # behavior of asyncpg.
             try:
                 psycopg2.extras.register_default_jsonb(
                     conn_or_curs=connection.connection.dbapi_connection  # type: ignore
                 )
-                psycopg2.extensions.register_adapter(
-                    IPv4Address, psycopg2_ipaddress_adapter
+
+                cidr = psycopg2.extensions.new_type((650,), "CIDR", cast_cidr)
+                inet = psycopg2.extensions.new_type((869,), "INET", cast_ip)
+                psycopg2.extensions.register_type(
+                    cidr,
+                    connection.connection.dbapi_connection,  # type: ignore
                 )
-                psycopg2.extensions.register_adapter(
-                    IPv6Address, psycopg2_ipaddress_adapter
+                psycopg2.extensions.register_type(
+                    inet,
+                    connection.connection.dbapi_connection,  # type: ignore
                 )
-                # We should stick with IPv4Address/IPv6Address as they are from the standard library.
-                # However, there might be some cases where we return netaddr.IPAddress, so we
-                # register the adapter just to be sure.
-                psycopg2.extensions.register_adapter(
-                    IPAddress, psycopg2_netaddr_adapter
-                )
+
                 return connection.execute(stmt)
             finally:
                 # Give this connection back to django and reset the default jsonb handler
@@ -100,17 +134,22 @@ class Repository(ABC):  # noqa: B024
                     conn_or_curs=connection.connection.dbapi_connection,  # type: ignore
                     loads=lambda x: x,
                 )
-                # Adapters are stored in the psycopg2.extensions.adapters dict and the
-                # key to access it is a tuple of (obj_type, ISQLQuote obj).
-                del psycopg2.extensions.adapters[
-                    (IPv4Address, psycopg2.extensions.ISQLQuote)
-                ]
-                del psycopg2.extensions.adapters[
-                    (IPv6Address, psycopg2.extensions.ISQLQuote)
-                ]
-                del psycopg2.extensions.adapters[
-                    (IPAddress, psycopg2.extensions.ISQLQuote)
-                ]
+
+                # Just return the string as is.
+                cidr = psycopg2.extensions.new_type(
+                    (650,), "CIDR", lambda x, y: x
+                )
+                inet = psycopg2.extensions.new_type(
+                    (869,), "INET", lambda x, y: x
+                )
+                psycopg2.extensions.register_type(
+                    cidr,
+                    connection.connection.dbapi_connection,  # type: ignore
+                )
+                psycopg2.extensions.register_type(
+                    inet,
+                    connection.connection.dbapi_connection,  # type: ignore
+                )
 
         else:
             return await connection.execute(stmt)
