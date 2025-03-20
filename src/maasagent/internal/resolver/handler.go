@@ -168,9 +168,16 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	resp.RecursionAvailable = true
 
 	for _, q := range r.Question {
+		q.Name = dns.Fqdn(q.Name)
+
+		rr, ok := h.getCachedRecordForQuestion(q)
+		if ok {
+			resp.Answer = append(resp.Answer, rr)
+			continue
+		}
+
 		var msg *dns.Msg
 
-		q.Name = dns.Fqdn(q.Name)
 		qstate := newQueryState(q.Name)
 
 		nameserver, err := h.findRecursiveNS(qstate)
@@ -193,7 +200,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			}
 
 			if msg.Rcode != dns.RcodeSuccess {
-				err = w.WriteMsg(msg)
+				resp.Rcode = msg.Rcode
+
+				err = w.WriteMsg(resp)
 				if err != nil {
 					log.Err(err).Send()
 				}
@@ -244,9 +253,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		}
 
 		if msg.Rcode != dns.RcodeSuccess {
-			msg.RecursionAvailable = true
+			resp.Rcode = msg.Rcode
 
-			err = w.WriteMsg(msg)
+			err = w.WriteMsg(resp)
 			if err != nil {
 				log.Err(err).Send()
 			}
@@ -579,12 +588,7 @@ func (h *RecursiveHandler) authoritativeExchange(ctx context.Context, server net
 		r.Id = id
 	}
 
-	msg, _, err := h.client.ExchangeContext(ctx, r, net.JoinHostPort(server.String(), "53"))
-	if err != nil {
-		return nil, err
-	}
-
-	return msg, nil
+	return h.fetchAnswer(ctx, server, r)
 }
 
 func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool {
@@ -709,9 +713,73 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 
 	r.RecursionDesired = true
 
-	msg, _, err := h.client.ExchangeContext(ctx, r, net.JoinHostPort(resolver.String(), "53"))
+	return h.fetchAnswer(ctx, resolver, r)
+}
 
-	return msg, err
+func (h *RecursiveHandler) fetchAnswer(ctx context.Context, server netip.Addr, r *dns.Msg) (*dns.Msg, error) {
+	var cachedAnswers []dns.RR
+
+	cachedMsg := r.Copy()
+
+	for i, q := range cachedMsg.Question {
+		rr, ok := h.getCachedRecordForQuestion(q)
+		if !ok {
+			continue
+		}
+
+		log.Debug().Msgf("using cached answer for %s %s", q.Name, dns.TypeToString[q.Qtype])
+
+		cachedAnswers = append(cachedAnswers, rr)
+
+		if len(cachedMsg.Question) == 1 {
+			cachedMsg.Question = nil
+			break
+		}
+
+		if i+1 < len(cachedMsg.Question) {
+			cachedMsg.Question = append(cachedMsg.Question[:i], cachedMsg.Question[i+1:]...)
+		} else {
+			cachedMsg.Question = cachedMsg.Question[:i]
+		}
+	}
+
+	var (
+		msg *dns.Msg
+		err error
+	)
+
+	if len(cachedMsg.Question) > 0 {
+		msg, _, err = h.client.ExchangeContext(ctx, cachedMsg, net.JoinHostPort(server.String(), "53"))
+		if err != nil {
+			return nil, err
+		}
+
+		h.cacheResponse(msg)
+	} else {
+		msg = r.Copy()
+	}
+
+	msg.Answer = append(msg.Answer, cachedAnswers...)
+
+	return msg, nil
+}
+
+func (h *RecursiveHandler) cacheResponse(msg *dns.Msg) {
+	for _, answer := range msg.Answer {
+		h.recordCache.Set(answer)
+	}
+
+	for _, ns := range msg.Ns {
+		h.recordCache.Set(ns)
+	}
+
+	for _, extra := range msg.Extra {
+		h.recordCache.Set(extra)
+	}
+}
+
+func (h *RecursiveHandler) getCachedRecordForQuestion(q dns.Question) (dns.RR, bool) {
+	return h.recordCache.Get(q.Name, q.Qtype)
 }
 
 func prepareQueryMessage(id uint16, name string, qtype uint16) *dns.Msg {

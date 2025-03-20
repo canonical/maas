@@ -743,6 +743,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					},
 				},
 				received: []*dns.Msg{
@@ -877,6 +880,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					},
 					{
 						MsgHdr: dns.MsgHdr{
@@ -891,6 +897,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					},
 				},
 				received: []*dns.Msg{
@@ -1244,6 +1253,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1256,6 +1268,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1268,6 +1283,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1280,6 +1298,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1292,6 +1313,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1304,6 +1328,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1316,6 +1343,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1328,6 +1358,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1340,6 +1373,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1352,6 +1388,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1364,6 +1403,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					}, {
 						MsgHdr: dns.MsgHdr{
 							Id:     1,
@@ -1376,6 +1418,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					},
 				},
 				received: []*dns.Msg{
@@ -1479,6 +1524,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					},
 				},
 				received: []*dns.Msg{
@@ -1553,6 +1601,9 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
+						Answer: []dns.RR{},
+						Ns:     []dns.RR{},
+						Extra:  []dns.RR{},
 					},
 				},
 				received: []*dns.Msg{
@@ -2255,16 +2306,371 @@ func TestQueryAliasType(t *testing.T) {
 	}
 }
 
+func TestFetchAnswer(t *testing.T) {
+	testcases := map[string]struct {
+		in struct {
+			query  *dns.Msg
+			client *mockClient
+		}
+		out *dns.Msg
+	}{
+		"single question": {
+			in: struct {
+				query  *dns.Msg
+				client *mockClient
+			}{
+				query: &dns.Msg{
+					MsgHdr: dns.MsgHdr{
+						Id:     1,
+						Opcode: dns.OpcodeQuery,
+					},
+					Question: []dns.Question{
+						{
+							Name:   "example.com.",
+							Qtype:  dns.TypeA,
+							Qclass: dns.ClassINET,
+						},
+					},
+				},
+				client: &mockClient{
+					// servers do not necessarily reply with all of these for the above query,
+					// but can, and we should test that all answer sections are cached
+					received: []*dns.Msg{
+						{
+							MsgHdr: dns.MsgHdr{
+								Id:       1,
+								Opcode:   dns.OpcodeQuery,
+								Response: true,
+								Rcode:    dns.RcodeSuccess,
+							},
+							Question: []dns.Question{
+								{
+									Name:   "example.com.",
+									Qtype:  dns.TypeA,
+									Qclass: dns.ClassINET,
+								},
+							},
+							Answer: []dns.RR{
+								&dns.A{
+									Hdr: dns.RR_Header{
+										Name:   "example.com.",
+										Rrtype: dns.TypeA,
+										Class:  dns.ClassINET,
+										Ttl:    3600,
+									},
+									A: net.ParseIP("10.0.0.1"),
+								},
+							},
+							Ns: []dns.RR{
+								&dns.NS{
+									Hdr: dns.RR_Header{
+										Name:   "example.com.",
+										Rrtype: dns.TypeNS,
+										Class:  dns.ClassINET,
+										Ttl:    3600,
+									},
+									Ns: "ns.example.com.",
+								},
+							},
+							Extra: []dns.RR{
+								&dns.SOA{
+									Hdr: dns.RR_Header{
+										Name:   "example.com.",
+										Rrtype: dns.TypeSOA,
+										Class:  dns.ClassINET,
+										Ttl:    3600,
+									},
+									Ns:      "ns.example.com.",
+									Mbox:    "info@example.com",
+									Serial:  1000,
+									Refresh: 60,
+									Retry:   3,
+									Expire:  30,
+									Minttl:  1,
+								},
+							},
+						},
+					},
+				},
+			},
+			out: &dns.Msg{
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.com.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "example.com.",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    3600,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+				Ns: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   "example.com.",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    3600,
+						},
+						Ns: "ns.example.com.",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.SOA{
+						Hdr: dns.RR_Header{
+							Name:   "example.com.",
+							Rrtype: dns.TypeSOA,
+							Class:  dns.ClassINET,
+							Ttl:    3600,
+						},
+						Ns:      "ns.example.com.",
+						Mbox:    "info@example.com",
+						Serial:  1000,
+						Refresh: 60,
+						Retry:   3,
+						Expire:  30,
+						Minttl:  1,
+					},
+				},
+			},
+		},
+		"multiple questions": {
+			in: struct {
+				query  *dns.Msg
+				client *mockClient
+			}{
+				query: &dns.Msg{
+					MsgHdr: dns.MsgHdr{
+						Id:     1,
+						Opcode: dns.OpcodeQuery,
+					},
+					Question: []dns.Question{
+						{
+							Name:   "example.com.",
+							Qtype:  dns.TypeA,
+							Qclass: dns.ClassINET,
+						},
+						{
+							Name:   "example.com.",
+							Qtype:  dns.TypeAAAA,
+							Qclass: dns.ClassINET,
+						},
+					},
+				},
+				client: &mockClient{
+					received: []*dns.Msg{
+						{
+							MsgHdr: dns.MsgHdr{
+								Id:       1,
+								Opcode:   dns.OpcodeQuery,
+								Response: true,
+								Rcode:    dns.RcodeSuccess,
+							},
+							Question: []dns.Question{
+								{
+									Name:   "example.com.",
+									Qtype:  dns.TypeA,
+									Qclass: dns.ClassINET,
+								},
+								{
+									Name:   "example.com.",
+									Qtype:  dns.TypeAAAA,
+									Qclass: dns.ClassINET,
+								},
+							},
+							Answer: []dns.RR{
+								&dns.A{
+									Hdr: dns.RR_Header{
+										Name:   "example.com",
+										Rrtype: dns.TypeA,
+										Class:  dns.ClassINET,
+										Ttl:    3600,
+									},
+									A: net.ParseIP("10.0.0.1"),
+								},
+								&dns.AAAA{
+									Hdr: dns.RR_Header{
+										Name:   "example.com",
+										Rrtype: dns.TypeAAAA,
+										Class:  dns.ClassINET,
+										Ttl:    3600,
+									},
+									AAAA: net.ParseIP("::1"),
+								},
+							},
+							Ns: []dns.RR{
+								&dns.NS{
+									Hdr: dns.RR_Header{
+										Name:   "example.com.",
+										Rrtype: dns.TypeNS,
+										Class:  dns.ClassINET,
+										Ttl:    3600,
+									},
+									Ns: "ns.example.com.",
+								},
+							},
+							Extra: []dns.RR{
+								&dns.SOA{
+									Hdr: dns.RR_Header{
+										Name:   "example.com.",
+										Rrtype: dns.TypeSOA,
+										Class:  dns.ClassINET,
+										Ttl:    3600,
+									},
+									Ns:      "ns.example.com.",
+									Mbox:    "info@example.com",
+									Serial:  1000,
+									Refresh: 60,
+									Retry:   3,
+									Expire:  30,
+									Minttl:  1,
+								},
+							},
+						},
+					},
+				},
+			},
+			out: &dns.Msg{
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.com.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+					{
+						Name:   "example.com.",
+						Qtype:  dns.TypeAAAA,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "example.com",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    3600,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+					&dns.AAAA{
+						Hdr: dns.RR_Header{
+							Name:   "example.com",
+							Rrtype: dns.TypeAAAA,
+							Class:  dns.ClassINET,
+							Ttl:    3600,
+						},
+						AAAA: net.ParseIP("::1"),
+					},
+				},
+				Ns: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   "example.com.",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    3600,
+						},
+						Ns: "ns.example.com.",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.SOA{
+						Hdr: dns.RR_Header{
+							Name:   "example.com.",
+							Rrtype: dns.TypeSOA,
+							Class:  dns.ClassINET,
+							Ttl:    3600,
+						},
+						Ns:      "ns.example.com.",
+						Mbox:    "info@example.com",
+						Serial:  1000,
+						Refresh: 60,
+						Retry:   3,
+						Expire:  30,
+						Minttl:  1,
+					},
+				},
+			},
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			cache, err := NewCache(
+				int64(20 * maxRecordSize),
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			handler := NewRecursiveHandler(cache)
+			handler.client = tc.in.client
+
+			msg, err := handler.fetchAnswer(
+				context.TODO(),
+				netip.MustParseAddr("127.0.0.1"),
+				tc.in.query,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, tc.out, msg)
+
+			for _, answer := range tc.out.Answer {
+				entry, ok := cache.Get(answer.Header().Name, answer.Header().Rrtype)
+
+				assert.True(t, ok)
+				assert.Equal(t, answer, entry)
+			}
+
+			for _, ns := range tc.out.Ns {
+				entry, ok := cache.Get(ns.Header().Name, ns.Header().Rrtype)
+
+				assert.True(t, ok)
+				assert.Equal(t, ns, entry)
+			}
+
+			for _, extra := range tc.out.Extra {
+				entry, ok := cache.Get(extra.Header().Name, extra.Header().Rrtype)
+
+				assert.True(t, ok)
+				assert.Equal(t, extra, entry)
+			}
+		})
+	}
+}
+
 func FuzzServeDNSQuestion(f *testing.F) {
-	f.Add("example", uint16(5), uint16(1))
+	f.Add("example", uint16(5), uint16(1), "rdata")
 
 	handler := NewRecursiveHandler(noopCache{})
 	handler.systemResolvers = &systemConfig{
 		Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 	}
-	handler.client = &mockClient{}
 
-	f.Fuzz(func(t *testing.T, label string, qtype uint16, qclass uint16) {
+	f.Fuzz(func(t *testing.T, label string, qtype uint16, qclass uint16, rdata string) {
 		msg := &dns.Msg{
 			MsgHdr: dns.MsgHdr{
 				Id:     1,
@@ -2278,6 +2684,20 @@ func FuzzServeDNSQuestion(f *testing.F) {
 				},
 			},
 		}
+
+		resp := msg.Copy()
+		resp.Answer = []dns.RR{
+			&dns.RFC3597{ // allows for an "any" type
+				Hdr: dns.RR_Header{
+					Name:   label,
+					Rrtype: qtype,
+					Class:  qclass,
+				},
+				Rdata: rdata,
+			},
+		}
+
+		handler.client = &mockClient{received: []*dns.Msg{resp}}
 
 		responseWriter := &mockResponseWriter{}
 

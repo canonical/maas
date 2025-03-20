@@ -23,7 +23,8 @@ import (
 )
 
 const (
-	maxRecordSize = 512
+	maxRecordSize         = 512
+	defaultCacheRecordCap = 1000
 )
 
 type Cache interface {
@@ -47,9 +48,13 @@ type cache struct {
 }
 
 func NewCache(size int64) (Cache, error) {
-	maxNumRecords := int(size / maxRecordSize)
-	if maxNumRecords < 1 {
-		maxNumRecords = 1
+	maxNumRecords := defaultCacheRecordCap
+
+	if size != 0 {
+		maxNumRecords = int(size / maxRecordSize)
+		if maxNumRecords < 1 {
+			maxNumRecords = 1
+		}
 	}
 
 	lruCache, err := lru.New[string, *cacheEntry](maxNumRecords)
