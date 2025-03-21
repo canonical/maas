@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.6 (Ubuntu 16.6-0ubuntu0.24.04.1)
--- Dumped by pg_dump version 16.6 (Ubuntu 16.6-0ubuntu0.24.04.1)
+-- Dumped from database version 16.8 (Ubuntu 16.8-0ubuntu0.24.04.1)
+-- Dumped by pg_dump version 16.8 (Ubuntu 16.8-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3745,7 +3745,9 @@ CREATE TABLE public.maasserver_node (
     sync_interval integer,
     current_release_script_set_id bigint,
     enable_kernel_crash_dump boolean NOT NULL,
-    CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0))
+    is_dpu boolean NOT NULL,
+    CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0)),
+    CONSTRAINT maasserver_node_dpu_is_machine CHECK (((NOT is_dpu) OR (is_dpu AND (node_type = 0))))
 );
 
 
@@ -12079,6 +12081,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 394	maasserver	0338_add_protocol_sshkey	2025-01-10 03:30:39.961001+00
 395	maasserver	0339_migrate_keysource_table	2025-01-10 03:30:40.046038+00
 396	maasserver	0340_drop_keysource_table	2025-01-10 03:30:40.140181+00
+397	maasserver	0341_add_is_dpu_to_node	2025-03-21 03:30:33.971309+00
 \.
 
 
@@ -12403,7 +12406,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync, last_sync, sync_interval, current_release_script_set_id, enable_kernel_crash_dump) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync, last_sync, sync_interval, current_release_script_set_id, enable_kernel_crash_dump, is_dpu) FROM stdin;
 \.
 
 
@@ -13249,7 +13252,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 396, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 397, true);
 
 
 --
