@@ -1,0 +1,30 @@
+pipeline:
+  - install-dependencies
+  - lint
+  - test
+
+jobs:
+  install-dependencies:
+    architectures: amd64
+    series: noble
+    packages:
+      - make
+      - sudo
+    root: true
+    run: |
+      make install-dependencies
+  lint:
+    architectures: amd64
+    series: noble 
+    root: false
+    run: |
+      make lint
+  test:
+    architectures: amd64
+    series: noble
+    root: false
+    environment: 
+      NO_PROXY: localhost,127.0.0.1
+    run: |
+      make build
+      make test
