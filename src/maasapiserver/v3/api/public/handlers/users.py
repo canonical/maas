@@ -25,6 +25,7 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
     UserResponse,
     UsersListResponse,
+    UsersWithSummaryListResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
@@ -65,6 +66,7 @@ class UsersHandler(Handler):
             "create_user",
             "update_user",
             "delete_user",
+            "list_users_with_summary",
         ]
 
     @handler(
@@ -121,7 +123,7 @@ class UsersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
     async def list_users(
@@ -166,7 +168,7 @@ class UsersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
     async def get_user(
@@ -305,3 +307,44 @@ class UsersHandler(Handler):
 
         await services.users.delete_by_id(user_id, etag_if_match=etag_if_match)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/users_with_summary",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": UsersWithSummaryListResponse},
+        },
+        summary="List users with a summary. ONLY FOR INTERNAL USAGE.",
+        description="List users with a summary. This endpoint is only for internal usage and might be changed or removed without notice.",
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.ADMIN},
+                )
+            )
+        ],
+    )
+    async def list_users_with_summary(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> UsersWithSummaryListResponse:
+        users = await services.users.list_with_summary(
+            page=pagination_params.page,
+            size=pagination_params.size,
+        )
+        return UsersWithSummaryListResponse(
+            items=users.items,
+            total=users.total,
+            next=(
+                f"{V3_API_PREFIX}/users_with_summary?"
+                f"{pagination_params.to_next_href_format()}"
+                if users.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+        )

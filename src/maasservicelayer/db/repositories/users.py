@@ -1,21 +1,35 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import List, Type
+from typing import Any, List, Type
 
 from django.core import signing
-from sqlalchemy import delete, func, insert, select, Table, update
+from sqlalchemy import (
+    delete,
+    desc,
+    distinct,
+    func,
+    insert,
+    not_,
+    Select,
+    select,
+    Table,
+    update,
+)
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
 from maasservicelayer.builders.users import UserProfileBuilder
+from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     ConsumerTable,
+    NodeTable,
     SessionTable,
+    SshKeyTable,
     TokenTable,
     UserProfileTable,
     UserTable,
@@ -27,7 +41,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.users import User, UserProfile
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.users import User, UserProfile, UserWithSummary
 from maasservicelayer.utils.date import utcnow
 
 
@@ -51,6 +66,13 @@ class UsersRepository(BaseRepository[User]):
 
     def get_model_factory(self) -> Type[User]:
         return User
+
+    def select_all_statement(self) -> Select[Any]:
+        return (
+            select(self.get_repository_table())
+            .select_from(self.get_repository_table())
+            .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
+        )
 
     async def find_by_username(self, username: str) -> User | None:
         stmt = (
@@ -211,3 +233,99 @@ class UsersRepository(BaseRepository[User]):
             TokenTable.c.consumer_id.in_(deleted_consumers_ids)
         )
         await self.execute_stmt(token_stmt)
+
+    async def list(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[User]:
+        total_stmt = (
+            select(func.count())
+            .select_from(UserTable)
+            .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
+        )
+        if query:
+            total_stmt = query.enrich_stmt(total_stmt)
+        total = (await self.execute_stmt(total_stmt)).scalar()
+
+        stmt = (
+            self.select_all_statement()
+            .order_by(desc(self.get_repository_table().c.id))
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        if query:
+            stmt = query.enrich_stmt(stmt)
+
+        result = (await self.execute_stmt(stmt)).all()
+        return ListResult[User](
+            items=[User(**row._asdict()) for row in result],
+            total=total,
+        )
+
+    async def list_with_summary(
+        self, page: int, size: int
+    ) -> ListResult[UserWithSummary]:
+        total_stmt = (
+            select(func.count())
+            .select_from(UserTable)
+            .where(
+                and_(
+                    not_(UserTable.c.username.in_(SYSTEM_USERS)),
+                    eq(UserTable.c.is_active, True),
+                )
+            )
+        )
+        total = (await self.execute_stmt(total_stmt)).scalar()
+        stmt = (
+            select(
+                UserTable.c.id,
+                UserTable.c.username,
+                UserTable.c.email,
+                UserTable.c.is_superuser,
+                UserTable.c.last_name,
+                UserTable.c.last_login,
+                UserProfileTable.c.completed_intro,
+                UserProfileTable.c.is_local,
+                func.count(distinct(NodeTable.c.id)).label("machines_count"),
+                func.count(distinct(SshKeyTable.c.id)).label("sshkeys_count"),
+            )
+            .select_from(UserTable)
+            .join(
+                UserProfileTable,
+                eq(UserProfileTable.c.user_id, UserTable.c.id),
+            )
+            .join(
+                NodeTable,
+                eq(NodeTable.c.owner_id, UserTable.c.id),
+                isouter=True,
+            )
+            .join(
+                SshKeyTable,
+                eq(SshKeyTable.c.user_id, UserTable.c.id),
+                isouter=True,
+            )
+            .where(
+                and_(
+                    not_(UserTable.c.username.in_(SYSTEM_USERS)),
+                    eq(UserTable.c.is_active, True),
+                )
+            )
+            .offset((page - 1) * size)
+            .limit(size)
+            .group_by(
+                UserTable.c.id,
+                UserTable.c.username,
+                UserTable.c.email,
+                UserTable.c.is_superuser,
+                UserTable.c.last_name,
+                UserTable.c.last_login,
+                UserProfileTable.c.completed_intro,
+                UserProfileTable.c.is_local,
+            )
+            .order_by(desc(UserTable.c.id))
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+        return ListResult[UserWithSummary](
+            items=[UserWithSummary(**row._asdict()) for row in result],
+            total=total,
+        )

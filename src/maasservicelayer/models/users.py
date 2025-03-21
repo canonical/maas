@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from maasservicelayer.models.base import generate_builder, MaasBaseModel
 from maasservicelayer.utils.date import utcnow
@@ -56,3 +56,16 @@ class Token(MaasBaseModel):
     callback_confirmed: bool
     consumer_id: int
     user_id: Optional[int]
+
+
+class UserWithSummary(BaseModel):
+    id: int
+    completed_intro: bool
+    email: Optional[str] = None  # it's a string in the UI
+    is_local: bool
+    is_superuser: bool
+    last_name: Optional[str] = None  # it's a string in the UI
+    last_login: Optional[datetime] = None
+    machines_count: int
+    sshkeys_count: int
+    username: str

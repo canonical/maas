@@ -308,3 +308,11 @@ class TestUsersService:
     ) -> None:
         await users_service.delete_user_api_keys(1)
         users_repository.delete_user_api_keys.assert_called_once_with(1)
+
+    async def test_list_with_summary(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        await users_service.list_with_summary(page=1, size=1000)
+        users_repository.list_with_summary.assert_called_once_with(
+            page=1, size=1000
+        )

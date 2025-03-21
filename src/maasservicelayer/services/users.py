@@ -36,7 +36,8 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     PRECONDITION_FAILED,
 )
-from maasservicelayer.models.users import User, UserProfile
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.users import User, UserProfile, UserWithSummary
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService
@@ -215,3 +216,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
             ),
             builder=NodeBuilder(owner_id=to_user_id),
         )
+
+    async def list_with_summary(
+        self, page: int, size: int
+    ) -> ListResult[UserWithSummary]:
+        return await self.repository.list_with_summary(page=page, size=size)

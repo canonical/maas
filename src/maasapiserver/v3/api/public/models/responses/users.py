@@ -59,3 +59,21 @@ class UserResponse(HalResponse[BaseHal]):
 
 class UsersListResponse(PaginatedResponse[UserResponse]):
     kind = "UsersList"
+
+
+class UserWithSummaryResponse(HalResponse[BaseHal]):
+    kind = "UserWithSummary"
+    id: int
+    completed_intro: bool
+    email: Optional[str] = None
+    is_local: bool
+    is_superuser: bool
+    last_name: Optional[str] = None
+    last_login: Optional[datetime] = None
+    machines_count: int
+    sshkeys_count: int
+    username: str
+
+
+class UsersWithSummaryListResponse(PaginatedResponse[UserWithSummaryResponse]):
+    kind = "UserWithSummaryList"
