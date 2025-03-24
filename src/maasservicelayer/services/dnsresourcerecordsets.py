@@ -158,6 +158,12 @@ class V3DNSResourceRecordSetsService(Service):
                     domain_id=domain.id,
                 )
             )
+        else:
+            if dns_record.ttl is not None:
+                await self.dnsresource_service.update_by_id(
+                    id=dns_resource.id,
+                    builder=DNSResourceBuilder(address_ttl=dns_record.ttl),
+                )
         for ip_address in dns_record.rrdatas:
             ip_address = (
                 IPv4Address(ip_address)
