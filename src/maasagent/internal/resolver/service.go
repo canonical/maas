@@ -42,6 +42,7 @@ type Handler interface {
 	dns.Handler
 	SetUpstreams(string, []string) error
 	ClearExpiredSessions()
+	Close() error
 }
 
 type ResolverService struct {
@@ -210,7 +211,7 @@ func (s *ResolverService) stop(ctx context.Context) error {
 
 	s.sessionTicker.Stop()
 
-	return nil
+	return s.handler.Close()
 }
 
 func (s *ResolverService) Error() error {

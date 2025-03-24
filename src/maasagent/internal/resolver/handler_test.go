@@ -51,10 +51,22 @@ func (m *mockResponseWriter) RemoteAddr() net.Addr {
 	return addr
 }
 
+type mockConn struct {
+	net.Conn
+}
+
 type mockClient struct {
 	sent     []*dns.Msg
 	received []*dns.Msg
 	errs     []error
+}
+
+func (m *mockClient) Dial(_ string) (*dns.Conn, error) {
+	return &dns.Conn{Conn: mockConn{}}, nil
+}
+
+func (m *mockClient) ExchangeWithConnContext(ctx context.Context, msg *dns.Msg, _ *dns.Conn) (*dns.Msg, time.Duration, error) {
+	return m.ExchangeContext(ctx, msg, "")
 }
 
 func (m *mockClient) ExchangeContext(_ context.Context, msg *dns.Msg, _ string) (*dns.Msg, time.Duration, error) {
@@ -322,9 +334,6 @@ func TestValidateQuery(t *testing.T) {
 							Qclass: dns.ClassINET,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -361,9 +370,6 @@ func TestValidateQuery(t *testing.T) {
 							Qclass: dns.ClassINET,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -400,9 +406,6 @@ func TestValidateQuery(t *testing.T) {
 							Qclass: dns.ClassINET,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -439,9 +442,6 @@ func TestValidateQuery(t *testing.T) {
 							Qclass: dns.ClassCHAOS,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -478,9 +478,6 @@ func TestValidateQuery(t *testing.T) {
 							Qclass: dns.ClassANY,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -517,9 +514,6 @@ func TestValidateQuery(t *testing.T) {
 							Qclass: dns.ClassNONE,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -542,9 +536,6 @@ func TestValidateQuery(t *testing.T) {
 						Response: true,
 						Rcode:    dns.RcodeRefused,
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -582,9 +573,6 @@ func TestValidateQuery(t *testing.T) {
 							Qclass: dns.ClassANY,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				expectedValid: false,
 			},
@@ -641,9 +629,6 @@ func TestSrvFailResponse(t *testing.T) {
 				Qclass: dns.ClassINET,
 			},
 		},
-		Answer: []dns.RR{},
-		Ns:     []dns.RR{},
-		Extra:  []dns.RR{},
 	}
 
 	handler := NewRecursiveHandler(noopCache{})
@@ -716,8 +701,6 @@ func TestServeDNS(t *testing.T) {
 									A: net.ParseIP("10.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						},
 					},
 				},
@@ -778,8 +761,6 @@ func TestServeDNS(t *testing.T) {
 								A: net.ParseIP("10.0.0.1"),
 							},
 						},
-						Ns:    []dns.RR{},
-						Extra: []dns.RR{},
 					},
 				},
 			},
@@ -931,8 +912,6 @@ func TestServeDNS(t *testing.T) {
 								A: net.ParseIP("10.0.0.1"),
 							},
 						},
-						Ns:    []dns.RR{},
-						Extra: []dns.RR{},
 					},
 				},
 			},
@@ -956,9 +935,6 @@ func TestServeDNS(t *testing.T) {
 							Qclass: dns.ClassINET,
 						},
 					},
-					Answer: []dns.RR{},
-					Ns:     []dns.RR{},
-					Extra:  []dns.RR{},
 				},
 				client: &mockClient{
 					received: []*dns.Msg{
@@ -1010,9 +986,6 @@ func TestServeDNS(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
@@ -1037,8 +1010,6 @@ func TestServeDNS(t *testing.T) {
 									A: net.ParseIP("127.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       2,
@@ -1055,9 +1026,6 @@ func TestServeDNS(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       2,
@@ -1082,8 +1050,6 @@ func TestServeDNS(t *testing.T) {
 									Ns: "maas.",
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       2,
@@ -1098,9 +1064,6 @@ func TestServeDNS(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       2,
@@ -1126,8 +1089,6 @@ func TestServeDNS(t *testing.T) {
 									A: net.ParseIP("127.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       3,
@@ -1142,9 +1103,6 @@ func TestServeDNS(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       3,
@@ -1159,9 +1117,6 @@ func TestServeDNS(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
@@ -1176,9 +1131,6 @@ func TestServeDNS(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
@@ -1203,8 +1155,6 @@ func TestServeDNS(t *testing.T) {
 									A: net.ParseIP("127.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       4,
@@ -1450,8 +1400,6 @@ func TestServeDNS(t *testing.T) {
 								A: net.ParseIP("10.0.0.1"),
 							},
 						},
-						Ns:    []dns.RR{},
-						Extra: []dns.RR{},
 					},
 				},
 			},
@@ -1494,9 +1442,6 @@ func TestServeDNS(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						},
 					},
 				},
@@ -1546,9 +1491,6 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
-						Answer: []dns.RR{},
-						Ns:     []dns.RR{},
-						Extra:  []dns.RR{},
 					},
 				},
 			},
@@ -1609,11 +1551,12 @@ func TestServeDNS(t *testing.T) {
 				received: []*dns.Msg{
 					{
 						MsgHdr: dns.MsgHdr{
-							Id:               1,
-							Opcode:           dns.OpcodeQuery,
-							RecursionDesired: true,
-							Response:         true,
-							Rcode:            dns.RcodeServerFailure,
+							Id:                 1,
+							Opcode:             dns.OpcodeQuery,
+							RecursionDesired:   true,
+							RecursionAvailable: true,
+							Response:           true,
+							Rcode:              dns.RcodeServerFailure,
 						},
 						Question: []dns.Question{
 							{
@@ -1622,9 +1565,6 @@ func TestServeDNS(t *testing.T) {
 								Qclass: dns.ClassINET,
 							},
 						},
-						Answer: []dns.RR{},
-						Ns:     []dns.RR{},
-						Extra:  []dns.RR{},
 					},
 				},
 			},
@@ -1840,9 +1780,6 @@ func TestQueryAliasType(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -1869,8 +1806,6 @@ func TestQueryAliasType(t *testing.T) {
 									A: net.ParseIP("10.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -1896,8 +1831,6 @@ func TestQueryAliasType(t *testing.T) {
 									Target: "example.com.",
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -1913,9 +1846,6 @@ func TestQueryAliasType(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -1942,8 +1872,6 @@ func TestQueryAliasType(t *testing.T) {
 									A: net.ParseIP("10.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -1959,9 +1887,6 @@ func TestQueryAliasType(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -1977,9 +1902,6 @@ func TestQueryAliasType(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -2006,8 +1928,6 @@ func TestQueryAliasType(t *testing.T) {
 									A: net.ParseIP("10.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						},
 						{
 							MsgHdr: dns.MsgHdr{
@@ -2033,8 +1953,6 @@ func TestQueryAliasType(t *testing.T) {
 									A: net.ParseIP("10.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						},
 					},
 				},
@@ -2063,8 +1981,6 @@ func TestQueryAliasType(t *testing.T) {
 						A: net.ParseIP("10.0.0.1"),
 					},
 				},
-				Ns:    []dns.RR{},
-				Extra: []dns.RR{},
 			},
 		},
 		"loop": {
@@ -2101,9 +2017,6 @@ func TestQueryAliasType(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
@@ -2129,8 +2042,6 @@ func TestQueryAliasType(t *testing.T) {
 									A: net.ParseIP("10.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:     1,
@@ -2154,8 +2065,6 @@ func TestQueryAliasType(t *testing.T) {
 									Target: "example.com",
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
@@ -2170,9 +2079,6 @@ func TestQueryAliasType(t *testing.T) {
 									Qclass: dns.ClassINET,
 								},
 							},
-							Answer: []dns.RR{},
-							Ns:     []dns.RR{},
-							Extra:  []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
@@ -2198,8 +2104,6 @@ func TestQueryAliasType(t *testing.T) {
 									A: net.ParseIP("10.0.0.1"),
 								},
 							},
-							Ns:    []dns.RR{},
-							Extra: []dns.RR{},
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
@@ -2243,9 +2147,6 @@ func TestQueryAliasType(t *testing.T) {
 						Qclass: dns.ClassINET,
 					},
 				},
-				Answer: []dns.RR{},
-				Ns:     []dns.RR{},
-				Extra:  []dns.RR{},
 			},
 		},
 	}
@@ -2658,6 +2559,287 @@ func TestFetchAnswer(t *testing.T) {
 				assert.True(t, ok)
 				assert.Equal(t, extra, entry)
 			}
+		})
+	}
+}
+
+func TestConnMap_Get(t *testing.T) {
+	testcases := map[string]struct {
+		in struct {
+			addr  netip.Addr
+			conns map[netip.Addr][]*exclusiveConn
+		}
+		out struct {
+			expectedMap map[netip.Addr][]*exclusiveConn
+			conn        *exclusiveConn
+			ok          bool
+		}
+	}{
+		"one conn": {
+			in: struct {
+				addr  netip.Addr
+				conns map[netip.Addr][]*exclusiveConn
+			}{
+				addr: netip.MustParseAddr("10.0.0.1"),
+				conns: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"a": "a"}, // for testing identity in the list
+							},
+						},
+					},
+				},
+			},
+			out: struct {
+				expectedMap map[netip.Addr][]*exclusiveConn
+				conn        *exclusiveConn
+				ok          bool
+			}{
+				expectedMap: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"a": "a"},
+							},
+						},
+					},
+				},
+				conn: &exclusiveConn{
+					conn: &dns.Conn{
+						TsigSecret: map[string]string{"a": "a"},
+					},
+				},
+				ok: true,
+			},
+		},
+		"two conns": {
+			in: struct {
+				addr  netip.Addr
+				conns map[netip.Addr][]*exclusiveConn
+			}{
+				addr: netip.MustParseAddr("10.0.0.1"),
+				conns: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"a": "a"}, // for testing identity in the list
+							},
+						},
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"b": "b"}, // for testing identity in the list
+							},
+						},
+					},
+				},
+			},
+			out: struct {
+				expectedMap map[netip.Addr][]*exclusiveConn
+				conn        *exclusiveConn
+				ok          bool
+			}{
+				expectedMap: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"b": "b"},
+							},
+						},
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"a": "a"},
+							},
+						},
+					},
+				},
+				conn: &exclusiveConn{
+					conn: &dns.Conn{
+						TsigSecret: map[string]string{"a": "a"},
+					},
+				},
+				ok: true,
+			},
+		},
+		"no conns": {
+			in: struct {
+				addr  netip.Addr
+				conns map[netip.Addr][]*exclusiveConn
+			}{
+				addr: netip.MustParseAddr("10.0.0.1"),
+				conns: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {},
+				},
+			},
+			out: struct {
+				expectedMap map[netip.Addr][]*exclusiveConn
+				conn        *exclusiveConn
+				ok          bool
+			}{
+				expectedMap: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {},
+				},
+				ok: false,
+			},
+		},
+		"wrong key": {
+			in: struct {
+				addr  netip.Addr
+				conns map[netip.Addr][]*exclusiveConn
+			}{
+				addr: netip.MustParseAddr("10.0.0.2"),
+				conns: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"a": "a"},
+							},
+						},
+					},
+				},
+			},
+			out: struct {
+				expectedMap map[netip.Addr][]*exclusiveConn
+				conn        *exclusiveConn
+				ok          bool
+			}{
+				expectedMap: map[netip.Addr][]*exclusiveConn{
+					netip.MustParseAddr("10.0.0.1"): {
+						{
+							conn: &dns.Conn{
+								TsigSecret: map[string]string{"a": "a"},
+							},
+						},
+					},
+				},
+				ok: false,
+			},
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			cm := &connMap{
+				conns: tc.in.conns,
+			}
+
+			conn, ok := cm.Get(tc.in.addr)
+
+			assert.Equal(t, tc.out.ok, ok)
+			assert.Equal(t, tc.out.conn, conn)
+			assert.Equal(t, tc.out.expectedMap, cm.conns)
+		})
+	}
+}
+
+func TestConnMap_Set(t *testing.T) {
+	testcases := map[string]struct {
+		in struct {
+			addr    netip.Addr
+			conn    *dns.Conn
+			connMap *connMap
+		}
+		out map[netip.Addr][]*exclusiveConn
+	}{
+		"add one from empty": {
+			in: struct {
+				addr    netip.Addr
+				conn    *dns.Conn
+				connMap *connMap
+			}{
+				addr: netip.MustParseAddr("10.0.0.1"),
+				conn: &dns.Conn{Conn: mockConn{}},
+				connMap: &connMap{
+					conns: make(map[netip.Addr][]*exclusiveConn),
+				},
+			},
+			out: map[netip.Addr][]*exclusiveConn{
+				netip.MustParseAddr("10.0.0.1"): {
+					{
+						conn: &dns.Conn{Conn: mockConn{}},
+					},
+				},
+			},
+		},
+		"add one to existing": {
+			in: struct {
+				addr    netip.Addr
+				conn    *dns.Conn
+				connMap *connMap
+			}{
+				addr: netip.MustParseAddr("10.0.0.1"),
+				conn: &dns.Conn{Conn: mockConn{}},
+				connMap: &connMap{
+					conns: map[netip.Addr][]*exclusiveConn{
+						netip.MustParseAddr("10.0.0.1"): {
+							{
+								conn: &dns.Conn{
+									Conn:       mockConn{},
+									TsigSecret: map[string]string{"a": "a"},
+								},
+							},
+						},
+					},
+				},
+			},
+			out: map[netip.Addr][]*exclusiveConn{
+				netip.MustParseAddr("10.0.0.1"): {
+					{
+						conn: &dns.Conn{
+							Conn:       mockConn{},
+							TsigSecret: map[string]string{"a": "a"},
+						},
+					},
+					{
+						conn: &dns.Conn{Conn: mockConn{}},
+					},
+				},
+			},
+		},
+		"add one to existing with different addr": {
+			in: struct {
+				addr    netip.Addr
+				conn    *dns.Conn
+				connMap *connMap
+			}{
+				addr: netip.MustParseAddr("10.0.0.2"),
+				conn: &dns.Conn{Conn: mockConn{}},
+				connMap: &connMap{
+					conns: map[netip.Addr][]*exclusiveConn{
+						netip.MustParseAddr("10.0.0.1"): {
+							{
+								conn: &dns.Conn{
+									Conn: mockConn{},
+								},
+							},
+						},
+					},
+				},
+			},
+			out: map[netip.Addr][]*exclusiveConn{
+				netip.MustParseAddr("10.0.0.1"): {
+					{
+						conn: &dns.Conn{
+							Conn: mockConn{},
+						},
+					},
+				},
+				netip.MustParseAddr("10.0.0.2"): {
+					{
+						conn: &dns.Conn{
+							Conn: mockConn{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			tc.in.connMap.Set(tc.in.addr, tc.in.conn)
+
+			assert.Equal(t, tc.out, tc.in.connMap.conns)
 		})
 	}
 }

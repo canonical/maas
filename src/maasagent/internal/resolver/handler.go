@@ -37,6 +37,8 @@ import (
 const (
 	attemptTimeout  = 5 * time.Second
 	exchangeTimeout = 20 * time.Second
+
+	defaultConnPoolSize = 12
 )
 
 var (
@@ -45,7 +47,9 @@ var (
 )
 
 type ResolverClient interface {
+	Dial(string) (*dns.Conn, error)
 	ExchangeContext(context.Context, *dns.Msg, string) (*dns.Msg, time.Duration, error)
+	ExchangeWithConnContext(context.Context, *dns.Msg, *dns.Conn) (*dns.Msg, time.Duration, error)
 }
 
 type systemConfig struct {
@@ -96,9 +100,81 @@ func (s *sessionMap) ClearExpired() {
 	}
 }
 
+type exclusiveConn struct {
+	conn *dns.Conn
+	lock sync.Mutex
+}
+
+func (e *exclusiveConn) Use(fn func(*dns.Conn)) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	fn(e.conn)
+}
+
+type connMap struct {
+	conns map[netip.Addr][]*exclusiveConn
+	lock  sync.Mutex
+}
+
+func (c *connMap) Get(addr netip.Addr) (*exclusiveConn, bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	var conn *exclusiveConn
+
+	conns, ok := c.conns[addr]
+	if ok {
+		if len(conns) == 0 {
+			return nil, false
+		}
+
+		conn = conns[0]
+
+		if len(conns) > 1 {
+			c.conns[addr] = append(conns[1:], conn)
+		}
+	}
+
+	return conn, ok
+}
+
+func (c *connMap) Set(addr netip.Addr, conn *dns.Conn) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.conns[addr] = append(c.conns[addr], &exclusiveConn{
+		conn: conn,
+	})
+}
+
+func (c *connMap) Close() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for addr, cns := range c.conns {
+		var err error
+
+		for _, cn := range cns {
+			cn.Use(func(conn *dns.Conn) {
+				err = conn.Close()
+			})
+
+			if err != nil {
+				return err
+			}
+		}
+
+		delete(c.conns, addr)
+	}
+
+	return nil
+}
+
 type RecursiveHandler struct {
 	systemResolvers      *systemConfig
 	sessionMap           *sessionMap
+	conns                *connMap
 	recordCache          Cache
 	client               ResolverClient
 	authoritativeServers []netip.Addr
@@ -109,27 +185,21 @@ func NewRecursiveHandler(cache Cache) *RecursiveHandler {
 		sessionMap: &sessionMap{
 			sessions: make(map[string]*session),
 		},
+		conns: &connMap{
+			conns: make(map[netip.Addr][]*exclusiveConn),
+		},
 		recordCache: cache,
 		client:      &dns.Client{}, // TODO provide client config
 	}
 }
 
 func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string) error {
-	sysCfg, err := h.parseResolvConf(resolvConf)
+	var err error
+
+	h.systemResolvers, err = h.parseResolvConf(resolvConf)
 	if err != nil {
 		return err
 	}
-
-	authAddrs := make([]netip.Addr, len(authServers))
-	for i, server := range authServers {
-		authAddrs[i], err = netip.ParseAddr(server)
-		if err != nil {
-			return err
-		}
-	}
-
-	h.authoritativeServers = authAddrs
-	h.systemResolvers = sysCfg
 
 	if h.systemResolvers.UseTCP {
 		client, ok := h.client.(*dns.Client)
@@ -138,11 +208,49 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 		}
 	}
 
+	authAddrs := make([]netip.Addr, len(authServers))
+	for i, server := range authServers {
+		authAddrs[i], err = netip.ParseAddr(server)
+		if err != nil {
+			return err
+		}
+
+		for j := 0; j < defaultConnPoolSize; j++ {
+			conn, err := h.client.Dial(net.JoinHostPort(server, "53"))
+			if err != nil {
+				return err
+			}
+
+			h.conns.Set(authAddrs[i], conn)
+		}
+	}
+
+	h.authoritativeServers = authAddrs
+
+	for _, ns := range h.systemResolvers.Nameservers {
+		if _, ok := h.conns.Get(ns); ok { // check for overlap with MAAS authoritative servers
+			continue
+		}
+
+		for i := 0; i < defaultConnPoolSize; i++ {
+			conn, err := h.client.Dial(net.JoinHostPort(ns.String(), "53"))
+			if err != nil {
+				return err
+			}
+
+			h.conns.Set(ns, conn)
+		}
+	}
+
 	return nil
 }
 
 func (h *RecursiveHandler) ClearExpiredSessions() {
 	h.sessionMap.ClearExpired()
+}
+
+func (h *RecursiveHandler) Close() error {
+	return h.conns.Close()
 }
 
 func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
@@ -160,19 +268,15 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		}
 	}()
 
-	resp := &dns.Msg{}
-
-	r.CopyTo(resp)
-
-	resp.Response = true
-	resp.RecursionAvailable = true
+	r.Response = true
+	r.RecursionAvailable = true
 
 	for _, q := range r.Question {
 		q.Name = dns.Fqdn(q.Name)
 
 		rr, ok := h.getCachedRecordForQuestion(q)
 		if ok {
-			resp.Answer = append(resp.Answer, rr)
+			r.Answer = append(r.Answer, rr)
 			continue
 		}
 
@@ -200,9 +304,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			}
 
 			if msg.Rcode != dns.RcodeSuccess {
-				resp.Rcode = msg.Rcode
+				r.Rcode = msg.Rcode
 
-				err = w.WriteMsg(resp)
+				err = w.WriteMsg(r)
 				if err != nil {
 					log.Err(err).Send()
 				}
@@ -215,9 +319,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			// we should check if there is an answer, and assume it's non-authoritative
 			// if not
 			if msg.Rcode == dns.RcodeSuccess && len(msg.Answer) > 0 {
-				resp.Answer = append(resp.Answer, msg.Answer...)
-				resp.Ns = append(resp.Ns, msg.Ns...)
-				resp.Extra = append(resp.Extra, msg.Extra...)
+				r.Answer = append(r.Answer, msg.Answer...)
+				r.Ns = append(r.Ns, msg.Ns...)
+				r.Extra = append(r.Extra, msg.Extra...)
 
 				continue
 			}
@@ -234,10 +338,10 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			}
 
 			if msg != nil {
-				resp.Rcode = msg.Rcode
-				resp.Answer = append(resp.Answer, msg.Answer...)
-				resp.Ns = append(resp.Ns, msg.Ns...)
-				resp.Extra = append(resp.Extra, msg.Extra...)
+				r.Rcode = msg.Rcode
+				r.Answer = append(r.Answer, msg.Answer...)
+				r.Ns = append(r.Ns, msg.Ns...)
+				r.Extra = append(r.Extra, msg.Extra...)
 			}
 
 			continue
@@ -253,9 +357,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		}
 
 		if msg.Rcode != dns.RcodeSuccess {
-			resp.Rcode = msg.Rcode
+			r.Rcode = msg.Rcode
 
-			err = w.WriteMsg(resp)
+			err = w.WriteMsg(r)
 			if err != nil {
 				log.Err(err).Send()
 			}
@@ -263,12 +367,12 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			return
 		}
 
-		resp.Answer = append(resp.Answer, msg.Answer...)
-		resp.Ns = append(resp.Ns, msg.Ns...)
-		resp.Extra = append(resp.Extra, msg.Extra...)
+		r.Answer = append(r.Answer, msg.Answer...)
+		r.Ns = append(r.Ns, msg.Ns...)
+		r.Extra = append(r.Extra, msg.Extra...)
 	}
 
-	err := w.WriteMsg(resp)
+	err := w.WriteMsg(r)
 	if err != nil {
 		log.Err(err).Send()
 	}
@@ -465,12 +569,10 @@ func (h *RecursiveHandler) queryAliasType(query *dns.Msg, nameserver *dns.NS, re
 			if alreadyQueried {
 				log.Warn().Msgf("detected a looping querying from %s", remoteSession.String())
 
-				msg := query.Copy()
+				query.Response = true
+				query.Rcode = dns.RcodeRefused
 
-				msg.Response = true
-				msg.Rcode = dns.RcodeRefused
-
-				return msg, nil
+				return query, nil
 			}
 
 			err = remoteSession.StoreName(q.Name)
@@ -592,16 +694,13 @@ func (h *RecursiveHandler) authoritativeExchange(ctx context.Context, server net
 }
 
 func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool {
-	errResp := &dns.Msg{}
-	r.CopyTo(errResp)
-
 	if (r.Opcode != dns.OpcodeQuery && r.Opcode != dns.OpcodeIQuery) || r.Response {
 		log.Warn().Msgf("received a non-query from: %s", w.RemoteAddr().String())
 
-		errResp.Response = true
-		errResp.Rcode = dns.RcodeRefused
+		r.Response = true
+		r.Rcode = dns.RcodeRefused
 
-		err := w.WriteMsg(errResp)
+		err := w.WriteMsg(r)
 		if err != nil {
 			log.Err(err).Send()
 		}
@@ -615,8 +714,8 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 		if q.Qclass == dns.ClassCHAOS || q.Qclass == dns.ClassNONE || q.Qclass == dns.ClassANY {
 			log.Warn().Msgf("received a %s class query from: %s", dns.ClassToString[q.Qclass], w.RemoteAddr().String())
 
-			errResp.Response = true
-			errResp.Rcode = dns.RcodeRefused
+			r.Response = true
+			r.Rcode = dns.RcodeRefused
 
 			continue
 		}
@@ -624,8 +723,8 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 		if q.Qtype == dns.TypeAXFR || q.Qtype == dns.TypeIXFR {
 			log.Warn().Msgf("received a %s from: %s", dns.TypeToString[q.Qtype], w.RemoteAddr().String())
 
-			errResp.Response = true
-			errResp.Rcode = dns.RcodeRefused
+			r.Response = true
+			r.Rcode = dns.RcodeRefused
 
 			continue
 		}
@@ -633,15 +732,15 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 		if q.Qtype == dns.TypeANY {
 			log.Warn().Msgf("received a %s from: %s", dns.TypeToString[q.Qtype], w.RemoteAddr().String())
 
-			errResp.Response = true
+			r.Response = true
 			// not implemented instead of refused,
 			// as this is what most public resolvers use
-			errResp.Rcode = dns.RcodeNotImplemented
+			r.Rcode = dns.RcodeNotImplemented
 		}
 	}
 
-	if errResp.Response { // only set true if there's a response to be written
-		err := w.WriteMsg(errResp)
+	if r.Response { // only set true if there's a response to be written
+		err := w.WriteMsg(r)
 		if err != nil {
 			log.Err(err).Send()
 		}
@@ -653,14 +752,10 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 }
 
 func (h *RecursiveHandler) srvFailResponse(w dns.ResponseWriter, r *dns.Msg) {
-	errResp := &dns.Msg{}
+	r.Response = true
+	r.Rcode = dns.RcodeServerFailure
 
-	r.CopyTo(errResp)
-
-	errResp.Response = true
-	errResp.Rcode = dns.RcodeServerFailure
-
-	err := w.WriteMsg(errResp)
+	err := w.WriteMsg(r)
 	if err != nil {
 		log.Err(err).Send()
 	}
@@ -749,7 +844,14 @@ func (h *RecursiveHandler) fetchAnswer(ctx context.Context, server netip.Addr, r
 	)
 
 	if len(cachedMsg.Question) > 0 {
-		msg, _, err = h.client.ExchangeContext(ctx, cachedMsg, net.JoinHostPort(server.String(), "53"))
+		if conn, ok := h.conns.Get(server); ok { // authoritative or resolvconf resolver
+			conn.Use(func(c *dns.Conn) {
+				msg, _, err = h.client.ExchangeWithConnContext(ctx, cachedMsg, c)
+			})
+		} else { // MAAS authoritative server returned a NS for a non-authoritative zone
+			msg, _, err = h.client.ExchangeContext(ctx, cachedMsg, net.JoinHostPort(server.String(), "53"))
+		}
+
 		if err != nil {
 			return nil, err
 		}
