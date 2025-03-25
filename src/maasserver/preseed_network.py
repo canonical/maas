@@ -778,31 +778,6 @@ def compose_curtin_network_config(node, version=1, source_routing=False):
         "network_commands": {"builtin": ["curtin", "net-meta", "custom"]}
     }
     curtin_config.update(generator.config)
-    install_openvswitch = False
-    for bridge in curtin_config["network"].get("bridges", {}).values():
-        if "openvswitch" in bridge:
-            install_openvswitch = True
-            break
-    if install_openvswitch:
-        curtin_config["late_commands"] = {
-            "openvswitch_02": [
-                "curtin",
-                "in-target",
-                "--",
-                "apt-get",
-                "-y",
-                "install",
-                # Explicitly install openvswitch until bug #1891608 is
-                # fixed and backported to focal.
-                "openvswitch-switch",
-                # Make sure that cloud-init and netplan are the latest
-                # versions until bug #1898997 is fixed and backported to
-                # focal.
-                "cloud-init",
-                "netplan.io",
-            ],
-        }
-
     # Render the resulting YAML.
     curtin_config_yaml = yaml.safe_dump(
         curtin_config, default_flow_style=False
