@@ -17,7 +17,6 @@ from textwrap import dedent
 from maasserver.enum import BMC_TYPE, NODE_TYPE
 from maasserver.triggers import (
     EVENTS_IUD,
-    EVENTS_LU,
     EVENTS_LUU,
     register_procedure,
     register_trigger,
@@ -1327,54 +1326,6 @@ DOMAIN_NODE_NOTIFY = dedent(
     """
 )
 
-
-POOL_NODE_INSERT_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION {func_name}() RETURNS trigger AS $$
-    BEGIN
-      IF {pool_id} IS NOT NULL THEN
-        PERFORM pg_notify('resourcepool_update',CAST({pool_id} AS TEXT));
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
-POOL_NODE_UPDATE_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION {}() RETURNS trigger AS $$
-    BEGIN
-      IF OLD.pool_id != NEW.pool_id THEN
-        IF OLD.pool_id IS NOT NULL THEN
-          PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
-        END IF;
-        IF NEW.pool_id IS NOT NULL THEN
-          PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
-        END IF;
-      ELSIF OLD.node_type != NEW.node_type THEN
-        -- NODE_TYPE.MACHINE = 0
-        IF OLD.node_type = 0 OR NEW.node_type = 0 THEN
-          IF NEW.pool_id IS NOT NULL THEN
-            PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
-          ELSIF OLD.pool_id IS NOT NULL THEN
-            PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
-          END IF;
-        END IF;
-      ELSIF OLD.status != NEW.status THEN
-        -- NODE_STATUS.READY = 4
-        IF OLD.status = 4 OR NEW.status = 4 THEN
-          PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
-        END IF;
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
 # Procedure that is called when a consumer is updated triggering a notification
 # to the related tokens of the consumer.
 CONSUMER_TOKEN_NOTIFY = dedent(
@@ -1750,27 +1701,6 @@ def register_websocket_triggers():
         )
     )
     register_triggers("maasserver_ownerdata", "ownerdata", events=EVENTS_LUU)
-
-    register_procedure(
-        POOL_NODE_INSERT_NOTIFY.format(
-            func_name="resourcepool_link_notify", pool_id="NEW.pool_id"
-        )
-    )
-    register_procedure(
-        POOL_NODE_INSERT_NOTIFY.format(
-            func_name="resourcepool_unlink_notify", pool_id="OLD.pool_id"
-        )
-    )
-    register_procedure(
-        POOL_NODE_UPDATE_NOTIFY.format("node_resourcepool_update_notify")
-    )
-    register_triggers("maasserver_node", "resourcepool", events=EVENTS_LU)
-    register_trigger(
-        "maasserver_node",
-        "node_resourcepool_update_notify",
-        event="update",
-        fields=["pool_id", "status"],
-    )
 
     # Device Node types
     register_procedure(
@@ -2185,24 +2115,6 @@ def register_websocket_triggers():
         "rrset_sipaddress_unlink_notify",
         "delete",
     )
-
-    # ResourcePool table
-    register_procedure(
-        render_notification_procedure(
-            "resourcepool_create_notify", "resourcepool_create", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "resourcepool_update_notify", "resourcepool_update", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "resourcepool_delete_notify", "resourcepool_delete", "OLD.id"
-        )
-    )
-    register_triggers("maasserver_resourcepool", "resourcepool")
 
     # Service table
     register_procedure(

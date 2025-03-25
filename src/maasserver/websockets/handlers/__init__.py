@@ -25,7 +25,6 @@ __all__ = [
     "PackageRepositoryHandler",
     "PodHandler",
     "ReservedIPHandler",
-    "ResourcePoolHandler",
     "SSLKeyHandler",
     "ScriptHandler",
     "ServiceHandler",
@@ -60,7 +59,6 @@ from maasserver.websockets.handlers.packagerepository import (
 )
 from maasserver.websockets.handlers.pod import PodHandler
 from maasserver.websockets.handlers.reservedip import ReservedIPHandler
-from maasserver.websockets.handlers.resourcepool import ResourcePoolHandler
 from maasserver.websockets.handlers.script import ScriptHandler
 from maasserver.websockets.handlers.service import ServiceHandler
 from maasserver.websockets.handlers.space import SpaceHandler

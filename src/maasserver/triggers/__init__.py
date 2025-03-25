@@ -42,9 +42,6 @@ EVENTS_LUU = (
     ("delete", "unlink", "OLD"),
 )
 
-# Event names: link/unlink.
-EVENTS_LU = (("insert", "link", "NEW"), ("delete", "unlink", "OLD"))
-
 
 def register_procedure(procedure):
     """Register the `procedure` SQL."""
