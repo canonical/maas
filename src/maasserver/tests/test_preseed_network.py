@@ -1133,6 +1133,7 @@ class TestNetplan(MAASServerTestCase):
                                     "stp": False,
                                 },
                                 "openvswitch": {},
+                                "optional": False,
                             }
                         },
                     ),
