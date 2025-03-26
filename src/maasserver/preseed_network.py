@@ -532,7 +532,14 @@ class InterfaceConfiguration:
                     "bridge_type", BRIDGE_TYPE.STANDARD
                 )
                 if bridge_type == BRIDGE_TYPE.OVS:
-                    bridge_operation.update({"openvswitch": {}})
+                    bridge_operation.update(
+                        {
+                            "openvswitch": {},
+                            # Cloud-init >= 24.04.1 needs to tell netplan to wait for this interface, otherwise it will fail to
+                            # communicate back to MAAS. See https://github.com/canonical/cloud-init/issues/6119#issuecomment-2751961872
+                            "optional": False,
+                        }
+                    )
             bridge_params = get_netplan_bridge_parameters(
                 self._get_bridge_params()
             )
