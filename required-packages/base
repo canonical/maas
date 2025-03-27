@@ -73,3 +73,4 @@ syslinux-common
 temporal
 ubuntu-keyring
 wget
+libdqlite1.17-dev

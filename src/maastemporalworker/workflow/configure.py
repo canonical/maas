@@ -12,11 +12,13 @@ from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.workflows.configure import (
     CONFIGURE_AGENT_WORKFLOW_NAME,
+    CONFIGURE_CLUSTER_SERVICE_WORKFLOW_NAME,
     CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
     CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
     CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
     CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME,
     ConfigureAgentParam,
+    ConfigureClusterServiceParam,
     ConfigureDHCPServiceParam,
 )
 from maasservicelayer.db.filters import QuerySpec
@@ -230,9 +232,20 @@ class ConfigureAgentWorkflow:
         # during Temporal worker pool initialization using WithConfigurator.
         # Make sure that used workflow names are in sync with the Agent.
         await workflow.execute_child_workflow(
+            CONFIGURE_CLUSTER_SERVICE_WORKFLOW_NAME,
+            ConfigureClusterServiceParam(),
+            id=f"configure-cluster-service:{param.system_id}",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            task_queue=f"{param.system_id}@agent:main",
+            task_timeout=timedelta(seconds=60),
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
+
+        await workflow.execute_child_workflow(
             CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
             param.system_id,
             id=f"configure-power-service:{param.system_id}",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
             task_queue=f"{param.system_id}@agent:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
@@ -241,6 +254,7 @@ class ConfigureAgentWorkflow:
             CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
             param.system_id,
             id=f"configure-httpproxy-service:{param.system_id}",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
             task_queue=f"{param.system_id}@agent:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
@@ -249,9 +263,9 @@ class ConfigureAgentWorkflow:
             CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
             ConfigureDHCPServiceParam(enabled=True),
             id=f"configure-dhcp-service:{param.system_id}",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
             task_queue=f"{param.system_id}@agent:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
         await workflow.execute_child_workflow(

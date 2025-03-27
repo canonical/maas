@@ -7,7 +7,7 @@ BUILD_DIR := build
 GO := go
 VENDOR_DIR := vendor
 
-LDFLAGS := -ldflags '-s -w -extldflags "-static"'
+LDFLAGS := -ldflags '-linkmode=external -extldflags "-fPIC -static -luv -llz4 -ldqlite"'
 
 # Explicitly set cache dirs to avoid situations where we can't mkdir under $HOME (e.g. Launchpad builds)
 export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
@@ -25,7 +25,7 @@ build: vendor
 	$(MAKE) $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 $(BUILD_DIR)/%:
-	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$* $(LDFLAGS) cmd/$*/*.go
+	CGO_ENABLED=1 $(GO) build -o $(BUILD_DIR)/$* $(LDFLAGS) cmd/$*/*.go
 
 .PHONY: install
 install: build
@@ -33,7 +33,7 @@ install: build
 
 .PHONY: test
 test: vendor
-	CGO_ENABLED=0 $(GO) test ./...
+	CGO_ENABLED=1 $(GO) test ./...
 
 .PHONY: test-race
 test-race: vendor

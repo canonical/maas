@@ -7,6 +7,7 @@ from dataclasses import dataclass
 CONFIGURE_AGENT_WORKFLOW_NAME = "configure-agent"
 
 # Defined in maasagent
+CONFIGURE_CLUSTER_SERVICE_WORKFLOW_NAME = "configure-cluster-service"
 CONFIGURE_POWER_SERVICE_WORKFLOW_NAME = "configure-power-service"
 CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME = "configure-httpproxy-service"
 CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME = "configure-dhcp-service"
@@ -17,6 +18,11 @@ CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME = "configure-resolver-service"
 @dataclass
 class ConfigureAgentParam:
     system_id: str
+
+
+@dataclass
+class ConfigureClusterServiceParam:
+    pass
 
 
 @dataclass

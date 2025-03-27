@@ -290,6 +290,7 @@ parts:
     source: src/maasagent
     build-packages:
       - golang-go
+      - libdqlite1.17-dev
     organize:
       bin/maas-agent: usr/sbin/maas-agent
     prime:

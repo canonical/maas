@@ -56,6 +56,7 @@ import (
 
 	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/cache"
+	"maas.io/core/src/maasagent/internal/cluster"
 	"maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/power"
@@ -407,7 +408,7 @@ func Run() int {
 	// TODO: make this configurable based on the config parameters
 	//nolint:govet // false positive
 	if err := setupMetrics(&meterProvider, mux); err != nil {
-		log.Error().Err(err).Msg("Cannot fetch cluster certificate")
+		log.Error().Err(err).Msg("Cannot setup metrics")
 		return 1
 	}
 
@@ -494,6 +495,14 @@ func Run() int {
 
 	resolverHandler := resolver.NewRecursiveHandler(resolverCache)
 
+	clusterService, err := cluster.NewClusterService(cfg.SystemID,
+		cluster.WithMetricMeter(meterProvider.Meter("cluster")),
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("Clustering initialisation error")
+		return 1
+	}
+
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
 	dhcpService := dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, dhcp.WithAPIClient(apiClient))
@@ -501,6 +510,7 @@ func Run() int {
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
+		worker.WithConfigurator(clusterService),
 		worker.WithConfigurator(powerService),
 		worker.WithConfigurator(httpProxyService),
 		worker.WithConfigurator(dhcpService),
@@ -552,6 +562,11 @@ func Run() int {
 		log.Err(err).Msg("Workflow configure-agent failed")
 		return 1
 	}
+
+	// TODO: simplify the logic of service initialisation and error handling
+	go func() {
+		fatal <- clusterService.Error()
+	}()
 
 	go func() {
 		fatal <- workerPool.Error()

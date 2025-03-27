@@ -14,4 +14,5 @@ export PERL5LIB
 PERLVER=$(perl -MConfig -e 'printf("%d.%d", $Config{"PERL_REVISION"}, $Config{PERL_VERSION});')
 PERL5LIB="$SNAP/usr/share/perl5:$SNAP/usr/share/perl/${PERLVER}:$SNAP/usr/lib/$(uname -m)-linux-gnu/perl/${PERLVER}"
 
+export DQLITE_SOCKET="@snap.$SNAP_INSTANCE_NAME.dqlite"
 exec "$SNAP/usr/sbin/maas-agent"

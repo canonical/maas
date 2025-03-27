@@ -25,8 +25,7 @@ import (
 // without registering it explicitly.
 func RunAsLocalActivity(ctx tworkflow.Context, fn any, args ...any) error {
 	options := tworkflow.LocalActivityOptions{
-		// 5 seconds timeout to avoid another Workflow Task being scheduled
-		ScheduleToCloseTimeout: 5 * time.Second,
+		StartToCloseTimeout: 60 * time.Second,
 	}
 
 	return tworkflow.ExecuteLocalActivity(
