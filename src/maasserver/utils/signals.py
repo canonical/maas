@@ -14,8 +14,6 @@ from django.db.models.signals import (
     pre_save,
 )
 
-from maasserver.models import Config
-
 
 def connect_to_field_change(callback, model, fields, delete=False):
     """Call `callback` when any of `fields` on `model` are modified.
@@ -153,21 +151,6 @@ class SignalsManager:
         """
         return self.add(
             Signal(*connect_to_field_change(cb, model, fields, delete))
-        )
-
-    def watch_config(self, cb, name):
-        """Watch a configuration item for changes.
-
-        :param cb: The function to call when a configuration item changes.
-        :type cb: callable
-        :param name: The name of the configuration item to watch.
-        :type name: unicode
-        """
-        return self.add(
-            Signal(
-                partial(Config.objects.config_changed_connect, name, cb),
-                partial(Config.objects.config_changed_disconnect, name, cb),
-            )
         )
 
     def watch(self, sig, cb, sender=None, weak=True, dispatch_uid=None):

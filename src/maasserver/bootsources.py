@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 
 from requests.exceptions import ConnectionError
 from simplestreams import util as sutil
+from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maascommon.osystem.ubuntu import UbuntuOS
@@ -38,7 +39,7 @@ from maasserver.models import (
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.utils import get_maas_user_agent
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
@@ -297,6 +298,15 @@ def _update_cache(source, descriptions):
                 "Image descriptions for {url} are outdated; discarding.",
                 url=source["url"],
             )
+
+
+def update_boot_source_cache():
+    """Update the `BootSourceCache` using the updated source.
+
+    This only begins after a successful commit to the database, and is then
+    run in a thread. Nothing waits for its completion.
+    """
+    post_commit_do(reactor.callLater, 0, cache_boot_sources)
 
 
 @asynchronous(timeout=FOREVER)

@@ -26,11 +26,11 @@ from django.db import (
 )
 from django.db.utils import IntegrityError, OperationalError
 
+from maasserver import bootsources as bootsources_module
 from maasserver.models import dhcpsnippet as snippet_module
 from maasserver.models import interface as interface_module
 from maasserver.models import iprange as iprange_module
 from maasserver.models import node as node_module
-from maasserver.models import signals
 from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models import subnet as subnet_module
 from maasserver.models import vlan as vlan_module
@@ -98,7 +98,7 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         self.patch(interface_module, "start_workflow")
         self.patch(snippet_module, "start_workflow")
         if self.mock_cache_boot_source:
-            self.patch(signals.bootsources, "post_commit_do")
+            self.patch(bootsources_module, "post_commit_do")
 
     def setUpFixtures(self):
         """This should be called by a subclass once other set-up is done."""

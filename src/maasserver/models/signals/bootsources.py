@@ -4,11 +4,9 @@
 """Respond to boot source changes."""
 
 from django.db.models.signals import post_delete, post_save
-from twisted.internet import reactor
 
-from maasserver.bootsources import cache_boot_sources
+from maasserver.bootsources import update_boot_source_cache
 from maasserver.models.bootsource import BootSource
-from maasserver.utils.orm import post_commit_do
 from maasserver.utils.signals import SignalsManager
 
 signals = SignalsManager()
@@ -21,22 +19,16 @@ def save_boot_source_cache(sender, instance, *args, **kwargs):
     """
     # Don't run if the first row and newly created.
     if instance.id != 1 and BootSource.objects.exists():
-        update_boot_source_cache(sender, instance, *args, **kwargs)
+        update_boot_source_cache()
 
 
-def update_boot_source_cache(sender, instance, *args, **kwargs):
-    """Update the `BootSourceCache` using the updated source.
-
-    This only begins after a successful commit to the database, and is then
-    run in a thread. Nothing waits for its completion.
-    """
-    post_commit_do(reactor.callLater, 0, cache_boot_sources)
+def delete_boot_source(sender, instance, *args, **kwargs):
+    """Wrap update_boot_source_cache and ignore the signal arguments"""
+    update_boot_source_cache()
 
 
 signals.watch(post_save, save_boot_source_cache, BootSource)
-signals.watch(post_delete, update_boot_source_cache, BootSource)
-signals.watch_config(update_boot_source_cache, "enable_http_proxy")
-signals.watch_config(update_boot_source_cache, "http_proxy")
+signals.watch(post_delete, delete_boot_source, BootSource)
 
 
 # Enable all signals by default.

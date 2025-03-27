@@ -7,7 +7,6 @@ from unittest.mock import call, Mock, sentinel
 
 from twisted.python.reflect import namedObject
 
-from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASLegacyTransactionServerTestCase,
@@ -224,29 +223,6 @@ class TestSignalsManager(MAASServerTestCase):
             sentinel.fields,
             sentinel.delete,
         )
-
-    def test_can_watch_config(self):
-        def callback():
-            pass
-
-        config_name = factory.make_name("config")
-
-        manager = SignalsManager()
-        manager.watch_config(callback, config_name)
-
-        self.assertEqual(len(manager._signals), 1)
-        [signal] = manager._signals
-        self.assertEqual(
-            signal.connect.func, Config.objects.config_changed_connect
-        )
-        self.assertEqual(signal.connect.args, (config_name, callback))
-        self.assertEqual(signal.connect.keywords, {})
-
-        self.assertEqual(
-            signal.disconnect.func, Config.objects.config_changed_disconnect
-        )
-        self.assertEqual(signal.disconnect.args, (config_name, callback))
-        self.assertEqual(signal.disconnect.keywords, {})
 
     def test_can_watch_any_signal(self):
         django_signal = pick_django_signal()

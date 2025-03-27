@@ -10,8 +10,6 @@ from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import (
     BondInterface,
     BridgeInterface,
-    Config,
-    Controller,
     Fabric,
     Interface,
     NodeConfig,
@@ -334,30 +332,11 @@ def remove_gateway_link_when_ip_address_removed_from_interface(
                     node.save(update_fields=["gateway_link_ipv6_id"])
 
 
-def update_interface_monitoring(sender, instance, *args, **kwargs):
-    """Updates the global state of interface monitoring."""
-    # This is not really ideal, since we don't actually know if any of these
-    # configuration options actually changed. Also, this function may be called
-    # more than once (for each global setting) when the form is submitted, no
-    # matter if anything changed or not. (But a little repitition for the sake
-    # of simpler code is a good tradeoff for now, given that there will be a
-    # relatively small number of Controller interfaces.
-    discovery_config = Config.objects.get_network_discovery_config_from_value(
-        instance.value
-    )
-    # We only care about Controller objects, since only Controllers run the
-    # networks monitoring service.
-    for controller in Controller.objects.all():
-        controller.update_discovery_state(discovery_config)
-
-
 signals.watch(
     m2m_changed,
     remove_gateway_link_when_ip_address_removed_from_interface,
     Interface.ip_addresses.through,
 )
-
-signals.watch_config(update_interface_monitoring, "network_discovery")
 
 # Enable all signals by default.
 signals.enable()

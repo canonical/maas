@@ -6,12 +6,15 @@
 from django.db import IntegrityError
 from django.http import HttpRequest
 from fixtures import TestWithFixtures
+from twisted.internet import reactor
 
 from maascommon.events import AUDIT
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
 )
+from maasserver import bootsources as bootsources_module
+from maasserver.bootsources import cache_boot_sources
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Config, Event, signals
 import maasserver.models.config
@@ -135,61 +138,6 @@ class TestConfig(MAASServerTestCase):
             "Updated configuration setting 'name' to 'value'.",
         )
 
-    def test_manager_config_changed_connect_connects(self):
-        recorder = CallRecorder()
-        name = factory.make_string()
-        value = factory.make_string()
-        Config.objects.config_changed_connect(name, recorder)
-        Config.objects.set_config(name, value)
-        config = Config.objects.get(name=name)
-
-        self.assertEqual(1, len(recorder.calls))
-        self.assertEqual((Config, config, True), recorder.calls[0][0])
-
-    def test_manager_config_changed_connect_connects_multiple(self):
-        recorder = CallRecorder()
-        recorder2 = CallRecorder()
-        name = factory.make_string()
-        value = factory.make_string()
-        Config.objects.config_changed_connect(name, recorder)
-        Config.objects.config_changed_connect(name, recorder2)
-        Config.objects.set_config(name, value)
-
-        self.assertEqual(1, len(recorder.calls))
-        self.assertEqual(1, len(recorder2.calls))
-
-    def test_manager_config_changed_connect_connects_multiple_same(self):
-        # If the same method is connected twice, it will only get called
-        # once.
-        recorder = CallRecorder()
-        name = factory.make_string()
-        value = factory.make_string()
-        Config.objects.config_changed_connect(name, recorder)
-        Config.objects.config_changed_connect(name, recorder)
-        Config.objects.set_config(name, value)
-
-        self.assertEqual(1, len(recorder.calls))
-
-    def test_manager_config_changed_connect_connects_by_config_name(self):
-        recorder = CallRecorder()
-        name = factory.make_string()
-        value = factory.make_string()
-        Config.objects.config_changed_connect(name, recorder)
-        another_name = factory.make_string()
-        Config.objects.set_config(another_name, value)
-
-        self.assertEqual(0, len(recorder.calls))
-
-    def test_manager_config_changed_disconnect_disconnects(self):
-        recorder = CallRecorder()
-        name = factory.make_string()
-        value = factory.make_string()
-        Config.objects.config_changed_connect(name, recorder)
-        Config.objects.config_changed_disconnect(name, recorder)
-        Config.objects.set_config(name, value)
-
-        self.assertEqual([], recorder.calls)
-
 
 class TestSettingConfig(MAASServerTestCase):
     """Testing of the :class:`Config` model and setting each option."""
@@ -208,12 +156,14 @@ class TestSettingConfig(MAASServerTestCase):
             manager.disable()
 
     def test_can_be_initialised_to_None_without_crashing(self):
-        Config.objects.set_config(self.name, None)
+        with post_commit_hooks:
+            Config.objects.set_config(self.name, None)
         self.assertIsNone(Config.objects.get_config(self.name))
 
     def test_can_be_modified_from_None_without_crashing(self):
-        Config.objects.set_config(self.name, None)
-        Config.objects.set_config(self.name, self.value)
+        with post_commit_hooks:
+            Config.objects.set_config(self.name, None)
+            Config.objects.set_config(self.name, self.value)
         self.assertEqual(self.value, Config.objects.get_config(self.name))
 
     def test_changing_ntp_servers_calls_configure_dhcp(self):
@@ -254,6 +204,20 @@ class TestSettingConfig(MAASServerTestCase):
                 ]
             ),
             task_queue="region",
+        )
+
+    def test_arranges_for_update_on_Config_http_proxy(self):
+        post_commit_do = self.patch(bootsources_module, "post_commit_do")
+        Config.objects.set_config("http_proxy", factory.make_url())
+        post_commit_do.assert_called_once_with(
+            reactor.callLater, 0, cache_boot_sources
+        )
+
+    def test_arranges_for_update_on_Config_http_proxy_enable(self):
+        post_commit_do = self.patch(bootsources_module, "post_commit_do")
+        Config.objects.set_config("enable_http_proxy", False)
+        post_commit_do.assert_called_once_with(
+            reactor.callLater, 0, cache_boot_sources
         )
 
 

@@ -3,12 +3,11 @@
 
 """Configuration items."""
 
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 from contextlib import suppress
 import uuid
 
 from django.db.models import CharField, JSONField, Manager, Model
-from django.db.models.signals import post_save
 
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -57,10 +56,6 @@ class ConfigManager(Manager):
 
     Don't import or instantiate this directly; access as `Config.objects`.
     """
-
-    def __init__(self):
-        super().__init__()
-        self._config_changed_connections = defaultdict(set)
 
     def get_config(self, name, default=None):
         """Return the config value corresponding to the given config name.
@@ -174,38 +169,6 @@ class ConfigManager(Manager):
                 ),
             )
 
-    def config_changed_connect(self, config_name, method):
-        """Connect a method to Django's 'update' signal for given config name.
-
-        :param config_name: The name of the config item to track.
-        :type config_name: unicode
-        :param method: The method to be called.
-        :type method: callable
-
-        The provided callable should follow Django's convention.  E.g::
-
-          >>> def callable(sender, instance, created, **kwargs):
-          ...     pass
-
-          >>> Config.objects.config_changed_connect('config_name', callable)
-
-        """
-        self._config_changed_connections[config_name].add(method)
-
-    def config_changed_disconnect(self, config_name, method):
-        """Disconnect from Django's 'update' signal for given config name.
-
-        :param config_name: The name of the config item.
-        :type config_name: unicode
-        :param method: The method to be removed.
-        :type method: callable
-        """
-        self._config_changed_connections[config_name].discard(method)
-
-    def _config_changed(self, sender, instance, created, **kwargs):
-        for connection in self._config_changed_connections[instance.name]:
-            connection(sender, instance, created, **kwargs)
-
     def get_network_discovery_config_from_value(self, value):
         """Given the configuration value for `network_discovery`, return
         a `namedtuple` (`NetworkDiscoveryConfig`) of booleans: (active,
@@ -221,14 +184,41 @@ class ConfigManager(Manager):
             self.get_config("network_discovery")
         )
 
+    def _handle_ntp_servers_config(self):
+        from maasserver.models.vlan import VLAN
+
+        vlan_ids = [vlan.id for vlan in VLAN.objects.filter(dhcp_on=True)]
+
+        if vlan_ids:
+            post_commit_do(
+                start_workflow,
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(
+                    vlan_ids=vlan_ids,
+                ),
+                task_queue="region",
+            )
+
     def _handle_config_value_changed(self, name, value):
         """Hook handlers for changes in specific config parameters."""
+        from maasserver.bootsources import update_boot_source_cache
+        from maasserver.interface import update_interface_monitoring
+        from maasserver.models.domain import dns_kms_setting_changed
         from maasserver.sessiontimeout import clear_existing_sessions
 
-        # XXX eventually we should move away from signals for performing tasks
-        # on config changes, and call all handlers here.
         handlers = {
+            "enable_http_proxy": lambda _name,
+            _value: update_boot_source_cache(),
+            "http_proxy": lambda _name, _value: update_boot_source_cache(),
+            "network_discovery": lambda _name,
+            _value: update_interface_monitoring(_value),
+            "ntp_external_only": lambda _name,
+            _value: self._handle_ntp_servers_config(),
+            "ntp_servers": lambda _name,
+            _value: self._handle_ntp_servers_config(),
             "session_length": lambda _name, _value: clear_existing_sessions(),
+            "windows_kms_host": lambda _name,
+            _value: dns_kms_setting_changed(),
         }
 
         handler = handlers.get(name)
@@ -250,25 +240,6 @@ class Config(Model):
 
     objects = ConfigManager()
 
-    def save(self, *args, **kwargs):
-        from maasserver.models.vlan import VLAN
-
-        super().save(*args, **kwargs)
-        if self.id and (
-            self.name == "ntp_servers" or self.name == "ntp_external_only"
-        ):
-            vlan_ids = [vlan.id for vlan in VLAN.objects.filter(dhcp_on=True)]
-
-            if vlan_ids:
-                post_commit_do(
-                    start_workflow,
-                    workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                    param=ConfigureDHCPParam(
-                        vlan_ids=vlan_ids,
-                    ),
-                    task_queue="region",
-                )
-
     def __str__(self):
         return f"{self.name}: {self.value}"
 
@@ -280,7 +251,3 @@ def ensure_uuid_in_config() -> str:
         maas_uuid = str(uuid.uuid4())
         Config.objects.set_config("uuid", maas_uuid)
     return maas_uuid
-
-
-# Connect config manager's _config_changed to Config's post-save signal.
-post_save.connect(Config.objects._config_changed, sender=Config)
