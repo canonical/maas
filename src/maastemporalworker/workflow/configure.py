@@ -59,7 +59,6 @@ class GetRackControllerVLANsInput:
 @dataclass
 class GetResolverConfigInput:
     system_id: str
-    use_bind: bool
 
 
 @dataclass
@@ -152,7 +151,6 @@ class ConfigureAgentActivity(ActivityBase):
                 agent_node.node_type == NodeTypeEnum.REGION_CONTROLLER
                 or agent_node.node_type
                 == NodeTypeEnum.REGION_AND_RACK_CONTROLLER
-                or param.use_bind
             ):
                 return GetResolverConfigResult(
                     enabled=False,

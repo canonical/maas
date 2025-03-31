@@ -11,7 +11,6 @@ class ServiceName(str, Enum):
     BIND9 = "bind9"
     DHCPD6 = "dhcpd6"
     DHCPD = "dhcpd"
-    DNS_RACK = "dns_rack"
     HTTP = "http"
     NTP_RACK = "ntp_rack"
     NTP_REGION = "ntp_region"

@@ -8,7 +8,6 @@ from provisioningserver.service_monitor import (
     AgentServiceOnRack,
     DHCPv4Service,
     DHCPv6Service,
-    DNSServiceOnRack,
     NTPServiceOnRack,
     ProxyServiceOnRack,
     service_monitor,
@@ -45,14 +44,6 @@ class TestNTPServiceOnRack(MAASTestCase):
         self.assertEqual(SERVICE_STATE.ANY, ntp.expected_state)
 
 
-class TestDNSServiceOnRack(MAASTestCase):
-    def test_name_and_service_name(self):
-        dns = DNSServiceOnRack()
-        self.assertEqual("bind9", dns.service_name)
-        self.assertEqual("dns_rack", dns.name)
-        self.assertEqual(SERVICE_STATE.ANY, dns.expected_state)
-
-
 class TestProxyServiceOnRack(MAASTestCase):
     def test_name_and_service_name(self):
         proxy = ProxyServiceOnRack()
@@ -86,7 +77,6 @@ class TestGlobalServiceMonitor(MAASTestCase):
                 "http",
                 "dhcpd",
                 "dhcpd6",
-                "dns_rack",
                 "ntp_rack",
                 "proxy_rack",
                 "syslog_rack",

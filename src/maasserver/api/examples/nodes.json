@@ -544,11 +544,6 @@
           "status_info": ""
         },
         {
-          "name": "dns_rack",
-          "status": "unknown",
-          "status_info": "managed by the region"
-        },
-        {
           "name": "http",
           "status": "running",
           "status_info": ""

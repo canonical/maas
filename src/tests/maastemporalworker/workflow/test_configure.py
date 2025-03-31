@@ -170,7 +170,7 @@ class TestConfigureAgentActivity:
         result = await env.run(
             activities.get_resolver_config,
             GetResolverConfigInput(
-                system_id=agent_node["system_id"], use_bind=False
+                system_id=agent_node["system_id"],
             ),
         )
 
@@ -193,7 +193,7 @@ class TestConfigureAgentActivity:
         result = await env.run(
             activities.get_resolver_config,
             GetResolverConfigInput(
-                system_id=agent_node["system_id"], use_bind=False
+                system_id=agent_node["system_id"],
             ),
         )
 
@@ -253,7 +253,7 @@ class TestConfigureAgentActivity:
         result = await env.run(
             activities.get_resolver_config,
             GetResolverConfigInput(
-                system_id=agent_node["system_id"], use_bind=False
+                system_id=agent_node["system_id"],
             ),
         )
 
@@ -272,26 +272,3 @@ class TestConfigureAgentActivity:
                 if sip["subnet_id"] == dns_subnet["id"]
             ]
         )
-
-    async def test_get_resolver_config_use_bind(
-        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
-    ):
-        env = ActivityEnvironment()
-
-        agent_node = await create_test_rack_controller_entry(fixture)
-
-        services_cache = CacheForServices()
-        activities = ConfigureAgentActivity(
-            db, services_cache, connection=db_connection
-        )
-
-        result = await env.run(
-            activities.get_resolver_config,
-            GetResolverConfigInput(
-                system_id=agent_node["system_id"], use_bind=True
-            ),
-        )
-
-        assert not result.enabled
-        assert not result.bind_ips
-        assert not result.authoritative_ips

@@ -349,11 +349,6 @@
                     "status_info": ""
                 },
                 {
-                    "name": "dns_rack",
-                    "status": "unknown",
-                    "status_info": ""
-                },
-                {
                     "name": "proxy_rack",
                     "status": "unknown",
                     "status_info": ""
@@ -873,11 +868,6 @@
             {
                 "name": "tftp",
                 "status": "dead",
-                "status_info": ""
-            },
-            {
-                "name": "dns_rack",
-                "status": "unknown",
                 "status_info": ""
             },
             {

@@ -53,17 +53,6 @@ class NTPServiceOnRack(RackToggleableService):
     snap_service_name = "ntp"
 
 
-class DNSServiceOnRack(RackToggleableService):
-    """Monitored DNS service on a rack controller host."""
-
-    name = "dns_rack"
-    service_name = "bind9"
-    snap_service_name = "bind9"
-
-    # Pass SIGKILL directly to parent.
-    kill_extra_opts = ("-s", "SIGKILL")
-
-
 class ProxyServiceOnRack(RackToggleableService):
     """Monitored proxy service on a rack controller host."""
 
@@ -95,7 +84,6 @@ service_monitor = ServiceMonitor(
     DHCPv4Service(),
     DHCPv6Service(),
     NTPServiceOnRack(),
-    DNSServiceOnRack(),
     ProxyServiceOnRack(),
     SyslogServiceOnRack(),
     AgentServiceOnRack(),

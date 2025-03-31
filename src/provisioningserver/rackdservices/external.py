@@ -27,11 +27,6 @@ from twisted.internet.threads import deferToThread
 
 from provisioningserver.agent import config as agent_config
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.dns.actions import (
-    bind_reload_with_retries,
-    bind_write_configuration,
-    bind_write_options,
-)
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.ntp.config import configure_rack
 from provisioningserver.path import get_maas_cache_path
@@ -49,7 +44,7 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snap
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET, MAAS_UUID
-from provisioningserver.utils.twisted import callOut, callOutToThread
+from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
 
@@ -179,76 +174,6 @@ class RackNTP(RackOnlyExternalService):
             configure_rack, configuration.references, configuration.peers
         )
         d.addCallback(callOut, service_monitor.restartService, "ntp_rack")
-        return d
-
-
-class RackDNS(RackOnlyExternalService):
-    """External DNS service ran only in rack-only mode."""
-
-    service_name = "dns_rack"
-
-    def _tryUpdate(self, config: _Configuration):
-        """Update the NTP server running on this host."""
-        d = maybeDeferred(
-            self._getConfiguration,
-            config.controller_type,
-            config.dns_configuration,
-            config.connections,
-        )
-        d.addCallback(self._maybeApplyConfiguration)
-        return d
-
-    def _getConfiguration(
-        self, controller_type, dns_configuration, connections
-    ) -> _DNSConfiguration:
-        """Return DNS server configuration.
-
-        The configuration object returned is comparable with previous and
-        subsequently obtained configuration objects, allowing this service to
-        determine whether a change needs to be applied to the DNS server.
-        """
-        region_ips = list(self._genRegionIps(connections))
-        return _DNSConfiguration(
-            upstream_dns=region_ips,
-            trusted_networks=dns_configuration["trusted_networks"],
-            is_region=controller_type["is_region"],
-            is_rack=controller_type["is_rack"],
-        )
-
-    def _bindConfigure(self, configuration):
-        """Update the DNS configuration for the rack.
-
-        Possible node was converted from a region to a rack-only, so we always
-        ensure that all zones are removed.
-        """
-        # We allow the region controller to do the dnssec validation, if
-        # enabled. On the rack controller we just let it pass through.
-        bind_write_options(
-            upstream_dns=list(sorted(configuration.upstream_dns)),
-            dnssec_validation="no",
-        )
-
-        # No zones on the rack controller.
-        bind_write_configuration(
-            [], list(sorted(configuration.trusted_networks))
-        )
-
-    def _bindReload(self):
-        """Reload bind for the rack controller."""
-        # Reloading with retries to ensure that it actually works.
-        bind_reload_with_retries()
-
-    def _configure(self, configuration):
-        """Configure the DNS server.
-
-        :param configuration: The configuration object obtained from
-            `_getConfiguration`.
-        """
-        d = deferToThread(self._bindConfigure, configuration)
-        d.addCallback(
-            callOut, service_monitor.ensureService, self.service_name
-        )
-        d.addCallback(callOutToThread, self._bindReload)
         return d
 
 
@@ -478,7 +403,6 @@ class RackExternalService(TimerService):
         if self._services is None:
             self._services = [
                 ("NTP", RackNTP()),
-                ("DNS", RackDNS()),
                 ("proxy", RackProxy()),
                 ("syslog", RackSyslog()),
                 ("agent", RackAgent()),

@@ -1078,11 +1078,6 @@
           "status_info": ""
         },
         {
-          "name": "dns_rack",
-          "status": "unknown",
-          "status_info": ""
-        },
-        {
           "name": "syslog_rack",
           "status": "unknown",
           "status_info": ""
@@ -2170,11 +2165,6 @@
           "status_info": ""
         },
         {
-          "name": "dns_rack",
-          "status": "unknown",
-          "status_info": ""
-        },
-        {
           "name": "syslog_rack",
           "status": "unknown",
           "status_info": ""
@@ -2452,11 +2442,6 @@
         {
           "name": "regiond",
           "status": "running",
-          "status_info": ""
-        },
-        {
-          "name": "dns_rack",
-          "status": "unknown",
           "status_info": ""
         },
         {
