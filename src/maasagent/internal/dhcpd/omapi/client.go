@@ -142,7 +142,7 @@ func (c *Client) AddHost(ip net.IP, mac net.HardwareAddr) error {
 	message.Message["exclusive"] = boolToBytes(true)
 
 	message.Object["hardware-address"] = mac
-	message.Object["hardware-type"] = int32ToBytes(1)
+	message.Object["hardware-type"] = uint32ToBytes(1)
 	message.Object["ip-address"] = ipToBytes(ip)
 
 	_, err := c.send(message, func(resp *Message) error {

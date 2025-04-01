@@ -16,7 +16,7 @@
 //go:build linux
 // +build linux
 
-//nolint:stylecheck // ignore ST1000
+//nolint:staticcheck // ignore ST1000
 package info
 
 import (

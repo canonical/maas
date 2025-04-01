@@ -105,7 +105,9 @@ func WithMetricMeter(meter metric.Meter) ClusterServiceOption {
 						attribute.String("role", m.Role),
 						attribute.String("status", string(m.Status)),
 						attribute.Int64("last_heartbeat", m.LastHeartbeat.Unix()),
+						//nolint:gosec // OpenTelemetry doesn’t support uint64
 						attribute.Int64("schema_version_internal", int64(m.SchemaInternalVersion)),
+						//nolint:gosec // OpenTelemetry doesn’t support uint64
 						attribute.Int64("schema_version_external", int64(m.SchemaExternalVersion)),
 					))
 				}

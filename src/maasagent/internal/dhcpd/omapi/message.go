@@ -101,8 +101,10 @@ func (m *Message) MarshalBinary() ([]byte, error) {
 		writer.writeUint32(m.AuthID)
 	}
 
+	//nolint:gosec // OMAPI protocol requires uint32
 	writer.writeUint32(uint32(len(m.Signature)))
 	writer.writeUint32(uint32(m.Operation))
+
 	writer.writeUint32(m.Handle)
 	writer.writeUint32(m.TransactionID)
 	writer.writeUint32(m.ResponseID)

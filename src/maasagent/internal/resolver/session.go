@@ -164,7 +164,7 @@ func (s *session) compress(buf []byte, label []byte) ([]byte, bool) {
 
 	b := make([]byte, len(buf)+2)
 	copy(b, buf)
-
+	//nolint:gosec // compression requires uint16. https://datatracker.ietf.org/doc/html/rfc1035
 	binary.BigEndian.PutUint16(b[len(buf):], uint16(idx^labelPointerShift))
 
 	return b, true

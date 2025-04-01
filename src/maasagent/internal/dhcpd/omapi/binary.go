@@ -78,8 +78,11 @@ func (ew *errWriter) writeMap(data map[string][]byte) {
 
 	for _, key := range keys {
 		value := data[key]
+
+		//nolint:gosec // OMAPI protocol requires int16
 		ew.writeInt16(int16(len(key)))
 		ew.writeBytes([]byte(key))
+		//nolint:gosec // OMAPI protocol requires int32
 		ew.writeInt32(int32(len(value)))
 		ew.writeBytes(value)
 	}
@@ -162,9 +165,9 @@ func boolToBytes(v bool) []byte {
 	return b[:]
 }
 
-func int32ToBytes(i int32) []byte {
+func uint32ToBytes(i uint32) []byte {
 	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, uint32(i))
+	binary.BigEndian.PutUint32(b, i)
 
 	return b
 }
