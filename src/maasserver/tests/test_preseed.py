@@ -1468,6 +1468,21 @@ class TestCurtinUtilities(BootImageHelperMixin, MAASServerTestCase):
         self.assertIn("debconf_selections:", config)
         self.assertNotIn("mode: reboot", config)
 
+    def test_get_curtin_config_cloud_init_package(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rack_controller
+        )
+        self.make_boot_image_for_node(node, "xinstall")
+        request = make_HttpRequest()
+        config = yaml.safe_load(get_curtin_config(request, node))
+        self.assertIn("debconf_selections", config)
+        self.assertIn(
+            "cloud-init/datasources", config["debconf_selections"]["maas"]
+        )
+        self.assertIn(
+            "cloud-init-base/datasources", config["debconf_selections"]["maas"]
+        )
+
     def test_get_curtin_config_removes_power_state(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rack_controller
