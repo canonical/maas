@@ -483,8 +483,8 @@ def compose_debconf_cloud_init_preseed(request, node, token):
     ]
 
     return "\n".join(
-        "cloud-init   cloud-init/%s  %s %s"
-        % (item_name, item_type, item_value)
+        f"cloud-init   cloud-init/{item_name}  {item_type} {item_value}\n"
+        f"cloud-init-base   cloud-init-base/{item_name}  {item_type} {item_value}"
         for item_name, item_type, item_value in preseed_items
     )
 
