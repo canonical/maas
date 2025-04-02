@@ -9,7 +9,6 @@ isc-dhcp-common
 isc-dhcp-server
 libpq-dev
 lshw
-nginx-core
 postgresql
 pxelinux
 python3-aiodns
