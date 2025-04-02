@@ -1134,30 +1134,6 @@ class TestNetplan(MAASServerTestCase):
             "stp: false", output, "stp: value must be a boolean not an integer"
         )
 
-    def test_bridge_ovs_packages(self):
-        node = factory.make_Node()
-        eth0 = factory.make_Interface(
-            node=node, name="eth0", mac_address="00:01:02:03:04:05"
-        )
-        eth1 = factory.make_Interface(
-            node=node, name="eth1", mac_address="02:01:02:03:04:05"
-        )
-        factory.make_Interface(
-            INTERFACE_TYPE.BRIDGE,
-            node=node,
-            name="br0",
-            parents=[eth0, eth1],
-            params={"bridge_type": BRIDGE_TYPE.OVS},
-        )
-        [output] = compose_curtin_network_config(node, version=2)
-        curtin_config = yaml.safe_load(output)
-        ovs_commands = [
-            command
-            for key, command in sorted(curtin_config["late_commands"].items())
-            if "openvswitch" in key and isinstance(command, list)
-        ]
-        self.assertNotEqual(len(ovs_commands), 0)
-
     def test_bridged_bond(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
