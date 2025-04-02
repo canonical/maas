@@ -490,7 +490,10 @@ func Run() int {
 		return 1
 	}
 
-	resolverCache, err := resolver.NewCache(cfg.DNSResolver.CacheSize)
+	resolverCache, err := resolver.NewCache(
+		cfg.DNSResolver.CacheSize,
+		resolver.WithCacheMetrics(meterProvider.Meter("resolver")),
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("Resolver cache initialisation error")
 		return 1
@@ -501,6 +504,7 @@ func Run() int {
 		resolver.WithConnPoolSize(cfg.DNSResolver.ConnPoolSize),
 		resolver.WithDialTimeout(cfg.DNSResolver.DialTimeout),
 		resolver.WithUDPSize(cfg.DNSResolver.UDPPktSize),
+		resolver.WithHandlerMetrics(meterProvider.Meter("resolver")),
 	)
 
 	clusterService, err := cluster.NewClusterService(cfg.SystemID,

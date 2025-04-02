@@ -43,11 +43,15 @@ func (c *cacheEntry) Expired(ts time.Time) bool {
 	return ts.Sub(c.CreatedAt) >= time.Duration(ttl)*time.Second
 }
 
+type CacheOption func(*cache)
+
 type cache struct {
-	cache *lru.Cache[string, *cacheEntry]
+	cache    *lru.Cache[string, *cacheEntry]
+	stats    *cacheStats
+	maxCount int64
 }
 
-func NewCache(size int64) (Cache, error) {
+func NewCache(size int64, options ...CacheOption) (Cache, error) {
 	maxNumRecords := defaultCacheRecordCap
 
 	if size != 0 {
@@ -62,9 +66,17 @@ func NewCache(size int64) (Cache, error) {
 		return nil, err
 	}
 
-	return &cache{
-		cache: lruCache,
-	}, nil
+	c := &cache{
+		cache:    lruCache,
+		stats:    &cacheStats{},
+		maxCount: int64(maxNumRecords),
+	}
+
+	for _, option := range options {
+		option(c)
+	}
+
+	return c, nil
 }
 
 func (c *cache) Get(name string, rrtype uint16) (dns.RR, bool) {
@@ -72,14 +84,20 @@ func (c *cache) Get(name string, rrtype uint16) (dns.RR, bool) {
 
 	entry, ok := c.cache.Get(key)
 	if !ok {
+		c.stats.misses.Add(1)
+
 		return nil, ok
 	}
 
 	if entry.Expired(time.Now()) {
 		_ = c.cache.Remove(key)
 
+		c.stats.expirations.Add(1)
+
 		return nil, false
 	}
+
+	c.stats.hits.Add(1)
 
 	return entry.RR, ok
 }
@@ -92,6 +110,8 @@ func (c *cache) Set(rr dns.RR) {
 		RR:        rr,
 		CreatedAt: time.Now(),
 	})
+
+	c.stats.size.Add(1)
 }
 
 func (c *cache) key(name string, rrtype uint16) string {

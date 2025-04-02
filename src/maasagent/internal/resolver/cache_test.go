@@ -338,6 +338,7 @@ func TestCache_Get(t *testing.T) {
 
 			c := &cache{
 				cache: lcache,
+				stats: &cacheStats{},
 			}
 
 			rr, ok := c.Get(tc.in.key.name, tc.in.key.rrtype)

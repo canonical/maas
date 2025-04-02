@@ -177,6 +177,7 @@ type RecursiveHandler struct {
 	systemResolvers      *systemConfig
 	sessionMap           *sessionMap
 	conns                *connMap
+	stats                *handlerStats
 	recordCache          Cache
 	client               ResolverClient
 	authoritativeServers []netip.Addr
@@ -191,6 +192,7 @@ func NewRecursiveHandler(cache Cache, options ...RecursiveHandlerOption) *Recurs
 		conns: &connMap{
 			conns: make(map[netip.Addr][]*exclusiveConn),
 		},
+		stats:        &handlerStats{},
 		connPoolSize: defaultConnPoolSize,
 		recordCache:  cache,
 		client:       &dns.Client{},
@@ -232,6 +234,8 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 			}
 
 			h.conns.Set(authAddrs[i], conn)
+
+			h.stats.connPoolSize.Add(1)
 		}
 	}
 
@@ -249,6 +253,8 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 			}
 
 			h.conns.Set(ns, conn)
+
+			h.stats.connPoolSize.Add(1)
 		}
 	}
 
@@ -264,8 +270,12 @@ func (h *RecursiveHandler) Close() error {
 }
 
 func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	h.stats.queries.Add(1)
+
 	ok := h.validateQuery(w, r)
 	if !ok {
+		h.stats.invalid.Add(1)
+
 		return
 	}
 
@@ -287,6 +297,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		rr, ok := h.getCachedRecordForQuestion(q)
 		if ok {
 			r.Answer = append(r.Answer, rr)
+
+			h.stats.fromCache.Add(1)
+
 			continue
 		}
 
@@ -333,6 +346,8 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				r.Ns = append(r.Ns, msg.Ns...)
 				r.Extra = append(r.Extra, msg.Extra...)
 
+				h.stats.authoritative.Add(1)
+
 				continue
 			}
 		}
@@ -352,6 +367,8 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				r.Answer = append(r.Answer, msg.Answer...)
 				r.Ns = append(r.Ns, msg.Ns...)
 				r.Extra = append(r.Extra, msg.Extra...)
+
+				h.stats.nonauthoritative.Add(1)
 			}
 
 			continue
@@ -380,6 +397,8 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		r.Answer = append(r.Answer, msg.Answer...)
 		r.Ns = append(r.Ns, msg.Ns...)
 		r.Extra = append(r.Extra, msg.Extra...)
+
+		h.stats.nonauthoritative.Add(1)
 	}
 
 	err := w.WriteMsg(r)
@@ -762,6 +781,8 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 }
 
 func (h *RecursiveHandler) srvFailResponse(w dns.ResponseWriter, r *dns.Msg) {
+	h.stats.srvFail.Add(1)
+
 	r.Response = true
 	r.Rcode = dns.RcodeServerFailure
 
