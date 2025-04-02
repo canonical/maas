@@ -778,20 +778,16 @@ class Subnet(CleanSave, TimestampedModel):
                 return neighbor
         return None
 
-    def get_iprange_usage(
-        self, with_neighbours=False, cached_staticroutes=None
-    ) -> MAASIPSet:
+    def get_iprange_usage(self, cached_staticroutes=None) -> MAASIPSet:
         """Returns both the reserved and unreserved IP ranges in this Subnet.
         (This prevents a potential race condition that could occur if an IP
         address is allocated or deallocated between calls.)
 
-        :returns: A tuple indicating the (reserved, unreserved) ranges.
+        :returns: A MAASIPSet with the reserved and unreserved ranges.
         """
         reserved_ranges = self.get_ipranges_in_use(
             cached_staticroutes=cached_staticroutes
         )
-        if with_neighbours is True:
-            reserved_ranges |= self.get_maasipset_for_neighbours()
         return reserved_ranges.get_full_range(self.get_ipnetwork())
 
     def get_next_ip_for_allocation(
