@@ -171,6 +171,8 @@ func (c *connMap) Close() error {
 	return nil
 }
 
+type RecursiveHandlerOption func(*RecursiveHandler)
+
 type RecursiveHandler struct {
 	systemResolvers      *systemConfig
 	sessionMap           *sessionMap
@@ -178,19 +180,27 @@ type RecursiveHandler struct {
 	recordCache          Cache
 	client               ResolverClient
 	authoritativeServers []netip.Addr
+	connPoolSize         int
 }
 
-func NewRecursiveHandler(cache Cache) *RecursiveHandler {
-	return &RecursiveHandler{
+func NewRecursiveHandler(cache Cache, options ...RecursiveHandlerOption) *RecursiveHandler {
+	r := &RecursiveHandler{
 		sessionMap: &sessionMap{
 			sessions: make(map[string]*session),
 		},
 		conns: &connMap{
 			conns: make(map[netip.Addr][]*exclusiveConn),
 		},
-		recordCache: cache,
-		client:      &dns.Client{}, // TODO provide client config
+		connPoolSize: defaultConnPoolSize,
+		recordCache:  cache,
+		client:       &dns.Client{},
 	}
+
+	for _, option := range options {
+		option(r)
+	}
+
+	return r
 }
 
 func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string) error {
@@ -215,7 +225,7 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 			return err
 		}
 
-		for j := 0; j < defaultConnPoolSize; j++ {
+		for j := 0; j < h.connPoolSize; j++ {
 			conn, err := h.client.Dial(net.JoinHostPort(server, "53"))
 			if err != nil {
 				return err
@@ -232,7 +242,7 @@ func (h *RecursiveHandler) SetUpstreams(resolvConf string, authServers []string)
 			continue
 		}
 
-		for i := 0; i < defaultConnPoolSize; i++ {
+		for i := 0; i < h.connPoolSize; i++ {
 			conn, err := h.client.Dial(net.JoinHostPort(ns.String(), "53"))
 			if err != nil {
 				return err

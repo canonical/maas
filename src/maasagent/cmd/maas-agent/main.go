@@ -89,7 +89,10 @@ type config struct {
 		Enabled          bool   `yaml:"enabled"`
 	} `yaml:"tracing"`
 	DNSResolver struct {
-		CacheSize int64 `yaml:"cache_size"`
+		CacheSize    int64         `yaml:"cache_size"`
+		ConnPoolSize int           `yaml:"connection_pool_size"`
+		DialTimeout  time.Duration `yaml:"dial_timeout"`
+		UDPPktSize   uint16        `yaml:"udp_packet_size"`
 	} `yaml:"dns_resolver"`
 	Metrics struct {
 		Enabled bool `yaml:"enabled"`
@@ -493,7 +496,12 @@ func Run() int {
 		return 1
 	}
 
-	resolverHandler := resolver.NewRecursiveHandler(resolverCache)
+	resolverHandler := resolver.NewRecursiveHandler(
+		resolverCache,
+		resolver.WithConnPoolSize(cfg.DNSResolver.ConnPoolSize),
+		resolver.WithDialTimeout(cfg.DNSResolver.DialTimeout),
+		resolver.WithUDPSize(cfg.DNSResolver.UDPPktSize),
+	)
 
 	clusterService, err := cluster.NewClusterService(cfg.SystemID,
 		cluster.WithMetricMeter(meterProvider.Meter("cluster")),
