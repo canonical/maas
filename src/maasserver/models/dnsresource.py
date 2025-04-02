@@ -353,3 +353,10 @@ class DNSResource(CleanSave, TimestampedModel):
             }
             for data in self.dnsdata_set.all()
         )
+
+    def delete(self, *args, **kwargs):
+        # delete all the user reserved static ip addresses not linked to any interface
+        for ip in self.ip_addresses.all():
+            if ip.is_safe_to_delete():
+                ip.delete()
+        return super().delete(*args, **kwargs)

@@ -990,6 +990,13 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         ]
         return interface_types == [INTERFACE_TYPE.UNKNOWN]
 
+    def is_safe_to_delete(self):
+        """Return True if the IP is user reserved and not associated with any interface."""
+        return (
+            self.alloc_type == IPADDRESS_TYPE.USER_RESERVED
+            and self.interface_set.count() == 0
+        )
+
     def get_ip(self):
         """Return the IP address assigned."""
         ip, subnet = self.get_ip_and_subnet()

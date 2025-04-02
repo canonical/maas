@@ -130,4 +130,4 @@ class DNSResourceForm(MAASModelForm):
             )
             new_list.append(static_ip.id)
         self.cleaned_data["ip_addresses"] = new_list
-        return super().save(self, *args, **kwargs)
+        return super().save(*args, **kwargs)
