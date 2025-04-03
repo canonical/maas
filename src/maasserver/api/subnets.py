@@ -103,6 +103,9 @@ class SubnetsHandler(OperationsHandler):
         @param (string) "dns_servers" [required=false] Comma-separated list of
         DNS servers for this subnet.
 
+        @param (int) "active_discovery" [required=false] Configure MAAS to detect
+        machines on the network by actively probing for devices.
+
         @param (int) "managed" [required=false,formatting=true] In MAAS 2.0+,
         all subnets are assumed to be managed by default.
 
