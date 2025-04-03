@@ -32,7 +32,7 @@ type mockHandler struct {
 	Handler
 }
 
-func (m *mockHandler) SetUpstreams(_ string, _ []string) error {
+func (m *mockHandler) SetUpstreams(_ *systemConfig, _ []string) error {
 	return nil
 }
 

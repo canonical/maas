@@ -37,6 +37,7 @@ type cacheEntry struct {
 	CreatedAt time.Time
 }
 
+// Expired calculates if an entry has reached its TTL
 func (c *cacheEntry) Expired(ts time.Time) bool {
 	ttl := c.RR.Header().Ttl
 
@@ -51,6 +52,7 @@ type cache struct {
 	maxCount int64
 }
 
+// NewCache provides a constructor for an in-memory DNS cache
 func NewCache(size int64, options ...CacheOption) (Cache, error) {
 	maxNumRecords := defaultCacheRecordCap
 
@@ -79,6 +81,8 @@ func NewCache(size int64, options ...CacheOption) (Cache, error) {
 	return c, nil
 }
 
+// Get fetches a record for the given name and type if one is present
+// in the cache, returns false if one is absent or expired
 func (c *cache) Get(name string, rrtype uint16) (dns.RR, bool) {
 	key := c.key(name, rrtype)
 
@@ -102,6 +106,7 @@ func (c *cache) Get(name string, rrtype uint16) (dns.RR, bool) {
 	return entry.RR, ok
 }
 
+// Set inserts a record into the cache
 func (c *cache) Set(rr dns.RR) {
 	hdr := rr.Header()
 	key := c.key(hdr.Name, hdr.Rrtype)
@@ -114,6 +119,7 @@ func (c *cache) Set(rr dns.RR) {
 	c.stats.size.Add(1)
 }
 
+// key generates the key for a record in the cache
 func (c *cache) key(name string, rrtype uint16) string {
 	return name + "_" + dns.TypeToString[rrtype]
 }

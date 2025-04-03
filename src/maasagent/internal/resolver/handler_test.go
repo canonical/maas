@@ -254,9 +254,7 @@ search example.com`,
 				t.Fatal(err)
 			}
 
-			handler := NewRecursiveHandler(noopCache{})
-
-			cfg, err := handler.parseResolvConf(tmpFile.Name())
+			cfg, err := parseResolvConf(tmpFile.Name())
 			if err != nil {
 				if tc.out.err != nil {
 					assert.ErrorIs(t, err, tc.out.err)
@@ -644,7 +642,7 @@ func TestServeDNS(t *testing.T) {
 	testcases := map[string]struct {
 		in struct {
 			msg                  *dns.Msg
-			client               ResolverClient
+			client               resolverClient
 			config               *systemConfig
 			authoritativeServers []netip.Addr
 		}
@@ -656,7 +654,7 @@ func TestServeDNS(t *testing.T) {
 		"basic non-authoritative": {
 			in: struct {
 				msg                  *dns.Msg
-				client               ResolverClient
+				client               resolverClient
 				config               *systemConfig
 				authoritativeServers []netip.Addr
 			}{
@@ -768,7 +766,7 @@ func TestServeDNS(t *testing.T) {
 		"search": {
 			in: struct {
 				msg                  *dns.Msg
-				client               ResolverClient
+				client               resolverClient
 				config               *systemConfig
 				authoritativeServers []netip.Addr
 			}{
@@ -919,7 +917,7 @@ func TestServeDNS(t *testing.T) {
 		"basic authoritative": {
 			in: struct {
 				msg                  *dns.Msg
-				client               ResolverClient
+				client               resolverClient
 				config               *systemConfig
 				authoritativeServers []netip.Addr
 			}{
@@ -1407,7 +1405,7 @@ func TestServeDNS(t *testing.T) {
 		"nxdomain": {
 			in: struct {
 				msg                  *dns.Msg
-				client               ResolverClient
+				client               resolverClient
 				config               *systemConfig
 				authoritativeServers []netip.Addr
 			}{
@@ -1498,7 +1496,7 @@ func TestServeDNS(t *testing.T) {
 		"client error": {
 			in: struct {
 				msg                  *dns.Msg
-				client               ResolverClient
+				client               resolverClient
 				config               *systemConfig
 				authoritativeServers []netip.Addr
 			}{
@@ -1611,7 +1609,7 @@ func TestGetNS(t *testing.T) {
 	testcases := map[string]struct {
 		in struct {
 			name                 string
-			client               ResolverClient
+			client               resolverClient
 			authoritativeServers []string
 		}
 		out struct {
@@ -1622,7 +1620,7 @@ func TestGetNS(t *testing.T) {
 		"basic": {
 			in: struct {
 				name                 string
-				client               ResolverClient
+				client               resolverClient
 				authoritativeServers []string
 			}{
 				name: "example.com",
@@ -1680,7 +1678,7 @@ func TestGetNS(t *testing.T) {
 		"NXDOMAIN": {
 			in: struct {
 				name                 string
-				client               ResolverClient
+				client               resolverClient
 				authoritativeServers []string
 			}{
 				name: "example.com",
@@ -1742,14 +1740,14 @@ func TestQueryAliasType(t *testing.T) {
 	testcases := map[string]struct {
 		in struct {
 			query  *dns.Msg
-			client ResolverClient
+			client resolverClient
 		}
 		out *dns.Msg
 	}{
 		"valid": {
 			in: struct {
 				query  *dns.Msg
-				client ResolverClient
+				client resolverClient
 			}{
 				query: &dns.Msg{
 					MsgHdr: dns.MsgHdr{
@@ -1986,7 +1984,7 @@ func TestQueryAliasType(t *testing.T) {
 		"loop": {
 			in: struct {
 				query  *dns.Msg
-				client ResolverClient
+				client resolverClient
 			}{
 				query: &dns.Msg{
 					MsgHdr: dns.MsgHdr{

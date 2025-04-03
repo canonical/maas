@@ -45,6 +45,8 @@ type session struct {
 	currentChain []byte
 }
 
+// newSession creates a *session to track query chains for
+// a given remote address
 func newSession(remoteAddr net.Addr) *session {
 	return &session{
 		remoteAddr:   remoteAddr,
@@ -53,10 +55,14 @@ func newSession(remoteAddr net.Addr) *session {
 	}
 }
 
+// sessionKeyFromRemoteAddr creates the key to create or fetch
+// a session on. Scheme is used as tcp or udp from the same IP
+// should be considered separate sessions
 func sessionKeyFromRemoteAddr(a net.Addr) string {
 	return a.Network() + "://" + a.String()
 }
 
+// String returns the key of a session
 func (s *session) String() string {
 	if s.remoteAddr == nil {
 		return ""
@@ -65,6 +71,7 @@ func (s *session) String() string {
 	return sessionKeyFromRemoteAddr(s.remoteAddr)
 }
 
+// StoreName stores a name just queried in the query chain
 func (s *session) StoreName(name string) error {
 	var nameBytes, uncompressed []byte
 
@@ -98,6 +105,8 @@ func (s *session) StoreName(name string) error {
 	return nil
 }
 
+// NameAlreadyQueried returns true when the session already queried for a name
+// and said name is not in cache, this should be seen as a loop.
 func (s *session) NameAlreadyQueried(name string) (bool, error) {
 	if len(s.currentChain) == 0 {
 		return false, nil
@@ -135,14 +144,19 @@ func (s *session) NameAlreadyQueried(name string) (bool, error) {
 	return s.contains(nameBytes, uncompressed), nil
 }
 
+// Reset clears the current query chain.
+// This should happen whenever a non-CNAME and non-DNAME is returned
 func (s *session) Reset() {
 	s.currentChain = nil
 }
 
+// Expired calculates if a session has expired
 func (s *session) Expired(ts time.Time) bool {
 	return ts.Sub(s.createdAt) >= sessionTTL
 }
 
+// contains checks if either a compressed or uncompressed version of a given name
+// is present in the current query chain
 func (s *session) contains(compressed []byte, uncompressed []byte) bool {
 	compressedIdx := bytes.Index(s.currentChain, compressed)
 	uncompressedIdx := bytes.Index(s.currentChain, uncompressed)
@@ -156,6 +170,7 @@ func (s *session) contains(compressed []byte, uncompressed []byte) bool {
 	return compressedIdx == 0 || uncompressedIdx == 0 || compressedMatch || uncompressedMatch
 }
 
+// compress compressed a given name using the current query chain as a buffer
 func (s *session) compress(buf []byte, label []byte) ([]byte, bool) {
 	idx := bytes.Index(s.currentChain, label)
 	if idx == -1 {
@@ -170,6 +185,7 @@ func (s *session) compress(buf []byte, label []byte) ([]byte, bool) {
 	return b, true
 }
 
+// labelToWire returns the wire format of a given label
 func (s *session) labelToWire(label string) ([]byte, error) {
 	bytesLabel := []byte(label)
 

@@ -37,6 +37,8 @@ type queryState struct {
 	recursionDepth  int
 }
 
+// newQueryState returns a *queryState to track the recursive state
+// of the query for a given fqdn
 func newQueryState(fqdn string) *queryState {
 	var labels []string
 
@@ -51,6 +53,7 @@ func newQueryState(fqdn string) *queryState {
 	}
 }
 
+// NextLabel returns the next label to query for, or false if the end has been reached
 func (q *queryState) NextLabel() (string, bool) {
 	if len(q.labels) == q.currentLabelIdx || !q.CanContinue() {
 		return q.currentLabel, false
@@ -78,6 +81,7 @@ func (q *queryState) NextLabel() (string, bool) {
 	return q.currentLabel, len(subLabel) < len(q.labels)
 }
 
+// SetLastResponse sets the last response returned (i.e for the current label)
 func (q *queryState) SetLastResponse(rr dns.RR) {
 	if ns, ok := rr.(*dns.NS); ok {
 		if q.mostSpecificNS == nil || len(q.mostSpecificNS.Header().Name) < len(ns.Header().Name) {
@@ -88,18 +92,24 @@ func (q *queryState) SetLastResponse(rr dns.RR) {
 	q.lastResponse = rr
 }
 
+// LastResponse returns the last response in the query chain
 func (q *queryState) LastResponse() dns.RR {
 	return q.lastResponse
 }
 
+// Nameserver returns the most-specific found nameserver for the fqdn
 func (q *queryState) Nameserver() *dns.NS {
 	return q.mostSpecificNS
 }
 
+// UseSearch determines whether the name should use a search domain
+// list in the event of a non-authoritative query
 func (q *queryState) UseSearch() bool {
 	return len(q.labels) == 2 // . and name
 }
 
+// CanContinue returns true unless max recursion depth of a query
+// has been reached
 func (q *queryState) CanContinue() bool {
 	return q.recursionDepth < maxRecursionDepth
 }

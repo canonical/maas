@@ -21,6 +21,9 @@ import (
 	"github.com/miekg/dns"
 )
 
+// WithConnPoolSize sets the number of connections for each
+// configured server, both authoritative and the ones defined
+// in resolv.conf for non-auhtoritative queries
 func WithConnPoolSize(size int) RecursiveHandlerOption {
 	return func(h *RecursiveHandler) {
 		if size == 0 {
@@ -31,6 +34,7 @@ func WithConnPoolSize(size int) RecursiveHandlerOption {
 	}
 }
 
+// WithDialTimeout sets the timeout for connecting to an upstream server
 func WithDialTimeout(timeout time.Duration) RecursiveHandlerOption {
 	return func(h *RecursiveHandler) {
 		if timeout == 0 {
@@ -46,6 +50,7 @@ func WithDialTimeout(timeout time.Duration) RecursiveHandlerOption {
 	}
 }
 
+// WithUDPSize sets the size UDP packet sent to upstream DNS servers
 func WithUDPSize(size uint16) RecursiveHandlerOption {
 	return func(h *RecursiveHandler) {
 		if size == 0 {
