@@ -302,7 +302,7 @@ def generate_kvm_pod_configuration(node):
                 "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
                 # SSH needs to be restarted in order for the above changes to take
                 # effect.
-                "systemctl restart sshd",
+                "[ -f /usr/lib/systemd/system/sshd.service ] && systemctl restart sshd || systemctl restart ssh",
             ],
         )
 
