@@ -218,6 +218,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         )
 
     async def list_with_summary(
-        self, page: int, size: int
+        self, page: int, size: int, query: QuerySpec
     ) -> ListResult[UserWithSummary]:
-        return await self.repository.list_with_summary(page=page, size=size)
+        return await self.repository.list_with_summary(
+            page=page, size=size, query=query
+        )

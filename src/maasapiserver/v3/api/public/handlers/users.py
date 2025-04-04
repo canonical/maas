@@ -17,7 +17,10 @@ from maasapiserver.common.api.models.responses.errors import (
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
-from maasapiserver.v3.api.public.models.requests.users import UserRequest
+from maasapiserver.v3.api.public.models.requests.users import (
+    UserRequest,
+    UsersFiltersParams,
+)
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
@@ -26,6 +29,7 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserResponse,
     UsersListResponse,
     UsersWithSummaryListResponse,
+    UserWithSummaryResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
@@ -330,18 +334,27 @@ class UsersHandler(Handler):
     async def list_users_with_summary(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: UsersFiltersParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UsersWithSummaryListResponse:
         users = await services.users.list_with_summary(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
         return UsersWithSummaryListResponse(
-            items=users.items,
+            items=[
+                UserWithSummaryResponse.from_model(
+                    user_with_summary=user,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/users",
+                )
+                for user in users.items
+            ],
             total=users.total,
             next=(
                 f"{V3_API_PREFIX}/users_with_summary?"
                 f"{pagination_params.to_next_href_format()}"
+                f"{filters.to_href_format()}"
                 if users.has_next(
                     pagination_params.page, pagination_params.size
                 )

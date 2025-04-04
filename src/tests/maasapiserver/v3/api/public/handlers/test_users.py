@@ -17,6 +17,7 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
     UserResponse,
     UsersListResponse,
+    UsersWithSummaryListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
@@ -673,6 +674,63 @@ class TestUsersApi(ApiCommonTests):
             f"{V3_API_PREFIX}/users_with_summary?size=1",
         )
         assert response.status_code == 200
+        users_with_summary = UsersWithSummaryListResponse(**response.json())
+        assert users_with_summary.total == 1
+        assert len(users_with_summary.items) == 1
+        assert users_with_summary.next is None
+        user = users_with_summary.items[0]
+        assert user.id == 1
+        assert user.username == "foo"
+        assert user.completed_intro is True
+        assert user.is_local is True
+        assert user.is_superuser is False
+        assert user.last_name == "foo"
+        assert user.machines_count == 2
+        assert user.sshkeys_count == 3
         services_mock.users.list_with_summary.assert_called_once_with(
-            page=1, size=1
+            page=1, size=1, query=QuerySpec(where=None)
+        )
+
+    async def test_list_with_summary_filters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.list_with_summary.return_value = ListResult[
+            UserWithSummary
+        ](
+            items=[
+                UserWithSummary(
+                    id=1,
+                    username="foo",
+                    completed_intro=True,
+                    email="foo@example.com",
+                    is_local=True,
+                    is_superuser=False,
+                    last_name="foo",
+                    machines_count=2,
+                    sshkeys_count=3,
+                )
+            ],
+            total=2,
+        )
+
+        response = await mocked_api_client_admin.get(
+            f"{V3_API_PREFIX}/users_with_summary?size=1&username_or_email=example",
+        )
+        assert response.status_code == 200
+        users_with_summary = UsersWithSummaryListResponse(**response.json())
+        assert users_with_summary.total == 2
+        assert len(users_with_summary.items) == 1
+        assert (
+            users_with_summary.next
+            == f"{V3_API_PREFIX}/users_with_summary?page=2&size=1&username_or_email=example"
+        )
+        services_mock.users.list_with_summary.assert_called_once_with(
+            page=1,
+            size=1,
+            query=QuerySpec(
+                where=UserClauseFactory.with_username_or_email_like("example")
+            ),
         )

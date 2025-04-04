@@ -12,7 +12,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maasservicelayer.models.users import User
+from maasservicelayer.models.users import User, UserWithSummary
 
 
 class UserInfoResponse(BaseModel):
@@ -73,6 +73,28 @@ class UserWithSummaryResponse(HalResponse[BaseHal]):
     machines_count: int
     sshkeys_count: int
     username: str
+
+    @classmethod
+    def from_model(
+        cls, user_with_summary: UserWithSummary, self_base_hyperlink: str
+    ) -> Self:
+        return cls(
+            id=user_with_summary.id,
+            completed_intro=user_with_summary.completed_intro,
+            email=user_with_summary.email,
+            is_local=user_with_summary.is_local,
+            is_superuser=user_with_summary.is_superuser,
+            last_name=user_with_summary.last_name,
+            last_login=user_with_summary.last_login,
+            machines_count=user_with_summary.machines_count,
+            sshkeys_count=user_with_summary.sshkeys_count,
+            username=user_with_summary.username,
+            hal_links=BaseHal(
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{user_with_summary.id}"
+                )
+            ),
+        )
 
 
 class UsersWithSummaryListResponse(PaginatedResponse[UserWithSummaryResponse]):

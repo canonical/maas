@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.users import UsersRepository
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.users import (
+    UserClauseFactory,
+    UsersRepository,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.node import (
     create_test_device_entry,
@@ -24,6 +28,18 @@ from tests.fixtures.factories.user import (
     create_test_user_token,
 )
 from tests.maasapiserver.fixtures.db import Fixture
+
+
+class TestUserClauseFactory:
+    def test_builder(self) -> None:
+        clause = UserClauseFactory.with_username_or_email_like(
+            username_or_email_like="foo"
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "lower(auth_user.username) LIKE lower('%foo%') OR lower(auth_user.email) LIKE lower('%foo%')"
+        )
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -206,7 +222,7 @@ class TestUsersRepository:
 
         users_repository = UsersRepository(Context(connection=db_connection))
         users_list = await users_repository.list_with_summary(
-            page=1, size=1000
+            page=1, size=1000, query=QuerySpec(where=None)
         )
         # only active users should be listed
         assert users_list.total == 3
@@ -226,7 +242,44 @@ class TestUsersRepository:
 
         users_repository = UsersRepository(Context(connection=db_connection))
         users_list = await users_repository.list_with_summary(
-            page=1, size=1000
+            page=1, size=1000, query=QuerySpec(where=None)
         )
         assert users_list.total == 0
         assert users_list.items == []
+
+    @pytest.mark.parametrize(
+        ("query", "num_results"),
+        [
+            ("no_match", 0),
+            ("foo", 2),
+            ("fOO", 2),
+            ("bar", 1),
+            ("example", 3),
+        ],
+    )
+    async def test_list_with_summary_filters(
+        self,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+        query: str,
+        num_results: int,
+    ) -> None:
+        await create_test_user(
+            fixture, username="foo", email="foo@example.com"
+        )
+        await create_test_user(
+            fixture, username="FOOOOO!", email="hello@example.com"
+        )
+        await create_test_user(
+            fixture, username="bar!", email="bar@example.com"
+        )
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+        users_list = await users_repository.list_with_summary(
+            page=1,
+            size=1000,
+            query=QuerySpec(
+                where=UserClauseFactory.with_username_or_email_like(query)
+            ),
+        )
+        assert users_list.total == num_results

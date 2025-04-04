@@ -5,9 +5,32 @@ import re
 from typing import Optional
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
+from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
 from maasservicelayer.builders.users import UserBuilder
+from maasservicelayer.db.filters import Clause
+from maasservicelayer.db.repositories.users import UserClauseFactory
+
+
+class UsersFiltersParams(BaseModel):
+    username_or_email: Optional[str] = Field(
+        Query(default=None, title="Filter by username or email")
+    )
+
+    def to_clause(self) -> Optional[Clause]:
+        if self.username_or_email:
+            return UserClauseFactory.with_username_or_email_like(
+                self.username_or_email
+            )
+        return None
+
+    def to_href_format(self) -> str:
+        return (
+            f"&username_or_email={self.username_or_email}"
+            if self.username_or_email
+            else ""
+        )
 
 
 class UserRequest(BaseModel):

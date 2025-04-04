@@ -55,6 +55,25 @@ class UserClauseFactory(ClauseFactory):
     def with_username(cls, username: str) -> Clause:
         return Clause(condition=eq(UserTable.c.username, username))
 
+    @classmethod
+    def with_username_or_email_like(
+        cls, username_or_email_like: str
+    ) -> Clause:
+        return UserClauseFactory.or_clauses(
+            [
+                Clause(
+                    condition=UserTable.c.username.ilike(
+                        f"%{username_or_email_like}%"
+                    )
+                ),
+                Clause(
+                    condition=UserTable.c.email.ilike(
+                        f"%{username_or_email_like}%"
+                    )
+                ),
+            ]
+        )
+
 
 class UsersRepository(BaseRepository[User]):
     def __init__(self, context: Context):
@@ -262,7 +281,7 @@ class UsersRepository(BaseRepository[User]):
         )
 
     async def list_with_summary(
-        self, page: int, size: int
+        self, page: int, size: int, query: QuerySpec
     ) -> ListResult[UserWithSummary]:
         total_stmt = (
             select(func.count())
@@ -274,6 +293,7 @@ class UsersRepository(BaseRepository[User]):
                 )
             )
         )
+        total_stmt = query.enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar()
         stmt = (
             select(
@@ -323,6 +343,7 @@ class UsersRepository(BaseRepository[User]):
             )
             .order_by(desc(UserTable.c.id))
         )
+        stmt = query.enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[UserWithSummary](

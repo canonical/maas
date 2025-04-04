@@ -312,7 +312,9 @@ class TestUsersService:
     async def test_list_with_summary(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        await users_service.list_with_summary(page=1, size=1000)
+        await users_service.list_with_summary(
+            page=1, size=1000, query=QuerySpec(where=None)
+        )
         users_repository.list_with_summary.assert_called_once_with(
-            page=1, size=1000
+            page=1, size=1000, query=QuerySpec(where=None)
         )
