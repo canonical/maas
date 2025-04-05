@@ -217,7 +217,7 @@ func (c *FileCache) set(key string, value io.Reader, valueSize int64) (err error
 		return ErrKeyExist
 	}
 
-	if valueSize > c.maxSize && c.size.Load()+valueSize > c.maxSize {
+	if valueSize > c.maxSize {
 		return ErrCacheSizeExceeded
 	}
 
