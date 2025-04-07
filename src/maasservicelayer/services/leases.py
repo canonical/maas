@@ -206,7 +206,7 @@ class LeasesService(Service):
         if sip is None:
             # XXX: There shouldn't be more than one StaticIPAddress
             #      record here, but it can happen be due to bug 1817305.
-            sip = await self.staticipaddress_service.get_one(
+            sips = await self.staticipaddress_service.get_many(
                 query=QuerySpec(
                     where=ClauseFactory.and_clauses(
                         [
@@ -226,6 +226,9 @@ class LeasesService(Service):
                     )
                 )
             )
+            sip = next(
+                iter(sips), None
+            )  # just pick the first one in case multiple results are returned.
             if sip is None:
                 sip = await self.staticipaddress_service.create(
                     StaticIPAddressBuilder(
