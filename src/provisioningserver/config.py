@@ -130,7 +130,7 @@ from provisioningserver.utils.config import (
     OneWayStringBool,
     UnicodeString,
 )
-from provisioningserver.utils.fs import atomic_write, RunLock
+from provisioningserver.utils.fs import atomic_write, get_root_path, RunLock
 
 logger = logging.getLogger(__name__)
 
@@ -812,7 +812,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     httpproxy_cache_size = ConfigurationOption(
         "httpproxy_cache_size",
         "The size of a cache used by HTTP proxy",
-        Number(min=1, if_missing=disk_usage("/").total * 0.3),
+        Number(min=1, if_missing=disk_usage(get_root_path()).total * 0.3),
     )
 
 
