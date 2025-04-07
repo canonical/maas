@@ -49,6 +49,10 @@ override_dh_auto_install:
 
 	mv $(CURDIR)/debian/tmp/usr/bin/maas-power $(CURDIR)/debian/tmp/usr/bin/maas.power
 
+override_dh_dwz:
+	# We want to include debug symbols for our Go binaries, but dwz fails with:
+	# > Found compressed .debug_aranges section, not attempting dwz compression
+
 override_dh_auto_clean:
 	dh_auto_clean
 	rm -rf $(BUILDHOME)
