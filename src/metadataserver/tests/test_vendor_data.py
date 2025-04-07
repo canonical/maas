@@ -377,7 +377,7 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                         "mkdir -p /home/virsh/bin",
                         "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
                         "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
-                        "systemctl restart sshd",
+                        "[ -f /usr/lib/systemd/system/sshd.service ] && systemctl restart sshd || systemctl restart ssh",
                     ],
                 ),
                 (

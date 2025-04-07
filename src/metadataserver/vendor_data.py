@@ -270,17 +270,20 @@ def generate_kvm_pod_configuration(node):
         yield "packages", packages
 
         # set up virsh user and ssh authentication
-        yield "runcmd", [
-            # Restrict the $PATH so that rbash can be used to limit what the
-            # virsh user can do if they manage to get a shell.
-            "mkdir -p /home/virsh/bin",
-            "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
-            # Make sure the 'virsh' user is allowed to access libvirt.
-            "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
-            # SSH needs to be restarted in order for the above changes to take
-            # effect.
-            "systemctl restart sshd",
-        ]
+        yield (
+            "runcmd",
+            [
+                # Restrict the $PATH so that rbash can be used to limit what the
+                # virsh user can do if they manage to get a shell.
+                "mkdir -p /home/virsh/bin",
+                "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
+                # Make sure the 'virsh' user is allowed to access libvirt.
+                "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
+                # SSH needs to be restarted in order for the above changes to take
+                # effect.
+                "[ -f /usr/lib/systemd/system/sshd.service ] && systemctl restart sshd || systemctl restart ssh",
+            ],
+        )
 
         yield "write_files", [
             {
