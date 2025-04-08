@@ -955,6 +955,7 @@ func TestServeDNS(t *testing.T) {
 									Hdr: dns.RR_Header{
 										Name:   ".",
 										Rrtype: dns.TypeNS,
+										Class:  dns.ClassINET,
 									},
 									Ns: "maas.",
 								},
@@ -965,6 +966,7 @@ func TestServeDNS(t *testing.T) {
 									Hdr: dns.RR_Header{
 										Name:   "maas.",
 										Rrtype: dns.TypeA,
+										Class:  dns.ClassINET,
 										Ttl:    30,
 									},
 									A: net.ParseIP("127.0.0.1"),
@@ -973,98 +975,6 @@ func TestServeDNS(t *testing.T) {
 						}, {
 							MsgHdr: dns.MsgHdr{
 								Id:       1,
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeNameError,
-							},
-							Question: []dns.Question{
-								{
-									Name:   "maas.",
-									Qtype:  dns.TypeCNAME,
-									Qclass: dns.ClassINET,
-								},
-							},
-						}, {
-							MsgHdr: dns.MsgHdr{
-								Id:       1,
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeSuccess,
-							},
-							Question: []dns.Question{
-								{
-									Name:   "maas.",
-									Qtype:  dns.TypeA,
-									Qclass: dns.ClassINET,
-								},
-							},
-							Answer: []dns.RR{
-								&dns.A{
-									Hdr: dns.RR_Header{
-										Name:   "maas.",
-										Rrtype: dns.TypeA,
-										Ttl:    30,
-									},
-									A: net.ParseIP("127.0.0.1"),
-								},
-							},
-						}, {
-							MsgHdr: dns.MsgHdr{
-								Id:       2,
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								// querying the root server for an internal zone should
-								// NXDOMAIN, and in turn, the resolver will go back to querying region servers
-								Rcode: dns.RcodeNameError,
-							},
-							Question: []dns.Question{
-								{
-									Name:   "maas.",
-									Qtype:  dns.TypeNS,
-									Qclass: dns.ClassINET,
-								},
-							},
-						}, {
-							MsgHdr: dns.MsgHdr{
-								Id:       2,
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeSuccess,
-							},
-							Question: []dns.Question{
-								{
-									Name:   "maas.",
-									Qtype:  dns.TypeNS,
-									Qclass: dns.ClassINET,
-								},
-							},
-							Answer: []dns.RR{
-								&dns.NS{
-									Hdr: dns.RR_Header{
-										Name:   "maas.",
-										Rrtype: dns.TypeNS,
-										Ttl:    30,
-									},
-									Ns: "maas.",
-								},
-							},
-						}, {
-							MsgHdr: dns.MsgHdr{
-								Id:       2,
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeNameError,
-							},
-							Question: []dns.Question{
-								{
-									Name:   "maas.",
-									Qtype:  dns.TypeCNAME,
-									Qclass: dns.ClassINET,
-								},
-							},
-						}, {
-							MsgHdr: dns.MsgHdr{
-								Id:       2,
 								Opcode:   dns.OpcodeQuery,
 								Response: true,
 								Rcode:    dns.RcodeSuccess,
@@ -1089,44 +999,27 @@ func TestServeDNS(t *testing.T) {
 							},
 						}, {
 							MsgHdr: dns.MsgHdr{
-								Id:       3,
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeNameError,
-							},
-							Question: []dns.Question{
-								{
-									Name:   "example.maas.",
-									Qtype:  dns.TypeNS,
-									Qclass: dns.ClassINET,
-								},
-							},
-						}, {
-							MsgHdr: dns.MsgHdr{
-								Id:       3,
-								Opcode:   dns.OpcodeQuery,
-								Response: true,
-								Rcode:    dns.RcodeNameError,
-							},
-							Question: []dns.Question{
-								{
-									Name:   "example.maas.",
-									Qtype:  dns.TypeNS,
-									Qclass: dns.ClassINET,
-								},
-							},
-						}, {
-							MsgHdr: dns.MsgHdr{
 								Id:       1,
 								Opcode:   dns.OpcodeQuery,
 								Response: true,
-								Rcode:    dns.RcodeNameError,
+								Rcode:    dns.RcodeSuccess,
 							},
 							Question: []dns.Question{
 								{
 									Name:   "maas.",
-									Qtype:  dns.TypeCNAME,
+									Qtype:  dns.TypeNS,
 									Qclass: dns.ClassINET,
+								},
+							},
+							Answer: []dns.RR{
+								&dns.NS{
+									Hdr: dns.RR_Header{
+										Name:   "maas.",
+										Rrtype: dns.TypeNS,
+										Class:  dns.ClassINET,
+										Ttl:    30,
+									},
+									Ns: "maas.",
 								},
 							},
 						}, {
@@ -1148,6 +1041,62 @@ func TestServeDNS(t *testing.T) {
 									Hdr: dns.RR_Header{
 										Name:   "maas.",
 										Rrtype: dns.TypeA,
+										Class:  dns.ClassINET,
+										Ttl:    30,
+									},
+									A: net.ParseIP("127.0.0.1"),
+								},
+							},
+						}, {
+							MsgHdr: dns.MsgHdr{
+								Id:       2,
+								Opcode:   dns.OpcodeQuery,
+								Response: true,
+								// querying the root server for an internal zone should
+								// NXDOMAIN, and in turn, the resolver will go back to querying region servers
+								Rcode: dns.RcodeNameError,
+							},
+							Question: []dns.Question{
+								{
+									Name:   "example.maas.",
+									Qtype:  dns.TypeNS,
+									Qclass: dns.ClassINET,
+								},
+							},
+						}, {
+							MsgHdr: dns.MsgHdr{
+								Id:       2,
+								Opcode:   dns.OpcodeQuery,
+								Response: true,
+								Rcode:    dns.RcodeNameError,
+							},
+							Question: []dns.Question{
+								{
+									Name:   "example.maas.",
+									Qtype:  dns.TypeNS,
+									Qclass: dns.ClassINET,
+								},
+							},
+						}, {
+							MsgHdr: dns.MsgHdr{
+								Id:       2,
+								Opcode:   dns.OpcodeQuery,
+								Response: true,
+								Rcode:    dns.RcodeSuccess,
+							},
+							Question: []dns.Question{
+								{
+									Name:   "maas.",
+									Qtype:  dns.TypeA,
+									Qclass: dns.ClassINET,
+								},
+							},
+							Answer: []dns.RR{
+								&dns.A{
+									Hdr: dns.RR_Header{
+										Name:   "maas.",
+										Rrtype: dns.TypeA,
+										Class:  dns.ClassINET,
 										Ttl:    30,
 									},
 									A: net.ParseIP("127.0.0.1"),
@@ -1212,21 +1161,6 @@ func TestServeDNS(t *testing.T) {
 						Question: []dns.Question{
 							{
 								Name:   "maas.",
-								Qtype:  dns.TypeCNAME,
-								Qclass: dns.ClassINET,
-							},
-						},
-						Answer: []dns.RR{},
-						Ns:     []dns.RR{},
-						Extra:  []dns.RR{},
-					}, {
-						MsgHdr: dns.MsgHdr{
-							Id:     1,
-							Opcode: dns.OpcodeQuery,
-						},
-						Question: []dns.Question{
-							{
-								Name:   "maas.",
 								Qtype:  dns.TypeA,
 								Qclass: dns.ClassINET,
 							},
@@ -1243,36 +1177,6 @@ func TestServeDNS(t *testing.T) {
 							{
 								Name:   "maas.",
 								Qtype:  dns.TypeNS,
-								Qclass: dns.ClassINET,
-							},
-						},
-						Answer: []dns.RR{},
-						Ns:     []dns.RR{},
-						Extra:  []dns.RR{},
-					}, {
-						MsgHdr: dns.MsgHdr{
-							Id:     1,
-							Opcode: dns.OpcodeQuery,
-						},
-						Question: []dns.Question{
-							{
-								Name:   "maas.",
-								Qtype:  dns.TypeNS,
-								Qclass: dns.ClassINET,
-							},
-						},
-						Answer: []dns.RR{},
-						Ns:     []dns.RR{},
-						Extra:  []dns.RR{},
-					}, {
-						MsgHdr: dns.MsgHdr{
-							Id:     1,
-							Opcode: dns.OpcodeQuery,
-						},
-						Question: []dns.Question{
-							{
-								Name:   "maas.",
-								Qtype:  dns.TypeCNAME,
 								Qclass: dns.ClassINET,
 							},
 						},
@@ -1318,21 +1222,6 @@ func TestServeDNS(t *testing.T) {
 							{
 								Name:   "example.maas.",
 								Qtype:  dns.TypeNS,
-								Qclass: dns.ClassINET,
-							},
-						},
-						Answer: []dns.RR{},
-						Ns:     []dns.RR{},
-						Extra:  []dns.RR{},
-					}, {
-						MsgHdr: dns.MsgHdr{
-							Id:     1,
-							Opcode: dns.OpcodeQuery,
-						},
-						Question: []dns.Question{
-							{
-								Name:   "maas.",
-								Qtype:  dns.TypeCNAME,
 								Qclass: dns.ClassINET,
 							},
 						},
@@ -2885,4 +2774,885 @@ func FuzzServeDNSQuestion(f *testing.F) {
 
 		assert.GreaterOrEqual(t, len(responseWriter.sent), 1)
 	})
+}
+
+func BenchmarkServeDNS_Authoritative(b *testing.B) {
+	cache, err := NewCache(0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	handler := NewRecursiveHandler(cache)
+	handler.systemResolvers = &systemConfig{
+		Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
+	}
+	handler.authoritativeServers = []netip.Addr{netip.MustParseAddr("127.0.0.1")}
+
+	client := &mockClient{
+		received: []*dns.Msg{
+			{
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   ".",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   ".",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Ns: "j.rootserver.net",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "j.rootserver.net",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   "maas.",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Ns: "maas.",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "maas.",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.maas.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "example.maas.",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			},
+		},
+	}
+
+	handler.client = client
+
+	for i := 0; i < b.N; i++ {
+		query := &dns.Msg{ // if created outside of loop, answer section remains populated
+			MsgHdr: dns.MsgHdr{
+				Id:     1,
+				Opcode: dns.OpcodeQuery,
+			},
+			Question: []dns.Question{
+				{
+					Name:   "example.maas.",
+					Qtype:  dns.TypeA,
+					Qclass: dns.ClassINET,
+				},
+			},
+		}
+
+		handler.ServeDNS(&mockResponseWriter{}, query)
+	}
+}
+
+func BenchmarkServeDNS_Nonauthoritative(b *testing.B) {
+	cache, err := NewCache(0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	handler := NewRecursiveHandler(cache)
+	handler.systemResolvers = &systemConfig{
+		Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
+	}
+	handler.authoritativeServers = []netip.Addr{netip.MustParseAddr("127.0.0.1")}
+
+	client := &mockClient{
+		received: []*dns.Msg{
+			{
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   ".",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   ".",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Ns: "j.rootserver.net",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "j.rootserver.net",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "com.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "com.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.com.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.com.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.com.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.com.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "example.com.",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			},
+		},
+	}
+
+	handler.client = client
+
+	for i := 0; i < b.N; i++ {
+		query := &dns.Msg{ // if created outside of loop, answer section remains populated
+			MsgHdr: dns.MsgHdr{
+				Id:     1,
+				Opcode: dns.OpcodeQuery,
+			},
+			Question: []dns.Question{
+				{
+					Name:   "example.com.",
+					Qtype:  dns.TypeA,
+					Qclass: dns.ClassINET,
+				},
+			},
+		}
+
+		handler.ServeDNS(&mockResponseWriter{}, query)
+	}
+}
+
+func BenchmarkServeDNS_Search(b *testing.B) {
+	cache, err := NewCache(0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	handler := NewRecursiveHandler(cache)
+	handler.systemResolvers = &systemConfig{
+		Nameservers:   []netip.Addr{netip.MustParseAddr("127.0.0.1")},
+		SearchDomains: []string{"test"},
+	}
+	handler.authoritativeServers = []netip.Addr{netip.MustParseAddr("127.0.0.1")}
+
+	client := &mockClient{
+		received: []*dns.Msg{
+			{
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   ".",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   ".",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Ns: "j.rootserver.net",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "j.rootserver.net",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.test.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "example.test.",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			},
+		},
+	}
+
+	handler.client = client
+
+	for i := 0; i < b.N; i++ {
+		query := &dns.Msg{ // if created outside of loop, answer section remains populated
+			MsgHdr: dns.MsgHdr{
+				Id:     1,
+				Opcode: dns.OpcodeQuery,
+			},
+			Question: []dns.Question{
+				{
+					Name:   "example.",
+					Qtype:  dns.TypeA,
+					Qclass: dns.ClassINET,
+				},
+			},
+		}
+
+		handler.ServeDNS(&mockResponseWriter{}, query)
+
+		// non-NXDOMAINs are cached, but we still go through a full search on each iteration
+		handler.client = &mockClient{
+			received: []*dns.Msg{
+				{
+					MsgHdr: dns.MsgHdr{
+						Id:       1,
+						Opcode:   dns.OpcodeQuery,
+						Response: true,
+						Rcode:    dns.RcodeNameError,
+					},
+					Question: []dns.Question{
+						{
+							Name:   "example.",
+							Qtype:  dns.TypeNS,
+							Qclass: dns.ClassINET,
+						},
+					},
+				}, {
+					MsgHdr: dns.MsgHdr{
+						Id:       1,
+						Opcode:   dns.OpcodeQuery,
+						Response: true,
+						Rcode:    dns.RcodeNameError,
+					},
+					Question: []dns.Question{
+						{
+							Name:   "example.",
+							Qtype:  dns.TypeNS,
+							Qclass: dns.ClassINET,
+						},
+					},
+				}, {
+					MsgHdr: dns.MsgHdr{
+						Id:       1,
+						Opcode:   dns.OpcodeQuery,
+						Response: true,
+						Rcode:    dns.RcodeNameError,
+					},
+					Question: []dns.Question{
+						{
+							Name:   "example.",
+							Qtype:  dns.TypeA,
+							Qclass: dns.ClassINET,
+						},
+					},
+				}, {
+					MsgHdr: dns.MsgHdr{
+						Id:       1,
+						Opcode:   dns.OpcodeQuery,
+						Response: true,
+						Rcode:    dns.RcodeNameError,
+					},
+					Question: []dns.Question{
+						{
+							Name:   "example.",
+							Qtype:  dns.TypeA,
+							Qclass: dns.ClassINET,
+						},
+					},
+				},
+			},
+		}
+	}
+}
+
+func BenchmarkServeDNS_CNAME(b *testing.B) {
+	cache, err := NewCache(0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	handler := NewRecursiveHandler(cache)
+	handler.systemResolvers = &systemConfig{
+		Nameservers:   []netip.Addr{netip.MustParseAddr("127.0.0.1")},
+		SearchDomains: []string{"test"},
+	}
+	handler.authoritativeServers = []netip.Addr{netip.MustParseAddr("127.0.0.1")}
+
+	client := &mockClient{
+		received: []*dns.Msg{
+			{
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   ".",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   ".",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Ns: "j.rootserver.net",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "j.rootserver.net",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.NS{
+						Hdr: dns.RR_Header{
+							Name:   "maas.",
+							Rrtype: dns.TypeNS,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Ns: "maas.",
+					},
+				},
+				Extra: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "maas.",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname1.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname1.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname1.maas.",
+						Qtype:  dns.TypeCNAME,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.CNAME{
+						Hdr: dns.RR_Header{
+							Name:   "cname1.maas.",
+							Rrtype: dns.TypeCNAME,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Target: "cname2.maas",
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname2.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname2.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname2.maas.",
+						Qtype:  dns.TypeCNAME,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.CNAME{
+						Hdr: dns.RR_Header{
+							Name:   "cname2.maas.",
+							Rrtype: dns.TypeCNAME,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						Target: "example.maas",
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeNameError,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.maas.",
+						Qtype:  dns.TypeNS,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:       1,
+					Opcode:   dns.OpcodeQuery,
+					Response: true,
+					Rcode:    dns.RcodeSuccess,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.maas.",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+				Answer: []dns.RR{
+					&dns.A{
+						Hdr: dns.RR_Header{
+							Name:   "example.maas.",
+							Rrtype: dns.TypeA,
+							Class:  dns.ClassINET,
+							Ttl:    30,
+						},
+						A: net.ParseIP("10.0.0.1"),
+					},
+				},
+			},
+		},
+	}
+
+	handler.client = client
+
+	for i := 0; i < b.N; i++ {
+		queries := []*dns.Msg{
+			{
+				MsgHdr: dns.MsgHdr{
+					Id:     1,
+					Opcode: dns.OpcodeQuery,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname1.maas",
+						Qtype:  dns.TypeCNAME,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:     2,
+					Opcode: dns.OpcodeQuery,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "cname2.maas",
+						Qtype:  dns.TypeCNAME,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}, {
+				MsgHdr: dns.MsgHdr{
+					Id:     3,
+					Opcode: dns.OpcodeQuery,
+				},
+				Question: []dns.Question{
+					{
+						Name:   "example.maas",
+						Qtype:  dns.TypeA,
+						Qclass: dns.ClassINET,
+					},
+				},
+			},
+		}
+
+		for _, query := range queries {
+			handler.ServeDNS(&mockResponseWriter{}, query)
+		}
+	}
 }

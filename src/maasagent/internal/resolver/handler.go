@@ -338,7 +338,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				return
 			}
 
-			if msg.Rcode != dns.RcodeSuccess {
+			if msg.Rcode != dns.RcodeSuccess && msg.Rcode != dns.RcodeNameError {
 				r.Rcode = msg.Rcode
 
 				err = w.WriteMsg(r)
@@ -678,9 +678,9 @@ outerLoop:
 		// not all should come back, but we should check
 		// for each when only given a name
 		msgs := []*dns.Msg{
-			prepareQueryMessage(0, addrStr, dns.TypeCNAME), // id will be set at exchange
 			prepareQueryMessage(0, addrStr, dns.TypeA),
 			prepareQueryMessage(0, addrStr, dns.TypeAAAA),
+			prepareQueryMessage(0, addrStr, dns.TypeCNAME), // id will be set at exchange
 		}
 
 		for _, msg := range msgs {
