@@ -5,11 +5,13 @@ from tests.maasapiserver.fixtures.db import (
     fixture,
     test_config,
 )
+from tests.maasservicelayer.fixtures import services
 
 __all__ = [
     "db",
     "db_connection",
     "fixture",
     "mock_aioresponse",
+    "services",
     "test_config",
 ]

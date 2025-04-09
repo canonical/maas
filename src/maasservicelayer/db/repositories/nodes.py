@@ -25,6 +25,10 @@ class NodeClauseFactory(ClauseFactory):
         return Clause(condition=NodeTable.c.id.in_(ids))
 
     @classmethod
+    def with_hostname(cls, hostname: str | None) -> Clause:
+        return Clause(condition=eq(NodeTable.c.hostname, hostname))
+
+    @classmethod
     def with_system_id(cls, system_id: str) -> Clause:
         return Clause(condition=eq(NodeTable.c.system_id, system_id))
 
@@ -66,17 +70,6 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
             .values(zone_id=new_zone_id)
         )
         await self.execute_stmt(stmt)
-
-    async def hostname_exists(self, hostname: str) -> bool:
-        stmt = (
-            select(NodeTable.c.id)
-            .select_from(NodeTable)
-            .filter(NodeTable.c.hostname == hostname)
-        )
-
-        exists = (await self.execute_stmt(stmt)).one_or_none()
-
-        return exists is not None
 
     def _bmc_select_all_statement(self) -> Select[Any]:
         # TODO: add other fields

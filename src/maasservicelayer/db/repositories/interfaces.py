@@ -11,6 +11,7 @@ from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
+from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -26,6 +27,16 @@ from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.utils.date import utcnow
 
 UNKNOWN_INTERFACE_NAME = "eth0"
+
+
+class InterfaceClauseFactory(ClauseFactory):
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(InterfaceTable.c.id, id))
+
+    @classmethod
+    def with_mac_address(cls, mac_address: str) -> Clause:
+        return Clause(condition=eq(InterfaceTable.c.mac_address, mac_address))
 
 
 def build_interface_links(

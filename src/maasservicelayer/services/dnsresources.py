@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.ipaddress import IpAddressType
+from maascommon.utils.network import coerce_to_valid_hostname
 from maasservicelayer.builders.dnsresources import DNSResourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -19,7 +20,6 @@ from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
-from provisioningserver.utils.network import coerce_to_valid_hostname
 
 DEFAULT_DNSRESOURCE_TTL = 30
 
