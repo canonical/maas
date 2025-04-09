@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from netaddr import IPAddress
 
+from maascommon.utils.network import coerce_to_valid_hostname
 from maasserver.enum import IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.fields import normalise_macaddress
 from maasserver.models import (
@@ -20,7 +21,6 @@ from maasserver.models import (
 )
 from maasserver.utils.orm import transactional
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import synchronous
 
 log = LegacyLogger()

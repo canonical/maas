@@ -195,8 +195,6 @@ DNSResourceIPAddressTable = Table(
     "maasserver_dnsresource_ip_addresses",
     METADATA,
     Column("id", BigInteger, primary_key=True, unique=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
     Column(
         "dnsresource_id",
         BigInteger,

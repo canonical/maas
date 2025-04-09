@@ -41,7 +41,6 @@ from provisioningserver.utils.network import (
     bytes_to_hex,
     bytes_to_int,
     clean_up_netifaces_address,
-    coerce_to_valid_hostname,
     convert_host_to_uri_str,
     enumerate_assigned_ips,
     enumerate_ipv4_addresses,
@@ -2256,35 +2255,6 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
         self.lookupPointer.side_effect = TypeError
         with TestCase.assertRaises(self, TypeError):
             yield reverseResolve(factory.make_ip_address())
-
-
-class TestCoerceHostname(MAASTestCase):
-    def test_replaces_international_characters(self):
-        self.assertEqual("abc-123", coerce_to_valid_hostname("abc青い空123"))
-
-    def test_removes_illegal_dashes(self):
-        self.assertEqual("abc123", coerce_to_valid_hostname("-abc123-"))
-
-    def test_replaces_whitespace_and_special_characters(self):
-        self.assertEqual(
-            "abc123-ubuntu", coerce_to_valid_hostname("abc123 (ubuntu)")
-        )
-
-    def test_makes_hostname_lowercase(self):
-        self.assertEqual(
-            "ubunturocks", coerce_to_valid_hostname("UbuntuRocks")
-        )
-
-    def test_preserve_hostname_case(self):
-        self.assertEqual(
-            "UbuntuRocks", coerce_to_valid_hostname("UbuntuRocks", False)
-        )
-
-    def test_returns_none_if_result_empty(self):
-        self.assertIsNone(coerce_to_valid_hostname("-人間性-"))
-
-    def test_returns_none_if_result_too_large(self):
-        self.assertIsNone(coerce_to_valid_hostname("a" * 65))
 
 
 class TestGetSourceAddress(MAASTestCase):

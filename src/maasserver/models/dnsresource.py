@@ -25,6 +25,7 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 
+from maascommon.utils.network import coerce_to_valid_hostname
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import domain
 from maasserver.models.cleansave import CleanSave
@@ -33,7 +34,6 @@ from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.network import coerce_to_valid_hostname
 
 log = LegacyLogger()
 
