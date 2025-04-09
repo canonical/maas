@@ -353,7 +353,7 @@ class TestLeasesService:
         mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.return_value = [
             sip
         ]
-        mock_static_ip_address_service.get_one.return_value = sip
+        mock_static_ip_address_service.get_many.return_value = [sip]
         mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
         mock_interfaces_service.get_interfaces_for_mac.return_value = [
             interface
@@ -442,7 +442,7 @@ class TestLeasesService:
         mock_static_ip_address_service.get_discovered_ips_in_family_for_interfaces.return_value = [
             sip
         ]
-        mock_static_ip_address_service.get_one.return_value = sip
+        mock_static_ip_address_service.get_many.return_value = [sip]
         mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
         mock_interfaces_service.get_interfaces_for_mac.return_value = [
             interface
