@@ -4,6 +4,14 @@
 
 This section recaps the release history of MAAS version 3.4.
 
+### MAAS 3.4.7 has been released
+
+We are happy to announce that MAAS 3.4.7 has been released, with the following bug fixes
+
+- [2092172](https://bugs.launchpad.net/bugs/2092172)^:  Redfish powerdriver I/O operation on closed file.
+- [2099949](https://bugs.launchpad.net/bugs/2099949)^:  Redfish power driver requests fails with 412 status code 
+- (No bug link) HW sync fails due to MAAS/metadata/2012-03-01 HTTP Error 409: Conflict.
+
 ### MAAS 3.4.6 has been released
 
 We are happy to announce that MAAS 3.4.6 has been released, with the following bug fixes

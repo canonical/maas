@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/integrating-with-terraform-for-iac" target = "_blank">Let us know.</a>*
-
 To use MAAS with [Terraform](https://www.terraform.io/), a [provider is available](https://github.com/maas/terraform-provider-maas). This guide gives an overview of data sources and resources accessible via this provider, without delving into the mechanics of Terraform or the MAAS Terraform provider.
 
 The MAAS Terraform provider enables management of MAAS resources via Terraform's CRUD tool. Each section in this document provides definitions and usage examples. For more about Terraform, consult the [Terraform documentation](https://www.terraform.io/intro) or various [available tutorials](https://learn.hashicorp.com/collections/terraform/aws-get-started).

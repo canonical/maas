@@ -10,10 +10,4 @@ If you're considering adopting MAAS at an enterprise scale, or interested in for
 
 - **Premium Support**: For organisations requiring additional layers of support, visit the [Ubuntu Pro shop](https://buy.ubuntu.com/)**^** to explore professional service offerings tailored to your needs.
 
-And let's not forget—documentation is a community effort too!
-
-- **Spot an Issue?**: If you notice any discrepancies or errors in the MAAS documentation, please [create an issue](https://github.com/CanonicalLtd/maas-docs/issues/new)**^**.
-  
-- **Your Knowledge Counts**: Feel empowered to share your expertise and contribute directly to the [Docs Discourse category](https://discourse.maas.io/c/docs)**^**, which serves as the foundational source for our documentation.
-
 We look forward to connecting with you!

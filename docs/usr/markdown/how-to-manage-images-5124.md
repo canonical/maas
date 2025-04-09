@@ -99,4 +99,3 @@ MAAS saves images to the directory defined by 'IMAGE_DIR'. The new boot source U
 Verify image availability at the URL above. Regularly update your mirror with `cron` to fetch the latest images.
 
 Set `URL=https://$MIRROR/maas/images/ephemeral-v3/stable/` and `KEYRING_FILE=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg`, where `$MIRROR` is the mirror server.
-

@@ -1,60 +1,72 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/the-role-of-maas-networks" target = "_blank">Let us know.</a>*
-
-MAAS provisions bare metal servers and virtual machines. It creates a single point of control that removes a lot of the logistical errors associated with manual hookup, configuration, and discovery. MAAS also makes it very easy to run your racks -- or even your whole datacenter -- remotely. This document explains how MAAS networking makes all this possible.
+MAAS provisions bare metal servers and virtual machines. It creates a single point of control that removes a lot of the logistical errors associated with manual hookup, configuration, and discovery. MAAS also makes it very easy to run your racks -- or even your whole datacenter -- remotely.  MAAS networking makes all this possible.
 
 ## Network discovery
 
-MAAS passively monitors ARP traffic to detect devices on the
-network. It records IP and MAC addresses, tracking changes over
-time. If available, it also captures hostnames via mDNS. Discovery
-runs periodically and updates a dashboard with detected devices. This
-feature can be enabled or disabled.
+MAAS passively monitors ARP traffic to detect devices on the network. It records IP and MAC addresses, tracking changes over time. If available, it also captures hostnames via mDNS. Discovery runs periodically and updates a dashboard with detected devices. This feature can be enabled or disabled.
 
 ## IPMI networking
 
-Machines that MAAS can provision have a baseboard management controller or BMC. A BMC is a separate CPU often included on the motherboard of servers and devices. Its capabilities are limited to managing and monitoring the health of the device. The BMC has sensors for physical characteristics like temperature and power supply voltage, and controls for rebooting or power-cycling the device.
-
-MAAS uses the BMC to turn remote devices on or off, and reboot them at will. A BMC can also monitor BIOS or UEFI, provide a serial console for the device, and do a few other things with the hardware -- but most of them are uninteresting from a MAAS perspective. For the purposes of this discussion, our main interest in the BMC is the ability to power-cycle and reboot machines.
-
-## Network booting and PXE
-
-Power-cycling a machine is all well and good, but MAAS can't actually provision the machine until it's enabled to network boot. This just means that the BIOS or UEFI firmware must be set to first attempt to boot from the network connection on the device's Network Interface Card (NIC).
-
-This also means the NIC must be capable of PXE booting (PXE stands for Preboot Execution Environment). PXE booting is pretty basic: the NIC tries to discover a DHCP server on its connection and waits for an answer. The answer must contain two things: a usable IP address and a server that can provide booting instructions.
+Machines have a baseboard management controller (BMC), a separate CPU dedicated to managing and monitoring device health. The BMC can power-cycle the device, so MAAS uses the BMC to turn machines on or off, or reboot them via PXE.  MAAS can't provision a machine until it's enabled to network boot, that is, until the firmware is set to boot first from device's Network Interface Card (NIC).
 
 ## DHCP
 
-So we've seen that the BMC handles power-cycling the machine, and the NIC handles booting it remotely. Let's quickly dive into DHCP, which mediates the boot process.
-
-DHCP stands for Dynamic Host Control Protocol, which simply means that it gives a host a unique IP address that won't collide with other devices on that network. The DHCP protocol consists of four messages:
+When PXE booting, DHCP (Dynamic Host Control Protocol) mediates the process. DHCP gives the machine a unique IP address that won't collide with other devices on that network. The DHCP protocol consists of four messages:
 
 * DISCOVER: The machine that wants an IP address asks to discover any DHCP servers visible to its network segment.
 * OFFER: Any available DHCP server on the segment offers to lease the machine a specific, unique IP address.
 * REQUEST: The machine requests to accept one of the offers (there can be more than one DHCP server on a network).
 * ACKNOWLEDGE: The DHCP server confirms to the machine that the offered IP is now leased to that machine.
 
-DHCP also offers several optional services, like configuring DNS, gateway, and routing; load-balancing and failover; and VLAN and QoS configuration. MAAS depends on one of these optional features: bootstrapping services (PXE booting). Properly configured DHCP is capable of specifying several PXE-boot parameters:
+DHCP also offers several optional services, which MAAS uses to specify:
 
 * next-server: Specifies the TFTP/HTTP server for PXE booting clients.
 * filename: Specifies the path to the boot file (e.g. bootloader) for PXE boot.
 * option 67: Also used to specify the boot file name in some DHCP configurations.
 * option 66: Points to the boot server hostname or IP address.
 
-Because MAAS needs to provide specially-configured DHCP to a PXE-booting server – specifically the next-server address – the bundled, pre-configured MAAS DHCP server should be used. It is possible to link to external DHCP servers or relays, but not recommended.
+Because MAAS needs to configure DHCP with these options, the bundled MAAS DHCP server should be used. You can use external DHCP servers or relays, but it is not recommended.  This bundled server redefines DHCP management by integrating advanced features:
+
+- Setting lease times and boot options: MAAS sets short lease times suitable for PXE booting and high-turnover environments, with specialized options for PXE and iPXE to support network-based system deployments.
+
+- Dynamic configuration and templating: MAAS employs a dynamic approach through an API and database, allowing real-time generation of DHCP settings based on the current network status and deployment requirements.
+
+- Failover and high availability: MAAS includes robust failover settings and can configure DHCP on multiple rack controllers per VLAN for enhanced reliability.
+
+- OMAPI integration and key management: MAAS utilizes OMAPI extensively to manage DHCP settings and leases programmatically, enhancing security and control.
+
+- Advanced network interface handling: MAAS automatically selects the optimal network interface for DHCP services, considering various types such as physical, VLAN, and bonds.
+
+- Notification hooks and state management: MAAS uses notification hooks for commit, expiry, and release events, and employs the `DHCPState` class to monitor and react to changes in configuration states dynamically.
+
+- Service integration: MAAS integrates DHCP configuration with DNS and NTP settings management, ensuring that all network services are synchronized and responsive to each machine's needs.
+
+- Service monitoring and immediate feedback: MAAS integrates with service monitors to manage DHCP states effectively, applying changes instantly without needing restarts.
+
+- Asynchronous and concurrent operations: MAAS supports asynchronous operations and uses concurrency controls to ensure that DHCP management is efficient and non-disruptive.
+
+### Implied user capabilities with MAAS-managed DHCP
+
+MAAS also introduces non-standard capabilities for the bundled DHCP server:
+
+- Dynamic reconfiguration of DHCP settings: MAAS allows users to dynamically reconfigure DHCP settings via a web UI or API without the need for server restarts. This capability is essential for environments where network configurations frequently change, such as in data centers or development labs.
+
+- Integrated IP Address Management (IPAM): MAAS integrates DHCP with IPAM to automatically manage the allocation, tracking, and reclamation of IP addresses across large networks. This integration helps in efficiently using IP resources, reducing conflicts, and ensuring that all devices have appropriate network configurations.  This means that user IP configuration takes on a new level of reliability and granularity.
+
+- Automated provisioning of network-dependent services: MAAS automates the provisioning of network-dependent services like DNS, NTP, and PXE boot configurations along with DHCP leases. This means that when MAAS manages a device's DHCP settings, it can also configure these devices to use specific DNS servers or NTP servers, streamlining network setup tasks.  This equates to a series of error-prone steps that the user does *not* need to worry about.
+
+- Real-time network bootstrapping: MAAS supports complex network bootstrapping scenarios including the use of next-server (PXE boot server) and bootfile-name parameters which are critical for deploying operating systems in a network environment. This is particularly useful in automated data center management where servers may need to be re-imaged or upgraded without manual intervention.  Again, this automates actions that users might normally need to undertake manually.
+
+- Granular access control and security policies: MAAS offers granular control over DHCP options and includes security policies that can be customized for different nodes or subnets. Features like DHCP snooping and dynamic ARP inspection can be integrated into the DHCP process to enhance security and control over the network.
+
+- Advanced monitoring and reporting: MAAS provides advanced monitoring and reporting features for DHCP interactions, meaning that users do not have to be as fluent with command-line network diagnostics.  Administrators can view detailed logs of DHCP transactions, monitor the state of DHCP scopes, and track the historical usage of IP addresses, enabling effective troubleshooting and network management.
+
+- Seamless integration with hardware enrollments: MAAS seamlessly integrates DHCP services with the hardware enrollment processes. As new machines are added to the network, MAAS can automatically enroll them, provision them based on predefined templates, and manage their lifecycle directly from the initial DHCP handshake.  This eliminates the need for users and administrators to constantly inventory the physical network to keep the headcount up-to-date.
 
 ## IP range management and static IP assignments
 
-Let’s delve into why the MAAS-provided DHCP server is recommended.
+If an external DHCP server (or relay) is used, static routes would have to be carefully set to avoid issues. It is much easier to simply use the bundled, pre-configured DHCP server with MAAS, which automates handling of static IP addresses. Visual feedback in the MAAS UI makes it obvious which IP addresses are in use and whether or not they are static.
 
-The first reason has to do with IP address assignments. If an external server (or a relay to some external server) is used, static routes would have to be carefully set to avoid issues. It’s much easier to simply use the bundled, pre-configured DHCP server with MAAS, which automates handling of static IP addresses. Visual feedback in the MAAS UI makes it obvious which IP addresses are in use and whether or not they are static.
-
-Second, MAAS intentionally offers a more scalable solution by allowing administrators to define explicit IP ranges. MAAS centralizes IP management, reducing the need for manual configuration and ensuring that static IPs are applied consistently across your infrastructure. You can allocate static IP addresses from a pool or manually assign them during deployment, or simply let MAAS handle IP assignment from the pool. This capability makes MAAS – and the pre-configured DHCP server shipped with MAAS – the better choice for environments where consistent IP addressing is crucial for server stability and accessibility.
-
-## Next server and the NBP
-
-A third reason MAAS-provided DHCP is recommended has to do with PXE booting. Successful PXE booting requires that an optional DHCP parameter called next-server be set. When network booting, the PXE-capable NIC sends a DHCP request to its connected networks, asking for an IP address for itself, and also for the IP address of a connected TFTP (Trivial File Transport Protocol) server that can provide a bootable file called a NBP (Network Boot Packet).
-
-If you are able to correctly configure your external/relayed DHCP to provide the address of a valid TFTP server with a MAAS-compatible NBP, so much the better. In most cases, though, it’s much easier to simply use the MAAS-provided DHCP server.
+Also, MAAS scales better by allowing administrators to define explicit IP ranges. MAAS centralizes IP management, reducing the need for manual configuration and ensuring that static IPs are applied consistently across your infrastructure. You can allocate static IP addresses from a pool or manually assign them during deployment, or simply let MAAS handle IP assignment from the pool. This capability makes MAAS – and the pre-configured DHCP server shipped with MAAS – the better choice for environments where consistent IP addressing is crucial for server stability and accessibility.
 
 ## DNS
 
@@ -124,4 +136,63 @@ MAAS centralizes gateway configuration across all connected machines. You can mo
 
 Network bonding is crucial for high-availability environments, and MAAS makes it easier to create and manage bonds across multiple interfaces. Instead of configuring bonds manually on each machine, MAAS allows you to create bonds from its UI or CLI, applying them consistently across your infrastructure.
 
-MAAS supports a range of bonding modes, such as active-backup or balance-rr, giving you flexibility based on your network's needs. With MAAS handling bonds centrally, you can ensure that redundant interfaces are always configured properly, reducing the risk of network downtime and improving overall performance.
+MAAS supports a range of bond parameters:
+
+- **`mac_address`**: Specifies the unique Media Access Control (MAC) address assigned to the network interface, serving as its hardware identifier on the network.
+
+- **`tags`**: Assigns descriptive labels to the interface, facilitating organization, management, or application of specific configurations within MAAS.
+
+- **`vlan`**: Designates the Virtual Local Area Network (VLAN) ID that the interface connects to. If omitted, the interface is treated as not connected to any VLAN.
+
+- **`parents`**: Lists the IDs of interfaces that are combined to form a bonded interface, indicating which physical interfaces are aggregated.
+
+- **`bond_mode`**: Defines the bonding policy determining how the bonded interface manages traffic across its member interfaces.
+
+- **`bond_miimon`**: Sets the frequency (in milliseconds) at which the bond verifies the link status of its member interfaces, with a default of 100 ms.
+
+- **`bond_downdelay`**: Specifies the time (in milliseconds) the bond waits before marking a member interface as inactive after detecting a link failure.
+
+- **`bond_updelay`**: Indicates the time (in milliseconds) the bond waits before marking a member interface as active after detecting a link recovery.
+
+- **`bond_lacp_rate`**: Determines the frequency at which Link Aggregation Control Protocol Data Units (LACPDUs) are sent in 802.3ad mode. Options are "fast" (every 1 second) or "slow" (every 30 seconds), with "slow" as the default.
+
+- **`bond_xmit_hash_policy`**: Specifies the method used to select a slave interface for outgoing traffic in certain bonding modes, influencing load balancing behavior.
+
+- **`bond_num_grat_arp`**: Sets the number of gratuitous ARP messages sent after a failover event to update peer devices about the new MAC address location.
+
+- **`mtu`**: Defines the Maximum Transmission Unit, indicating the largest size (in bytes) of packets that the interface can transmit.
+
+- **`accept_ra`**: Indicates whether the interface accepts IPv6 Router Advertisements, which are used for automatic network configuration.
+
+MAAS also supports many bonding modes:
+
+- **`balance-rr`**: Transmit packets in sequential order from the first
+  available slave through the last. This mode provides load balancing
+  and fault tolerance.
+
+- **`active-backup`**: Only one slave in the bond is active. A different
+  slave becomes active if, and only if, the active slave fails. The
+  bond's MAC address is externally visible on only one port (network
+  adapter) to avoid confusing the switch.
+
+- **`balance-xor`**: Transmit based on the selected transmit hash policy.
+  The default policy is a simple [(source MAC address XOR'd with
+  destination MAC address XOR packet type ID) modulo slave count].
+
+- **`broadcast`**: Transmits everything on all slave interfaces. This
+  mode provides fault tolerance.
+
+- **`802.3ad`**: IEEE 802.3ad dynamic link aggregation. Creates
+  aggregation groups that share the same speed and duplex settings.
+  Uses all slaves in the active aggregator according to the 802.3ad
+  specification.
+
+- **`balance-tlb`**: Adaptive transmit load balancing: channel bonding
+  that does not require any special switch support.
+
+- ``balance-alb``: Adaptive load balancing: includes balance-tlb plus
+  receive load balancing (rlb) for IPV4 traffic, and does not require
+  any special switch support. The receive load balancing is achieved by
+  ARP negotiation.
+  
+> *See [Bond two interfaces](https://maas.io/docs/how-to-manage-maas-networks#p-9070-bond-two-interfaces) for how-to instructions.*

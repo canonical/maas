@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/boosting-maas-performance" target = "_blank">Let us know.</a>*
-
 This guide explains how we measure MAAS performance, details recent improvements, and explains how to track your own metrics.
 
 ## Our reference case
@@ -27,7 +25,7 @@ These examples represent just a part of our comprehensive performance improvemen
 
 ## Help us with metrics
 
-Contribute by [tracking your MAAS metrics](/t/how-to-monitor-maas/5204) and sharing them with us. Your input on machine counts, network sizes, and performance experiences is valuable. Join the discussion on our [Discourse performance forum](https://discourse.maas.io/c/maas-performance/26).
+Contribute by [tracking your MAAS metrics](https://maas.io/docs/how-to-monitor-maas) and sharing them with us. Your input on machine counts, network sizes, and performance experiences is valuable. Join the discussion on our [Discourse performance forum](https://discourse.maas.io/c/maas-performance/26).
 
 ## Recent + upcoming
 

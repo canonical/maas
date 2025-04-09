@@ -14,7 +14,7 @@
    ```
 ## Post-install setup (POC)
 
-There is a proof-of-concept configuration defined ***for the MAAS snap version only***. To initialise the MAAS snap in this POC configuration, use the `--help` flag with `maas init` and follow the instructions. This POC uses the [`maas-test-db`](https://snapcraft.io/maas-test-db).
+The MAAS snap can use a proof-of-concept configuration with the [`maas-test-db`](https://snapcraft.io/maas-test-db) snap. Enter `maas init --help` and follow the instructions.
 
 ## Post-install setup (production)
 

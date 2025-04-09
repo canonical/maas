@@ -5,11 +5,9 @@ MAAS version 3.2 and higher provide the capability to customise deployed machine
 - add or remove PCI devices
 - add or remove USB devices
 
-You can find the [procedure here](/t/how-to-customise-machines/5108).
+While deploying a machine, you can configure that machine to periodically sync its [hardware configuration](https://maas.io/docs/about-deploying-running-machines#p-17466-hardware-sync).  Deployed machines will also  passively update changes to the BMC and tags for that machine, as these changes are made.
 
-While deploying a machine, you can configure that machine to periodically sync its [hardware configuration](#heading--about-hardware-sync).  Deployed machines will also  passively update changes to the BMC and tags for that machine, as these changes are made.
-
-## Updating hardware 
+## Hardware sync 
 
 Updating hardware on a deployed machine works by installing a special binary on the deployed machine.   This binary is configured at a given interval and push hardware info to the MAAS metadata endpoint.  By setting “enable_hw_sync” to true on a machine prior to deployment, MAAS will add configuration to install a systemd service and timer that will download the hardware sync binary.  This binary then authenticates the machine, reads the hardware info from the machine and pushes it to MAAS. The interval is set globally in the MAAS settings.
 
@@ -53,8 +51,3 @@ params: {
 
 
 The API does not throw errors when an invalid string is provided for these parameters.
-
-
-## Hardware sync 
-
-Hardware sync updates the machine’s blockdevice, interface and device sets.  BMC configuration and tags can also be updated on the machine itself. The timestamps of the last sync and the next scheduled sync can be seen in the machine's data.

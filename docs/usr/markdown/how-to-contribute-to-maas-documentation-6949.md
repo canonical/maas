@@ -1,7 +1,5 @@
 Welcome contributors! This guide provides step-by-step instructions to help you master the mechanics of MAAS documentation, so that you can contribute more easily.
 
-> *Learn about the [MAAS documentation style](https://maas.io/docs/documentation-style-guide)*
-
 ## Preparing
 
 First, make sure your contribution is respectful, constructive.  Don't worry so much about the value or the technical correctness; our editors can deal with those as they come up.  The most important thing is to get your thoughts down.

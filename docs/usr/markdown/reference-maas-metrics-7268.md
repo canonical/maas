@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/maas-metrics-reference" target = "_blank">Let us know.</a>*
-
 This page provides a MAAS metrics reference, categorised into two sections: "Cluster metrics" and "Performance metrics."
 
 ## Cluster metrics

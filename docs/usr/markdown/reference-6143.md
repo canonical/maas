@@ -1,33 +1,36 @@
-This section provides detailed reference material for MAAS.
+Find the precise details to set parameters, make informed decisions, and take the right actions in MAAS.
 
 ## General information
 
-Access essential reference materials, including installation requirements, a documentation style guide, and a glossary of terms. This section also includes an API reference for developers, along with links to the MAAS code repository and the Ubuntu community code of conduct.
+These essential reference materials will help make better choices, resolve issues, and clarify ambiguities. 
+
+- [Release notes](https://maas.io/docs/release-notes-and-upgrade-instructions) are always the best starting point for new installs and upgrades.
+- Review the [installation requirements](https://maas.io/docs/installation-requirements) when planning a MAAS instance.
+- Discover the various [options](https://maas.io/docs/configuration-reference) that MAAS offers.
+- [Troubleshoot issues](https://maas.io/docs/maas-troubleshooting-guide) when things don't work as expected.
+- Improve understanding with the [MAAS glossary](https://maas.io/docs/reference-maas-glossary).
 
 ## Scripts and automation
 
-Explore detailed listings and examples for automating MAAS with commissioning scripts, hardware testing scripts, and Terraform configurations. This section helps you automate tasks and customize your infrastructure to meet specific operational requirements.
+Nearly every part of the provisioning life-cycle can be customized and automated.
 
-## Device labels
+- Use [cloud-init](https://maas.io/docs/how-to-use-cloud-init-with-maas) to tailor  deployments to match use cases.
+- Fine-tune [commissioning scripts](https://maas.io/docs/reference-commissioning-scripts) to gather non-standard hardware information needed for deployment.
+- Adapt [testing](https://maas.io/docs/reference-hardware-test-scripts) to the local hardware environment.
+- Create robust templates for specific applications with [Terraform](https://maas.io/docs/reference-terraform).
 
-Understand how to use tags to manage specialized hardware. This section explains the labeling system in MAAS and how it can help you categorize devices for easier management.
+## MAAS API usage
 
-## MAAS metrics
+Every feature available in the UI and CLI is also accessible through the MAAS API, with additional capabilities.
 
-Get insights into cluster performance and other key metrics. This section provides detailed information on how to track and analyze the metrics that matter most for monitoring and optimizing your MAAS environment.
+- Learn how to [login to the MAAS API](https://maas.io/docs/how-to-authenticate-to-the-maas-api).
+- Peruse a [detailed catalog of API calls](https://maas.io/docs/api), auto-generated directly from the code.
 
-## Power catalog
+## Parameter catalogs
 
-Explore the parameters for each power driver supported by MAAS. This section offers a comprehensive reference for configuring power settings, ensuring compatibility with a wide range of hardware.
+There is always that one, elusive parameter, easy to forget amid many other details and syntax rules. 
 
-## BMC drivers
-
-Consult a table of Baseboard Management Controller (BMC) capabilities for various power driver types. This reference helps you understand the features and limitations of different BMC drivers used in your environment.
-
-## Storage reference
-
-Find detailed settings available for each supported storage layout. This section covers configuration options and best practices for managing storage in your MAAS setup.
-
-## Release notes and version details
-
-Stay up to date with the latest changes and improvements to MAAS. This section provides release notes for the last eight MAAS versions, helping you track updates and understand new features or bug fixes.
+- [MAAS metrics](https://maas.io/docs/reference-maas-metrics) offer more than three dozen specific cluster and performance metrics, each with their own type, units, and labels.
+- MAAS can talk to more than twenty different kinds of [power drivers](https://maas.io/docs/reference-power-drivers), each with numerous parameters that must be correctly specified.
+- When deploying a machine, curtin can apply any one of five different [standard storage layouts](https://maas.io/docs/reference-maas-storage#p-17455-standard-storage-layouts) and many combinations of [custom layouts](https://maas.io/docs/reference-maas-storage#p-17455-custom-storage-layouts) to match provisioning requirements.
+- MAAS [specialty tags](https://maas.io/docs/reference-device-labels) define and apply special configurations for kernels, networks, storage, and more specific attributes.

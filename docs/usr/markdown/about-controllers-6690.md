@@ -1,6 +1,4 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/controllers-understanding-region-and-rack" target = "_blank">Let us know.</a>*
-
-Understanding controllers within the MAAS ecosystem helps to metal infrastructure. You may find it useful to [tweak your controller settings](/t/configuring-maas-controllers/5172) based on your specific network and machine count. Even consider opting for a [high availability setup](/t/ensuring-high-availability-for-controllers/5120) for robustness.
+Understanding controllers within the MAAS ecosystem helps to metal infrastructure. You may find it useful to [tweak your controller settings](https://maas.io/docs/how-to-manage-controllers) based on your specific network and machine count. Even consider opting for a [high availability setup](https://maas.io/docs/how-to-manage-controllers#p-9026-enable-ha) for robustness.
 
 At the core of MAAS are its controllers: region controllers and rack controllers. While the region controller is the interaction hub for operators, the rack controller focuses on delivering high-bandwidth services to the machines.
 
@@ -33,7 +31,7 @@ Fabrics link otherwise isolate VLANs, so they can communicate under specific con
 
 ## Controllers connect
 
-The hierarchy of communication in MAAS flows from the UI/API to the region controller, then to the rack controller, and finally to the machines. [High availability](/t/ensuring-high-availability-for-controllers/5120) (HA) setups introduce redundancy but don't alter this fundamental flow.
+The hierarchy of communication in MAAS flows from the UI/API to the region controller, then to the rack controller, and finally to the machines. [High availability](https://maas.io/docs/how-to-manage-controllers#p-9026-enable-ha) (HA) setups introduce redundancy but don't alter this fundamental flow.
 
 ## Racks to machines
 

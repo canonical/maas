@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/utilizing-the-python-api-client" target = "_blank">Let us know.</a>*
-
 The `python-libmaas` client library provides access to various MAAS endpoints. This page explains how to use it.
 
 ## Library endpoints
@@ -15,10 +13,7 @@ Currently, the library provides eight endpoints:
 - version
 - zones
 
-For an in-depth understanding of the terminology, consult these pages:
-
-- [Concepts and terms](/t/reference-maas-glossary/5416)
-- [API documentation](https://maas.io/docs/api)**^**
+See the [API documentation](https://maas.io/docs/api) for more info.
 
 ## Using python-libmaas
 

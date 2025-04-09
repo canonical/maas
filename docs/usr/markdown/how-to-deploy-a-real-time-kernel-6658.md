@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/deploying-a-real-time-kernel" target = "_blank">Let us know.</a>*
-
 This page walks you through the steps to deploy an Ubuntu machine with a [real-time (RT) kernel](https://ubuntu.com/blog/real-time-linux-qa). The RT kernel comes with all [Ubuntu Pro](https://ubuntu.com/pro) subscriptions for Ubuntu 22.04 LTS.
 
 > The RT kernel is currently in Beta. General availability is coming soon.

@@ -4,19 +4,13 @@ Time to try MAAS! We wanted to make it easier to go hands on with MAAS, so we cr
 
 Hang in there, because you'll be up and running in no time, installing operating systems with ease and without breaking a sweat!
 
-![image|690x283, 100%](upload://cJumi82oEyZ7PnVmMavlpSqelRH.jpeg) 
-
 Installing [MAAS](https://maas.io) itself is easy, but building an environment to play with it is more involved. MAAS works by detecting servers that attempt to boot via a network (called **PXE booting**). This means that MAAS needs to be on the same network as the servers.
 
 Having MAAS on the same network as the servers can be problematic at home or the office, because MAAS also provides a DHCP server and it can (will) create issues if target servers and MAAS try to interact on your usual network.
 
 ### A potential MAAS test setup
 
-One way to try MAAS is to have a separate network, such as a simple switch+router, with several servers attached. One of these servers runs MAAS, and the others are target servers that MAAS can provision. Such a setup might look like this:
-
-![image|320x420](https://assets.ubuntu.com/v1/948323ca-MAAS+tutorial+diagram-01.svg) 
-
-In this tutorial, we're going to build all of this automatically for you inside a virtual machine, using Multipass. No need to build all of this infrastructure just to try MAAS, we'll take care of it for you.
+One way to try MAAS is to have a separate network, such as a simple switch+router, with several servers attached. One of these servers runs MAAS, and the others are target servers that MAAS can provision.  In this tutorial, we're going to build all of this automatically for you inside a virtual machine, using Multipass. No need to build all of this infrastructure just to try MAAS, we'll take care of it for you.
 
 ### Multipass
 
@@ -27,8 +21,6 @@ Multipass is a tool from Canonical that can help you easily create virtual machi
 Inside the VM, Multipass will use LXD and Linux configuration to build a virtual private switch and router, and provide a way to create what are called "nested VMs", or virtual machines inside the virtual machine made by Multipass. These nested VMs will represent servers that MAAS can provision.
 
 When we're finished, you'll be able to log in to the MAAS server running inside the VM on your computer, compose nested VMs using LXD, and then commission and deploy them. It will then be simple to spin up a quick MAAS environment without needing to build a complete real environment.
-
-![image|624x333](https://assets.ubuntu.com/v1/6e132859-MAAS+tutorial+diagram-02.svg) 
 
 <h2>Requirements</h2>
 
@@ -66,7 +58,13 @@ multipass exec foo -- lsb_release -a
 
 You should see the following output:
 
-![image|690x467, 75%](upload://86mHjDV3Up8eA3aCWcufEX1bpDZ.png) 
+```bash
+No LSB modules are available.
+Distributor ID: Ubuntu
+Description:    Ubuntu <xx.yy.z>
+Release:        <xx.yy>
+Codename:       <codename>
+```
 
 Delete the test VM, and purge it:
 
@@ -87,7 +85,10 @@ kvm-ok
 
 You should see the following output:
 
-![Screenshot from 2021-10-13 18-29-37|690x201](upload://6uw2WjpTrrggXs0F395Ha33E3tU.png) 
+```bash
+INFO: /dev/kvm exists
+KVM acceleration can be used
+```
 
 Assuming your machine supports hardware virtualization, we are ready to move on and launch MAAS.
 
@@ -118,8 +119,11 @@ multipass list
 ```
 
 You should see the following:
-
-![Screenshot from 2021-10-13 14-34-35|690x467](upload://zGT63O603mS8u8AyWetkOaoBX9r.png) 
+```bash
+Name       State          IPv4           Image
+maas       Running        10.97.28.47    Ubuntu <xx.yy>
+                          10.10.10.1
+```
 
 Here you can see two IP addresses. One belongs to the internal network (10.10.10.1) for MAAS and LXD guest VMs to communicate. You can use the other to connect to MAAS from your computer.
 
@@ -165,7 +169,7 @@ Once the images are synced, it's time for some fun – using MAAS to create our 
 Return to *KVM > LXD* and select the link for the KVM host in the "NAME" column. Choose *Add VM* and fill in the details. For an Ubuntu guest, we need to set RAM, CPU and disk to their recommended values:
 
 * Set the Hostname field to AwesomeVM1
-* Set the RAM to 6000 MiB
+* Set the RAM to 8000 MiB
 * Set the storage to 8000 MiB
 * Set the CPU cores to 2
 
@@ -198,8 +202,16 @@ ping <AwesomeVM1 IP>
 ```
 
 You should see ping responses:
-
-![Screenshot from 2021-10-13 17-00-56|630x500](upload://xAsxyCsBNebSqazgijidOOX9Pvy.png) 
+```bash
+PING 10.10.10.2 (10.10.10.2) 56(84) bytes of data.
+64 bytes from 10.10.10.2: icmp_seq=1 ttl=64 time=0.338 ms
+64 bytes from 10.10.10.2: icmp_seq=2 ttl=64 time=0.267 ms
+64 bytes from 10.10.10.2: icmp_seq=3 ttl=64 time=0.270 ms
+^C
+--- 10.10.10.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2043ms
+rtt min/ave/max/mdev = 0.267/0.291/0.338/0.032 ms
+```
 
 SSH into the VM guest by running the following command. Accept the authenticity notice:
 
@@ -207,21 +219,13 @@ SSH into the VM guest by running the following command. Accept the authenticity 
 ssh ubuntu@<AwesomeVM1 IP>
 ```
 
-You should see that you are now in a shell on the AwesomeVM1 machine:
-
-![Screenshot from 2021-10-13 17-03-14|537x500](upload://eKw2FKHUpMPTufEp6xZ3jwJWAS8.png)  
-
-Great work!
-
-Try pinging something on the internet from the machine:
+You should see that you are now in a shell on the AwesomeVM1 machine.  Great work!  Try pinging something on the internet from the machine:
 
 ```bash
 ping ubuntu.com
 ```
 
-Again, you should see ping responses:
-
-![Screenshot from 2021-10-13 17-04-24|690x263](upload://ex9D2oxtkrVrc1DDSEuMkimRzP3.png) 
+Again, you should see a `ping` result similar to what you saw earlier.
 
 That's it! We've successfully created and deployed a VM *inside our Multipass VM* using MAAS and LXD. Fantastic work!  We now have our own MAAS and LXD environment!
 

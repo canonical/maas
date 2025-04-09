@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/configuring-an-air-gapped-maas-environment" target = "_blank">Let us know.</a>*
-
 Operating MAAS without internet access is possible, but requires planning. Four key elements must be in place for a seamless experience:
 
 1. Snap updates via snap proxy
@@ -23,7 +21,7 @@ For detailed guidance, see the [official documentation](https://docs.ubuntu.com/
 
 Utilise the `reprepro` command to manage local Debian package repositories. It's the recommended way, as `apt-mirror` is no longer maintained. `Reprepro` does not require an external database and manages package signatures efficiently.
 
-For easier access, you might want to use a [transparent proxy](#creating-a-transparent-proxy).
+For easier access, you might want to use a transparent proxy.
 
 ## Local image mirror
 
@@ -34,7 +32,7 @@ MAAS allows you to mirror images locally by following these steps:
 3. Specify image storage locations.
 4. Add a new boot source pointing to the local mirror.
 
-Check the [local image mirror guide](/t/how-to-mirror-maas-images/5927) for comprehensive details.
+Check the [local image mirror guide](https://maas.io/docs/how-to-manage-images#p-9030-use-a-local-mirror) for comprehensive details.
 
 ## Non-Ubuntu images
 
@@ -45,7 +43,7 @@ For non-MAAS OS like CentOS or RHEL, you have two options:
 
 ## Using `user_data`
 
-Custom `user_data` can configure CentOS or RHEL to use specific mirrors. More details are available on the [machine customisation page](/t/how-to-customise-machines/5108).
+Custom `user_data` can configure CentOS or RHEL to use specific mirrors. 
 
 ## Transparent proxies
 

@@ -1,113 +1,66 @@
-Welcome to the comprehensive guide for configuring and managing your MAAS (Metal as a Service) environment. This section provides a step-by-step approach to help you master MAAS, from the basics to advanced customization and maintenance.
+Organize machine provisioning at scale with a structured, repeatable workflow.
 
-## Core configuration
 
-Start with the foundational steps needed to set up your MAAS environment. This section covers everything from installing MAAS to deploying and locating machines, ensuring that your setup is robust and functional. Learn how to monitor and troubleshoot issues effectively to keep your infrastructure running smoothly.
+## Install and configure MAAS
 
-- Install or upgrade MAAS
-- Customize networks
-- Customize DHCP
-- Choose OS images
-- Configure controllers
-- Configure machines
-- Commission machines
-- Allocate machines
-- Deploy machines
-- Locate machines
-- Monitor MAAS
-- Troubleshoot issues
+Only four steps are required to get MAAS up and running:
 
-## Tuning performance
+ - [Install MAAS](https://maas.io/docs/how-to-install-maas#p-9034-install-maas-snap-or-packages) or [upgrade an older version](https://maas.io/docs/how-to-install-maas#p-9034-notes-on-upgrading-maas).
+ - Choose whether you want a  [proof-of-concept](https://maas.io/docs/how-to-install-maas#p-9034-post-install-setup-poc) or [production](https://maas.io/docs/how-to-install-maas#p-9034-post-install-setup-production) instance.
+ - [Configure MAAS](https://maas.io/docs/how-to-install-maas#p-9034-configuring-and-starting-maas) domain name services (DNS) and image acquisition.
+ - [Enable DHCP](https://maas.io/docs/how-to-install-maas#p-9034-enabling-dhcp) to provide IP addresses to provisioned machines.
 
-Optimize your MAAS setup for better performance and reliability. This section guides you through managing IP ranges, mirroring images, and enabling high availability to ensure your environment is efficient and resilient.
+## Fine-tune MAAS networks
 
-- Manage IP ranges
-- Mirror MAAS images
-- Enable high availability
+MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine operation.  If your situation is different, you may want to fine-tune your networking:
 
-## Adjusting your instance
+- [Make routine adjustments](https://maas.io/docs/how-to-customise-maas-networks#p-9070-routine-network-management), like default gateways, loopback, bridges, and bonds, or even [enable two-NIC interfaces](https://maas.io/docs/how-to-customise-maas-networks#p-9070-two-nic-setup).
+- [Manage network discovery](https://maas.io/docs/how-to-customise-maas-networks#p-9070-network-discovery), which automatically detects connected devices.
+- Manage day-to-day networking, like [subnets](https://maas.io/docs/how-to-customise-maas-networks#p-9070-subnets), [VLANs](https://maas.io/docs/how-to-customise-maas-networks#p-9070-vlans), local [DHCP configuration](https://maas.io/docs/how-to-customise-maas-networks#p-9070-dhcp-management), and [IP management](https://maas.io/docs/how-to-customise-maas-networks#p-9070-ip-management).
+- Nuance [NTP](https://maas.io/docs/how-to-customise-maas-networks#p-9070-ntp-management) and [DNS](https://maas.io/docs/how-to-customise-maas-networks#p-9070-dns-management) operation to match your local environment.
 
-Customize your MAAS environment to meet specific operational needs. From managing storage and adjusting settings to setting up power drivers and configuring air-gapped instances, this section provides the tools for fine-tuning your setup.
+## Provision & manage servers
 
-- Customize machines
-- Manage storage
-- Adjust MAAS settings
-- Set up power drivers
-- Set up air-gapped MAAS
+Explore automated provisioning with MAAS:
 
-## Using virtual machines
+- [Find connected machines](https://maas.io/docs/how-to-manage-machines#p-9078-find-machines).
+- [Add and configure machines](https://maas.io/docs/how-to-manage-machines#p-9078-add-configure-machines), whether bare metal or virtual, and [manage their power state](https://maas.io/docs/how-to-manage-machines#p-9078-control-machine-power).
+- Discover server capabilities by [commissioning machines](https://maas.io/docs/how-to-manage-machines#p-9078-commission-test-machines).
+- [Deploy machines](https://maas.io/docs/how-to-manage-machines#p-9078-deploy-machines) to make them productive.
+- Configure [specialty configurations](https://maas.io/docs/how-to-manage-machines#p-9078-configure-machine-settings) for specific needs.
+- [Rescue, recover](https://maas.io/docs/how-to-manage-machines#p-9078-rescue-recovery) and [recycle](https://maas.io/docs/how-to-manage-machines#p-9078-release-or-remove-machines) machines, including full data erasure.
 
-Leverage virtual machine capabilities within MAAS to enhance your infrastructure. Learn how to use LXD, manage virtual machines, and deploy on specialized hardware like IBM Z.
+## Group machines for easy identification
 
-- Use virtual machines
-- Set up external LXD
-- Use external LXD
-- Use LXD projects
-- Manage virtual machines
-- Deploy VMs on IBM Z
+Availability zones provide failover; resource pools group machines for easy tracking; tags and annotations provide a more freeform labeling system.  All three groups are searchable from both UI and CLI.
 
-## Finding issues in the logs
+- Set up [availability zones](https://maas.io/docs/how-to-manage-machine-groups#p-19384-availability-zones) to create redundant failover.
+- Assign [resource pools](https://maas.io/docs/how-to-manage-machine-groups#p-19384-resource-pools) to budget provisioning.
+- Label and even control machine behavior with [tags and annotations](https://maas.io/docs/how-to-manage-machine-groups#p-19384-tags-and-annotations).
 
-Effective log management is key to identifying and resolving issues. This section explains how to use various logs, audit MAAS, and interpret testing data to maintain a secure and operational environment.
+## Manage deployment OS images
 
-- Use logging
-- Use MAAS systemd logs
-- Read event logs
-- Read commissioning logs
-- Interpret testing logs
-- Audit MAAS
-- Review audit logs
+MAAS supports a very wide range of Linux, Windows, and specialty operating systems.
 
-## Grouping machines
+- Set up [image SimpleStreams](https://maas.io/docs/how-to-manage-images#p-9030-switch-image-streams) to keep up-to-date.
+- Use [custom](https://maas.io/docs/how-to-manage-images#p-9030-use-a-custom-mirror) and [local](https://maas.io/docs/how-to-manage-images#p-9030-use-a-local-mirror) mirrors to improve download performance.
+- [Build your own Ubuntu images](https://maas.io/docs/how-to-build-ubuntu-images)
+- [Build custom images](https://maas.io/docs/how-to-build-custom-images), including RHEL, CentOS, Oracle Linux, VMWare ESXI, Windows, and others.
 
-Organize your machines for better management using tags, availability zones, and resource pools. This section covers how to categorize and annotate machines to streamline your operations.
+## Keep things running smoothly
 
-- Use availability zones
-- Use resource pools
-- Annotate machines
-- Manage tags
-- Use machine tags
-- Use network tags
-- Use controller tags
-- Use storage tags
+Performance, security, and auditing are integrated capabilities of MAAS.
 
-## Scripting MAAS
+- [Use logging](https://maas.io/docs/how-to-use-logging) wisely to keep track.
+- [Monitor MAAS](https://maas.io/docs/how-to-monitor-maas) to manage performance and find bottlenecks.
+- [Enhance MAAS security](https://maas.io/docs/how-to-enhance-maas-security) and [manage MAAS users](https://maas.io/docs/how-to-enhance-maas-security#p-9102-manage-users) to maintain data and operational security.
+- [Enable high availability](https://maas.io/docs/how-to-enable-high-availability) to scale workloads.
 
-Automate tasks and interact programmatically with MAAS using scripts and APIs. This section introduces cloud-init, the MAAS API, and Python scripting for more efficient management.
+## Handle specialty situations
 
-- Use cloud-init with MAAS
-- Login to the MAAS API
-- Script MAAS with Python
+Deploy real-time or FIPS-compliant kernels, run MAAS in an air-gapped environment, and write Python programs to control MAAS.  You can even deploy virtual machines on an IBM Z Series.
 
-## Securing your instance
-
-Protect your MAAS environment with enhanced security measures. Learn to manage user access, implement TLS, and integrate with Vault for secure configuration and data management.
-
-- Enhance MAAS security
-- Manage user access
-- Implement TLS
-- Integrate Vault
-
-## Building kernels
-
-Customize your deployment by building specialized kernels and images. This section guides you through deploying real-time or FIPS-compliant kernels and building various OS images for different use cases.
-
-- Deploy a real-time kernel
-- Deploy a FIPS kernel
-- Use VMWare images
-- Customize images
-- Build MAAS images
-- Build Ubuntu
-- Build RHEL 7
-- Build RHEL 8
-- Build CentOS 7
-- Build Oracle Linux 8
-- Build Oracle Linux 9
-- Build ESXi
-- Build Windows
-
-## Maintaining MAAS
-
-Ensure the long-term stability of your MAAS environment with regular maintenance tasks. Learn how to back up and upgrade MAAS to keep your system secure and up-to-date.
-
-- Back up MAAS
+- Deploy [real-time](https://maas.io/docs/how-to-deploy-a-real-time-kernel) or [FIPS-compliant](https://maas.io/docs/how-to-deploy-a-fips-compliant-kernel) kernels.
+- Run MAAS in [air-gapped mode](https://maas.io/docs/how-to-configure-an-air-gapped-maas).
+- [Script your MAAS instance with Python](https://maas.io/docs/how-to-use-the-python-api-client).
+- [Deploy virtual machines on an IBM Z series machine](https://maas.io/docs/how-to-deploy-vms-on-ibm-z).

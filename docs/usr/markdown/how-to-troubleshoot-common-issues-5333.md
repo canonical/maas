@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/troubleshooting-common-maas-issues" target = "_blank">Let us know.</a>*
-
 ## MAAS OS deployment failing with cloud-init error
 
 **Problem:**
@@ -66,7 +64,7 @@ Deployment of a JUJU controller or an OS directly on a node fails with the error
    - Detailed logs can provide more insights into the issue.
 
    **Solution:**
-   - Check MAAS and cloud-init logs for more details using the instructions provided in the [logging documentation](/t/how-to-use-maas-systemd-logs/8103/).
+   - Check MAAS and cloud-init logs for more details using the instructions provided in the [logging documentation](https://maas.io/docs/how-to-use-logging).
 
 ### Example configuration and commands:
 
@@ -98,7 +96,7 @@ MAAS restarted after an update, causing DNS to fail due to duplicate subnets and
 ### Steps to decouple DNS from MAAS and resolve configuration issues:
 
 1. **Identify the issue:**
-   - The issue was identified by errors in the [MAAS log files](/t/how-to-use-maas-systemd-logs/8103/), indicating problems with BIND9 due to duplicate subnets.
+   - The issue was identified by errors in the [MAAS log files](https://maas.io/docs/how-to-use-logging), indicating problems with BIND9 due to duplicate subnets.
 
 2. **Check for duplicate subnets:**
    - Run the following command to list all subnets and identify duplicates:
@@ -380,7 +378,7 @@ MAAS 2.9.2 (snap) DHCP services stopped working after memory and disk issues wer
 **Solution:**
 
 1. **Check logs:**
-   - Look into the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/).
+   - Look into the [MAAS logs](https://maas.io/docs/how-to-use-logging).
    - The error log shows something like this:
      ```
      2021-06-09 08:58:43 maasserver.rack_controller: [critical] Failed configuring DHCP on rack controller 'id:1'.
@@ -550,7 +548,7 @@ You are experiencing an issue where newly commissioned servers in your MAAS 3.1 
    ```
 
 2. **Check MAAS logs:**
-   - Review the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) for any errors or warnings that might provide more context about the issue.
+   - Review the [MAAS logs](https://maas.io/docs/how-to-use-logging) for any errors or warnings that might provide more context about the issue.
 
 3. **Verify cloud-init configuration:**
    - Ensure that the cloud-init configuration is correct and that the datasource is properly defined. This is crucial for the commissioning process.
@@ -790,8 +788,6 @@ Clarification needed on how MAAS handles IP address allocation in subnets, parti
 
 By clarifying these points, you should have a better understanding of how MAAS handles IP address allocation within subnets and the difference between auto-assigned and DHCP-assigned IP addresses.
 
-For more detailed information, refer to the [MAAS documentation](https://maas.io/docs) and the [MAAS glossary](https://maas.io/docs/reference-maas-glossary) for explanations on IP ranges and allocation modes.
-
 ## Error: The server connection failed with the error “Bad Gateway”
 
 **Problem:**
@@ -831,7 +827,7 @@ The MAAS UI was accessible until the network configuration was changed, putting 
      ```
 
 5. **Check logs for further issues:**
-   - Review the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) for any additional errors.
+   - Review the [MAAS logs](https://maas.io/docs/how-to-use-logging) for any additional errors.
 
 6. **Restart MAAS services:**
    - Restart the MAAS services to apply the new configurations:
@@ -875,7 +871,7 @@ MAAS is sending out DHCP leases to both a BMC and a machine set to PXE boot, but
    - Ensure there are no network issues or misconfigurations that might prevent the DHCP response from reaching MAAS. Check for VLAN tagging issues or routing problems.
 
 7. **Review logs and configuration files:**
-   - Check the [MAAS log files](/t/how-to-use-maas-systemd-logs/8103/) for any errors or warnings that might indicate issues with DHCP or PXE boot.
+   - Check the [MAAS log files](https://maas.io/docs/how-to-use-logging) for any errors or warnings that might indicate issues with DHCP or PXE boot.
 
 8. **Documentation and guides:**
    - Refer to the [official MAAS documentation](https://maas.io/docs/about-dhcp-in-maas) for detailed information on how MAAS works with DHCP and how to properly configure and troubleshoot it.
@@ -887,7 +883,7 @@ MAAS is sending out DHCP leases to both a BMC and a machine set to PXE boot, but
      ```
 
 **Next steps:**
-   - If the machine is still not discovered, consider manually adding the machine to MAAS as a last resort by following the [MAAS guide on adding machines manually](https://maas.io/docs/add-machines-manually).
+   - If the machine is still not discovered, consider manually adding the machine to MAAS as a last resort.
 
 By following these steps, you should be able to diagnose and resolve the issue with MAAS not recognizing the used IP addresses and new machines in the subnet.
 
@@ -1036,7 +1032,7 @@ You are running a MAAS 3.3 server from an LXD container with two interfaces, eac
    - Verify that the TFTP service is running and properly configured to serve files on both networks. Check for any errors in the TFTP server logs.
 
 6. **Check MAAS logs:**
-   - Look into the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) for any errors or warnings related to network or DHCP services.
+   - Look into the [MAAS logs](https://maas.io/docs/how-to-use-logging) for any errors or warnings related to network or DHCP services.
 
 If the issue persists after following these steps, it might be beneficial to work closely with your network team to identify any potential network-level misconfigurations or conflicts. Additionally, you may want to check for any recent changes or updates that could have affected the network or MAAS configuration.
 
@@ -1392,7 +1388,7 @@ The issue is likely due to the limitation that, until MAAS version 3.5, booting 
    ```
 
 2. **Check logs for errors:**
-   - Monitor the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) for any errors related to network configuration.
+   - Monitor the [MAAS logs](https://maas.io/docs/how-to-use-logging) for any errors related to network configuration.
 
 **Example workflow:**
 
@@ -1414,7 +1410,7 @@ The issue is likely due to the limitation that, until MAAS version 3.5, booting 
    maas $PROFILE machine commission $MACHINE_ID
    ```
 
-5. **Monitor the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/).
+5. **Monitor the [MAAS logs](https://maas.io/docs/how-to-use-logging).
 
 By following these steps, you can ensure that machines with legacy BIOS can successfully PXE boot from the first NIC, resolving the "No boot filename received" error and enabling proper commissioning and deployment in MAAS.
 
@@ -1428,7 +1424,7 @@ To resolve this issue, you need to ensure that TFTP and other necessary services
 
 **Steps to resolve the issue:**
 
-1. **Check the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/)** to verify that the TFTP requests are being received and to identify any potential issues.
+1. **Check the [MAAS logs](https://maas.io/docs/how-to-use-logging)** to verify that the TFTP requests are being received and to identify any potential issues.
 
 2. **Verify network configuration:**
    - Ensure that network devices are correctly configured to route traffic between the subnets. This includes ensuring that the DHCP relay is functioning properly and that there are no routing issues.
@@ -1481,7 +1477,7 @@ To resolve this issue, you need to ensure that TFTP and other necessary services
 
 **Example workflow:**
 
-1. **Check the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/):**
+1. **Check the [MAAS logs](https://maas.io/docs/how-to-use-logging):**
 
 2. **Verify network devices configuration:**
    - Ensure that all routers and switches are correctly configured to allow TFTP traffic.
@@ -1680,7 +1676,7 @@ This issue could be due to network misconfiguration or incorrect settings in MAA
    - Check that the DHCP server sends the DHCP offer with the MAAS IP provided in the "next server" property.
 
 2. **Check MAAS logs:**
-   - Review [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) for any errors or warnings that might indicate why the clients are not appearing in the GUI.
+   - Review [MAAS logs](https://maas.io/docs/how-to-use-logging) for any errors or warnings that might indicate why the clients are not appearing in the GUI.
 
 3. **Ensure proper enlistment:**
    - Confirm that the clients are properly enlisting with MAAS. This includes ensuring that the correct commissioning scripts are running.
@@ -1696,7 +1692,7 @@ This issue could be due to network misconfiguration or incorrect settings in MAA
    ```
 
    **b. Check MAAS logs:**
-   - Check the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) for any errors or issues related to DHCP or network configuration.
+   - Check the [MAAS logs](https://maas.io/docs/how-to-use-logging) for any errors or issues related to DHCP or network configuration.
 
    **c. Verify network interface configuration:**
    - Ensure that the network interfaces on the MAAS VM are correctly configured and match the settings in MAAS.
@@ -1726,7 +1722,7 @@ This issue could be due to network misconfiguration or incorrect settings in MAA
    maas $PROFILE dhcps read
    ```
 
-2. **Check the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/)**.
+2. **Check the [MAAS logs](https://maas.io/docs/how-to-use-logging)**.
 
 3. **Verify PXE boot settings:**
    - Ensure VMs are set to boot from the network (PXE).
@@ -1821,7 +1817,7 @@ To resolve issues related to external DHCP configuration in MAAS, follow these s
    - Make sure that network discovery is enabled in MAAS and that the rack controller is checking for external DHCP servers regularly.
 
 3. **Check logs:**
-   - Inspect the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) to verify that the rack controller is detecting the external DHCP server.
+   - Inspect the [MAAS logs](https://maas.io/docs/how-to-use-logging) to verify that the rack controller is detecting the external DHCP server.
 
 4. **Set static IP configuration:**
    - If using a virtual environment like OpenVSwitch, configure the server’s network settings to static IP addresses to avoid issues during boot.
@@ -1840,7 +1836,7 @@ To resolve issues related to external DHCP configuration in MAAS, follow these s
    ```
 
    **c. Check logs:**
-   - Review the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) to ensure the external DHCP server is being detected.
+   - Review the [MAAS logs](https://maas.io/docs/how-to-use-logging) to ensure the external DHCP server is being detected.
 
    **d. Set static IP configuration:**
    - If the issue persists, configure the server's network settings to use a static IP address. This is particularly useful for virtual environments where DHCP might not function as expected.
@@ -2343,7 +2339,7 @@ To troubleshoot and resolve VLAN issues in MAAS, follow these steps:
    - Confirm that the rack controller is physically connected to the appropriate networks and VLANs. If using a managed switch, ensure that ports are configured for the correct VLANs.
 
 4. **Check MAAS logs:**
-   - Review the [MAAS logs](/t/how-to-use-maas-systemd-logs/8103/) for any errors related to VLANs or DHCP:
+   - Review the [MAAS logs](https://maas.io/docs/how-to-use-logging) for any errors related to VLANs or DHCP:
 
 5. **Force network re-detection:**
    - Remove and re-add the rack controller in MAAS to force it to re-detect available networks and VLANs.
@@ -2514,7 +2510,7 @@ Feel free to contribute additional issues and solutions.
 
 ## Command 'packer' not found
 
-When you try to run `packer` or execute a `make` command, you may encounter an error message indicating that `packer` is not installed. The issue can be resolved by [referring to this section](/t/how-to-customise-images/5104).
+When you try to run `packer` or execute a `make` command, you may encounter an error message indicating that `packer` is not installed. The issue can be resolved by [referring to this section](https://maas.io/docs/how-to-build-custom-images#p-17423-gather-components).
 
 ## Error with `packer`:
 
@@ -2532,7 +2528,7 @@ sudo: packer: command not found...
 
 ## No rule to make target ...OVMF_VARS.fd
 
-Should you see an error like the one below, you've forgotten to [install a needed dependency](/t/how-to-customise-images/5104).
+Should you see an error like the one below, you've forgotten to [install a needed dependency](https://maas.io/docs/how-to-build-custom-images#p-17423-gather-components).
 
 ```nohighlight
 make: *** No rule to make target '/usr/share/OVMF/OVMF_VARS.fd'...
@@ -2540,7 +2536,7 @@ make: *** No rule to make target '/usr/share/OVMF/OVMF_VARS.fd'...
 
 ## Failure to create QEMU driver
 
-Encountering the following error means you're missing a dependency. Refer to [this section](/t/how-to-customise-images/5104) for resolution.
+Encountering the following error means you're missing a dependency. Refer to [this section](https://maas.io/docs/how-to-build-custom-images#p-17423-gather-components) for resolution.
 
 ```nohighlight
 Failed creating Qemu driver: exec: "qemu-img": executable file not found in $PATH

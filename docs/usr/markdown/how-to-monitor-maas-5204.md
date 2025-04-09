@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/monitoring-maas-activities" target = "_blank">Let us know.</a>*
-
 To keep your MAAS setup transparent, we've engineered it for observability — you can gauge its internal state purely through telemetry data. Depending on your MAAS version, your monitoring toolkit will differ.
 
 Make sure to navigate to the section that matches your MAAS version.
@@ -8,7 +6,7 @@ Make sure to navigate to the section that matches your MAAS version.
 
 From version 3.2 onward, MAAS simplifies the integration process with key Grafana stack components like Prometheus and Loki. Use this data seamlessly with an open-source stack, whether it's orchestrated by Juju—like the Canonical Observability Stack—or a third-party solution, be it SaaS or self-managed.
 
-Below is a reference observability stack featuring Prometheus for metric collection and alerting, Loki for log aggregation and alerts, Grafana for visualisation, Alertmanager for handling notifications, and Grafana Agent as the telemetry collector.
+Below is a reference observability stack featuring Prometheus for metric collection and alerting, Loki for log aggregation and alerts, Grafana for visualization, Alertmanager for handling notifications, and Grafana Agent as the telemetry collector.
 
 <a href="https://discourse.maas.io/uploads/default/optimized/2X/d/d6f66cbb3ea314818894b4f07ca8037628993ae2_2_690x437.png" target = "_blank">![](upload://eGnGAB4W9qzA8wgGzGaWozgmMTl.png)</a>
 
@@ -21,7 +19,7 @@ This section walks you through setting up the stack to ingest telemetry data and
 
 Both hosts need internet access for installation. While we employ LXD for a single-host setup, it's not mandatory. For production use, consult the [Prometheus](https://prometheus.io/docs/)**^** and [Loki](https://grafana.com/docs/loki/latest/)**^** docs to enhance security and performance.
 
-## Configuring Olly
+## Configuring O11y
 
 In monitoring MAAS, you'll need to follow three key steps: set up your tool stack, export telemetry data, and validate that it's all running smoothly. 
 

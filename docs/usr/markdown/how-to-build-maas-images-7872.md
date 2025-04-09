@@ -24,15 +24,21 @@ You need a machine running Ubuntu 18.04+ or 22.04+ with the ability to run KVM v
 | Oracle Linux 9  | MAAS 3.5+, Curtin 23.1+, libnbd-bin, nbdkit, fuse2fs, Oracle Linux 9 DVD ISO               |
 | VMware ESXi     | MAAS 2.5+, qemu-kvm, qemu-utils, VMware ESXi ISO                                           |
 
-### Install Packer
+### Gather components
 
-#### For Ubuntu 18.04+
+Collect packer, its dependencies and templates, and a suitable ISO file before starting.
+
+#### Install Packer
+
+Packer is the tool of choice for building custom MAAS images.
+
+##### For Ubuntu 18.04+
 
 ```bash
 sudo apt install packer
 ```
 
-#### For Ubuntu 22.04+ (Required for Oracle Linux 8/9)
+##### For Ubuntu 22.04+ (Required for Oracle Linux 8/9)
 
 ```bash
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
@@ -40,7 +46,7 @@ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(l
 sudo apt-get update && sudo apt-get install packer
 ```
 
-### Install dependencies
+#### Install dependencies
 
 Install dependencies required for image building:
 
@@ -60,7 +66,7 @@ For VMware ESXi, install Python pip:
 sudo apt install pip
 ```
 
-### Get Packer templates
+#### Get Packer templates
 
 Clone the Packer templates repository:
 
@@ -68,7 +74,7 @@ Clone the Packer templates repository:
 git clone https://github.com/canonical/packer-maas.git
 ```
 
-### Download ISO files
+#### Download ISO files
 
 Download the appropriate ISO for your desired OS version and place it in the corresponding subdirectory:
 
@@ -96,7 +102,7 @@ Modify the Kickstart file to customize the deployment image:
 
 Refer to the respective Kickstart documentation for detailed customization options.
 
-### Optional proxy configuration
+### Configure a build proxy (optional)
 
 To use a proxy during the build process:
 
@@ -188,7 +194,9 @@ Deploy the image and log in to verify customizations:
 Since Windows is a proprietary operating system, MAAS can't download these images. You need to manually generate images to use with MAAS by using Windows ISO images. On the upside, the end result will be much simpler, since there are CLI and WebUI tools to upload a Windows image -- which _helps_ automate the process.
 
 
-### Prerequisites (to create the image)
+### Verify prerequisites
+
+To build the image:
 
 * A machine running Ubuntu 18.04+ with the ability to run KVM virtual machines.
 * qemu-utils, libnbd-bin, nbdkit and fuse2fs
@@ -202,13 +210,7 @@ git clone https://github.com/canonical/packer-maas.git
 ```
 Note that Ubuntu 22.04+ is required to build Windows 11 images due to ```swtpm``` (Software TPM) package requirements.
 
-### Requirements (to deploy the image)
-
-* [MAAS](https://maas.io) 3.2+
-* [Curtin](https://launchpad.net/curtin) 21.0+
-
-
-### Supported Microsoft Windows versions
+#### Supported Microsoft Windows versions
 
 This process has been build and deployment tested with the following versions of Microsoft Windows:
 
@@ -219,14 +221,21 @@ This process has been build and deployment tested with the following versions of
 * Windows 10 PRO+
 * Windows 11 PRO+
 
+To deploy the image:
 
-### windows.pkr.hcl Template
+* [MAAS](https://maas.io) 3.2+
+* [Curtin](https://launchpad.net/curtin) 21.0+
+
+### Gather components
+
+Collect an ISO image and a template before trying to build a Windows image.
+
+#### Get the windows.pkr.hcl Template
 
 This template builds a dd.tgz MAAS image from an official Microsoft Windows ISO/VHDX.
 This process also installs the latest VirtIO drivers as well as Cloudbase-init.
 
-
-### Obtaining Microsoft Windows ISO images
+#### Obtain Microsoft Windows ISO images
 
 You can obtains Microsoft Windows Evaluation ISO/VHDX images from the following links:
 
@@ -237,8 +246,7 @@ You can obtains Microsoft Windows Evaluation ISO/VHDX images from the following 
 * [Windows 10 Enterprise](https://www.microsoft.com/en-us/evalcenter/download-windows-10-enterprise)
 * [Windows 11 Enterprise](https://www.microsoft.com/en-us/evalcenter/download-windows-11-enterprise)
 
-
-### Building the image
+### Build the image
 
 The build the image you give the template a script which has all the customization:
 
@@ -252,25 +260,25 @@ Example:
 sudo make ISO=/mnt/iso/Windows_Server_2025_SERVER_EVAL_x64FRE_en-us.iso VERSION=2025
 ```
 
-### Makefile parameters
+#### Adjust makefile parameters
 
-#### EDIT
+##### EDIT
 
 The edition of a targeted ISO image. It defaults to PRO for Microsoft Windows 10/11 and SERVERSTANDARD for Microsoft Windows Servers. Many Microsoft Windows Server ISO images do contain multiple editions and this parameter is useful to build a particular edition such as Standard or Datacenter etc.
 
-#### HEADLESS
+##### HEADLESS
 
 Whether VNC viewer should not be launched. Default is set to false. This is useful when building images on machines that do not have graphical libraries such as SDL/GTK installed. Headless mode does include an open VNC port to monitor the build process if needed.
 
-#### ISO
+##### ISO
 
 Path to Microsoft Windows ISO image used to build the MAAS image.
 
-#### PACKER_LOG
+##### PACKER_LOG
 
 Enable (1) or Disable (0) verbose packer logs. The default value is set to 0.
 
-#### PKEY
+##### PKEY
 
 User supplied Microsoft Windows Product Key. When using KMS, you can obtain the activation keys from the link below:
 
@@ -278,20 +286,19 @@ User supplied Microsoft Windows Product Key. When using KMS, you can obtain the 
 
 Please note that PKEY is an optional parameter but it might be required during the build time depending on the type of ISO being used. Evaluation series ISO images usually do not require a product key to proceed, however this is not true with Enterprise and Retail ISO images.
 
-#### TIMEOUT
+##### TIMEOUT
 
 Defaults to 1h. Supports variables in h (hour) and m (Minutes).
 
-#### VHDX
+##### VHDX
 
 Path to Microsoft Windows VHDX image used to build the image.
 
-#### VERSION
+##### VERSION
 
 Specify the Microsoft Windows Version. Example inputs include: 2025, 2022, 2019, 2016, 10 and 11. Currently defaults to 2022.
 
-
-### Uploading Windows images to MAAS
+### Upload Windows images to MAAS
 
 Use MAAS CLI to upload the image:
 

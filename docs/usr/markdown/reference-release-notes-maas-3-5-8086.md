@@ -2,6 +2,16 @@
 
 This section recaps the release history of MAAS version 3.5.
 
+### MAAS 3.5.4 has been released
+
+We are happy to announce that MAAS 3.5.4 has been released, with the following bug fixes
+- [2095477](https://bugs.launchpad.net/maas/+bug/2095477)**^**: boot-resources read is slow when there are a lot of images that have been deployed a lot of times
+- [2092172](https://bugs.launchpad.net/bugs/2092172)**^**:  Redfish powerdriver I/O operation on closed file.
+- [2099949](https://bugs.launchpad.net/bugs/2099949)**^**:  Redfish power driver requests fails with 412 status code 
+- (No bug link) HW sync fails due to MAAS/metadata/2012-03-01 HTTP Error 409: Conflict.
+- [2095019](https://bugs.launchpad.net/maas/+bug/2095019)**^**: read the global configurations disk_erase_with_secure_erase and disk_erase_with_quick_erase when releasing a machine
+- [2091370](https://bugs.launchpad.net/maas/+bug/2091370)**^**: MAAS snap build pulls python modules from outside Ubuntu Archive / MAAS PPAs
+
 ### MAAS 3.5.3 has been released
 
 We are happy to announce that MAAS 3.5.3 has been released, with the following bug fixes
