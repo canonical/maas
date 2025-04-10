@@ -33,6 +33,7 @@ class PowerParam:
     driver_type: str
     driver_opts: dict[str, Any]
     task_queue: str
+    is_dpu: bool
 
 
 @dataclass

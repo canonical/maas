@@ -1,4 +1,4 @@
-# Copyright 2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2020-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import argparse
@@ -10,6 +10,15 @@ from twisted.internet.task import react
 
 # This import causes asyncioreactor to be installed
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+
+
+class InvalidDPUCommandError(Exception):
+    """
+    An exception thrown when a power command is issue alongside the `is-dpu`
+    parser option that is an unsupported action on a DPU.
+    """
+
+    pass
 
 
 def _create_subparser(driver_settings, parser):
@@ -62,6 +71,13 @@ def add_arguments(parser):
         help="Power driver command.",
         choices=["status", "on", "cycle", "off", "reset"],
     )
+    parser.add_argument(
+        "--is-dpu",
+        help="Specifies whether the provided power command is for a DPU or not.",
+        dest="is_dpu",
+        default=False,
+        action="store_true",
+    )
 
     # NOTE: In python 3.7 and above required=True can be passed to add_subparsers.
     #       To replicate the behaviour in earlier versions we need to provide a
@@ -85,19 +101,27 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
     driver = driver_registry[args.driver]
     context = _collect_context(driver.settings, args)
 
-    if command == "on":
-        await driver.on(None, context)
-    elif command == "cycle":
-        await driver.cycle(None, context)
-    elif command == "off":
-        await driver.off(None, context)
-    elif command == "reset":
-        await driver.reset(None, context)
-    elif command == "set-boot-order" and driver.can_set_boot_order:
+    if command == "set-boot-order" and driver.can_set_boot_order:
         order = []
         if hasattr(args, "order"):
             order = args.order.split(",")
         await driver.set_boot_order(None, context, order)
+    elif args.is_dpu:
+        if command in ["on", "cycle", "reset"]:
+            await driver.reset(None, context)
+        else:
+            raise InvalidDPUCommandError(
+                f"Invalid power command to send to DPU: {args.command}"
+            )
+    else:
+        if command == "on":
+            await driver.on(None, context)
+        elif command == "cycle":
+            await driver.cycle(None, context)
+        elif command == "off":
+            await driver.off(None, context)
+        elif command == "reset":
+            await driver.reset(None, context)
 
     # Always show the status, which covers the 'status' command option and
     # gives the user feedback for any other commands.

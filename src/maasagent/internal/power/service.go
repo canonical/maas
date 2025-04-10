@@ -177,6 +177,7 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 type PowerParam struct {
 	DriverOpts map[string]any `json:"driver_opts"`
 	DriverType string         `json:"driver_type"`
+	IsDPU      bool           `json:"is_dpu"`
 }
 
 // PowerOnParam is the activity parameter for power management of a host
@@ -230,7 +231,7 @@ type PowerResetResult struct {
 }
 
 func (s *PowerService) PowerOn(ctx context.Context, param PowerOnParam) (*PowerOnResult, error) {
-	out, err := powerCommand(ctx, "on", param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "on", param.IsDPU, param.DriverType, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +245,7 @@ func (s *PowerService) PowerOn(ctx context.Context, param PowerOnParam) (*PowerO
 	return &PowerOnResult{State: out}, nil
 }
 func (s *PowerService) PowerOff(ctx context.Context, param PowerOffParam) (*PowerOffResult, error) {
-	out, err := powerCommand(ctx, "off", param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "off", param.IsDPU, param.DriverType, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +259,7 @@ func (s *PowerService) PowerOff(ctx context.Context, param PowerOffParam) (*Powe
 	return &PowerOffResult{State: out}, nil
 }
 func (s *PowerService) PowerCycle(ctx context.Context, param PowerCycleParam) (*PowerCycleResult, error) {
-	out, err := powerCommand(ctx, "cycle", param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "cycle", param.IsDPU, param.DriverType, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +274,7 @@ func (s *PowerService) PowerCycle(ctx context.Context, param PowerCycleParam) (*
 }
 
 func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*PowerQueryResult, error) {
-	out, err := powerCommand(ctx, "status", param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "status", param.IsDPU, param.DriverType, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +285,7 @@ func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*
 }
 
 func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*PowerResetResult, error) {
-	out, err := powerCommand(ctx, "reset", param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "reset", param.IsDPU, param.DriverType, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -309,12 +310,12 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 
 	log.Info("setting boot order of " + param.SystemID)
 
-	_, err := powerCommand(ctx, "set-boot-order", param.PowerParams.DriverType, param.PowerParams.DriverOpts)
+	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts)
 
 	return err
 }
 
-func powerCommand(ctx context.Context, action, driver string, opts map[string]any, bootOrder ...map[string]any) (string, error) {
+func powerCommand(ctx context.Context, action string, isDPU bool, driver string, opts map[string]any, bootOrder ...map[string]any) (string, error) {
 	log := activity.GetLogger(ctx)
 
 	maasPowerCLI, err := pathFactory(powerCLIExecutableName())
@@ -325,9 +326,19 @@ func powerCommand(ctx context.Context, action, driver string, opts map[string]an
 		return "", err
 	}
 
+	var args []string
+
+	args = append(args, action)
+
+	if isDPU {
+		args = append(args, "--is-dpu")
+	}
+
+	args = append(args, driver)
+
 	formattedOpts := fmtPowerOpts(opts)
 
-	args := append([]string{action, driver}, formattedOpts...)
+	args = append(args, formattedOpts...)
 
 	if action == "set-boot-order" {
 		bootOrderStr := make([]string, len(bootOrder))

@@ -1,4 +1,4 @@
-# Copyright 2012-2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -407,16 +407,16 @@ class POWER_WORKFLOW_ACTIONS:
     # a machine
     ON = "power_on"
 
-    # Temporal parameter to execute a workflow for powering on
+    # Temporal parameter to execute a workflow for powering off
     # a machine
     OFF = "power_off"
 
-    # Temporal parameter to execute a workflow for powering on
+    # Temporal parameter to execute a workflow for power cycling
     # a machine
     CYCLE = "power_cycle"
 
-    # Temporal parameter to execute a workflow for powering on
-    # a machine
+    # Temporal parameter to execute a workflow for querying the
+    # power state of a machine
     QUERY = "power_query"
 
 

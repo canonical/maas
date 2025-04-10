@@ -4,7 +4,9 @@
 """Tests for register command code."""
 
 from argparse import ArgumentParser, Namespace
+from collections import defaultdict
 
+from testtools import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import ensureDeferred, inlineCallbacks
 
@@ -26,17 +28,31 @@ class FakeDriver(PowerDriver):
     settings = []
     _state = "off"
 
+    calls = defaultdict(list)
+
+    def __init__(self, clock=reactor):
+        super().__init__(clock)
+        self.calls = defaultdict(list)
+
     def power_on(self, *args, **kwargs):
         self._state = "on"
+        self.calls["power_on"].append(True)
 
     def power_off(self, *args, **kwargs):
         self._state = "off"
+        self.calls["power_off"].append(True)
 
     def power_query(self, *args, **kwargs):
+        self.calls["power_query"].append(True)
         return self._state
 
+    def power_cycle(self, *args, **kwargs):
+        self._state = "on"
+        self.calls["power_cycle"].append(True)
+
     def power_reset(self, *args, **kwargs):
-        raise NotImplementedError()
+        self._state = "on"
+        self.calls["power_reset"].append(True)
 
 
 class TestPowerDriverCommand(MAASTestCase):
@@ -124,11 +140,109 @@ class TestPowerDriverCommand(MAASTestCase):
         self.assertEqual(args.power_driver, "LAN_2_0")
         self.assertEqual(args.workaround_flags, ["opensesspriv", "authcap"])
 
+    def test_parse_args_dpu(self):
+        """
+        Ensure the `--is-dpu` flag is set correctly when given.
+        """
+
+        args = power_driver_command._parse_args(
+            [
+                "reset",
+                "--is-dpu",
+                "redfish",
+                "--power-address",
+                "addr",
+                "--power-user",
+                "maas",
+                "--power-pass",
+                "maas",
+            ]
+        )
+
+        self.assertEqual(args.command, "reset")
+        self.assertEqual(args.is_dpu, True)
+        self.assertEqual(args.driver, "redfish")
+        self.assertEqual(args.power_address, "addr")
+        self.assertEqual(args.power_user, "maas")
+        self.assertEqual(args.power_pass, "maas")
+
+    @inlineCallbacks
+    def test_dpu_calls_reset_on_power_reset(self):
+        args = Namespace()
+        args.command = "reset"
+        args.driver = "fake"
+        args.is_dpu = True
+
+        driver = FakeDriver()
+        registry = {"fake": driver}
+
+        status = yield ensureDeferred(
+            power_driver_command._run(reactor, args, registry)
+        )
+
+        self.assertEqual(status, "on")
+        self.assertEqual(len(driver.calls["power_reset"]), 1)
+
+    @inlineCallbacks
+    def test_dpu_calls_reset_on_power_on(self):
+        args = Namespace()
+        args.command = "on"
+        args.driver = "fake"
+        args.is_dpu = True
+
+        driver = FakeDriver()
+        registry = {"fake": driver}
+
+        status = yield ensureDeferred(
+            power_driver_command._run(reactor, args, registry)
+        )
+
+        self.assertEqual(status, "on")
+        self.assertEqual(len(driver.calls["power_on"]), 0)
+        self.assertEqual(len(driver.calls["power_reset"]), 1)
+
+    @inlineCallbacks
+    def test_dpu_calls_reset_on_power_cycle(self):
+        args = Namespace()
+        args.command = "cycle"
+        args.driver = "fake"
+        args.is_dpu = True
+
+        driver = FakeDriver()
+        registry = {"fake": driver}
+
+        status = yield ensureDeferred(
+            power_driver_command._run(reactor, args, registry)
+        )
+
+        self.assertEqual(status, "on")
+        self.assertEqual(len(driver.calls["power_cycle"]), 0)
+        self.assertEqual(len(driver.calls["power_reset"]), 1)
+
+    @inlineCallbacks
+    def test_dpu_invalid_command_raises_error(self):
+        args = Namespace()
+        args.command = "off"
+        args.driver = "fake"
+        args.is_dpu = True
+
+        driver = FakeDriver()
+        registry = {"fake": driver}
+
+        with ExpectedException(
+            power_driver_command.InvalidDPUCommandError,
+            f"Invalid power command to send to DPU: {args.command}",
+        ):
+            _ = yield ensureDeferred(
+                power_driver_command._run(reactor, args, registry)
+            )
+
     @inlineCallbacks
     def test_run(self):
         args = Namespace()
         args.command = "on"
         args.driver = "fake"
+        args.is_dpu = False
 
         driver = FakeDriver()
         registry = {"fake": driver}

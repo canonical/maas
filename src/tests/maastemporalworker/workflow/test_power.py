@@ -141,6 +141,7 @@ class TestGetTemporalQueueForMachine:
                 task_queue="agent:power@vlan-1",
                 driver_type=params.power_type,
                 driver_opts=params.power_parameters,
+                is_dpu=False,
             )
 
     def test_convert_power_action_to_power_workflow_fail_unknown(
@@ -221,6 +222,7 @@ class TestPowerResetWorkflow:
                 "power_user": "maas",
                 "power_pass": "maas",
             },
+            is_dpu=False,
         )
 
         # The PowerResetParam in the workflow in python is defined as:

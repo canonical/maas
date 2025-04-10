@@ -3287,6 +3287,9 @@ class Node(CleanSave, TimestampedModel):
             ):
                 can_be_started = False
                 can_be_stopped = False
+            elif self.is_dpu:
+                can_be_started = True
+                can_be_stopped = False
             else:
                 can_be_started = True
                 can_be_stopped = True
@@ -5995,6 +5998,7 @@ class Node(CleanSave, TimestampedModel):
                             driver_type=str(power_info.power_type),
                             driver_opts=dict(power_info.power_parameters),
                             task_queue=task_queue,
+                            is_dpu=self.is_dpu,
                         ),
                         ephemeral_deploy=bool(self.ephemeral_deploy),
                         can_set_boot_order=bool(power_info.can_set_boot_order),
@@ -6299,7 +6303,11 @@ class Node(CleanSave, TimestampedModel):
         return d
 
     def _power_control_node(
-        self, defer, power_method_name, power_info, order=None
+        self,
+        defer,
+        power_method_name,
+        power_info,
+        order=None,
     ):
         # Check if the BMC is accessible. If not we need to do some work to
         # make sure we can determine which rack controller can power
@@ -6393,6 +6401,7 @@ class Node(CleanSave, TimestampedModel):
                         power_method_name.replace("_", "-"),
                         self,
                         power_info,
+                        self.is_dpu,
                     ),
                 )
 
@@ -6603,6 +6612,7 @@ class Node(CleanSave, TimestampedModel):
             if self.previous_status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
                 self._stop(user)
             elif self.previous_status == NODE_STATUS.DEPLOYED:
+                # TODO: Power reset when DPU?
                 self._power_cycle()
         except Exception as error:
             self.update_status(old_status)

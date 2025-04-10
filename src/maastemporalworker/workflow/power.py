@@ -129,6 +129,7 @@ class PowerOnWorkflow:
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
+                "is_dpu": param.is_dpu,
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -153,6 +154,7 @@ class PowerOffWorkflow:
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
+                "is_dpu": param.is_dpu,
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -177,6 +179,7 @@ class PowerCycleWorkflow:
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
+                "is_dpu": param.is_dpu,
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -201,6 +204,7 @@ class PowerQueryWorkflow:
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
+                "is_dpu": param.is_dpu,
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -246,6 +250,7 @@ class PowerResetWorkflow:
             {
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
+                "is_dpu": param.is_dpu,
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -292,7 +297,10 @@ class UnknownPowerActionException(Exception):
 
 # XXX: remove this temporary solution, once we switch to SQLAlchemy
 def convert_power_action_to_power_workflow(
-    power_action: str, machine: Any, extra_params: Optional[Any] = None
+    power_action: str,
+    machine: Any,
+    extra_params: Optional[Any] = None,
+    is_dpu: bool = False,
 ) -> tuple[str, Any]:
     """
     This function converts power action and power parameters into Power
@@ -311,6 +319,7 @@ def convert_power_action_to_power_workflow(
                     task_queue=get_temporal_task_queue_for_bmc(machine),
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
+                    is_dpu=is_dpu,
                 ),
             )
         case PowerAction.POWER_OFF.value:
@@ -321,6 +330,7 @@ def convert_power_action_to_power_workflow(
                     task_queue=get_temporal_task_queue_for_bmc(machine),
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
+                    is_dpu=is_dpu,
                 ),
             )
         case PowerAction.POWER_CYCLE.value:
@@ -331,6 +341,7 @@ def convert_power_action_to_power_workflow(
                     task_queue=get_temporal_task_queue_for_bmc(machine),
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
+                    is_dpu=is_dpu,
                 ),
             )
         case PowerAction.POWER_QUERY.value:
@@ -341,6 +352,7 @@ def convert_power_action_to_power_workflow(
                     task_queue=get_temporal_task_queue_for_bmc(machine),
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
+                    is_dpu=is_dpu,
                 ),
             )
         case PowerAction.POWER_RESET.value:
@@ -351,6 +363,7 @@ def convert_power_action_to_power_workflow(
                     task_queue=get_temporal_task_queue_for_bmc(machine),
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
+                    is_dpu=is_dpu,
                 ),
             )
         case _:

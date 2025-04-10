@@ -25,6 +25,7 @@ from maascommon.workflows.power import (
     PowerOnParam,
     PowerParam,
     PowerQueryParam,
+    PowerResetParam,
 )
 from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTable
@@ -49,10 +50,12 @@ from maastemporalworker.workflow.power import (
     POWER_OFF_ACTIVITY_NAME,
     POWER_ON_ACTIVITY_NAME,
     POWER_QUERY_ACTIVITY_NAME,
+    POWER_RESET_ACTIVITY_NAME,
     PowerCycleResult,
     PowerOffResult,
     PowerOnResult,
     PowerQueryResult,
+    PowerResetResult,
     SET_POWER_STATE_ACTIVITY_NAME,
     SetPowerStateParam,
 )
@@ -256,6 +259,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
         async def set_power_state(params: SetPowerStateParam) -> None:
             calls["set_power_state"].append(True)
@@ -274,6 +282,7 @@ class TestDeployManyWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -290,6 +299,7 @@ class TestDeployManyWorkflow:
                                     driver_type=bmc["power_type"],
                                     driver_opts=bmc["power_parameters"],
                                     task_queue=worker.task_queue,
+                                    is_dpu=machine["is_dpu"],
                                 ),
                             ),
                         ],
@@ -322,6 +332,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
+                assert len(calls["power_reset"]) == 0
 
     async def test_deploy_n_workflow_handles_aborted_deployment(
         self,
@@ -380,6 +391,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
         async def set_power_state(params: SetPowerStateParam) -> None:
             calls["set_power_state"].append(True)
@@ -398,6 +414,7 @@ class TestDeployManyWorkflow:
                     power_on,
                     power_off,
                     set_power_state,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -414,6 +431,7 @@ class TestDeployManyWorkflow:
                                     driver_type=bmc["power_type"],
                                     driver_opts=bmc["power_parameters"],
                                     task_queue=worker.task_queue,
+                                    is_dpu=machine["is_dpu"],
                                 ),
                             ),
                         ],
@@ -442,6 +460,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) <= 1
                 assert len(calls["power_cycle"]) == 0
+                assert len(calls["power_reset"]) == 0
 
     async def test_multiple_machine_deploy_success(
         self,
@@ -519,6 +538,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
         async def set_power_state(params: SetPowerStateParam) -> None:
             calls["set_power_state"].append(True)
@@ -537,6 +561,7 @@ class TestDeployManyWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -555,6 +580,7 @@ class TestDeployManyWorkflow:
                                         "power_parameters"
                                     ],
                                     task_queue=worker.task_queue,
+                                    is_dpu=machine["is_dpu"],
                                 ),
                             )
                             for machine in machines
@@ -591,6 +617,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 3
+                assert len(calls["power_reset"]) == 0
 
     async def test_one_set_boot_order(
         self,
@@ -671,6 +698,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
         async def set_boot_order(params: SetBootOrderParam) -> None:
             calls["set_boot_order"].append(True)
@@ -694,6 +726,7 @@ class TestDeployManyWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -712,6 +745,7 @@ class TestDeployManyWorkflow:
                                         "power_parameters"
                                     ],
                                     task_queue=worker.task_queue,
+                                    is_dpu=machine["is_dpu"],
                                 ),
                             )
                             for i, machine in enumerate(machines)
@@ -745,6 +779,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 3
+                assert len(calls["power_reset"]) == 0
 
     async def test_one_ephemeral(
         self,
@@ -822,6 +857,11 @@ class TestDeployManyWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
         async def set_boot_order(params: SetBootOrderParam) -> None:
             calls["set_boot_order"].append(True)
@@ -846,6 +886,7 @@ class TestDeployManyWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -864,6 +905,7 @@ class TestDeployManyWorkflow:
                                         "power_parameters"
                                     ],
                                     task_queue=worker.task_queue,
+                                    is_dpu=machine["is_dpu"],
                                 ),
                             )
                             for i, machine in enumerate(machines)
@@ -897,6 +939,7 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 3
+                assert len(calls["power_reset"]) == 0
 
 
 @pytest.mark.asyncio
@@ -957,6 +1000,11 @@ class TestDeployWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
         async def set_power_state(params: SetPowerStateParam) -> None:
             calls["set_power_state"].append(True)
@@ -975,6 +1023,7 @@ class TestDeployWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -989,6 +1038,7 @@ class TestDeployWorkflow:
                             driver_type=bmc["power_type"],
                             driver_opts=bmc["power_parameters"],
                             task_queue=worker.task_queue,
+                            is_dpu=machine["is_dpu"],
                         ),
                     ),
                     id=f"workflow-{uuid.uuid4()}",
@@ -1013,6 +1063,7 @@ class TestDeployWorkflow:
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
+                assert len(calls["power_reset"]) == 0
 
     async def test_deploy_workflow_timeout(
         self,
@@ -1046,6 +1097,7 @@ class TestDeployWorkflow:
                             driver_type=bmc["power_type"],
                             driver_opts=bmc["power_parameters"],
                             task_queue=worker.task_queue,
+                            is_dpu=machine["is_dpu"],
                         ),
                     ),
                     id=f"workflow-{uuid.uuid4()}",
@@ -1119,6 +1171,11 @@ class TestDeployWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
         async def set_power_state(params: SetPowerStateParam) -> None:
             calls["set_power_state"].append(True)
@@ -1137,6 +1194,7 @@ class TestDeployWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -1151,6 +1209,7 @@ class TestDeployWorkflow:
                             driver_type=bmc["power_type"],
                             driver_opts=bmc["power_parameters"],
                             task_queue=worker.task_queue,
+                            is_dpu=machine["is_dpu"],
                         ),
                     ),
                     id=f"workflow-{uuid.uuid4()}",
@@ -1174,6 +1233,7 @@ class TestDeployWorkflow:
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
+                assert len(calls["power_reset"]) == 0
 
     async def test_deploy_workflow_set_boot_order(
         self,
@@ -1233,6 +1293,11 @@ class TestDeployWorkflow:
             calls["power_off"].append(True)
             return PowerOffResult(state="off")
 
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
         @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
         async def set_boot_order(params: SetBootOrderParam) -> None:
             calls["set_boot_order"].append(True)
@@ -1257,6 +1322,7 @@ class TestDeployWorkflow:
                     power_cycle,
                     power_on,
                     power_off,
+                    power_reset,
                 ],
             ) as worker:
                 wf = await env.client.start_workflow(
@@ -1271,6 +1337,7 @@ class TestDeployWorkflow:
                             driver_type=bmc["power_type"],
                             driver_opts=bmc["power_parameters"],
                             task_queue=worker.task_queue,
+                            is_dpu=machine["is_dpu"],
                         ),
                     ),
                     id=f"workflow-{uuid.uuid4()}",
@@ -1296,3 +1363,4 @@ class TestDeployWorkflow:
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
+                assert len(calls["power_reset"]) == 0

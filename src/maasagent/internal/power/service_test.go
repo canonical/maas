@@ -95,7 +95,7 @@ func TestPowerOn(t *testing.T) {
 		},
 	}
 
-	// Define the arguments expect the `maas.power`` command to be called with
+	// Define the arguments expect the `maas.power` command to be called with
 	expectedArgs := append([]string{"on", param.DriverType}, fmtPowerOpts(param.DriverOpts)...)
 
 	expectedResult := PowerOnResult{
@@ -156,7 +156,7 @@ func TestPowerOff(t *testing.T) {
 		},
 	}
 
-	// Define the arguments expect the `maas.power`` command to be called with
+	// Define the arguments expect the `maas.power` command to be called with
 	expectedArgs := append([]string{"off", param.DriverType}, fmtPowerOpts(param.DriverOpts)...)
 
 	expectedResult := PowerOffResult{
@@ -217,7 +217,7 @@ func TestPowerCycle(t *testing.T) {
 		},
 	}
 
-	// Define the arguments expect the `maas.power`` command to be called with
+	// Define the arguments expect the `maas.power` command to be called with
 	expectedArgs := append([]string{"cycle", param.DriverType}, fmtPowerOpts(param.DriverOpts)...)
 
 	expectedResult := PowerCycleResult{
@@ -278,7 +278,7 @@ func TestPowerQuery(t *testing.T) {
 		},
 	}
 
-	// Define the arguments expect the `maas.power`` command to be called with
+	// Define the arguments expect the `maas.power` command to be called with
 	expectedArgs := append([]string{"status", param.DriverType}, fmtPowerOpts(param.DriverOpts)...)
 
 	expectedResult := PowerQueryResult{
@@ -340,8 +340,195 @@ func TestPowerReset(t *testing.T) {
 		},
 	}
 
-	// Define the arguments expect the `maas.power`` command to be called with
+	// Define the arguments expect the `maas.power` command to be called with
 	expectedArgs := append([]string{"reset", param.DriverType}, fmtPowerOpts(param.DriverOpts)...)
+
+	expectedResult := PowerResetResult{
+		State: "on",
+	}
+
+	// Override the factories defined in service.go with mocks
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+		}
+
+		stdout.WriteString("on")
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	// Setup the environment to test a temporal activity with
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.PowerReset)
+
+	// Run the activity/test
+	val, err := env.ExecuteActivity(ps.PowerReset, param)
+
+	// Ensure the powerCommand was called correctly
+	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
+	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
+
+	// Ensure the power command returns the anticipated state, without error
+	assert.NoError(t, err)
+
+	var res PowerResetResult
+
+	assert.NoError(t, val.Get(&res))
+	assert.Equal(t, expectedResult.State, res.State)
+}
+
+func TestPowerOnDPU(t *testing.T) {
+	// Setup a redfish power on activity input
+	param := PowerOnParam{
+		PowerParam: PowerParam{
+			DriverOpts: map[string]any{
+				"power_address": "0.0.0.0",
+				"power_user":    "maas",
+				"power_pass":    "maas",
+			},
+			DriverType: "Redfish",
+			IsDPU:      true,
+		},
+	}
+
+	// Define the arguments expect the `maas.power` command to be called with
+	expectedArgs := append([]string{"on", param.DriverType, "--is-dpu"}, fmtPowerOpts(param.DriverOpts)...)
+
+	expectedResult := PowerOnResult{
+		State: "on",
+	}
+
+	// Override the factories defined in service.go with mocks
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+		}
+
+		stdout.WriteString("on")
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	// Setup the environment to test a temporal activity with
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.PowerOn)
+
+	// Run the activity/test
+	val, err := env.ExecuteActivity(ps.PowerOn, param)
+
+	// Ensure the powerCommand was called correctly
+	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
+	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
+
+	// Ensure the power command returns the anticipated state, without error
+	assert.NoError(t, err)
+
+	var res PowerOnResult
+
+	assert.NoError(t, val.Get(&res))
+	assert.Equal(t, expectedResult.State, res.State)
+}
+
+func TestPowerCycleDPU(t *testing.T) {
+	// Setup a redfish power cycle activity input
+	param := PowerCycleParam{
+		PowerParam: PowerParam{
+			DriverOpts: map[string]any{
+				"power_address": "0.0.0.0",
+				"power_user":    "maas",
+				"power_pass":    "maas",
+			},
+			DriverType: "Redfish",
+			IsDPU:      true,
+		},
+	}
+
+	// Define the arguments expect the `maas.power` command to be called with
+	expectedArgs := append([]string{"cycle", param.DriverType, "--is-dpu"}, fmtPowerOpts(param.DriverOpts)...)
+
+	expectedResult := PowerCycleResult{
+		State: "on",
+	}
+
+	// Override the factories defined in service.go with mocks
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+		}
+
+		stdout.WriteString("on")
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	// Setup the environment to test a temporal activity with
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.PowerCycle)
+
+	// Run the activity/test
+	val, err := env.ExecuteActivity(ps.PowerCycle, param)
+
+	// Ensure the powerCommand was called correctly
+	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
+	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
+
+	// Ensure the power command returns the anticipated state, without error
+	assert.NoError(t, err)
+
+	var res PowerCycleResult
+
+	assert.NoError(t, val.Get(&res))
+	assert.Equal(t, expectedResult.State, res.State)
+}
+
+func TestPowerResetDPU(t *testing.T) {
+	// Setup a redfish power reset activity input
+	// The example below would be typical for a power reset trigger for a DPU
+	param := PowerResetParam{
+		PowerParam: PowerParam{
+			DriverOpts: map[string]any{
+				"power_address": "0.0.0.0",
+				"power_user":    "maas",
+				"power_pass":    "maas",
+			},
+			DriverType: "redfish",
+			IsDPU:      true,
+		},
+	}
+
+	// Define the arguments expect the `maas.power` command to be called with
+	expectedArgs := append([]string{"reset", param.DriverType, "--is-dpu"}, fmtPowerOpts(param.DriverOpts)...)
 
 	expectedResult := PowerResetResult{
 		State: "on",
