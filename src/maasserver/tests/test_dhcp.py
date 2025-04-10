@@ -1167,6 +1167,146 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         servers = get_default_dns_servers(rack_controller, subnet)
         self.assertEqual(servers, [])
 
+    def test_mixed_ip_families_provides_only_subnet_family_ipv4(self):
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
+        mock_get_source_address.return_value = "10.0.0.1"
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN()
+        r1 = factory.make_RegionRackController(interface=False)
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
+        subnet1 = factory.make_Subnet(
+            vlan=vlan1, cidr="10.0.0.0/24", allow_dns=True
+        )
+        subnet2 = factory.make_Subnet(
+            vlan=vlan2, cidr="fd42:be3f:b08a:3d6c::/64", allow_dns=True
+        )
+        r1_interface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan1, node=r1
+        )
+        r1_interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan2, node=r1
+        )
+        r1_address1 = factory.make_StaticIPAddress(
+            interface=r1_interface1,
+            subnet=subnet1,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        factory.make_StaticIPAddress(
+            interface=r1_interface2,
+            subnet=subnet2,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        servers = get_default_dns_servers(r1, subnet1, True)
+        self.assertCountEqual(servers, [IPAddress(r1_address1.ip)])
+
+    def test_mixed_ip_families_provides_only_subnet_family_ipv6(self):
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
+        mock_get_source_address.return_value = "fd42:be3f:b08a:3d6c::1"
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN()
+        r1 = factory.make_RegionRackController(interface=False)
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
+        subnet1 = factory.make_Subnet(
+            vlan=vlan1, cidr="10.0.0.0/24", allow_dns=True
+        )
+        subnet2 = factory.make_Subnet(
+            vlan=vlan2, cidr="fd42:be3f:b08a:3d6c::/64", allow_dns=True
+        )
+        r1_interface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan1, node=r1
+        )
+        r1_interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan2, node=r1
+        )
+        factory.make_StaticIPAddress(
+            interface=r1_interface1,
+            subnet=subnet1,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        r1_address2 = factory.make_StaticIPAddress(
+            interface=r1_interface2,
+            subnet=subnet2,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        servers = get_default_dns_servers(r1, subnet2, True)
+        self.assertCountEqual(servers, [IPAddress(r1_address2.ip)])
+
+    def test_mixed_ip_families_provides_only_subnet_family_default_region_ip_ipv4(
+        self,
+    ):
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
+        mock_get_source_address.return_value = "fd42:be3f:b08a:3d6c::1"
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN()
+        r1 = factory.make_RegionRackController(interface=False)
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
+        subnet1 = factory.make_Subnet(
+            vlan=vlan1, cidr="10.0.0.0/24", allow_dns=True
+        )
+        subnet2 = factory.make_Subnet(
+            vlan=vlan2, cidr="fd42:be3f:b08a:3d6c::/64", allow_dns=True
+        )
+        r1_interface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan1, node=r1
+        )
+        r1_interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan2, node=r1
+        )
+        factory.make_StaticIPAddress(
+            interface=r1_interface1,
+            subnet=subnet1,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        factory.make_StaticIPAddress(
+            interface=r1_interface2,
+            subnet=subnet2,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        servers = get_default_dns_servers(r1, subnet1, False)
+        self.assertCountEqual(servers, [])
+
+    def test_mixed_ip_families_provides_only_subnet_family_default_region_ip_ipv6(
+        self,
+    ):
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
+        mock_get_source_address.return_value = "10.0.0.1"
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN()
+        r1 = factory.make_RegionRackController(interface=False)
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
+        subnet1 = factory.make_Subnet(
+            vlan=vlan1, cidr="10.0.0.0/24", allow_dns=True
+        )
+        subnet2 = factory.make_Subnet(
+            vlan=vlan2, cidr="fd42:be3f:b08a:3d6c::/64", allow_dns=True
+        )
+        r1_interface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan1, node=r1
+        )
+        r1_interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan2, node=r1
+        )
+        factory.make_StaticIPAddress(
+            interface=r1_interface1,
+            subnet=subnet1,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        factory.make_StaticIPAddress(
+            interface=r1_interface2,
+            subnet=subnet2,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        servers = get_default_dns_servers(r1, subnet2, False)
+        self.assertCountEqual(servers, [])
+
 
 class TestMakeSubnetConfig(MAASServerTestCase):
     """Tests for `make_subnet_config`."""
@@ -1235,6 +1375,60 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
         self.assertEqual([maas_dns], config["dns_servers"])
+
+    def test_only_sets_ipv4_dns_ips_for_dhcp4_rack_ip(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN()
+        subnet1 = factory.make_Subnet(vlan=vlan1, dns_servers=[], version=4)
+        factory.make_Subnet(vlan=vlan2, dns_servers=[], version=6)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            vlan=vlan1,
+            node=rack_controller,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            vlan=vlan2,
+            node=rack_controller,
+        )
+        dns_servers = [
+            IPAddress(factory.make_ipv4_address()),
+            IPAddress(factory.make_ipv6_address()),
+        ]
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet1, dns_servers, ntp_servers, default_domain
+        )
+        self.assertEqual(dns_servers[:1], config["dns_servers"])
+
+    def test_only_sets_ipv6_dns_ips_for_dhcp6_rack_ip(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN()
+        factory.make_Subnet(vlan=vlan1, dns_servers=[], version=4)
+        subnet2 = factory.make_Subnet(vlan=vlan2, dns_servers=[], version=6)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            vlan=vlan1,
+            node=rack_controller,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            vlan=vlan2,
+            node=rack_controller,
+        )
+        dns_servers = [
+            IPAddress(factory.make_ipv4_address()),
+            IPAddress(factory.make_ipv6_address()),
+        ]
+        ntp_servers = [factory.make_name("ntp")]
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet2, dns_servers, ntp_servers, default_domain
+        )
+        self.assertEqual(dns_servers[1:], config["dns_servers"])
 
     def test_sets_ntp_from_list_argument(self):
         rack_controller = factory.make_RackController(interface=False)

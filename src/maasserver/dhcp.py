@@ -447,7 +447,16 @@ def make_subnet_config(
     if subnet.allow_dns and default_dns_servers:
         # If the MAAS DNS server is enabled make sure that is used first.
         if subnet.gateway_ip:
-            dns_servers += default_dns_servers
+            # If subnet is IPv6, dhcpd6 cannot be configured with IPv4 addresses in this option,
+            # and vice-versa for dhcpd and IPv6 DNS servers, so we filter them out here
+            # mixed address families can be valid assuming there is a NAT, which can be configured in netplan,
+            # and set as the DNS servers for a given subnet, but for dhcpd/6 we must filter them out
+            dns_servers += [
+                dns_srvr
+                for dns_srvr in default_dns_servers
+                if dns_srvr
+                and IPAddress(dns_srvr).version == ip_network.version
+            ]
         else:
             # if there is no gateway, only provide in-subnet dns servers
             dns_servers += [
@@ -581,6 +590,8 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
 
     if default_region_ip:
         default_region_ip = IPAddress(default_region_ip)
+        if default_region_ip.version != ip_version:
+            default_region_ip = None
     if use_rack_proxy:
         # Add the IP address for the rack controllers on the subnet before the
         # region DNS servers.
