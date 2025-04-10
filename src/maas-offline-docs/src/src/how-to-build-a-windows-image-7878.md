@@ -1,131 +1,120 @@
-MAAS Image Builder is an older tool, still required to build Windows images.  This page explains how to use it.
-
-> In order to use MAAS Image Builder, you must purchase [Ubuntu Pro](https://ubuntu.com/pricing/pro)**^**.
-
-You can customise most images as much or as little as you wish, then use them to commission machines with MAAS. 
-
-To get MAAS Image Builder, you must be subscribed to a private PPA provided by Canonical Support to those customers who have purchased [Ubuntu Pro](https://ubuntu.com/pricing/pro)**^**. Note that the steps below will fail if you have not purchased Ubuntu Advantage and been subscribed to the private PPA by your Canonical support rep.
-
-Once subscribed, you need to obtain your credentials at this external link:
-
-https://launchpad.net/~/+archivesubscriptions
-
-Also, you must add the repository with the <code>add-apt-repository</code> command. Note: Be sure to substitute your unique URL in the command below:
-
-   ```nohighlight
-$ sudo add-apt-repository \
-    “https://LaunchpadID:Password@private-ppa.launchpad.net/maas-image-builder-partners/stable/ubuntu"
-   ```
-	
-Once you have added the private PPA, you can install the Image Builder like this:
-
-   ```nohighlight
-    $ sudo apt-get install maas-image-builder
-   ```
-	
-All done? Great!  Now you can build and customise images for MAAS machines, as shown in the sections below.
-
-## Create Windows images
+## Introduction
 
 Since Windows is a proprietary operating system, MAAS can't download these images. You need to manually generate images to use with MAAS by using Windows ISO images. On the upside, the end result will be much simpler, since there are CLI and WebUI tools to upload a Windows image -- which _helps_ automate the process.
 
-You can obtain Windows ISO images at the Microsoft Evaluation Center:
 
-https://www.microsoft.com/en-us/evalcenter **^*
+## Prerequisites (to create the image)
 
-<b>Windows editions</b>
+* A machine running Ubuntu 18.04+ with the ability to run KVM virtual machines.
+* qemu-utils, libnbd-bin, nbdkit and fuse2fs
+* qemu-system
+* ovmf
+* cloud-image-utils
+* [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli), v1.7.0 or newer
+* A copy of the [packer-maas](https://github.com/canonical/packer-maas) git repository:
+```
+git clone https://github.com/canonical/packer-maas.git
+```
+Note that Ubuntu 22.04+ is required to build Windows 11 images due to ```swtpm``` (Software TPM) package requirements.
 
-There are several Windows editions/install options supported by `maas-image-builder` (`--windows-edition` options):
+## Requirements (to deploy the image)
 
-- `win2008r2`
-- `win2008hvr2`
-- `win2012`
-- `win2012hv`
-- `win2012r2`
-- `win2012hvr2`
-- `win2016`
-- `win2016-core`
-- `win2016hv`
-- `win2016dc`
-- `win2016dc-core`
-- `win2019`
-- `win2019-core`
-- `win2019dc`
-- `win2019dc-core`
-- `win10ent`
-- `win10ent-eval`
-- `win2022`
-- `win2022-core`
+* [MAAS](https://maas.io) 3.2+
+* [Curtin](https://launchpad.net/curtin) 21.0+
 
-The examples in this section use Windows Hyper-V 2012 R2.
 
-## MIB for Windows
+## Supported Microsoft Windows Versions
 
-MAAS Image Builder (also known as "MIB") can automate the process of generating images for MAAS and <code>curtin</code>.
+This process has been build and deployment tested with the following versions of Microsoft Windows:
 
-Note, though, you may need Windows drivers to deploy the image on your specific hardware (see the `--windows-drivers` option).
+* Windows Server 2025
+* Windows Server 2022
+* Windows Server 2019
+* Windows Server 2016
+* Windows 10 PRO+
+* Windows 11 PRO+
 
-In order to obtain Windows updates, provide the <code>--windows-updates</code> option (and sufficient disk space, depending on the Windows edition/updates size, with the <code>--disk-size</code> option). This requires access to a bridged connection with a DHCP server (provide a network interface with the <code>maas-image-builder -i</code> option).
 
-Important: <b>UEFI and BIOS</b> systems require different Windows images, built with or without the `--uefi` option, respectively.
-(Windows ISO images in UEFI mode usually require connecting using a VNC client early to press any key to start Windows setup; see below.)
+## windows.pkr.hcl Template
 
-Important: <b>LXD Virtual Machines</b> require an UEFI image (`--uefi`) and VirtIO drivers (`--windows-drivers`).
-(In order to use/test the VirtIO drivers during image build, not just during image deploy, use `--virtio` and `--driver-store`.)
+This template builds a dd.tgz MAAS image from an official Microsoft Windows ISO/VHDX.
+This process also installs the latest VirtIO drivers as well as Cloudbase-init.
 
-    ```nohighlight
-    sudo maas-image-builder -o windows-win2012hvr2-amd64-root-dd windows \
-    --windows-iso win2012hvr2.iso  --windows-edition win2012hvr2 \
-    --windows-language en-US \
-    [--windows-drivers ~/Win2012hvr2_x64/DRIVERS/] \
-    [--windows-updates] [--disk-size 128G] \
-    [--uefi] [--virtio] [--driver-store]
-	```
 
-## Windows options
+## Obtaining Microsoft Windows ISO images
 
-MAAS Image Builder options for Windows images can be listed with the following command:
+You can obtains Microsoft Windows Evaluation ISO/VHDX images from the following links:
 
-```nohighlight
-	sudo maas-image-builder -o windows --help
+* [Windows Server 2025](https://www.microsoft.com/en-us/evalcenter/download-windows-server-2025)
+* [Windows Server 2022](https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022)
+* [Windows Server 2019](https://www.microsoft.com/en-us/evalcenter/download-windows-server-2019)
+* [Windows Server 2016](https://www.microsoft.com/en-us/evalcenter/download-windows-server-2016)
+* [Windows 10 Enterprise](https://www.microsoft.com/en-us/evalcenter/download-windows-10-enterprise)
+* [Windows 11 Enterprise](https://www.microsoft.com/en-us/evalcenter/download-windows-11-enterprise)
+
+
+### Building the image
+
+The build the image you give the template a script which has all the customization:
+
+```shell
+sudo make windows ISO=<path-to-iso> VERSION=<windows-version>
 ```
 
-Note that this is different from the MAAS Image Builder generic/image-independent options, which can be listed with the following command:
+Example:
 
-```nohighlight
-	sudo maas-image-builder --help
+```shell
+sudo make ISO=/mnt/iso/Windows_Server_2025_SERVER_EVAL_x64FRE_en-us.iso VERSION=2025
 ```
 
-Some of the Windows-specific options include:
+### Makefile Parameters
 
-- `--windows-iso`: path to the Windows ISO image.
-- `--windows-edition`: identifier for the Windows edition/option being installed (see above).
-- `--windows-license-key`: Windows license key (required with non-evaluation editions)
-- `--windows-language`: Windows installation language (default: `en-US`)
-- `--windows-updates`: download and install Windows Updates (requires internet access; might require a larger `--disk-size` option)
-- `--windows-drivers`: path to directory with Windows drivers to be installed (requires internet access; uses the Windows Driver Kit, by default)
-- `--driver-store`: combined with `--windows-drivers`, uses the Windows Driver Store to install drivers early into Windows Setup and image (does not require internet access; does not use the Windows Driver Kit).
+#### EDIT
 
-Some Windows-specific platform options:
+The edition of a targeted ISO image. It defaults to PRO for Microsoft Windows 10/11 and SERVERSTANDARD for Microsoft Windows Servers. Many Microsoft Windows Server ISO images do contain multiple editions and this prarameter is useful to build a particular edition such as Standard or Datacenter etc.
 
-- `--uefi`: use UEFI partition layout and firmware
-- `--virtio`: use paravirtualized VirtIO SCSI and VirtIO NET devices (instead of emulated devices) for installation (requires `--windows-drivers`)
-- `--disk-size`: specify the (virtual) disk size for Windows setup (must be larger for `--windows-updates`; increases deployment/copy-to-disk time, and is expanded to physical disk size during deployment)
+#### HEADLESS
 
-## Debugging
+Whether VNC viewer should not be launched. Default is set to false. This is useful when building images on machiens that do not have graphical libraries such as SDL/GTK installed. Headless mode does include an open VNC port to monitor the build process if needed.
 
-You can debug the Windows installation process by connecting to <code>localhost:5901</code> using a VNC client (e.g., `vncviewer`).
+#### ISO
 
-You can pause the Windows installation process at the last step for inspection/debugging in PowerShell with the `--powershell` option.
+Path to Microsoft Windows ISO image used to build the MAAS image.
 
-## Installing in MAAS
+#### PACKER_LOG
 
-The generated images need to be placed into the correct directories so MAAS can deploy them onto a node:
+Enable (1) or Disable (0) verbose packer logs. The default value is set to 0.
 
-```nohighlight
-    maas admin boot-resources create name=windows/win2012hvr2 \
-    architecture=amd64/generic filetype=ddtgz \ 
-    content@=./build-output/windows-win2012hvr2-amd64-root-dd 
+#### PKEY
+
+User supplied Microsoft Windows Product Key. When using KMS, you can obtain the activation keys from the link below:
+
+* [KMS Client Activation and Product Keys](https://learn.microsoft.com/en-us/windows-server/get-started/kms-client-activation-keys)
+
+Please note that PKEY is an optional parameter but it might be required during the build time depending on the type of ISO being used. Evaluation series ISO images usually do not require a product key to proceed, however this is not true with Enterprise and Retail ISO images.
+
+#### TIMEOUT
+
+Defaults to 1h. Supports variables in h (hour) and m (Minutes).
+
+#### VHDX
+
+Path to Microsoft Windows VHDX image used to build the image.
+
+#### VERSION
+
+Specify the Microsoft Windows Version. Example inputs include: 2025, 2022, 2019, 2016, 10 and 11. Currently defaults to 2022.
+
+
+## Uploading images to MAAS
+
+Use MAAS CLI to upload the image:
+
+```shell
+maas admin boot-resources create \
+    name='windows/windows-server' \
+    title='Windows Server' \
+    architecture='amd64/generic' \
+    filetype='ddtgz' \
+    content@=windows-server-amd64-root-dd.gz
 ```
-
-Now, using the MAAS WebUI, a node can be selected to use Windows Hyper-V 2012 R2. This selection gets reset when a node is stopped, so make sure to set it _before_ starting nodes. You can also set the default operating system (and release) in the settings menu, which removes the need to set it per-node.
