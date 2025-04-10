@@ -7,7 +7,6 @@ import socket
 from socket import (
     AF_INET,
     AF_INET6,
-    EAI_ADDRFAMILY,
     EAI_BADFLAGS,
     EAI_NODATA,
     EAI_NONAME,
@@ -22,7 +21,6 @@ from netaddr import EUI, IPAddress, IPNetwork, IPRange
 import netifaces
 from netifaces import AF_LINK
 from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.names.dns import A, AAAA, Record_A, Record_AAAA, RRHeader
 from twisted.names.error import (
     AuthoritativeDomainError,
     DNSQueryTimeoutError,
@@ -81,7 +79,6 @@ from provisioningserver.utils.network import (
     resolve_hostname,
     resolves_to_loopback_address,
     reverseResolve,
-    safe_getaddrinfo,
 )
 from provisioningserver.utils.shell import get_env_with_locale
 
@@ -593,18 +590,6 @@ class TestResolveHostToAddrs(MAASTestCase):
         fake.side_effect = exception
         return fake
 
-    def patch_safe_getaddrinfo(self, *addrs):
-        fake = self.patch(network_module, "safe_getaddrinfo")
-        fake.return_value = [
-            (None, None, None, None, (str(address), 0)) for address in addrs
-        ]
-        return fake
-
-    def patch_safe_getaddrinfo_fail(self, exception):
-        fake = self.patch(network_module, "safe_getaddrinfo")
-        fake.side_effect = exception
-        return fake
-
     def test_rejects_weird_IP_version(self):
         self.assertRaises(
             AssertionError,
@@ -633,7 +618,7 @@ class TestResolveHostToAddrs(MAASTestCase):
 
     def test_resolves_IPv6_address(self):
         ip = factory.make_ipv6_address()
-        fake = self.patch_safe_getaddrinfo(ip)
+        fake = self.patch_getaddrinfo(ip)
         hostname = factory.make_hostname()
         result = resolve_hostname(hostname, 6)
         self.assertIsInstance(result, set)
@@ -2018,7 +2003,7 @@ class TestIsLoopbackAddress(MAASTestCase):
 
 class TestResolvesToLoopbackAddress(MAASTestCase):
     def test_resolves_hostnames(self):
-        gai = self.patch(network_module, "sync_safe_getaddrinfo")
+        gai = self.patch(network_module, "getaddrinfo")
         gai.return_value = (
             (
                 socket.AF_INET6,
@@ -2033,7 +2018,7 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
         gai.assert_called_once_with(name, None, proto=IPPROTO_TCP)
 
     def test_resolves_hostnames_non_loopback(self):
-        gai = self.patch(network_module, "sync_safe_getaddrinfo")
+        gai = self.patch(network_module, "getaddrinfo")
         gai.return_value = (
             (
                 socket.AF_INET6,
@@ -2374,133 +2359,3 @@ class TestGetIfnameForLabel(MAASTestCase):
 
     def test_scenarios(self):
         self.assertEqual(self.expected, get_ifname_for_label(self.input))
-
-
-class TestSafeGetaddrinfo(MAASTestCase):
-    def test_safe_getaddrinfo_uses_getaddrinfo_for_v4(self):
-        getaddrinfo = self.patch(network_module, "getaddrinfo")
-        expected = [
-            (
-                AF_INET,
-                socket.SOCK_STREAM,
-                IPPROTO_TCP,
-                "",
-                ("0.0.0.0", 53, 0, 0),
-            )
-        ]
-        getaddrinfo.return_value = expected
-        result = safe_getaddrinfo(
-            "0.0.0.0", 53, family=AF_INET, proto=IPPROTO_TCP
-        )
-        self.assertCountEqual(expected, result)
-
-    def test_safe_getaddrinfo_uses_getaddrinfo_for_dual_stack(self):
-        getaddrinfo = self.patch(network_module, "getaddrinfo")
-        expected = [
-            (0, socket.SOCK_STREAM, IPPROTO_TCP, "", ("0.0.0.0", 53, 0, 0))
-        ]
-        getaddrinfo.return_value = expected
-        result = safe_getaddrinfo("0.0.0.0", 53, family=0, proto=IPPROTO_TCP)
-        self.assertCountEqual(expected, result)
-
-    def test_safe_getaddrinfo_uses_resolver_for_v6(self):
-        expected = [
-            (AF_INET6, socket.SOCK_STREAM, IPPROTO_TCP, "", ("::", 53, 0, 0))
-        ]
-        mock_resolver = Mock()
-        mock_resolver.lookupIPV6Address = lambda _: succeed(
-            (
-                [
-                    RRHeader(
-                        name="::", type=AAAA, payload=Record_AAAA(address="::")
-                    )
-                ],
-                [],
-                [],
-            )
-        )
-        get_resolver = self.patch(network_module, "getResolver")
-        get_resolver.return_value = mock_resolver
-        result = safe_getaddrinfo("::", 53, family=AF_INET6, proto=IPPROTO_TCP)
-        self.assertCountEqual(expected, result)
-
-    def test_safe_get_addrinfo_uses_resolver_for_v6_with_hostname(self):
-        expected = [
-            (AF_INET6, socket.SOCK_STREAM, IPPROTO_TCP, "", ("::1", 53, 0, 0))
-        ]
-        mock_resolver = Mock()
-        mock_resolver.lookupIPV6Address = lambda _: succeed(
-            (
-                [
-                    RRHeader(
-                        name="example.com",
-                        type=AAAA,
-                        payload=Record_AAAA(address="::1"),
-                    )
-                ],
-                [],
-                [],
-            )
-        )
-        get_resolver = self.patch(network_module, "getResolver")
-        get_resolver.return_value = mock_resolver
-        # tests that _v6_lookup works in a synchronous context
-        result = safe_getaddrinfo(
-            "example.com", 53, family=AF_INET6, proto=IPPROTO_TCP
-        )
-        self.assertCountEqual(expected, result)
-
-    def test_safe_get_addrinfo_only_v6_result_and_want_v4(self):
-        try:
-            safe_getaddrinfo(
-                "ipv6.test-ipv6.com", 80, family=AF_INET, proto=IPPROTO_TCP
-            )
-        except Exception as e:
-            self.assertIsInstance(e, gaierror)
-        else:
-            self.fail("exception not raised")
-
-    def test_safe_get_addrinfo_only_v4_result_and_want_v6(self):
-        mock_resolver = Mock()
-        mock_resolver.lookupIPV6Address = lambda _: succeed(
-            (
-                [
-                    RRHeader(
-                        name="example.com",
-                        type=A,
-                        payload=Record_A(address="0.0.0.0"),
-                    )
-                ],
-                [],
-                [],
-            )
-        )
-        get_resolver = self.patch(network_module, "getResolver")
-        get_resolver.return_value = mock_resolver
-        self.assertEqual(
-            safe_getaddrinfo(
-                "example.com", 80, family=AF_INET6, proto=IPPROTO_TCP
-            ),
-            [],
-        )
-
-    def test_safe_get_addrinfo_is_ipv6_address_but_want_v4(self):
-        try:
-            safe_getaddrinfo("::1", 80, family=AF_INET, proto=IPPROTO_TCP)
-        except gaierror as e:
-            if e.errno in (EAI_NONAME, EAI_NODATA, EAI_ADDRFAMILY):
-                pass
-            else:
-                self.fail("unknown e.errno")
-        except Exception as e:
-            self.fail("exception not gaierror" + str(e))
-        else:
-            self.fail("exception not raised")
-
-    def test_safe_get_addrinfo_is_ipv4_address_but_want_v6(self):
-        self.assertEqual(
-            safe_getaddrinfo(
-                "0.0.0.0", 80, family=AF_INET6, proto=IPPROTO_TCP
-            ),
-            [],
-        )

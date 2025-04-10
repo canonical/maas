@@ -27,10 +27,9 @@ from zlib import crc32
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
 from netaddr.core import AddrFormatError, NotRegisteredError
 import netifaces
-from twisted.internet.defer import Deferred, inlineCallbacks
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.interfaces import IResolver
 from twisted.names.client import getResolver
-from twisted.names.dns import AAAA
 from twisted.names.error import (
     AuthoritativeDomainError,
     DNSQueryTimeoutError,
@@ -43,7 +42,7 @@ from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check, get_env_with_locale
-from provisioningserver.utils.twisted import asynchronous, synchronous
+from provisioningserver.utils.twisted import synchronous
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.
@@ -756,62 +755,6 @@ def get_all_interface_addresses() -> Iterable[str]:
         yield from get_all_addresses_for_interface(interface)
 
 
-def safe_getaddrinfo(
-    hostname, port, family=AF_INET, proto=IPPROTO_TCP, timeout=10
-):
-    if family in (
-        AF_INET,
-        0,
-    ):  # IPv6-only hosts currently error when using getaddrinfo
-        return getaddrinfo(hostname, port, family=family, proto=proto)
-
-    # TODO use getaddrinfo for all versions once fixed in the stdlib
-    # see (see python/cpython issue #82082)
-    sock_type = (
-        socket.SOCK_STREAM if proto == IPPROTO_TCP else socket.SOCK_DGRAM
-    )
-
-    @asynchronous(timeout=timeout)
-    @inlineCallbacks
-    def _v6_lookup():
-        resolver = getResolver()
-        answers = yield resolver.lookupIPV6Address(hostname)
-        return [
-            (
-                AF_INET6,
-                sock_type,
-                proto,
-                "",
-                (ans.payload._address, port, 0, 0),
-            )
-            for ans in answers[0]
-            if ans.type == AAAA
-        ]
-
-    try:
-        addr = IPAddress(hostname)
-    except AddrFormatError:
-        result = _v6_lookup()
-        # this should only happen in tests where twisted is in the thread,
-        # but this is called from a synchronous context
-        # may empty result here, so we need check if has called
-        if isinstance(result, Deferred) and result.called:
-            return result.result
-        # synchronous contexts should use sync_safe_getaddrinfo to ensure
-        # this is not a Deferred
-        return result
-    else:
-        # only AF_INET6 will arrive here, and return empty list if addr is ipv4
-        if addr.version == 4:
-            return []
-        return [(AF_INET6, sock_type, proto, "", (str(addr), port, 0, 0))]
-
-
-@synchronous
-def sync_safe_getaddrinfo(*args, **kwargs):
-    return safe_getaddrinfo(*args, **kwargs)
-
-
 def resolve_host_to_addrinfo(
     hostname, ip_version=4, port=0, proto=IPPROTO_TCP
 ):
@@ -828,7 +771,7 @@ def resolve_host_to_addrinfo(
     addr_families = {4: AF_INET, 6: AF_INET6, 0: 0}
     assert ip_version in addr_families
     try:
-        address_info = safe_getaddrinfo(
+        address_info = getaddrinfo(
             hostname, port, family=addr_families[ip_version], proto=proto
         )
     except gaierror as e:
@@ -1370,7 +1313,7 @@ def resolves_to_loopback_address(hostname):
     :return: True if the hostname appears to be a loopback address.
     """
     try:
-        addrinfo = sync_safe_getaddrinfo(hostname, None, proto=IPPROTO_TCP)
+        addrinfo = getaddrinfo(hostname, None, proto=IPPROTO_TCP)
     except socket.gaierror:
         return hostname.lower() in {"localhost", "localhost."}
     else:

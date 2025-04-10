@@ -9371,16 +9371,31 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
     def test_raises_ValidationError_if_no_common_family(self):
         admin = factory.make_admin()
-        node = self.make_acquired_node_with_interface(
-            admin, power_type="manual"
+        vlan = factory.make_VLAN(dhcp_on=True)
+        subnet = factory.make_Subnet(version=6, vlan=vlan)
+        rack_subnet = factory.make_Subnet(version=4, vlan=vlan)
+        rack_controller = factory.make_RackController()
+        Interface.objects.filter(
+            node_config_id=rack_controller.current_config_id
+        ).delete()
+        factory.make_Interface(
+            node=rack_controller, vlan=vlan, subnet=rack_subnet
         )
-        gethost = self.patch(server_address, "get_maas_facing_server_host")
-        subnet = node.get_boot_interface().ip_addresses.first().subnet
-        # Force an address family mismatch.  See Bug#1630361.
-        if IPNetwork(subnet.cidr).version == 6:
-            gethost.return_value = "192.168.1.1"
-        else:
-            gethost.return_value = "2001:db8::3"
+        vlan.primary_rack = rack_controller
+        with post_commit_hooks:
+            vlan.save()
+        ubuntu = factory.make_default_ubuntu_release_bootable()
+        osystem, distro_series = ubuntu.name.split("/")
+        node = factory.make_Node_with_Interface_on_Subnet(
+            vlan=vlan,
+            subnet=subnet,
+            primary_rack=rack_controller,
+            osystem=osystem,
+            distro_series=distro_series,
+            status=NODE_STATUS.READY,
+            power_type="manual",
+        )
+        node.acquire(admin)
         self.assertRaises(ValidationError, node.start, admin)
 
     def test_raises_ValidationError_if_ephemeral_deploy_and_install_kvm(self):
@@ -9537,17 +9552,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
             action="start",
             comment=None,
         )
-
-    def test_rejects_ipv6_only_host_when_url_is_ipv4_mapped(self):
-        admin = factory.make_admin()
-        network = factory.make_ipv6_network()
-        node = self.make_acquired_node_with_interface(
-            admin, power_type="manual", network=network
-        )
-        gethost = self.patch(server_address, "get_maas_facing_server_host")
-        # Force an address family mismatch.  See Bug#1630361.
-        gethost.return_value = "::ffff:192.168.1.1"
-        self.assertRaises(ValidationError, node.start, admin)
 
     def test_checks_all_interfaces_for_common_family(self):
         admin = factory.make_admin()
