@@ -38,7 +38,7 @@ type cacheEntry struct {
 }
 
 // Expired calculates if an entry has reached its TTL
-func (c *cacheEntry) Expired(ts time.Time) bool {
+func (c *cacheEntry) expired(ts time.Time) bool {
 	ttl := c.RR.Header().Ttl
 
 	return ts.Sub(c.CreatedAt) >= time.Duration(ttl)*time.Second
@@ -93,7 +93,7 @@ func (c *cache) Get(name string, rrtype uint16) (dns.RR, bool) {
 		return nil, ok
 	}
 
-	if entry.Expired(time.Now()) {
+	if entry.expired(time.Now()) {
 		_ = c.cache.Remove(key)
 
 		c.stats.expirations.Add(1)

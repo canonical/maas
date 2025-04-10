@@ -25,302 +25,162 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCacheEntry_Expired(t *testing.T) {
-	now := time.Now()
+type key struct {
+	name   string
+	rrtype uint16
+}
 
-	testcases := map[string]struct {
-		in struct {
-			ttl       uint32
-			createdAt time.Time
-			timeSince time.Time
-		}
-		out bool
-	}{
-		"valid": {
-			in: struct {
-				ttl       uint32
-				createdAt time.Time
-				timeSince time.Time
-			}{
-				ttl:       60,
-				createdAt: now,
-				timeSince: now.Add(time.Second),
-			},
-			out: false,
-		},
-		"expired": {
-			in: struct {
-				ttl       uint32
-				createdAt time.Time
-				timeSince time.Time
-			}{
-				ttl:       1,
-				createdAt: now,
-				timeSince: now.Add(time.Second),
-			},
-			out: true,
-		},
-	}
-
-	for name, tc := range testcases {
-		tc := tc
-
-		t.Run(name, func(t *testing.T) {
-			ce := &cacheEntry{
-				RR: &dns.A{
-					Hdr: dns.RR_Header{
-						Name:   "example.com",
-						Rrtype: dns.TypeA,
-						Ttl:    tc.in.ttl,
-					},
-				},
-				CreatedAt: tc.in.createdAt,
-			}
-
-			assert.Equal(t, tc.out, ce.Expired(tc.in.timeSince))
-		})
+func createKey(name string, rrtype uint16) key {
+	return key{
+		name:   name,
+		rrtype: rrtype,
 	}
 }
 
-func TestCache_Get(t *testing.T) {
-	testcases := map[string]struct {
-		in struct {
-			createCache func() (*lru.Cache[string, *cacheEntry], error)
-			key         struct {
-				name   string
-				rrtype uint16
+func createARecord(name string, ttl uint32, ip string) dns.RR {
+	return &dns.A{
+		Hdr: dns.RR_Header{
+			Name:   name,
+			Rrtype: dns.TypeA,
+			Ttl:    ttl,
+		},
+		A: net.ParseIP(ip),
+	}
+}
+
+func createCache(size int) *lru.Cache[string, *cacheEntry] {
+	cache, err := lru.New[string, *cacheEntry](size)
+	if err != nil {
+		panic(err)
+	}
+
+	return cache
+}
+
+func createCacheEntry(rr dns.RR) *cacheEntry {
+	return &cacheEntry{
+		RR:        rr,
+		CreatedAt: time.Now(),
+	}
+}
+
+func TestCacheEntry_Expired(t *testing.T) {
+	now := time.Now()
+
+	expiredEquals := func(ttl uint32, createdAt, timeSince time.Time, want bool) func(t *testing.T) {
+		return func(t *testing.T) {
+			ce := &cacheEntry{
+				RR:        createARecord("example.com", ttl, "127.0.0.1"),
+				CreatedAt: createdAt,
 			}
+
+			assert.Equal(t, want, ce.expired(timeSince))
 		}
-		out struct {
-			rr dns.RR
-			ok bool
-		}
+	}
+
+	t.Run("valid", expiredEquals(60, now, now.Add(time.Second), false))
+	t.Run("expired", expiredEquals(1, now, now.Add(time.Second), true))
+}
+
+func TestCache_Get(t *testing.T) {
+	type in struct {
+		createCache func() *lru.Cache[string, *cacheEntry]
+		key         key
+	}
+
+	type out struct {
+		rr dns.RR
+		ok bool
+	}
+
+	testcases := map[string]struct {
+		in  in
+		out out
 	}{
 		"empty": {
-			in: struct {
-				createCache func() (*lru.Cache[string, *cacheEntry], error)
-				key         struct {
-					name   string
-					rrtype uint16
-				}
-			}{
-				createCache: func() (*lru.Cache[string, *cacheEntry], error) {
-					return lru.New[string, *cacheEntry](1)
+			in: in{
+				createCache: func() *lru.Cache[string, *cacheEntry] {
+					return createCache(1)
 				},
-				key: struct {
-					name   string
-					rrtype uint16
-				}{
-					name:   "example.com",
-					rrtype: dns.TypeA,
-				},
+				key: createKey("example.com", dns.TypeA),
 			},
-			out: struct {
-				rr dns.RR
-				ok bool
-			}{
+			out: out{
 				rr: nil,
 				ok: false,
 			},
 		},
 		"basic": {
-			in: struct {
-				createCache func() (*lru.Cache[string, *cacheEntry], error)
-				key         struct {
-					name   string
-					rrtype uint16
-				}
-			}{
-				createCache: func() (*lru.Cache[string, *cacheEntry], error) {
-					cache, err := lru.New[string, *cacheEntry](1)
-					if err != nil {
-						return nil, err
-					}
+			in: in{
+				createCache: func() *lru.Cache[string, *cacheEntry] {
+					cache := createCache(1)
 
-					_ = cache.Add("example.com_A", &cacheEntry{
-						RR: &dns.A{
-							Hdr: dns.RR_Header{
-								Name:   "example.com",
-								Rrtype: dns.TypeA,
-								Ttl:    3600,
-							},
-							A: net.ParseIP("127.0.0.1"),
-						},
-						CreatedAt: time.Now(),
-					})
+					_ = cache.Add("example.com_A", createCacheEntry(
+						createARecord("example.com", 3600, "127.0.0.1"),
+					))
 
-					return cache, nil
+					return cache
 				},
-				key: struct {
-					name   string
-					rrtype uint16
-				}{
-					name:   "example.com",
-					rrtype: dns.TypeA,
-				},
+				key: createKey("example.com", dns.TypeA),
 			},
-			out: struct {
-				rr dns.RR
-				ok bool
-			}{
-				rr: &dns.A{
-					Hdr: dns.RR_Header{
-						Name:   "example.com",
-						Rrtype: dns.TypeA,
-						Ttl:    3600,
-					},
-					A: net.ParseIP("127.0.0.1"),
-				},
+			out: out{
+				rr: createARecord("example.com", 3600, "127.0.0.1"),
 				ok: true,
 			},
 		},
 		"multiple entries": {
-			in: struct {
-				createCache func() (*lru.Cache[string, *cacheEntry], error)
-				key         struct {
-					name   string
-					rrtype uint16
-				}
-			}{
-				createCache: func() (*lru.Cache[string, *cacheEntry], error) {
-					cache, err := lru.New[string, *cacheEntry](2)
-					if err != nil {
-						return nil, err
-					}
+			in: in{
+				createCache: func() *lru.Cache[string, *cacheEntry] {
+					cache := createCache(2)
 
-					_ = cache.Add("example.com_A", &cacheEntry{
-						RR: &dns.A{
-							Hdr: dns.RR_Header{
-								Name:   "example.com",
-								Rrtype: dns.TypeA,
-								Ttl:    3600,
-							},
-							A: net.ParseIP("127.0.0.1"),
-						},
-						CreatedAt: time.Now(),
-					})
+					_ = cache.Add("example.com_A", createCacheEntry(
+						createARecord("example.com", 3600, "127.0.0.1"),
+					))
 
-					_ = cache.Add("www.example.com_A", &cacheEntry{
-						RR: &dns.A{
-							Hdr: dns.RR_Header{
-								Name:   "www.example.com",
-								Rrtype: dns.TypeA,
-								Ttl:    3600,
-							},
-							A: net.ParseIP("127.0.0.1"),
-						},
-						CreatedAt: time.Now(),
-					})
+					_ = cache.Add("www.example.com_A", createCacheEntry(
+						createARecord("www.example.com", 3600, "127.0.0.1"),
+					))
 
-					return cache, nil
+					return cache
 				},
-				key: struct {
-					name   string
-					rrtype uint16
-				}{
-					name:   "example.com",
-					rrtype: dns.TypeA,
-				},
+				key: createKey("example.com", dns.TypeA),
 			},
-			out: struct {
-				rr dns.RR
-				ok bool
-			}{
-				rr: &dns.A{
-					Hdr: dns.RR_Header{
-						Name:   "example.com",
-						Rrtype: dns.TypeA,
-						Ttl:    3600,
-					},
-					A: net.ParseIP("127.0.0.1"),
-				},
+			out: out{
+				rr: createARecord("example.com", 3600, "127.0.0.1"),
 				ok: true,
 			},
 		},
 		"expired": {
-			in: struct {
-				createCache func() (*lru.Cache[string, *cacheEntry], error)
-				key         struct {
-					name   string
-					rrtype uint16
-				}
-			}{
-				createCache: func() (*lru.Cache[string, *cacheEntry], error) {
-					cache, err := lru.New[string, *cacheEntry](1)
-					if err != nil {
-						return nil, err
-					}
+			in: in{
+				createCache: func() *lru.Cache[string, *cacheEntry] {
+					cache := createCache(1)
 
-					_ = cache.Add("example.com_A", &cacheEntry{
-						RR: &dns.A{
-							Hdr: dns.RR_Header{
-								Name:   "example.com",
-								Rrtype: dns.TypeA,
-								Ttl:    0,
-							},
-							A: net.ParseIP("127.0.0.1"),
-						},
-						CreatedAt: time.Now(),
-					})
+					_ = cache.Add("example.com_A", createCacheEntry(
+						createARecord("example.com", 0, "127.0.0.1"),
+					))
 
-					return cache, nil
+					return cache
 				},
-				key: struct {
-					name   string
-					rrtype uint16
-				}{
-					name:   "example.com",
-					rrtype: dns.TypeA,
-				},
+				key: createKey("example.com", dns.TypeA),
 			},
-			out: struct {
-				rr dns.RR
-				ok bool
-			}{
+			out: out{
 				rr: nil,
 				ok: false,
 			},
 		},
 		"not exist": {
-			in: struct {
-				createCache func() (*lru.Cache[string, *cacheEntry], error)
-				key         struct {
-					name   string
-					rrtype uint16
-				}
-			}{
-				createCache: func() (*lru.Cache[string, *cacheEntry], error) {
-					cache, err := lru.New[string, *cacheEntry](1)
-					if err != nil {
-						return nil, err
-					}
+			in: in{
+				createCache: func() *lru.Cache[string, *cacheEntry] {
+					cache := createCache(1)
 
-					_ = cache.Add("www.example.com_A", &cacheEntry{
-						RR: &dns.A{
-							Hdr: dns.RR_Header{
-								Name:   "example.com",
-								Rrtype: dns.TypeA,
-								Ttl:    3600,
-							},
-							A: net.ParseIP("127.0.0.1"),
-						},
-						CreatedAt: time.Now(),
-					})
+					_ = cache.Add("www.example.com_A", createCacheEntry(
+						createARecord("www.example.com", 3600, "127.0.0.1"),
+					))
 
-					return cache, nil
+					return cache
 				},
-				key: struct {
-					name   string
-					rrtype uint16
-				}{
-					name:   "example.com",
-					rrtype: dns.TypeA,
-				},
+				key: createKey("example.com", dns.TypeA),
 			},
-			out: struct {
-				rr dns.RR
-				ok bool
-			}{
+			out: out{
 				rr: nil,
 				ok: false,
 			},
@@ -331,10 +191,13 @@ func TestCache_Get(t *testing.T) {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
-			lcache, err := tc.in.createCache()
-			if err != nil {
-				t.Fatal(err)
-			}
+			t.Parallel()
+
+			var lcache *lru.Cache[string, *cacheEntry]
+
+			assert.NotPanics(t, func() {
+				lcache = tc.in.createCache()
+			})
 
 			c := &cache{
 				cache: lcache,
@@ -350,119 +213,49 @@ func TestCache_Get(t *testing.T) {
 }
 
 func TestCache_Set(t *testing.T) {
+	type in struct {
+		cacheSize int
+		records   []dns.RR
+	}
+
 	testcases := map[string]struct {
-		in struct {
-			cacheSize int
-			records   []dns.RR
-		}
+		in  in
 		out []dns.RR
 	}{
 		"one record": {
-			in: struct {
-				cacheSize int
-				records   []dns.RR
-			}{
+			in: in{
 				cacheSize: 1,
 				records: []dns.RR{
-					&dns.A{
-						Hdr: dns.RR_Header{
-							Name:   "example.com",
-							Rrtype: dns.TypeA,
-							Ttl:    3600,
-						},
-						A: net.ParseIP("127.0.0.1"),
-					},
+					createARecord("example.com", 3600, "127.0.0.1"),
 				},
 			},
 			out: []dns.RR{
-				&dns.A{
-					Hdr: dns.RR_Header{
-						Name:   "example.com",
-						Rrtype: dns.TypeA,
-						Ttl:    3600,
-					},
-					A: net.ParseIP("127.0.0.1"),
-				},
+				createARecord("example.com", 3600, "127.0.0.1"),
 			},
 		},
 		"two records": {
-			in: struct {
-				cacheSize int
-				records   []dns.RR
-			}{
+			in: in{
 				cacheSize: 2,
 				records: []dns.RR{
-					&dns.A{
-						Hdr: dns.RR_Header{
-							Name:   "example.com",
-							Rrtype: dns.TypeA,
-							Ttl:    3600,
-						},
-						A: net.ParseIP("127.0.0.1"),
-					},
-					&dns.A{
-						Hdr: dns.RR_Header{
-							Name:   "www.example.com",
-							Rrtype: dns.TypeA,
-							Ttl:    3600,
-						},
-						A: net.ParseIP("127.0.0.1"),
-					},
+					createARecord("example.com", 3600, "127.0.0.1"),
+					createARecord("www.example.com", 3600, "127.0.0.1"),
 				},
 			},
 			out: []dns.RR{
-				&dns.A{
-					Hdr: dns.RR_Header{
-						Name:   "example.com",
-						Rrtype: dns.TypeA,
-						Ttl:    3600,
-					},
-					A: net.ParseIP("127.0.0.1"),
-				},
-				&dns.A{
-					Hdr: dns.RR_Header{
-						Name:   "www.example.com",
-						Rrtype: dns.TypeA,
-						Ttl:    3600,
-					},
-					A: net.ParseIP("127.0.0.1"),
-				},
+				createARecord("example.com", 3600, "127.0.0.1"),
+				createARecord("www.example.com", 3600, "127.0.0.1"),
 			},
 		},
 		"evict": {
-			in: struct {
-				cacheSize int
-				records   []dns.RR
-			}{
+			in: in{
 				cacheSize: 1,
 				records: []dns.RR{
-					&dns.A{
-						Hdr: dns.RR_Header{
-							Name:   "example.com",
-							Rrtype: dns.TypeA,
-							Ttl:    3600,
-						},
-						A: net.ParseIP("127.0.0.1"),
-					},
-					&dns.A{
-						Hdr: dns.RR_Header{
-							Name:   "www.example.com",
-							Rrtype: dns.TypeA,
-							Ttl:    3600,
-						},
-						A: net.ParseIP("127.0.0.1"),
-					},
+					createARecord("example.com", 3600, "127.0.0.1"),
+					createARecord("www.example.com", 3600, "127.0.0.1"),
 				},
 			},
 			out: []dns.RR{
-				&dns.A{
-					Hdr: dns.RR_Header{
-						Name:   "www.example.com",
-						Rrtype: dns.TypeA,
-						Ttl:    3600,
-					},
-					A: net.ParseIP("127.0.0.1"),
-				},
+				createARecord("www.example.com", 3600, "127.0.0.1"),
 			},
 		},
 	}
@@ -471,6 +264,8 @@ func TestCache_Set(t *testing.T) {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			cache, err := NewCache(int64(tc.in.cacheSize * maxRecordSize))
 			if err != nil {
 				t.Fatal(err)
@@ -487,7 +282,6 @@ func TestCache_Set(t *testing.T) {
 				rr, ok := cache.Get(name, rrtype)
 
 				assert.True(t, ok)
-
 				assert.Equal(t, expected, rr)
 			}
 		})
