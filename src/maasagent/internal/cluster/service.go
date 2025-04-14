@@ -169,7 +169,6 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 		// TODO: join existing cluster with token
 		err = s.cluster.NewCluster(cctx, s.systemID, address, nil)
 
-		log.Error("Cannot bootstrap Microcluster", "err", err)
 		return err
 	}); err != nil {
 		log.Error("Failed to setup cluster-service", "err", err)

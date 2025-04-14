@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,11 @@ func TestConfigurationWorkflow(t *testing.T) {
 
 	wfTestSuite.SetLogger(logger)
 	env := wfTestSuite.NewTestWorkflowEnvironment()
+
+	// Microcluster initialization takes time, and while it is running inside a
+	// local activity, it seems to affect the whole testsuite, which fails with:
+	// panic: test timeout: 3s
+	env.SetTestTimeout(60 * time.Second)
 
 	env.ExecuteWorkflow(svc.ConfigurationWorkflows()["configure-cluster-service"],
 		ClusterServiceConfigParam{})
