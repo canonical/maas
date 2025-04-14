@@ -10,9 +10,8 @@ from collections import OrderedDict
 import sys
 from textwrap import dedent
 
-from django.core.management.base import CommandError
+from django.core.management.base import BaseCommand, CommandError
 
-from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.models import Config
 from provisioningserver.dns.commands.edit_named_options import (
     add_arguments,
@@ -20,7 +19,7 @@ from provisioningserver.dns.commands.edit_named_options import (
 )
 
 
-class Command(BaseCommandWithConnection):
+class Command(BaseCommand):
     help = " ".join(
         dedent(
             """\
