@@ -1,5 +1,5 @@
 import asyncio
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import AsyncMock, call
@@ -28,7 +28,6 @@ from maastemporalworker.workflow.dns import (
     CheckSerialUpdateParam,
     ConfigureDNSWorkflow,
     DNSConfigActivity,
-    DNSPublication,
     DNSUpdateResult,
     DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME,
     DynamicUpdateParam,
@@ -109,7 +108,7 @@ class TestDNSConfigActivity:
             db, services_cache, connection=db_connection
         )
 
-        result = await env.run(
+        _, result = await env.run(
             activities.get_changes_since_current_serial,
         )
 
@@ -813,37 +812,38 @@ class TestDNSConfigWorkflow:
             "maastemporalworker.workflow.dns.get_task_queue_for_update"
         ).return_value = "region"
 
-        calls = defaultdict(list)
+        calls = Counter()
 
         @activity.defn(name=GET_CHANGES_SINCE_CURRENT_SERIAL_NAME)
         async def get_changes_since_current_serial() -> (
-            SerialChangesResult | None
+            int,
+            SerialChangesResult | None,
         ):
-            calls[GET_CHANGES_SINCE_CURRENT_SERIAL_NAME].append(True)
-            return None
+            calls.update([GET_CHANGES_SINCE_CURRENT_SERIAL_NAME])
+            return 100, None
 
         @activity.defn(name=GET_REGION_CONTROLLERS_NAME)
         async def get_region_controllers() -> RegionControllersResult:
-            calls[GET_REGION_CONTROLLERS_NAME].append(True)
+            calls.update([GET_REGION_CONTROLLERS_NAME])
             return RegionControllersResult(
                 region_controller_system_ids=["abc"]
             )
 
         @activity.defn(name=FULL_RELOAD_DNS_CONFIGURATION_NAME)
         async def full_reload_dns_configuration() -> DNSUpdateResult:
-            calls[FULL_RELOAD_DNS_CONFIGURATION_NAME].append(True)
+            calls.update([FULL_RELOAD_DNS_CONFIGURATION_NAME])
             return DNSUpdateResult(serial=1)
 
         @activity.defn(name=DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME)
         async def dynamic_update_dns_configuration(
-            param: DynamicUpdateParam,
+            updates: DynamicUpdateParam,
         ) -> DNSUpdateResult:
-            calls[DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME].append(True)
+            calls.update([DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME])
             return DNSUpdateResult(serial=1)
 
         @activity.defn(name=CHECK_SERIAL_UPDATE_NAME)
         async def check_serial_update(serial: CheckSerialUpdateParam) -> None:
-            calls[CHECK_SERIAL_UPDATE_NAME].append(True)
+            calls.update([CHECK_SERIAL_UPDATE_NAME])
 
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
@@ -865,11 +865,11 @@ class TestDNSConfigWorkflow:
                     task_queue=worker.task_queue,
                 )
 
-                assert len(calls[GET_CHANGES_SINCE_CURRENT_SERIAL_NAME]) == 0
-                assert len(calls[GET_REGION_CONTROLLERS_NAME]) == 1
-                assert len(calls[FULL_RELOAD_DNS_CONFIGURATION_NAME]) == 1
-                assert len(calls[DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME]) == 0
-                assert len(calls[CHECK_SERIAL_UPDATE_NAME]) == 1
+                assert calls[GET_CHANGES_SINCE_CURRENT_SERIAL_NAME] == 0
+                assert calls[GET_REGION_CONTROLLERS_NAME] == 1
+                assert calls[FULL_RELOAD_DNS_CONFIGURATION_NAME] == 1
+                assert calls[DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME] == 0
+                assert calls[CHECK_SERIAL_UPDATE_NAME] == 1
 
     async def test_dns_config_workflow_dynamic_update(
         self, mocker: MockerFixture
@@ -880,39 +880,47 @@ class TestDNSConfigWorkflow:
             "maastemporalworker.workflow.dns.get_task_queue_for_update"
         ).return_value = "region"
 
-        calls = defaultdict(list)
+        calls = Counter()
 
         @activity.defn(name=GET_CHANGES_SINCE_CURRENT_SERIAL_NAME)
         async def get_changes_since_current_serial() -> (
-            SerialChangesResult | None
+            int,
+            SerialChangesResult | None,
         ):
-            calls[GET_CHANGES_SINCE_CURRENT_SERIAL_NAME].append(True)
-            return SerialChangesResult(
-                updates=[DNSPublication(serial=1, source="", update="")]
+            calls.update([GET_CHANGES_SINCE_CURRENT_SERIAL_NAME])
+            return 100, SerialChangesResult(
+                updates=[
+                    DynamicDNSUpdate(
+                        operation=DnsUpdateAction.UPDATE,
+                        name="",
+                        zone="",
+                        rectype="",
+                    )
+                ]
             )
 
         @activity.defn(name=GET_REGION_CONTROLLERS_NAME)
         async def get_region_controllers() -> RegionControllersResult:
-            calls[GET_REGION_CONTROLLERS_NAME].append(True)
+            calls.update([GET_REGION_CONTROLLERS_NAME])
             return RegionControllersResult(
                 region_controller_system_ids=["abc"]
             )
 
         @activity.defn(name=FULL_RELOAD_DNS_CONFIGURATION_NAME)
         async def full_reload_dns_configuration() -> DNSUpdateResult:
-            calls[FULL_RELOAD_DNS_CONFIGURATION_NAME].append(True)
+            calls.update([FULL_RELOAD_DNS_CONFIGURATION_NAME])
             return DNSUpdateResult(serial=1)
 
         @activity.defn(name=DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME)
         async def dynamic_update_dns_configuration(
-            param: DynamicUpdateParam,
+            updates: DynamicUpdateParam,
         ) -> DNSUpdateResult:
-            calls[DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME].append(True)
+            calls.update([DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME])
             return DNSUpdateResult(serial=1)
 
         @activity.defn(name=CHECK_SERIAL_UPDATE_NAME)
         async def check_serial_update(serial: CheckSerialUpdateParam) -> None:
-            calls[CHECK_SERIAL_UPDATE_NAME].append(True)
+            calls.update([CHECK_SERIAL_UPDATE_NAME])
 
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
@@ -934,8 +942,8 @@ class TestDNSConfigWorkflow:
                     task_queue=worker.task_queue,
                 )
 
-                assert len(calls[GET_CHANGES_SINCE_CURRENT_SERIAL_NAME]) == 1
-                assert len(calls[GET_REGION_CONTROLLERS_NAME]) == 1
-                assert len(calls[FULL_RELOAD_DNS_CONFIGURATION_NAME]) == 0
-                assert len(calls[DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME]) == 1
-                assert len(calls[CHECK_SERIAL_UPDATE_NAME]) == 1
+                assert calls[GET_CHANGES_SINCE_CURRENT_SERIAL_NAME] == 1
+                assert calls[GET_REGION_CONTROLLERS_NAME] == 1
+                assert calls[FULL_RELOAD_DNS_CONFIGURATION_NAME] == 0
+                assert calls[DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME] == 1
+                assert calls[CHECK_SERIAL_UPDATE_NAME] == 1

@@ -75,7 +75,7 @@ class DNSPublication:
 
 @dataclass
 class SerialChangesResult:
-    updates: list[DNSPublication]
+    updates: list[DynamicDNSUpdate]
 
 
 @dataclass
@@ -86,7 +86,7 @@ class RegionControllersResult:
 @dataclass
 class DynamicUpdateParam:
     new_serial: int
-    updates: list[DNSPublication]
+    updates: list[DynamicDNSUpdate]
 
 
 @dataclass
@@ -130,10 +130,12 @@ class DNSConfigActivity(ActivityBase):
         svc: ServiceCollectionV3,
         dnspublication: DNSPublication,
         default_ttl: int,
-    ) -> list[DynamicDNSUpdate]:
+    ) -> list[DynamicDNSUpdate] | None:
         update_content = dnspublication.update.split(" ")
+        ttl = default_ttl
+        answer = None
 
-        if len(update_content) < 4:
+        if len(update_content) == 1 and update_content[0]:
             if update_content[0] == DnsUpdateAction.RELOAD:
                 return [
                     DynamicDNSUpdate(
@@ -147,11 +149,10 @@ class DNSConfigActivity(ActivityBase):
                 raise InvalidDNSUpdateError(
                     f"invalid update: {dnspublication.update}"
                 )
-
-        op, zone_name, rec_name, rtype = update_content[:4]
-
-        ttl = default_ttl
-        answer = None
+        elif len(update_content) >= 4:
+            op, zone_name, rec_name, rtype = update_content[:4]
+        else:
+            op, zone_name, rec_name, rtype = ("", "", "", "")
 
         if len(update_content) > 4:
             if len(update_content) > 5:
@@ -168,7 +169,14 @@ class DNSConfigActivity(ActivityBase):
 
         match op:
             case DnsUpdateAction.RELOAD:
-                return [DynamicDNSUpdate(operation=op)]
+                return [
+                    DynamicDNSUpdate(
+                        operation=op,
+                        zone=zone_name,
+                        name=rec_name,
+                        rectype=rtype,
+                    )
+                ]
             case DnsUpdateAction.INSERT:
                 return [
                     DynamicDNSUpdate(
@@ -329,7 +337,7 @@ class DNSConfigActivity(ActivityBase):
     @activity.defn(name=GET_CHANGES_SINCE_CURRENT_SERIAL_NAME)
     async def get_changes_since_current_serial(
         self,
-    ) -> SerialChangesResult | None:
+    ) -> (int, SerialChangesResult | None):
         async with self.start_transaction() as svc:
             current_serial = await self._get_current_serial_from_file(svc)
             dnspublications = (
@@ -342,11 +350,16 @@ class DNSConfigActivity(ActivityBase):
             updates = []
 
             for dnspublication in dnspublications:
-                updates += await self._dnspublication_to_dnsupdate(
+                if update := await self._dnspublication_to_dnsupdate(
                     svc, dnspublication, default_ttl
-                )
+                ):
+                    updates.extend(update)
 
-            return SerialChangesResult(updates=updates)
+            latest_serial = (
+                dnspublications[-1].serial if dnspublications else None
+            )
+
+            return latest_serial, SerialChangesResult(updates=updates)
 
     @activity.defn(name=GET_REGION_CONTROLLERS_NAME)
     async def get_region_controllers(self) -> RegionControllersResult:
@@ -886,6 +899,16 @@ class DNSConfigActivity(ActivityBase):
         )
         await proc.communicate(input="\n".join(stdin).encode("ascii"))
 
+    def _format_update(self, update):
+        if update.operation == "DELETE":
+            if update.answer:
+                return f"update delete {update.name} {update.rectype} {update.answer}"
+            return f"update delete {update.name} {update.rectype}"
+        ttl = update.ttl
+        return (
+            f"update add {update.name} {ttl} {update.rectype} {update.answer}"
+        )
+
     @activity.defn(name=DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME)
     async def dynamic_update_dns_configuration(
         self, updates: DynamicUpdateParam
@@ -943,13 +966,15 @@ class ConfigureDNSWorkflow:
         need_full_reload = param.need_full_reload
 
         if not need_full_reload:
-            updates = await workflow.execute_activity(
+            latest_serial, updates = await workflow.execute_activity(
                 GET_CHANGES_SINCE_CURRENT_SERIAL_NAME,
                 start_to_close_timeout=GET_CHANGES_SINCE_CURRENT_SERIAL_TIMEOUT,
             )
+            if latest_serial is None:
+                return
 
             for publication in updates["updates"]:
-                if publication["update"] == "RELOAD":
+                if publication["operation"] == DnsUpdateAction.RELOAD:
                     need_full_reload = True
 
         region_controllers = await workflow.execute_activity(
@@ -968,12 +993,13 @@ class ConfigureDNSWorkflow:
                         region_controller_system_id
                     ),
                 )
-            elif updates:
+
+            elif updates["updates"]:
                 new_serial = await workflow.execute_activity(
                     DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME,
                     DynamicUpdateParam(
-                        new_serial=updates["updates"][-1]["serial"],
-                        updates=updates["updates"],
+                        new_serial=latest_serial,
+                        updates=[DynamicDNSUpdate(**updates["updates"][-1])],
                     ),
                     start_to_close_timeout=DYNAMIC_UPDATE_DNS_CONFIGURATION_TIMEOUT,
                     task_queue=get_task_queue_for_update(
