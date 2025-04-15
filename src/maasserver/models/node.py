@@ -3913,7 +3913,7 @@ class Node(CleanSave, TimestampedModel):
         # place an action in the power registry which is not needed and can
         # block a following deploy action. See bug 1453954 for an example of
         # the issue this will cause.
-        if self.power_state != POWER_STATE.OFF:
+        if self.power_state != POWER_STATE.OFF and not self.is_dpu:
             try:
                 # Node.stop() has synchronous and asynchronous parts, so catch
                 # exceptions arising synchronously, and chain callbacks to the
@@ -3934,7 +3934,9 @@ class Node(CleanSave, TimestampedModel):
                 )
                 raise
 
-        if self.power_state == POWER_STATE.OFF:
+        if self.is_dpu:
+            finalize_release = True
+        elif self.power_state == POWER_STATE.OFF:
             # The node is already powered off; we can deallocate all attached
             # resources and mark the node READY without delay.
             finalize_release = True
