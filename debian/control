@@ -8,6 +8,7 @@ Build-Depends: debhelper (>= 13),
                dh-python,
                fakeroot,
                golang-go (>= 2:1.23.3~),
+               libdqlite1.17-dev,
                po-debconf,
                python3-all,
                python3-django,
@@ -323,7 +324,6 @@ Description: MAAS Network Monitor
 Package: maas-agent
 Architecture: any
 Pre-Depends: maas-common (=${binary:Version})
-Build-Depends: libdqlite1.17-dev
 Description: MAAS Agent
  This package provides the MAAS Agent binary that is used by MAAS to
  gradually replace the Rack Controller.
