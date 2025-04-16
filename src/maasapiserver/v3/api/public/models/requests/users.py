@@ -37,8 +37,6 @@ class UserRequest(BaseModel):
     username: str
     password: str = Field(..., min_length=1)
     is_superuser: bool
-    is_staff: bool
-    is_active: bool
     first_name: str
     last_name: str
     email: Optional[str]
@@ -60,8 +58,8 @@ class UserRequest(BaseModel):
             username=self.username,
             password=self.password,
             is_superuser=self.is_superuser,
-            is_staff=self.is_staff,
-            is_active=self.is_active,
+            is_staff=False,
+            is_active=True,
             first_name=self.first_name,
             last_name=self.last_name,
             email=self.email,

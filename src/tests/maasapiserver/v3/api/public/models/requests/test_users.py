@@ -12,13 +12,11 @@ class TestUserRequest:
     def test_mandatory_params(self) -> None:
         with pytest.raises(ValidationError) as e:
             UserRequest()
-        assert len(e.value.errors()) == 7
+        assert len(e.value.errors()) == 5
         assert {
             "username",
             "password",
             "is_superuser",
-            "is_staff",
-            "is_active",
             "first_name",
             "last_name",
         } == set([f["loc"][0] for f in e.value.errors()])
@@ -43,8 +41,6 @@ class TestUserRequest:
                     username="test",
                     password="test",
                     is_superuser=False,
-                    is_staff=False,
-                    is_active=False,
                     first_name="test",
                     last_name="test",
                     email=email,
@@ -54,8 +50,6 @@ class TestUserRequest:
                 username="test",
                 password="test",
                 is_superuser=False,
-                is_staff=False,
-                is_active=False,
                 first_name="test",
                 last_name="test",
                 email=email,
@@ -67,8 +61,6 @@ class TestUserRequest:
                 username="test",
                 password="",
                 is_superuser=False,
-                is_staff=False,
-                is_active=False,
                 first_name="test",
                 last_name="test",
                 email="test@example.com",
@@ -81,8 +73,6 @@ class TestUserRequest:
             username="test",
             password="test",
             is_superuser=False,
-            is_staff=False,
-            is_active=False,
             first_name="test",
             last_name="test",
             email="email@example.com",
@@ -90,9 +80,9 @@ class TestUserRequest:
         b = u.to_builder()
         assert u.username == b.username
         assert u.is_superuser == b.is_superuser
-        assert u.is_staff == b.is_staff
-        assert u.is_active == b.is_active
         assert u.first_name == b.first_name
         assert u.last_name == b.last_name
+        assert b.is_staff is False
+        assert b.is_active is True
 
         assert PBKDF2PasswordHasher().verify("test", b.password)
