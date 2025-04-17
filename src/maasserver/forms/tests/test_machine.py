@@ -64,6 +64,7 @@ class TestMachineForm(MAASServerTestCase):
                 "enable_hw_sync",
                 "commission",
                 "enable_kernel_crash_dump",
+                "is_dpu",
             },
             form.fields.keys(),
         )
@@ -541,6 +542,7 @@ class TestAdminMachineForm(MAASServerTestCase):
                 "commission",
                 "enable_hw_sync",
                 "enable_kernel_crash_dump",
+                "is_dpu",
             },
             form.fields.keys(),
         )
@@ -722,6 +724,25 @@ class TestAdminMachineForm(MAASServerTestCase):
         with post_commit_hooks:
             machine = form.save()
         self.assertTrue(NodeKey.objects.filter(node=machine).exists())
+
+    def test_AdminMachineForm_sets_is_dpu(self):
+        node = factory.make_Node(interface=True)
+        hostname = factory.make_string()
+        arch = make_usable_architecture(self)
+        form = AdminMachineForm(
+            data={
+                "hostname": hostname,
+                "architecture": arch,
+                "power_type": "manual",
+                "power_parameters_skip_check": "true",
+                "is_dpu": "true",
+            },
+            instance=node,
+        )
+
+        with post_commit_hooks:
+            node = form.save()
+        self.assertTrue(node.is_dpu)
 
 
 class TestAdminMachineWithMACAddressForm(MAASServerTestCase):

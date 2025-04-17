@@ -391,6 +391,9 @@ class NodeHandler(TimestampedModelHandler):
                 if k in data:
                     del data[k]
 
+        if obj.node_type == NODE_TYPE.MACHINE:
+            data["is_dpu"] = obj.is_dpu
+
         if obj.node_type != NODE_TYPE.DEVICE:
             # These values are not defined on a device.
             data["architecture"] = obj.architecture

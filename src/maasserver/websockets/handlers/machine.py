@@ -405,6 +405,7 @@ class MachineHandler(NodeHandler):
                     data["vlan"] = self.dehydrate_vlan(obj, boot_interface)
             if data["pxe_mac"] != "":
                 data["ip_addresses"] = self.dehydrate_all_ip_addresses(obj)
+            data["is_dpu"] = obj.is_dpu
 
         # Needed for machines to show up in the Pod details page.
         data["pod"] = None
@@ -572,6 +573,7 @@ class MachineHandler(NodeHandler):
             new_params["pool"] = params["pool"]["name"]
         if "min_hwe_kernel" in params:
             new_params["min_hwe_kernel"] = params["min_hwe_kernel"]
+        new_params["is_dpu"] = params.get("is_dpu", False)
 
         # Cleanup any fields that have a None value.
         new_params = {

@@ -1893,6 +1893,15 @@ class TestMachineHandler(MAASServerTestCase):
             factory.make_Event(node=node, type=event_type)
         self.assertEqual([], handler.dehydrate_events(node))
 
+    def test_dehydrate_node_dpu(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {}, None)
+        node = factory.make_Node()
+        node.is_dpu = True
+        data = {}
+        handler.dehydrate(node, data)
+        self.assertTrue(data["is_dpu"])
+
     def make_node_with_subnets(self):
         user = factory.make_User()
         handler = MachineHandler(user, {}, None)

@@ -767,6 +767,14 @@ class MachineForm(NodeForm):
                 label="", required=False, widget=forms.HiddenInput()
             )
 
+        self.set_up_is_dpu_field()
+
+    def set_up_is_dpu_field(self) -> None:
+        self.fields["is_dpu"] = forms.BooleanField(
+            label="Register as DPU",
+            required=False,
+        )
+
     def set_up_architecture_field(self, requires_arch=False):
         """Create the `architecture` field.
 
@@ -1001,6 +1009,11 @@ class MachineForm(NodeForm):
         self.is_bound = True
         self.data["enable_kernel_crash_dump"] = enable_kernel_crash_dump
 
+    def set_is_dpu(self, is_dpu: bool = False):
+        """Sets whether this machine is a DPU or not."""
+        self.is_bound = True
+        self.data["is_dpu"] = is_dpu
+
     def save(self, *args, **kwargs):
         from maasserver.models import ScriptSet
 
@@ -1046,6 +1059,7 @@ class MachineForm(NodeForm):
             "enable_kernel_crash_dump",
             "enable_hw_sync",
             "commission",
+            "is_dpu",
         )
 
 
