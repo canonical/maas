@@ -29,7 +29,10 @@ from maasserver.security import get_shared_secret
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
@@ -898,7 +901,7 @@ class TestRegionProtocol_CommissionNode(MAASTransactionServerTestCase):
         )
 
 
-class TestRegionProtocol_ReportNeighbours(MAASTestCase):
+class TestRegionProtocol_ReportNeighbours(MAASServerTestCase):
     def test_report_neighbours_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(ReportNeighbours.commandName)

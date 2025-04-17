@@ -6,7 +6,6 @@
 __all__ = [
     "disable_all_database_connections",
     "enable_all_database_connections",
-    "ExclusivelyConnected",
     "FullyConnected",
     "gen_retry_intervals",
     "get_exception_class",
@@ -923,29 +922,6 @@ class TotallyDisconnected:
     def __exit__(self, *exc_info):
         """Enable all database connections, but don't actually connect."""
         enable_all_database_connections()
-
-
-class ExclusivelyConnected:
-    """Context to only permit database connections within a block.
-
-    This blows up with `AssertionError` if a database connection is open when
-    the context is entered. On exit, all database connections open in the
-    current thread will be closed without niceties, and no effort is made to
-    suppress database failures at this point.
-    """
-
-    def __enter__(self):
-        """Assert that no connections are yet open."""
-        for alias in connections:
-            service_layer.init()
-            if connections[alias].connection is not None:
-                raise AssertionError(f"Connection {alias} is open.")
-
-    def __exit__(self, *exc_info):
-        """Close database connections in the current thread."""
-        for alias in connections:
-            service_layer.close()
-            connections[alias].close()
 
 
 class FullyConnected:

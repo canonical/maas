@@ -63,6 +63,24 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
+
+class TestDatabaseTaskServiceWithActualDatabase(MAASTransactionServerTestCase):
+    """Tests for `DatabaseTasksService` with the databse."""
+
+    def test_task_can_access_database_from_other_thread(self):
+        @transactional
+        def database_task():
+            # Merely being here means we've accessed the database.
+            return sentinel.beenhere
+
+        service = DatabaseTasksService()
+        service.startService()
+        try:
+            result = service.deferTask(database_task).wait(TIMEOUT)
+            self.assertIs(result, sentinel.beenhere)
+        finally:
+            service.stopService()
+
     def test_task_is_executed_in_other_thread(self):
         def get_thread_ident():
             return threading.current_thread().ident
@@ -246,21 +264,3 @@ class TestDatabaseTaskService(MAASTestCase):
             logger.output,
             r"(?s)Unhandled failure in database task\..*Traceback \(most recent call last\):.*builtins.ZeroDivision.*",
         )
-
-
-class TestDatabaseTaskServiceWithActualDatabase(MAASTransactionServerTestCase):
-    """Tests for `DatabaseTasksService` with the databse."""
-
-    def test_task_can_access_database_from_other_thread(self):
-        @transactional
-        def database_task():
-            # Merely being here means we've accessed the database.
-            return sentinel.beenhere
-
-        service = DatabaseTasksService()
-        service.startService()
-        try:
-            result = service.deferTask(database_task).wait(TIMEOUT)
-            self.assertIs(result, sentinel.beenhere)
-        finally:
-            service.stopService()

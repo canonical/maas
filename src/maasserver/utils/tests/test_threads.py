@@ -51,7 +51,7 @@ class TestMakeFunctions(MAASTestCase):
     def test_make_database_unpool_creates_unpool(self):
         pool = threads.make_database_unpool()
         self.assertIsInstance(pool, ThreadUnpool)
-        self.assertIs(pool.contextFactory, orm.ExclusivelyConnected)
+        self.assertIs(pool.contextFactory, orm.FullyConnected)
         self.assertIsInstance(pool.lock, DeferredSemaphore)
         self.assertEqual(
             threads.max_threads_for_database_pool, pool.lock.limit
@@ -85,7 +85,7 @@ class TestInstallFunctions(MAASTestCase):
     def test_database_pool_is_connected_unpool(self):
         pool = reactor.threadpoolForDatabase
         self.assertIsInstance(pool, ThreadUnpool)
-        self.assertIs(pool.contextFactory, orm.ExclusivelyConnected)
+        self.assertIs(pool.contextFactory, orm.FullyConnected)
 
 
 class TestDeferToDatabase(MAASServerTestCase):

@@ -25,7 +25,6 @@ from twisted.internet.defer import DeferredSemaphore
 
 from maasserver.utils.orm import (
     count_queries,
-    ExclusivelyConnected,
     FullyConnected,
     TotallyDisconnected,
 )
@@ -81,7 +80,15 @@ def make_database_unpool(maxthreads=max_threads_for_database_pool):
     actually pooled: a new thread is created for each task. This is ideal for
     testing, to improve isolation between tests.
     """
-    return ThreadUnpool(DeferredSemaphore(maxthreads), ExclusivelyConnected)
+    # NOTE: we updated this thread pool to also use `FullyConnected` as the
+    # thread context. That is because we are integrating more and more the service
+    # layer and in order to initialize it, we must have a working db connection.
+    # With the previous implementation `deferToDatabase` won't work for tests, as
+    # the service_layer couldn't be initialized inside the thread.
+    # This will make tests a little bit slower, because of the time needed to open
+    # a connection every time (even if not needed), but it has the advantage of
+    # being more similar to the setup used at runtime.
+    return ThreadUnpool(DeferredSemaphore(maxthreads), FullyConnected)
 
 
 @asynchronous(timeout=FOREVER)

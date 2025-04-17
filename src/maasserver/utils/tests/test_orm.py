@@ -43,7 +43,6 @@ from maasserver.utils.orm import (
     disable_all_database_connections,
     DisabledDatabaseConnection,
     enable_all_database_connections,
-    ExclusivelyConnected,
     FullyConnected,
     get_first,
     get_model_object_name,
@@ -1396,31 +1395,6 @@ class TestTotallyDisconnected(MAASTransactionServerTestCase):
         with TotallyDisconnected():
             self.assertRaises(RuntimeError, getattr, connection, "connect")
         connection.ensure_connection()
-
-
-class TestExclusivelyConnected(MAASTransactionServerTestCase):
-    """Tests for `ExclusivelyConnected`."""
-
-    def test_enter_blows_up_if_there_are_open_connections(self):
-        self.addCleanup(connection.close)
-        connection.ensure_connection()
-        context = ExclusivelyConnected()
-        self.assertRaises(AssertionError, context.__enter__)
-
-    def test_enter_does_nothing_if_there_are_no_open_connections(self):
-        connection.close()
-        context = ExclusivelyConnected()
-        context.__enter__()
-
-    def test_exit_closes_open_connections(self):
-        self.addCleanup(connection.close)
-        connection.ensure_connection()
-        service_layer.init()
-        self.assertIsNotNone(connection.connection)
-        context = ExclusivelyConnected()
-        context.__exit__()
-        self.assertIsNone(connection.connection)
-        self.assertFalse(service_layer.initialized)
 
 
 class TestFullyConnected(MAASTransactionServerTestCase):

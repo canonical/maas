@@ -15,6 +15,7 @@ from twisted.web.test.requesthelper import DummyChannel, DummyRequest
 
 from maasserver import eventloop, webapp
 from maasserver.testing.listener import FakePostgresListenerService
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.webapp import OverlaySite
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
@@ -161,7 +162,7 @@ class TestResourceOverlay(MAASTestCase):
         self.assertIsInstance(resource.basis, Resource)
 
 
-class TestWebApplicationService(MAASTestCase):
+class TestWebApplicationService(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         # Patch the getServiceNamed so the WebSocketFactory does not
