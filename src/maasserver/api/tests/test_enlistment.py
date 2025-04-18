@@ -18,7 +18,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.utils import strip_domain
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import get_one, reload_object
+from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 
 
 class TestEnlistmentAPI(APITestCase.ForAnonymousAndUserAndAdmin):
@@ -53,7 +53,9 @@ class TestEnlistmentAPI(APITestCase.ForAnonymousAndUserAndAdmin):
         self.assertEqual(architecture, diane.architecture)
 
     def test_POST_new_generates_hostname_if_ip_based_hostname(self):
-        Domain.objects.get_or_create(name="domain")
+        with post_commit_hooks:
+            Domain.objects.get_or_create(name="domain")
+
         hostname = "192-168-5-19.domain"
         response = self.client.post(
             reverse("machines_handler"),

@@ -2033,7 +2033,9 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertConstrainedNodes([], {"name": "unknown-name"})
 
     def test_hostname_with_domain_part(self):
-        Domain.objects.get_or_create(name="mydomain", authoritative=True)
+        with post_commit_hooks:
+            Domain.objects.get_or_create(name="mydomain", authoritative=True)
+
         nodes = [
             factory.make_Node(domain=factory.make_Domain()) for _ in range(3)
         ]

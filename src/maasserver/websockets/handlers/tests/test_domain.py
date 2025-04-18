@@ -145,7 +145,12 @@ class TestDomainHandler(MAASServerTestCase):
         domain = Domain.objects.get_default_domain()
         new_name = factory.make_hostname()
         handler = DomainHandler(user, {}, None)
-        returned_domain = handler.update({"id": domain.id, "name": new_name})
+
+        with post_commit_hooks:
+            returned_domain = handler.update(
+                {"id": domain.id, "name": new_name}
+            )
+
         domain = reload_object(domain)
         self.assertEqual(returned_domain, self.dehydrate_domain(domain))
 
@@ -154,7 +159,10 @@ class TestDomainHandler(MAASServerTestCase):
         domain = Domain.objects.get_default_domain()
         new_name = factory.make_hostname()
         handler = DomainHandler(user, {}, None)
-        handler.update({"id": domain.id, "name": new_name})
+
+        with post_commit_hooks:
+            handler.update({"id": domain.id, "name": new_name})
+
         domain = reload_object(domain)
         self.assertEqual(new_name, domain.name)
 
@@ -163,7 +171,10 @@ class TestDomainHandler(MAASServerTestCase):
         domain = Domain.objects.get_default_domain()
         handler = DomainHandler(user, {}, None)
         new_ttl = randint(1, 3600)
-        handler.update({"id": domain.id, "ttl": new_ttl})
+
+        with post_commit_hooks:
+            handler.update({"id": domain.id, "ttl": new_ttl})
+
         domain = reload_object(domain)
         self.assertEqual(new_ttl, domain.ttl)
 
@@ -172,7 +183,12 @@ class TestDomainHandler(MAASServerTestCase):
         domain = factory.make_Domain(authoritative=choice([True, False]))
         handler = DomainHandler(user, {}, None)
         new_authoritative = not domain.authoritative
-        handler.update({"id": domain.id, "authoritative": new_authoritative})
+
+        with post_commit_hooks:
+            handler.update(
+                {"id": domain.id, "authoritative": new_authoritative}
+            )
+
         domain = reload_object(domain)
         self.assertEqual(new_authoritative, domain.authoritative)
 
@@ -203,7 +219,10 @@ class TestDomainHandlerDelete(MAASServerTestCase):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
-        handler.delete({"id": domain.id})
+
+        with post_commit_hooks:
+            handler.delete({"id": domain.id})
+
         domain = reload_object(domain)
         self.assertIsNone(domain)
 

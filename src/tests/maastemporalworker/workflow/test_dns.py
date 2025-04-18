@@ -112,10 +112,8 @@ class TestDNSConfigActivity:
             activities.get_changes_since_current_serial,
         )
 
-        # from domain fixture
-        assert result.updates[0].operation == DnsUpdateAction.RELOAD
         # the dnspublication fixtures
-        assert result.updates[1:] == [
+        assert result.updates == [
             DynamicDNSUpdate(
                 operation=DnsUpdateAction.INSERT,
                 zone=domain.name,

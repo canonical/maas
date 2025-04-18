@@ -8,7 +8,7 @@ import random
 from maasserver.forms.domain import DomainForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestDomainForm(MAASServerTestCase):
@@ -24,7 +24,10 @@ class TestDomainForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        domain = form.save()
+
+        with post_commit_hooks:
+            domain = form.save()
+
         self.assertEqual(domain_name, domain.name)
         self.assertEqual(domain_authoritative, domain.authoritative)
         self.assertEqual(ttl, domain.ttl)
@@ -40,6 +43,7 @@ class TestDomainForm(MAASServerTestCase):
         domain = factory.make_Domain(authoritative=old_authoritative)
         new_authoritative = not old_authoritative
         new_ttl = random.randint(1, 604800)
+
         form = DomainForm(
             instance=domain,
             data={
@@ -49,7 +53,10 @@ class TestDomainForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         domain = reload_object(domain)
         self.assertEqual(new_name, domain.name)
         self.assertEqual(new_authoritative, domain.authoritative)
@@ -63,7 +70,10 @@ class TestDomainForm(MAASServerTestCase):
             {"name": name, "authoritative": authoritative, "ttl": ttl}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        domain = form.save()
+
+        with post_commit_hooks:
+            domain = form.save()
+
         self.assertEqual(name, domain.name)
         self.assertEqual(authoritative, domain.authoritative)
         self.assertEqual(ttl, domain.ttl)
@@ -76,10 +86,16 @@ class TestDomainForm(MAASServerTestCase):
             {"name": name, "authoritative": authoritative, "ttl": ttl}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        domain = form.save()
+
+        with post_commit_hooks:
+            domain = form.save()
+
         form = DomainForm(instance=domain, data={"ttl": None})
         self.assertTrue(form.is_valid(), form.errors)
-        domain = form.save()
+
+        with post_commit_hooks:
+            domain = form.save()
+
         self.assertEqual(name, domain.name)
         self.assertEqual(authoritative, domain.authoritative)
         self.assertIsNone(domain.ttl)
@@ -95,7 +111,10 @@ class TestDomainForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        domain = form.save()
+
+        with post_commit_hooks:
+            domain = form.save()
+
         self.assertEqual(
             forward_dns_servers,
             [
@@ -119,7 +138,10 @@ class TestDomainForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        domain = form.save()
+
+        with post_commit_hooks:
+            domain = form.save()
+
         self.assertEqual(
             forward_dns_servers,
             [

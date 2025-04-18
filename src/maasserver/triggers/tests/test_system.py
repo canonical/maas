@@ -34,9 +34,8 @@ class TestTriggers(MAASServerTestCase):
     def test_register_system_triggers(self):
         register_system_triggers()
         triggers = [
-            "domain_sys_dns_domain_insert",
-            "domain_sys_dns_domain_update",
-            "domain_sys_dns_domain_delete",
+            "regionrackrpcconnection_sys_core_rpc_insert",
+            "regionrackrpcconnection_sys_core_rpc_delete",
             "staticipaddress_sys_dns_staticipaddress_update",
             "interface_ip_addresses_sys_dns_nic_ip_link",
             "interface_ip_addresses_sys_dns_nic_ip_unlink",
@@ -337,29 +336,6 @@ class TestSysDNSUpdates(
                 decoded_msg,
                 f"DELETE {domain.name} {rec.name} {dnsdata.rrtype}",
             )
-        finally:
-            self.stop_reading()
-            yield self.postgres_listener_service.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_dns_dynamic_update_domain_reload(self):
-        listener = self.make_listener_without_delay()
-        yield self.set_service(listener)
-        yield deferToDatabase(
-            self.register_trigger,
-            "maasserver_domain",
-            "sys_dns_updates",
-            ops=("insert",),
-        )
-        self.start_reading()
-        try:
-            yield deferToDatabase(self.create_domain)
-            msg = yield self.get_notify("sys_dns_updates")
-            decoded_msg = DynamicDNSUpdateNotification(
-                msg
-            ).get_decoded_message()
-            self.assertEqual(decoded_msg, "RELOAD")
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()

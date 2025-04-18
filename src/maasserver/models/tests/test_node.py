@@ -4333,7 +4333,10 @@ class TestNode(MAASServerTestCase):
     def test_fqdn_default_domain_if_not_given(self):
         domain = Domain.objects.get_default_domain()
         domain.name = factory.make_name("domain")
-        domain.save()
+
+        with post_commit_hooks:
+            domain.save()
+
         hostname_without_domain = factory.make_string()
         hostname = f"{hostname_without_domain}.{domain.name}"
         node = factory.make_Node(hostname=hostname_without_domain)

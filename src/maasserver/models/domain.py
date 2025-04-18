@@ -27,10 +27,12 @@ from django.db.models.query import QuerySet
 from django.utils import timezone
 from netaddr import IPAddress
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.utils.dns import NAMESPEC
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 from maasservicelayer.models.configurations import MAASInternalDomainConfig
@@ -200,6 +202,20 @@ class Domain(CleanSave, TimestampedModel):
     # Default TTL for this Domain.
     # If None and not overridden lower, then we will use the global default.
     ttl = PositiveIntegerField(default=None, null=True, blank=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._previous_name = None
+        self._previous_ttl = None
+        self._previous_authoritative = None
+
+    def __setattr__(self, name, value):
+        if (
+            hasattr(self, f"_previous_{name}")
+            and getattr(self, f"_previous_{name}") is None
+        ):
+            setattr(self, f"_previous_{name}", getattr(self, name))
+        super().__setattr__(name, value)
 
     def update_kms_srv(self, kms_host=-1):
         # avoid recursive imports
@@ -380,6 +396,13 @@ class Domain(CleanSave, TimestampedModel):
             raise ValidationError(
                 "This domain is the default domain, it cannot be deleted."
             )
+
+        if self.authoritative:
+            DNSPublication.objects.create_for_config_update(
+                source=f"removed zone {self.name}",
+                action=DnsUpdateAction.RELOAD,
+            )
+
         super().delete()
 
     def save(self, *args, **kwargs):
@@ -387,6 +410,34 @@ class Domain(CleanSave, TimestampedModel):
         super().save(*args, **kwargs)
         if created:
             self.update_kms_srv()
+            if self.authoritative:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"added zone {self.name}",
+                    action=DnsUpdateAction.RELOAD,
+                )
+        elif self._previous_authoritative != self.authoritative:
+            if self.authoritative:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"added zone {self.name}",
+                    action=DnsUpdateAction.RELOAD,
+                )
+            else:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"removed zone {self.name}",
+                    action=DnsUpdateAction.RELOAD,
+                )
+        elif self.authoritative:
+            changes = []
+            if self._previous_ttl != self.ttl:
+                changes.append(f"ttl changed to {self.ttl}")
+            if self._previous_name != self.name:
+                changes.append(f"renamed to {self.name}")
+            name = self._previous_name if self._previous_name else self.name
+            DNSPublication.objects.create_for_config_update(
+                source=f"zone {name} " + " and ".join(changes),
+                action=DnsUpdateAction.RELOAD,
+            )
+
         # If there is a DNSResource in our parent domain that matches this
         # domain name, the migrate the DNSResource to the new domain.
         parent = Domain.objects.filter(name=".".join(self.name.split(".")[1:]))

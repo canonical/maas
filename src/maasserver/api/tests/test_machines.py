@@ -56,12 +56,16 @@ class TestMachineHostname(APITestCase.ForUserAndAdmin):
         # still comes from the node.
         hostname = factory.make_name("hostname")
         domainname = factory.make_name("domain")
-        domain, _ = Domain.objects.get_or_create(
-            name=domainname, defaults={"authoritative": True}
-        )
+
+        with post_commit_hooks:
+            domain, _ = Domain.objects.get_or_create(
+                name=domainname, defaults={"authoritative": True}
+            )
+
         factory.make_Node(hostname=hostname, domain=domain)
         fqdn = f"{hostname}.{domainname}"
         response = self.client.get(reverse("machines_handler"))
+
         self.assertEqual(
             http.client.OK.value, response.status_code, response.content
         )

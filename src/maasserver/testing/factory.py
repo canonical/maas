@@ -807,7 +807,9 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = self.make_name("domain")
         domain = Domain(name=name, ttl=ttl, authoritative=authoritative)
-        domain.save()
+
+        with post_commit_hooks:
+            domain.save()
         return domain
 
     def make_ForwardDNSServer(self, ip_address=None, domains=None):

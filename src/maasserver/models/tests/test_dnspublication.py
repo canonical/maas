@@ -9,9 +9,16 @@ from random import randint
 from django.db import connection
 from django.utils import timezone
 
+from maascommon.enums.dns import DnsUpdateAction
+from maascommon.workflows.dns import (
+    CONFIGURE_DNS_WORKFLOW_NAME,
+    ConfigureDNSParam,
+)
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.dnspublication import DNSPublication, zone_serial
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 
 class TestZoneSerial(MAASServerTestCase):
@@ -148,3 +155,20 @@ class TestDNSPublicationManager(MAASServerTestCase):
         DNSPublication.objects.collect_garbage()
         self.assertEqual(deltas, get_ages())
         self.assertEqual(len(deltas), 1)
+
+    def test_create_for_config_update(self):
+        mock_start_workflow = self.patch(
+            dnspublication_module, "start_workflow"
+        )
+
+        with post_commit_hooks:
+            DNSPublication.objects.create_for_config_update(
+                source="test",
+                action=DnsUpdateAction.RELOAD,
+            )
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
+            param=ConfigureDNSParam(need_full_reload=True),
+            task_queue="region",
+        )

@@ -527,7 +527,10 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_parent_of_default_domain_gets_glue(self):
         default_domain = Domain.objects.get_default_domain()
         default_domain.name = "maas.example.com"
-        default_domain.save()
+
+        with post_commit_hooks:
+            default_domain.save()
+
         domains = [default_domain, factory.make_Domain("example.com")]
         self.patch(zonegenerator, "get_dns_server_addresses").return_value = [
             IPAddress("5.5.5.5")
@@ -777,7 +780,9 @@ class TestZoneGenerator(MAASServerTestCase):
         )
 
     def test_zone_generator_handles_rdns_mode_equal_enabled(self):
-        Domain.objects.get_or_create(name="one")
+        with post_commit_hooks:
+            Domain.objects.get_or_create(name="one")
+
         subnet = factory.make_Subnet(cidr="10.0.0.0/29")
         subnet.rdns_mode = RDNS_MODE.ENABLED
         subnet.save()

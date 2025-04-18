@@ -10,7 +10,12 @@ from django.db.models import ProtectedError
 from netaddr import IPAddress
 
 from maascommon.dns import HostnameRRsetMapping
+from maascommon.workflows.dns import (
+    CONFIGURE_DNS_WORKFLOW_NAME,
+    ConfigureDNSParam,
+)
 from maasserver.dns.zonegenerator import get_hostname_dnsdata_mapping, lazydict
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
@@ -19,6 +24,7 @@ from maasserver.permissions import NodePermission
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 
 class TestDomainManagerGetDomainOr404(MAASServerTestCase):
@@ -147,14 +153,20 @@ class TestDomain(MAASServerTestCase):
     def test_creates_domain(self):
         name = factory.make_name("name")
         domain = Domain(name=name)
-        domain.save()
+
+        with post_commit_hooks:
+            domain.save()
+
         domain_from_db = Domain.objects.get(name=name)
         self.assertEqual(domain_from_db.name, name)
 
     def test_create_strips_trailing_dot(self):
         name = factory.make_name("name")
         domain = Domain(name=name + ".")
-        domain.save()
+
+        with post_commit_hooks:
+            domain.save()
+
         domain_from_db = Domain.objects.get(name=name)
         self.assertEqual(domain_from_db.name, name)
 
@@ -198,8 +210,34 @@ class TestDomain(MAASServerTestCase):
     def test_can_be_deleted_if_does_not_contain_resources(self):
         name = factory.make_name("name")
         domain = factory.make_Domain(name=name)
-        domain.delete()
+
+        with post_commit_hooks:
+            domain.delete()
+
         self.assertCountEqual([], Domain.objects.filter(name=name))
+
+    def test_delete_calls_dns_workflow_if_authoritative(self):
+        mock_start_workflow = self.patch(
+            dnspublication_module, "start_workflow"
+        )
+
+        domain = factory.make_Domain(authoritative=True)
+
+        with post_commit_hooks:
+            domain.delete()
+
+        assert len(mock_start_workflow.mock_calls) == 2  # create and delete
+
+    def test_delete_does_not_call_dns_workflow_if_nonauthoritative(self):
+        mock_start_workflow = self.patch(
+            dnspublication_module, "start_workflow"
+        )
+
+        domain = factory.make_Domain(authoritative=False)
+
+        domain.delete()
+
+        assert len(mock_start_workflow.mock_calls) == 0
 
     def test_validate_authority_raises_exception_when_both_authoritative_and_has_forward_dns_servers(
         self,
@@ -215,7 +253,9 @@ class TestDomain(MAASServerTestCase):
     def test_cant_be_deleted_if_contains_resources(self):
         domain = factory.make_Domain()
         factory.make_DNSResource(domain=domain)
-        self.assertRaises(ProtectedError, domain.delete)
+
+        with post_commit_hooks:
+            self.assertRaises(ProtectedError, domain.delete)
 
     def test_add_delegations_may_do_nothing(self):
         domain = factory.make_Domain()
@@ -382,6 +422,31 @@ class TestDomain(MAASServerTestCase):
         self.assertCountEqual(
             [], DNSResource.objects.filter(name=c_name, domain=parent)
         )
+
+    def test_save_calls_dns_workflow_if_authoritative(self):
+        mock_start_workflow = self.patch(
+            dnspublication_module, "start_workflow"
+        )
+        domain = Domain(name=factory.make_name(), ttl=30, authoritative=True)
+
+        with post_commit_hooks:
+            domain.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
+            param=ConfigureDNSParam(need_full_reload=True),
+            task_queue="region",
+        )
+
+    def test_save_does_not_calls_dns_workflow_if_nonauthoritative(self):
+        mock_start_workflow = self.patch(
+            dnspublication_module, "start_workflow"
+        )
+        domain = Domain(name=factory.make_name(), ttl=30, authoritative=False)
+
+        domain.save()
+
+        mock_start_workflow.assert_not_called()
 
     def test_update_kms_srv_deletes_srv_records(self):
         domain = factory.make_Domain()
