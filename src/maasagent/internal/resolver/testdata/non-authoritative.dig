@@ -1,0 +1,27 @@
+# Request
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: rd; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.com.	IN	 A
+
+# Resolution
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.com.	IN	 A
+
+;; ANSWER SECTION:
+example.com.	30	IN	A	10.0.0.1
+
+# Response
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.com.	IN	 A
+
+;; ANSWER SECTION:
+example.com.	30	IN	A	10.0.0.1
+

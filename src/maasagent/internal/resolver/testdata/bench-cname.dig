@@ -1,0 +1,113 @@
+# Request
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags:; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname1.maas.	IN	 CNAME
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 2
+;; flags:; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname2.maas.	IN	 CNAME
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 3
+;; flags:; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.maas.	IN	 A
+
+# Resolution
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;.	IN	 NS
+
+;; ANSWER SECTION:
+.	30	IN	NS	j.rootserver.net.
+
+;; ADDITIONAL SECTION:
+j.rootserver.net.	30	IN	A	10.0.0.1
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;maas.	IN	 NS
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;maas.	IN	 NS
+
+;; ANSWER SECTION:
+maas.	30	IN	NS	maas.
+
+;; ADDITIONAL SECTION:
+maas.	30	IN	A	10.0.0.1
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname1.maas.	IN	 NS
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname1.maas.	IN	 NS
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname1.maas.	IN	 CNAME
+
+;; ANSWER SECTION:
+cname1.maas.	30	IN	CNAME	cname2.maas.
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname2.maas.	IN	 NS
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname2.maas.	IN	 NS
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;cname2.maas.	IN	 CNAME
+
+;; ANSWER SECTION:
+cname2.maas.	30	IN	CNAME	example.maas.
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.maas.	IN	 NS
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.maas.	IN	 NS
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.maas.	IN	 A
+
+;; ANSWER SECTION:
+example.maas.	30	IN	A	10.0.0.1
+

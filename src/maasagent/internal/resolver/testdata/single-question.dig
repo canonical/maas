@@ -1,0 +1,39 @@
+# Request
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags:; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.com.	IN	 A
+
+# Resolution
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr rd; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;example.com.	IN	 A
+
+;; ANSWER SECTION:
+example.com.	3600	IN	A	10.0.0.1
+
+;; AUTHORITY SECTION:
+example.com.	3600	IN	NS	ns.example.com.
+
+;; ADDITIONAL SECTION:
+example.com.	3600	IN	SOA	ns.example.com. info\@example.com. 1000 60 3 30 1
+
+# Response
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr ra; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;example.com.	IN	 A
+
+;; ANSWER SECTION:
+example.com.	3600	IN	A	10.0.0.1
+
+;; AUTHORITY SECTION:
+example.com.	3600	IN	NS	ns.example.com.
+
+;; ADDITIONAL SECTION:
+example.com.	3600	IN	SOA	ns.example.com. info\@example.com. 1000 60 3 30 1
+

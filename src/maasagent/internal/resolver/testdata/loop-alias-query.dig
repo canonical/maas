@@ -1,0 +1,63 @@
+# Request
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags:; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;www.example.com.	IN	 CNAME
+
+# Resolution
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;com.	IN	 CNAME
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;com.	IN	 A
+
+;; ANSWER SECTION:
+com.	30	IN	A	10.0.0.1
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags:; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;www.example.com.	IN	 CNAME
+
+;; ANSWER SECTION:
+www.example.com.	30	IN	CNAME	example.com
+
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;com.	IN	 CNAME
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;com.	IN	 A
+
+;; ANSWER SECTION:
+com.	30	IN	A	10.0.0.1
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;example.com.	IN	 CNAME
+
+;; ANSWER SECTION:
+example.com.	30	IN	CNAME	www.example.com.
+
+# Response
+;; ->>HEADER<<- opcode: QUERY, status: REFUSED, id: 1
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;www.example.com.	IN	 CNAME
+

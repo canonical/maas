@@ -195,6 +195,7 @@ type RecursiveHandler struct {
 // NewRecursiveHandler provides a constructor for a new handler for recursive queries
 func NewRecursiveHandler(cache Cache, options ...RecursiveHandlerOption) *RecursiveHandler {
 	r := &RecursiveHandler{
+		systemResolvers: &systemConfig{},
 		sessionMap: &sessionMap{
 			sessions: make(map[string]*session),
 		},
@@ -303,6 +304,10 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	r.Response = true
 	r.RecursionAvailable = true
 
+	// Only a single entry in AUTHORITY and ADDITIONAL sections should be returned
+	uniqueNs := make(map[string]struct{})
+	uniqueExtra := make(map[string]struct{})
+
 	for _, q := range r.Question {
 		q.Name = dns.Fqdn(q.Name)
 
@@ -355,8 +360,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			// if not
 			if msg.Rcode == dns.RcodeSuccess && len(msg.Answer) > 0 {
 				r.Answer = append(r.Answer, msg.Answer...)
-				r.Ns = append(r.Ns, msg.Ns...)
-				r.Extra = append(r.Extra, msg.Extra...)
+
+				appendUniqueRR(uniqueNs, &r.Ns, msg.Ns)
+				appendUniqueRR(uniqueExtra, &r.Extra, msg.Extra)
 
 				h.stats.authoritative.Add(1)
 
@@ -377,8 +383,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			if msg != nil {
 				r.Rcode = msg.Rcode
 				r.Answer = append(r.Answer, msg.Answer...)
-				r.Ns = append(r.Ns, msg.Ns...)
-				r.Extra = append(r.Extra, msg.Extra...)
+
+				appendUniqueRR(uniqueNs, &r.Ns, msg.Ns)
+				appendUniqueRR(uniqueExtra, &r.Extra, msg.Extra)
 
 				h.stats.nonauthoritative.Add(1)
 			}
@@ -407,8 +414,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		}
 
 		r.Answer = append(r.Answer, msg.Answer...)
-		r.Ns = append(r.Ns, msg.Ns...)
-		r.Extra = append(r.Extra, msg.Extra...)
+
+		appendUniqueRR(uniqueNs, &r.Ns, msg.Ns)
+		appendUniqueRR(uniqueExtra, &r.Extra, msg.Extra)
 
 		h.stats.nonauthoritative.Add(1)
 	}
@@ -416,6 +424,20 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	err := w.WriteMsg(r)
 	if err != nil {
 		log.Err(err).Send()
+	}
+}
+
+// appendUniqueRR is used to append RR to the result only if it was not met before.
+// Tracking of previous occurrences happens via map[string]struct{}
+func appendUniqueRR(seen map[string]struct{}, result *[]dns.RR, rrs []dns.RR) {
+	for _, rr := range rrs {
+		s := rr.String()
+		if _, ok := seen[s]; ok {
+			continue
+		}
+
+		*result = append(*result, rr)
+		seen[s] = struct{}{}
 	}
 }
 

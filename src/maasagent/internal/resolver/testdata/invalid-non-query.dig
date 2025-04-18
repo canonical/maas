@@ -1,0 +1,10 @@
+# Request
+;; ->>HEADER<<- opcode: NOTIFY, status: NOERROR, id: 1
+;; flags:; QUERY: 0, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+# Resolution
+
+# Response
+;; ->>HEADER<<- opcode: NOTIFY, status: REFUSED, id: 1
+;; flags: qr; QUERY: 0, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
