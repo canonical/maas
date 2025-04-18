@@ -35,6 +35,7 @@ from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
+import maasserver.workers as workers_module
 from maastesting.crochet import wait_for
 from maastesting.fixtures import TempDirectory
 from maastesting.runtest import MAASCrochetRunTest
@@ -228,10 +229,11 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_registerWorker_sets_regiond_degraded_with_less_than_workers(self):
+        # In case you run the test suite on a VM with 1 core, the MAX_WORKERS_COUNT is set to 1 so we have to patch it in order to test this scenario.
+        self.patch(workers_module, "MAX_WORKERS_COUNT", 4)
         yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
         yield master.startService()
-
         pid = random.randint(1, 512)
         yield master.registerWorker(pid, MagicMock())
 
