@@ -237,6 +237,10 @@ class SharedConnection(Connection):
     def rollback(self):
         raise NotImplementedError("Transactions are handled by Django")
 
+    def in_transaction(self):
+        # Transactions are handled by django
+        return True
+
     @util.ro_memoized_property
     def info(self) -> dict:
         """user-defined data to be associated with the connection. Used only by the perf tests."""

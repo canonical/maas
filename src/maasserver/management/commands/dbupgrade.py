@@ -6,11 +6,13 @@ Django command: Upgrade MAAS regiond database.
 """
 
 import argparse
+from importlib.resources import files
 import os
 import subprocess
 import sys
 from textwrap import dedent
 
+from alembic import command, config
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import connections, DEFAULT_DB_ALIAS
@@ -225,6 +227,46 @@ class Command(BaseCommand):
 
         print("  Applied all migrations.")
 
+    @classmethod
+    def _build_alembic_postgres_dsn(self, conn_params):
+        user = conn_params.get("user") or ""
+        password = conn_params.get("password") or ""
+        host = conn_params.get("host") or "localhost"
+        port = conn_params.get("port")
+        dbname = conn_params["dbname"]
+
+        auth = f"{user}:{password}@" if password else f"{user}@"
+
+        if host.startswith("/"):  # It's a Unix socket
+            return f"postgresql+asyncpg://{auth}localhost/{dbname}?host={host}"
+        else:
+            port_part = f":{port}" if port else ""
+            return f"postgresql+asyncpg://{auth}{host}{port_part}/{dbname}"
+
+    @classmethod
+    def _should_run_django_migrations(cls, database) -> bool:
+        """
+        Returns True if the django_migrations table exists AND the alembic_version table does not. False otherwise.
+
+        In theory, this should be True when there is an existing environment running MAAS 3.6 and below that is upgrading to >
+        3.7.
+        """
+        with connections[database].cursor() as cursor:
+            cursor.execute("""
+                    SELECT
+                        EXISTS (
+                            SELECT 1
+                            FROM information_schema.tables
+                            WHERE table_name = 'django_migrations'
+                        )
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM information_schema.tables
+                            WHERE table_name = 'alembic_version'
+                        );
+                """)
+            return cursor.fetchone()[0]
+
     def handle(self, *args, **options):
         database = options.get("database")
         no_triggers = options.get("no_triggers")
@@ -248,10 +290,27 @@ class Command(BaseCommand):
         # the database.
         self._drop_all_triggers(database)
 
-        # Run the django builtin migrations.
-        call_command(
-            "migrate", interactive=False, verbosity=options.get("verbosity")
+        # If the django_migrations table exists and the alembic table does not, it means this is an existing environment that
+        # still needs to run the django migrations. After the migrations are executed, the alembic table will be created so the
+        # django migrations will not be executed anymore.
+        # TODO: We must make the LTS a mandatory version that users can't skip it during an upgrade. After the LTS, we will remove
+        #  entirely the django migrations and only the alembic ones will be executed.
+        if self._should_run_django_migrations(database):
+            call_command(
+                "migrate",
+                interactive=False,
+                verbosity=options.get("verbosity"),
+            )
+
+        # Run alembic migrations
+        alembic_ini_path = str(
+            files("maasservicelayer.db.alembic") / "alembic.ini"
         )
+        alembic_cfg = config.Config(alembic_ini_path)
+        alembic_cfg.set_main_option("run_migrations", "true")
+        dsn = self._build_alembic_postgres_dsn(conn.get_connection_params())
+        alembic_cfg.set_main_option("sqlalchemy.url", dsn)
+        command.upgrade(alembic_cfg, "head")
 
         # Make sure we're going to see the same database as the migrations
         # have left behind.

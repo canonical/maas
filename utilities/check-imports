@@ -337,6 +337,7 @@ RegionController = (
 RegionControllerRule = Rule(
     Allow("aiofiles|aiofiles.**"),
     Allow("aiohttp|aiohttp.**"),
+    Allow("alembic|alembic.**"),
     Allow("apiclient.creds.*"),
     Allow("apiclient.maas_client.MAASOAuth"),
     Allow("apiclient.multipart.*"),
@@ -420,6 +421,7 @@ ServiceLayerRule = Rule(
     Allow("asyncpg|asyncpg.**"),
     Allow("aiohttp|aiohttp.**"),
     Allow("aiofiles|aiofiles.**"),
+    Allow("alembic|alembic.**"),
     Allow(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),

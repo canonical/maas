@@ -74,6 +74,9 @@ entry-points.pytest11.maas-perftest = "maastesting.pytest.perftest"
 entry-points.pytest11.maas-seeds = "maastesting.pytest.seeds"
 entry-points.pytest11.maas-sqlalchemy = "maastesting.pytest.sqlalchemy"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = [ "src" ]
 exclude = [ "*.testing", "*.tests" ]
@@ -88,6 +91,9 @@ include = [
   "metadataserver*",
   "provisioningserver*",
 ]
+
+[tool.setuptools.package-data]
+"maasservicelayer" = [ "db/alembic/alembic.ini" ]
 
 [tool.ruff]
 line-length = 79

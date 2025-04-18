@@ -6118,6 +6118,15 @@ $$;
 
 
 --
+-- Name: alembic_version; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.alembic_version (
+    version_num character varying(32) NOT NULL
+);
+
+
+--
 -- Name: auth_group; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11030,6 +11039,15 @@ ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('t
 
 
 --
+-- Data for Name: alembic_version; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.alembic_version (version_num) FROM stdin;
+0000
+\.
+
+
+--
 -- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -12082,6 +12100,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 395	maasserver	0339_migrate_keysource_table	2025-01-10 03:30:40.046038+00
 396	maasserver	0340_drop_keysource_table	2025-01-10 03:30:40.140181+00
 397	maasserver	0341_add_is_dpu_to_node	2025-03-21 03:30:33.971309+00
+398	maasserver	0342_add_alembic_table	2025-04-18 12:27:51.551723+00
+399	maasserver	0343_goodbye_django	2025-04-18 12:27:51.554786+00
 \.
 
 
@@ -13252,7 +13272,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 397, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 399, true);
 
 
 --
