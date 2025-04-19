@@ -3,10 +3,8 @@
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.utils.safestring import SafeString
 
 from maasserver.models import SSLKey
-from maasserver.models import sslkey as sslkey_module
 from maasserver.models.sslkey import validate_ssl_key
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
@@ -37,27 +35,6 @@ class TestSSLKey(MAASServerTestCase):
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         self.assertRaises(ValidationError, key.full_clean)
-
-    def test_sslkey_display_is_marked_as_HTML_safe(self):
-        key_string = get_data("data/test_x509_0.pem")
-        user = factory.make_User()
-        key = SSLKey(key=key_string, user=user)
-        display = key.display_html()
-        self.assertIsInstance(display, SafeString)
-
-    def test_sslkey_display_is_HTML_safe(self):
-        self.patch(
-            sslkey_module, "get_html_display_for_key"
-        ).return_value = (
-            "&lt;escape&gt; F6:2D:B4:FF:B8:27:C0:5D:26:32:43:F2:DE:37:EE:6E"
-        )
-        key_string = get_data("data/test_x509_0.pem")
-        user = factory.make_User()
-        key = SSLKey(key=key_string, user=user)
-        display = key.display_html()
-        self.assertTrue(display.startswith("&lt;escape&gt;"))
-        self.assertNotIn("<", display)
-        self.assertNotIn(">", display)
 
     def test_sslkey_user_and_key_unique_together(self):
         key_string = get_data("data/test_x509_0.pem")

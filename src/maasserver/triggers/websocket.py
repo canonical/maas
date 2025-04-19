@@ -2629,24 +2629,6 @@ def register_websocket_triggers():
         "maasserver_sslkey", "user_sslkey_unlink_notify", "delete"
     )
 
-    # SSL key table.
-    register_procedure(
-        render_notification_procedure(
-            "sslkey_create_notify", "sslkey_create", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "sslkey_update_notify", "sslkey_update", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "sslkey_delete_notify", "sslkey_delete", "OLD.id"
-        )
-    )
-    register_triggers("maasserver_sslkey", "sslkey")
-
     # DHCPSnippet table
     register_procedure(
         render_notification_procedure(

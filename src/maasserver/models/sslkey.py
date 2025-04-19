@@ -8,10 +8,8 @@
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, TextField
-from django.utils.safestring import mark_safe
 from OpenSSL import crypto
 
-from maascommon.sslkey import get_html_display_for_key
 from maasserver import logger
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -67,11 +65,3 @@ class SSLKey(CleanSave, TimestampedModel):
 
     def __str__(self):
         return self.key
-
-    def display_html(self):
-        """Return a compact HTML representation of this key.
-
-        :return: The HTML representation of this key.
-        :rtype: unicode
-        """
-        return mark_safe(get_html_display_for_key(self.key))
