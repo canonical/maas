@@ -491,7 +491,7 @@ func Run() int {
 	}
 
 	resolverCache, err := resolver.NewCache(
-		cfg.DNSResolver.CacheSize,
+		resolver.WithMaxSize(cfg.DNSResolver.CacheSize),
 		resolver.WithCacheMetrics(meterProvider.Meter("resolver")),
 	)
 	if err != nil {

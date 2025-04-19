@@ -370,7 +370,7 @@ func TestServeDNS(t *testing.T) {
 				h.SetUpstreams(&systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 				}, nil)
-				cache, _ := NewCache(int64(20 * maxRecordSize))
+				cache, _ := NewCache(WithMaxSize(int64(20 * maxRecordSize)))
 				h.recordCache = cache
 			},
 		},
@@ -435,7 +435,7 @@ func TestServeDNS_Cached(t *testing.T) {
 	// Answer that is to be returned by us (resolver) to the client
 	response := ParseDigOutputBlock(t, file, "Response")
 
-	cache, _ := NewCache(int64(20 * maxRecordSize))
+	cache, _ := NewCache(WithMaxSize(int64(20 * maxRecordSize)))
 
 	handler := NewRecursiveHandler(cache)
 	handler.SetUpstreams(&systemConfig{
@@ -841,7 +841,7 @@ func BenchmarkServeDNS(b *testing.B) {
 			// One or more requests/responses from us (resolver) to the nameserver
 			resolution := ParseDigOutputBlock(b, file, "Resolution")
 
-			cache, err := NewCache(0)
+			cache, err := NewCache()
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -876,7 +876,7 @@ func BenchmarkServeDNS_Search(b *testing.B) {
 	resolution := ParseDigOutputBlock(b, file, "Resolution")
 	resolutionIter := ParseDigOutputBlock(b, file, "Resolution iter")
 
-	cache, err := NewCache(0)
+	cache, err := NewCache()
 	if err != nil {
 		b.Fatal(err)
 	}

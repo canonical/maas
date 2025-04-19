@@ -266,7 +266,7 @@ func TestCache_Set(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			cache, err := NewCache(int64(tc.in.cacheSize * maxRecordSize))
+			cache, err := NewCache(WithMaxSize(int64(tc.in.cacheSize * maxRecordSize)))
 			if err != nil {
 				t.Fatal(err)
 			}

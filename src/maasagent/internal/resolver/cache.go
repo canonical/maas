@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	maxRecordSize         = 512
-	defaultCacheRecordCap = 1000
+	maxRecordSize            = 512
+	defaultMaxNumRecords int = 1000
 )
 
 type Cache interface {
@@ -47,38 +47,44 @@ func (c *cacheEntry) expired(ts time.Time) bool {
 type CacheOption func(*cache)
 
 type cache struct {
-	cache    *lru.Cache[string, *cacheEntry]
-	stats    *cacheStats
-	maxCount int64
+	cache         *lru.Cache[string, *cacheEntry]
+	stats         *cacheStats
+	maxNumRecords int
 }
 
 // NewCache provides a constructor for an in-memory DNS cache
-func NewCache(size int64, options ...CacheOption) (Cache, error) {
-	maxNumRecords := defaultCacheRecordCap
-
-	if size != 0 {
-		maxNumRecords = int(size / maxRecordSize)
-		if maxNumRecords < 1 {
-			maxNumRecords = 1
-		}
-	}
-
-	lruCache, err := lru.New[string, *cacheEntry](maxNumRecords)
-	if err != nil {
-		return nil, err
-	}
-
+func NewCache(options ...CacheOption) (Cache, error) {
 	c := &cache{
-		cache:    lruCache,
-		stats:    &cacheStats{},
-		maxCount: int64(maxNumRecords),
+		stats:         &cacheStats{},
+		maxNumRecords: defaultMaxNumRecords,
 	}
 
 	for _, option := range options {
 		option(c)
 	}
 
+	lruCache, err := lru.New[string, *cacheEntry](c.maxNumRecords)
+	if err != nil {
+		return nil, err
+	}
+
+	c.cache = lruCache
+
 	return c, nil
+}
+
+// WithMaxSize allows setting the maximum cache size in bytes. By default it is
+// limited to defaultMaxNumRecords (1000), but if WithMaxSize is provided, then
+// it is calculated as maxNumRecords = size / maxRecordSize (512 bytes)
+func WithMaxSize(size int64) CacheOption {
+	return func(c *cache) {
+		if size != 0 {
+			c.maxNumRecords = int(size / maxRecordSize)
+			if c.maxNumRecords < 1 {
+				c.maxNumRecords = 1
+			}
+		}
+	}
 }
 
 // Get fetches a record for the given name and type if one is present

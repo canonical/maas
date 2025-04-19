@@ -109,7 +109,7 @@ func WithCacheMetrics(meter metric.Meter) CacheOption {
 			metric.WithUnit("{count}"),
 			metric.WithInt64Callback(func(_ context.Context, o metric.Int64Observer) error {
 				o.Observe(c.stats.size.Load(), metric.WithAttributes(current))
-				o.Observe(c.maxCount, metric.WithAttributes(max))
+				o.Observe(int64(c.maxNumRecords), metric.WithAttributes(max))
 
 				return nil
 			})))
