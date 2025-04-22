@@ -42,16 +42,16 @@ type session struct {
 	// chains can be extremely long and still valid,
 	// we rely on label compression to reuse space
 	// where labels in a name repeats
-	currentChain []byte
+	chain []byte
 }
 
 // newSession creates a *session to track query chains for
 // a given remote address
 func newSession(remoteAddr net.Addr) *session {
 	return &session{
-		remoteAddr:   remoteAddr,
-		currentChain: []byte{},
-		createdAt:    time.Now(),
+		remoteAddr: remoteAddr,
+		chain:      []byte{},
+		createdAt:  time.Now(),
 	}
 }
 
@@ -99,7 +99,7 @@ func (s *session) StoreName(name string) error {
 	}
 
 	if !s.contains(nameBytes, uncompressed) {
-		s.currentChain = append(s.currentChain, nameBytes...)
+		s.chain = append(s.chain, nameBytes...)
 	}
 
 	return nil
@@ -108,7 +108,7 @@ func (s *session) StoreName(name string) error {
 // NameAlreadyQueried returns true when the session already queried for a name
 // and said name is not in cache, this should be seen as a loop.
 func (s *session) NameAlreadyQueried(name string) (bool, error) {
-	if len(s.currentChain) == 0 {
+	if len(s.chain) == 0 {
 		return false, nil
 	}
 
@@ -147,7 +147,7 @@ func (s *session) NameAlreadyQueried(name string) (bool, error) {
 // Reset clears the current query chain.
 // This should happen whenever a non-CNAME and non-DNAME is returned
 func (s *session) Reset() {
-	s.currentChain = nil
+	s.chain = nil
 }
 
 // Expired calculates if a session has expired
@@ -158,13 +158,13 @@ func (s *session) Expired(ts time.Time) bool {
 // contains checks if either a compressed or uncompressed version of a given name
 // is present in the current query chain
 func (s *session) contains(compressed []byte, uncompressed []byte) bool {
-	compressedIdx := bytes.Index(s.currentChain, compressed)
-	uncompressedIdx := bytes.Index(s.currentChain, uncompressed)
+	compressedIdx := bytes.Index(s.chain, compressed)
+	uncompressedIdx := bytes.Index(s.chain, uncompressed)
 	compressedMatch := bytes.Contains(
-		s.currentChain, append([]byte{0x00}, compressed...), // 0 byte of previous name to ensure exact match
+		s.chain, append([]byte{0x00}, compressed...), // 0 byte of previous name to ensure exact match
 	)
 	uncompressedMatch := bytes.Contains(
-		s.currentChain, append([]byte{0x00}, uncompressed...), // 0 byte of previous name to ensure exact match
+		s.chain, append([]byte{0x00}, uncompressed...), // 0 byte of previous name to ensure exact match
 	)
 
 	return compressedIdx == 0 || uncompressedIdx == 0 || compressedMatch || uncompressedMatch
@@ -172,7 +172,7 @@ func (s *session) contains(compressed []byte, uncompressed []byte) bool {
 
 // compress compressed a given name using the current query chain as a buffer
 func (s *session) compress(buf []byte, label []byte) ([]byte, bool) {
-	idx := bytes.Index(s.currentChain, label)
+	idx := bytes.Index(s.chain, label)
 	if idx == -1 {
 		return buf, false
 	}

@@ -17,65 +17,36 @@ package resolver
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
+	"net/netip"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSession_StringNil(t *testing.T) {
+	s := newSession(nil)
+	assert.Equal(t, s.String(), "")
+}
+
 func TestSession_String(t *testing.T) {
 	testcases := map[string]struct {
-		in  net.Addr
+		in  string
 		out string
 	}{
-		"nil": {
-			in:  nil,
-			out: "",
+		"ipv4": {
+			in:  "10.0.0.1",
+			out: "%s://10.0.0.1:53",
 		},
-		"tcp ipv4 and port": {
-			in: &net.TCPAddr{
-				IP:   net.ParseIP("10.0.0.1"),
-				Port: 53,
-			},
-			out: "tcp://10.0.0.1:53",
+		"ipv6": {
+			in:  "fe80::44dc:db32:3649:23f7",
+			out: "%s://[fe80::44dc:db32:3649:23f7]:53",
 		},
-		"udp ipv4 and port": {
-			in: &net.UDPAddr{
-				IP:   net.ParseIP("10.0.0.1"),
-				Port: 53,
-			},
-			out: "udp://10.0.0.1:53",
-		},
-		"tcp ipv6 and port": {
-			in: &net.TCPAddr{
-				IP:   net.ParseIP("fe80::44dc:db32:3649:23f7"),
-				Port: 53,
-			},
-			out: "tcp://[fe80::44dc:db32:3649:23f7]:53",
-		},
-		"udp ipv6 and port": {
-			in: &net.UDPAddr{
-				IP:   net.ParseIP("fe80::44dc:db32:3649:23f7"),
-				Port: 53,
-			},
-			out: "udp://[fe80::44dc:db32:3649:23f7]:53",
-		},
-		"tcp ipv6 with zone and port": {
-			in: &net.TCPAddr{
-				IP:   net.ParseIP("fe80::26ce:47cf:437e:d1b1"),
-				Port: 53,
-				Zone: "enp0s6",
-			},
-			out: "tcp://[fe80::26ce:47cf:437e:d1b1%enp0s6]:53",
-		},
-		"udp ipv6 with zone and port": {
-			in: &net.UDPAddr{
-				IP:   net.ParseIP("fe80::26ce:47cf:437e:d1b1"),
-				Port: 53,
-				Zone: "enp0s6",
-			},
-			out: "udp://[fe80::26ce:47cf:437e:d1b1%enp0s6]:53",
+		"ipv6 with zone": {
+			in:  "fe80::26ce:47cf:437e:d1b1%enp0s6",
+			out: "%s://[fe80::26ce:47cf:437e:d1b1%%enp0s6]:53",
 		},
 	}
 
@@ -83,9 +54,18 @@ func TestSession_String(t *testing.T) {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
-			s := newSession(tc.in)
+			t.Parallel()
 
-			assert.Equal(t, s.String(), tc.out)
+			addr := netip.MustParseAddr(tc.in)
+
+			netaddr := []net.Addr{
+				&net.TCPAddr{IP: net.IP(addr.AsSlice()), Port: 53, Zone: addr.Zone()},
+				&net.UDPAddr{IP: net.IP(addr.AsSlice()), Port: 53, Zone: addr.Zone()},
+			}
+			for _, a := range netaddr {
+				s := newSession(a)
+				assert.Equal(t, s.String(), fmt.Sprintf(tc.out, a.Network()))
+			}
 		})
 	}
 }
@@ -281,14 +261,14 @@ func TestSession_StoreName(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			s := newSession(&net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 53})
 
-			s.currentChain = tc.in.generateChain()
+			s.chain = tc.in.generateChain()
 
 			err := s.StoreName(tc.in.name)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			assert.Equal(t, tc.out(), s.currentChain)
+			assert.Equal(t, tc.out(), s.chain)
 		})
 	}
 }
@@ -354,45 +334,19 @@ func TestSession_NameAlreadyQueried(t *testing.T) {
 }
 
 func TestSession_Expired(t *testing.T) {
-	testcases := map[string]struct {
-		in struct {
-			createdAt  time.Time
-			timePassed time.Duration
-		}
-		out bool
-	}{
-		"still valid": {
-			in: struct {
-				createdAt  time.Time
-				timePassed time.Duration
-			}{
-				createdAt:  time.Date(2025, time.January, 1, 1, 1, 1, 1, time.UTC),
-				timePassed: time.Second,
-			},
-			out: false,
-		},
-		"expired": {
-			in: struct {
-				createdAt  time.Time
-				timePassed time.Duration
-			}{
-				createdAt:  time.Date(2025, time.January, 1, 1, 1, 1, 1, time.UTC),
-				timePassed: time.Minute,
-			},
-			out: true,
-		},
-	}
-
-	for name, tc := range testcases {
-		tc := tc
-
-		t.Run(name, func(t *testing.T) {
+	expiredEquals := func(createdAt time.Time, timePassed time.Duration, want bool) func(t *testing.T) {
+		return func(t *testing.T) {
 			s := newSession(&net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 53})
-			s.createdAt = tc.in.createdAt
+			s.createdAt = createdAt
 
-			timePassed := tc.in.createdAt.Add(tc.in.timePassed)
+			timePassed := createdAt.Add(timePassed)
 
-			assert.Equal(t, tc.out, s.Expired(timePassed))
-		})
+			assert.Equal(t, want, s.Expired(timePassed))
+		}
 	}
+
+	createdAt := time.Date(2025, time.January, 1, 1, 1, 1, 1, time.UTC)
+
+	t.Run("still valid", expiredEquals(createdAt, time.Second, false))
+	t.Run("expired", expiredEquals(createdAt, time.Minute, true))
 }
