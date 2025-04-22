@@ -25,6 +25,7 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
+from maascommon.utils.network import MAASIPSet
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -43,17 +44,14 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import CIDRField
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.staticroute import StaticRoute
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
 from maasserver.workflow import start_workflow
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.network import IPRANGE_TYPE as MAASIPRANGE_TYPE
 from provisioningserver.utils.network import (
     IPRangeStatistics,
-    MAASIPSet,
     make_ipaddress,
-    make_iprange,
     MaybeIPAddress,
     parse_integer,
 )
@@ -523,233 +521,39 @@ class Subnet(CleanSave, TimestampedModel):
         """
         self._cached_allocated_ips = ips
 
-    def _get_ranges_for_allocated_ips(
-        self, ipnetwork: IPNetwork, ignore_discovered_ips: bool
-    ) -> set:
-        """Returns a set of MAASIPRange objects created from the set of allocated
-        StaticIPAddress objects.
-        """
-        ranges = set()
-        # We work with tuple rather than real model objects, since a
-        # subnet may many IPs and creating a model object for each IP is
-        # slow.
-        ips = self.get_allocated_ips()
-        for ip, alloc_type in ips:
-            if ip and not (
-                ignore_discovered_ips
-                and (alloc_type == IPADDRESS_TYPE.DISCOVERED)
-            ):
-                ip = IPAddress(ip)
-                if ip in ipnetwork:
-                    ranges.add(make_iprange(ip, purpose="assigned-ip"))
-        return ranges
-
     def get_ipranges_in_use(
         self,
-        exclude_addresses: IPAddressExcludeList = None,
-        ranges_only: bool = False,
-        include_reserved: bool = True,
-        with_neighbours: bool = False,
-        ignore_discovered_ips: bool = False,
-        exclude_ip_ranges: list = None,
-        cached_staticroutes: list = None,
     ) -> MAASIPSet:
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
-
-        :param exclude_addresses: Additional addresses to consider "in use".
-        :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
-        :param ranges_only: if True, filters out gateway IPs, static routes,
-            DNS servers, and `exclude_addresses`.
-        :param with_neighbours: If True, includes addresses learned from
-            neighbour observation.
         """
-        if exclude_addresses is None:
-            exclude_addresses = []
-        ranges = set()
-        network = self.get_ipnetwork()
-        if network.version == 6:
-            # For most IPv6 networks, automatically reserve the range:
-            #     ::1 - ::ffff:ffff
-            # We expect the administrator will be using ::1 through ::ffff.
-            # We plan to reserve ::1:0 through ::ffff:ffff for use by MAAS,
-            # so that we can allocate addresses in the form:
-            #     ::<node>:<child>
-            # For now, just make sure IPv6 addresses are allocated from
-            # *outside* both ranges, so that they won't conflict with addresses
-            # reserved from this scheme in the future.
-            first = str(IPAddress(network.first))
-            first_plus_one = str(IPAddress(network.first + 1))
-            second = str(IPAddress(network.first + 0xFFFFFFFF))
-            if network.prefixlen == 64:
-                ranges |= {
-                    make_iprange(first_plus_one, second, purpose="reserved")
-                }
-            # Reserve the subnet router anycast address, except for /127 and
-            # /128 networks. (See RFC 6164, and RFC 4291 section 2.6.1.)
-            if network.prefixlen < 127:
-                ranges |= {
-                    make_iprange(first, first, purpose="rfc-4291-2.6.1")
-                }
-        if not ranges_only:
-            if (
-                self.gateway_ip is not None
-                and self.gateway_ip != ""
-                and self.gateway_ip in network
-            ):
-                ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
-            if self.dns_servers is not None:
-                ranges |= {
-                    make_iprange(server, purpose="dns-server")
-                    for server in self.dns_servers
-                    if server in network
-                }
-            if cached_staticroutes is not None:
-                static_routes = [
-                    static_route
-                    for static_route in cached_staticroutes
-                    if static_route.source == self
-                ]
-            else:
-                static_routes = StaticRoute.objects.filter(source=self)
-            for static_route in static_routes:
-                ranges |= {
-                    make_iprange(static_route.gateway_ip, purpose="gateway-ip")
-                }
-            ranges |= self._get_ranges_for_allocated_ips(
-                network, ignore_discovered_ips
-            )
-            ranges |= {
-                make_iprange(address, purpose="excluded")
-                for address in exclude_addresses
-                if address in network
-            }
-        if include_reserved:
-            ranges |= self.get_reserved_maasipset(
-                exclude_ip_ranges=exclude_ip_ranges
-            )
-        ranges |= self.get_dynamic_maasipset(
-            exclude_ip_ranges=exclude_ip_ranges
+        return service_layer.services.v3subnet_utilization.get_ipranges_in_use(
+            self.id
         )
-        if with_neighbours:
-            ranges |= self.get_maasipset_for_neighbours()
-        return MAASIPSet(ranges)
 
     def get_ipranges_available_for_reserved_range(
-        self, exclude_ip_ranges: list = None
-    ):
-        return self.get_ipranges_not_in_use(
-            ranges_only=True, exclude_ip_ranges=exclude_ip_ranges
+        self, exclude_ip_range_id: int | None = None
+    ) -> MAASIPSet:
+        return service_layer.services.v3subnet_utilization.get_ipranges_available_for_reserved_range(
+            self.id, exclude_ip_range_id
         )
 
     def get_ipranges_available_for_dynamic_range(
-        self, exclude_ip_ranges: list = None
-    ):
-        return self.get_ipranges_not_in_use(
-            ranges_only=False,
-            ignore_discovered_ips=True,
-            exclude_ip_ranges=exclude_ip_ranges,
+        self, exclude_ip_range_id: int | None = None
+    ) -> MAASIPSet:
+        return service_layer.services.v3subnet_utilization.get_ipranges_available_for_dynamic_range(
+            self.id, exclude_ip_range_id
         )
 
     def get_ipranges_not_in_use(
         self,
-        exclude_addresses: IPAddressExcludeList = None,
-        ranges_only: bool = False,
-        ignore_discovered_ips: bool = False,
-        with_neighbours: bool = False,
-        exclude_ip_ranges: list = None,
     ) -> MAASIPSet:
         """Returns a `MAASIPSet` of ranges which are currently free on this
         `Subnet`.
-
-        :param ranges_only: if True, filters out gateway IPs, static routes,
-            DNS servers, and `exclude_addresses`.
-        :param exclude_addresses: An iterable of addresses not to use.
-        :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
-        :param with_neighbours: If True, includes addresses learned from
-            neighbour observation.
         """
-        if exclude_addresses is None:
-            exclude_addresses = []
-        in_use = self.get_ipranges_in_use(
-            exclude_addresses=exclude_addresses,
-            ranges_only=ranges_only,
-            with_neighbours=with_neighbours,
-            ignore_discovered_ips=ignore_discovered_ips,
-            exclude_ip_ranges=exclude_ip_ranges,
+        return service_layer.services.v3subnet_utilization.get_free_ipranges(
+            self.id
         )
-        if self.managed or ranges_only:
-            not_in_use = in_use.get_unused_ranges(self.get_ipnetwork())
-        else:
-            # The end result we want is a list of unused IP addresses *within*
-            # reserved ranges. To get that result, we first need the full list
-            # of unused IP addresses on the subnet. This is better illustrated
-            # visually below.
-            #
-            # Legend:
-            #     X:  in-use IP addresses
-            #     R:  reserved range
-            #     Rx: reserved range (with allocated, in-use IP address)
-            #
-            #             +----+----+----+----+----+----+
-            # IP address: | 1  | 2  | 3  | 4  | 5  | 6  |
-            #             +----+----+----+----+----+----+
-            #     Usages: | X  |    | R  | Rx |    | X  |
-            #             +----+----+----+----+----+----+
-            #
-            # We need a set that just contains `3` in this case. To get there,
-            # first calculate the set of all unused addresses on the subnet,
-            # then intersect that set with set of in-use addresses *excluding*
-            # the reserved range, then calculate which addresses within *that*
-            # set are unused:
-            #                               +----+----+----+----+----+----+
-            #                   IP address: | 1  | 2  | 3  | 4  | 5  | 6  |
-            #                               +----+----+----+----+----+----+
-            #                       unused: |    | U  |    |    | U  |    |
-            #                               +----+----+----+----+----+----+
-            #             unmanaged_in_use: | u  |    |    | u  |    | u  |
-            #                               +----+----+----+----+----+----+
-            #                 |= unmanaged: ===============================
-            #                               +----+----+----+----+----+----+
-            #             unmanaged_in_use: | u  | U  |    | u  | U  | u  |
-            #                               +----+----+----+----+----+----+
-            #          get_unused_ranges(): ===============================
-            #                               +----+----+----+----+----+----+
-            #                   not_in_use: |    |    | n  |    |    |    |
-            #                               +----+----+----+----+----+----+
-            unused = in_use.get_unused_ranges(
-                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNMANAGED
-            )
-            unmanaged_in_use = self.get_ipranges_in_use(
-                exclude_addresses=exclude_addresses,
-                ranges_only=ranges_only,
-                include_reserved=False,
-                with_neighbours=with_neighbours,
-                ignore_discovered_ips=ignore_discovered_ips,
-                exclude_ip_ranges=exclude_ip_ranges,
-            )
-            unmanaged_in_use |= unused
-            not_in_use = unmanaged_in_use.get_unused_ranges(
-                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNUSED
-            )
-        return not_in_use
-
-    def get_maasipset_for_neighbours(self) -> MAASIPSet:
-        """Return the observed neighbours in this subnet.
-
-        :return: MAASIPSet of neighbours (with the "neighbour" purpose).
-        """
-        # Circular imports.
-        from maasserver.models import Discovery
-
-        # Note: we only need unknown IP addresses here, because the known
-        # IP addresses should already be covered by get_ipranges_in_use().
-        neighbours = Discovery.objects.filter(subnet=self).by_unknown_ip()
-        neighbour_set = {
-            make_iprange(neighbour.ip, purpose="neighbour")
-            for neighbour in neighbours
-        }
-        return MAASIPSet(neighbour_set)
 
     def get_least_recently_seen_unknown_neighbour(self):
         """
@@ -767,7 +571,9 @@ class Subnet(CleanSave, TimestampedModel):
         # range (such as a router IP address or reserved range) makes it
         # "known". So we need to avoid those here in order to avoid stepping
         # on network infrastructure, reserved ranges, etc.
-        unused = self.get_ipranges_not_in_use(ignore_discovered_ips=True)
+        unused = service_layer.services.v3subnet_utilization.get_free_ipranges(
+            subnet_id=self.id
+        )
         least_recent_neighbours = (
             Discovery.objects.filter(subnet=self)
             .by_unknown_ip()
@@ -778,54 +584,33 @@ class Subnet(CleanSave, TimestampedModel):
                 return neighbor
         return None
 
-    def get_iprange_usage(self, cached_staticroutes=None) -> MAASIPSet:
+    def get_iprange_usage(self) -> MAASIPSet:
         """Returns both the reserved and unreserved IP ranges in this Subnet.
         (This prevents a potential race condition that could occur if an IP
         address is allocated or deallocated between calls.)
 
         :returns: A MAASIPSet with the reserved and unreserved ranges.
         """
-        reserved_ranges = self.get_ipranges_in_use(
-            cached_staticroutes=cached_staticroutes
+        return (
+            service_layer.services.v3subnet_utilization.get_subnet_utilization(
+                self.id
+            )
         )
-        return reserved_ranges.get_full_range(self.get_ipnetwork())
 
     def get_next_ip_for_allocation(
         self,
-        exclude_addresses: Optional[Iterable] = None,
-        avoid_observed_neighbours: bool = True,
+        exclude_addresses: Optional[list[str]] = None,
         count: int = 1,
     ) -> Iterable[MaybeIPAddress]:
         """Heuristic to return the "best" address from this subnet to use next.
 
         :param exclude_addresses: Optional list of addresses to exclude.
-        :param avoid_observed_neighbours: Optional parameter to specify if
-            known observed neighbours should be avoided. This parameter is not
-            intended to be specified by a caller in production code; it is used
-            internally to recursively call this method if the first allocation
-            attempt fails.
         """
-        if exclude_addresses is None:
-            exclude_addresses = []
-        free_ranges = self.get_ipranges_not_in_use(
+        free_ranges = service_layer.services.v3subnet_utilization.get_ipranges_for_ip_allocation(
+            subnet_id=self.id,
             exclude_addresses=exclude_addresses,
-            with_neighbours=avoid_observed_neighbours,
         )
-        if len(free_ranges) == 0 and avoid_observed_neighbours is True:
-            # Try again recursively, but this time consider neighbours to be
-            # "free" IP addresses. (We'll pick the least recently seen IP.)
-            return self.get_next_ip_for_allocation(
-                exclude_addresses, avoid_observed_neighbours=False
-            )
-        elif len(free_ranges) == 0:
-            raise StaticIPAddressExhaustion(
-                "No more IPs available in subnet: %s." % self.cidr
-            )
-        # The first time through this function, we aren't trying to avoid
-        # observed neighbours. In fact, `free_ranges` only contains completely
-        # unused ranges. So we don't need to check for the least recently seen
-        # neighbour on the first pass.
-        if avoid_observed_neighbours is False:
+        if len(free_ranges) == 0:
             # We tried considering neighbours as "in-use" addresses, but the
             # subnet is still full. So make an educated guess about which IP
             # address is least likely to be in-use.
@@ -842,7 +627,12 @@ class Subnet(CleanSave, TimestampedModel):
                         discovery.last_seen,
                     )
                 )
+                # TODO: this must return `count` IPs
                 return [str(discovery.ip)]
+            else:
+                raise StaticIPAddressExhaustion(
+                    "No more IPs available in subnet: %s." % self.cidr
+                )
         # The purpose of this is to that we ensure we always get an IP address
         # from the *smallest* free contiguous range. This way, larger ranges
         # can be preserved in case they need to be used for applications

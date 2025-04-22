@@ -3,8 +3,32 @@
 
 """MAAS web."""
 
+import ipaddress
 import sys
 import warnings
+
+import netaddr
+import psycopg2.extensions
+
+
+def adapt_ipaddress(ip):
+    return psycopg2.extensions.AsIs(repr(str(ip)))
+
+
+def adapt_ipnetwork(network):
+    return psycopg2.extensions.AsIs(repr(str(network)))
+
+
+def psycopg2_ipaddress_adapter(ip):
+    return psycopg2.extensions.AsIs(repr(ip.exploded))
+
+
+psycopg2.extensions.register_adapter(netaddr.IPAddress, adapt_ipaddress)
+psycopg2.extensions.register_adapter(netaddr.IPNetwork, adapt_ipnetwork)
+psycopg2.extensions.register_adapter(ipaddress.IPv4Network, adapt_ipnetwork)
+psycopg2.extensions.register_adapter(ipaddress.IPv6Network, adapt_ipnetwork)
+psycopg2.extensions.register_adapter(ipaddress.IPv4Address, adapt_ipaddress)
+psycopg2.extensions.register_adapter(ipaddress.IPv6Address, adapt_ipaddress)
 
 
 def find_settings(whence):

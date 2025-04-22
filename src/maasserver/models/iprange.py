@@ -21,6 +21,7 @@ from django.db.models import (
 import netaddr
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
+from maascommon.utils.network import make_iprange
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -35,7 +36,6 @@ from maasserver.utils.orm import (
 )
 from maasserver.workflow import start_workflow
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.network import make_iprange
 
 maaslog = get_maas_logger("iprange")
 
@@ -256,11 +256,11 @@ class IPRange(CleanSave, TimestampedModel):
         # Dynamic ranges cannot overlap anything (no ranges or IPs).
         if self.type == IPRANGE_TYPE.RESERVED:
             unused = self.subnet.get_ipranges_available_for_reserved_range(
-                exclude_ip_ranges=[self]
+                exclude_ip_range_id=self.id
             )
         else:
             unused = self.subnet.get_ipranges_available_for_dynamic_range(
-                exclude_ip_ranges=[self]
+                exclude_ip_range_id=self.id
             )
 
         if not unused:

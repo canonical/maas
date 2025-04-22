@@ -20,6 +20,7 @@ from netaddr import IPAddress, IPNetwork
 import yaml
 
 from maascommon.osystem import OperatingSystemRegistry
+from maascommon.utils.network import inet_ntop
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
@@ -145,7 +146,6 @@ from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.utils.enum import map_enum
-from provisioningserver.utils.network import inet_ntop
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub

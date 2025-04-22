@@ -28,6 +28,7 @@ from twisted.internet.defer import succeed
 from twisted.internet.error import ConnectionDone
 import yaml
 
+from maascommon.utils.network import inet_ntop
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -189,7 +190,6 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum, map_enum_reverse
 from provisioningserver.utils.env import MAAS_ID
-from provisioningserver.utils.network import inet_ntop
 from provisioningserver.utils.testing import MAASIDFixture
 
 wait_for_reactor = wait_for()

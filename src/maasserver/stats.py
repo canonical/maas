@@ -20,13 +20,7 @@ import requests
 from twisted.application.internet import TimerService
 
 from maasserver.certificates import get_maas_certificate
-from maasserver.enum import (
-    IPADDRESS_TYPE,
-    IPRANGE_TYPE,
-    MSM_STATUS,
-    NODE_STATUS,
-    NODE_TYPE,
-)
+from maasserver.enum import IPADDRESS_TYPE, MSM_STATUS, NODE_STATUS, NODE_TYPE
 from maasserver.models import (
     BMC,
     BootResourceFile,
@@ -56,7 +50,7 @@ from provisioningserver.path import get_maas_data_path
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
-from provisioningserver.utils.network import IPRangeStatistics
+from provisioningserver.utils.network import IPRANGE_PURPOSE, IPRangeStatistics
 
 log = LegacyLogger()
 
@@ -234,11 +228,11 @@ def get_subnets_utilisation_stats():
         dynamic_available = 0
         dynamic_used = 0
         for rng in full_range.ranges:
-            if IPRANGE_TYPE.DYNAMIC in rng.purpose:
+            if IPRANGE_PURPOSE.DYNAMIC in rng.purpose:
                 dynamic_available += rng.num_addresses
-            elif IPRANGE_TYPE.RESERVED in rng.purpose:
+            elif IPRANGE_PURPOSE.RESERVED in rng.purpose:
                 reserved_available += rng.num_addresses
-            elif "assigned-ip" in rng.purpose:
+            elif IPRANGE_PURPOSE.ASSIGNED_IP in rng.purpose:
                 static += rng.num_addresses
         # allocated IPs
         subnet_ips = ips_count[subnet.id]

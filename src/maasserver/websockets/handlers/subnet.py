@@ -47,9 +47,7 @@ class SubnetHandler(TimestampedModelHandler):
     def dehydrate(
         self, subnet: Subnet, data: dict, for_list: bool = False
     ) -> dict:
-        full_range = subnet.get_iprange_usage(
-            cached_staticroutes=self.cache.get("staticroutes")
-        )
+        full_range = subnet.get_iprange_usage()
         metadata = IPRangeStatistics(full_range)
         data["statistics"] = metadata.render_json(
             include_ranges=True, include_suggestions=True

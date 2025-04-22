@@ -17,6 +17,7 @@ from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, SESSION_KEY
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from django.utils import timezone
+import netaddr
 from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.task import LoopingCall
@@ -316,8 +317,14 @@ class WebSocketProtocol(Protocol):
         """
         if isinstance(obj, bytes):
             return obj.decode(encoding="utf-8", errors="ignore")
-        elif isinstance(obj, ipaddress.IPv4Address) or isinstance(
-            obj, ipaddress.IPv6Address
+        elif isinstance(
+            obj,
+            (
+                ipaddress.IPv4Address,
+                ipaddress.IPv6Address,
+                netaddr.IPAddress,
+                netaddr.IPNetwork,
+            ),
         ):
             return str(obj)
         else:

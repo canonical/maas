@@ -322,7 +322,10 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
 
         @transactional
         def allocate():
-            return StaticIPAddress.objects.allocate_new(subnet)
+            # service_layer is not initialized in these threads, so we have to
+            # manually do it.
+            with service_layer:
+                return StaticIPAddress.objects.allocate_new(subnet)
 
         def allocate_one():
             try:

@@ -148,6 +148,38 @@ DHCPSnippetTable = Table(
     ),
 )
 
+DiscoveryView = Table(
+    "maasserver_discovery",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("discovery_id", Text, nullable=False),
+    Column(
+        "neighbour_id",
+        BigInteger,
+        ForeignKey("maasserver_neighbour"),
+        nullable=False,
+    ),
+    Column("ip", INET, nullable=False),
+    Column("mac_address", Text, nullable=False),
+    Column("vid", Integer, nullable=False),
+    Column("first_seen", DateTime(timezone=True), nullable=False),
+    Column("last_seen", DateTime(timezone=True), nullable=False),
+    Column("mdns_id", BigInteger, nullable=False),
+    Column("hostname", String(256), nullable=False),
+    Column("observer_id", BigInteger, nullable=False),
+    Column("observer_system_id", String(41), nullable=False),
+    Column("observer_hostname", String(255), nullable=False),
+    Column("observer_interface_id", BigInteger, nullable=False),
+    Column("observer_interface_name", String(255), nullable=False),
+    Column("fabric_id", Integer, nullable=False),
+    Column("fabric_name", String(256), nullable=False),
+    Column("vlan_id", BigInteger, nullable=False),
+    Column("is_external_dhcp", Boolean, nullable=False),
+    Column("subnet_id", BigInteger, nullable=False),
+    Column("subnet_cidr", CIDR, nullable=False),
+    Column("subnet_prefixlen", Integer, nullable=False),
+)
+
 DNSDataTable = Table(
     "maasserver_dnsdata",
     METADATA,
@@ -385,6 +417,25 @@ IPRangeTable = Table(
     Column("comment", String(255), nullable=True, unique=False),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
+)
+
+NeighbourTable = Table(
+    "maasserver_neighbour",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("ip", INET, nullable=True),
+    Column("time", Integer, nullable=False),
+    Column("count", Integer, nullable=False),
+    Column("mac_address", Text, nullable=True),
+    Column("vid", Integer, nullable=True),
+    Column(
+        "interface_id",
+        BigInteger,
+        ForeignKey("maasserver_interface.id"),
+        nullable=False,
+    ),
 )
 
 NodeConfigTable = Table(

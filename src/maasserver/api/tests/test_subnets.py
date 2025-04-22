@@ -10,6 +10,7 @@ from django.conf import settings
 from django.http import QueryDict
 from django.urls import reverse
 
+from maascommon.utils.network import inet_ntop
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -21,7 +22,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.djangotestcase import CountQueries
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.utils.network import inet_ntop, IPRangeStatistics
+from provisioningserver.utils.network import IPRangeStatistics
 
 
 def get_subnets_uri():

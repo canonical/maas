@@ -3,7 +3,7 @@ from django.db import migrations, models
 from django.utils import timezone
 from netaddr import IPAddress
 
-from provisioningserver.utils.network import MAASIPSet, make_iprange
+from maascommon.utils.network import IPRANGE_PURPOSE, MAASIPSet, make_iprange
 
 
 class IPRANGE_TYPE:
@@ -29,8 +29,8 @@ def convert_static_ipranges_to_reserved(
     IPRange, subnet, ranges, created_time, range_description
 ):
     unreserved_range_set = MAASIPSet(ranges)
-    unreserved_ranges = unreserved_range_set.get_unused_ranges(
-        subnet.cidr, purpose="reserved"
+    unreserved_ranges = unreserved_range_set.get_unused_ranges_for_network(
+        subnet.cidr, purpose=IPRANGE_PURPOSE.RESERVED
     )
     for iprange in unreserved_ranges:
         start_ip = str(IPAddress(iprange.first))

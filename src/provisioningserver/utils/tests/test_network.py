@@ -28,6 +28,7 @@ from twisted.names.error import (
     ResolverError,
 )
 
+from maascommon.utils.network import inet_ntop, MAASIPSet, make_iprange
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.runtest import MAASTwistedRunTest
@@ -61,7 +62,6 @@ from provisioningserver.utils.network import (
     get_source_address,
     has_ipv4_address,
     hex_str_to_bytes,
-    inet_ntop,
     interface_children,
     intersect_iprange,
     ip_range_within_network,
@@ -70,8 +70,6 @@ from provisioningserver.utils.network import (
     is_mac,
     LOOPBACK_INTERFACE_INFO,
     MAASIPRange,
-    MAASIPSet,
-    make_iprange,
     make_network,
     parse_integer,
     preferred_hostnames_sort_key,
@@ -781,7 +779,7 @@ class TestMAASIPSet(MAASTestCase):
         range1 = make_iprange("10.0.0.4", purpose="DNS")
         range2 = IPRange("10.0.0.5", "10.0.0.100")
         s = MAASIPSet([range2, range1, addr1, addr2])
-        u = s.get_unused_ranges("10.0.0.0/24")
+        u = s.get_unused_ranges_for_network(IPNetwork("10.0.0.0/24"))
         self.assertNotIn("10.0.0.0", u)
         self.assertIn("10.0.0.1", u)
         self.assertIn("10.0.0.101", u)
@@ -795,7 +793,9 @@ class TestMAASIPSet(MAASTestCase):
         range1 = make_iprange("10.0.0.3", purpose="DNS")
         range2 = IPRange("10.0.0.4", "10.0.0.100")
         s = MAASIPSet([range2, range1, addr1, addr2])
-        u = s.get_unused_ranges(IPRange("10.0.0.0", "10.0.0.255"))
+        u = s.get_unused_ranges_for_range(
+            [MAASIPRange("10.0.0.0", "10.0.0.255")]
+        )
         self.assertIn("10.0.0.0", u)
         self.assertIn("10.0.0.101", u)
         self.assertIn("10.0.0.150", u)
@@ -806,7 +806,7 @@ class TestMAASIPSet(MAASTestCase):
         range1 = make_iprange("10.0.0.3", purpose="DNS")
         range2 = make_iprange("10.0.0.3", "10.0.0.20", purpose="DHCP")
         rangeset = MAASIPSet([range2, range1])
-        u = rangeset.get_unused_ranges("10.0.0.0/24")
+        u = rangeset.get_unused_ranges_for_network(IPNetwork("10.0.0.0/24"))
         self.assertIn("10.0.0.1", u)
         self.assertIn("10.0.0.2", u)
         self.assertNotIn("10.0.0.3", u)
@@ -821,7 +821,7 @@ class TestMAASIPSet(MAASTestCase):
         range4 = make_iprange("10.0.0.5", "10.0.0.20", purpose="DHCP")
         range5 = make_iprange("10.0.0.5", "10.0.0.18", purpose="DHCP")
         s = MAASIPSet([range1, range2, range3, range4, range5])
-        u = s.get_unused_ranges("10.0.0.0/24")
+        u = s.get_unused_ranges_for_network(IPNetwork("10.0.0.0/24"))
         self.assertNotIn("10.0.0.0", u)
         self.assertIn("10.0.0.1", u)
         self.assertIn("10.0.0.2", u)
@@ -839,7 +839,7 @@ class TestMAASIPSet(MAASTestCase):
 
     def test_deals_with_small_gaps(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
-        u = s.get_unused_ranges("10.0.0.0/24")
+        u = s.get_unused_ranges_for_network(IPNetwork("10.0.0.0/24"))
         self.assertNotIn("10.0.0.0", u)
         self.assertIn("10.0.0.1", u)
         self.assertNotIn("10.0.0.2", u)
@@ -861,7 +861,7 @@ class TestMAASIPSet(MAASTestCase):
             "fe80::100", "fe80::ffff:ffff:ffff:fffe", purpose="DHCP"
         )
         s = MAASIPSet([range2, range1, addr1, addr2])
-        u = s.get_unused_ranges("fe80::/64")
+        u = s.get_unused_ranges_for_network(IPNetwork("fe80::/64"))
         self.assertNotIn("fe80::1", u)
         self.assertNotIn("fe80::2", u)
         self.assertNotIn("fe80::3", u)
@@ -881,7 +881,7 @@ class TestMAASIPSet(MAASTestCase):
             "fe80::100", "fe80::ffff:ffff:ffff:fffe", purpose="DHCP"
         )
         s = MAASIPSet([range2, range1, addr1, addr2])
-        u = s.get_unused_ranges("fe80::/32")
+        u = s.get_unused_ranges_for_network(IPNetwork("fe80::/32"))
         self.assertNotIn("fe80::1", u)
         self.assertNotIn("fe80::2", u)
         self.assertNotIn("fe80::3", u)
@@ -896,7 +896,7 @@ class TestMAASIPSet(MAASTestCase):
 
     def test_calculates_full_range(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         for ip in range(1, 254):
             self.assertIn("10.0.0.%d" % ip, u)
         self.assertIn("unused", u["10.0.0.1"].purpose)
@@ -905,7 +905,7 @@ class TestMAASIPSet(MAASTestCase):
 
     def test_calculates_full_range_for_small_ipv6(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::/127")
+        u = s.get_full_range(IPNetwork("2001:db8::/127"))
         self.assertIn("unused", u["2001:db8::"].purpose)
         self.assertIn("unused", u["2001:db8::1"].purpose)
 
@@ -956,7 +956,7 @@ class TestMAASIPSet(MAASTestCase):
 class TestIPRangeStatistics(MAASTestCase):
     def test_statistics_are_accurate(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         json = stats.render_json()
         self.assertEqual(250, json["num_available"])
@@ -969,7 +969,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_statistics_are_accurate_and_ranges_are_returned_if_desired(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         json = stats.render_json(include_ranges=True)
         self.assertEqual(250, json["num_available"])
@@ -983,7 +983,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_statistics_are_accurate_for_full_slash_32(self):
         s = MAASIPSet(["10.0.0.1"])
-        u = s.get_full_range("10.0.0.1/32")
+        u = s.get_full_range(IPNetwork("10.0.0.1/32"))
         stats = IPRangeStatistics(u)
         json = stats.render_json()
         self.assertEqual(0, json["num_available"])
@@ -996,7 +996,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_statistics_are_accurate_for_empty_slash_32(self):
         s = MAASIPSet([])
-        u = s.get_full_range("10.0.0.1/32")
+        u = s.get_full_range(IPNetwork("10.0.0.1/32"))
         stats = IPRangeStatistics(u)
         json = stats.render_json()
         self.assertEqual(1, json["num_available"])
@@ -1009,7 +1009,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_statistics_are_accurate_for_full_slash_128(self):
         s = MAASIPSet(["2001:db8::1"])
-        u = s.get_full_range("2001:db8::1/128")
+        u = s.get_full_range(IPNetwork("2001:db8::1/128"))
         stats = IPRangeStatistics(u)
         json = stats.render_json()
         self.assertEqual(0, json["num_available"])
@@ -1022,7 +1022,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_statistics_are_accurate_for_empty_slash_128(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::1/128")
+        u = s.get_full_range(IPNetwork("2001:db8::1/128"))
         stats = IPRangeStatistics(u)
         json = stats.render_json()
         self.assertEqual(1, json["num_available"])
@@ -1035,7 +1035,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_statistics_are_accurate_for_empty_slash_127(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::1/127")
+        u = s.get_full_range(IPNetwork("2001:db8::1/127"))
         stats = IPRangeStatistics(u)
         json = stats.render_json()
         self.assertEqual(2, json["num_available"])
@@ -1048,7 +1048,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_statistics_are_accurate_for_empty_slash_31(self):
         s = MAASIPSet([])
-        u = s.get_full_range("10.0.0.0/31")
+        u = s.get_full_range(IPNetwork("10.0.0.0/31"))
         stats = IPRangeStatistics(u)
         json = stats.render_json()
         self.assertEqual(2, json["num_available"])
@@ -1061,31 +1061,31 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_suggests_subnet_anycast_address_for_ipv6(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::/64")
+        u = s.get_full_range(IPNetwork("2001:db8::/64"))
         stats = IPRangeStatistics(u)
         self.assertEqual("2001:db8::", stats.suggested_gateway)
 
     def test_suggests_first_ip_as_default_gateway_if_available(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.1", stats.suggested_gateway)
 
     def test_suggests_last_ip_as_default_gateway_if_needed(self):
         s = MAASIPSet(["10.0.0.1", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.254", stats.suggested_gateway)
 
     def test_suggests_first_available_ip_as_default_gateway_if_needed(self):
         s = MAASIPSet(["10.0.0.1", "10.0.0.4", "10.0.0.6", "10.0.0.254"])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.2", stats.suggested_gateway)
 
     def test_suggests_no_gateway_if_range_full(self):
         s = MAASIPSet(["10.0.0.1"])
-        u = s.get_full_range("10.0.0.1/32")
+        u = s.get_full_range(IPNetwork("10.0.0.1/32"))
         stats = IPRangeStatistics(u)
         self.assertIsNone(stats.suggested_gateway)
 
@@ -1093,7 +1093,7 @@ class TestIPRangeStatistics(MAASTestCase):
         s = MAASIPSet(
             [MAASIPRange(start="10.0.0.2", end="10.0.0.99", purpose="dynamic")]
         )
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         json = stats.render_json(include_suggestions=True)
         self.assertIsNone(stats.suggested_dynamic_range)
@@ -1101,7 +1101,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_suggests_upper_one_fourth_range_for_dynamic_by_default(self):
         s = MAASIPSet([])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.1", stats.suggested_gateway)
         self.assertEqual(len(stats.suggested_dynamic_range), 64)
@@ -1112,7 +1112,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_suggests_half_available_if_available_less_than_one_fourth(self):
         s = MAASIPSet([MAASIPRange("10.0.0.2", "10.0.0.205")])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.1", stats.suggested_gateway)
         self.assertEqual(50, stats.num_available)
@@ -1124,7 +1124,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_suggested_range_excludes_suggested_gateway(self):
         s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.204")])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.254", stats.suggested_gateway)
         self.assertEqual(50, stats.num_available)
@@ -1136,7 +1136,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_suggested_range_excludes_suggested_gateway_when_gw_first(self):
         s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.203"), "10.0.0.254"])
-        u = s.get_full_range("10.0.0.0/24")
+        u = s.get_full_range(IPNetwork("10.0.0.0/24"))
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.204", stats.suggested_gateway)
         self.assertEqual(50, stats.num_available)
@@ -1148,7 +1148,7 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_suggests_upper_one_fourth_range_for_ipv6(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::/64")
+        u = s.get_full_range(IPNetwork("2001:db8::/64"))
         stats = IPRangeStatistics(u)
         self.assertEqual("2001:db8::", stats.suggested_gateway)
         self.assertEqual((2**64) >> 2, stats.suggested_dynamic_range.size)
@@ -1165,20 +1165,20 @@ class TestIPRangeStatistics(MAASTestCase):
 
     def test_no_suggestion_for_small_ipv6_slash_126(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::/126")
+        u = s.get_full_range(IPNetwork("2001:db8::/126"))
         stats = IPRangeStatistics(u)
         self.assertEqual("2001:db8::", stats.suggested_gateway)
         self.assertIsNone(stats.suggested_dynamic_range)
 
     def test_no_suggestion_for_small_ipv6_slash_127(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::/127")
+        u = s.get_full_range(IPNetwork("2001:db8::/127"))
         stats = IPRangeStatistics(u)
         self.assertIsNone(stats.suggested_gateway)
 
     def test_no_suggestion_and_no_gateway_for_small_ipv6_slash_128(self):
         s = MAASIPSet([])
-        u = s.get_full_range("2001:db8::/128")
+        u = s.get_full_range(IPNetwork("2001:db8::/128"))
         stats = IPRangeStatistics(u)
         self.assertIsNone(stats.suggested_gateway)
 
@@ -1186,7 +1186,7 @@ class TestIPRangeStatistics(MAASTestCase):
         s = MAASIPSet(
             [MAASIPRange("2001:db8::1", "2001:db8::ffff:ffff:ffff:ff00")]
         )
-        u = s.get_full_range("2001:db8::/64")
+        u = s.get_full_range(IPNetwork("2001:db8::/64"))
         stats = IPRangeStatistics(u)
         self.assertEqual("2001:db8::", stats.suggested_gateway)
         self.assertEqual(255, stats.num_available)

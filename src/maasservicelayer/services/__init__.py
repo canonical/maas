@@ -57,6 +57,9 @@ from maasservicelayer.db.repositories.staticipaddress import (
 from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesRepository,
 )
+from maasservicelayer.db.repositories.subnet_utilization import (
+    SubnetUtilizationRepository,
+)
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
@@ -104,6 +107,9 @@ from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.sslkey import SSLKeysService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.staticroutes import StaticRoutesService
+from maasservicelayer.services.subnet_utilization import (
+    V3SubnetUtilizationService,
+)
 from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.users import UsersService
@@ -174,6 +180,7 @@ class ServiceCollectionV3:
     temporal: TemporalService
     users: UsersService
     v3dnsrrsets: V3DNSResourceRecordSetsService
+    v3subnet_utilization: V3SubnetUtilizationService
     vlans: VlansService
     vmclusters: VmClustersService
     zones: ZonesService
@@ -404,5 +411,10 @@ class ServiceCollectionV3:
             dnsdata_service=services.dnsdata,
             staticipaddress_service=services.staticipaddress,
             subnets_service=services.subnets,
+        )
+        services.v3subnet_utilization = V3SubnetUtilizationService(
+            context=context,
+            subnets_service=services.subnets,
+            subnet_utilization_repository=SubnetUtilizationRepository(context),
         )
         return services

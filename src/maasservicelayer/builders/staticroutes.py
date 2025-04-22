@@ -5,9 +5,9 @@ from datetime import datetime
 from typing import Union
 
 from pydantic import Field
+from pydantic.networks import IPvAnyAddress
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
-from maasservicelayer.models.fields import IPv4v6Network
 
 
 class StaticRouteBuilder(ResourceBuilder):
@@ -17,11 +17,12 @@ class StaticRouteBuilder(ResourceBuilder):
     the generated code.
     """
 
-    cidr: Union[IPv4v6Network, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     destination_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    gateway_ip: Union[IPvAnyAddress, Unset] = Field(
+        default=UNSET, required=False
+    )
     id: Union[int, Unset] = Field(default=UNSET, required=False)
     metric: Union[int, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
     source_id: Union[int, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

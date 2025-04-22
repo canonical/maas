@@ -79,7 +79,7 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         self.assertIsNone(handler.cache.get("staticroutes"))
         queries, _ = count_queries(handler.get, {"id": subnet.id})
-        self.assertEqual(5, queries)
+        self.assertEqual(4, queries)
         self.assertIsNotNone(handler.cache["staticroutes"])
 
     def test_list(self):
@@ -118,7 +118,7 @@ class TestSubnetHandler(MAASServerTestCase):
         queries_all, _ = count_queries(handler.list, {})
         self.assertEqual(queries_one, queries_all)
         self.assertIsNotNone(handler.cache["staticroutes"])
-        self.assertEqual(4, queries_one)
+        self.assertEqual(3, queries_one)
 
 
 class TestSubnetHandlerDelete(MAASServerTestCase):
