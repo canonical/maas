@@ -22,7 +22,7 @@ from maascli.actions.sshkeys_import import SSHKeysImportAction
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
 from maascli.parser import ArgumentParser, get_deepest_subparser
-from maascli.testing.config import make_configs, make_profile
+from maascli.testing.config import FakeConfig, make_configs, make_profile
 from maascli.utils import handler_command_name, safe_name
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
@@ -36,6 +36,31 @@ class TestRegisterAPICommands(MAASTestCase):
     def make_profile(self):
         """Fake a profile."""
         self.patch(ProfileConfig, "open").return_value = make_configs()
+        return ProfileConfig.open.return_value
+
+    def make_sshkeys_profile(self):
+        resource = {
+            "name": "SSHKeysHandler",
+            "doc": "Manage the collection of all the SSH keys in this MAAS.",
+            "params": [],
+            "actions": [
+                {
+                    "name": "import",
+                    "doc": "Import SSH keys\n\nImport the requesting user's SSH keys for a given protocol\nand authorization ID in protocol:auth_id format.\n\n:param keysource: Required.  The source\nof the keys to import should be provided in the request payload as form\ndata:\n\nE.g.\n\n``source:user``\n\n- ``source``: lp (Launchpad), gh (GitHub)\n- ``user``: User login\n:type keysource: String\n\n ",
+                }
+            ],
+        }
+        handler = {"auth": resource, "anon": None, "name": "sshkeys"}
+        name = factory.make_name("profile")
+        profile = {
+            "name": name,
+            "url": f"http://{name}.example.com/",
+            "credentials": factory.make_name("credentials"),
+            "description": {"resources": [handler]},
+        }
+        results = {}
+        results[name] = FakeConfig(profile)
+        self.patch(ProfileConfig, "open").return_value = FakeConfig(results)
         return ProfileConfig.open.return_value
 
     def test_registers_subparsers(self):
@@ -109,6 +134,25 @@ class TestRegisterAPICommands(MAASTestCase):
             x.dest for x in subparser._get_positional_actions()
         ]
         self.assertNotIn("data", positional_action_names)
+
+    def test_parser_sshkeys_keysource_name_value_pair_function(self):
+        profile = self.make_sshkeys_profile()
+        profile_name = list(profile.keys())[0]
+        parser = ArgumentParser()
+        api.register_api_commands(parser)
+        # the first resource should have an action with a data param
+        handler_name = "sshkeys"
+        # get the action without a data param
+        action_name = "import"
+        subparser = get_deepest_subparser(
+            parser, [profile_name, handler_name, action_name]
+        )
+        positional_action_type = [
+            x.type for x in subparser._get_positional_actions()
+        ]
+        self.assertIn(
+            SSHKeysImportAction.name_value_pair, positional_action_type
+        )
 
 
 class TestFunctions(MAASTestCase):

@@ -421,7 +421,7 @@ def register_actions(profile, handler, parser):
         # check if the action requires any extra parameters in the form of key=value pairs
         if ":param" in help_body:
             action_parser.add_argument(
-                "data", type=Action.name_value_pair, nargs="*"
+                "data", type=action_class.name_value_pair, nargs="*"
             )
         action_parser.set_defaults(execute=action_class(action_parser))
 
