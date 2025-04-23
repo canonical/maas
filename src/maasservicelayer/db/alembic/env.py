@@ -44,7 +44,10 @@ def process_revision_directives(context, revision, directives):
         new_rev_id = 1
     else:
         # default branch with incrementation
-        last_rev_id = int(head_revision.lstrip("0"))
+        if revision := head_revision.lstrip("0") == "":
+            last_rev_id = 0
+        else:
+            last_rev_id = int(revision)
         new_rev_id = last_rev_id + 1
     # fill zeros up to 4 digits: 1 -> 0001
     migration_script.rev_id = "{0:04}".format(new_rev_id)
@@ -79,6 +82,33 @@ async def run_async_migrations() -> None:
     await connectable.dispose()
 
 
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode.
+
+    This configures the context with just a URL
+    and not an Engine, though an Engine is acceptable
+    here as well.  By skipping the Engine creation
+    we don't even need a DBAPI to be available.
+
+    Calls to context.execute() here emit the given string to the
+    script output.
+
+    """
+    url = context.get_x_argument(as_dictionary=True).get("db_url")
+    if not url:
+        raise Exception("No `db_url` connection string was supplied.")
+
+    context.configure(
+        url=url,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+        process_revision_directives=process_revision_directives,
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
 
@@ -86,6 +116,6 @@ def run_migrations_online() -> None:
 
 
 if context.is_offline_mode():
-    raise Exception("Offline mode not available")
+    run_migrations_offline()
 else:
     run_migrations_online()

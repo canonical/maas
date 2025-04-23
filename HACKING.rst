@@ -208,7 +208,7 @@ process in the foreground.::
 Development MAAS server setup
 =============================
 
-Access to the database is configured in
+Access to the database in the django application is configured in
 ``src/maasserver/djangosettings/development.py``.
 
 The test suite sets up a development database cluster inside your branch. It
@@ -398,39 +398,26 @@ user to fill in the authentication form via browser.
 Database information
 ====================
 
-MAAS uses Django_ to manage changes to the database schema.
+MAAS uses Alembic_ to manage changes to the database schema.
 
-.. _Django: https://www.djangoproject.com/
+.. _Alembic https://alembic.sqlalchemy.org/
 
-Be sure to have a look at `Django's migration documentation`_ before you make
-any change.
-
-.. _Django's migration documentation:
-    https://docs.djangoproject.com/en/1.8/topics/migrations/
-
+Be sure to have a look at the Alembic documentation before you make any change.
 
 Changing the schema
 ^^^^^^^^^^^^^^^^^^^
 
-Once you've made a model change (i.e. a change to a file in
-``src/<application>/models/*.py``) you have to run Django's `makemigrations`_
-command to create a migration file that will be stored in
-``src/<application>/migrations/<application>/``.
+MAAS used Django to manage migrations until 3.6. Until Django is fully removed from the codebase you'll have to change the
+Django model as well as the domain models and the tables in the service layer.
 
-Note that if you want to add a new model class you'll need to import it
-in ``src/<application>/models/__init__.py``
+If you have to change a Django model (i.e. a change to a file in
+``src/<application>/models/*.py``), then you have to change the `src/maasservicelayer/db/tables.py` and
+`src/maasservicelayer/models/*py` accordingly. Also, you'll have to craft a new Alembic migration under
+`src/maasservicelayer/db/alembic`.
 
-.. _makemigrations: https://docs.djangoproject.com/en/1.8/ref/django-admin/#django-admin-makemigrations
+You can scaffold a new alembic migration by running::
 
-Generate the migration script with::
-
-    $ ./bin/maas-region makemigrations --name description_of_the_change maasserver
-
-This will generate a migration module named
-``src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py``.
-Don't forget to add that file to the project with::
-
-    $ git add src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py
+    $ python3 -m alembic -c src/maasservicelayer/db/alembic/alembic.ini -x db_url="postgresql+asyncpg://<username>:<password>@localhost/<maasdb>" revision -m "My new migration" --sql
 
 To apply that migration, run::
 
@@ -446,24 +433,7 @@ to run pending migrations.
 Performing data migration
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you need to perform data migration, very much in the same way, you will need
-to run Django's `makemigrations`_ command. For instance, if you want to perform
-changes to the ``maasserver`` application, run::
-
-    $ ./bin/maas-region makemigrations --empty --name description_of_the_change maasserver
-
-This will generate a migration module named
-``src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py``.
-You will need to edit that file and fill the ``operations`` list with the
-options that need to be performed. Again, don't forget to add that file to the
-project::
-
-    $ git add src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py
-
-Once the operations have been added, apply that migration with::
-
-    $ make syncdb
-
+If you need to perform data migration, very much in the same way, you will need to run add a new Alembic migration.
 
 Examining the database manually
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -488,7 +458,7 @@ can also execute arbitrary SQL. For example:::
 Viewing SQL queries during tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you need to view the SQL queries that are performed during a test, the
+Only for the legacy maasserver, if you need to view the SQL queries that are performed during a test, the
 `LogSQL` fixture can be used to output all the queries during the test.::
 
     from maasserver.testing.fixtures import LogSQL
