@@ -14,30 +14,27 @@ from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     MultipleResultsException,
+    ReadOnlyRepository,
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
-from maasservicelayer.models.base import (
-    MaasTimestampedBaseModel,
-    ResourceBuilder,
-    Unset,
-)
+from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder, Unset
 from tests.maasapiserver.fixtures.db import Fixture
 
-T = TypeVar("T", bound=MaasTimestampedBaseModel)
+T = TypeVar("T", bound=MaasBaseModel)
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
-class RepositoryCommonTests(abc.ABC, Generic[T]):
+class ReadOnlyRepositoryCommonTests(abc.ABC, Generic[T]):
     @pytest.fixture
     @abc.abstractmethod
     def repository_instance(
         self, db_connection: AsyncConnection
-    ) -> BaseRepository:
+    ) -> ReadOnlyRepository:
         """Fixtures for an instance of the repository under test.
 
         Returns:
-            BaseRepository: An instance of the repository being tested.
+            ReadOnlyRepository: An instance of the repository being tested.
         """
 
     @pytest.fixture
@@ -59,23 +56,6 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
 
         Returns:
             T: a created object in the database ready to be retrieved.
-        """
-
-    @pytest.fixture
-    @abc.abstractmethod
-    async def instance_builder(self, *args, **kwargs) -> ResourceBuilder:
-        """Fixture used to provide a builder for the model being tested.
-
-        Returns:
-            ResourceBuilder: builder to be used for create/update methods.
-        """
-
-    @pytest.fixture
-    async def instance_builder_model(self) -> type[ResourceBuilder]:
-        """Fixture used to provide the resource builder model.
-
-        Returns:
-            ResourceBuilder: builder class to be used to instantiate builders in tests.
         """
 
     @pytest.mark.parametrize("num_objects", [10])
@@ -104,32 +84,6 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
                 assert len(objects_results.items) == page_size
                 for _ in range(page_size):
                     assert created_objects.pop() in objects_results.items
-
-    async def test_create(
-        self,
-        repository_instance: BaseRepository,
-        instance_builder: ResourceBuilder,
-    ):
-        created_resource = await repository_instance.create(instance_builder)
-        assert created_resource is not None
-        created_resource = created_resource.dict()
-        if repository_instance.has_timestamped_fields:
-            # We can expect these fields to be populated
-            assert created_resource["created"] is not None
-            assert created_resource["updated"] is not None
-
-        for key, value in instance_builder.dict().items():
-            if not isinstance(value, Unset):
-                assert created_resource[key] == value
-
-    async def test_create_duplicated(
-        self,
-        repository_instance: BaseRepository,
-        instance_builder: ResourceBuilder,
-    ):
-        await repository_instance.create(instance_builder)
-        with pytest.raises(AlreadyExistsException):
-            await repository_instance.create(instance_builder)
 
     async def test_exists_found(
         self, repository_instance, created_instance: T
@@ -214,6 +168,64 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
     ):
         instances = await repository_instance.get_many(QuerySpec())
         assert len(instances) == num_objects
+
+
+@pytest.mark.usefixtures("ensuremaasdb")
+@pytest.mark.asyncio
+class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
+    @pytest.fixture
+    @abc.abstractmethod
+    def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> BaseRepository:
+        """Fixtures for an instance of the repository under test.
+
+        Returns:
+            BaseRepository: An instance of the repository being tested.
+        """
+
+    @pytest.fixture
+    @abc.abstractmethod
+    async def instance_builder(self, *args, **kwargs) -> ResourceBuilder:
+        """Fixture used to provide a builder for the model being tested.
+
+        Returns:
+            ResourceBuilder: builder to be used for create/update methods.
+        """
+
+    @pytest.fixture
+    async def instance_builder_model(self) -> type[ResourceBuilder]:
+        """Fixture used to provide the resource builder model.
+
+        Returns:
+            ResourceBuilder: builder class to be used to instantiate builders in tests.
+        """
+
+    async def test_create(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        created_resource = await repository_instance.create(instance_builder)
+        assert created_resource is not None
+        created_resource = created_resource.dict()
+        if repository_instance.has_timestamped_fields:
+            # We can expect these fields to be populated
+            assert created_resource["created"] is not None
+            assert created_resource["updated"] is not None
+
+        for key, value in instance_builder.dict().items():
+            if not isinstance(value, Unset):
+                assert created_resource[key] == value
+
+    async def test_create_duplicated(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        await repository_instance.create(instance_builder)
+        with pytest.raises(AlreadyExistsException):
+            await repository_instance.create(instance_builder)
 
     async def test_delete_one(
         self, repository_instance: BaseRepository, created_instance: T

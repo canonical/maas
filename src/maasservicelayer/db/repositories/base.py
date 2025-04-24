@@ -146,7 +146,7 @@ class Repository(ABC):  # noqa: B024
             return await connection.execute(stmt)
 
 
-class BaseRepository(Repository, Generic[T]):
+class ReadOnlyRepository(Repository, Generic[T]):
     def __init__(self, context: Context):
         super().__init__(context)
         self.mapper = self.get_mapper()
@@ -207,24 +207,6 @@ class BaseRepository(Repository, Generic[T]):
         result = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
 
-    async def create(self, builder: ResourceBuilder) -> T:
-        resource = self.mapper.build_resource(builder)
-        if self.has_timestamped_fields:
-            # Populate the fields only if the caller did not set them.
-            now = utcnow()
-            resource["created"] = resource.get("created", now)
-            resource["updated"] = resource.get("updated", now)
-        stmt = (
-            insert(self.get_repository_table())
-            .returning(self.get_repository_table())
-            .values(**resource.get_values())
-        )
-        try:
-            result = (await self.execute_stmt(stmt)).one()
-            return self.get_model_factory()(**result._asdict())
-        except IntegrityError:
-            self._raise_already_existing_exception()
-
     async def list(
         self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[T]:
@@ -249,6 +231,29 @@ class BaseRepository(Repository, Generic[T]):
             ],
             total=total,
         )
+
+
+class BaseRepository(ReadOnlyRepository[T], Generic[T]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+
+    async def create(self, builder: ResourceBuilder) -> T:
+        resource = self.mapper.build_resource(builder)
+        if self.has_timestamped_fields:
+            # Populate the fields only if the caller did not set them.
+            now = utcnow()
+            resource["created"] = resource.get("created", now)
+            resource["updated"] = resource.get("updated", now)
+        stmt = (
+            insert(self.get_repository_table())
+            .returning(self.get_repository_table())
+            .values(**resource.get_values())
+        )
+        try:
+            result = (await self.execute_stmt(stmt)).one()
+            return self.get_model_factory()(**result._asdict())
+        except IntegrityError:
+            self._raise_already_existing_exception()
 
     async def update_many(
         self, query: QuerySpec, builder: ResourceBuilder

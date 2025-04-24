@@ -418,6 +418,22 @@ IPRangeTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
 )
+MDNSTable = Table(
+    "maasserver_mdns",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("ip", INET, nullable=True),
+    Column("hostname", String(256), nullable=True),
+    Column("count", Integer, nullable=False),
+    Column(
+        "interface_id",
+        BigInteger,
+        ForeignKey("maasserver_interface.id"),
+        nullable=False,
+    ),
+)
 
 NeighbourTable = Table(
     "maasserver_neighbour",

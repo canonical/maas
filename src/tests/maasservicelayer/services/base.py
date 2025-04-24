@@ -2,7 +2,6 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
-from typing import TypeVar
 
 import pytest
 
@@ -12,16 +11,14 @@ from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
 )
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
-from maasservicelayer.services.base import BaseService
-
-T = TypeVar("T", bound=BaseService)
+from maasservicelayer.services.base import BaseService, ReadOnlyService
 
 
 @pytest.mark.asyncio
-class ServiceCommonTests(abc.ABC):
+class ReadOnlyServiceCommonTests(abc.ABC):
     @pytest.fixture
     @abc.abstractmethod
-    def service_instance(self) -> BaseService:
+    def service_instance(self) -> ReadOnlyService:
         pass
 
     @pytest.fixture
@@ -58,6 +55,14 @@ class ServiceCommonTests(abc.ABC):
         obj = await service_instance.get_by_id(0)
         assert obj is None
         service_instance.repository.get_by_id.assert_awaited_once_with(id=0)
+
+
+@pytest.mark.asyncio
+class ServiceCommonTests(ReadOnlyServiceCommonTests):
+    @pytest.fixture
+    @abc.abstractmethod
+    def service_instance(self) -> BaseService:
+        pass
 
     async def test_create(self, service_instance, test_instance):
         service_instance.repository.create.return_value = test_instance

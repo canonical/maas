@@ -10,6 +10,7 @@ from maasservicelayer.db.repositories.configurations import (
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsRepository,
 )
+from maasservicelayer.db.repositories.discoveries import DiscoveriesRepository
 from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
@@ -70,6 +71,7 @@ from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
+from maasservicelayer.services.discoveries import DiscoveriesService
 from maasservicelayer.services.dnsdata import DNSDataService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.dnsresourcerecordsets import (
@@ -149,6 +151,7 @@ class ServiceCollectionV3:
     auth: AuthService
     configurations: ConfigurationsService
     dhcpsnippets: DhcpSnippetsService
+    discoveries: DiscoveriesService
     dnsdata: DNSDataService
     dnspublications: DNSPublicationsService
     dnsresources: DNSResourcesService
@@ -416,5 +419,9 @@ class ServiceCollectionV3:
             context=context,
             subnets_service=services.subnets,
             subnet_utilization_repository=SubnetUtilizationRepository(context),
+        )
+        services.discoveries = DiscoveriesService(
+            context=context,
+            discoveries_repository=DiscoveriesRepository(context),
         )
         return services

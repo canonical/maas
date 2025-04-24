@@ -7,7 +7,10 @@ from typing import Generic, List, TypeVar
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.base import BaseRepository
+from maasservicelayer.db.repositories.base import (
+    BaseRepository,
+    ReadOnlyRepository,
+)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -84,28 +87,63 @@ class Service(ABC):  # noqa: B024
 # M Model
 M = TypeVar("M", bound=MaasBaseModel)
 
-# R Repository
-R = TypeVar("R", bound=BaseRepository)
+# ROR ReadOnlyRepository
+ROR = TypeVar("ROR", bound=ReadOnlyRepository)
+
+# BR BaseRepository
+BR = TypeVar("BR", bound=BaseRepository)
 
 # B Builder
 B = TypeVar("B", bound=ResourceBuilder)
 
 
-class BaseService(Service, ABC, Generic[M, R, B]):
-    """
-    The base class for all the services that have a BaseRepository.
-    The `get`, `get_one`, `get_by_id` and all the other methods of the BaseRepository are just pass-through methods in the Service
-    most of the time. In case the service needs to put additional business logic in these methods, it needs to override them.
+class ReadOnlyService(Service, Generic[M, ROR]):
+    """The base class for all the services that have a `ReadOnlyRepository`.
+
+    Implements all the read methods for a `ReadOnlyRepository` as a pass-through.
+    In case the service needs to put additional business logic in these methods, it needs to override them.
     """
 
     def __init__(
         self,
         context: Context,
-        repository: R,
+        repository: ROR,
         cache: ServiceCache | None = None,
     ):
         super().__init__(context, cache)
         self.repository = repository
+
+    async def exists(self, query: QuerySpec):
+        return await self.repository.exists(query=query)
+
+    async def get_many(self, query: QuerySpec) -> List[M]:
+        return await self.repository.get_many(query=query)
+
+    async def get_one(self, query: QuerySpec) -> M | None:
+        return await self.repository.get_one(query=query)
+
+    async def get_by_id(self, id: int) -> M | None:
+        return await self.repository.get_by_id(id=id)
+
+    async def list(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[M]:
+        return await self.repository.list(page=page, size=size, query=query)
+
+
+class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
+    """The base class for all the services that have a `BaseRepository`.
+
+    Extends `ReadOnlyService` and adds the create, update and delete methods.
+    """
+
+    def __init__(
+        self,
+        context: Context,
+        repository: BR,
+        cache: ServiceCache | None = None,
+    ):
+        super().__init__(context, repository, cache)
 
     def etag_check(self, model: M, etag_if_match: str | None = None):
         """
@@ -121,18 +159,6 @@ class BaseService(Service, ABC, Generic[M, R, B]):
                 ]
             )
 
-    async def exists(self, query: QuerySpec):
-        return await self.repository.exists(query=query)
-
-    async def get_many(self, query: QuerySpec) -> List[M]:
-        return await self.repository.get_many(query=query)
-
-    async def get_one(self, query: QuerySpec) -> M | None:
-        return await self.repository.get_one(query=query)
-
-    async def get_by_id(self, id: int) -> M | None:
-        return await self.repository.get_by_id(id=id)
-
     async def pre_create_hook(self, builder: B) -> None:
         return None
 
@@ -144,11 +170,6 @@ class BaseService(Service, ABC, Generic[M, R, B]):
         created_resource = await self.repository.create(builder=builder)
         await self.post_create_hook(created_resource)
         return created_resource
-
-    async def list(
-        self, page: int, size: int, query: QuerySpec | None = None
-    ) -> ListResult[M]:
-        return await self.repository.list(page=page, size=size, query=query)
 
     async def post_update_many_hook(self, resources: List[M]) -> None:
         """

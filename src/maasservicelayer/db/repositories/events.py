@@ -76,7 +76,7 @@ class EventTypesRepository(BaseRepository[EventType]):
                 # race, no problem
                 pass
         # use outer transaction
-        return await self.get_one(query)
+        return await self.get_one(query)  # pyright: ignore [reportReturnType]
 
 
 class EventsRepository(BaseRepository[Event]):
@@ -162,6 +162,6 @@ class EventsRepository(BaseRepository[Event]):
         )
         try:
             result = (await self.execute_stmt(stmt)).one()
-            return await self.get_by_id(**result._asdict())
+            return await self.get_by_id(**result._asdict())  # pyright: ignore [reportReturnType]
         except IntegrityError:
             self._raise_already_existing_exception()
