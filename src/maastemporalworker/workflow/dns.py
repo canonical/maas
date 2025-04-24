@@ -725,7 +725,7 @@ class DNSConfigActivity(ActivityBase):
         async with self._freeze():
             cfg_path = get_zone_config_path()
             zones = [(k, get_zone_file_path(k)) for k in records.keys()]
-            async with aiofiles.open(f"{cfg_path}.tmp") as cfg:
+            async with aiofiles.open(f"{cfg_path}.tmp", "w") as cfg:
                 await self._write_template(
                     "named.conf.workflow.template",
                     cfg,
@@ -741,7 +741,7 @@ class DNSConfigActivity(ActivityBase):
             for zone_name, zone_records in records.items():
                 zone_file_path = get_zone_file_path(zone_name)
 
-                async with aiofiles.open(f"{zone_file_path}.tmp") as zf:
+                async with aiofiles.open(f"{zone_file_path}.tmp", "w") as zf:
                     await self._write_template(
                         "zone.workflow.template",
                         zf,
