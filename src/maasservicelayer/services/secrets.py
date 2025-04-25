@@ -1,12 +1,13 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
+from dataclasses import dataclass
 from typing import Any
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.secrets import SecretsRepository
-from maasservicelayer.services.base import Service
+from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
 from maasservicelayer.vault.manager import (
@@ -26,6 +27,15 @@ class SecretNotFound(Exception):
         super().__init__(f"Secret '{path}' not found")
 
 
+@dataclass(slots=True)
+class SecretsServiceCache(ServiceCache):
+    vault_manager: AsyncVaultManager | None = None
+
+    async def close(self) -> None:
+        if self.vault_manager:
+            await self.vault_manager.close()
+
+
 class SecretsService(Service, abc.ABC):
     """
     Abstract base class for managing secrets.
@@ -34,6 +44,10 @@ class SecretsService(Service, abc.ABC):
     """
 
     SIMPLE_SECRET_KEY = "secret"
+
+    @staticmethod
+    def build_cache_object() -> SecretsServiceCache:
+        return SecretsServiceCache()
 
     @abc.abstractmethod
     async def set_composite_secret(
@@ -79,8 +93,9 @@ class LocalSecretsStorageService(SecretsService):
         self,
         context: Context,
         secrets_repository: SecretsRepository | None = None,
+        cache: SecretsServiceCache | None = None,
     ):
-        super().__init__(context)
+        super().__init__(context, cache)
         self.secrets_repository = (
             secrets_repository
             if secrets_repository
@@ -112,26 +127,36 @@ class LocalSecretsStorageService(SecretsService):
 
 
 class VaultSecretsService(SecretsService):
-    def __init__(self, context: Context, vault_manager: AsyncVaultManager):
-        super().__init__(context)
-        self.vault_manager = vault_manager
+    def __init__(
+        self, context: Context, cache: SecretsServiceCache | None = None
+    ):
+        super().__init__(context, cache)
+
+    @Service.from_cache_or_execute(attr="vault_manager")
+    async def _get_vault_manager(self) -> AsyncVaultManager:
+        # We know we are using Vault, so the manager can't be None
+        return get_region_vault_manager()  # type: ignore
 
     async def set_composite_secret(
         self, path: str, value: dict[str, Any]
     ) -> None:
-        await self.vault_manager.set(path, value)
+        vault_manager = await self._get_vault_manager()
+        await vault_manager.set(path, value)
 
     async def set_simple_secret(self, path: str, value: Any) -> None:
-        await self.vault_manager.set(path, {self.SIMPLE_SECRET_KEY: value})
+        vault_manager = await self._get_vault_manager()
+        await vault_manager.set(path, {self.SIMPLE_SECRET_KEY: value})
 
     async def delete(self, path: str) -> None:
-        await self.vault_manager.delete(path)
+        vault_manager = await self._get_vault_manager()
+        await vault_manager.delete(path)
 
     async def get_composite_secret(
         self, path: str, default: Any = UNSET
     ) -> Any:
         try:
-            secret = await self.vault_manager.get(path)
+            vault_manager = await self._get_vault_manager()
+            secret = await vault_manager.get(path)
         except VaultNotFoundException:
             if default is UNSET:
                 raise SecretNotFound(path)  # noqa: B904
@@ -152,7 +177,10 @@ class SecretsServiceFactory:
 
     @classmethod
     async def produce(
-        cls, context: Context, config_service: ConfigurationsService
+        cls,
+        context: Context,
+        config_service: ConfigurationsService,
+        cache: SecretsServiceCache | None = None,
     ) -> SecretsService:
         """
         Produce a `SecretService` based on the configuration settings.
@@ -170,12 +198,8 @@ class SecretsServiceFactory:
             result = await config_service.get(cls.VAULT_CONFIG_NAME)
             cls.IS_VAULT_ENABLED = result if result else False
         if cls.IS_VAULT_ENABLED:
-            vault_manager = get_region_vault_manager()
-            return VaultSecretsService(
-                context=context,
-                vault_manager=vault_manager,  # type: ignore
-            )
-        return LocalSecretsStorageService(context=context)
+            return VaultSecretsService(context=context, cache=cache)
+        return LocalSecretsStorageService(context=context, cache=cache)
 
     @classmethod
     def clear(cls) -> None:

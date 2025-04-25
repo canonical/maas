@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd. This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import ssl
 from typing import Dict
@@ -207,3 +207,6 @@ class AsyncVaultApiClient:
             raise VaultException(
                 f"The vault client returned {response.status}."
             )
+
+    async def close(self):
+        await self._session.close()

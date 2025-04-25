@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Callable, Self
 
@@ -204,7 +204,11 @@ class ServiceCollectionV3:
             service_status_repository=ServiceStatusRepository(context),
         )
         services.secrets = await SecretsServiceFactory.produce(
-            context=context, config_service=services.configurations
+            context=context,
+            config_service=services.configurations,
+            cache=cache.get(
+                SecretsService.__name__, SecretsService.build_cache_object
+            ),  # type: ignore
         )
         services.temporal = TemporalService(
             context=context,

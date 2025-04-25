@@ -1,8 +1,7 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
-from functools import lru_cache
 from typing import Any
 
 import structlog
@@ -160,17 +159,18 @@ class AsyncVaultManager:
     def _is_token_expired(self) -> bool:
         has_expired = not self._cached_token or (
             self._cached_token_expire_time is not None
-            and self._cached_token_expire_time
-            <= (utcnow() - TOKEN_BEFORE_EXPIRY_LIMIT)
+            and self._cached_token_expire_time - TOKEN_BEFORE_EXPIRY_LIMIT
+            < utcnow()
         )
-        logger.debug("Vault access token was not set or has expired.")
         return has_expired
+
+    async def close(self):
+        await self._vault_api_client.close()
 
     def _secret_path(self, path: str) -> str:
         return f"{self._secrets_base_path}/{path}"
 
 
-@lru_cache()
 def get_region_vault_manager() -> AsyncVaultManager | None:
     """Return an AsyncVaultManager properly configured according to the region configuration.
 
