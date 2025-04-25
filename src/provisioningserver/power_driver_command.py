@@ -109,7 +109,7 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
     elif args.is_dpu:
         if command in ["on", "cycle", "reset"]:
             await driver.reset(None, context)
-        else:
+        elif command != "status":
             raise InvalidDPUCommandError(
                 f"Invalid power command to send to DPU: {args.command}"
             )
