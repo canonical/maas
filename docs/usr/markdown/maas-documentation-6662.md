@@ -13,11 +13,11 @@ Data centers face complex operational challenges, including uptime, reliability,
 
 MAAS is a member of the Ubuntu family. It is an open source project that warmly welcomes community projects, contributions, suggestions, fixes and constructive feedback.
 
-- [Read our code of conduct](https://ubuntu.com/community/code-of-conduct)**^**
-- [Get support](https://ubuntu.com/pro)**^**
+- [Read our code of conduct](https://ubuntu.com/community/code-of-conduct)
+- [Get support](https://ubuntu.com/pro)
 - [Learn about MAAS performance](/t/about-maas-performance/6178)
 - [Join our forum](/t/how-to-engage-on-the-discourse-forum/6802)
-- [Contribute code](https://launchpad.net/maas)**^**
+- [Contribute code](https://launchpad.net/maas)
 - [Improve our documentation](/t/how-to-contribute-to-maas-documentation/6949)
 - [Request a feature](/t/how-to-request-features/4447)
 - [Report a bug](/t/how-to-report-and-review-bugs/4446)
@@ -34,24 +34,24 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 0     |                                           |                                               |
 | 1     | maas-in-thirty-minutes                    | [Tutorial: MAAS in thirty minutes](/t/-/5360) |
 | 1     | how-to-guides                             | [How-to guides](/t/-/6663)                    |
-| 2     | how-to-install-maas                       | [Install MAAS](/t/-/5128)                     |
+| 2     | how-to-get-maas-up-and-running            | [Get MAAS up and running](/t/-/5128)          |
 | 2     | how-to-back-up-maas                       | [Back up MAAS](/t/-/5096)                     |
-| 2     | how-to-manage-maas-networks               | [Manage networks](/t/-/5164)                  |
+| 2     | how-to-manage-networks                    | [Manage networks](/t/-/5164)                  |
 | 2     | how-to-manage-network-services            | [Manage network services](/t/-/11320)         |
 | 2     | how-to-manage-machines                    | [Manage machines](/t/-/5172)                  |
 | 2     | how-to-manage-machine-groups              | [Manage machine groups](/t/-/8833)            |
 | 2     | how-to-manage-images                      | [Manage images](/t/-/5124)                    |
-| 2     | how-to-manage-controllers                 | [Manage controllers](/t/-/5120)               |
+| 2     | how-to-build-ubuntu-images                | [Build Ubuntu images](/t/-/7873)              |
+| 2     | how-to-build-custom-images                | [Build custom images](/t/-/7872)              |
+| 2     | how-to-manage-high-availability           | [Manage high-availability](/t/-/5120)         |
 | 2     | how-to-use-logging                        | [Use logging](/t/-/6956)                      |
 | 2     | how-to-monitor-maas                       | [Monitor MAAS](/t/-/5204)                     |
 | 2     | how-to-enhance-maas-security              | [Enhance MAAS security](/t/-/5196)            |
-| 2     | how-to-build-ubuntu-images                | [Build Ubuntu images](/t/-/7873)              |
-| 2     | how-to-build-custom-images                | [Build custom images](/t/-/7872)              |
-| 2     | how-to-deploy-vms-on-ibm-z                | [Deploy VMs on IBM Z](/t/-/7885)              |
 | 2     | how-to-deploy-a-real-time-kernel          | [Deploy a real-time kernel](/t/-/6658)        |
 | 2     | how-to-deploy-a-fips-compliant-kernel     | [Deploy a FIPS kernel](/t/-/7743)             |
-| 2     | how-to-configure-an-air-gapped-maas       | [Set up air-gapped MAAS](/t/-/5212)           |
-| 2     | how-to-use-the-python-api-client          | [Script MAAS with Python](/t/-/5404)          |
+| 2     | how-to-set-up-air-gapped-maas             | [Set up air-gapped MAAS](/t/-/5212)           |
+| 2     | how-to-script-maas-with-python            | [Script MAAS with Python](/t/-/5404)          |
+| 2     | how-to-deploy-vms-on-ibm-z                | [Deploy VMs on IBM Z](/t/-/7885)              |
 | 1     | reference                                 | [Reference](/t/-/6143)                        |
 | 2     | release-notes-and-upgrade-instructions    | [Release notes](/t/-/5292)                    |
 | 2     |                                           | API reference                                 |
@@ -115,7 +115,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 3     | static-route                              | [static-route](/t/-/11372)                    |
 | 3     | status                                    | [status](/t/-/11349)                          |
 | 3     | subnet                                    | [subnet](/t/-/766)                            |
-| 3     | tag                                       | [tag](/t/-/6941)                             |
+| 3     | tag                                       | [tag](/t/-/6941)                              |
 | 3     | user                                      | [user](/t/-/11374)                            |
 | 3     | version                                   | [version](/t/-/11341)                         |
 | 3     | vlan                                      | [vlan](/t/-/11375)                            |
@@ -184,10 +184,16 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 [details=Mapping table] 
 | PATH                                                    | LOCATION                                                                  |
 |---------------------------------------------------------|---------------------------------------------------------------------------|
+| /docs/commissioning-script-reference                    | /docs/reference-commissioning-scripts                                     |
+| /docs/how-to-use-the-python-api-client                  | /docs/how-to-script-maas-with-python                                      |
+| /docs/how-to-configure-an-air-gapped-maas               | /docs/how-to-set-up-air-gapped-maas                                       |
+| /docs/how-to-install-maas                               | /docs/how-to-get-maas-up-and-running                                      |
+| /docs/how-to-manage-maas-networks                       | /docs/how-to-manage-networks                                              |
+| /docs/how-to-manage-controllers                         | /docs/how-to-manage-high-availability                                     |
 | /docs/rack-controller                                   | /docs/cli-rack-controller                                                 |
 | /docs/g-region-controller                               | /docs/cli-region-controller                                               |
 | /docs/g-resource-pools                                  | /docs/resource-pool                                                       |
-| /docs/reference-device-labels                           | /docs/tag                                                                |
+| /docs/reference-device-labels                           | /docs/tag                                                                 |
 | /docs/ssl-key                                           | /docs/sslkey                                                              |
 | /docs/ssh-key                                           | /docs/sshkey                                                              |
 | /docs/service-status                                    | /docs/status                                                              |
