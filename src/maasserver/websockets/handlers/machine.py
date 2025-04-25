@@ -573,7 +573,7 @@ class MachineHandler(NodeHandler):
             new_params["pool"] = params["pool"]["name"]
         if "min_hwe_kernel" in params:
             new_params["min_hwe_kernel"] = params["min_hwe_kernel"]
-        new_params["is_dpu"] = params.get("is_dpu", False)
+        new_params["is_dpu"] = params.get("is_dpu")
 
         # Cleanup any fields that have a None value.
         new_params = {
