@@ -34,7 +34,7 @@ import (
 )
 
 type parsedResolvConf struct {
-	expectedCfg *systemConfig
+	expectedCfg systemConfig
 	err         error
 }
 
@@ -68,6 +68,15 @@ type mockClient struct {
 
 func (m *mockClient) Dial(_ string) (*dns.Conn, error) {
 	return &dns.Conn{Conn: mockConn{}}, nil
+}
+
+func (m *mockClient) Exchange(msg *dns.Msg, _ string) (*dns.Msg, time.Duration, error) {
+	conn, _ := m.Dial("")
+	return m.ExchangeWithConn(msg, conn)
+}
+
+func (m *mockClient) ExchangeWithConn(msg *dns.Msg, conn *dns.Conn) (*dns.Msg, time.Duration, error) {
+	return m.ExchangeWithConnContext(context.Background(), msg, conn)
 }
 
 func (m *mockClient) ExchangeWithConnContext(ctx context.Context, msg *dns.Msg, _ *dns.Conn) (*dns.Msg, time.Duration, error) {
@@ -133,13 +142,13 @@ func TestParseResolvConf(t *testing.T) {
 	}{
 		"empty": {
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{},
+				expectedCfg: systemConfig{},
 			},
 		},
 		"only one nameserver": {
 			in: "nameserver 127.0.0.53",
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.53")},
 				},
 			},
@@ -150,7 +159,7 @@ nameserver 1.1.1.1
 nameserver 8.8.8.8
 nameserver 8.8.4.4`,
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					Nameservers: []netip.Addr{
 						netip.MustParseAddr("127.0.0.53"),
 						netip.MustParseAddr("1.1.1.1"),
@@ -163,7 +172,7 @@ nameserver 8.8.4.4`,
 		"only one search domain": {
 			in: "search example.com",
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					SearchDomains: []string{
 						"example.com.",
 					},
@@ -173,7 +182,7 @@ nameserver 8.8.4.4`,
 		"only search domains": {
 			in: "search example1.com example2.com example3.com",
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					SearchDomains: []string{
 						"example1.com.",
 						"example2.com.",
@@ -186,7 +195,7 @@ nameserver 8.8.4.4`,
 			in: `nameserver 127.0.0.53
 search example.com`,
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					Nameservers: []netip.Addr{
 						netip.MustParseAddr("127.0.0.53"),
 					},
@@ -211,7 +220,7 @@ search example.com`,
 nameserver 127.0.0.53
 search example.com`,
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					Nameservers: []netip.Addr{
 						netip.MustParseAddr("127.0.0.53"),
 					},
@@ -222,7 +231,7 @@ search example.com`,
 		"options": {
 			in: "options edns0 trust-ad",
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					EDNS0Enabled: true,
 					TrustAD:      true,
 				},
@@ -233,7 +242,7 @@ search example.com`,
 options edns0 trust-ad
 search example.com`,
 			out: parsedResolvConf{
-				expectedCfg: &systemConfig{
+				expectedCfg: systemConfig{
 					Nameservers: []netip.Addr{
 						netip.MustParseAddr("127.0.0.53"),
 					},
@@ -322,14 +331,14 @@ func TestServeDNS(t *testing.T) {
 		"basic non-authoritative request": {
 			file: "non-authoritative.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 				}, nil)
 			}},
 		"handler configured with search domain": {
 			file: "search.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers:   []netip.Addr{netip.MustParseAddr("10.0.0.1")},
 					SearchDomains: []string{"test"},
 				}, nil)
@@ -337,20 +346,20 @@ func TestServeDNS(t *testing.T) {
 		"basic authoritative request": {
 			file: "authoritative.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{},
-					[]string{"127.0.0.1"})
+				h.SetUpstreams(systemConfig{},
+					[]netip.Addr{netip.MustParseAddr("127.0.0.1")})
 			}},
 		"nxdomain": {
 			file: "nxdomain.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("10.0.0.1")},
 				}, nil)
 			}},
 		"return SERVFAIL because of the underlying client error": {
 			file: "client-error.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("10.0.0.1")},
 				}, nil)
 			},
@@ -359,7 +368,7 @@ func TestServeDNS(t *testing.T) {
 		"single question": {
 			file: "single-question.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 				}, nil)
 			},
@@ -367,7 +376,7 @@ func TestServeDNS(t *testing.T) {
 		"multi question": {
 			file: "multi-question.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 				}, nil)
 				cache, _ := NewCache(WithMaxSize(int64(20 * maxRecordSize)))
@@ -438,7 +447,7 @@ func TestServeDNS_Cached(t *testing.T) {
 	cache, _ := NewCache(WithMaxSize(int64(20 * maxRecordSize)))
 
 	handler := NewRecursiveHandler(cache)
-	handler.SetUpstreams(&systemConfig{
+	handler.SetUpstreams(systemConfig{
 		Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 	}, nil)
 
@@ -758,7 +767,7 @@ func FuzzServeDNSQuestion(f *testing.F) {
 	f.Add("example", uint16(5), uint16(1), "rdata")
 
 	handler := NewRecursiveHandler(noopCache{})
-	handler.systemResolvers = &systemConfig{
+	handler.systemConfig = systemConfig{
 		Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 	}
 
@@ -809,24 +818,24 @@ func BenchmarkServeDNS(b *testing.B) {
 		"basic non-authoritative request": {
 			file: "bench-non-authoritative.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 				}, nil)
 			}},
 		"basic authoritative request": {
 			file: "bench-authoritative.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
-				}, []string{"127.0.0.1"})
+				}, []netip.Addr{netip.MustParseAddr("127.0.0.1")})
 			}},
 		"CNAME": {
 			file: "bench-cname.dig",
 			handler: func(h *RecursiveHandler) {
-				h.SetUpstreams(&systemConfig{
+				h.SetUpstreams(systemConfig{
 					Nameservers:   []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 					SearchDomains: []string{"test"},
-				}, []string{"127.0.0.1"})
+				}, []netip.Addr{netip.MustParseAddr("127.0.0.1")})
 			}},
 	}
 
@@ -847,13 +856,15 @@ func BenchmarkServeDNS(b *testing.B) {
 			}
 
 			handler := NewRecursiveHandler(cache)
-			handler.systemResolvers = &systemConfig{
+			handler.systemConfig = systemConfig{
 				Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 			}
 			handler.authoritativeServers = []netip.Addr{netip.MustParseAddr("127.0.0.1")}
 
 			client := &mockClient{received: resolution}
 			handler.client = client
+
+			b.ResetTimer()
 
 			questions := extractQuestions(request)
 
@@ -882,7 +893,7 @@ func BenchmarkServeDNS_Search(b *testing.B) {
 	}
 
 	handler := NewRecursiveHandler(cache)
-	handler.systemResolvers = &systemConfig{
+	handler.systemConfig = systemConfig{
 		Nameservers:   []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 		SearchDomains: []string{"test"},
 	}
@@ -893,6 +904,8 @@ func BenchmarkServeDNS_Search(b *testing.B) {
 	handler.client = client
 
 	question := extractQuestion(request[0])
+
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		query := question.Copy() // if created outside of loop, answer section remains populated

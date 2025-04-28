@@ -35,7 +35,6 @@ import (
 )
 
 const (
-	attemptTimeout  = 5 * time.Second
 	exchangeTimeout = 20 * time.Second
 
 	defaultConnPoolSize = 12
@@ -48,7 +47,9 @@ var (
 
 type resolverClient interface {
 	Dial(string) (*dns.Conn, error)
+	Exchange(*dns.Msg, string) (*dns.Msg, time.Duration, error)
 	ExchangeContext(context.Context, *dns.Msg, string) (*dns.Msg, time.Duration, error)
+	ExchangeWithConn(*dns.Msg, *dns.Conn) (*dns.Msg, time.Duration, error)
 	ExchangeWithConnContext(context.Context, *dns.Msg, *dns.Conn) (*dns.Msg, time.Duration, error)
 }
 
@@ -98,7 +99,7 @@ func (s *sessionMap) ClearExpired() {
 	defer s.lock.Unlock()
 
 	for k, v := range s.sessions {
-		if v.Expired(now) {
+		if v.expired(now) {
 			delete(s.sessions, k)
 		}
 	}
@@ -182,30 +183,30 @@ func (c *connMap) Close() error {
 type RecursiveHandlerOption func(*RecursiveHandler)
 
 type RecursiveHandler struct {
-	systemResolvers      *systemConfig
-	sessionMap           *sessionMap
-	conns                *connMap
-	stats                *handlerStats
 	recordCache          Cache
 	client               resolverClient
+	conns                connMap
 	authoritativeServers []netip.Addr
+	systemConfig         systemConfig
+	sessionMap           sessionMap
+	stats                handlerStats
 	connPoolSize         int
 }
 
 // NewRecursiveHandler provides a constructor for a new handler for recursive queries
 func NewRecursiveHandler(cache Cache, options ...RecursiveHandlerOption) *RecursiveHandler {
 	r := &RecursiveHandler{
-		systemResolvers: &systemConfig{},
-		sessionMap: &sessionMap{
+		systemConfig: systemConfig{},
+		sessionMap: sessionMap{
 			sessions: make(map[string]*session),
 		},
-		conns: &connMap{
+		conns: connMap{
 			conns: make(map[netip.Addr][]*exclusiveConn),
 		},
-		stats:        &handlerStats{},
+		stats:        handlerStats{},
 		connPoolSize: defaultConnPoolSize,
 		recordCache:  cache,
-		client:       &dns.Client{},
+		client:       &dns.Client{Timeout: exchangeTimeout},
 	}
 
 	for _, option := range options {
@@ -216,52 +217,30 @@ func NewRecursiveHandler(cache Cache, options ...RecursiveHandlerOption) *Recurs
 }
 
 // SetUpstreams sets upstream connections for both authoritative and non-authoritative servers
-func (h *RecursiveHandler) SetUpstreams(cfg *systemConfig, authServers []string) error {
-	var err error
+func (h *RecursiveHandler) SetUpstreams(systemConfig systemConfig, authServers []netip.Addr) error {
+	h.systemConfig = systemConfig
+	h.authoritativeServers = authServers
 
-	h.systemResolvers = cfg
-
-	if h.systemResolvers.UseTCP {
+	if h.systemConfig.UseTCP {
 		client, ok := h.client.(*dns.Client)
 		if ok {
 			client.Net = "tcp"
 		}
 	}
 
-	authAddrs := make([]netip.Addr, len(authServers))
-	for i, server := range authServers {
-		authAddrs[i], err = netip.ParseAddr(server)
-		if err != nil {
-			return err
-		}
+	for _, server := range slices.Concat(h.systemConfig.Nameservers, authServers) {
+		for range h.connPoolSize {
+			// check for overlap with MAAS authoritative servers
+			if _, ok := h.conns.Get(server); ok {
+				continue
+			}
 
-		for j := 0; j < h.connPoolSize; j++ {
-			conn, err := h.client.Dial(net.JoinHostPort(server, "53"))
+			conn, err := h.client.Dial(net.JoinHostPort(server.String(), "53"))
 			if err != nil {
 				return err
 			}
 
-			h.conns.Set(authAddrs[i], conn)
-
-			h.stats.connPoolSize.Add(1)
-		}
-	}
-
-	h.authoritativeServers = authAddrs
-
-	for _, ns := range h.systemResolvers.Nameservers {
-		if _, ok := h.conns.Get(ns); ok { // check for overlap with MAAS authoritative servers
-			continue
-		}
-
-		for i := 0; i < h.connPoolSize; i++ {
-			conn, err := h.client.Dial(net.JoinHostPort(ns.String(), "53"))
-			if err != nil {
-				return err
-			}
-
-			h.conns.Set(ns, conn)
-
+			h.conns.Set(server, conn)
 			h.stats.connPoolSize.Add(1)
 		}
 	}
@@ -296,7 +275,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	remoteSession := h.getOrCreateSession(sessionKey, remoteAddr)
 
 	defer func() {
-		if remoteSession.Expired(time.Now()) {
+		if remoteSession.expired(time.Now()) {
 			h.sessionMap.Delete(sessionKey)
 		}
 	}()
@@ -464,7 +443,7 @@ func (h *RecursiveHandler) handleSearch(q dns.Question) (*dns.Msg, error) {
 		return msg, nil
 	}
 
-	for _, s := range h.systemResolvers.SearchDomains {
+	for _, s := range h.systemConfig.SearchDomains {
 		m := &dns.Msg{}
 		m.Question = []dns.Question{
 			{
@@ -496,7 +475,7 @@ func (h *RecursiveHandler) handleAuthoritative(q dns.Question, remoteSession *se
 	}
 
 	// we're not querying a CNAME / DNAME, so if there was a chain, it finished
-	remoteSession.Reset()
+	remoteSession.reset()
 
 	return h.authoritativeQuery(query, nameserver)
 }
@@ -534,10 +513,7 @@ func (h *RecursiveHandler) findRecursiveNS(qstate *queryState) (*dns.NS, error) 
 		)
 
 		if nameserver != nil {
-			nsAddr, err = h.resolveAuthoritativeArbitraryName(
-				context.Background(),
-				nameserver.Ns,
-			)
+			nsAddr, err = h.resolveAuthoritativeArbitraryName(nameserver.Ns)
 		}
 
 		if err != nil || nameserver == nil { // if failed to find NS record's address or we haven't found one yet
@@ -555,7 +531,7 @@ func (h *RecursiveHandler) findRecursiveNS(qstate *queryState) (*dns.NS, error) 
 
 		ns, err := h.getNS(label, nsAddr)
 		if err != nil {
-			log.Debug().Msgf("retryable err: %s", err)
+			log.Debug().Msgf("retryable error: %s", err)
 
 			continue
 		}
@@ -572,10 +548,6 @@ func (h *RecursiveHandler) findRecursiveNS(qstate *queryState) (*dns.NS, error) 
 
 // getNS fetches the NS record for a given name
 func (h *RecursiveHandler) getNS(name string, nameserver netip.Addr) (*dns.NS, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), exchangeTimeout)
-
-	defer cancel()
-
 	query := func(addr netip.Addr) (*dns.NS, error) {
 		id, err := generateTransactionID()
 		if err != nil {
@@ -584,7 +556,7 @@ func (h *RecursiveHandler) getNS(name string, nameserver netip.Addr) (*dns.NS, e
 
 		q := prepareQueryMessage(id, name, dns.TypeNS)
 
-		resp, err := h.authoritativeExchange(ctx, addr, q)
+		resp, err := h.authoritativeExchange(addr, q)
 		if err != nil {
 			return nil, err
 		}
@@ -594,8 +566,6 @@ func (h *RecursiveHandler) getNS(name string, nameserver netip.Addr) (*dns.NS, e
 				return ns, nil
 			}
 		}
-
-		// TODO cache Ns and Additional sections
 
 		return nil, ErrNoAnswer
 	}
@@ -616,12 +586,11 @@ func (h *RecursiveHandler) getNS(name string, nameserver netip.Addr) (*dns.NS, e
 	for _, server := range h.authoritativeServers {
 		msg, err := query(server)
 		if err != nil {
-			log.Debug().Msgf("retryable err: %s", err)
+			log.Debug().Msgf("retryable error: %s", err)
 
 			continue
 		}
 
-		// TODO cache potential As/AAAAs returned in the Extras section
 		return msg, nil
 	}
 
@@ -632,10 +601,12 @@ func (h *RecursiveHandler) getNS(name string, nameserver netip.Addr) (*dns.NS, e
 func (h *RecursiveHandler) queryAliasType(query *dns.Msg, nameserver *dns.NS, remoteSession *session) (*dns.Msg, error) {
 	for _, q := range query.Question {
 		if q.Qtype == dns.TypeCNAME || q.Qtype == dns.TypeDNAME {
-			alreadyQueried, err := remoteSession.NameAlreadyQueried(q.Name)
+			name, err := remoteSession.format(q.Name)
 			if err != nil {
 				return nil, err
 			}
+
+			alreadyQueried := remoteSession.contains(name)
 
 			if alreadyQueried {
 				log.Warn().Msgf("detected a looping querying from %s", remoteSession.String())
@@ -646,10 +617,7 @@ func (h *RecursiveHandler) queryAliasType(query *dns.Msg, nameserver *dns.NS, re
 				return query, nil
 			}
 
-			err = remoteSession.StoreName(q.Name)
-			if err != nil {
-				return nil, err
-			}
+			remoteSession.add(name)
 		}
 	}
 
@@ -658,19 +626,16 @@ func (h *RecursiveHandler) queryAliasType(query *dns.Msg, nameserver *dns.NS, re
 
 // authoritativeQuery exchanges authoritative sub-queries
 func (h *RecursiveHandler) authoritativeQuery(msg *dns.Msg, ns *dns.NS) (*dns.Msg, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), exchangeTimeout)
-	defer cancel()
-
-	nsAddr, err := h.resolveAuthoritativeArbitraryName(ctx, ns.Ns)
+	nsAddr, err := h.resolveAuthoritativeArbitraryName(ns.Ns)
 	if err != nil {
 		return nil, err
 	}
 
-	return h.authoritativeExchange(ctx, nsAddr, msg)
+	return h.authoritativeExchange(nsAddr, msg)
 }
 
 // resolveAuthoritativeArbitraryName resolves a given name where we do not know if it is a CNAME, A or AAAA
-func (h *RecursiveHandler) resolveAuthoritativeArbitraryName(ctx context.Context, addrStr string) (netip.Addr, error) {
+func (h *RecursiveHandler) resolveAuthoritativeArbitraryName(addrStr string) (netip.Addr, error) {
 	qstate := newQueryState(addrStr)
 
 	// create session for self, addr just needs to be something we wont see real traffic from
@@ -684,17 +649,17 @@ outerLoop:
 		}
 
 		if addrStr != "." {
-			seen, err := sess.NameAlreadyQueried(addrStr)
+			name, err := sess.format(addrStr)
 			if err != nil {
 				return netip.Addr{}, err
-			} else if seen {
+			}
+
+			seen := sess.contains(name)
+			if seen {
 				return netip.Addr{}, ErrCNAMELoop
 			}
 
-			err = sess.StoreName(addrStr)
-			if err != nil {
-				return netip.Addr{}, err
-			}
+			sess.add(name)
 		}
 
 		// not all should come back, but we should check
@@ -707,7 +672,7 @@ outerLoop:
 
 		for _, msg := range msgs {
 			for _, server := range h.authoritativeServers {
-				resp, err := h.authoritativeExchange(ctx, server, msg)
+				resp, err := h.authoritativeExchange(server, msg)
 				if err != nil {
 					log.Err(err).Send()
 
@@ -750,11 +715,7 @@ outerLoop:
 }
 
 // authoritativeExchange sets the header values for authoritative subqueries and exchanges the subquery for a response
-func (h *RecursiveHandler) authoritativeExchange(ctx context.Context, server netip.Addr, r *dns.Msg) (*dns.Msg, error) {
-	ctx, cancel := context.WithTimeout(ctx, attemptTimeout)
-
-	defer cancel()
-
+func (h *RecursiveHandler) authoritativeExchange(server netip.Addr, r *dns.Msg) (*dns.Msg, error) {
 	if r.Id == 0 {
 		id, err := generateTransactionID()
 		if err != nil {
@@ -764,7 +725,7 @@ func (h *RecursiveHandler) authoritativeExchange(ctx context.Context, server net
 		r.Id = id
 	}
 
-	return h.fetchAnswer(ctx, server, r)
+	return h.fetchAnswer(server, r)
 }
 
 // validateQuery ensures we only process valid queries
@@ -842,13 +803,10 @@ func (h *RecursiveHandler) srvFailResponse(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 // nonAuhtoritativeExchange exchanges subqueries with the nameserver(s) configured in resolv.conf
-func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolver netip.Addr, r *dns.Msg) (*dns.Msg, error) {
+func (h *RecursiveHandler) nonAuthoritativeExchange(resolver netip.Addr, r *dns.Msg) (*dns.Msg, error) {
 	var err error
 
-	ctx, cancel := context.WithTimeout(ctx, attemptTimeout)
-	defer cancel()
-
-	if h.systemResolvers.EDNS0Enabled && !slices.ContainsFunc(r.Extra, checkForEDNS0Cookie) {
+	if h.systemConfig.EDNS0Enabled && !slices.ContainsFunc(r.Extra, checkForEDNS0Cookie) {
 		var cookie string
 
 		cookie, err = generateEDNS0Cookie()
@@ -876,7 +834,7 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 		)
 	}
 
-	r.AuthenticatedData = h.systemResolvers.TrustAD
+	r.AuthenticatedData = h.systemConfig.TrustAD
 
 	if r.Id == 0 {
 		r.Id, err = generateTransactionID()
@@ -887,11 +845,11 @@ func (h *RecursiveHandler) nonAuthoritativeExchange(ctx context.Context, resolve
 
 	r.RecursionDesired = true
 
-	return h.fetchAnswer(ctx, resolver, r)
+	return h.fetchAnswer(resolver, r)
 }
 
 // fetchAnswer provides the logic necessary to fetch an answer from the given server at the netip.Addr
-func (h *RecursiveHandler) fetchAnswer(ctx context.Context, server netip.Addr, r *dns.Msg) (*dns.Msg, error) {
+func (h *RecursiveHandler) fetchAnswer(server netip.Addr, r *dns.Msg) (*dns.Msg, error) {
 	var cachedAnswers []dns.RR
 
 	cachedMsg := r.Copy()
@@ -912,38 +870,33 @@ func (h *RecursiveHandler) fetchAnswer(ctx context.Context, server netip.Addr, r
 		}
 
 		if i+1 < len(cachedMsg.Question) {
-			cachedMsg.Question = append(cachedMsg.Question[:i], cachedMsg.Question[i+1:]...)
+			cachedMsg.Question = slices.Delete(cachedMsg.Question, i, i+1)
 		} else {
 			cachedMsg.Question = cachedMsg.Question[:i]
 		}
 	}
 
-	var (
-		msg *dns.Msg
-		err error
-	)
-
 	if len(cachedMsg.Question) > 0 {
+		var err error
+
 		if conn, ok := h.conns.Get(server); ok { // authoritative or resolvconf resolver
 			conn.Use(func(c *dns.Conn) {
-				msg, _, err = h.client.ExchangeWithConnContext(ctx, cachedMsg, c)
+				r, _, err = h.client.ExchangeWithConn(cachedMsg, c)
 			})
 		} else { // MAAS authoritative server returned a NS for a non-authoritative zone
-			msg, _, err = h.client.ExchangeContext(ctx, cachedMsg, net.JoinHostPort(server.String(), "53"))
+			r, _, err = h.client.Exchange(cachedMsg, net.JoinHostPort(server.String(), "53"))
 		}
 
 		if err != nil {
 			return nil, err
 		}
 
-		h.cacheResponse(msg)
-	} else {
-		msg = r.Copy()
+		h.cacheResponse(r)
 	}
 
-	msg.Answer = append(msg.Answer, cachedAnswers...)
+	r.Answer = append(r.Answer, cachedAnswers...)
 
-	return msg, nil
+	return r, nil
 }
 
 // cacheResponse caches records returned in a response
@@ -1023,11 +976,8 @@ func checkForEDNS0Cookie(rr dns.RR) bool {
 
 // nonAuthoritativeQuery queries the nameserver(s) configured in resolv.conf for a given query
 func (h *RecursiveHandler) nonAuthoritativeQuery(r *dns.Msg) (*dns.Msg, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), exchangeTimeout)
-	defer cancel()
-
-	for _, resolver := range h.systemResolvers.Nameservers {
-		msg, err := h.nonAuthoritativeExchange(ctx, resolver, r)
+	for _, resolver := range h.systemConfig.Nameservers {
+		msg, err := h.nonAuthoritativeExchange(resolver, r)
 		if err != nil {
 			log.Err(err).Send()
 		} else {
@@ -1040,13 +990,13 @@ func (h *RecursiveHandler) nonAuthoritativeQuery(r *dns.Msg) (*dns.Msg, error) {
 
 // parseResolvConf parses and returns configuration for a resolv.conf at the
 // give path
-func parseResolvConf(resolvConf string) (*systemConfig, error) {
-	cfg := &systemConfig{}
+func parseResolvConf(resolvConf string) (systemConfig, error) {
+	cfg := systemConfig{}
 
 	//nolint:gosec // flags any file being opened via a variable
 	f, err := os.Open(resolvConf)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	//nolint:errcheck // ok to skip error check here
@@ -1064,7 +1014,7 @@ func parseResolvConf(resolvConf string) (*systemConfig, error) {
 		if nameserver, ok := strings.CutPrefix(line, "nameserver"); ok {
 			ns := strings.TrimSpace(nameserver)
 			if len(ns) == len(nameserver) {
-				return nil, fmt.Errorf(
+				return cfg, fmt.Errorf(
 					"%w: no space between \"nameserver\" and addresses",
 					ErrInvalidResolvConf,
 				)
@@ -1072,7 +1022,7 @@ func parseResolvConf(resolvConf string) (*systemConfig, error) {
 
 			ip, err := netip.ParseAddr(ns)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing nameserver address: %w", err)
+				return cfg, fmt.Errorf("error parsing nameserver address: %w", err)
 			}
 
 			cfg.Nameservers = append(cfg.Nameservers, ip)
@@ -1083,7 +1033,7 @@ func parseResolvConf(resolvConf string) (*systemConfig, error) {
 		if search, ok := strings.CutPrefix(line, "search"); ok {
 			domains := strings.TrimSpace(search)
 			if len(domains) == len(search) {
-				return nil, fmt.Errorf(
+				return cfg, fmt.Errorf(
 					"%w: no space between \"search\" and domains",
 					ErrInvalidResolvConf,
 				)
@@ -1112,7 +1062,7 @@ func parseResolvConf(resolvConf string) (*systemConfig, error) {
 			opts := strings.TrimSpace(options)
 
 			if len(opts) == len(options) {
-				return nil, fmt.Errorf(
+				return cfg, fmt.Errorf(
 					"%w: no space between \"options\" and set options",
 					ErrInvalidResolvConf,
 				)

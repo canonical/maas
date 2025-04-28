@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	maxRecordSize            = 512
-	defaultMaxNumRecords int = 1000
+	maxRecordSize        = 512
+	defaultMaxNumRecords = 1000
 )
 
 type Cache interface {
@@ -79,10 +79,7 @@ func NewCache(options ...CacheOption) (Cache, error) {
 func WithMaxSize(size int64) CacheOption {
 	return func(c *cache) {
 		if size != 0 {
-			c.maxNumRecords = int(size / maxRecordSize)
-			if c.maxNumRecords < 1 {
-				c.maxNumRecords = 1
-			}
+			c.maxNumRecords = max(int(size/maxRecordSize), 1)
 		}
 	}
 }

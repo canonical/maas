@@ -18,6 +18,7 @@ package resolver
 import (
 	"context"
 	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -32,7 +33,7 @@ type mockHandler struct {
 	Handler
 }
 
-func (m *mockHandler) SetUpstreams(_ *systemConfig, _ []string) error {
+func (m *mockHandler) SetUpstreams(_ systemConfig, _ []netip.Addr) error {
 	return nil
 }
 
@@ -45,7 +46,7 @@ func TestConfigurationWorkflow(t *testing.T) {
 	svc := NewResolverService(handler)
 
 	// test multiple calls
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		t.Run(t.Name(), func(t *testing.T) {
 			wfTestSuite := testsuite.WorkflowTestSuite{}
 			logger := log.NewZerologAdapter(zerolog.Nop())
@@ -76,7 +77,7 @@ func TestConfigurationWorkflow(t *testing.T) {
 				GetResolverConfigResult{
 					Enabled:          true,
 					BindIPs:          bindIPs,
-					AuthoritativeIPs: []string{"127.0.0.1:5353"},
+					AuthoritativeIPs: []string{"127.0.0.1"},
 				},
 				nil,
 			)
@@ -86,7 +87,7 @@ func TestConfigurationWorkflow(t *testing.T) {
 				t.Name(),
 			)
 
-			// TODO assert query receives answer once Handler is implemented
+			// TODO: assert query receives answer once Handler is implemented
 			assert.NoError(t, env.GetWorkflowError())
 		})
 	}

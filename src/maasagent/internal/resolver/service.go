@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/netip"
 	"time"
 
 	"github.com/miekg/dns"
@@ -36,7 +37,7 @@ var (
 
 type Handler interface {
 	dns.Handler
-	SetUpstreams(*systemConfig, []string) error
+	SetUpstreams(systemConfig, []netip.Addr) error
 	ClearExpiredSessions()
 	Close() error
 }
@@ -139,9 +140,17 @@ func (s *ResolverService) configure(ctx tworkflow.Context, systemID string) erro
 			return err
 		}
 
+		authAddrs := make([]netip.Addr, len(s.authoritativeServers))
+		for i, server := range s.authoritativeServers {
+			authAddrs[i], err = netip.ParseAddr(server)
+			if err != nil {
+				return err
+			}
+		}
+
 		if err := s.handler.SetUpstreams(
 			cfg,
-			s.authoritativeServers,
+			authAddrs,
 		); err != nil {
 			return err
 		}

@@ -263,10 +263,12 @@ func TestSession_StoreName(t *testing.T) {
 
 			s.chain = tc.in.generateChain()
 
-			err := s.StoreName(tc.in.name)
+			name, err := s.format(tc.in.name)
 			if err != nil {
 				t.Fatal(err)
 			}
+
+			s.add(name)
 
 			assert.Equal(t, tc.out(), s.chain)
 		})
@@ -319,14 +321,16 @@ func TestSession_NameAlreadyQueried(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			s := newSession(&net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 53})
 
-			for i := 0; i < tc.in.storeCount; i++ {
-				s.StoreName(tc.in.name)
-			}
-
-			queried, err := s.NameAlreadyQueried(tc.in.name)
+			name, err := s.format(tc.in.name)
 			if err != nil {
 				t.Fatal(err)
 			}
+
+			for i := 0; i < tc.in.storeCount; i++ {
+				s.add(name)
+			}
+
+			queried := s.contains(name)
 
 			assert.Equal(t, queried, tc.out)
 		})
@@ -341,7 +345,7 @@ func TestSession_Expired(t *testing.T) {
 
 			timePassed := createdAt.Add(timePassed)
 
-			assert.Equal(t, want, s.Expired(timePassed))
+			assert.Equal(t, want, s.expired(timePassed))
 		}
 	}
 
@@ -349,4 +353,40 @@ func TestSession_Expired(t *testing.T) {
 
 	t.Run("still valid", expiredEquals(createdAt, time.Second, false))
 	t.Run("expired", expiredEquals(createdAt, time.Minute, true))
+}
+
+func BenchmarkSession_Contains(b *testing.B) {
+	s := newSession(&net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 53})
+	s.chain = []byte{
+		0x03, 'f', 'o', 'o',
+		0x07, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
+		0x03, 'c', 'o', 'm', 0x00,
+	}
+
+	name, err := s.format("foo.example.com")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		s.contains(name)
+	}
+}
+
+func BenchmarkSession_Add(b *testing.B) {
+	s := newSession(&net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 53})
+	s.chain = []byte{
+		0x03, 'f', 'o', 'o',
+		0x07, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
+		0x03, 'c', 'o', 'm', 0x00,
+	}
+
+	name, err := s.format("foo.example.com")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		s.add(name)
+	}
 }

@@ -17,10 +17,8 @@ package resolver
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -71,130 +69,134 @@ func (s *session) String() string {
 	return sessionKeyFromRemoteAddr(s.remoteAddr)
 }
 
-// StoreName stores a name just queried in the query chain
-func (s *session) StoreName(name string) error {
-	var nameBytes, uncompressed []byte
-
-	name = dns.Fqdn(name)
-	labels := strings.Split(name, ".")
-
-	for _, label := range labels {
-		wire, err := s.labelToWire(label)
-		if err != nil {
-			return err
-		}
-
-		uncompressed = append(uncompressed, wire...)
-
-		if label != "" { // end of fqdn
-			compressed, ok := s.compress(nameBytes, wire)
-			if ok {
-				nameBytes = compressed
-
-				continue
-			}
-		}
-
-		nameBytes = append(nameBytes, wire...)
-	}
-
-	if !s.contains(nameBytes, uncompressed) {
-		s.chain = append(s.chain, nameBytes...)
-	}
-
-	return nil
+type name struct {
+	compressed, uncompressed []byte
 }
 
-// NameAlreadyQueried returns true when the session already queried for a name
-// and said name is not in cache, this should be seen as a loop.
-func (s *session) NameAlreadyQueried(name string) (bool, error) {
-	if len(s.chain) == 0 {
-		return false, nil
+// add stores a name just queried in the query chain
+func (s *session) add(name name) {
+	if !s.contains(name) {
+		s.chain = append(s.chain, name.compressed...)
 	}
-
-	name = dns.Fqdn(name)
-
-	var (
-		nameBytes    []byte
-		uncompressed []byte
-	)
-
-	labels := strings.Split(name, ".")
-
-	for _, label := range labels {
-		wire, err := s.labelToWire(label)
-		if err != nil {
-			return false, err
-		}
-
-		uncompressed = append(uncompressed, wire...)
-
-		if label != "" {
-			compressed, ok := s.compress(nameBytes, wire)
-			if ok {
-				nameBytes = compressed
-
-				continue
-			}
-		}
-
-		nameBytes = append(nameBytes, wire...)
-	}
-
-	return s.contains(nameBytes, uncompressed), nil
 }
 
-// Reset clears the current query chain.
+// reset clears the current query chain.
 // This should happen whenever a non-CNAME and non-DNAME is returned
-func (s *session) Reset() {
+func (s *session) reset() {
 	s.chain = nil
 }
 
-// Expired calculates if a session has expired
-func (s *session) Expired(ts time.Time) bool {
+// expired calculates if a session has expired
+func (s *session) expired(ts time.Time) bool {
 	return ts.Sub(s.createdAt) >= sessionTTL
 }
 
 // contains checks if either a compressed or uncompressed version of a given name
 // is present in the current query chain
-func (s *session) contains(compressed []byte, uncompressed []byte) bool {
-	compressedIdx := bytes.Index(s.chain, compressed)
-	uncompressedIdx := bytes.Index(s.chain, uncompressed)
-	compressedMatch := bytes.Contains(
-		s.chain, append([]byte{0x00}, compressed...), // 0 byte of previous name to ensure exact match
-	)
-	uncompressedMatch := bytes.Contains(
-		s.chain, append([]byte{0x00}, uncompressed...), // 0 byte of previous name to ensure exact match
-	)
+func (s *session) contains(name name) bool {
+	n := len(s.chain)
+	if n == 0 {
+		return false
+	}
 
-	return compressedIdx == 0 || uncompressedIdx == 0 || compressedMatch || uncompressedMatch
+	cLen := len(name.compressed)
+	uLen := len(name.uncompressed)
+
+	// Check if we have name at the start of the chain.
+	// We need to check both compressed and uncompressed variants.
+	if cLen <= n && bytes.Equal(s.chain[:cLen], name.compressed) {
+		return true
+	}
+
+	if uLen <= n && bytes.Equal(s.chain[:uLen], name.uncompressed) {
+		return true
+	}
+
+	// Multiple names in the chain are separated by 0x00 byte (denotes the end of
+	// the previous name) hence we also check occurrence after each 0x00
+	for i := range n {
+		if s.chain[i] != 0x00 {
+			continue
+		}
+
+		if cLen+i <= n && bytes.Equal(s.chain[i:i+cLen], name.compressed) {
+			return true
+		}
+
+		if uLen+i <= n && bytes.Equal(s.chain[i:i+uLen], name.uncompressed) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // compress compressed a given name using the current query chain as a buffer
-func (s *session) compress(buf []byte, label []byte) ([]byte, bool) {
+func (s *session) compress(compressed *[]byte, label []byte) bool {
 	idx := bytes.Index(s.chain, label)
 	if idx == -1 {
-		return buf, false
+		return false
 	}
 
-	b := make([]byte, len(buf)+2)
-	copy(b, buf)
-	//nolint:gosec // compression requires uint16. https://datatracker.ietf.org/doc/html/rfc1035
-	binary.BigEndian.PutUint16(b[len(buf):], uint16(idx^labelPointerShift))
+	compressedCap := cap(*compressed)
+	compressedLen := len(*compressed)
 
-	return b, true
+	// Ensure compressed has enough capacity to append 2 bytes
+	if compressedCap >= compressedLen+2 {
+		// Reuse the existing capacity
+		*compressed = (*compressed)[:compressedLen+2]
+	} else {
+		// Allocate a new slice with extra space and copy the data
+		buf := make([]byte, compressedLen+2, compressedCap+2)
+		copy(buf, *compressed)
+		*compressed = buf
+	}
+
+	//nolint:gosec // G115 compression as in RFC1035
+	v := uint16(idx ^ labelPointerShift)
+	(*compressed)[compressedLen] = byte(v >> 8)
+	(*compressed)[compressedLen+1] = byte(v)
+
+	return true
 }
 
-// labelToWire returns the wire format of a given label
-func (s *session) labelToWire(label string) ([]byte, error) {
-	bytesLabel := []byte(label)
+// format returns a name that has compressed and uncompressed format
+// It can return ErrLabelTooLong if label length > 63.
+func (s *session) format(nameStr string) (name, error) {
+	nameStr = dns.Fqdn(nameStr)
+	nameStrLen := len(nameStr)
 
-	labelLen := len(bytesLabel)
-	if labelLen > 63 {
-		return nil, ErrLabelTooLong
+	compressed := make([]byte, 0, 256)
+	uncompressed := make([]byte, 0, 256)
+
+	start := 0
+	wire := make([]byte, 1+63) // max label length is 63 bytes.
+
+	// Iterate over name (www.example.com.) and execute logic for each label.
+	for i := 0; i <= nameStrLen; i++ {
+		// strings.Split() could be more readable here, but it brings an allocation.
+		if i == nameStrLen || nameStr[i] == '.' {
+			label := nameStr[start:i]
+			labelLen := len(label)
+			start = i + 1
+
+			if len(label) > 63 {
+				return name{}, ErrLabelTooLong
+			}
+
+			wire[0] = byte(labelLen)
+			copy(wire[1:], label)
+			uncompressed = append(uncompressed, wire[:1+labelLen]...)
+
+			if len(label) > 0 {
+				if ok := s.compress(&compressed, wire[:1+labelLen]); ok {
+					continue
+				}
+			}
+
+			compressed = append(compressed, wire[:1+labelLen]...)
+		}
 	}
 
-	length := uint8(labelLen)
-
-	return append([]byte{length}, bytesLabel...), nil
+	return name{compressed: compressed, uncompressed: uncompressed}, nil
 }
