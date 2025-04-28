@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 # Auth
 UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE = (
@@ -31,6 +31,7 @@ UNIQUE_CONSTRAINT_VIOLATION_TYPE = "UniqueConstraintViolation"
 ETAG_PRECONDITION_VIOLATION_TYPE = "EtagPreconditionViolation"
 UNEXISTING_RESOURCE_VIOLATION_TYPE = "UnexistingResourceViolation"
 INVALID_ARGUMENT_VIOLATION_TYPE = "InvalidArgumentViolation"
+CONFLICT_VIOLATION_TYPE = "ConflictViolation"
 PRECONDITION_FAILED = "PreconditionFailed"
 
 # Resource pools

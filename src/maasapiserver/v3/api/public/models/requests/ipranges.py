@@ -3,16 +3,19 @@
 
 from typing import Optional
 
+from netaddr import IPAddress
 from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
+    ConflictException,
     ForbiddenException,
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
 )
@@ -86,6 +89,7 @@ class IPRangeCreateRequest(BaseModel):
         subnet: Subnet,
         authenticated_user: AuthenticatedUser,
         services: ServiceCollectionV3,
+        existing_iprange_id: int | None = None,
     ) -> IPRangeBuilder:
         self._validate_addresses_in_subnet(subnet)
         if self.type == IPRangeType.DYNAMIC:
@@ -114,8 +118,51 @@ class IPRangeCreateRequest(BaseModel):
                         )
                     ]
                 )
+            # Dynamic ranges cannot overlap anything (no ranges or IPs).
+            unused = await services.v3subnet_utilization.get_ipranges_available_for_dynamic_range(
+                subnet_id=subnet.id, exclude_ip_range_id=existing_iprange_id
+            )
+        else:
+            # Reserved ranges can overlap allocated IPs but not other ranges.
+            unused = await services.v3subnet_utilization.get_ipranges_available_for_reserved_range(
+                subnet_id=subnet.id, exclude_ip_range_id=existing_iprange_id
+            )
+        if not unused:
+            raise ValidationException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=f"There is no room for any {self.type} ranges on this subnet.",
+                    )
+                ]
+            )
 
-        # TODO: check that there is no overlap with existing ranges and allocated IPs.
+        found = False
+        # Find unused range for start_ip
+        for unused_range in unused:
+            if IPAddress(str(self.start_ip)) in unused_range:
+                if IPAddress(str(self.end_ip)) in unused_range:
+                    # Success, start and end IP are in an unused range.
+                    found = True
+                    break
+
+        if not found:
+            message = (
+                f"Requested {self.type} range conflicts with an existing "
+            )
+            if self.type == IPRangeType.RESERVED:
+                message += "range."
+            else:
+                message += "IP address or range."
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message=message,
+                    )
+                ]
+            )
+
         return IPRangeBuilder(
             type=self.type,
             start_ip=self.start_ip,

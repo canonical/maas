@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
 from unittest.mock import Mock
@@ -16,6 +16,7 @@ from maasapiserver.v3.api.public.models.responses.ipranges import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.subnet import RdnsMode
+from maascommon.utils.network import MAASIPRange, MAASIPSet
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -32,6 +33,7 @@ from maasservicelayer.services import (
     ReservedIPsService,
     ServiceCollectionV3,
     SubnetsService,
+    V3SubnetUtilizationService,
 )
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.utils.date import utcnow
@@ -220,6 +222,11 @@ class TestIPRangesApi(ApiCommonTests):
             False
         )
 
+        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
+            ranges=[MAASIPRange(start="10.10.0.1", end="10.10.0.3")]
+        )
+
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,
@@ -265,6 +272,11 @@ class TestIPRangesApi(ApiCommonTests):
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             False
+        )
+
+        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.return_value = MAASIPSet(
+            ranges=[MAASIPRange(start="10.10.0.1", end="10.10.0.3")]
         )
 
         services_mock.subnets = Mock(SubnetsService)
@@ -395,6 +407,11 @@ class TestIPRangesApi(ApiCommonTests):
             matches_reserved_ips
         )
 
+        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.return_value = MAASIPSet(
+            ranges=[MAASIPRange(start="10.0.0.1", end="10.0.0.254")]
+        )
+
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,
@@ -419,6 +436,98 @@ class TestIPRangesApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 422
         assert error_response.details[0].message == message
+
+    async def test_post_422_no_free_ranges(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.exists_within_subnet_iprange.return_value = (
+            False
+        )
+
+        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.return_value = MAASIPSet(
+            ranges=[]
+        )
+
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+        iprange_request = {
+            "type": "dynamic",
+            "start_ip": "10.0.0.1",
+            "end_ip": "10.0.0.3",
+        }
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+        assert (
+            error_response.details[0].message
+            == "There is no room for any dynamic ranges on this subnet."
+        )
+        services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.assert_called_once_with(
+            subnet_id=1, exclude_ip_range_id=None
+        )
+
+    async def test_post_422_conflict_ranges(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock.reservedips.exists_within_subnet_iprange.return_value = (
+            False
+        )
+
+        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.return_value = MAASIPSet(
+            ranges=[MAASIPRange(start="10.0.0.100", end="10.0.0.111")]
+        )
+
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+        iprange_request = {
+            "type": "dynamic",
+            "start_ip": "10.0.0.111",
+            "end_ip": "10.0.0.112",
+        }
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=iprange_request
+        )
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+        assert (
+            error_response.details[0].message
+            == "Requested dynamic range conflicts with an existing IP address or range."
+        )
+        services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.assert_called_once_with(
+            subnet_id=1, exclude_ip_range_id=None
+        )
 
     async def test_post_403_dynamic_iprange(
         self,
@@ -592,13 +701,19 @@ class TestIPRangesApi(ApiCommonTests):
     ) -> None:
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = TEST_IPRANGE
+
+        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
+            ranges=[MAASIPRange(start="10.0.0.1", end="10.0.0.3")]
+        )
+
         updated_iprange = TEST_IPRANGE.copy()
         updated_iprange.comment = "comment"
         services_mock.ipranges.update_one.return_value = updated_iprange
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,
-            cidr=IPv4Network("10.0.0.0/24", strict=False),
+            cidr=IPv4Network("10.0.0.0/16", strict=False),
             rdns_mode=RdnsMode.DEFAULT,
             allow_dns=True,
             allow_proxy=True,
@@ -619,6 +734,9 @@ class TestIPRangesApi(ApiCommonTests):
             f"{self.BASE_PATH}/1", json=iprange_request
         )
         assert response.status_code == 200
+        services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.assert_called_once_with(
+            subnet_id=1, exclude_ip_range_id=1
+        )
 
     async def test_update_400(
         self,

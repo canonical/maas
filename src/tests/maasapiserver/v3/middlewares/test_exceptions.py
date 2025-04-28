@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import MagicMock, Mock
 
@@ -25,6 +25,7 @@ from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,
+    ConflictException,
     DischargeRequiredException,
     ForbiddenException,
     NotFoundException,
@@ -42,6 +43,12 @@ class TestExceptionMiddleware:
         [
             (
                 AlreadyExistsException(
+                    details=[BaseExceptionDetail(type="type", message="msg")]
+                ),
+                ConflictResponse,
+            ),
+            (
+                ConflictException(
                     details=[BaseExceptionDetail(type="type", message="msg")]
                 ),
                 ConflictResponse,

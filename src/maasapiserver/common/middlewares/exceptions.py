@@ -25,6 +25,7 @@ from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,
+    ConflictException,
     DischargeRequiredException,
     ForbiddenException,
     NotFoundException,
@@ -59,6 +60,9 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         try:
             return await call_next(request)
         except AlreadyExistsException as e:
+            logger.debug(e)
+            return ConflictResponse(details=e.details)
+        except ConflictException as e:
             logger.debug(e)
             return ConflictResponse(details=e.details)
         except BadRequestException as e:

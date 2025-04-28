@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Self
 
@@ -30,6 +30,14 @@ class AlreadyExistsException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__(
             "An instance with the same unique attributes already exists.",
+            details,
+        )
+
+
+class ConflictException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__(
+            "There is a conflict with an existing resource.",
             details,
         )
 

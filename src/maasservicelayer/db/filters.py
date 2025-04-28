@@ -1,5 +1,6 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from dataclasses import dataclass, field
 from typing import Union
 
@@ -71,38 +72,55 @@ class QuerySpec:
         Returns:
             The original statement (possibly) enriched with the clauses.
         """
+        if not self.where:
+            return stmt
+
+        stmt = stmt.where(self.where.condition)
+
         if isinstance(stmt, Select):
-            if self.where:
-                stmt = stmt.where(self.where.condition)
-                for j in self.where.joins:
-                    already_joined = [
-                        joined_table[0] for joined_table in stmt._setup_joins
-                    ]
-                    already_joined += stmt.columns_clause_froms
-                    if (
-                        j.left not in already_joined
-                        and j.right not in already_joined
-                    ):
-                        stmt = stmt.join_from(j.left, j.right, j.onclause)
-                    elif j.left not in already_joined:
-                        stmt = stmt.join(j.left, j.onclause)
-                    elif j.right not in already_joined:
-                        stmt = stmt.join(j.right, j.onclause)
-        elif isinstance(stmt, Update) or isinstance(stmt, Delete):
-            if self.where:
-                stmt = stmt.where(self.where.condition)
-                for j in self.where.joins:
-                    # we want to make sure that the onclause is set
-                    assert j.onclause is not None
-                    # we check that the clause isn't already present
-                    if all(
-                        [
-                            not j.onclause.compare(where)
-                            for where in stmt._where_criteria
-                        ]
-                    ):
-                        stmt = stmt.where(j.onclause)
+            stmt = self._enrich_select_stmt(stmt)
+        elif isinstance(stmt, (Update, Delete)):
+            stmt = self._enrich_update_delete_stmt(stmt)
+
         return stmt
+
+    def _enrich_select_stmt(self, stmt: Select) -> Select:
+        already_joined = self._get_already_joined(stmt)
+
+        for join in self.where.joins:  # type: ignore
+            left_in_joined = join.left in already_joined
+            right_in_joined = join.right in already_joined
+
+            if not left_in_joined and not right_in_joined:
+                stmt = stmt.join_from(join.left, join.right, join.onclause)
+                already_joined.update([join.left, join.right])
+            elif not left_in_joined:
+                stmt = stmt.join(join.left, join.onclause)
+                already_joined.add(join.left)
+            elif not right_in_joined:
+                stmt = stmt.join(join.right, join.onclause)
+                already_joined.add(join.right)
+
+        return stmt
+
+    def _enrich_update_delete_stmt(
+        self, stmt: Union[Update, Delete]
+    ) -> Union[Update, Delete]:
+        for join in self.where.joins:  # type: ignore
+            assert join.onclause is not None, "Join onclause must be defined."
+            if all(
+                not join.onclause.compare(existing)
+                for existing in stmt._where_criteria
+            ):
+                stmt = stmt.where(join.onclause)
+        return stmt
+
+    def _get_already_joined(self, stmt: Select) -> set:
+        already_joined = {
+            item for join in stmt._setup_joins for item in (join[0], join[2])
+        }
+        already_joined.update(stmt.columns_clause_froms)
+        return already_joined
 
 
 class ClauseFactory:
