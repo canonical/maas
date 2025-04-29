@@ -13,7 +13,10 @@ from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
+from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
@@ -438,4 +441,118 @@ class TestDNSResourcesService:
             ttl=30,
             zone=domain.name,
             answer="10.0.0.1",
+        )
+
+    async def test_add_ip(self):
+        mock_domains_service = Mock(DomainsService)
+        mock_dnspublications_service = Mock(DNSPublicationsService)
+        mock_dnsresource_repository = Mock(DNSResourceRepository)
+        dnsresources_service = DNSResourcesService(
+            context=Context(),
+            domains_service=mock_domains_service,
+            dnspublications_service=mock_dnspublications_service,
+            dnsresource_repository=mock_dnsresource_repository,
+        )
+
+        fabric = Fabric(id=7)
+        vlan = Vlan(
+            id=6,
+            vid=0,
+            description="",
+            mtu=1500,
+            dhcp_on=True,
+            fabric_id=fabric.id,
+        )
+        subnet = Subnet(
+            id=5,
+            cidr="10.0.0.0/24",
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            rdns_mode=1,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=vlan.id,
+        )
+        sip = StaticIPAddress(
+            id=1,
+            alloc_type=IpAddressType.AUTO,
+            lease_time=30,
+            subnet_id=subnet.id,
+            ip="10.0.0.1",
+        )
+        domain = Domain(
+            id=2,
+            name="test-domain",
+            authoritative=True,
+            ttl=30,
+        )
+        dnsrr = DNSResource(
+            id=3,
+            name="test-name",
+            domain_id=domain.id,
+        )
+
+        mock_dnsresource_repository.get_one.return_value = dnsrr
+
+        await dnsresources_service.add_ip(sip, dnsrr.name, domain)
+
+        mock_dnsresource_repository.link_ip.assert_called_once_with(dnsrr, sip)
+
+    async def test_remove_ip(self):
+        mock_domains_service = Mock(DomainsService)
+        mock_dnspublications_service = Mock(DNSPublicationsService)
+        mock_dnsresource_repository = Mock(DNSResourceRepository)
+        dnsresources_service = DNSResourcesService(
+            context=Context(),
+            domains_service=mock_domains_service,
+            dnspublications_service=mock_dnspublications_service,
+            dnsresource_repository=mock_dnsresource_repository,
+        )
+
+        fabric = Fabric(id=7)
+        vlan = Vlan(
+            id=6,
+            vid=0,
+            description="",
+            mtu=1500,
+            dhcp_on=True,
+            fabric_id=fabric.id,
+        )
+        subnet = Subnet(
+            id=5,
+            cidr="10.0.0.0/24",
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            rdns_mode=1,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=vlan.id,
+        )
+        sip = StaticIPAddress(
+            id=1,
+            alloc_type=IpAddressType.AUTO,
+            lease_time=30,
+            subnet_id=subnet.id,
+            ip="10.0.0.1",
+        )
+        domain = Domain(
+            id=2,
+            name="test-domain",
+            authoritative=True,
+            ttl=30,
+        )
+        dnsrr = DNSResource(
+            id=3,
+            name="test-name",
+            domain_id=domain.id,
+        )
+
+        mock_dnsresource_repository.get_one.return_value = dnsrr
+
+        await dnsresources_service.remove_ip(sip, dnsrr.name, domain)
+
+        mock_dnsresource_repository.remove_ip_relation.assert_called_once_with(
+            dnsrr, sip
         )

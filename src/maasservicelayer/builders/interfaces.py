@@ -27,6 +27,9 @@ class InterfaceBuilder(ResourceBuilder):
     links: Union[list[Link], Unset] = Field(default=UNSET, required=False)
     mac_address: Union[str, None, Unset] = Field(default=UNSET, required=False)
     name: Union[str, Unset] = Field(default=UNSET, required=False)
+    node_config_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     sriov_max_vf: Union[int, Unset] = Field(default=UNSET, required=False)
     type: Union[InterfaceType, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

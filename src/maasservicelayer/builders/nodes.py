@@ -18,8 +18,14 @@ class NodeBuilder(ResourceBuilder):
     the generated code.
     """
 
+    boot_interface_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     current_commissioning_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    current_config_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )
     current_installation_script_set_id: Union[int, None, Unset] = Field(
@@ -28,6 +34,7 @@ class NodeBuilder(ResourceBuilder):
     current_testing_script_set_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )
+    domain_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
     error_description: Union[str, Unset] = Field(default=UNSET, required=False)
     hostname: Union[str, Unset] = Field(default=UNSET, required=False)
     id: Union[int, Unset] = Field(default=UNSET, required=False)

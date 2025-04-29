@@ -265,47 +265,6 @@ class ServiceCollectionV3:
             machines_repository=MachinesRepository(context),
         )
         services.machines_v2 = MachinesV2Service(context=context)
-        services.interfaces = InterfacesService(
-            context=context,
-            temporal_service=services.temporal,
-            interface_repository=InterfaceRepository(context),
-        )
-        services.vlans = VlansService(
-            context=context,
-            temporal_service=services.temporal,
-            nodes_service=services.nodes,
-            vlans_repository=VlansRepository(context),
-        )
-        services.spaces = SpacesService(
-            context=context,
-            vlans_service=services.vlans,
-            spaces_repository=SpacesRepository(context),
-        )
-        services.reservedips = ReservedIPsService(
-            context=context,
-            temporal_service=services.temporal,
-            reservedips_repository=ReservedIPsRepository(context),
-        )
-        services.staticroutes = StaticRoutesService(
-            context=context,
-            staticroutes_repository=StaticRoutesRepository(context),
-        )
-        services.dhcpsnippets = DhcpSnippetsService(
-            context=context,
-            dhcpsnippets_repository=DhcpSnippetsRepository(context),
-        )
-        services.ipranges = IPRangesService(
-            context=context,
-            temporal_service=services.temporal,
-            dhcpsnippets_service=services.dhcpsnippets,
-            ipranges_repository=IPRangesRepository(context),
-        )
-        services.nodegrouptorackcontrollers = NodeGroupToRackControllersService(
-            context=context,
-            nodegrouptorackcontrollers_repository=NodeGroupToRackControllersRepository(
-                context
-            ),
-        )
         services.dnspublications = DNSPublicationsService(
             context=context,
             temporal_service=services.temporal,
@@ -317,23 +276,15 @@ class ServiceCollectionV3:
             configurations_service=services.configurations,
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
-        services.subnets = SubnetsService(
+        services.dhcpsnippets = DhcpSnippetsService(
+            context=context,
+            dhcpsnippets_repository=DhcpSnippetsRepository(context),
+        )
+        services.ipranges = IPRangesService(
             context=context,
             temporal_service=services.temporal,
-            staticipaddress_service=services.staticipaddress,
-            ipranges_service=services.ipranges,
-            staticroutes_service=services.staticroutes,
-            reservedips_service=services.reservedips,
             dhcpsnippets_service=services.dhcpsnippets,
-            nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
-            subnets_repository=SubnetsRepository(context),
-        )
-        services.fabrics = FabricsService(
-            context=context,
-            vlans_service=services.vlans,
-            subnets_service=services.subnets,
-            interfaces_service=services.interfaces,
-            fabrics_repository=FabricsRepository(context),
+            ipranges_repository=IPRangesRepository(context),
         )
         services.sshkeys = SshKeysService(
             context=context,
@@ -381,12 +332,74 @@ class ServiceCollectionV3:
             dnspublications_service=services.dnspublications,
             dnsresource_repository=DNSResourceRepository(context),
         )
+        services.interfaces = InterfacesService(
+            context=context,
+            temporal_service=services.temporal,
+            dnspublication_service=services.dnspublications,
+            dnsresource_service=services.dnsresources,
+            domain_service=services.domains,
+            node_service=services.nodes,
+            interface_repository=InterfaceRepository(context),
+        )
+        services.vlans = VlansService(
+            context=context,
+            temporal_service=services.temporal,
+            nodes_service=services.nodes,
+            vlans_repository=VlansRepository(context),
+        )
+        services.spaces = SpacesService(
+            context=context,
+            vlans_service=services.vlans,
+            spaces_repository=SpacesRepository(context),
+        )
+        services.reservedips = ReservedIPsService(
+            context=context,
+            temporal_service=services.temporal,
+            reservedips_repository=ReservedIPsRepository(context),
+        )
+        services.staticroutes = StaticRoutesService(
+            context=context,
+            staticroutes_repository=StaticRoutesRepository(context),
+        )
+        services.nodegrouptorackcontrollers = NodeGroupToRackControllersService(
+            context=context,
+            nodegrouptorackcontrollers_repository=NodeGroupToRackControllersRepository(
+                context
+            ),
+        )
+        services.subnets = SubnetsService(
+            context=context,
+            temporal_service=services.temporal,
+            staticipaddress_service=services.staticipaddress,
+            ipranges_service=services.ipranges,
+            staticroutes_service=services.staticroutes,
+            reservedips_service=services.reservedips,
+            dhcpsnippets_service=services.dhcpsnippets,
+            nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
+            subnets_repository=SubnetsRepository(context),
+        )
         services.dnsdata = DNSDataService(
             context=context,
             dnspublications_service=services.dnspublications,
             domains_service=services.domains,
             dnsresources_service=services.dnsresources,
             dnsdata_repository=DNSDataRepository(context),
+        )
+        services.fabrics = FabricsService(
+            context=context,
+            vlans_service=services.vlans,
+            subnets_service=services.subnets,
+            interfaces_service=services.interfaces,
+            fabrics_repository=FabricsRepository(context),
+        )
+        services.leases = LeasesService(
+            context=context,
+            dnsresource_service=services.dnsresources,
+            node_service=services.nodes,
+            staticipaddress_service=services.staticipaddress,
+            subnet_service=services.subnets,
+            interface_service=services.interfaces,
+            iprange_service=services.ipranges,
         )
         services.leases = LeasesService(
             context=context,

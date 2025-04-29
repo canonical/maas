@@ -32,7 +32,6 @@ class Machine(Node):
     cpu_count: int
     power_type: Optional[PowerTypeEnum]
     fqdn: str
-    hostname: str
 
 
 class HardwareDevice(MaasTimestampedBaseModel):

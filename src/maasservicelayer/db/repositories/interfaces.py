@@ -3,7 +3,7 @@
 
 from typing import Any, List, Type
 
-from sqlalchemy import desc, insert, Select, select, Table
+from sqlalchemy import delete, desc, insert, Select, select, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.functions import count
@@ -23,7 +23,6 @@ from maasservicelayer.db.tables import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
-from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.utils.date import utcnow
 
 UNKNOWN_INTERFACE_NAME = "eth0"
@@ -136,14 +135,22 @@ class InterfaceRepository(BaseRepository):
             ]
         ]
 
-    async def link_ip(self, interface: Interface, ip: StaticIPAddress) -> None:
+    async def add_ip(self, interface: Interface, ip_id: int) -> None:
         stmt = (
             pg_insert(InterfaceIPAddressTable)
             .values(
                 interface_id=interface.id,
-                staticipaddress_id=ip.id,
+                staticipaddress_id=ip_id,
             )
             .on_conflict_do_nothing()
+        )
+
+        await self.execute_stmt(stmt)
+
+    async def remove_ip(self, interface: Interface, ip_id: int) -> None:
+        stmt = delete(InterfaceIPAddressTable).where(
+            InterfaceIPAddressTable.c.interface_id == interface.id,
+            InterfaceIPAddressTable.c.staticipaddress_id == ip_id,
         )
 
         await self.execute_stmt(stmt)
@@ -284,6 +291,7 @@ class InterfaceRepository(BaseRepository):
                 InterfaceTable.c.name,
                 InterfaceTable.c.type,
                 InterfaceTable.c.mac_address,
+                InterfaceTable.c.node_config_id,
                 # TODO
                 # VlanTable.c.mtu.label("effective_mtu"),
                 InterfaceTable.c.link_connected,

@@ -40,6 +40,12 @@ class NodeClauseFactory(ClauseFactory):
     def with_owner_id(cls, owner_id: int) -> Clause:
         return Clause(condition=eq(NodeTable.c.owner_id, owner_id))
 
+    @classmethod
+    def with_node_config_id(cls, node_config_id: int) -> Clause:
+        return Clause(
+            condition=eq(NodeTable.c.current_config_id, node_config_id)
+        )
+
 
 T = TypeVar("T", bound=Node)
 

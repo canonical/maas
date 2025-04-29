@@ -403,7 +403,7 @@ class TestInterfaceRepository:
 
         assert len(retrieved_interfaces) == 0
 
-    async def test_link_ip(
+    async def test_add_ip(
         self, db_connection: AsyncConnection, fixture: Fixture
     ):
         vlan = await create_test_vlan_entry(
@@ -431,13 +431,13 @@ class TestInterfaceRepository:
             context=Context(connection=db_connection)
         )
 
-        await interfaces_repository.link_ip(interface, static_ip)
+        await interfaces_repository.add_ip(interface, static_ip.id)
 
         link = (await fixture.get("maasserver_interface_ip_addresses"))[0]
         assert link["interface_id"] == interface.id
         assert link["staticipaddress_id"] == static_ip.id
 
-    async def test_link_ip_ignores_existing(
+    async def test_add_ip_ignores_existing(
         self, db_connection: AsyncConnection, fixture: Fixture
     ):
         vlan = await create_test_vlan_entry(
@@ -464,7 +464,7 @@ class TestInterfaceRepository:
             context=Context(connection=db_connection)
         )
 
-        await interfaces_repository.link_ip(interface, static_ip_obj)
+        await interfaces_repository.add_ip(interface, static_ip_obj.id)
 
         link = (await fixture.get("maasserver_interface_ip_addresses"))[0]
         assert link["interface_id"] == interface.id

@@ -25,3 +25,6 @@ class Node(MaasTimestampedBaseModel):
     current_commissioning_script_set_id: int | None = None
     current_testing_script_set_id: int | None = None
     current_installation_script_set_id: int | None = None
+    boot_interface_id: Optional[int] = None
+    current_config_id: Optional[int] = None
+    domain_id: Optional[int] = None

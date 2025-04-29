@@ -10,10 +10,12 @@ from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
+    DNSDataTable,
     DNSResourceIPAddressTable,
     DNSResourceTable,
     StaticIPAddressTable,
 )
+from maasservicelayer.models.dnsdata import DNSData
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -117,3 +119,16 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         )
 
         await self.execute_stmt(stmt)
+
+    async def get_dnsdata_for_dnsresource(
+        self, dnsrr_id: int
+    ) -> list[DNSData]:
+        stmt = (
+            select(DNSDataTable)
+            .select_from(DNSDataTable)
+            .filter(DNSDataTable.c.dnsresource_id == dnsrr_id)
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+
+        return [DNSData(**r._asdict()) for r in result]

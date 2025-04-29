@@ -47,6 +47,7 @@ class Interface(MaasTimestampedBaseModel):
     mac_address: Optional[str]
     # TODO
     # effective_mtu: int = 0
+    node_config_id: Optional[int] = None
     link_connected: bool = True
     interface_speed: int = 0
     enabled: bool = True

@@ -11,6 +11,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.staticipaddress import StaticIPAddress
+from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
 from tests.fixtures.factories.staticipaddress import (
@@ -156,3 +157,18 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
             dnsresource.id
         )
         assert len(remaining) == 0
+
+    async def test_get_dnsdata_for_dnsresource(
+        self, repository_instance: DNSResourceRepository, fixture: Fixture
+    ) -> None:
+        domain = await create_test_domain_entry(fixture)
+        dnsresource = await create_test_dnsresource_entry(fixture, domain)
+        dnsdatas = [
+            (await create_test_dnsdata_entry(fixture, dnsresource))
+            for _ in range(3)
+        ]
+
+        result = await repository_instance.get_dnsdata_for_dnsresource(
+            dnsresource.id
+        )
+        assert result == dnsdatas

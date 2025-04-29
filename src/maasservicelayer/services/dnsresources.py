@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceRepository,
 )
 from maasservicelayer.db.repositories.domains import DomainsClauseFactory
+from maasservicelayer.models.dnsdata import DNSData
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -22,6 +23,10 @@ from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
 
 DEFAULT_DNSRESOURCE_TTL = 30
+
+
+class NoDNSResourceException(Exception):
+    pass
 
 
 class DNSResourcesService(
@@ -246,3 +251,69 @@ class DNSResourcesService(
 
     async def link_ip(self, dnsrr_id: int, ip_id: int) -> None:
         await self.repository.link_ip(dnsrr_id, ip_id)
+
+    async def get_dnsdata_for_dnsresource(
+        self, dnsrr_id: int
+    ) -> list[DNSData]:
+        return await self.repository.get_dnsdata_for_dnsresource(dnsrr_id)
+
+    async def add_ip(
+        self, sip: StaticIPAddress, label: str, domain: Domain
+    ) -> None:
+        if sip.alloc_type == IpAddressType.DISCOVERED:
+            await self.update_dynamic_hostname(sip, label)
+        else:
+            dnsrr = await self.repository.get_one(
+                query=QuerySpec(
+                    where=DNSResourceClauseFactory.and_clauses(
+                        [
+                            DNSResourceClauseFactory.with_name(label),
+                            DNSResourceClauseFactory.with_domain_id(domain.id),
+                        ]
+                    ),
+                )
+            )
+            await self.repository.link_ip(dnsrr, sip)
+
+    async def remove_ip(
+        self, sip: StaticIPAddress, label: str, domain: Domain
+    ) -> bool:
+        """Remove an IP from the DNSResource
+
+        Parameters:
+        sip (StaticIPAddress): StaticIPAddress to remove from the DNSResource
+        label (str): name / label of the DNSResource
+        domain (Domain): the Domain the DNSResource belongs to
+
+        Returns:
+        bool: if True, the DNSResource has no other answers and is deleted, otherwise False
+        """
+
+        dnsrr = await self.repository.get_one(
+            query=QuerySpec(
+                where=DNSResourceClauseFactory.and_clauses(
+                    [
+                        DNSResourceClauseFactory.with_name(label),
+                        DNSResourceClauseFactory.with_domain_id(domain.id),
+                    ]
+                ),
+            )
+        )
+        if not dnsrr:
+            raise NoDNSResourceException(
+                f"no DNSResource found for {label}.{domain.name}"
+            )
+
+        await self.repository.remove_ip_relation(dnsrr, sip)
+
+        # if no IPs are linked to the DNSResource, we should delete the DNSResource
+        # otherwise, we should keep it
+        ips = await self.repository.get_ips_for_dnsresource(dnsrr)
+        if not ips:
+            # if no IPs, dnsdata entires could still be linked, if not, it's safe to delete
+            # otherwise, we should keep the dnsresource
+            dnsdata = await self.get_dnsdata_for_dnsresource(dnsrr.id)
+            if not dnsdata:
+                await self.repository.delete_by_id(dnsrr.id)
+            return True
+        return False

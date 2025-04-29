@@ -633,6 +633,7 @@ class TestLeasesService:
             mac_address="00:11:22:33:44:55",
             type=InterfaceType.PHYSICAL,
             name="eth0",
+            node_config_id=1,
             created=utcnow(),
             updated=utcnow(),
         )
@@ -702,6 +703,7 @@ class TestLeasesService:
             mac_address="00:11:22:33:44:55",
             type=InterfaceType.PHYSICAL,
             name="eth0",
+            node_config_id=1,
             created=utcnow(),
             updated=utcnow(),
         )

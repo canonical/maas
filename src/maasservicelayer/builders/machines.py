@@ -26,10 +26,16 @@ class MachineBuilder(ResourceBuilder):
     architecture: Union[str, None, Unset] = Field(
         default=UNSET, required=False
     )
+    boot_interface_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     cpu_count: Union[int, Unset] = Field(default=UNSET, required=False)
     cpu_speed: Union[int, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     current_commissioning_script_set_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    current_config_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )
     current_installation_script_set_id: Union[int, None, Unset] = Field(
@@ -40,6 +46,7 @@ class MachineBuilder(ResourceBuilder):
     )
     description: Union[str, Unset] = Field(default=UNSET, required=False)
     distro_series: Union[str, Unset] = Field(default=UNSET, required=False)
+    domain_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
     error_description: Union[str, Unset] = Field(default=UNSET, required=False)
     fqdn: Union[str, Unset] = Field(default=UNSET, required=False)
     hostname: Union[str, Unset] = Field(default=UNSET, required=False)
