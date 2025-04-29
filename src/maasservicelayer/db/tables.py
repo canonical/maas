@@ -735,6 +735,22 @@ PhysicalBlockDeviceTable = Table(
         nullable=False,
     ),
 )
+RDNSTable = Table(
+    "maasserver_rdns",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("ip", INET, nullable=False),
+    Column("hostname", String(256), nullable=True),
+    Column("hostnames", ARRAY(Text), nullable=False),
+    Column(
+        "observer_id",
+        BigInteger,
+        ForeignKey("maasserver_node.id"),
+        nullable=False,
+    ),
+)
 
 ReservedIPTable = Table(
     "maasserver_reservedip",

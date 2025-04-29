@@ -4,28 +4,28 @@
 
 from typing import Any
 
-from maasservicelayer.models.mdns import MDNS
+from maasservicelayer.models.rdns import RDNS
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
 
-async def create_test_mdns_entry(
+async def create_test_rdns_entry(
     fixture: Fixture,
     hostname: str,
     ip: str,
-    interface_id: int,
+    observer_id: int,
     **extra_details: Any,
-) -> MDNS:
+) -> RDNS:
     now = utcnow()
-    mdns = {
+    rdns = {
         "hostname": hostname,
+        "hostnames": [hostname],
         "ip": ip,
-        "interface_id": interface_id,
+        "observer_id": observer_id,
         "created": now,
         "updated": now,
-        "count": 1,
     }
-    mdns.update(extra_details)
+    rdns.update(extra_details)
 
-    [created_mdns] = await fixture.create("maasserver_mdns", [mdns])
-    return MDNS(**created_mdns)
+    [created_rdns] = await fixture.create("maasserver_rdns", [rdns])
+    return RDNS(**created_rdns)

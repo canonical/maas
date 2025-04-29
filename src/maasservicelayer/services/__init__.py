@@ -29,6 +29,7 @@ from maasservicelayer.db.repositories.filestorage import FileStorageRepository
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.db.repositories.mdns import MDNSRepository
 from maasservicelayer.db.repositories.neighbours import NeighboursRepository
 from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
@@ -40,6 +41,7 @@ from maasservicelayer.db.repositories.notification_dismissal import (
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
+from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
@@ -89,6 +91,7 @@ from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.machines_v2 import MachinesV2Service
+from maasservicelayer.services.mdns import MDNSService
 from maasservicelayer.services.neighbours import NeighboursService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
@@ -98,6 +101,7 @@ from maasservicelayer.services.notification_dismissal import (
     NotificationDismissalService,
 )
 from maasservicelayer.services.notifications import NotificationsService
+from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.services.scriptresult import ScriptResultsService
@@ -167,11 +171,13 @@ class ServiceCollectionV3:
     leases: LeasesService
     machines: MachinesService
     machines_v2: MachinesV2Service
+    mdns: MDNSService
     neighbours: NeighboursService
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
     notifications: NotificationsService
     notifications_dismissal: NotificationDismissalService
+    rdns: RDNSService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
     scriptresults: ScriptResultsService
@@ -426,6 +432,12 @@ class ServiceCollectionV3:
             context=context,
             subnets_service=services.subnets,
             subnet_utilization_repository=SubnetUtilizationRepository(context),
+        )
+        services.mdns = MDNSService(
+            context=context, mdns_repository=MDNSRepository(context)
+        )
+        services.rdns = RDNSService(
+            context=context, rdns_repository=RDNSRepository(context)
         )
         services.neighbours = NeighboursService(
             context=context,
