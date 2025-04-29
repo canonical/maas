@@ -111,7 +111,7 @@ import logging
 import os
 from os import environ
 import os.path
-from shutil import copyfile, disk_usage
+from shutil import copyfile
 import sqlite3
 from threading import RLock
 from time import time
@@ -130,7 +130,7 @@ from provisioningserver.utils.config import (
     OneWayStringBool,
     UnicodeString,
 )
-from provisioningserver.utils.fs import atomic_write, get_root_path, RunLock
+from provisioningserver.utils.fs import atomic_write, RunLock
 
 logger = logging.getLogger(__name__)
 
@@ -812,7 +812,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     httpproxy_cache_size = ConfigurationOption(
         "httpproxy_cache_size",
         "The size of a cache used by HTTP proxy",
-        Number(min=1, if_missing=disk_usage(get_root_path()).total * 0.3),
+        Number(min=1, if_missing=20 * 1000**3),
     )
 
 
