@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from maasserver.testing.factory import factory
+from maasservicelayer.models.neighbours import Neighbour
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -12,7 +13,7 @@ async def create_test_neighbour_entry(
     fixture: Fixture,
     interface_id: int,
     **extra_details: Any,
-) -> dict[str, Any]:
+) -> Neighbour:
     created_at = datetime.now(timezone.utc).astimezone()
     updated_at = datetime.now(timezone.utc).astimezone()
 
@@ -34,4 +35,4 @@ async def create_test_neighbour_entry(
         [neighbour],
     )
 
-    return created_neighbour
+    return Neighbour(**created_neighbour)

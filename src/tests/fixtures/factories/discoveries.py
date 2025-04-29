@@ -35,16 +35,15 @@ async def create_test_discovery(
         await create_test_mdns_entry(
             fixture,
             hostname=hostname,
-            ip=neighbour["ip"],
+            ip=neighbour.ip,
             interface_id=interface.id,
         )
-    discoveries = await fixture.get("maasserver_discovery")
     discoveries = await fixture.get_typed(
         "maasserver_discovery",
         Discovery,
         and_(
-            DiscoveryView.c.mac_address == neighbour["mac_address"],
-            DiscoveryView.c.ip == neighbour["ip"],
+            DiscoveryView.c.mac_address == neighbour.mac_address,
+            DiscoveryView.c.ip == neighbour.ip,
         ),
     )
     return discoveries[0]

@@ -29,6 +29,7 @@ from maasservicelayer.db.repositories.filestorage import FileStorageRepository
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.db.repositories.neighbours import NeighboursRepository
 from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
 )
@@ -88,6 +89,7 @@ from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.machines_v2 import MachinesV2Service
+from maasservicelayer.services.neighbours import NeighboursService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
 )
@@ -165,6 +167,7 @@ class ServiceCollectionV3:
     leases: LeasesService
     machines: MachinesService
     machines_v2: MachinesV2Service
+    neighbours: NeighboursService
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
     notifications: NotificationsService
@@ -423,6 +426,10 @@ class ServiceCollectionV3:
             context=context,
             subnets_service=services.subnets,
             subnet_utilization_repository=SubnetUtilizationRepository(context),
+        )
+        services.neighbours = NeighboursService(
+            context=context,
+            neighbours_repository=NeighboursRepository(context),
         )
         services.discoveries = DiscoveriesService(
             context=context,
