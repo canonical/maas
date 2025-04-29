@@ -446,5 +446,8 @@ class ServiceCollectionV3:
         services.discoveries = DiscoveriesService(
             context=context,
             discoveries_repository=DiscoveriesRepository(context),
+            mdns_service=services.mdns,
+            rdns_service=services.rdns,
+            neighbours_service=services.neighbours,
         )
         return services

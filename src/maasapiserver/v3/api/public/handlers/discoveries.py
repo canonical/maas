@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from fastapi import Depends, Response
+from fastapi import Depends, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -10,6 +10,9 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundResponse,
 )
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.discoveries import (
+    DiscoveriesIPAndMacFiltersParams,
+)
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -103,3 +106,69 @@ class DiscoveriesHandler(Handler):
             discovery=discovery,
             self_base_hyperlink=f"{V3_API_PREFIX}/discoveries",
         )
+
+    @handler(
+        path="/discoveries",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def clear_all_discoveries_with_optional_ip_and_mac(
+        self,
+        ip_and_mac: DiscoveriesIPAndMacFiltersParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        if ip_and_mac.ip is not None and ip_and_mac.mac is not None:
+            await services.discoveries.clear_by_ip_and_mac(
+                ip=ip_and_mac.ip, mac=ip_and_mac.mac
+            )
+        else:
+            await services.discoveries.clear_all()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/discoveries:clear_neighbours",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def clear_neighbours_discoveries(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.discoveries.clear_neighbours()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/discoveries:clear_dns",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def clear_rdns_and_mdns_discoveries(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.discoveries.clear_mdns_and_rdns_records()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

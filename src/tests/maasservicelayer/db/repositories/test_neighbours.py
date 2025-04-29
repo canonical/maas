@@ -1,12 +1,18 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.neighbours import NeighbourBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.neighbours import NeighboursRepository
+from maasservicelayer.db.repositories.neighbours import (
+    NeighbourClauseFactory,
+    NeighboursRepository,
+)
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.neighbours import Neighbour
 from tests.fixtures.factories.discoveries import (
     create_test_rack_controller_entry,
@@ -15,6 +21,30 @@ from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.neighbours import create_test_neighbour_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+
+
+class TestNeighbourClauseFactory:
+    def test_with_ip(self) -> None:
+        clause = NeighbourClauseFactory.with_ip(IPv4Address("10.0.0.1"))
+        # We can't compile the statement with literal binds because they don't
+        # exist for INET
+        assert (
+            str(clause.condition.compile())
+            == "maasserver_neighbour.ip = :ip_1"
+        )
+
+    def test_with_mac(self) -> None:
+        clause = NeighbourClauseFactory.with_mac(
+            MacAddress("aa:bb:cc:dd:ee:ff")
+        )
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_neighbour.mac_address = 'aa:bb:cc:dd:ee:ff'"
+        )
 
 
 class TestNeighboursRepository(RepositoryCommonTests[Neighbour]):

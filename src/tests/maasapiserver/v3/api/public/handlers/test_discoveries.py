@@ -1,6 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address
 from unittest.mock import Mock
 
 from httpx import AsyncClient
@@ -62,7 +63,13 @@ class TestDiscoveriesApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}"),
+            Endpoint(
+                method="DELETE", path=f"{self.BASE_PATH}:clear_neighbours"
+            ),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}:clear_dns"),
+        ]
 
     async def test_list_discoveries_one_page(
         self,
@@ -127,3 +134,75 @@ class TestDiscoveriesApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_clear_all_discoveries(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.discoveries = Mock(DiscoveriesService)
+        services_mock.discoveries.clear_all.return_value = None
+
+        response = await mocked_api_client_admin.delete(self.BASE_PATH)
+        assert response.status_code == 204
+        services_mock.discoveries.clear_all.assert_called_once()
+
+    async def test_clear_all_discoveries_matching_ip_and_mac(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.discoveries = Mock(DiscoveriesService)
+        services_mock.discoveries.clear_by_ip_and_mac.return_value = None
+
+        ip = "10.0.0.1"
+        mac = "aa:bb:cc:dd:ee:ff"
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}?ip={ip}&mac={mac}"
+        )
+        assert response.status_code == 204
+        services_mock.discoveries.clear_by_ip_and_mac.assert_called_once_with(
+            ip=IPv4Address(ip), mac=MacAddress(mac)
+        )
+
+    @pytest.mark.parametrize(
+        "ip,mac",
+        [
+            ("10.0.0.1", None),
+            (None, "aa:bb:cc:dd:ee:ff"),
+        ],
+    )
+    async def test_clear_all_discoveries_raises_with_missing_ip_or_mac(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        ip: str | None,
+        mac: str | None,
+    ) -> None:
+        services_mock.discoveries = Mock(DiscoveriesService)
+        services_mock.discoveries.clear_by_ip_and_mac.return_value = None
+
+        query = ""
+        if ip:
+            query = f"ip={ip}"
+        if mac:
+            query = f"mac={mac}"
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}?{query}"
+        )
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+        assert error_response.details is not None
+        msg = "Missing '{field}' query parameter. You must specify both IP and MAC to delete a specific neighbour."
+        if ip:
+            assert error_response.details[0].message == msg.format(field="mac")
+            assert error_response.details[0].field == "mac"
+        if mac:
+            assert error_response.details[0].message == msg.format(field="ip")
+            assert error_response.details[0].field == "ip"
+        services_mock.discoveries.clear_by_ip_and_mac.assert_not_called()
+        services_mock.discoveries.clear_all.assert_not_called()
