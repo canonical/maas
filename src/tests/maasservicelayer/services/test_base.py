@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Type
 from unittest.mock import Mock
@@ -95,6 +95,37 @@ class TestBaseService:
 
         repository_mock.create.assert_awaited_once_with(builder=builder)
         assert result == resource
+
+    async def test_get_or_create_is_created_if_dont_exist(
+        self, repository_mock, service
+    ):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_one.return_value = None
+        repository_mock.create.return_value = resource
+        builder = ResourceBuilder()
+        query = QuerySpec()
+        result, created = await service.get_or_create(
+            query=query, builder=builder
+        )
+        repository_mock.get_one.assert_awaited_once_with(query=query)
+        repository_mock.create.assert_awaited_once_with(builder=builder)
+        assert result == resource
+        assert created is True
+
+    async def test_get_or_create_is_fetched_if_exists(
+        self, repository_mock, service
+    ):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_one.return_value = resource
+        builder = ResourceBuilder()
+        query = QuerySpec()
+        result, created = await service.get_or_create(
+            query=query, builder=builder
+        )
+        repository_mock.get_one.assert_awaited_once_with(query=query)
+        repository_mock.create.assert_not_called()
+        assert result == resource
+        assert created is False
 
     async def test_list(self, repository_mock, service):
         resources = ListResult[DummyMaasBaseModel](

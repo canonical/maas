@@ -1,9 +1,9 @@
-#  Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import Generic, List, TypeVar
+from typing import Generic, List, Tuple, TypeVar
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -170,6 +170,27 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         created_resource = await self.repository.create(builder=builder)
         await self.post_create_hook(created_resource)
         return created_resource
+
+    async def get_or_create(
+        self, query: QuerySpec, builder: B
+    ) -> Tuple[M, bool]:
+        """
+        Retrieves a resource matching the given query, or creates it if it does not exist.
+
+        Args:
+            query (QuerySpec): The specification used to query for the resource.
+            builder (B): The builder used to create the resource if it does not exist.
+
+        Returns:
+            Tuple[M, bool]: A tuple containing the resource and a boolean flag indicating whether the resource was created.
+                            The boolean is True if the resource was newly created, and False if it was retrieved.
+        """
+        created = False
+        resource = await self.get_one(query=query)
+        if resource is None:
+            created = True
+            resource = await self.create(builder=builder)
+        return (resource, created)
 
     async def post_update_many_hook(self, resources: List[M]) -> None:
         """

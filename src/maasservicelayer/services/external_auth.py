@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -180,11 +180,9 @@ class ExternalAuthService(Service, RootKeyStore):
         )  # type: ignore
 
         username = auth_info.identity.id()
-        user = await self.users_service.get_one(
-            query=QuerySpec(UserClauseFactory.with_username(username))
-        )
-        if not user:
-            user_builder = UserBuilder(
+        user, created = await self.users_service.get_or_create(
+            query=QuerySpec(UserClauseFactory.with_username(username)),
+            builder=UserBuilder(
                 username=username,
                 first_name="",
                 password="",
@@ -192,8 +190,9 @@ class ExternalAuthService(Service, RootKeyStore):
                 is_staff=False,
                 is_superuser=False,
                 last_login=utcnow(),
-            )
-            user = await self.users_service.create(user_builder)
+            ),
+        )
+        if not created:
             profile_builder = UserProfileBuilder(
                 is_local=False, completed_intro=True, auth_last_check=utcnow()
             )

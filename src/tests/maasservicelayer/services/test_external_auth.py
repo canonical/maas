@@ -1,9 +1,9 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
 import os
-from unittest.mock import call, Mock, patch
+from unittest.mock import ANY, call, Mock, patch
 
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
@@ -421,7 +421,7 @@ class TestExternalAuthService:
         )
 
         users_service_mock = Mock(UsersService)
-        users_service_mock.get_one.return_value = fake_user
+        users_service_mock.get_or_create.return_value = (fake_user, False)
 
         external_auth_service = ExternalAuthService(
             context=Context(),
@@ -435,8 +435,9 @@ class TestExternalAuthService:
             [[Mock(Macaroon)]], macaroon_bakery_mock
         )
         assert user == fake_user
-        users_service_mock.get_one.assert_called_once_with(
-            query=QuerySpec(UserClauseFactory.with_username("admin"))
+        users_service_mock.get_or_create.assert_called_once_with(
+            query=QuerySpec(UserClauseFactory.with_username("admin")),
+            builder=ANY,
         )
 
     async def test_login_external_auth_user_not_in_db(self) -> None:
@@ -483,8 +484,7 @@ class TestExternalAuthService:
             is_local=False, completed_intro=True, auth_last_check=now
         )
         users_service_mock = Mock(UsersService)
-        users_service_mock.get_one.return_value = None
-        users_service_mock.create.return_value = fake_user
+        users_service_mock.get_or_create.return_value = (fake_user, False)
         users_service_mock.update_profile.return_value = fake_profile
 
         external_auth_service = ExternalAuthService(
@@ -503,12 +503,12 @@ class TestExternalAuthService:
                 [[Mock(Macaroon)]], macaroon_bakery_mock
             )
         assert user == fake_user
-        users_service_mock.get_one.assert_called_once_with(
+        users_service_mock.get_or_create.assert_called_once_with(
             query=QuerySpec(
                 UserClauseFactory.with_username(fake_user.username)
-            )
+            ),
+            builder=user_builder,
         )
-        users_service_mock.create.assert_called_once_with(user_builder)
         users_service_mock.update_profile.assert_called_once_with(
             fake_user.id, profile_builder
         )
