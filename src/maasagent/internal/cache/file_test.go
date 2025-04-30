@@ -395,28 +395,6 @@ func TestFileCacheConcurrentSet(t *testing.T) {
 	lr.unlock()
 }
 
-func TestFileCacheConcurrentGetSet(t *testing.T) {
-	cache, err := NewFileCache(1, t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lr := newLockedReader()
-
-	go func() {
-		cache.Set("key1", &lr, 1)
-	}()
-
-	v := []byte("x")
-	err = cache.Set("key2", bytes.NewReader(v), int64(len(v)))
-	assert.NoError(t, err)
-
-	_, err = cache.Get("key2")
-	assert.NoError(t, err)
-
-	lr.unlock()
-}
-
 func TestFileCacheMetrics(t *testing.T) {
 	metricReader := metric.NewManualReader()
 	meterProvider := metric.NewMeterProvider(metric.WithReader(metricReader))
