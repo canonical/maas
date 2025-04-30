@@ -17,10 +17,12 @@ package resolver
 
 import (
 	"context"
+	"net/netip"
 	"sync/atomic"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"maas.io/core/src/maasagent/internal/connpool"
 )
 
 type handlerStats struct {
@@ -29,7 +31,6 @@ type handlerStats struct {
 	nonauthoritative atomic.Int64
 	srvFail          atomic.Int64
 	invalid          atomic.Int64
-	connPoolSize     atomic.Int64
 	queries          atomic.Int64
 }
 
@@ -37,7 +38,6 @@ type cacheStats struct {
 	hits        atomic.Int64
 	misses      atomic.Int64
 	expirations atomic.Int64
-	size        atomic.Int64
 }
 
 func must[T any](v T, err error) T {
@@ -71,7 +71,10 @@ func WithHandlerMetrics(meter metric.Meter) RecursiveHandlerOption {
 		must(meter.Int64ObservableGauge("resolver.upstream_connection_pool.size",
 			metric.WithUnit("{count}"),
 			metric.WithInt64Callback(func(_ context.Context, o metric.Int64Observer) error {
-				o.Observe(h.stats.connPoolSize.Load())
+				h.conns.Range(func(k netip.Addr, v connpool.Pool) {
+					upstream := attribute.String("upstream", k.String())
+					o.Observe(int64(v.Len()), metric.WithAttributes(upstream))
+				})
 
 				return nil
 			})))
@@ -102,14 +105,14 @@ func WithCacheMetrics(meter metric.Meter) CacheOption {
 				return nil
 			})))
 
-		current := attribute.String("type", "current")
-		max := attribute.String("type", "max")
+		currentSize := attribute.String("type", "current")
+		maxSize := attribute.String("type", "max")
 
 		must(meter.Int64ObservableGauge("resolver.cache.size",
 			metric.WithUnit("{count}"),
 			metric.WithInt64Callback(func(_ context.Context, o metric.Int64Observer) error {
-				o.Observe(c.stats.size.Load(), metric.WithAttributes(current))
-				o.Observe(int64(c.maxNumRecords), metric.WithAttributes(max))
+				o.Observe(int64(c.cache.Len()), metric.WithAttributes(currentSize))
+				o.Observe(int64(c.maxNumRecords), metric.WithAttributes(maxSize))
 
 				return nil
 			})))

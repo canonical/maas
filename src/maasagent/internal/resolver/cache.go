@@ -118,8 +118,6 @@ func (c *cache) Set(rr dns.RR) {
 		RR:        rr,
 		CreatedAt: time.Now(),
 	})
-
-	c.stats.size.Add(1)
 }
 
 // key generates the key for a record in the cache

@@ -39,7 +39,7 @@ type Handler interface {
 	dns.Handler
 	SetUpstreams(systemConfig, []netip.Addr) error
 	ClearExpiredSessions()
-	Close() error
+	Close()
 }
 
 type ResolverService struct {
@@ -222,7 +222,9 @@ func (s *ResolverService) stop(ctx context.Context) error {
 
 	s.sessionTicker.Stop()
 
-	return s.handler.Close()
+	s.handler.Close()
+
+	return nil
 }
 
 func (s *ResolverService) Error() error {

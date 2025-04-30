@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"errors"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -199,4 +200,47 @@ func (s *session) format(nameStr string) (name, error) {
 	}
 
 	return name{compressed: compressed, uncompressed: uncompressed}, nil
+}
+
+type sessions struct {
+	m    map[string]*session
+	lock sync.RWMutex
+}
+
+// Load loads an existing session
+func (s *sessions) Load(key string) *session {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	return s.m[key]
+}
+
+// Store stores a session
+func (s *sessions) Store(key string, sess *session) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.m[key] = sess
+}
+
+// Delete deletes a session
+func (s *sessions) Delete(key string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	delete(s.m, key)
+}
+
+// ClearExpired removes all expired sessions
+func (s *sessions) ClearExpired() {
+	now := time.Now()
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	for k, v := range s.m {
+		if v.expired(now) {
+			delete(s.m, k)
+		}
+	}
 }
