@@ -1,9 +1,7 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
-from django.core.management import BaseCommand
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasserver.sqlalchemy import service_layer
-from maasserver.utils.orm import with_connection
+from django.core.management import BaseCommand
 
 
 class BaseCommandWithConnection(BaseCommand):
@@ -14,10 +12,20 @@ class BaseCommandWithConnection(BaseCommand):
     and safely closed afterward.
     """
 
-    @with_connection
     def execute(self, *args, **options):
-        try:
-            service_layer.init()
-            return super().execute(*args, **options)
-        finally:
-            service_layer.close()
+        # Delay the import of with_connection to reduce startup overhead for commands when the parser is built.
+        from maasserver.utils.orm import with_connection
+
+        @with_connection
+        def _execute():
+            from maasserver.sqlalchemy import service_layer
+
+            try:
+                service_layer.init()
+                return super(BaseCommandWithConnection, self).execute(
+                    *args, **options
+                )
+            finally:
+                service_layer.close()
+
+        return _execute()

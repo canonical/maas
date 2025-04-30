@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from maasserver.management.commands import configauth
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
+import maasserver.rbac as rbac_module
 from maasserver.rbac import FakeRBACUserClient
 from maasserver.secrets import SecretManager
 from maasserver.testing.testcase import MAASServerTestCase
@@ -28,7 +29,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.read_input.return_value = ""
         self.mock_print = self.patch(configauth, "print")
         self.rbac_user_client = FakeRBACUserClient()
-        mock_client = self.patch(configauth, "RBACUserClient")
+        mock_client = self.patch(rbac_module, "RBACUserClient")
         mock_client.return_value = self.rbac_user_client
 
     @contextmanager

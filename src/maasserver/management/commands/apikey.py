@@ -1,15 +1,12 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: Manage a user's API keys."""
 
-from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.http import Http404
 
 from apiclient.creds import convert_string_to_tuple, convert_tuple_to_string
-from maasserver.models.user import get_creds_tuple
-from maasserver.utils.orm import get_one
 
 
 class Command(BaseCommand):
@@ -50,6 +47,9 @@ class Command(BaseCommand):
     def _print_token(self, token):
         """Write `token` to stdout in the standard format (with names if
         --with-names option is enabled)"""
+
+        from maasserver.models.user import get_creds_tuple
+
         if self.display_names:
             self.stdout.write(
                 "%s %s"
@@ -89,6 +89,10 @@ class Command(BaseCommand):
             raise CommandError("No matching api key found.")  # noqa: B904
 
     def handle(self, *args, **options):
+        from django.contrib.auth.models import User
+
+        from maasserver.utils.orm import get_one
+
         username = options.get("username")
         if username is None:
             raise CommandError("You must provide a username with --username.")

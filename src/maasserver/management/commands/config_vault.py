@@ -16,16 +16,7 @@ from maasserver.enum import NODE_TYPE
 from maasserver.listener import notify
 from maasserver.locks import startup
 from maasserver.management.commands.base import BaseCommandWithConnection
-from maasserver.models import (
-    Config,
-    ControllerInfo,
-    Node,
-    RegionController,
-    Secret,
-    VaultSecret,
-)
 from maasserver.utils import synchronised
-from maasserver.utils.orm import transactional
 from maasserver.vault import (
     configure_region_with_vault,
     get_region_vault_client,
@@ -43,6 +34,8 @@ class Command(BaseCommandWithConnection):
 
     def _set_vault_configured_db_flag(self) -> bool:
         """Set the DB flag saying Vault is configured for region"""
+        from maasserver.models import ControllerInfo, RegionController
+
         if not MAAS_ID.get():
             return False
 
@@ -103,6 +96,7 @@ class Command(BaseCommandWithConnection):
 
     def _get_online_regions(self) -> list[str]:
         """Returns the list of online regions"""
+        from maasserver.models import Node
 
         return list(
             Node.objects.filter(
@@ -144,9 +138,9 @@ class Command(BaseCommandWithConnection):
             "Please shut down these regions before starting the migration process again."
         )
 
-    @transactional
     def _migrate_secrets(self, client):
         """Handles the actual secrets migration"""
+        from maasserver.models import Config, Secret, VaultSecret
 
         print("Migrating secrets")
         metadata = []
@@ -162,6 +156,8 @@ class Command(BaseCommandWithConnection):
 
     def _get_unconfigured_regions(self) -> list[str]:
         """Return a list of names of regions that are not configured for Vault"""
+        from maasserver.models import ControllerInfo
+
         return list(
             ControllerInfo.objects.filter(vault_configured=False)
             .values_list("node__hostname", flat=True)
@@ -170,6 +166,9 @@ class Command(BaseCommandWithConnection):
 
     @synchronised(startup)
     def _handle_migrate(self, options):
+        from maasserver.models import Config
+        from maasserver.utils.orm import transactional
+
         if Config.objects.get_config("vault_enabled", False):
             raise CommandError("Secrets are already migrated to Vault.")
 
@@ -197,11 +196,13 @@ class Command(BaseCommandWithConnection):
         # Restart regions to ensure there will be no regions trying to write secrets to the DB during migration
         self._restart_regions()
         # Now we're ready to perform the actual migration
-        self._migrate_secrets(client)
+        transactional(self._migrate_secrets(client))
 
         return "Successfully migrated cluster secrets to Vault"
 
     def _handle_status(self, options):
+        from maasserver.models import Config
+
         vault_enabled = Config.objects.get_config("vault_enabled", False)
         report = {"status": "enabled" if vault_enabled else "disabled"}
         if not vault_enabled:

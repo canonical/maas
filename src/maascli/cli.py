@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """CLI management commands."""
@@ -259,17 +259,13 @@ COMMANDS = {
 # Commands to expose in the maascli when installed on a machine with
 # python3-maasserver.
 REGIOND_COMMANDS = (
-    ("apikey", "maasserver", None),
-    ("configauth", "maasserver", None),
-    ("config-tls", "maasserver", None),
-    ("config-vault", "maasserver", None),
-    ("msm", "maasserver", None),
-    ("createadmin", "maasserver", None),
-    (
-        "changepassword",
-        "django.contrib.auth",
-        "Change a MAAS user's password.",
-    ),
+    ("apikey", "maasserver"),
+    ("configauth", "maasserver"),
+    ("config-tls", "maasserver"),
+    ("config-vault", "maasserver"),
+    ("msm", "maasserver"),
+    ("createadmin", "maasserver"),
+    ("changepassword", "maasserver"),
 )
 
 
@@ -318,9 +314,6 @@ def register_cli_commands(parser):
         os.environ.setdefault(
             "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings"
         )
-        from django import setup as django_setup
-
-        django_setup()
         load_regiond_commands(management, parser)
 
 
@@ -357,19 +350,28 @@ def load_regiond_commands(management, parser):
     # XXX: Define custom non-Django Command Management in order to follow
     # Canonical CLI Guidelines and have two-word commands having `-` delimiter.
     class CanonicalizedCommandManagement(management.ManagementUtility):
+        def __init__(self, argv=None):
+            super().__init__(argv)
+            self.commands = {}
+
+        def add_command(self, name, klass):
+            self.commands[name] = klass
+
         def fetch_command(self, subcommand):
-            return super().fetch_command(subcommand.replace("-", "_"))
+            # Do not use the super implementation, otherwise it will pick the django.contrib.auth implementation for
+            # the changepassword command.
+            return self.commands[subcommand]
 
     canonicalized_management = CanonicalizedCommandManagement()
 
-    for name, app, help_text in REGIOND_COMMANDS:
+    for name, app in REGIOND_COMMANDS:
         klass = management.load_command_class(app, name.replace("-", "_"))
-        if help_text is None:
-            help_text = klass.help
+        help_text = klass.help
         command_parser = parser.subparsers.add_parser(
             safe_name(name), help=help_text, description=help_text
         )
         klass.add_arguments(command_parser)
+        canonicalized_management.add_command(name, klass)
         command_parser.set_defaults(
             execute=partial(run_regiond_command, canonicalized_management)
         )

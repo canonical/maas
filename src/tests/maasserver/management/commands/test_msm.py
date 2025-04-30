@@ -8,6 +8,7 @@ import pytest
 
 # need to mock two different 'msm' modules, avoid conflict
 from maasserver import msm as connector_service
+from maasserver import msm as msm_module
 from maasserver.management.commands import msm
 from maasserver.secrets import SecretManager
 
@@ -51,7 +52,7 @@ metadata:
 @pytest.fixture
 def msm_mock(mocker):
     mocker.patch.object(msm, "get_cert_verify_msg", return_value="")
-    yield mocker.patch.object(msm, "msm_enrol")
+    yield mocker.patch.object(msm_module, "msm_enrol")
 
 
 @pytest.mark.usefixtures("maasdb")

@@ -17,8 +17,6 @@ import yaml
 from maascli.init import prompt_yes_no
 from maasserver.enum import MSM_STATUS
 from maasserver.management.commands.base import BaseCommandWithConnection
-from maasserver.msm import msm_enrol, msm_status, msm_withdraw
-from maasserver.utils.certificates import get_ssl_certificate
 
 
 class Command(BaseCommandWithConnection):
@@ -55,9 +53,13 @@ class Command(BaseCommandWithConnection):
     }
 
     def _withdraw(self, options):
+        from maasserver.msm import msm_withdraw
+
         msm_withdraw()
 
     def _status(self, options):
+        from maasserver.msm import msm_status
+
         status = msm_status()
         if not status:
             print("No enrolment is in progress")
@@ -80,6 +82,8 @@ class Command(BaseCommandWithConnection):
 
     def _enrol(self, options):
         # We don't know exactly what to expect from these claims, so don't verify them
+        from maasserver.msm import msm_enrol, msm_status
+
         decode_opts = {
             "verify_signature": False,
             "verify_aud": False,
@@ -201,6 +205,8 @@ def get_cert_verify_msg(base_url: str, previous_url: str = "") -> str:
     Retrieve the SSL certificate from the given url, and compose a
     message to the user with details about the certificate.
     """
+    from maasserver.utils.certificates import get_ssl_certificate
+
     try:
         cert, fingerprint = get_ssl_certificate(base_url)
     except CertificateError as e:

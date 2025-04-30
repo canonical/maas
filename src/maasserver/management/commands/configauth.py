@@ -6,7 +6,6 @@
 from dataclasses import dataclass
 import json
 
-from django.contrib.sessions.models import Session
 from django.core.exceptions import ValidationError
 from django.core.management.base import CommandError
 from macaroonbakery.bakery import generate_key
@@ -17,11 +16,7 @@ from maascli.init import (
     prompt_for_choices,
     read_input,
 )
-from maasserver.macaroon_auth import APIError
 from maasserver.management.commands.base import BaseCommandWithConnection
-from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
-from maasserver.rbac import RBACUserClient
-from maasserver.secrets import SecretManager
 from maasserver.utils.dns import validate_url
 
 
@@ -68,6 +63,9 @@ def update_auth_details_from_agent_file(agent_file_name, auth_details):
 
 
 def update_auth_details_from_rbac_registration(auth_details, service_name):
+    from maasserver.macaroon_auth import APIError
+    from maasserver.rbac import RBACUserClient
+
     print("Please authenticate with the RBAC service to register this MAAS")
     client = RBACUserClient(auth_details.rbac_url)
     services = {
@@ -151,6 +149,8 @@ def get_auth_config(secret_manager):
 
 
 def set_auth_config(secret_manager, auth_details: _AuthDetails):
+    from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
+
     secret_manager.set_composite_secret(
         "external-auth",
         {
@@ -183,6 +183,8 @@ def set_auth_config(secret_manager, auth_details: _AuthDetails):
 
 
 def clear_user_sessions():
+    from django.contrib.sessions.models import Session
+
     Session.objects.all().delete()
 
 
@@ -200,6 +202,8 @@ class Command(BaseCommandWithConnection):
         )
 
     def handle(self, *args, **options):
+        from maasserver.secrets import SecretManager
+
         secret_manager = SecretManager()
 
         if options.get("json"):

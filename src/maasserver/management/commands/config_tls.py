@@ -8,15 +8,9 @@ import argparse
 from django.db import DEFAULT_DB_ALIAS
 
 from maascli.init import prompt_yes_no
-from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.listener import notify
 from maasserver.management.commands.base import BaseCommandWithConnection
-from maasserver.models import Config
-from maasserver.regiondservices.certificate_expiration_check import (
-    clear_tls_notifications,
-)
-from maasserver.secrets import SecretManager
 from provisioningserver.certificates import Certificate
 from provisioningserver.events import EVENT_TYPES
 
@@ -24,6 +18,12 @@ from provisioningserver.events import EVENT_TYPES
 def _update_tls_config(
     config_manager, key=None, cert=None, cacert=None, port=None
 ):
+    from maasserver.audit import create_audit_event
+    from maasserver.regiondservices.certificate_expiration_check import (
+        clear_tls_notifications,
+    )
+    from maasserver.secrets import SecretManager
+
     secrets = {
         "key": key,
         "cert": cert,
@@ -89,6 +89,8 @@ class Command(BaseCommandWithConnection):
         )
 
     def handle(self, *args, **options):
+        from maasserver.models import Config
+
         config_manager = Config.objects.db_manager(DEFAULT_DB_ALIAS)
 
         if options["command"] == "disable":

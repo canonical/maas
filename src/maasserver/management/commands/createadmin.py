@@ -7,16 +7,12 @@ from getpass import getpass
 import re
 
 from aiohttp import ClientError
-from django.contrib.auth.models import User
 from django.core.management.base import CommandError
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
 
 from maascli.init import read_input
 from maasserver.enum import KEYS_PROTOCOL_TYPE
-from maasserver.macaroon_auth import external_auth_enabled
 from maasserver.management.commands.base import BaseCommandWithConnection
-from maasserver.models import SSHKey
-from maasserver.models.sshkey import ImportSSHKeysError
 
 
 class EmptyUsername(CommandError):
@@ -142,6 +138,12 @@ class Command(BaseCommandWithConnection):
         )
 
     def handle(self, *args, **options):
+        from django.contrib.auth.models import User
+
+        from maasserver.macaroon_auth import external_auth_enabled
+        from maasserver.models import SSHKey
+        from maasserver.models.sshkey import ImportSSHKeysError
+
         username = options.get("username")
         password = options.get("password")
         email = options.get("email")

@@ -137,10 +137,14 @@ class TestSetVaultConfiguredDbCommand:
         assert not Command()._set_vault_configured_db_flag()
 
     def test_sets_flag(self, mocker):
+        from maasserver.models import (
+            RegionController as RegionControllerObject,
+        )
+
         node = factory.make_RegionController()
         MAAS_ID.set(factory.make_UUID())
         mocker.patch.object(
-            config_vault.RegionController.objects, "get_running_controller"
+            RegionControllerObject.objects, "get_running_controller"
         ).return_value = node
         ci, created = ControllerInfo.objects.update_or_create(node=node)
         assert created

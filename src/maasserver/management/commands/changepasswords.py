@@ -7,7 +7,6 @@ from fileinput import hook_encoded
 from fileinput import input as fileinput
 from textwrap import dedent
 
-from django.contrib.auth import get_user_model
 from django.core.management.base import CommandError
 
 from maasserver.management.commands.base import BaseCommandWithConnection
@@ -32,6 +31,8 @@ class Command(BaseCommandWithConnection):
 
     @transactional
     def handle(self, *args, **options):
+        from django.contrib.auth import get_user_model
+
         count = 0
         UserModel = get_user_model()
         for line in fileinput(args, openhook=hook_encoded("utf-8")):
