@@ -4,15 +4,50 @@
 from operator import eq
 from typing import Type
 
-from sqlalchemy import Table
+from sqlalchemy import join, Table
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import StaticRouteTable
+from maasservicelayer.db.tables import StaticRouteTable, SubnetTable, VlanTable
 from maasservicelayer.models.staticroutes import StaticRoute
 
 
 class StaticRoutesClauseFactory(ClauseFactory):
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(StaticRouteTable.c.id, id))
+
+    @classmethod
+    def with_vlan_id(cls, vlan_id: int) -> Clause:
+        return Clause(
+            condition=eq(SubnetTable.c.vlan_id, vlan_id),
+            joins=[
+                join(
+                    StaticRouteTable,
+                    SubnetTable,
+                    eq(SubnetTable.c.id, StaticRouteTable.c.source_id),
+                )
+            ],
+        )
+
+    @classmethod
+    def with_fabric_id(cls, fabric_id: int) -> Clause:
+        return Clause(
+            condition=eq(VlanTable.c.fabric_id, fabric_id),
+            joins=[
+                join(
+                    StaticRouteTable,
+                    SubnetTable,
+                    eq(SubnetTable.c.id, StaticRouteTable.c.source_id),
+                ),
+                join(
+                    SubnetTable,
+                    VlanTable,
+                    eq(SubnetTable.c.vlan_id, VlanTable.c.id),
+                ),
+            ],
+        )
+
     @classmethod
     def with_source_id(cls, subnet_id: int) -> Clause:
         return Clause(condition=eq(StaticRouteTable.c.source_id, subnet_id))

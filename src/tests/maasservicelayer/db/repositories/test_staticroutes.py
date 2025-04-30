@@ -1,15 +1,64 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.staticroutes import (
+    StaticRoutesClauseFactory,
     StaticRoutesRepository,
 )
 from maasservicelayer.models.staticroutes import StaticRoute
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+
+
+class TestStaticRoutesClauseFactory:
+    def test_id(self) -> None:
+        clause = StaticRoutesClauseFactory.with_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticroute.id = 1")
+
+    def test_with_vlan_id(self) -> None:
+        clause = StaticRoutesClauseFactory.with_vlan_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_subnet.vlan_id = 1")
+        assert str(
+            clause.joins[0].compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "maasserver_staticroute JOIN maasserver_subnet ON maasserver_subnet.id = maasserver_staticroute.source_id"
+        )
+
+    def test_with_fabric_id(self) -> None:
+        clause = StaticRoutesClauseFactory.with_fabric_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_vlan.fabric_id = 1")
+        assert str(
+            clause.joins[0].compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "maasserver_staticroute JOIN maasserver_subnet ON maasserver_subnet.id = maasserver_staticroute.source_id"
+        )
+        assert str(
+            clause.joins[1].compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "maasserver_subnet JOIN maasserver_vlan ON maasserver_subnet.vlan_id = maasserver_vlan.id"
+        )
+
+    def test_with_source_id(self) -> None:
+        clause = StaticRoutesClauseFactory.with_source_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticroute.source_id = 1")
+
+    def test_with_destination_id(self) -> None:
+        clause = StaticRoutesClauseFactory.with_destination_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticroute.destination_id = 1")
 
 
 class TestStaticRoutesRepository(RepositoryCommonTests[StaticRoute]):
