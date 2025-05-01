@@ -148,7 +148,6 @@ from maasserver.rpc import (
     getClientFor,
     getClientFromIdentifiers,
 )
-from maasserver.server_address import get_maas_facing_server_addresses
 from maasserver.storage_layouts import (
     get_storage_layout_for_node,
     MIN_BOOT_PARTITION_SIZE,
@@ -5619,11 +5618,12 @@ class Node(CleanSave, TimestampedModel):
             )
             cidrs = subnets.values_list("cidr", flat=True)
             my_address_families = {IPNetwork(cidr).version for cidr in cidrs}
+            rack_subnets = Subnet.objects.filter(
+                staticipaddress__interface__node_config_id=boot_primary_rack_controller.current_config_id,
+            )
+            rack_cidrs = rack_subnets.values_list("cidr", flat=True)
             rack_address_families = {
-                4 if addr.is_ipv4_mapped() else addr.version
-                for addr in get_maas_facing_server_addresses(
-                    boot_primary_rack_controller
-                )
+                IPNetwork(cidr).version for cidr in rack_cidrs
             }
             if my_address_families & rack_address_families == set():
                 # Node doesn't have any IP addresses in common with the rack
