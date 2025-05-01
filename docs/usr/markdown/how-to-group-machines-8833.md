@@ -1,14 +1,14 @@
 Machine groups allow you to categorize machines for easy recognition and bulk action.
 
-Learn more about [machine groups](https://maas.io/docs/about-machine-groups).
+[About machine groups](https://maas.io/docs/about-machine-groups).
 
 ## Availability zones
 
-Availability zones (AZs) in MAAS improve fault tolerance, service performance, and power management by organizing resources across physical or network areas.
+Availability zones (AZs) in MAAS improve fault tolerance, service performance, and power management by organizing resources across physical or network areas. If there is failure in one AZ, you can quickly switch to another one.
 
 ### Manage availability zones
 
-Create, update and delete availability zones as desired.  
+Create, update and delete availability zones as desired.
 
 #### Create an availability zone
 
@@ -82,7 +82,7 @@ maas admin machine update $SYSTEM_ID zone=$ZONE_NAME
 
 ## Resource pools
 
-MAAS uses resource pools to group machines and VM hosts for better allocation. New machines default to the **"default"** pool.  
+MAAS uses resource pools to group machines and VM hosts for better allocation. New machines default to the "default" pool. Resource pools are useful when you are budgeting a limited number of machines across different datacenter functions.
 
 ### Manage resource pools
 
@@ -181,7 +181,7 @@ maas $PROFILE vm-host update $SYSTEM_ID pool="default"
 
 ## Tags and annotations
 
-MAAS also offers methods to label machines at all life-cycle stages, including static tags, notes, and dynamic annotations.
+MAAS also offers methods to label machines at all life-cycle stages, including tags, notes, and dynamic annotations. Tags are persistent labels that remain associated with machines until you remove them.
 
 ### How to name a tag
 
@@ -367,7 +367,7 @@ Annotations add context and metadata to your machines for identification and fil
 
 ### Manage notes
 
-Notes are persistent descriptions that stay with a machine throughout its life-cycle unless manually altered.
+Notes are longer, persistent descriptions that stay with a machine throughout its life-cycle unless manually altered.
 
 #### Add or modify notes
 
