@@ -1,3 +1,9 @@
+maas (1:3.5.6-0ubuntu1) jammy; urgency=medium
+
+  * New upstream release, MAAS 3.5.6.
+
+ -- Anton Troyanov <anton.troyanov@canonical.com>  Sat, 03 May 2025 05:20:21 +0000
+
 maas (1:3.5.5-0ubuntu1) jammy; urgency=medium
 
   * New upstream release, MAAS 3.5.5.
