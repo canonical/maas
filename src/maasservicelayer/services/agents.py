@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 from dataclasses import dataclass
 
 from maasservicelayer.apiclient.client import APIClient
@@ -42,10 +42,7 @@ class AgentsService(Service):
 
         maas_url = await self.configurations_service.get("maas_url")
 
-        apikeys = await self.users_service.get_user_apikeys("MAAS")
-        # API Key for MAAS is always present
-        assert apikeys is not None
-        apikey = apikeys[0]
+        apikey = await self.users_service.get_MAAS_user_apikey()
 
         apiclient = APIClient(f"{maas_url}/api/2.0/", apikey)
         self._apiclient = apiclient

@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import AsyncMock, Mock
 
@@ -40,7 +40,7 @@ class TestAgentsService:
         configurations_service = Mock(ConfigurationsService)
         configurations_service.get.return_value = "http://example.com"
         users_service = Mock(UsersService)
-        users_service.get_user_apikeys.return_value = ["key:token:secret"]
+        users_service.get_MAAS_user_apikey.return_value = "key:token:secret"
 
         agents_service = AgentsService(
             context=Context(),
@@ -56,7 +56,7 @@ class TestAgentsService:
         configurations_service = Mock(ConfigurationsService)
         configurations_service.get.return_value = "http://example.com"
         users_service = Mock(UsersService)
-        users_service.get_user_apikeys.return_value = ["key:token:secret"]
+        users_service.get_MAAS_user_apikey.return_value = "key:token:secret"
 
         cache = AgentsServiceCache()
         agents_service = AgentsService(

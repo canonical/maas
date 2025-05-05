@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import migrations
 from django.utils import timezone
 
-from maasserver.worker_user import user_name as worker_username
+from maascommon.constants import MAAS_USER_USERNAME
 from metadataserver.nodeinituser import user_name as node_init_username
 
 DEFAULT_USERGROUP_NAME = "default"
@@ -23,7 +23,7 @@ def forwards(apps, schema_editor):
             "updated": now,
         },
     )
-    special_users = (worker_username, node_init_username)
+    special_users = (MAAS_USER_USERNAME, node_init_username)
     for user in User.objects.exclude(username__in=special_users):
         UserGroupMembership.objects.create(user=user, group=default_group)
 

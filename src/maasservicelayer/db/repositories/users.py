@@ -1,7 +1,7 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, List, Type
+from typing import Type
 
 from django.core import signing
 from sqlalchemy import (
@@ -11,7 +11,6 @@ from sqlalchemy import (
     func,
     insert,
     not_,
-    Select,
     select,
     Table,
     update,
@@ -26,11 +25,9 @@ from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
-    ConsumerTable,
     NodeTable,
     SessionTable,
     SshKeyTable,
-    TokenTable,
     UserProfileTable,
     UserTable,
 )
@@ -85,24 +82,6 @@ class UsersRepository(BaseRepository[User]):
 
     def get_model_factory(self) -> Type[User]:
         return User
-
-    def select_all_statement(self) -> Select[Any]:
-        return (
-            select(self.get_repository_table())
-            .select_from(self.get_repository_table())
-            .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
-        )
-
-    async def find_by_username(self, username: str) -> User | None:
-        stmt = (
-            select("*")
-            .select_from(UserTable)
-            .where(eq(UserTable.c.username, username))
-        )
-        user = (await self.execute_stmt(stmt)).first()
-        if not user:
-            return None
-        return User(**user._asdict())
 
     def _get_user_id(self, session_data: str) -> int | None:
         signer = signing.TimestampSigner(
@@ -209,53 +188,10 @@ class UsersRepository(BaseRepository[User]):
         deleted_profile = (await self.execute_stmt(stmt)).one()
         return UserProfile(**deleted_profile._asdict())
 
-    async def get_user_apikeys(self, username: str) -> List[str] | None:
-        stmt = (
-            select(
-                func.concat(
-                    ConsumerTable.c.key,
-                    ":",
-                    TokenTable.c.key,
-                    ":",
-                    TokenTable.c.secret,
-                )
-            )
-            .select_from(TokenTable)
-            .join(UserTable, eq(TokenTable.c.user_id, UserTable.c.id))
-            .join(
-                ConsumerTable, eq(TokenTable.c.consumer_id, ConsumerTable.c.id)
-            )
-            .where(
-                eq(UserTable.c.username, username),
-                eq(TokenTable.c.token_type, 2),  # token.ACCESS
-                eq(TokenTable.c.is_approved, True),
-            )
-            .order_by(TokenTable.c.id)
-        )
-
-        result = (await self.execute_stmt(stmt)).all()
-        if not result:
-            return None
-
-        return [str(row[0]) for row in result]
-
-    async def delete_user_api_keys(self, user_id: int) -> None:
-        consumer_stmt = (
-            delete(ConsumerTable)
-            .where(eq(ConsumerTable.c.user_id, user_id))
-            .returning(ConsumerTable.c.id)
-        )
-        deleted_consumers_ids = (
-            (await self.execute_stmt(consumer_stmt)).scalars().all()
-        )
-        token_stmt = delete(TokenTable).where(
-            TokenTable.c.consumer_id.in_(deleted_consumers_ids)
-        )
-        await self.execute_stmt(token_stmt)
-
     async def list(
         self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[User]:
+        # Exclude the SYSTEM_USERS from the queries.
         total_stmt = (
             select(func.count())
             .select_from(UserTable)
@@ -266,7 +202,9 @@ class UsersRepository(BaseRepository[User]):
         total = (await self.execute_stmt(total_stmt)).scalar()
 
         stmt = (
-            self.select_all_statement()
+            select(self.get_repository_table())
+            .select_from(self.get_repository_table())
+            .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
             .order_by(desc(self.get_repository_table().c.id))
             .offset((page - 1) * size)
             .limit(size)

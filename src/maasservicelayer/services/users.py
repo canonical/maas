@@ -1,12 +1,27 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
+from time import time
+from typing import List
+
+from maascommon.constants import (
+    GENERIC_CONSUMER,
+    MAAS_USER_EMAIL,
+    MAAS_USER_LAST_NAME,
+    MAAS_USER_USERNAME,
+)
+from maascommon.enums.consumer import ConsumerState
+from maascommon.enums.token import TokenType
+from maascommon.utils.strings import get_random_string
+from maasservicelayer.builders.consumers import ConsumerBuilder
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
+from maasservicelayer.builders.tokens import TokenBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.consumers import ConsumerClauseFactory
 from maasservicelayer.db.repositories.filestorage import (
     FileStorageClauseFactory,
 )
@@ -36,6 +51,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.users import User, UserProfile, UserWithSummary
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService
@@ -43,6 +59,11 @@ from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.sslkey import SSLKeysService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
+from maasservicelayer.services.tokens import TokensService
+from maasservicelayer.utils.date import utcnow
+
+KEY_SIZE = 18
+SECRET_SIZE = 32
 
 
 class UsersService(BaseService[User, UsersRepository, UserBuilder]):
@@ -57,6 +78,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         sslkey_service: SSLKeysService,
         notification_service: NotificationsService,
         filestorage_service: FileStorageService,
+        consumers_service: ConsumersService,
+        tokens_service: TokensService,
     ):
         super().__init__(context, users_repository)
         self.staticipaddress_service = staticipaddress_service
@@ -66,6 +89,31 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         self.sslkey_service = sslkey_service
         self.notification_service = notification_service
         self.filestorage_service = filestorage_service
+        self.consumers_service = consumers_service
+        self.tokens_service = tokens_service
+
+    async def get_or_create_MAAS_user(self) -> User:
+        # DO NOT create a profile for the MAAS technical users.
+        user = await self.get_one(
+            query=QuerySpec(
+                where=UserClauseFactory.with_username(MAAS_USER_USERNAME)
+            )
+        )
+        if not user:
+            user = await self.repository.create(
+                UserBuilder(
+                    username=MAAS_USER_USERNAME,
+                    first_name=MAAS_USER_USERNAME,
+                    last_name=MAAS_USER_LAST_NAME,
+                    email=MAAS_USER_EMAIL,
+                    is_staff=False,
+                    is_active=True,
+                    is_superuser=True,
+                    date_joined=utcnow(),
+                    password="",
+                )
+            )
+        return user
 
     async def post_create_hook(self, resource: User) -> None:
         await self.create_profile(
@@ -82,8 +130,53 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     async def get_user_profile(self, username: str) -> UserProfile | None:
         return await self.repository.get_user_profile(username)
 
-    async def get_user_apikeys(self, username: str) -> list[str] | None:
-        return await self.repository.get_user_apikeys(username)
+    async def get_MAAS_user_apikey(self) -> str:
+        user = await self.get_or_create_MAAS_user()
+        tokens = await self.tokens_service.get_user_apikeys(user.username)
+        for token in reversed(tokens):
+            return token
+        else:
+            return await self._create_auth_token(user_id=user.id)
+
+    async def _create_auth_token(
+        self, user_id: int, consumer_name: str = GENERIC_CONSUMER
+    ) -> str:
+        """Create new Token and Consumer (OAuth authorisation) for the `user_id`.
+
+        Params:
+          - user_id: the user to create a token for.
+          - consumer_name: Name of the consumer to be assigned to the newly generated token.
+        Returns:
+          The created token
+        """
+        consumer = await self.consumers_service.create(
+            ConsumerBuilder(
+                user_id=user_id,
+                description="",
+                name=consumer_name,
+                status=ConsumerState.ACCEPTED,
+                key=get_random_string(length=KEY_SIZE),
+                # This is a 'generic' consumer aimed to service many clients, hence
+                # we don't authenticate the consumer with key/secret key.
+                secret="",
+            )
+        )
+
+        token = await self.tokens_service.create(
+            TokenBuilder(
+                user_id=user_id,
+                token_type=TokenType.ACCESS,
+                consumer_id=consumer.id,
+                is_approved=True,
+                key=get_random_string(length=KEY_SIZE),
+                secret=get_random_string(length=SECRET_SIZE),
+                verifier="",
+                timestamp=int(time()),
+                callback_confirmed=False,
+            )
+        )
+
+        return ":".join([consumer.key, token.key, token.secret])
 
     async def create_profile(
         self, user_id: int, builder: UserProfileBuilder
@@ -101,9 +194,6 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
 
     async def delete_profile(self, user_id: int) -> UserProfile:
         return await self.repository.delete_profile(user_id=user_id)
-
-    async def delete_user_api_keys(self, user_id: int) -> None:
-        return await self.repository.delete_user_api_keys(user_id)
 
     async def pre_delete_hook(self, resource_to_be_deleted: User) -> None:
         has_ipranges = await self.ipranges_service.exists(
@@ -145,8 +235,13 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
             raise PreconditionFailedException(details=details)
 
     async def post_delete_hook(self, resource: User) -> None:
+        # Cascade
         await self.delete_profile(resource.id)
-        await self.delete_user_api_keys(resource.id)
+        await self.consumers_service.delete_many(
+            query=QuerySpec(
+                where=ConsumerClauseFactory.with_user_id(resource.id)
+            )
+        )
         await self.sshkey_service.delete_many(
             query=QuerySpec(
                 where=SshKeyClauseFactory.with_user_id(resource.id)
@@ -167,6 +262,9 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 where=FileStorageClauseFactory.with_owner_id(resource.id)
             )
         )
+
+    async def post_delete_many_hook(self, resources: List[User]) -> None:
+        raise NotImplementedError("Not implemented yet")
 
     async def transfer_resources(
         self, from_user_id: int, to_user_id: int

@@ -1,3 +1,6 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -5,7 +8,7 @@ from django.core import signing
 
 from maascommon.enums.sshkeys import SshKeysProtocolType
 from maasservicelayer.models.sshkeys import SshKey
-from maasservicelayer.models.users import Consumer, Token, User, UserProfile
+from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -74,42 +77,6 @@ async def create_test_user_profile(
         "maasserver_userprofile", [user_profile]
     )
     return UserProfile(**created_profile)
-
-
-async def create_test_user_consumer(
-    fixture: Fixture, user_id: int, **extra_details: Any
-) -> Consumer:
-    consumer = {
-        "name": "myconsumername",
-        "description": "myconsumerdescription",
-        "key": "cqJF8TCX9gZw8SZpNr",
-        "secret": "",
-        "status": "accepted",
-        "user_id": user_id,
-    }
-
-    consumer.update(extra_details)
-    [created_consumer] = await fixture.create("piston3_consumer", [consumer])
-    return Consumer(**created_consumer)
-
-
-async def create_test_user_token(
-    fixture: Fixture, user_id: int, consumer_id: int, **extra_details: Any
-) -> Token:
-    token = {
-        "key": "CtE9Cmy4asnRBtJvxQ",
-        "secret": "DNPJDVa87vEesHE8sQ722yP6JJKnrem2",
-        "verifier": "",
-        "token_type": 2,
-        "timestamp": 1725122700,
-        "is_approved": True,
-        "callback_confirmed": False,
-        "consumer_id": consumer_id,
-        "user_id": user_id,
-    }
-
-    [created_token] = await fixture.create("piston3_token", [token])
-    return Token(**created_token)
 
 
 async def create_test_user_sshkey(

@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import datetime
 
@@ -22,10 +22,8 @@ from tests.fixtures.factories.node import (
 from tests.fixtures.factories.user import (
     create_test_session,
     create_test_user,
-    create_test_user_consumer,
     create_test_user_profile,
     create_test_user_sshkey,
-    create_test_user_token,
 )
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -45,15 +43,6 @@ class TestUserClauseFactory:
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestUsersRepository:
-    async def test_find_by_username(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        user = await create_test_user(fixture)
-        users_repository = UsersRepository(Context(connection=db_connection))
-        assert (await users_repository.find_by_username("unexisting")) is None
-        fetched_user = await users_repository.find_by_username(user.username)
-        assert user == fetched_user
-
     async def test_find_by_session_id(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
@@ -131,23 +120,6 @@ class TestUsersRepository:
         )
         assert updated_profile.auth_last_check == now
 
-    async def test_get_user_apikeys(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        user = await create_test_user(fixture)
-        user_consumer = await create_test_user_consumer(fixture, user.id)
-        user_token = await create_test_user_token(
-            fixture, user.id, user_consumer.id
-        )
-
-        apikey = ":".join(
-            [user_consumer.key, user_token.key, user_token.secret]
-        )
-
-        users_repository = UsersRepository(Context(connection=db_connection))
-        apikeys = await users_repository.get_user_apikeys(user.username)
-        assert apikeys[0] == apikey
-
     async def test_delete_profile(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
@@ -156,17 +128,6 @@ class TestUsersRepository:
         users_repository = UsersRepository(Context(connection=db_connection))
         deleted_user_profile = await users_repository.delete_profile(user.id)
         assert deleted_user_profile == user_profile
-
-    async def test_delete_user_api_keys(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        user = await create_test_user(fixture)
-        user_consumer = await create_test_user_consumer(fixture, user.id)
-        await create_test_user_token(fixture, user.id, user_consumer.id)
-        users_repository = UsersRepository(Context(connection=db_connection))
-        await users_repository.delete_user_api_keys(user.id)
-        apikeys = await users_repository.get_user_apikeys(user.username)
-        assert apikeys is None
 
     async def test_list(
         self, db_connection: AsyncConnection, fixture: Fixture

@@ -5,10 +5,11 @@
 
 from django.contrib.auth.models import User
 
+from maascommon.constants import MAAS_USER_USERNAME
 from maasserver.models import UserProfile
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.worker_user import get_worker_user, user_name
+from maasserver.worker_user import get_worker_user
 
 
 class TestNodeGroupUser(MAASServerTestCase):
@@ -20,7 +21,7 @@ class TestNodeGroupUser(MAASServerTestCase):
     def test_get_worker_user_holds_the_worker_user(self):
         worker_user = get_worker_user()
         self.assertIsInstance(worker_user, User)
-        self.assertEqual(user_name, worker_user.username)
+        self.assertEqual(MAAS_USER_USERNAME, worker_user.username)
 
     def test_worker_user_is_system_user(self):
         worker_user = get_worker_user()

@@ -7,6 +7,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.configurations import (
     ConfigurationsRepository,
 )
+from maasservicelayer.db.repositories.consumers import ConsumersRepository
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsRepository,
 )
@@ -62,6 +63,7 @@ from maasservicelayer.db.repositories.subnet_utilization import (
     SubnetUtilizationRepository,
 )
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
+from maasservicelayer.db.repositories.tokens import TokensRepository
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
@@ -70,6 +72,7 @@ from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.discoveries import DiscoveriesService
 from maasservicelayer.services.dnsdata import DNSDataService
@@ -114,6 +117,7 @@ from maasservicelayer.services.subnet_utilization import (
 )
 from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.temporal import TemporalService
+from maasservicelayer.services.tokens import TokensService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.services.vmcluster import VmClustersService
@@ -150,6 +154,7 @@ class ServiceCollectionV3:
     agents: AgentsService
     auth: AuthService
     configurations: ConfigurationsService
+    consumers: ConsumersService
     dhcpsnippets: DhcpSnippetsService
     discoveries: DiscoveriesService
     dnsdata: DNSDataService
@@ -183,6 +188,7 @@ class ServiceCollectionV3:
     staticroutes: StaticRoutesService
     subnets: SubnetsService
     temporal: TemporalService
+    tokens: TokensService
     users: UsersService
     v3dnsrrsets: V3DNSResourceRecordSetsService
     v3subnet_utilization: V3SubnetUtilizationService
@@ -296,6 +302,14 @@ class ServiceCollectionV3:
         services.filestorage = FileStorageService(
             context=context, repository=FileStorageRepository(context)
         )
+        services.tokens = TokensService(
+            context=context, repository=TokensRepository(context)
+        )
+        services.consumers = ConsumersService(
+            context=context,
+            repository=ConsumersRepository(context),
+            tokens_service=services.tokens,
+        )
         services.users = UsersService(
             context=context,
             users_repository=UsersRepository(context),
@@ -306,6 +320,8 @@ class ServiceCollectionV3:
             sslkey_service=services.sslkeys,
             notification_service=services.notifications,
             filestorage_service=services.filestorage,
+            consumers_service=services.consumers,
+            tokens_service=services.tokens,
         )
         services.domains = DomainsService(
             context=context,

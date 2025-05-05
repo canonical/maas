@@ -36,28 +36,6 @@ class UserProfile(MaasBaseModel):
     user_id: int
 
 
-class Consumer(MaasBaseModel):
-    name: str
-    description: str
-    key: str
-    secret: str
-    status: str
-    user_id: Optional[int]
-
-
-class Token(MaasBaseModel):
-    key: str
-    secret: str
-    verifier: str
-    token_type: int
-    timestamp: int
-    is_approved: bool
-    callback: Optional[str]
-    callback_confirmed: bool
-    consumer_id: int
-    user_id: Optional[int]
-
-
 class UserWithSummary(BaseModel):
     id: int
     completed_intro: bool

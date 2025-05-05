@@ -4,13 +4,10 @@
 from django.contrib.auth.models import User
 from piston3.models import Consumer, Token
 
+from maascommon.constants import GENERIC_CONSUMER
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models import FileStorage, UserProfile
-from maasserver.models.user import (
-    GENERIC_CONSUMER,
-    get_auth_tokens,
-    SYSTEM_USERS,
-)
+from maasserver.models.user import get_auth_tokens, SYSTEM_USERS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
