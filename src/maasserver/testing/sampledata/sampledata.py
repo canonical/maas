@@ -1,5 +1,6 @@
 from django.db import transaction
 
+from ...sqlalchemy import service_layer
 from . import LOGGER
 from .common import make_name
 from .defs import (
@@ -24,6 +25,7 @@ def generate(
     tag_prefix: str,
     redfish_address: str,
 ):
+    service_layer.init()
     from metadataserver.builtin_scripts import load_builtin_scripts
 
     from .devices import make_pci_devices
@@ -104,3 +106,4 @@ def generate(
 
     LOGGER.info("creating machine events")
     make_events(EVENT_PER_MACHINE, event_types, machines)
+    service_layer.close()
