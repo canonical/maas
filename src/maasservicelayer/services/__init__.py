@@ -35,9 +35,6 @@ from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
 )
 from maasservicelayer.db.repositories.nodes import NodesRepository
-from maasservicelayer.db.repositories.notification_dismissal import (
-    NotificationDismissalsRepository,
-)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -97,9 +94,6 @@ from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
 )
 from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.notification_dismissal import (
-    NotificationDismissalService,
-)
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
@@ -176,7 +170,6 @@ class ServiceCollectionV3:
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
     notifications: NotificationsService
-    notifications_dismissal: NotificationDismissalService
     rdns: RDNSService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
@@ -300,10 +293,6 @@ class ServiceCollectionV3:
         services.notifications = NotificationsService(
             context=context, repository=NotificationsRepository(context)
         )
-        services.notifications_dismissal = NotificationDismissalService(
-            context=context,
-            repository=NotificationDismissalsRepository(context),
-        )
         services.filestorage = FileStorageService(
             context=context, repository=FileStorageRepository(context)
         )
@@ -316,7 +305,6 @@ class ServiceCollectionV3:
             sshkey_service=services.sshkeys,
             sslkey_service=services.sslkeys,
             notification_service=services.notifications,
-            notification_dismissal_service=services.notifications_dismissal,
             filestorage_service=services.filestorage,
         )
         services.domains = DomainsService(

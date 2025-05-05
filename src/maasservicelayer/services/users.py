@@ -12,9 +12,6 @@ from maasservicelayer.db.repositories.filestorage import (
 )
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.notification_dismissal import (
-    NotificationDismissalsClauseFactory,
-)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
@@ -42,9 +39,6 @@ from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.notification_dismissal import (
-    NotificationDismissalService,
-)
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.sslkey import SSLKeysService
@@ -62,7 +56,6 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         sshkey_service: SshKeysService,
         sslkey_service: SSLKeysService,
         notification_service: NotificationsService,
-        notification_dismissal_service: NotificationDismissalService,
         filestorage_service: FileStorageService,
     ):
         super().__init__(context, users_repository)
@@ -72,7 +65,6 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         self.sshkey_service = sshkey_service
         self.sslkey_service = sslkey_service
         self.notification_service = notification_service
-        self.notification_dismissal_service = notification_dismissal_service
         self.filestorage_service = filestorage_service
 
     async def post_create_hook(self, resource: User) -> None:
@@ -168,13 +160,6 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         await self.notification_service.delete_many(
             query=QuerySpec(
                 where=NotificationsClauseFactory.with_user_id(resource.id)
-            )
-        )
-        await self.notification_dismissal_service.delete_many(
-            query=QuerySpec(
-                where=NotificationDismissalsClauseFactory.with_user_id(
-                    resource.id
-                )
             )
         )
         await self.filestorage_service.delete_many(

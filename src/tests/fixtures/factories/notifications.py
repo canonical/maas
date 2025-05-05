@@ -4,10 +4,10 @@
 
 from typing import Any
 
-from maasservicelayer.models.notification_dismissal import (
+from maasservicelayer.models.notifications import (
+    Notification,
     NotificationDismissal,
 )
-from maasservicelayer.models.notifications import Notification
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 

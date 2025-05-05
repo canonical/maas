@@ -16,9 +16,6 @@ from maasservicelayer.db.repositories.filestorage import (
 )
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.notification_dismissal import (
-    NotificationDismissalsClauseFactory,
-)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
@@ -39,9 +36,6 @@ from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.notification_dismissal import (
-    NotificationDismissalService,
-)
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.sslkey import SSLKeysService
@@ -78,7 +72,6 @@ class TestCommonUsersService(ServiceCommonTests):
             sshkey_service=Mock(SshKeysService),
             sslkey_service=Mock(SSLKeysService),
             notification_service=Mock(NotificationsService),
-            notification_dismissal_service=Mock(NotificationDismissalService),
             filestorage_service=Mock(FileStorageService),
         )
         # we test the pre delete hook in the next tests
@@ -107,7 +100,6 @@ class TestUsersService:
             sshkey_service=Mock(SshKeysService),
             sslkey_service=Mock(SSLKeysService),
             notification_service=Mock(NotificationsService),
-            notification_dismissal_service=Mock(NotificationDismissalService),
             filestorage_service=Mock(FileStorageService),
         )
 
@@ -254,13 +246,6 @@ class TestUsersService:
         users_service.notification_service.delete_many.assert_called_once_with(
             query=QuerySpec(
                 where=NotificationsClauseFactory.with_user_id(TEST_USER.id)
-            )
-        )
-        users_service.notification_dismissal_service.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=NotificationDismissalsClauseFactory.with_user_id(
-                    TEST_USER.id
-                )
             )
         )
         users_service.filestorage_service.delete_many.assert_called_once_with(
