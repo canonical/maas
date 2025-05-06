@@ -16,18 +16,17 @@ this when we switch to 2.x.
 """
 
 from abc import ABC, abstractmethod
-import dataclasses
 import argparse
+import dataclasses
 import importlib
-import re
-import os
-import sys
 import inspect
+import os
+import re
+import sys
 from types import FunctionType, ModuleType
-from typing import Self, TypeVar, Union
+from typing import get_args, get_origin, Self, TypeVar, Union
 
 from pydantic.fields import ModelField
-
 
 MODELS_PATH = "src/maasservicelayer/models"
 BUILDERS_PATH = "src/maasservicelayer/builders"
@@ -100,6 +99,41 @@ def process_string(s) -> str:
     return s
 
 
+def get_module_name_for_type(type_) -> str:
+    # workaround for Literal["foo"]
+    if isinstance(type_, str):
+        return "builtins"
+    module = inspect.getmodule(type_)
+    assert module is not None, f"Could not find module for {type_}"
+    return module.__name__
+
+
+def add_imports(module_name: str, field: str, imports: set):
+    if module_name not in ["builtins", "types"]:
+        if len(module_name.split(".")) >= 1:
+            imports.add(f"from {module_name} import {field}")
+        else:
+            imports.add(f"import {module_name}")
+
+
+def handle_composite_type(type_, imports: set):
+    outer = get_origin(type_)
+    module_name = get_module_name_for_type(outer)
+    add_imports(module_name, process_string(outer), imports)
+
+    inner = get_args(type_)
+    for inner_type in inner:
+        if get_origin(inner_type) is not None:
+            handle_composite_type(inner_type, imports)
+        else:
+            handle_simple_type(inner_type, imports)
+
+
+def handle_simple_type(type_, imports: set):
+    module_name = get_module_name_for_type(type_)
+    add_imports(module_name, process_string(type_), imports)
+
+
 def process_field(field: ModelField, imports: set) -> ModelField:
     """Modifies the field and updates the import statements.
 
@@ -108,20 +142,10 @@ def process_field(field: ModelField, imports: set) -> ModelField:
     It also set the required attribute to False and updated the model_config
     with the config of ResourceBuilder (in order to allow for arbitrary types).
     """
-    field_type = field.type_
-
-    # get the module of the type
-    module = inspect.getmodule(field_type)
-    assert module is not None, f"Could not find module for {field_type}"
-
-    module_name = module.__name__
-
-    field_type = process_string(field.type_)
-    if module_name not in ["builtins"]:
-        if len(module_name.split(".")) >= 1:
-            imports.add(f"from {module_name} import {field_type}")
-        else:
-            imports.add(f"import {module_name}")
+    if get_origin(field.annotation) is not None:
+        handle_composite_type(field.annotation, imports)
+    else:
+        handle_simple_type(field.annotation, imports)
 
     field.type_ = Union[field.type_, Unset]
     field.annotation = Union[field.annotation, Unset]
@@ -231,7 +255,9 @@ class BuilderModule(GenericModule[BuilderModel]):
         for name, class_ in model_classes:
             if name.endswith("Builder") and name != "ResourceBuilder":
                 builder_methods = inspect.getmembers(
-                    class_, lambda x: inspect.isfunction(x) and not getattr(ResourceBuilder, x.__name__, False)
+                    class_,
+                    lambda x: inspect.isfunction(x)
+                    and not getattr(ResourceBuilder, x.__name__, False),
                 )
                 models.append(
                     BuilderModel(
@@ -278,7 +304,7 @@ class BuilderCollection(GenericCollection[BuilderModule]):
     def from_path(cls, path: str):
         modules = []
         for filename in os.listdir(path):
-            modulename = f"{cls.module_prefix}.{filename.removesuffix(".py")}"
+            modulename = f"{cls.module_prefix}.{filename.removesuffix('.py')}"
             module = importlib.import_module(modulename)
             builder_module = BuilderModule.from_file(module, filename)
             if len(builder_module.models) == 0:
@@ -337,7 +363,7 @@ class DomainCollection(GenericCollection[DomainModule]):
     def from_path(cls, path: str):
         modules = []
         for filename in os.listdir(path):
-            modulename = f"{cls.module_prefix}.{filename.removesuffix(".py")}"
+            modulename = f"{cls.module_prefix}.{filename.removesuffix('.py')}"
             module = importlib.import_module(modulename)
             domain_module = DomainModule.from_file(module, filename)
             if len(domain_module.models) == 0:
