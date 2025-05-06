@@ -465,6 +465,7 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
     def power_reset(self, system_id, context):
         """Power reset machine."""
         url, node_id, headers = yield self.process_redfish_context(context)
+        yield self.set_pxe_boot(url, node_id, headers)
         yield self.power(PowerChange.RESET, url, node_id, headers)
 
     @inlineCallbacks

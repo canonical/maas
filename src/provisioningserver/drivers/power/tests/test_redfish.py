@@ -1038,11 +1038,12 @@ class TestRedfishPowerDriver(MAASTestCase):
         node_id = b"1"
 
         mock_redfish_context = self.patch(driver, "process_redfish_context")
+        mock_set_pxe_boot = self.patch(driver, "set_pxe_boot")
         mock_redfish_context.return_value = (url, node_id, headers)
         mock_power = self.patch(driver, "power")
 
         yield driver.power_reset(node_id, context)
-
+        mock_set_pxe_boot.assert_called_once_with(url, node_id, headers)
         mock_redfish_context.assert_called_with(context)
         mock_power.assert_called_once_with(
             "GracefulRestart", url, node_id, headers
