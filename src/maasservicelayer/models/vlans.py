@@ -3,6 +3,8 @@
 
 from typing import Optional
 
+from pydantic import IPvAnyAddress
+
 from maasservicelayer.models.base import MaasTimestampedBaseModel, make_builder
 
 
@@ -13,7 +15,7 @@ class Vlan(MaasTimestampedBaseModel):
     description: str
     mtu: int
     dhcp_on: bool
-    external_dhcp: Optional[str] = None
+    external_dhcp: Optional[IPvAnyAddress] = None
     primary_rack_id: Optional[int] = None
     secondary_rack_id: Optional[int] = None
     relay_vlan_id: Optional[int] = None

@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address
+
 from maasapiserver.v3.api.public.models.responses.vlans import VlanResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.models.vlans import Vlan
@@ -19,7 +21,7 @@ class TestVlanResponse:
             description="",
             mtu=0,
             dhcp_on=True,
-            external_dhcp="192.0.1.1",
+            external_dhcp=IPv4Address("192.0.1.1"),
             primary_rack_id=1,
             secondary_rack_id=None,
             relay_vlan=1,
