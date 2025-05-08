@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -33,6 +33,7 @@ from maascommon.workflows.msm import (
     MSMTokenRefreshParam,
 )
 from maasservicelayer.db import Database
+from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
@@ -72,6 +73,8 @@ class MSMTokenVerifyParam:
 
 
 class MSMConnectorActivity(ActivityBase):
+    MSM_CONNECTOR_SECRET = MSMConnectorSecret()
+
     def __init__(
         self,
         db: Database,
@@ -209,7 +212,7 @@ class MSMConnectorActivity(ActivityBase):
 
         async with self.start_transaction() as services:
             await services.secrets.set_composite_secret(
-                f"global/{MSM_SECRET}",
+                self.MSM_CONNECTOR_SECRET,
                 {
                     "url": input.url,
                     "jwt": input.jwt,
@@ -226,7 +229,7 @@ class MSMConnectorActivity(ActivityBase):
         """
         async with self.start_transaction() as services:
             return await services.secrets.get_composite_secret(
-                f"global/{MSM_SECRET}"
+                self.MSM_CONNECTOR_SECRET
             )
 
     @activity_defn_with_context(name=MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME)

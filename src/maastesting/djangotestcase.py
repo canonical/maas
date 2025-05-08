@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django-enabled test cases."""
@@ -11,6 +11,7 @@ from django.http.response import HttpResponseBase
 import django.test
 
 from maastesting.djangoclient import SensibleClient
+from maastesting.sqlalchemy import SQLAlchemyQueryCounter
 from maastesting.testcase import MAASTestCase
 
 # Patch django.http.response.HttpResponseBase to type check that status can be
@@ -60,12 +61,14 @@ class CountQueries:
         self.connection = connections[DEFAULT_DB_ALIAS]
         self._start_count = 0
         self._end_count = 0
+        self._sqlalchemy_counter = SQLAlchemyQueryCounter()
 
     def __enter__(self):
         self.force_debug_cursor = self.connection.force_debug_cursor
         self.connection.force_debug_cursor = True
         if self.reset:
             reset_queries()
+        self._sqlalchemy_counter.install()
         self._start_count = self._end_count = len(self.connection.queries)
         request_started.disconnect(reset_queries)
         return self
@@ -76,6 +79,8 @@ class CountQueries:
         if exc_type is not None:
             return
         self._end_count = len(self.connection.queries)
+        self._end_count += self._sqlalchemy_counter.count
+        self._sqlalchemy_counter.remove()
 
     @property
     def count(self):
@@ -84,7 +89,7 @@ class CountQueries:
 
     @property
     def queries(self):
-        """Return the list of performed queries."""
+        """Return the list of performed django queries."""
         count = self.count
         if not count:
             return []

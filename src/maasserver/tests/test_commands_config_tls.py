@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the config-tls command."""
@@ -6,8 +6,6 @@
 from contextlib import contextmanager
 from pathlib import Path
 import tempfile
-
-from django.core.management import call_command
 
 from maascommon.events import AUDIT
 from maasserver.enum import ENDPOINT
@@ -18,6 +16,7 @@ from maasserver.regiondservices.certificate_expiration_check import (
     REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
 )
 from maasserver.secrets import SecretManager
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.certificates import CertificateError
@@ -41,6 +40,11 @@ class TestConfigTLSCommand(MAASServerTestCase):
             yield key_file.name
 
     def _get_config(self):
+        import threading
+
+        print("TEST THREAD")
+        print(threading.current_thread().ident)
+        print(service_layer.initialized)
         return (
             SecretManager().get_composite_secret("tls", default=None),
             Config.objects.get_config("tls_port"),
@@ -56,14 +60,14 @@ class TestConfigTLSCommand(MAASServerTestCase):
         return list(notifications)
 
     def test_config_tls_disable(self):
-        call_command("config_tls", "disable")
+        self.call_command("config_tls", "disable")
         self.assertEqual(self._get_config(), (None, None))
 
     def test_config_tls_enable_skip_confirm(self):
         sample_cert = get_sample_cert()
         cert_path, key_path = sample_cert.tempfiles()
 
-        call_command(
+        self.call_command(
             "config_tls", "enable", key_path, cert_path, "-p=5234", "--yes"
         )
         # the command is not interactive
@@ -85,7 +89,9 @@ class TestConfigTLSCommand(MAASServerTestCase):
         cert_path, key_path = sample_cert.tempfiles()
 
         self.read_input.return_value = "y"
-        call_command("config_tls", "enable", key_path, cert_path, "-p=5234")
+        self.call_command(
+            "config_tls", "enable", key_path, cert_path, "-p=5234"
+        )
         self.assertEqual(
             self._get_config(),
             (
@@ -104,7 +110,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
         cacert_path = Path(self.make_dir()) / "cacerts.pem"
         cacert_path.write_text(sample_cert.ca_certificates_pem())
 
-        call_command(
+        self.call_command(
             "config_tls",
             "enable",
             key_path,
@@ -133,7 +139,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
 
         last_config = self._get_config()
 
-        call_command("config_tls", "enable", key_path, cert_path)
+        self.call_command("config_tls", "enable", key_path, cert_path)
         self.read_input.return_value = "n"
 
         current_config = self._get_config()
@@ -144,7 +150,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
         cert_path, key_path = sample_cert.tempfiles()
 
         self.read_input.return_value = "y"
-        call_command("config_tls", "enable", key_path, cert_path)
+        self.call_command("config_tls", "enable", key_path, cert_path)
 
         self.assertEqual(
             self._get_config(),
@@ -166,7 +172,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
             self.read_input.return_value = "y"
             error = self.assertRaises(
                 CertificateError,
-                call_command,
+                self.call_command,
                 "config_tls",
                 "enable",
                 key_path,
@@ -182,7 +188,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
             self.read_input.return_value = "y"
             error = self.assertRaises(
                 CertificateError,
-                call_command,
+                self.call_command,
                 "config_tls",
                 "enable",
                 key_path,
@@ -195,7 +201,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
         cert_path, key_path = sample_cert.tempfiles()
 
         self.read_input.return_value = "y"
-        call_command("config_tls", "enable", key_path, cert_path)
+        self.call_command("config_tls", "enable", key_path, cert_path)
 
         self.assertEqual(
             self._get_config(),
@@ -227,7 +233,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
             dismissable=True,
         )
 
-        call_command("config_tls", "disable")
+        self.call_command("config_tls", "disable")
 
         notifications = self.get_notifications()
         self.assertEqual(0, len(notifications))
@@ -248,6 +254,6 @@ class TestConfigTLSCommand(MAASServerTestCase):
         cert_path, key_path = sample_cert.tempfiles()
 
         self.read_input.return_value = "y"
-        call_command("config_tls", "enable", key_path, cert_path)
+        self.call_command("config_tls", "enable", key_path, cert_path)
         notifications = self.get_notifications()
         self.assertEqual(0, len(notifications))

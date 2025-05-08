@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections import defaultdict
@@ -19,6 +19,7 @@ import yaml
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
+from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
@@ -30,7 +31,6 @@ from maastemporalworker.workflow.msm import (
     MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
     MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
     MSM_REFRESH_EP,
-    MSM_SECRET,
     MSM_SEND_ENROL_ACTIVITY_NAME,
     MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
     MSM_SET_ENROL_ACTIVITY_NAME,
@@ -263,14 +263,14 @@ class TestMSMActivities:
         )
         env = ActivityEnvironment()
         await env.run(msm_act.set_enrol, param)
-        cred = await secrets.get_composite_secret(f"global/{MSM_SECRET}")
+        cred = await secrets.get_composite_secret(MSMConnectorSecret())
         assert cred["url"] == _MSM_BASE_URL
         assert cred["jwt"] == _JWT_ACCESS
         assert cred["rotation_interval_minutes"] == _JWT_ROTATION_INTERVAL
 
     async def test_get_enrol(self, msm_act, secrets):
         await secrets.set_composite_secret(
-            f"global/{MSM_SECRET}",
+            MSMConnectorSecret(),
             {
                 "url": _MSM_BASE_URL,
                 "jwt": _JWT_ACCESS,

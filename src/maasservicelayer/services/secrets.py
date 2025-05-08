@@ -7,8 +7,13 @@ from typing import Any
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.secrets import SecretsRepository
+from maasservicelayer.models.configurations import VaultEnabledConfig
+from maasservicelayer.models.secrets import SecretModel
 from maasservicelayer.services.base import Service, ServiceCache
-from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.database_configurations import (
+    DatabaseConfigurationNotFound,
+    DatabaseConfigurationsService,
+)
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
 from maasservicelayer.vault.manager import (
     AsyncVaultManager,
@@ -51,18 +56,13 @@ class SecretsService(Service, abc.ABC):
 
     @abc.abstractmethod
     async def set_composite_secret(
-        self, path: str, value: dict[str, Any]
+        self, model: SecretModel, value: dict[str, Any]
     ) -> None:
         """Create or update a composite secret."""
         pass
 
     @abc.abstractmethod
-    async def set_simple_secret(self, path: str, value: Any) -> None:
-        """Create or update a simple secret."""
-        pass
-
-    @abc.abstractmethod
-    async def delete(self, path: str) -> None:
+    async def delete(self, model: SecretModel) -> None:
         """Delete a secret."""
         pass
 
@@ -70,15 +70,21 @@ class SecretsService(Service, abc.ABC):
     # existing secrets to a proper structure.
     @abc.abstractmethod
     async def get_composite_secret(
-        self, path: str, default: Any = UNSET
+        self, model: SecretModel, default: Any = UNSET
     ) -> Any:
         """Return the value for a composite secret."""
         pass
 
-    async def get_simple_secret(self, path: str, default: Any = UNSET) -> Any:
+    async def set_simple_secret(self, model: SecretModel, value: Any) -> None:
+        """Create or update a simple secret."""
+        await self.set_composite_secret(model, {self.SIMPLE_SECRET_KEY: value})
+
+    async def get_simple_secret(
+        self, model: SecretModel, default: Any = UNSET
+    ) -> Any:
         """Return the value for a simple secret."""
         try:
-            secret = await self.get_composite_secret(path)
+            secret = await self.get_composite_secret(model)
         except SecretNotFound:
             if default is UNSET:
                 raise
@@ -103,21 +109,19 @@ class LocalSecretsStorageService(SecretsService):
         )
 
     async def set_composite_secret(
-        self, path: str, value: dict[str, Any]
+        self, model: SecretModel, value: dict[str, Any]
     ) -> None:
-        return await self.secrets_repository.create_or_update(path, value)
-
-    async def set_simple_secret(self, path: str, value: Any) -> None:
-        await self.set_composite_secret(
-            path, value={self.SIMPLE_SECRET_KEY: value}
+        return await self.secrets_repository.create_or_update(
+            model.get_secret_path(), value
         )
 
-    async def delete(self, path: str) -> None:
-        return await self.secrets_repository.delete(path)
+    async def delete(self, model: SecretModel) -> None:
+        return await self.secrets_repository.delete(model.get_secret_path())
 
     async def get_composite_secret(
-        self, path: str, default: Any = UNSET
+        self, model: SecretModel, default: Any = UNSET
     ) -> Any:
+        path = model.get_secret_path()
         secret = await self.secrets_repository.get(path)
         if not secret:
             if default is UNSET:
@@ -138,22 +142,19 @@ class VaultSecretsService(SecretsService):
         return get_region_vault_manager()  # type: ignore
 
     async def set_composite_secret(
-        self, path: str, value: dict[str, Any]
+        self, model: SecretModel, value: dict[str, Any]
     ) -> None:
         vault_manager = await self._get_vault_manager()
-        await vault_manager.set(path, value)
+        await vault_manager.set(model.get_secret_path(), value)
 
-    async def set_simple_secret(self, path: str, value: Any) -> None:
+    async def delete(self, model: SecretModel) -> None:
         vault_manager = await self._get_vault_manager()
-        await vault_manager.set(path, {self.SIMPLE_SECRET_KEY: value})
-
-    async def delete(self, path: str) -> None:
-        vault_manager = await self._get_vault_manager()
-        await vault_manager.delete(path)
+        await vault_manager.delete(model.get_secret_path())
 
     async def get_composite_secret(
-        self, path: str, default: Any = UNSET
+        self, model: SecretModel, default: Any = UNSET
     ) -> Any:
+        path = model.get_secret_path()
         try:
             vault_manager = await self._get_vault_manager()
             secret = await vault_manager.get(path)
@@ -172,14 +173,13 @@ class SecretsServiceFactory:
     The factory reads the configuration only once and caches the result for future requests.
     """
 
-    VAULT_CONFIG_NAME = "vault_enabled"
     IS_VAULT_ENABLED = None
 
     @classmethod
     async def produce(
         cls,
         context: Context,
-        config_service: ConfigurationsService,
+        database_configurations_service: DatabaseConfigurationsService,
         cache: SecretsServiceCache | None = None,
     ) -> SecretsService:
         """
@@ -195,8 +195,13 @@ class SecretsServiceFactory:
         is required to re-evaluate the Vault settings.
         """
         if cls.IS_VAULT_ENABLED is None:
-            result = await config_service.get(cls.VAULT_CONFIG_NAME)
-            cls.IS_VAULT_ENABLED = result if result else False
+            try:
+                result = await database_configurations_service.get(
+                    VaultEnabledConfig.name
+                )
+            except DatabaseConfigurationNotFound:
+                result = VaultEnabledConfig.default
+            cls.IS_VAULT_ENABLED = result
         if cls.IS_VAULT_ENABLED:
             return VaultSecretsService(context=context, cache=cache)
         return LocalSecretsStorageService(context=context, cache=cache)

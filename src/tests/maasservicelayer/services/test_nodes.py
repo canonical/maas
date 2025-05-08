@@ -17,7 +17,9 @@ from maasservicelayer.db.repositories.nodes import (
     NodeClauseFactory,
     NodesRepository,
 )
+from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
+from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import (
     EventsService,
@@ -117,8 +119,15 @@ class TestNodesService:
     async def test_get_bmc(
         self, nodes_service, nodes_repository_mock, secrets_service_mock
     ) -> None:
-        nodes_repository_mock.get_node_bmc.return_value = Mock()
-        await nodes_service.get_bmc("aaaaaa")
+        bmc = Bmc(id=1, power_type=PowerTypeEnum.AMT, power_parameters={})
+        nodes_repository_mock.get_node_bmc.return_value = bmc
+        secrets_service_mock.get_composite_secret.return_value = {
+            "test": "test"
+        }
+        retrieved_bmc = await nodes_service.get_bmc("aaaaaa")
+        assert retrieved_bmc.id == bmc.id
+        assert retrieved_bmc.power_type == bmc.power_type
+        assert retrieved_bmc.power_parameters == {"test": "test"}
         nodes_repository_mock.get_node_bmc.assert_called_once_with("aaaaaa")
         secrets_service_mock.get_composite_secret.assert_called_once()
 

@@ -4,7 +4,6 @@
 """Configuration items."""
 
 from collections import namedtuple
-from contextlib import suppress
 import uuid
 
 from django.db.models import CharField, JSONField, Manager, Model
@@ -14,6 +13,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
 )
 from maasserver.listener import notify_action
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import post_commit_do
 from maasserver.workflow import start_workflow
 from maasservicelayer.models.configurations import (
@@ -68,67 +68,15 @@ class ConfigManager(Manager):
             item exists.
         :type default: object
         :return: A config value.
-        :raises: Config.MultipleObjectsReturned
         """
-        from maasserver.secrets import SecretManager, SecretNotFound
-
-        config_model = None
-        try:
-            config_model = ConfigFactory.get_config_model(name)
-        except ValueError:
-            log.warn(
-                f"The configuration '{name}' is not known. Using the default {default} if the config does not exist in the DB."
-            )
-            default_value = default
-        else:
-            default_value = config_model.default
-        try:
-            if config_model and config_model.stored_as_secret:
-                return SecretManager().get_simple_secret(
-                    config_model.secret_name
-                )
-            return self.get(name=name).value
-        except (Config.DoesNotExist, SecretNotFound):
-            return default_value
+        return service_layer.services.configurations.get(name, default)
 
     def get_configs(self, names):
         """Return the config values corresponding to the given config names.
         Return None or the provided default if the config value does not
         exist.
         """
-        from maasserver.secrets import SecretManager, SecretNotFound
-
-        config_models = {
-            name: ConfigFactory.get_config_model(name)
-            for name in names
-            if name in ConfigFactory.ALL_CONFIGS
-        }
-
-        # Build a first result with all the default values, then look in the secrets/configs in the db for overrides.
-        configs = {
-            name: config_model.default
-            for name, config_model in config_models.items()
-        }
-
-        # What configs we should lookup from the DB
-        regular_configs = set(names)
-
-        # secrets configs
-        secret_manager = SecretManager()
-        for name, model in config_models.items():
-            if model.stored_as_secret:
-                with suppress(SecretNotFound):
-                    configs[name] = secret_manager.get_simple_secret(
-                        model.secret_name
-                    )
-                    # The config was found and added to the result: remove it from the regular config.
-                    regular_configs.remove(name)
-
-        # Lookup the remaining configs from the DB.
-        configs.update(
-            self.filter(name__in=regular_configs).values_list("name", "value")
-        )
-        return configs
+        return service_layer.services.configurations.get_many(names)
 
     def set_config(self, name, value, endpoint=None, request=None):
         """Set or overwrite a config value.
@@ -153,7 +101,9 @@ class ConfigManager(Manager):
                 f"The configuration '{name}' is not known. Anyways, it's going to be stored in the DB."
             )
         if config_model and config_model.stored_as_secret:
-            SecretManager().set_simple_secret(config_model.secret_name, value)
+            SecretManager().set_simple_secret(
+                config_model.secret_model.secret_name, value
+            )
         else:
             self.update_or_create(name=name, defaults={"value": value})
         self._handle_config_value_changed(name, value)

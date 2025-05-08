@@ -1,3 +1,6 @@
+# Copyright 2022-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import Any, Literal, NamedTuple, Optional
 
 from django.db.models import Model
@@ -7,6 +10,22 @@ from maasserver.vault import (
     get_region_vault_client_if_enabled,
     UnknownSecretPath,
     VaultClient,
+)
+from maasservicelayer.models.secrets import (
+    BMCPowerParametersSecret,
+    ClusterCertificateSecret,
+    ExternalAuthSecret,
+    MAASAutoIPMIKGBmcKeySecret,
+    MAASCACertificateSecret,
+    MacaroonKeySecret,
+    MSMConnectorSecret,
+    NodeDeployMetadataSecret,
+    NodePowerParametersSecret,
+    OMAPIKeySecret,
+    RootKeyMaterialSecret,
+    RPCSharedSecret,
+    TLSSecret,
+    VCenterPasswordSecret,
 )
 
 SIMPLE_SECRET_KEY = "secret"
@@ -46,24 +65,39 @@ class ModelSecret(NamedTuple):
 MODEL_SECRETS = {
     secret.model: secret
     for secret in (
-        ModelSecret(Node, "node", ["deploy-metadata", "power-parameters"]),
-        ModelSecret(RootKey, "rootkey", ["material"]),
-        ModelSecret(BMC, "bmc", ["power-parameters"]),
+        ModelSecret(
+            Node,
+            NodeDeployMetadataSecret.prefix,
+            [
+                NodeDeployMetadataSecret.secret_name,
+                NodePowerParametersSecret.secret_name,
+            ],
+        ),
+        ModelSecret(
+            RootKey,
+            RootKeyMaterialSecret.prefix,
+            [RootKeyMaterialSecret.secret_name],
+        ),
+        ModelSecret(
+            BMC,
+            BMCPowerParametersSecret.prefix,
+            [BMCPowerParametersSecret.secret_name],
+        ),
     )
 }
 
 GLOBAL_SECRETS = frozenset(
     [
-        "cluster-certificate",
-        "external-auth",
-        "ipmi-k_g-key",
-        "maas-ca-certificate",
-        "macaroon-key",
-        "msm-connector",
-        "omapi-key",
-        "rpc-shared",
-        "tls",
-        "vcenter-password",
+        ClusterCertificateSecret.secret_name,
+        ExternalAuthSecret.secret_name,
+        MAASAutoIPMIKGBmcKeySecret.secret_name,
+        MAASCACertificateSecret.secret_name,
+        MacaroonKeySecret.secret_name,
+        MSMConnectorSecret.secret_name,
+        OMAPIKeySecret.secret_name,
+        RPCSharedSecret.secret_name,
+        TLSSecret.secret_name,
+        VCenterPasswordSecret.secret_name,
     ]
 )
 

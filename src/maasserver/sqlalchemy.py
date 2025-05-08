@@ -258,6 +258,10 @@ class SharedDBAPIConnection(PoolProxiedConnection):
     def cursor(self):
         return self.dbapi_connection.cursor()
 
+    @property
+    def is_valid(self) -> bool:
+        return self.dbapi_connection.closed
+
 
 class SharedDjangoPool(Pool):
     """A custom pool that ensures that no connection attempts are being made."""

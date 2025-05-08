@@ -126,21 +126,21 @@ class TestAuthService:
         assert token.subject == user.username
         assert AuthService.JWT_TOKEN_KEY == "123"
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            AuthService.MAAS_V3_JWT_KEY_SECRET_PATH
+            AuthService.MAAS_V3_JWT_KEY_SECRET
         )
 
         token = await auth_service.login(user.username, "test")
         assert token.subject == user.username
         # The service is not loading anymore the key because it was cached
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            AuthService.MAAS_V3_JWT_KEY_SECRET_PATH
+            AuthService.MAAS_V3_JWT_KEY_SECRET
         )
 
     async def test_jwt_key_is_created(self) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.side_effect = SecretNotFound(
-            AuthService.MAAS_V3_JWT_KEY_SECRET_PATH
+            AuthService.MAAS_V3_JWT_KEY_SECRET
         )
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = user
@@ -154,7 +154,7 @@ class TestAuthService:
         assert token.subject == user.username
         assert AuthService.JWT_TOKEN_KEY is not None
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            AuthService.MAAS_V3_JWT_KEY_SECRET_PATH
+            AuthService.MAAS_V3_JWT_KEY_SECRET
         )
         secrets_service_mock.set_simple_secret.assert_called_once()
 

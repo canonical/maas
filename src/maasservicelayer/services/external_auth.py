@@ -36,6 +36,11 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasservicelayer.models.secrets import (
+    ExternalAuthSecret,
+    MacaroonKeySecret,
+    RootKeyMaterialSecret,
+)
 from maasservicelayer.models.users import User
 from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.secrets import SecretsService
@@ -77,9 +82,8 @@ class ExternalAuthServiceCache(ServiceCache):
 
 # We need to implement RootKeyStore because we pass this service to the Macaroon Auth Checker
 class ExternalAuthService(Service, RootKeyStore):
-    EXTERNAL_AUTH_SECRET_PATH = "global/external-auth"
-    BAKERY_KEY_SECRET_PATH = "global/macaroon-key"
-    ROOTKEY_MATERIAL_SECRET_FORMAT = "rootkey/%s/material"
+    EXTERNAL_AUTH_SECRET = ExternalAuthSecret()
+    BAKERY_KEY_SECRET = MacaroonKeySecret()
 
     # size in bytes of the key
     KEY_LENGTH = 24
@@ -104,7 +108,7 @@ class ExternalAuthService(Service, RootKeyStore):
     @Service.from_cache_or_execute(attr="external_auth_config")
     async def get_external_auth(self) -> ExternalAuthConfig | None:
         config = await self.secrets_service.get_composite_secret(
-            path=self.EXTERNAL_AUTH_SECRET_PATH, default={}
+            model=self.EXTERNAL_AUTH_SECRET, default={}
         )
         candid_endpoint = config.get("url", "")
         rbac_endpoint = config.get("rbac-url", "")
@@ -139,7 +143,7 @@ class ExternalAuthService(Service, RootKeyStore):
         Same logic of maasserver.macaroon_auth.get_auth_info
         """
         config = await self.secrets_service.get_composite_secret(
-            path=self.EXTERNAL_AUTH_SECRET_PATH, default=None
+            model=self.EXTERNAL_AUTH_SECRET, default=None
         )
 
         if config is None:
@@ -240,14 +244,14 @@ class ExternalAuthService(Service, RootKeyStore):
     @Service.from_cache_or_execute(attr="bakery_key")
     async def get_or_create_bakery_key(self) -> bakery.PrivateKey:
         key = await self.secrets_service.get_simple_secret(
-            path=self.BAKERY_KEY_SECRET_PATH, default=None
+            model=self.BAKERY_KEY_SECRET, default=None
         )
         if key:
             return bakery.PrivateKey.deserialize(key)
 
         key = bakery.generate_key()
         await self.secrets_service.set_simple_secret(
-            path=self.BAKERY_KEY_SECRET_PATH,
+            model=self.BAKERY_KEY_SECRET,
             value=key.serialize().decode("ascii"),
         )
         return key
@@ -277,7 +281,7 @@ class ExternalAuthService(Service, RootKeyStore):
 
     async def _get_key_material(self, id: int) -> bytes | None:
         secret = await self.secrets_service.get_simple_secret(
-            path=self.ROOTKEY_MATERIAL_SECRET_FORMAT % id, default=None
+            model=RootKeyMaterialSecret(id=id), default=None
         )
         if not secret:
             return None
@@ -287,7 +291,7 @@ class ExternalAuthService(Service, RootKeyStore):
         key = await self.external_auth_repository.create()
         material = os.urandom(self.KEY_LENGTH)
         await self.secrets_service.set_simple_secret(
-            path=self.ROOTKEY_MATERIAL_SECRET_FORMAT % key.id,
+            model=RootKeyMaterialSecret(id=key.id),
             value=to_hex(material),
         )
         return key
@@ -297,9 +301,7 @@ class ExternalAuthService(Service, RootKeyStore):
         Delete the key and the related material
         """
         await self.external_auth_repository.delete(id=id)
-        await self.secrets_service.delete(
-            path=self.ROOTKEY_MATERIAL_SECRET_FORMAT % id
-        )
+        await self.secrets_service.delete(model=RootKeyMaterialSecret(id=id))
 
     async def generate_discharge_macaroon(
         self,

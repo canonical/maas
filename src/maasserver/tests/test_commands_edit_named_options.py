@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the edit_named_options command."""
@@ -9,7 +9,6 @@ import os
 import shutil
 import textwrap
 
-from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from maasserver.models import Config
@@ -89,7 +88,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
     def assertFailsWithMessage(self, config_path, message):
         e = self.assertRaises(
             CommandError,
-            call_command,
+            self.call_command,
             "edit_named_options",
             config_path=config_path,
             stdout=self.stdout,
@@ -127,7 +126,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
 
     def test_remove_existing_forwarders_config(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_FORWARDERS)
-        call_command(
+        self.call_command(
             "edit_named_options", config_path=options_file, stdout=self.stdout
         )
 
@@ -136,7 +135,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
 
     def test_removes_existing_forwarders_config_if_migrate_set(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_FORWARDERS)
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -150,7 +149,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
 
     def test_removes_existing_dnssec_validation_config(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_DNSSEC)
-        call_command(
+        self.call_command(
             "edit_named_options", config_path=options_file, stdout=self.stdout
         )
 
@@ -161,7 +160,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
 
     def test_removes_existing_dnssec_validation_config_if_migration_set(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_DNSSEC)
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -175,7 +174,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
 
     def test_normal_operation(self):
         options_file = self.make_file(contents=OPTIONS_FILE)
-        call_command(
+        self.call_command(
             "edit_named_options", config_path=options_file, stdout=self.stdout
         )
         expected_path = os.path.join(
@@ -204,7 +203,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         options_file = self.make_file(
             contents=OPTIONS_FILE_WITH_FORWARDERS_AND_DNSSEC
         )
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -226,7 +225,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         options_file = self.make_file(
             contents=OPTIONS_FILE_WITH_FORWARDERS_AND_DNSSEC
         )
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -248,7 +247,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
             contents=OPTIONS_FILE_WITH_EXTRA_AND_DUP_FORWARDER
         )
 
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -267,7 +266,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         options_file = self.make_file(
             contents=OPTIONS_FILE_WITH_FORWARDERS_AND_DNSSEC
         )
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -292,7 +291,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         )
         backup_mock = self.patch(edit_named_options, "back_up_existing_file")
 
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -306,7 +305,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
             edit_named_options, "write_new_named_conf_options"
         )
 
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -322,7 +321,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         )
         backup_mock = self.patch(edit_named_options, "back_up_existing_file")
 
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,
@@ -336,7 +335,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
             edit_named_options, "write_new_named_conf_options"
         )
 
-        call_command(
+        self.call_command(
             "edit_named_options",
             config_path=options_file,
             migrate_conflicting_options=True,

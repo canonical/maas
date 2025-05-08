@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for VLAN API."""
@@ -112,8 +112,7 @@ class TestVlansAPI(APITestCase.ForUser):
             response = self.client.get(uri)
         # XXX: These really should be equal.
         self.assertEqual(base_count + 7, counter.count)
-        # TODO: this should be 25, 32. Update this when we will be able to count also the queries made by the service layer.
-        self.assertEqual((base_count, counter.count), (24, 31))
+        self.assertEqual((base_count, counter.count), (25, 32))
 
     def test_create(self):
         self.become_admin()

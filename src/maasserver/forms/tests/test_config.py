@@ -8,10 +8,10 @@ from django.http import HttpRequest
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms import ConfigForm
 from maasserver.models import Config
-import maasserver.models.config as config_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 import maasservicelayer.models.configurations as maascommon_configuration
+import maasservicelayer.services.configurations as servicelayer_config_module
 
 
 class TestOptionForm(ConfigForm):
@@ -85,11 +85,6 @@ class TestConfigForm(MAASServerTestCase):
 
     def test_form_loads_initial_values(self):
         value = factory.make_string()
-        self.patch(
-            config_module,
-            "ConfigFactory",
-            value=self._get_factory_config_stub("field1", None),
-        )
         Config.objects.set_config("field1", value)
         form = TestOptionForm()
 
@@ -98,7 +93,7 @@ class TestConfigForm(MAASServerTestCase):
     def test_form_loads_initial_values_from_default_value(self):
         value = factory.make_string()
         self.patch(
-            config_module,
+            servicelayer_config_module,
             "ConfigFactory",
             value=self._get_factory_config_stub("field1", value),
         )

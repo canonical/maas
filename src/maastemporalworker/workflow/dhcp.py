@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -28,6 +28,7 @@ from maasservicelayer.db.tables import (
     SubnetTable,
     VlanTable,
 )
+from maasservicelayer.models.secrets import OMAPIKeySecret
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -95,6 +96,8 @@ class OMAPIKeyResult:
 
 
 class DHCPConfigActivity(ActivityBase):
+    OMAPI_KEY_SECRET = OMAPIKeySecret()
+
     async def _get_agents_for_vlans(
         self, tx: AsyncConnection, vlan_ids: set[int]
     ) -> set[str]:
@@ -387,7 +390,9 @@ class DHCPConfigActivity(ActivityBase):
     @activity_defn_with_context(name=GET_OMAPI_KEY_ACTIVITY_NAME)
     async def get_omapi_key(self) -> OMAPIKeyResult:
         async with self.start_transaction() as services:
-            key = await services.secrets.get_simple_secret("global/omapi-key")
+            key = await services.secrets.get_simple_secret(
+                self.OMAPI_KEY_SECRET
+            )
             return OMAPIKeyResult(key=key)
 
 

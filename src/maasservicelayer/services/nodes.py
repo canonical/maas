@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maascommon.enums.events import EventTypeEnum
 from maascommon.enums.scriptresult import ScriptStatus
@@ -16,6 +16,7 @@ from maasservicelayer.db.repositories.nodes import (
 )
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
+from maasservicelayer.models.secrets import BMCPowerParametersSecret
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.scriptresult import ScriptResultsService
@@ -65,7 +66,7 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
         if bmc is not None:
             secret_power_params = (
                 await self.secrets_service.get_composite_secret(
-                    f"bmc/{bmc.id}/power_parameters"
+                    BMCPowerParametersSecret(id=bmc.id)
                 )
             )
             bmc.power_parameters.update(secret_power_params)

@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import List
 
@@ -19,7 +19,6 @@ from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services.base import BaseService
-from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.temporal import TemporalService
 
 
@@ -32,12 +31,10 @@ class StaticIPAddressService(
         self,
         context: Context,
         temporal_service: TemporalService,
-        configurations_service: ConfigurationsService,
         staticipaddress_repository: StaticIPAddressRepository,
     ):
         super().__init__(context, staticipaddress_repository)
         self.temporal_service = temporal_service
-        self.configurations_service = configurations_service
 
     async def post_create_hook(self, resource: StaticIPAddress) -> None:
         if resource.alloc_type != IpAddressType.DISCOVERED:

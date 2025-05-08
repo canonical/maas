@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -86,8 +86,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
             response = self.client.get(uri)
         # XXX: These should be the same.
         self.assertEqual(base_count + 9, counter.count)
-        # TODO: this should be 24, 33. Update this when we will be able to count also the queries made by the service layer.
-        self.assertEqual((base_count, counter.count), (23, 32))
+        self.assertEqual((base_count, counter.count), (24, 33))
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content

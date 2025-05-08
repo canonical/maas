@@ -1,8 +1,11 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasapiserver.common.api.base import API
 from maasapiserver.v3.api.public.handlers.auth import AuthHandler
+from maasapiserver.v3.api.public.handlers.configurations import (
+    ConfigurationsHandler,
+)
 from maasapiserver.v3.api.public.handlers.discoveries import DiscoveriesHandler
 from maasapiserver.v3.api.public.handlers.domains import DomainsHandler
 from maasapiserver.v3.api.public.handlers.events import EventsHandler
@@ -34,6 +37,7 @@ APIv3 = API(
     prefix=V3_API_PREFIX,
     handlers=[
         AuthHandler(),
+        ConfigurationsHandler(),
         EventsHandler(),
         DiscoveriesHandler(),
         DomainsHandler(),

@@ -17,13 +17,10 @@ from maasservicelayer.services.agents import AgentsServiceCache
 @pytest.mark.asyncio
 class TestAgentsService:
     async def test_get_service_configuration(self) -> None:
-        configurations_service = Mock(ConfigurationsService)
-        users_service = Mock(UsersService)
-
         agents_service = AgentsService(
             context=Context(),
-            configurations_service=configurations_service,
-            users_service=users_service,
+            configurations_service=Mock(ConfigurationsService),
+            users_service=Mock(UsersService),
         )
 
         api_client = AsyncMock()

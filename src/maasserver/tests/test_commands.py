@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom commands, as found in src/maasserver/management/commands."""
@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock
 
 from aiohttp import ClientError
 from django.contrib.auth.models import User
-from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from apiclient.creds import convert_tuple_to_string
@@ -33,7 +32,7 @@ def assertCommandErrors(runner, command, *args, **kwargs):
     """
     # Django >= 1.5 puts error text in exception.
     exception = runner.assertRaises(
-        CommandError, call_command, command, *args, **kwargs
+        CommandError, runner.call_command, command, *args, **kwargs
     )
     return str(exception)
 
@@ -47,7 +46,7 @@ class TestCommands(MAASServerTestCase):
 
     def test_generate_api_doc(self):
         stdout = StringIO()
-        call_command("generate_api_doc", stdout=stdout)
+        self.call_command("generate_api_doc", stdout=stdout)
         result = stdout.getvalue()
         # Just check that the documentation looks all right.
         self.assertIn("POST /MAAS/api/2.0/account/", result)
@@ -71,7 +70,7 @@ class TestCommands(MAASServerTestCase):
         self.patch(createadmin, "prompt_for_password").return_value = password
         self.patch(SSHKey.objects, "from_keysource")
 
-        call_command(
+        self.call_command(
             "createadmin",
             username=username,
             email=email,
@@ -101,7 +100,7 @@ class TestCommands(MAASServerTestCase):
         prompt_for_password.return_value = factory.make_string()
         self.patch(SSHKey.objects, "from_keysource")
 
-        call_command(
+        self.call_command(
             "createadmin",
             username=username,
             email=email,
@@ -128,7 +127,7 @@ class TestCommands(MAASServerTestCase):
         self.patch(createadmin, "prompt_for_username").return_value = username
         self.patch(SSHKey.objects, "from_keysource")
 
-        call_command(
+        self.call_command(
             "createadmin",
             password=password,
             email=email,
@@ -155,7 +154,7 @@ class TestCommands(MAASServerTestCase):
         self.patch(createadmin, "prompt_for_email").return_value = email
         self.patch(SSHKey.objects, "from_keysource")
 
-        call_command(
+        self.call_command(
             "createadmin",
             username=username,
             password=password,
@@ -177,7 +176,7 @@ class TestCommands(MAASServerTestCase):
         password = factory.make_string()
         email = factory.make_email_address()
 
-        call_command(
+        self.call_command(
             "createadmin",
             username=username,
             password=password,
@@ -204,7 +203,7 @@ class TestCommands(MAASServerTestCase):
         ).return_value = ssh_import
         self.patch(SSHKey.objects, "from_keysource")
 
-        call_command(
+        self.call_command(
             "createadmin",
             username=username,
             password=password,
@@ -244,7 +243,7 @@ class TestCommands(MAASServerTestCase):
                 mock_class=AsyncMock,
             )
         mock_get_ssh_key.return_value = [key_string]
-        call_command(
+        self.call_command(
             "createadmin",
             username=username,
             password=password,
@@ -278,7 +277,7 @@ class TestCommands(MAASServerTestCase):
         )
         self.assertRaises(
             createadmin.SSHKeysError,
-            call_command,
+            self.call_command,
             "createadmin",
             username=username,
             password=password,
@@ -295,7 +294,7 @@ class TestCommands(MAASServerTestCase):
         username = factory.make_string()
         password = factory.make_string()
         email = "%s@example.com" % factory.make_string()
-        call_command(
+        self.call_command(
             "createadmin",
             username=username,
             password=password,
@@ -307,7 +306,7 @@ class TestCommands(MAASServerTestCase):
 
         self.assertRaises(
             createadmin.AlreadyExistingUser,
-            call_command,
+            self.call_command,
             "createadmin",
             username=username,
             password=password,
@@ -423,7 +422,7 @@ class TestChangePasswords(MAASServerTestCase):
         newpass = factory.make_string(size=16, spaces=True, prefix="newpass")
         stdin = io.StringIO(f"{username}:{newpass}")
         self.patch(changepasswords, "fileinput").return_value = stdin
-        call_command("changepasswords")
+        self.call_command("changepasswords")
         self.assertTrue(reload_object(user).check_password(newpass))
 
     def test_changes_ten_passwords(self):
@@ -437,7 +436,7 @@ class TestChangePasswords(MAASServerTestCase):
             stringio.write(f"{username}:{newpass}\n")
         stringio.seek(0)
         self.patch(changepasswords, "fileinput").return_value = stringio
-        call_command("changepasswords")
+        self.call_command("changepasswords")
         for user, newpass in users_passwords:
             self.assertTrue(reload_object(user).check_password(newpass))
 
@@ -453,7 +452,7 @@ class TestApikeyCommand(MAASServerTestCase):
         stderr = StringIO()
         stdout = StringIO()
         user = factory.make_User()
-        call_command(
+        self.call_command(
             "apikey", username=user.username, stderr=stderr, stdout=stdout
         )
         self.assertEqual(stderr.getvalue().strip(), "")
@@ -469,7 +468,7 @@ class TestApikeyCommand(MAASServerTestCase):
         stdout = StringIO()
         user = factory.make_User()
         num_keys = len(user.userprofile.get_authorisation_tokens())
-        call_command(
+        self.call_command(
             "apikey",
             username=user.username,
             generate=True,
@@ -493,7 +492,7 @@ class TestApikeyCommand(MAASServerTestCase):
         user = factory.make_User()
         existing_token = get_one(user.userprofile.get_authorisation_tokens())
         token_string = convert_tuple_to_string(get_creds_tuple(existing_token))
-        call_command(
+        self.call_command(
             "apikey",
             username=user.username,
             delete=token_string,
@@ -524,7 +523,7 @@ class TestApikeyCommand(MAASServerTestCase):
         user = factory.make_User()
         existing_token = get_one(user.userprofile.get_authorisation_tokens())
         token_string = convert_tuple_to_string(get_creds_tuple(existing_token))
-        call_command(
+        self.call_command(
             "apikey",
             username=user.username,
             delete=token_string,
@@ -545,7 +544,7 @@ class TestApikeyCommand(MAASServerTestCase):
         user = factory.make_User()
         existing_token = get_one(user.userprofile.get_authorisation_tokens())
         token_string = convert_tuple_to_string(get_creds_tuple(existing_token))
-        call_command(
+        self.call_command(
             "apikey",
             username=user.username,
             update=token_string,
@@ -561,7 +560,7 @@ class TestApikeyCommand(MAASServerTestCase):
         fake_api_key_name = "Test Key Name"
         existing_token = get_one(user.userprofile.get_authorisation_tokens())
         token_string = convert_tuple_to_string(get_creds_tuple(existing_token))
-        call_command(
+        self.call_command(
             "apikey",
             username=user.username,
             delete=token_string,

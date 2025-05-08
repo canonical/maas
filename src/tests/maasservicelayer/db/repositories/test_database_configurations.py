@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.configurations import (
-    ConfigurationsRepository,
+from maasservicelayer.db.repositories.database_configurations import (
+    DatabaseConfigurationsRepository,
 )
 from tests.fixtures.factories.configuration import create_test_configuration
 from tests.maasapiserver.fixtures.db import Fixture
@@ -16,7 +16,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
-class TestConfigurationsRepository:
+class TestDatabaseConfigurationsRepository:
     @pytest.mark.parametrize(
         "value",
         ["test", True, {"test": {"name": "myname", "age": 18}}, 1234, None],
@@ -27,17 +27,19 @@ class TestConfigurationsRepository:
         await create_test_configuration(
             fixture=fixture, name="test", value=value
         )
-        configuration_repository = ConfigurationsRepository(
+        database_configuration_repository = DatabaseConfigurationsRepository(
             Context(connection=db_connection)
         )
-        configuration = await configuration_repository.get("test")
+        configuration = await database_configuration_repository.get("test")
         assert value == configuration.value
         assert configuration.name == "test"
 
     async def test_unexisting_get(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
-        configuration_repository = ConfigurationsRepository(
+        database_configuration_repository = DatabaseConfigurationsRepository(
             Context(connection=db_connection)
         )
-        assert (await configuration_repository.get("whatever")) is None
+        assert (
+            await database_configuration_repository.get("whatever")
+        ) is None

@@ -30,6 +30,7 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.models.external_auth import RootKey
+from maasservicelayer.models.secrets import RootKeyMaterialSecret
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import SecretsService, UsersService
 from maasservicelayer.services.external_auth import (
@@ -76,7 +77,7 @@ class TestExternalAuthService:
         )
         external_auth = await external_auth_service.get_external_auth()
         secrets_service_mock.get_composite_secret.assert_called_once_with(
-            path="global/external-auth", default={}
+            model=external_auth_service.EXTERNAL_AUTH_SECRET, default={}
         )
         assert external_auth.url == "http://10.0.1.23:8081"
         assert external_auth.type == ExternalAuthType.CANDID
@@ -97,7 +98,7 @@ class TestExternalAuthService:
         )
         external_auth = await external_auth_service.get_external_auth()
         secrets_service_mock.get_composite_secret.assert_called_once_with(
-            path="global/external-auth", default={}
+            model=external_auth_service.EXTERNAL_AUTH_SECRET, default={}
         )
         assert external_auth.url == "http://10.0.1.23:5000/auth"
         assert external_auth.type == ExternalAuthType.RBAC
@@ -116,7 +117,7 @@ class TestExternalAuthService:
         )
         external_auth = await external_auth_service.get_external_auth()
         secrets_service_mock.get_composite_secret.assert_called_once_with(
-            path="global/external-auth", default={}
+            model=external_auth_service.EXTERNAL_AUTH_SECRET, default={}
         )
         assert external_auth is None
 
@@ -138,7 +139,7 @@ class TestExternalAuthService:
         assert auth_info.agents[0].username == "admin@candid"
         assert auth_info.key == bakery.PrivateKey.deserialize(TEST_KEY)
         secrets_service_mock.get_composite_secret.assert_called_once_with(
-            path="global/external-auth", default=None
+            model=external_auth_service.EXTERNAL_AUTH_SECRET, default=None
         )
 
     async def test_get_auth_info_not_enabled(self) -> None:
@@ -154,7 +155,7 @@ class TestExternalAuthService:
         auth_info = await external_auth_service.get_auth_info()
         assert auth_info is None
         secrets_service_mock.get_composite_secret.assert_called_once_with(
-            path="global/external-auth", default=None
+            model=external_auth_service.EXTERNAL_AUTH_SECRET, default=None
         )
 
     async def test_get_or_create_bakery_key(self) -> None:
@@ -172,7 +173,7 @@ class TestExternalAuthService:
         bakery_key = await external_auth_service.get_or_create_bakery_key()
 
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            path="global/macaroon-key", default=None
+            model=external_auth_service.BAKERY_KEY_SECRET, default=None
         )
         assert expected_bakery_key.key == bakery_key.key
         assert expected_bakery_key.public_key == bakery_key.public_key
@@ -195,10 +196,10 @@ class TestExternalAuthService:
         bakery_key = await external_auth_service.get_or_create_bakery_key()
 
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            path="global/macaroon-key", default=None
+            model=external_auth_service.BAKERY_KEY_SECRET, default=None
         )
         secrets_service_mock.set_simple_secret.assert_called_once_with(
-            path="global/macaroon-key",
+            model=external_auth_service.BAKERY_KEY_SECRET,
             value=fake_private_key.serialize().decode("ascii"),
         )
         assert fake_private_key.key == bakery_key.key
@@ -225,7 +226,7 @@ class TestExternalAuthService:
         retrieved_rootkey = await external_auth_service.get(b"1")
         external_auth_repository_mock.find_by_id.assert_called_once_with(id=1)
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            path="rootkey/1/material", default=None
+            model=RootKeyMaterialSecret(id=1), default=None
         )
         assert (
             to_bin("23451aaec7ba1aea923c53b386587a14e650b79520a043d6")
@@ -266,7 +267,7 @@ class TestExternalAuthService:
         external_auth_repository_mock.find_by_id.assert_called_once_with(id=1)
         external_auth_repository_mock.delete.assert_called_once_with(id=1)
         secrets_service_mock.delete.assert_called_once_with(
-            path="rootkey/1/material"
+            model=RootKeyMaterialSecret(id=1)
         )
         assert retrieved_rootkey is None
 
@@ -291,7 +292,7 @@ class TestExternalAuthService:
         retrieved_rootkey, key_id = await external_auth_service.root_key()
         external_auth_repository_mock.find_best_key.assert_called_once()
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            path="rootkey/1/material", default=None
+            model=RootKeyMaterialSecret(id=1), default=None
         )
         assert (
             to_bin("23451aaec7ba1aea923c53b386587a14e650b79520a043d6")
@@ -340,15 +341,15 @@ class TestExternalAuthService:
         # The expired key is deleted
         external_auth_repository_mock.delete.assert_called_once_with(id=1)
         secrets_service_mock.delete.assert_called_once_with(
-            path="rootkey/1/material"
+            model=RootKeyMaterialSecret(id=1)
         )
 
         # The new key is created
         secrets_service_mock.set_simple_secret.assert_called_once_with(
-            path="rootkey/2/material", value=hex_os_urandom
+            model=RootKeyMaterialSecret(id=2), value=hex_os_urandom
         )
         secrets_service_mock.get_simple_secret.assert_called_once_with(
-            path="rootkey/2/material", default=None
+            model=RootKeyMaterialSecret(id=2), default=None
         )
         os_mock.assert_called_once_with(24)
 
@@ -781,11 +782,11 @@ class TestExternalAuthService:
         secrets_service_mock.get_composite_secret.assert_has_calls(
             [
                 call(
-                    path=ExternalAuthService.EXTERNAL_AUTH_SECRET_PATH,
+                    model=ExternalAuthService.EXTERNAL_AUTH_SECRET,
                     default=None,
                 ),
                 call(
-                    path=ExternalAuthService.EXTERNAL_AUTH_SECRET_PATH,
+                    model=ExternalAuthService.EXTERNAL_AUTH_SECRET,
                     default={},
                 ),
             ]

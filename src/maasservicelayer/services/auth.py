@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import os
 
@@ -15,13 +15,14 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.secrets import V3JWTKeySecret
 from maasservicelayer.services.base import Service
 from maasservicelayer.services.secrets import SecretNotFound, SecretsService
 from maasservicelayer.services.users import UsersService
 
 
 class AuthService(Service):
-    MAAS_V3_JWT_KEY_SECRET_PATH = "global/v3-jwt-key"
+    MAAS_V3_JWT_KEY_SECRET = V3JWTKeySecret()
     TOKEN_SECRET_KEY_BYTES = 32
 
     # Cache the JWT token as attribute of the class itself. This way, the key will be loaded only once after every restart.
@@ -79,12 +80,12 @@ class AuthService(Service):
         if not self.JWT_TOKEN_KEY:
             try:
                 jwt_key = await self.secrets_service.get_simple_secret(
-                    self.MAAS_V3_JWT_KEY_SECRET_PATH
+                    self.MAAS_V3_JWT_KEY_SECRET
                 )
             except SecretNotFound:
                 jwt_key = os.urandom(self.TOKEN_SECRET_KEY_BYTES).hex()
                 await self.secrets_service.set_simple_secret(
-                    self.MAAS_V3_JWT_KEY_SECRET_PATH, jwt_key
+                    self.MAAS_V3_JWT_KEY_SECRET, jwt_key
                 )
             AuthService.JWT_TOKEN_KEY = jwt_key
         return self.JWT_TOKEN_KEY  # type: ignore

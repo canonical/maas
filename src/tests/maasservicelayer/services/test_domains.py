@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import AsyncMock, Mock
 
@@ -20,6 +20,7 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.configurations import MAASInternalDomainConfig
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services.base import BaseService
@@ -160,7 +161,7 @@ class TestDomainsService:
         domains_repository = Mock(DomainsRepository)
         dnspublications_service = Mock(DNSPublicationsService)
         configurations_service = Mock(ConfigurationsService)
-        configurations_service.get.return_value = "maas-internal"
+        configurations_service.get.return_value = MAASInternalDomainConfig()
         service = DomainsService(
             context=Context(),
             configurations_service=configurations_service,

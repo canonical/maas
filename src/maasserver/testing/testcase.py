@@ -18,6 +18,7 @@ import sys
 import threading
 from unittest.util import strclass
 
+from django.core.management import call_command
 from django.db import (
     close_old_connections,
     connection,
@@ -217,6 +218,18 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
 
     def closeServiceLayer(self):
         service_layer.close()
+
+    def call_command(self, command_name, *args, **options):
+        """
+        Wraps Django's `call_command` to ensure the service layer is re-initialized after execution.
+
+        Since Django management commands run in the same thread, they may shut down the service layer
+        during execution. This wrapper ensures the service layer is re-initialized afterward so that
+        subsequent test code can continue using it.
+        """
+        result = call_command(command_name, *args, **options)
+        service_layer.init()
+        return result
 
 
 class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):

@@ -28,6 +28,13 @@ from maascommon.utils.dns import NAMESPEC, validate_hostname
 from maascommon.utils.time import systemd_interval_to_seconds
 from maascommon.utils.url import splithost
 from maasservicelayer.models.base import generate_builder, MaasBaseModel
+from maasservicelayer.models.secrets import (
+    GlobalSecret,
+    MAASAutoIPMIKGBmcKeySecret,
+    OMAPIKeySecret,
+    RPCSharedSecret,
+    VCenterPasswordSecret,
+)
 
 T = TypeVar("T")
 
@@ -35,7 +42,7 @@ DEFAULT_OS = UbuntuOS()
 
 
 @generate_builder()
-class Configuration(MaasBaseModel):
+class DatabaseConfiguration(MaasBaseModel):
     name: str
     value: Any
 
@@ -52,8 +59,8 @@ class Config(GenericModel, Generic[T]):
     # If the config should be stored as secret.
     stored_as_secret: ClassVar[bool] = False
 
-    # The secret name to use.
-    secret_name: ClassVar[Optional[str]] = None
+    # The secret model to use.
+    secret_model: ClassVar[Optional[GlobalSecret]] = None
     value: T
 
 
@@ -830,7 +837,9 @@ class MAASAutoIPMIUserPrivilegeLevelConfig(
 
 class MAASAutoIPMIKGBmcKeyConfig(Config[Optional[str]]):
     stored_as_secret: ClassVar[bool] = True
-    secret_name: ClassVar[Optional[str]] = "ipmi-k_g-key"
+    secret_model: ClassVar[Optional[GlobalSecret]] = (
+        MAASAutoIPMIKGBmcKeySecret()
+    )
     name: ClassVar[str] = "maas_auto_ipmi_k_g_bmc_key"
     default: ClassVar[Optional[str]] = ""
     description: ClassVar[str] = (
@@ -915,7 +924,7 @@ class VCenterUsernameConfig(Config[Optional[str]]):
 
 class VCenterPasswordConfig(Config[Optional[str]]):
     stored_as_secret: ClassVar[bool] = True
-    secret_name: ClassVar[Optional[str]] = "vcenter-password"
+    secret_model: ClassVar[Optional[GlobalSecret]] = VCenterPasswordSecret()
     name: ClassVar[str] = "vcenter_password"
     default: ClassVar[Optional[str]] = ""
     description: ClassVar[str] = "VMware vCenter password"
@@ -1027,7 +1036,7 @@ class MAASUrlConfig(Config[Optional[str]]):
 class OMAPIKeyConfig(Config[Optional[str]]):
     is_public: ClassVar[bool] = False
     stored_as_secret: ClassVar[bool] = True
-    secret_name: ClassVar[Optional[str]] = "omapi-key"
+    secret_model: ClassVar[Optional[GlobalSecret]] = OMAPIKeySecret()
     name: ClassVar[str] = "omapi_key"
     default: ClassVar[Optional[str]] = ""
     description: ClassVar[str] = ""
@@ -1037,7 +1046,7 @@ class OMAPIKeyConfig(Config[Optional[str]]):
 class RPCSharedSecretConfig(Config[Optional[str]]):
     is_public: ClassVar[bool] = False
     stored_as_secret: ClassVar[bool] = True
-    secret_name: ClassVar[Optional[str]] = "rpc-shared"
+    secret_model: ClassVar[Optional[GlobalSecret]] = RPCSharedSecret()
     name: ClassVar[str] = "rpc_shared_secret"
     default: ClassVar[Optional[str]] = None
     description: ClassVar[str] = ""
