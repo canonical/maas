@@ -20,7 +20,6 @@ class InterfaceBuilder(ResourceBuilder):
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     interface_speed: Union[int, Unset] = Field(default=UNSET, required=False)
     link_connected: Union[bool, Unset] = Field(default=UNSET, required=False)
     link_speed: Union[int, Unset] = Field(default=UNSET, required=False)

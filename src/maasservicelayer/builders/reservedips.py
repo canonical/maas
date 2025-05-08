@@ -20,7 +20,6 @@ class ReservedIPBuilder(ResourceBuilder):
 
     comment: Union[str, None, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
     mac_address: Union[MacAddress, Unset] = Field(
         default=UNSET, required=False

@@ -26,7 +26,6 @@ class NotificationBuilder(ResourceBuilder):
     )
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     dismissable: Union[bool, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     ident: Union[str, None, Unset] = Field(default=UNSET, required=False)
     message: Union[str, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
@@ -42,7 +41,6 @@ class NotificationDismissalBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     notification_id: Union[int, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
     user_id: Union[int, Unset] = Field(default=UNSET, required=False)

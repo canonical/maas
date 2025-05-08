@@ -18,7 +18,6 @@ class ServiceStatusBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     name: Union[ServiceName, Unset] = Field(default=UNSET, required=False)
     node_id: Union[int, Unset] = Field(default=UNSET, required=False)
     status: Union[ServiceStatusEnum, Unset] = Field(

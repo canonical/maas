@@ -19,7 +19,6 @@ class DhcpSnippetBuilder(ResourceBuilder):
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     description: Union[str, Unset] = Field(default=UNSET, required=False)
     enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     iprange_id: Union[int, Unset] = Field(default=UNSET, required=False)
     name: Union[str, Unset] = Field(default=UNSET, required=False)
     node_id: Union[int, Unset] = Field(default=UNSET, required=False)

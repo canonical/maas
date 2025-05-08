@@ -34,7 +34,6 @@ class SubnetBuilder(ResourceBuilder):
     gateway_ip: Union[IPvAnyAddress, None, Unset] = Field(
         default=UNSET, required=False
     )
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     managed: Union[bool, Unset] = Field(default=UNSET, required=False)
     name: Union[str, None, Unset] = Field(default=UNSET, required=False)
     rdns_mode: Union[RdnsMode, Unset] = Field(default=UNSET, required=False)

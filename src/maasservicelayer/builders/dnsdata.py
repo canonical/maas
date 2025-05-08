@@ -18,7 +18,6 @@ class DNSDataBuilder(ResourceBuilder):
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     dnsresource_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     rrdata: Union[str, Unset] = Field(default=UNSET, required=False)
     rrtype: Union[str, Unset] = Field(default=UNSET, required=False)
     ttl: Union[int, None, Unset] = Field(default=UNSET, required=False)

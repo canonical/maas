@@ -18,7 +18,6 @@ class ForwardDNSServerBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     ip_address: Union[IPvAnyAddress, Unset] = Field(
         default=UNSET, required=False
     )

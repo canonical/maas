@@ -16,7 +16,6 @@ class ConsumerBuilder(ResourceBuilder):
     """
 
     description: Union[str, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     key: Union[str, Unset] = Field(default=UNSET, required=False)
     name: Union[str, Unset] = Field(default=UNSET, required=False)
     secret: Union[str, Unset] = Field(default=UNSET, required=False)

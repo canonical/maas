@@ -20,7 +20,6 @@ class NeighbourBuilder(ResourceBuilder):
 
     count: Union[int, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     interface_id: Union[int, Unset] = Field(default=UNSET, required=False)
     ip: Union[IPvAnyAddress, None, Unset] = Field(
         default=UNSET, required=False

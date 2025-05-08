@@ -56,6 +56,8 @@ class {model_name}(ResourceBuilder):
 
 """
 
+EXCLUDED_FIELDS = ["id"]
+
 MODELS_BASE = "maasservicelayer.models.base"
 sys.path.insert(0, "./src")
 try:
@@ -231,6 +233,8 @@ class BuilderModel(GenericModel):
     def __eq__(self, other) -> bool:
         """Compare the fields to check if the two model differs."""
         if isinstance(other, BuilderModel):
+            if self.name != other.name:
+                return False
             fields_self = sorted(self.fields, key=lambda m: m.name)
             fields_other = sorted(other.fields, key=lambda m: m.name)
             if len(fields_self) != len(fields_other):
@@ -259,10 +263,12 @@ class BuilderModule(GenericModule[BuilderModel]):
                     lambda x: inspect.isfunction(x)
                     and not getattr(ResourceBuilder, x.__name__, False),
                 )
+                fields = list(class_.__fields__.values())
+                fields = [f for f in fields if f.name not in EXCLUDED_FIELDS]
                 models.append(
                     BuilderModel(
                         name=name,
-                        fields=list(class_.__fields__.values()),
+                        fields=fields,
                         methods=builder_methods,
                     )
                 )
@@ -342,9 +348,9 @@ class DomainModule(GenericModule[DomainModel]):
         )
         models = []
         for name, class_ in model_classes:
-            models.append(
-                DomainModel(name=name, fields=list(class_.__fields__.values()))
-            )
+            fields = list(class_.__fields__.values())
+            fields = [f for f in fields if f.name not in EXCLUDED_FIELDS]
+            models.append(DomainModel(name=name, fields=fields))
 
         return cls(filename=filename, models=models)
 

@@ -18,7 +18,6 @@ class DomainBuilder(ResourceBuilder):
 
     authoritative: Union[bool, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     name: Union[str, Unset] = Field(default=UNSET, required=False)
     ttl: Union[int, None, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

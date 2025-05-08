@@ -22,7 +22,6 @@ class StaticRouteBuilder(ResourceBuilder):
     gateway_ip: Union[IPvAnyAddress, Unset] = Field(
         default=UNSET, required=False
     )
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     metric: Union[int, Unset] = Field(default=UNSET, required=False)
     source_id: Union[int, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

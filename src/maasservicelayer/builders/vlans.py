@@ -24,7 +24,6 @@ class VlanBuilder(ResourceBuilder):
         default=UNSET, required=False
     )
     fabric_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     mtu: Union[int, Unset] = Field(default=UNSET, required=False)
     name: Union[str, None, Unset] = Field(default=UNSET, required=False)
     primary_rack_id: Union[int, None, Unset] = Field(

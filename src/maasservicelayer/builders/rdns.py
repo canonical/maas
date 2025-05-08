@@ -20,7 +20,6 @@ class RDNSBuilder(ResourceBuilder):
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     hostname: Union[str, None, Unset] = Field(default=UNSET, required=False)
     hostnames: Union[list[str], Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
     observer_id: Union[int, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

@@ -19,7 +19,6 @@ class UserBuilder(ResourceBuilder):
     date_joined: Union[datetime, Unset] = Field(default=UNSET, required=False)
     email: Union[str, None, Unset] = Field(default=UNSET, required=False)
     first_name: Union[str, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     is_active: Union[bool, Unset] = Field(default=UNSET, required=False)
     is_staff: Union[bool, Unset] = Field(default=UNSET, required=False)
     is_superuser: Union[bool, Unset] = Field(default=UNSET, required=False)
@@ -42,6 +41,5 @@ class UserProfileBuilder(ResourceBuilder):
         default=UNSET, required=False
     )
     completed_intro: Union[bool, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     is_local: Union[bool, Unset] = Field(default=UNSET, required=False)
     user_id: Union[int, Unset] = Field(default=UNSET, required=False)

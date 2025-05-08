@@ -17,6 +17,5 @@ class FileStorageBuilder(ResourceBuilder):
 
     content: Union[str, Unset] = Field(default=UNSET, required=False)
     filename: Union[str, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     key: Union[str, Unset] = Field(default=UNSET, required=False)
     owner_id: Union[int, None, Unset] = Field(default=UNSET, required=False)

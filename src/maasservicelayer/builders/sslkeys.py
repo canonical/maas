@@ -17,7 +17,6 @@ class SSLKeyBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     key: Union[str, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
     user_id: Union[int, Unset] = Field(default=UNSET, required=False)

@@ -51,7 +51,6 @@ class MachineBuilder(ResourceBuilder):
     fqdn: Union[str, Unset] = Field(default=UNSET, required=False)
     hostname: Union[str, Unset] = Field(default=UNSET, required=False)
     hwe_kernel: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     locked: Union[bool, Unset] = Field(default=UNSET, required=False)
     memory: Union[int, Unset] = Field(default=UNSET, required=False)
     node_type: Union[NodeTypeEnum, Unset] = Field(
@@ -90,7 +89,6 @@ class PciDeviceBuilder(ResourceBuilder):
     hardware_type: Union[HardwareDeviceTypeEnum, Unset] = Field(
         default=UNSET, required=False
     )
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     pci_address: Union[str, Unset] = Field(default=UNSET, required=False)
     product_id: Union[str, Unset] = Field(default=UNSET, required=False)
     product_name: Union[str, Unset] = Field(default=UNSET, required=False)
@@ -115,7 +113,6 @@ class UsbDeviceBuilder(ResourceBuilder):
     hardware_type: Union[HardwareDeviceTypeEnum, Unset] = Field(
         default=UNSET, required=False
     )
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     product_id: Union[str, Unset] = Field(default=UNSET, required=False)
     product_name: Union[str, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

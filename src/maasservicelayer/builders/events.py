@@ -28,7 +28,6 @@ class EventBuilder(ResourceBuilder):
     endpoint: Union[EndpointChoicesEnum, Unset] = Field(
         default=UNSET, required=False
     )
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     ip_address: Union[IPvAnyAddress, None, Unset] = Field(
         default=UNSET, required=False
     )
@@ -53,7 +52,6 @@ class EventTypeBuilder(ResourceBuilder):
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     description: Union[str, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     level: Union[LoggingLevelEnum, Unset] = Field(
         default=UNSET, required=False
     )

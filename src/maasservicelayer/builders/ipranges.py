@@ -21,7 +21,6 @@ class IPRangeBuilder(ResourceBuilder):
     comment: Union[str, None, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     end_ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     start_ip: Union[IPvAnyAddress, Unset] = Field(
         default=UNSET, required=False
     )

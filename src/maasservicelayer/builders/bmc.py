@@ -18,7 +18,6 @@ class BmcBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     power_parameters: Union[dict, Unset] = Field(default=UNSET, required=False)
     power_type: Union[PowerTypeEnum, Unset] = Field(
         default=UNSET, required=False

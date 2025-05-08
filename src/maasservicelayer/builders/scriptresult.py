@@ -18,7 +18,6 @@ class ScriptResultBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     output: Union[str, Unset] = Field(default=UNSET, required=False)
     parameters: Union[dict, Unset] = Field(default=UNSET, required=False)
     result: Union[str, Unset] = Field(default=UNSET, required=False)

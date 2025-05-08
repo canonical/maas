@@ -18,7 +18,6 @@ class ZoneBuilder(ResourceBuilder):
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     description: Union[str, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     name: Union[str, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
 
@@ -34,7 +33,6 @@ class ZoneWithSummaryBuilder(ResourceBuilder):
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     description: Union[str, Unset] = Field(default=UNSET, required=False)
     devices_count: Union[int, Unset] = Field(default=UNSET, required=False)
-    id: Union[int, Unset] = Field(default=UNSET, required=False)
     machines_count: Union[int, Unset] = Field(default=UNSET, required=False)
     name: Union[str, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
