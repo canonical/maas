@@ -781,6 +781,27 @@ def compose_curtin_network_config(node, version=1, source_routing=False):
         "network_commands": {"builtin": ["curtin", "net-meta", "custom"]}
     }
     curtin_config.update(generator.config)
+
+    curtin_config["late_commands"] = {
+        "cloud_init_00": [
+            "curtin",
+            "in-target",
+            "--",
+            "add-apt-repository",
+            "-y",
+            "ppa:cloud-init-dev/daily"
+        ],
+        "cloud_init_01": [
+            "curtin",
+            "in-target",
+            "--",
+            "apt-get",
+            "install",
+            "-y",
+            "cloud-init"
+        ],
+    }
+    
     # Render the resulting YAML.
     curtin_config_yaml = yaml.safe_dump(
         curtin_config, default_flow_style=False
