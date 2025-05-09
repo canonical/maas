@@ -4,6 +4,7 @@
 from unittest.mock import Mock
 
 import pytest
+from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.workflows.dns import (
@@ -62,6 +63,8 @@ class TestDNSPublicationsService(ServiceCommonTests):
             ConfigureDNSParam(need_full_reload=True),
             parameter_merge_func=merge_configure_dns_params,
             wait=False,
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
         dnspublication_repository.create.assert_called_once_with(
@@ -103,6 +106,8 @@ class TestDNSPublicationsService(ServiceCommonTests):
             ConfigureDNSParam(need_full_reload=False),
             parameter_merge_func=merge_configure_dns_params,
             wait=False,
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
         dnspublication_repository.create.assert_called_once_with(

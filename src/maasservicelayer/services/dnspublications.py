@@ -4,6 +4,8 @@
 from datetime import datetime
 from typing import Optional
 
+from temporalio.common import WorkflowIDReusePolicy
+
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.workflows.dns import (
     CONFIGURE_DNS_WORKFLOW_NAME,
@@ -78,6 +80,8 @@ class DNSPublicationsService(
             ),
             parameter_merge_func=merge_configure_dns_params,
             wait=False,
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
         return await self.create(

@@ -8,6 +8,7 @@ import random
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import ProtectedError
 from netaddr import IPAddress
+from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.dns import HostnameRRsetMapping
 from maascommon.workflows.dns import (
@@ -436,6 +437,8 @@ class TestDomain(MAASServerTestCase):
             workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
             param=ConfigureDNSParam(need_full_reload=True),
             task_queue="region",
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
     def test_save_does_not_calls_dns_workflow_if_nonauthoritative(self):

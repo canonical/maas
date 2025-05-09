@@ -9,6 +9,7 @@ from typing import Optional
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Manager, Model
 from django.db.models.fields import BigIntegerField, CharField, DateTimeField
+from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.workflows.dns import (
@@ -90,6 +91,8 @@ class DNSPublicationManager(Manager):
                 need_full_reload=action == DnsUpdateAction.RELOAD
             ),
             task_queue="region",
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
         return self.create(

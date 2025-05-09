@@ -452,6 +452,7 @@ ServiceLayerRule = Rule(
     Allow("structlog|structlog.**"),
     Allow("starlette.datastructures.Headers"),
     Allow("temporalio.client.*"),
+    Allow("temporalio.common.*"),
     Allow("yarl|yarl.**"),
     Allow(StandardLibraries),
     # TODO: Remove when we can do everything without Django ORM

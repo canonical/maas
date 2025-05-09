@@ -8,6 +8,7 @@ from random import randint
 
 from django.db import connection
 from django.utils import timezone
+from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.workflows.dns import (
@@ -171,4 +172,6 @@ class TestDNSPublicationManager(MAASServerTestCase):
             workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
             param=ConfigureDNSParam(need_full_reload=True),
             task_queue="region",
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
