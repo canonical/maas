@@ -133,17 +133,6 @@ class GetBootConfig(amp.Command):
     errors = {BootConfigNoResponse: b"BootConfigNoResponse"}
 
 
-class GetArchiveMirrors(amp.Command):
-    """Return the Main and Port mirrors to use.
-
-    :since: 1.7
-    """
-
-    arguments = []
-    response = [(b"main", ParsedURL()), (b"ports", ParsedURL())]
-    errors = []
-
-
 class MarkNodeFailed(amp.Command):
     """Mark a node as 'broken'.
 

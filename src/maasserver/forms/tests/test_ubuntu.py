@@ -3,10 +3,8 @@
 
 """Tests for `UbuntuForm`."""
 
-from urllib.parse import urlparse
-
 from maasserver.forms import UbuntuForm
-from maasserver.rpc.packagerepository import get_archive_mirrors
+from maasserver.models.packagerepository import PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -21,10 +19,8 @@ class TestUbuntuForm(MAASServerTestCase):
         form = UbuntuForm(data=params)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
-        self.assertEqual(
-            {"main": urlparse(main_url), "ports": urlparse(ports_url)},
-            get_archive_mirrors(),
-        )
+        self.assertEqual(main_url, PackageRepository.get_main_archive_url())
+        self.assertEqual(ports_url, PackageRepository.get_ports_archive_url())
 
     def test_form_loads_initial_values(self):
         initial_values = {
