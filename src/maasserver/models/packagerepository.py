@@ -13,6 +13,12 @@ from django.db.models import (
     TextField,
 )
 
+from maascommon.enums.package_repositories import (
+    ComponentsToDisableEnum,
+    KnownArchesEnum,
+    KnownComponentsEnum,
+    PocketsToDisableEnum,
+)
 from maasserver.fields import URLOrPPAField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -90,12 +96,30 @@ class PackageRepositoryManager(Manager, PackageRepositoryQueriesMixin):
 class PackageRepository(CleanSave, TimestampedModel):
     """A `PackageRepository`."""
 
-    MAIN_ARCHES = ["amd64", "i386"]
-    PORTS_ARCHES = ["armhf", "arm64", "ppc64el", "s390x"]
+    MAIN_ARCHES = [KnownArchesEnum.AMD64.value, KnownArchesEnum.I386.value]
+    PORTS_ARCHES = [
+        KnownArchesEnum.ARMHF.value,
+        KnownArchesEnum.ARM64.value,
+        KnownArchesEnum.PPC64EL.value,
+        KnownArchesEnum.S390X.value,
+    ]
     KNOWN_ARCHES = MAIN_ARCHES + PORTS_ARCHES
-    POCKETS_TO_DISABLE = ["updates", "security", "backports"]
-    COMPONENTS_TO_DISABLE = ["restricted", "universe", "multiverse"]
-    KNOWN_COMPONENTS = ["main", "restricted", "universe", "multiverse"]
+    POCKETS_TO_DISABLE = [
+        PocketsToDisableEnum.UPDATES.value,
+        PocketsToDisableEnum.SECURITY.value,
+        PocketsToDisableEnum.BACKPORTS.value,
+    ]
+    COMPONENTS_TO_DISABLE = [
+        ComponentsToDisableEnum.RESTRICTED.value,
+        ComponentsToDisableEnum.UNIVERSE.value,
+        ComponentsToDisableEnum.MULTIVERSE.value,
+    ]
+    KNOWN_COMPONENTS = [
+        KnownComponentsEnum.MAIN.value,
+        KnownComponentsEnum.RESTRICTED.value,
+        KnownComponentsEnum.UNIVERSE.value,
+        KnownComponentsEnum.MULTIVERSE.value,
+    ]
 
     objects = PackageRepositoryManager()
 

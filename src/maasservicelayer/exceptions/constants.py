@@ -47,3 +47,8 @@ MISSING_DYNAMIC_RANGE_VIOLATION_TYPE = "MissingDynamicRangeViolation"
 
 # Zones
 CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE = "CannotDeleteDefaultZoneViolation"
+
+# Package Repositories
+CANNOT_DELETE_DEFAULT_PACKAGE_REPO_VIOLATION_TYPE = (
+    "CannotDeleteDefaultPackageRepositoryViolation"
+)

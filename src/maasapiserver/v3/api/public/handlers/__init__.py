@@ -16,6 +16,9 @@ from maasapiserver.v3.api.public.handlers.machines import MachinesHandler
 from maasapiserver.v3.api.public.handlers.notifications import (
     NotificationsHandler,
 )
+from maasapiserver.v3.api.public.handlers.package_repositories import (
+    PackageRepositoriesHandler,
+)
 from maasapiserver.v3.api.public.handlers.reservedips import ReservedIPsHandler
 from maasapiserver.v3.api.public.handlers.resource_pools import (
     ResourcePoolHandler,
@@ -46,6 +49,7 @@ APIv3 = API(
         IPRangesHandler(),
         MachinesHandler(),
         NotificationsHandler(),
+        PackageRepositoriesHandler(),
         ReservedIPsHandler(),
         ResourcePoolHandler(),
         RootHandler(),

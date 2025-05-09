@@ -715,6 +715,25 @@ NumaNodeTable = Table(
     ),
 )
 
+PackageRepositoryTable = Table(
+    "maasserver_packagerepository",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(40), nullable=False, unique=True),
+    Column("url", String(200), nullable=False),
+    Column("components", ARRAY(Text), nullable=True),
+    Column("arches", ARRAY(Text), nullable=True),
+    Column("key", Text, nullable=False),
+    Column("default", Boolean, nullable=False),
+    Column("enabled", Boolean, nullable=False),
+    Column("disabled_pockets", ARRAY(Text), nullable=True),
+    Column("distributions", ARRAY(Text), nullable=True),
+    Column("disabled_components", ARRAY(Text), nullable=True),
+    Column("disable_sources", Boolean, nullable=False),
+)
+
 PhysicalBlockDeviceTable = Table(
     "maasserver_physicalblockdevice",
     METADATA,
