@@ -7,7 +7,7 @@ from typing import Any
 from unittest.mock import Mock, PropertyMock
 import uuid
 
-from aiohttp import ClientResponse, ClientSession
+from aiohttp import ClientResponse, ClientSession, FormData
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity
@@ -33,7 +33,9 @@ from maastemporalworker.workflow.msm import (
     MSM_REFRESH_EP,
     MSM_SEND_ENROL_ACTIVITY_NAME,
     MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
+    MSM_SET_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_SET_ENROL_ACTIVITY_NAME,
+    MSM_SS_EP,
     MSM_VERIFY_EP,
     MSM_VERIFY_TOKEN_ACTIVITY_NAME,
     MSMConnectorActivity,
@@ -42,6 +44,7 @@ from maastemporalworker.workflow.msm import (
     MSMEnrolSiteWorkflow,
     MSMHeartbeatParam,
     MSMHeartbeatWorkflow,
+    MSMSetBootSourceParam,
     MSMTokenRefreshParam,
     MSMTokenRefreshWorkflow,
     MSMTokenVerifyParam,
@@ -415,6 +418,25 @@ class TestMSMActivities:
         ret = await env.run(msm_act.verify_token, verify_param)
         assert not ret
 
+    async def test_set_boot_source_activity(
+        self, mocker, msm_act, enrol_param
+    ):
+        mocked_session = msm_act._session
+        self._mock_post(mocker, mocked_session, True, 201, "")
+        env = ActivityEnvironment()
+        await env.run(
+            msm_act.set_bootsource,
+            MSMSetBootSourceParam(sm_url=enrol_param.url),
+        )
+        mocked_session.post.assert_called_once()
+        args = mocked_session.post.call_args.args
+        kwargs = mocked_session.post.call_args.kwargs
+        assert "/api/2.0/boot-sources/" in args[0]
+        expected_data = FormData()
+        expected_data.add_field(name="url", value=_MSM_BASE_URL + MSM_SS_EP)
+        expected_data.add_field(name="keyring_data", value=b" ")
+        assert kwargs["data"]._fields == expected_data._fields
+
 
 class TestMSMEnrolWorkflow:
     async def test_enrolment(self, enrol_param):
@@ -442,6 +464,10 @@ class TestMSMEnrolWorkflow:
             calls["msm-verify-token"].append(replace(input))
             return True
 
+        @activity.defn(name=MSM_SET_BOOT_SOURCE_ACTIVITY_NAME)
+        async def set_boot_source(input: MSMSetBootSourceParam) -> None:
+            calls["msm-set-boot-source"].append(replace(input))
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -449,6 +475,7 @@ class TestMSMEnrolWorkflow:
                 workflows=[MSMEnrolSiteWorkflow],
                 activities=[
                     send_enrol,
+                    set_boot_source,
                     check_enrol,
                     set_enrol,
                     verify_token,
@@ -470,6 +497,8 @@ class TestMSMEnrolWorkflow:
         assert cred.rotation_interval_minutes == _JWT_ROTATION_INTERVAL
         verify = calls["msm-verify-token"].pop()
         assert verify.jwt == _JWT_ACCESS
+        assert len(calls["msm-set-boot-source"]) == 1
+        assert calls["msm-set-boot-source"][0].sm_url == _MSM_BASE_URL
 
     async def test_enrolment_fail(self, enrol_param):
         calls = defaultdict(list)

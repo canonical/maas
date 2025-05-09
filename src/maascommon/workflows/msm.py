@@ -54,3 +54,8 @@ class MSMTokenRefreshParam:
     sm_url: str
     jwt: str
     rotation_interval_minutes: int
+
+
+@dataclasses.dataclass
+class MSMSetBootSourceParam:
+    sm_url: str

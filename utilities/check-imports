@@ -402,6 +402,7 @@ RegionControllerWorkerRule = Rule(
     Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),
+    Allow("apiclient.maas_client.MAASOAuth"),
     Allow("maasserver.workflow.**"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("maastemporalworker.**"),

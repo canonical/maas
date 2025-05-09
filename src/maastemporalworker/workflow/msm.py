@@ -11,7 +11,7 @@ from datetime import timedelta
 import ssl
 from typing import Any
 
-from aiohttp import ClientSession, ClientTimeout, TCPConnector
+from aiohttp import ClientSession, ClientTimeout, FormData, TCPConnector
 from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
 from temporalio import workflow
@@ -20,6 +20,7 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
+from apiclient.maas_client import MAASOAuth
 from maascommon.constants import SYSTEM_CA_FILE
 from maascommon.workflows.msm import (
     MachinesCountByStatus,
@@ -30,6 +31,7 @@ from maascommon.workflows.msm import (
     MSMConnectorParam,
     MSMEnrolParam,
     MSMHeartbeatParam,
+    MSMSetBootSourceParam,
     MSMTokenRefreshParam,
 )
 from maasservicelayer.db import Database
@@ -53,6 +55,7 @@ MSM_ENROL_EP = "/site/v1/enroll"
 MSM_DETAIL_EP = "/site/v1/details"
 MSM_REFRESH_EP = "/site/v1/enroll/refresh"
 MSM_VERIFY_EP = "/site/v1/enroll/verify"
+MSM_SS_EP = "/api/v1/images/latest/stable/streams/v1/index.json"
 
 # Activities names
 MSM_CHECK_ENROL_ACTIVITY_NAME = "msm-check-enrol"
@@ -63,6 +66,7 @@ MSM_GET_ENROL_ACTIVITY_NAME = "msm-get-enrol"
 MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME = "msm-get-heartbeat-data"
 MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
 MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
+MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
 
 
 # Activities parameters
@@ -219,6 +223,32 @@ class MSMConnectorActivity(ActivityBase):
                     "rotation_interval_minutes": input.rotation_interval_minutes,
                 },
             )
+
+    @activity_defn_with_context(name=MSM_SET_BOOT_SOURCE_ACTIVITY_NAME)
+    async def set_bootsource(self, input: MSMSetBootSourceParam) -> None:
+        async with self.start_transaction() as services:
+            api_key = await services.users.get_MAAS_user_apikey()
+            key, token, secret = api_key.split(":")
+            oauth = MAASOAuth(key, token, secret)
+            maas_base_url = await services.configurations.get("maas_url")
+            maas_url = f"{maas_base_url}/api/2.0/boot-sources/"
+            headers = {}
+            oauth.sign_request(maas_url, headers)
+            data = {
+                "url": input.sm_url + MSM_SS_EP,
+                "keyring_data": b" ",
+            }
+            form_data = FormData()
+            for key, value in data.items():
+                form_data.add_field(name=key, value=value)
+            async with self._session.post(
+                maas_url, data=form_data, headers=headers
+            ) as response:
+                if response.status != 201:
+                    body = await response.text()
+                    raise ApplicationError(
+                        f"got unexpected return code: HTTP {response.status}, {body}"
+                    )
 
     @activity_defn_with_context(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:
@@ -388,6 +418,14 @@ class MSMEnrolSiteWorkflow:
             MSMTokenVerifyParam(
                 sm_url=param.url,
                 jwt=new_jwt,
+            ),
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
+
+        await workflow.execute_activity(
+            MSM_SET_BOOT_SOURCE_ACTIVITY_NAME,
+            MSMSetBootSourceParam(
+                sm_url=param.url,
             ),
             start_to_close_timeout=MSM_TIMEOUT,
         )

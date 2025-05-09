@@ -218,11 +218,15 @@ def get_cert_verify_msg(base_url: str, previous_url: str = "") -> str:
             print(f"\nCould not retrieve a certificate from {base_url}.\n")
         raise
 
+    ss_warning = "\nWARNING: Enrolling with Site Manager will update this MAAS's Boot Source to be "
+    ss_warning += "the Site Manager SimpleStreams mirror. You can change this after enrollment.\n\n"
+
     # http
     if cert is None:
         msg = f"\nThe URL of the Site Manager you want to enrol with is {base_url}\n"
         if previous_url:
             msg += f"WARNING: This MAAS was previously enroled to {previous_url}\n\n"
+        msg += ss_warning
         msg += "Are you sure you want to enrol with this site? [Y] [n]"
         return msg
 
@@ -239,6 +243,7 @@ def get_cert_verify_msg(base_url: str, previous_url: str = "") -> str:
         msg += (
             f"WARNING: This MAAS was previously enroled to {previous_url}\n\n"
         )
+    msg += ss_warning
     msg += (
         "The certificate of the Site Manager you want to enrol with is "
         "the following:\n\n"
