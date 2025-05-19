@@ -35,25 +35,26 @@ class TestCommissioningFormForm(MAASServerTestCase):
 
     def test_commissioningform_contains_real_and_ui_choice(self):
         release = factory.pick_ubuntu_release()
-        name = "ubuntu/%s" % release
+        series = release.series
+        name = "ubuntu/%s" % series
         arch = factory.make_name("arch")
-        kernel = "hwe-" + release[0]
+        kernel = "hwe-" + release.version.split(" ")[0]
         # Disable boot sources signals otherwise the test fails due to unrun
         # post-commit tasks at the end of the test.
         self.useFixture(SignalsDisabled("bootsources"))
         factory.make_RegionController()
-        factory.make_BootSourceCache(os=name, subarch=kernel, release=release)
+        factory.make_BootSourceCache(os=name, subarch=kernel, release=series)
         factory.make_usable_boot_resource(
             name=name,
             architecture=f"{arch}/{kernel}",
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
         )
-        Config.objects.set_config("commissioning_distro_series", release)
+        Config.objects.set_config("commissioning_distro_series", series)
         form = CommissioningForm()
         self.assertCountEqual(
             [
                 ("", "--- No minimum kernel ---"),
-                (kernel, f"{release} ({kernel})"),
+                (kernel, f"{series} ({kernel})"),
             ],
             form.fields["default_min_hwe_kernel"].choices,
         )

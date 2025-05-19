@@ -11,7 +11,7 @@ import random
 import time
 from typing import Dict, Iterable, List
 
-from distro_info import UbuntuDistroInfo
+from distro_info import DistroRelease, UbuntuDistroInfo
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -243,21 +243,26 @@ class Factory(maastesting.factory.Factory):
         releases = osystem.get_supported_commissioning_releases()
         return random.choice(releases)
 
-    def pick_ubuntu_release(self, but_not=None):
+    def pick_ubuntu_release(
+        self, but_not: list[str] | None = None
+    ) -> DistroRelease:
         """Pick a random supported Ubuntu release.
 
         :param but_not: Exclude these releases from the result
         :type but_not: Sequence
         """
         ubuntu_releases = UbuntuDistroInfo()
-        supported_releases = ubuntu_releases.all[
+        supported_releases = ubuntu_releases._releases[
             ubuntu_releases.all.index("precise") :
         ]
         if but_not is None:
             but_not = []
-        return random.choice(
-            [choice for choice in supported_releases if choice not in but_not]
-        )
+        choices = [
+            choice
+            for choice in supported_releases
+            if choice.series not in but_not
+        ]
+        return random.choice(choices)
 
     def make_script_content(
         self,

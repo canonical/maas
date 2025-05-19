@@ -437,12 +437,13 @@ class TestOsystems(MAASServerTestCase):
     def test_make_hwe_kernel_ui_text_finds_release_from_bootsourcecache(self):
         self.useFixture(SignalsDisabled("bootsources"))
         release = factory.pick_ubuntu_release()
-        kernel = "hwe-" + release[0]
+        series = release.series
+        kernel = "hwe-" + release.version.split(" ")[0]
         factory.make_BootSourceCache(
-            os="ubuntu/%s" % release, subarch=kernel, release=release
+            os="ubuntu/%s" % series, subarch=kernel, release=series
         )
         self.assertEqual(
-            f"{release} ({kernel})", make_hwe_kernel_ui_text(kernel)
+            f"{series} ({kernel})", make_hwe_kernel_ui_text(kernel)
         )
 
     def test_make_hwe_kernel_ui_finds_release_from_ubuntudistroinfo(self):
@@ -548,6 +549,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 {
                     "string": "hwe-%s" % release["series"][0],
                     "expected": version_tuple + tuple([OLD_STYLE_HWE_WEIGHT]),
+                    "skip_if": version_tuple[0] >= 25,
                 },
             ),
             (
@@ -784,6 +786,8 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
         )
 
     def test_get_release_version_from_string(self):
+        if getattr(self, "skip_if", False):
+            self.skipTest("not applicable to this scenario")
         self.assertEqual(
             self.expected, get_release_version_from_string(self.string)
         )
@@ -1060,10 +1064,10 @@ class TestGetReleaseFromDistroInfo(MAASServerTestCase):
             release, get_release_from_distro_info(release["series"])
         )
 
-    def test_finds_by_series_first_letter(self):
+    def test_finds_by_series_prefix(self):
         release = self.pick_release()
         self.assertEqual(
-            release, get_release_from_distro_info(release["series"][0])
+            release, get_release_from_distro_info(release["series"][0:2])
         )
 
     def test_finds_by_version(self):
