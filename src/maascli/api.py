@@ -35,19 +35,26 @@ from maascli.utils import (
 
 
 def http_request(
-    url, method, body=None, headers=None, ca_certs=None, insecure=False
+    url,
+    method,
+    body=None,
+    headers=None,
+    ca_certs=None,
+    insecure=False,
+    client=None,
 ):
     """Issue an http request."""
-    http = httplib2.Http(
-        ca_certs=ca_certs, disable_ssl_certificate_validation=insecure
-    )
+    if client is None:
+        client = httplib2.Http(
+            ca_certs=ca_certs, disable_ssl_certificate_validation=insecure
+        )
     try:
         # XXX mpontillo 2015-12-15: Should force input to be in bytes here.
         # This calls into httplib2, which is going to call a parser which
         # expects this to be a `str`.
         if isinstance(url, bytes):
             url = url.decode("ascii")
-        return http.request(url, method, body=body, headers=headers)
+        return client.request(url, method, body=body, headers=headers)
     except httplib2.ssl.SSLError as error:
         raise CommandError(  # noqa: B904
             "Certificate verification failed, use --insecure/-k to "

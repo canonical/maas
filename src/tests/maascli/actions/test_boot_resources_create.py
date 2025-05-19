@@ -38,8 +38,14 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action_bases = (BootResourcesCreateAction,)
         action_ns = {
             "action": {"method": "POST"},
-            "handler": {"uri": b"/MAAS/api/2.0/boot-resources/", "params": []},
-            "profile": {"credentials": make_api_credentials()},
+            "handler": {
+                "path": b"/MAAS/api/2.0/boot-resources/",
+                "params": [],
+            },
+            "profile": {
+                "credentials": make_api_credentials(),
+                "url": "http://localhost",
+            },
         }
         action_class = type("create", action_bases, action_ns)
         action = action_class(Mock())
@@ -64,7 +70,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         self.patch(action, "prepare_initial_payload").return_value = ("", {})
         self.assertEqual(
             content.encode("ascii"),
-            action.initial_request("http://example.com", Mock()),
+            action.initial_request(Mock(), "http://example.com", Mock()),
         )
 
     def test_initial_request_raises_CommandError_on_error(self):
@@ -74,23 +80,12 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action = self.make_boot_resources_create_action()
         self.patch(action, "prepare_initial_payload").return_value = ("", {})
         self.assertRaises(
-            CommandError, action.initial_request, "http://example.com", Mock()
+            CommandError,
+            action.initial_request,
+            Mock(),
+            "http://example.com",
+            Mock(),
         )
-
-    def test_initial_request_is_using_cacerts(self):
-        content = factory.make_name("content")
-        self.configure_http_request(200, content.encode("ascii"))
-        action = self.make_boot_resources_create_action()
-        self.patch(action, "prepare_initial_payload").return_value = ("", {})
-        mock_materializer = self.patch(
-            boot_resources_create, "materialize_certificate"
-        )
-        mock_materializer.return_value = None
-        self.assertEqual(
-            content.encode("ascii"),
-            action.initial_request("http://example.com", Mock()),
-        )
-        mock_materializer.assert_called_once()
 
     def test_prepare_initial_payload_raises_CommandError_missing_content(self):
         action = self.make_boot_resources_create_action()
@@ -163,7 +158,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         self.configure_http_request(500, b"")
         action = self.make_boot_resources_create_action()
         self.assertRaises(
-            CommandError, action.put_upload, "http://example.com", b""
+            CommandError, action.put_upload, Mock(), "http://example.com", b""
         )
 
     def test_put_upload_sends_content_type_and_length_headers(self):
@@ -173,7 +168,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action = self.make_boot_resources_create_action()
         self.patch(action, "sign")
         data = factory.make_bytes()
-        action.put_upload("http://example.com", data)
+        action.put_upload(Mock(), "http://example.com", data)
         headers = {
             "Content-Type": "application/octet-stream",
             "Content-Length": "%s" % len(data),
@@ -183,8 +178,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
             "PUT",
             body=ANY,
             headers=headers,
-            ca_certs=None,
-            insecure=False,
+            client=ANY,
         )
 
     def test_upload_content_calls_put_upload_with_sizeof_CHUNK_SIZE(self):
@@ -192,27 +186,22 @@ class TestBootResourcesCreateAction(MAASTestCase):
         size, sha256, stream = self.make_content(size=size)
         action = self.make_boot_resources_create_action()
         mock_upload = self.patch(action, "put_upload")
-        action.upload_content(sentinel.upload_uri, stream)
+        action.upload_content(Mock(), sentinel.upload_uri, stream)
 
         call_data_sizes = [
-            len(call[0][1]) for call in mock_upload.call_args_list
+            len(call[0][2]) for call in mock_upload.call_args_list
         ]
         self.assertEqual([CHUNK_SIZE, CHUNK_SIZE], call_data_sizes)
 
-    def test_upload_content_is_using_cacerts(self):
-        size = CHUNK_SIZE * 2
-        size, sha256, stream = self.make_content(size=size)
+    def test_uses_cacerts(self):
         action = self.make_boot_resources_create_action()
-        mock_upload = self.patch(action, "put_upload")
+        self.patch(action, "initial_request")
+        self.patch(action, "get_resource_file")
+        self.patch(action, "put_upload")
         mock_materializer = self.patch(
             boot_resources_create, "materialize_certificate"
         )
         mock_materializer.return_value = None
 
-        action.upload_content(sentinel.upload_uri, stream)
-
-        call_data_sizes = [
-            len(call[0][1]) for call in mock_upload.call_args_list
-        ]
-        self.assertEqual([CHUNK_SIZE, CHUNK_SIZE], call_data_sizes)
+        action(Mock())
         mock_materializer.assert_called_once()

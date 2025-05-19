@@ -8,6 +8,8 @@ from io import BytesIO
 import json
 from urllib.parse import urljoin
 
+import httplib2
+
 from apiclient.multipart import (
     build_multipart_message,
     encode_multipart_message,
@@ -31,11 +33,16 @@ class BootResourcesCreateAction(Action):
     """
 
     def __call__(self, options):
+        client = httplib2.Http(
+            ca_certs=materialize_certificate(self.profile),
+            disable_ssl_certificate_validation=options.insecure,
+        )
+
         # TODO: this is el-cheapo URI Template
         # <http://tools.ietf.org/html/rfc6570> support; use uritemplate-py
         # <https://github.com/uri-templates/uritemplate-py> here?
         uri = self.uri.format(**vars(options))
-        content = self.initial_request(uri, options)
+        content = self.initial_request(client, uri, options)
 
         # Get the created resource file for the boot resource
         rfile = self.get_resource_file(content)
@@ -50,11 +57,9 @@ class BootResourcesCreateAction(Action):
         # Upload content
         data = dict(options.data)
         upload_uri = urljoin(uri, rfile["upload_uri"])
-        self.upload_content(
-            upload_uri, data["content"], insecure=options.insecure
-        )
+        self.upload_content(client, upload_uri, data["content"])
 
-    def initial_request(self, uri, options):
+    def initial_request(self, client, uri, options):
         """Performs the initial POST request, to create the boot resource."""
         # Bundle things up ready to throw over the wire.
         body, headers = self.prepare_initial_payload(options.data)
@@ -76,8 +81,7 @@ class BootResourcesCreateAction(Action):
             self.method,
             body=body,
             headers=headers,
-            ca_certs=materialize_certificate(self.profile),
-            insecure=options.insecure,
+            client=client,
         )
 
         # 2xx status codes are all okay.
@@ -145,7 +149,7 @@ class BootResourcesCreateAction(Action):
         _, rfile = resource_set["files"].popitem()
         return rfile
 
-    def put_upload(self, upload_uri, data, ca_certs=None, insecure=False):
+    def put_upload(self, client, upload_uri, data):
         """Send PUT method to upload data."""
         headers = {
             "Content-Type": "application/octet-stream",
@@ -160,24 +164,20 @@ class BootResourcesCreateAction(Action):
             "PUT",
             body=data,
             headers=headers,
-            ca_certs=ca_certs,
-            insecure=insecure,
+            client=client,
         )
         if response.status != 200:
             utils.print_response_content(response, content)
             raise CommandError(2)
 
-    def upload_content(self, upload_uri, content, insecure=False):
+    def upload_content(self, client, upload_uri, content):
         """Upload the content in chunks."""
-        ca_certs = materialize_certificate(self.profile)
         with content() as fd:
             while True:
                 buf = fd.read(CHUNK_SIZE)
                 length = len(buf)
                 if length > 0:
-                    self.put_upload(
-                        upload_uri, buf, ca_certs=ca_certs, insecure=insecure
-                    )
+                    self.put_upload(client, upload_uri, buf)
                 if length != CHUNK_SIZE:
                     break
 
