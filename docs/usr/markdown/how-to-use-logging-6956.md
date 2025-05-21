@@ -191,3 +191,4 @@ $ maas $PROFILE events query level=AUDIT hostname=your-hostname limit=1000 > /tm
 This command will retrieve a substantial number of audit events for the specified hostname and store them in a file named `audit-data`.
 
 Next, you can analyze this data to track changes, actions, and events related to the machine's life cycle. This can help in troubleshooting and monitoring machine behavior over time.
+

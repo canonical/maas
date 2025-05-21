@@ -34,3 +34,4 @@ There is always that one, elusive parameter, easy to forget amid many other deta
 - MAAS can talk to more than twenty different kinds of [power drivers](https://maas.io/docs/reference-power-drivers), each with numerous parameters that must be correctly specified.
 - When deploying a machine, curtin can apply any one of five different [standard storage layouts](https://maas.io/docs/reference-maas-storage#p-17455-standard-storage-layouts) and many combinations of [custom layouts](https://maas.io/docs/reference-maas-storage#p-17455-custom-storage-layouts) to match provisioning requirements.
 - MAAS [specialty tags](https://maas.io/docs/reference-device-labels) define and apply special configurations for kernels, networks, storage, and more specific attributes.
+

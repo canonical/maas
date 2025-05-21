@@ -84,7 +84,7 @@ Note: specifying both a cache_device and a cache_partition is not allowed.
 Optional String. Cache block device.
 
 #### Keyword "cache_partition"
-Optional String.  Cache partition.
+Optional String. Cache partition.
 
 #### Command-line options
 | Option | Effect |
@@ -110,3 +110,4 @@ List all bcache cache sets belonging to a machine.
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
+

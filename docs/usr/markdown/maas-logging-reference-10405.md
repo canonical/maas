@@ -110,3 +110,4 @@ Read the following information from MAAS audit logs.
 |               |          | None         | "Updated `package_repository.name`."                           |
 | SETTINGS      |          | None         | "Saved script `script.name`."                                  |
 | SETTINGS      | CLI      | None         | "Updated configuration setting `key`."                         |
+

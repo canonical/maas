@@ -30,3 +30,4 @@ You can change database owner with the following command:
 sudo -u postgres \
     psql -c "ALTER DATABASE maasdb OWNER TO maas"
 ```
+

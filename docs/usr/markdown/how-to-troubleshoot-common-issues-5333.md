@@ -2688,3 +2688,4 @@ where key = 'your-leaked-api-key';
 ```
 
 To remove the leaked API key, log in to the MAAS UI and delete it. Then reconfigure your MAAS CLI and hardware sync as needed.
+

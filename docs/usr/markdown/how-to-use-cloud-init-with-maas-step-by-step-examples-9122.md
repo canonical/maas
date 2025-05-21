@@ -417,3 +417,4 @@ How to use it:
 ## Conclusion
 
 By using these cloud-init scripts, you can easily automate and customize your machines in MAAS, making deployments faster and more efficient. Feel free to mix and match the examples to fit your needs, and remember that cloud-init is a powerful tool that can help you manage your servers more effectively. Happy deploying!
+

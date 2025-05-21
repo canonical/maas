@@ -2,30 +2,30 @@ Distinguish groups of machines by assigning availability zones, tags, and resour
 
 ## Availability zones
 
-An availability zone is an organizational unit containing nodes, with each node belonging to exactly one zone. Zones help with fault tolerance, service performance, and power management. Machines can be allocated from specific zones in production.  
+An availability zone is an organizational unit containing nodes, with each node belonging to exactly one zone. Zones help with fault tolerance, service performance, and power management. Machines can be allocated from specific zones in production.
 
 ### Fault tolerance
 
-Fault tolerance ensures a system continues operating despite failures. MAAS zones can improve resilience by separating resources based on power supply, network segmentation, or data center location.  
+Fault tolerance ensures a system continues operating despite failures. MAAS zones can improve resilience by separating resources based on power supply, network segmentation, or data center location.
 
-- Machines working together should be in the same zone.  
-- The entire service should be replicated in another zone for redundancy.  
+- Machines working together should be in the same zone.
+- The entire service should be replicated in another zone for redundancy.
 
-### Service performance  
+### Service performance
 
-Service performance focuses on efficiency and speed. MAAS zones help by placing nodes close to performance-critical resources.  
+Service performance focuses on efficiency and speed. MAAS zones help by placing nodes close to performance-critical resources.
 
-- Allocate nodes based on network topology and latency needs.  
-- Use smaller, well-defined zones to group resources efficiently.  
+- Allocate nodes based on network topology and latency needs.
+- Use smaller, well-defined zones to group resources efficiently.
 
 ### Power management
 
-Power management optimizes power usage and cooling.  
+Power management optimizes power usage and cooling.
 
-- Distribute high-power or heat-generating nodes across zones.  
-- Prevent hotspots and balance power consumption.  
+- Distribute high-power or heat-generating nodes across zones.
+- Prevent hotspots and balance power consumption.
 
-### Default zone  
+### Default zone
 
 A newly installed MAAS includes a default zone that holds all nodes. You cannot remove or rename this zone, but you can create new ones and assign machines. If zones aren’t relevant to your setup, you can ignore them.
 
@@ -75,4 +75,5 @@ Utilizing tags and annotations in MAAS enhances the organization, searchability,
 
 Resource pools in MAAS let admins group machines and VM hosts logically, aiding in resource allocation for specific functions. By default, all machines are added to the "default" pool, but custom pools can be created for specific needs. For example, in a hospital data center, you might reserve machines for applications like charts, documentation, or orders.
 
-Assigning machines to resource pools ensures they're allocated appropriately, regardless of the specific application deployed on them. This grouping also enhances multi-tenancy by restricting user access based on roles and assigned pools.  MAAS auto-assigns new machines to the "default" resource pool.
+Assigning machines to resource pools ensures they're allocated appropriately, regardless of the specific application deployed on them. This grouping also enhances multi-tenancy by restricting user access based on roles and assigned pools. MAAS auto-assigns new machines to the "default" resource pool.
+

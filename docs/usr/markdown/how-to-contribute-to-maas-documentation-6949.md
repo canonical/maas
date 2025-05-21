@@ -33,3 +33,4 @@ Changing a published document is a big step.  If you prefer, you can leave comme
 2. **Focus on helping**: Focus on how your contribution can enhance the document's clarity and usefulness.
 
 Your contributions are valuable to the MAAS community. By following these guidelines, you can help make the MAAS documentation better.
+

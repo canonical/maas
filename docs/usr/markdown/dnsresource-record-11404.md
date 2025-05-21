@@ -136,3 +136,4 @@ Optional String. Restricts the listing to entries which have records of the give
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
+

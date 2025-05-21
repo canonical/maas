@@ -51,7 +51,7 @@ Required String. Name of the boot resource.
 Required String. Architecture the boot resource supports.
 
 #### Keyword "sha256"
-Required String.  The ``sha256`` hash of the resource.
+Required String. The ``sha256`` hash of the resource.
 
 #### Keyword "size"
 Required String. The size of the resource in bytes.
@@ -60,13 +60,13 @@ Required String. The size of the resource in bytes.
 Optional String. Title for the boot resource.
 
 #### Keyword "filetype"
-Optional String..  Filetype for uploaded content. (Default: ``tgz``. Supported: ``tgz``, ``tbz``, ``txz``, ``ddtgz``, ``ddtbz``, ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``, ``ddxz``, ``ddraw``)
+Optional String.. Filetype for uploaded content. (Default: ``tgz``. Supported: ``tgz``, ``tbz``, ``txz``, ``ddtgz``, ``ddtbz``, ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``, ``ddxz``, ``ddraw``)
 
 #### Keyword "base_image"
 Optional String. The Base OS image a custom image is built on top of. Only required for custom image.
 
 #### Keyword "content"
-Optional String..  Image content. Note: this is not a normal parameter, but an ``application/octet-stream`` file upload.
+Optional String.. Image content. Note: this is not a normal parameter, but an ``application/octet-stream`` file upload.
 
 #### Command-line options
 | Option | Effect |
@@ -137,3 +137,4 @@ Stop import the boot resources.
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
+

@@ -72,3 +72,4 @@ After deployment, execute these commands on the host to confirm RT kernel activa
 2. Check the output of `sudo pro status` to confirm that `fips-preview` and `fips-updates` are enabled.
 
 Your machine should now be up and running with a FIPS-compliant kernel.
+

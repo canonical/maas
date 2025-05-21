@@ -75,3 +75,4 @@ For VMware ESXi deployments, VMFS6 is the required layout, automating both OS an
 The Blank layout clears all, making way for custom configurations. It leaves the system un-deployable until you manually configure storage.
 
 > Machines with this layout need manual storage configuration before deployment.
+

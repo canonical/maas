@@ -142,3 +142,4 @@ open-gannet  nk7x8y  on     Deployed  admin  custom  ubuntu-raw
 ## Log in to verify
 
 You should log into your newly-deployed image and verify that it has all the customizations you added to the build process. The default username for packer-created images is `ubuntu`, the same as the default username for other MAAS images.
+

@@ -248,3 +248,4 @@ If you want to get a bit more advanced, you can try editing the **maas.yml** fil
 To learn more about bare metal provisioning and MAAS, try our [ebook](https://pages.ubuntu.com/eBook-MAAS.html).
 
 Learn more about MAAS at [https://maas.io](https://maas.io). Perhaps you would like to build a real physical environment for MAAS and LXD?
+

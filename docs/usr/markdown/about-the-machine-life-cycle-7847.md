@@ -47,3 +47,4 @@ MAAS 3.1 introduced the ability to clone configurations from one machine to othe
 MAAS 3.1 also allows the addition of machines already running workloads without disrupting them. Administrators can specify that a machine is already deployed, preventing the standard commissioning process and marking it as deployed. A provided script can collect hardware information from these machines and send it back to MAAS.
 
 By understanding and utilizing these processes and features, administrators can effectively manage machines within MAAS, ensuring efficient deployment and maintenance across their infrastructure.
+

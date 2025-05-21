@@ -2,13 +2,13 @@ This page describes basic MAAS logging operations.
 
 ## Logging updates in MAAS 3.5
 
-In 3.5, the MAAS snap uses the [Pebble](https://github.com/canonical/pebble) service manager instead of `supervisord`. This means that the `systemd` component was renamed to `snap.maas.pebble.service`.  It contains Pebble logs, as well as intercepted stdout of the services running under Pebble.  The region and rack logs are cached there, as well (i.e., `regiond.log` and `rackd.log` are no more -- supervisord was redirecting the stdout of the respective services).
+In 3.5, the MAAS snap uses the [Pebble](https://github.com/canonical/pebble) service manager instead of `supervisord`. This means that the `systemd` component was renamed to `snap.maas.pebble.service`. It contains Pebble logs, as well as intercepted stdout of the services running under Pebble. The region and rack logs are cached there, as well (i.e., `regiond.log` and `rackd.log` are no more -- supervisord was redirecting the stdout of the respective services).
 
 Here is a per-service breakdown how logging works in MAAS 3.5:
 
 ### Pebble
 
-Pebble logs to `stdout`, redirecting the services to `stdout` if run with `--verbose` (currently in use).  It logs additional debug information when run with envvar `PEBBLE_DEBUG=1` (currently in use).
+Pebble logs to `stdout`, redirecting the services to `stdout` if run with `--verbose` (currently in use). It logs additional debug information when run with envvar `PEBBLE_DEBUG=1` (currently in use).
 
 #### Log entry format
 
@@ -82,13 +82,13 @@ The API server logs to `stdout`, redirected to journalctl by Pebble.
 #### Own log format
 
 ```nohighlight
-INFO:     Started server process [24428]
+INFO. . Started server process [24428]
 ```
 
 #### Pebble-proxied log format
 
 ```nohighlight
-2023-07-24T10:25:37.602Z [apiserver] INFO:     Started server process [24428]
+2023-07-24T10:25:37.602Z [apiserver] INFO. . Started server process [24428]
 ```
 
 #### Commands to access the log
@@ -144,7 +144,7 @@ journalctl -u snap.maas.pebble.service --case-sensitive -g "^[0-9TZ:.-]{24} \[pr
 
 ### NTP (chrony)
 
-At first glance, `chrony` seems to have a separate directory for log files (`/var/snap/maas/common/log/chrony`), but no log files are typically present there.  Instead, used `stdout` (redirected by Pebble), which contains init message and errors.
+At first glance, `chrony` seems to have a separate directory for log files (`/var/snap/maas/common/log/chrony`), but no log files are typically present there. Instead, used `stdout` (redirected by Pebble), which contains init message and errors.
 
 #### Pebble proxied log format:
 
@@ -220,7 +220,7 @@ journalctl -u snap.maas.pebble.service --case-sensitive -g "^[0-9TZ:.-]{24} \[sy
 
 ### DHCP (dhcpd, dhcpd6)
 
-DHCP logs everything through `syslogd`, while `stdout` (redirected by Pebble) contains init messages.  There is no particularly easy way to differentiate between `dhcpd` and `dhcpd6`, although you can `grep` for a “PID file: /var/snap/maas/common/maas/dhcp/dhcpd6?\.pid ” message, and then use the PID to filter logs in journal, like this:
+DHCP logs everything through `syslogd`, while `stdout` (redirected by Pebble) contains init messages. There is no particularly easy way to differentiate between `dhcpd` and `dhcpd6`, although you can `grep` for a “PID file: /var/snap/maas/common/maas/dhcp/dhcpd6?\.pid ” message, and then use the PID to filter logs in journal, like this:
 
 ```nohighlight
 journalctl -et dhcpd -u snap.maas.pebble.service SYSLOG_PID=25799
@@ -328,3 +328,4 @@ Example usage of these filters can narrow down event listings significantly.
 Audit events, tagged with `AUDIT`, record MAAS configuration changes and machine state transitions. They're essential for tracking user actions and system updates, especially in multi-user environments.
 
 Use audit events alongside `jq` and command-line text tools to analyze actions like machine deletions, configuration changes, and user activities. This can provide insights into system changes and help identify areas for attention or improvement.
+

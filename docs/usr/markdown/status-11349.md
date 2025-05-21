@@ -10,3 +10,4 @@ Running `maas status` in the MAAS CLI provides an overview of key services. Unde
 - **Proxy (Squid):** Caches frequently accessed data to optimize network efficiency.  
 
 Monitoring these services with `maas status` ensures smooth infrastructure operation.
+

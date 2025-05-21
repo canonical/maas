@@ -80,3 +80,4 @@ Or, modify `/etc/postgresql/14/main/pg_hba.conf` to switch back to `md5`. But be
     sudo rm -rf /etc/postgresql/12/
     sudo -u postgres ./delete_old_cluster.sh
 ```
+

@@ -89,3 +89,4 @@ Factors affecting these numbers:
 - Number and type of stored images
 - A local image mirror will increase disk requirements. 
 - Rack controllers have a 1000-machine cap per subnet
+

@@ -132,3 +132,4 @@ The following tables may be needed to manage MAAS interfaces.
 | DHCP    | Bring this interface up with DHCP on the given subnet. Only one subnet can be set to ``DHCP``. If the subnet is managed this interface will pull from the dynamic IP range.       |
 | STATIC  | Bring this interface up with a static IP address on the given subnet. Any number of static links can exist on an interface.                                                       |
 | LINK_UP | Bring this interface up only on the given subnet. No IP address will be assigned to this interface. The interface cannot have any current ``AUTO``, ``DHCP`` or ``STATIC`` links. |
+

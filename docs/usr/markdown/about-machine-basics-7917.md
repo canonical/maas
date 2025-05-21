@@ -60,3 +60,4 @@ MAAS supports various storage configurations, including:
 - Storage configuration for CentOS and RHEL, including RAID and custom partitioning (ZFS and bcache excluded).
 
 Storage layouts are applied during commissioning, and users can modify configurations as needed. Multiple disk erasure options are available when releasing a machine.
+

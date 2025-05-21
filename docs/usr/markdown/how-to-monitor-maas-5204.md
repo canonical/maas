@@ -343,3 +343,4 @@ To follow the progress of the deployment, run the following:
 Once you deploy everything, the Grafana UI is accessible on port `3000` with the credentials `admin`/`grafana`. The Prometheus UI will be available on port `9090`.
 
 The repository also provides some sample dashboard covering the most common use cases for graphs. These are available under `grafana/dashboards`. You can import them from the Grafana UI or API.
+

@@ -53,3 +53,4 @@ It's advised to review the generated report for confidential/sensitive data befo
 5. **Submit**: Click "Submit Bug Report".
 
 For clarity, you can view this [sample bug](https://bugs.launchpad.net/maas/+bug/1923516).
+

@@ -10,3 +10,4 @@ This retrieves the latest version of the help information for each profile.  Use
 | Option    | Effect                          |
 |-----------|---------------------------------|
 | h, --help | show this help message and exit |
+

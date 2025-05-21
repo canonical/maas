@@ -112,3 +112,4 @@ Combining filters yields more targeted audit records, aiding in tailored governa
 ### Keeping track
 
 MAAS audit logs are essential for understanding system history. Effectively querying, filtering, and interpreting these logs are key skills for system troubleshooting, compliance, and oversight.
+

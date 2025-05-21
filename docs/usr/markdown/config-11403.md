@@ -36,3 +36,4 @@ maas config [-h] [--show] [--show-database-password] [--show-secret] \
 |                                           | be True. mode for detailed error and log reporting.    |
 | --disable-debug-queries                   | Disable query debugging.                               |
 | --parsable                                | Output the current configuration in a parsable format. |
+

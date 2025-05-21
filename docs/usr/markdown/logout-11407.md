@@ -16,3 +16,4 @@ maas logout [-h] profile-name
 | -h, --help | show this help message and exit |
 
 This will remove the given profile from your command-line  client.  You can re-create it by logging in again later.
+

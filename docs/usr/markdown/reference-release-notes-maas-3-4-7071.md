@@ -262,3 +262,4 @@ Here is the list of bug fixes for all versions of MAAS 3.4, from first Beta thro
 - (3.4-beta1)[2009045](https://bugs.launchpad.net/bugs/2009045)**^**:	WebSocket API to report reasons for failure for machine bulk actions		
 - (3.4-beta1)[2009140](https://bugs.launchpad.net/bugs/2009140)**^**:	MAAS OpenApi Schema cutoff variable names		
 - (3.4-beta1)[2012054](https://bugs.launchpad.net/bugs/2012054)**^**:	RPC logging when debug is too verbose
+

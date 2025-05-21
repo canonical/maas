@@ -235,3 +235,4 @@ maas $PROFILE vmfs-datastore read $SYSTEM_ID $VMFS_DATASTORE_ID
     "resource_uri": "/MAAS/api/2.0/nodes/b66fn6/vmfs-datastore/18/"
 }
 ```
+

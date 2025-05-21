@@ -999,3 +999,4 @@ More bug-fixes are planned for later 3.3 releases.
 ### MAAS 3.3.0 bug list
 
 - [2003888](https://bugs.launchpad.net/maas/+bug/2003888)**^**: Grouped machine list view: Inconsistent display when machine state changes
+

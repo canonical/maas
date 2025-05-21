@@ -1,6 +1,6 @@
 Enter keyword arguments in the form `key=value`.
 
-## [data ...]
+## Create a logical volume
 
 ```bash
 maas $PROFILE volume-group create-logical-volume [--help] [-d] [-k] system_id id
@@ -50,7 +50,7 @@ Delete a volume group with the given id from the machine with the given system_i
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
 
-## [data ...]
+## Delete a logical volume
 
 ```bash
 maas $PROFILE volume-group delete-logical-volume [--help] [-d] [-k] system_id id
@@ -184,3 +184,5 @@ List all volume groups belonging to a machine with the given system_id.
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
+
+<!-- test -->

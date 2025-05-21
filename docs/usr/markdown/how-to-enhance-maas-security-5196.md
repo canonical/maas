@@ -439,3 +439,4 @@ Complete the integration by migrating the secrets:
 $ sudo maas config-vault migrate
 ```
 For detailed information, it's recommended to refer to the [Vault documentation](https://developer.hashicorp.com/vault/docs) and consider [Vault certification](https://developer.hashicorp.com/vault/tutorials/associate-cert).
+

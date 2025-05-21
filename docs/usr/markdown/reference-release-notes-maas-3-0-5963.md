@@ -400,3 +400,4 @@ Here are the bugs that have been `Fix Released` in MAAS 3.0 Beta 1:
 |[#1916073](https://bugs.launchpad.net/bugs/1916073)**^**|MAAS should install qemu-efi-aarch64 on arm64 KVM pods |Undecided| 
 |[#1916317](https://bugs.launchpad.net/bugs/1916317)**^**|UI is using API to request scripts with full content |Undecided| 
 |[#1919381](https://bugs.launchpad.net/bugs/1919381)**^**|typo "veryiying" in info message in smartctl-validate |Undecided|
+

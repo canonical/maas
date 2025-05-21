@@ -333,5 +333,3 @@ This more complex reference example describes an LVM on top of RAID with bcache 
 }
 ```
 The RAID is created by using 5 bcache devices, each one using a different disk and the same SSD cache device. LVM is created on top of the RAID device and volumes are then created in it, to provide partitions.
-
-

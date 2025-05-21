@@ -12,3 +12,4 @@ maas createadmin [-h] [--username USERNAME] [--password PASSWORD] [--email EMAIL
 | --email EMAIL           | Specifies the email for the admin.                    |
 | --ssh-import SSH_IMPORT | Import SSH keys from Launchpad (lp:user-id) or Github |
 |                         | (gh:user-id).                                         |
+

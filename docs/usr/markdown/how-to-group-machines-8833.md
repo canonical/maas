@@ -433,3 +433,4 @@ maas $PROFILE machines read \
 |(.,map(length*"-"))),(.[]|[.hostname,.system_id,.owner_data[]])
 |@tsv' | column -t
 ```
+

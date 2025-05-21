@@ -49,8 +49,9 @@ Also note that, before deploying, you should take two key actions:
 
 ## Deploying ephemeral OS instances (MAAS 3.5 and higher)
 
-With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images are possible.  These ephemeral deployments run completely in the machine's memory and need not access (or be aware of) any disk resources.  
+With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images are possible. These ephemeral deployments run completely in the machine's memory and need not access (or be aware of) any disk resources. 
 
 Note that networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
 
 You can choose an ephemeral OS deployment from the deployment configuration screen in the machine list: Just select the "Deploy in memory" option and deploy as normal.
+

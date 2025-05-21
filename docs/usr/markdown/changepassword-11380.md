@@ -15,3 +15,4 @@ maas changepassword [-h] [--database DATABASE] [username]
 |---------------------|------------------------------------------------------|
 | -h, --help          | show this help message and exit                      |
 | --database DATABASE | Specifies the database to use. Default is "default". |
+

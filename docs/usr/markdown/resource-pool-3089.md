@@ -90,3 +90,4 @@ Note that there is always at least one resource pool: default.
 | --help, -h     | Show this help message and exit.              |
 | -d, --debug    | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check                 |
+

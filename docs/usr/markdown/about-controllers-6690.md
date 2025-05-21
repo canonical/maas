@@ -47,3 +47,4 @@ The `next-server` directive specifies the host from which a machine should load 
 </details>
 
 ![MAAS Architecture](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/1X/02a7ca58b989c67c74421b9d5e0c8b32907a2de1.jpeg)
+

@@ -16,7 +16,7 @@ Comparative testing of stable and development releases helps us identify and fix
 
 ## Work done so far
 
-Our commitment to performance optimisation is ongoing. Some highlights include:
+Our commitment to performance optimization is ongoing. Some highlights include:
 
 - A [video overview](https://discourse.maas.io/t/maas-show-and-tell-is-maas-fast-yet/6105) of recent enhancements.
 - Efforts by our [UI team](https://discourse.maas.io/t/maas-ui-improving-the-performance-of-maas-ui/5820) to improve the user interface.
@@ -33,4 +33,5 @@ The MAAS 3.2 update has achieved a 32% speed increase in machine listing through
 
 ## What's next
 
-Our focus now is on optimising other MAAS features, including search functionalities. Feedback and insights are always welcome.
+Our focus now is on optimizing other MAAS features, including search functionalities. Feedback and insights are always welcome.
+

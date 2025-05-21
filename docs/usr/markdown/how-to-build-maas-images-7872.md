@@ -310,3 +310,4 @@ maas admin boot-resources create \
     filetype='ddtgz' \
     content@=windows-server-amd64-root-dd.gz
 ```
+

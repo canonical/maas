@@ -82,3 +82,4 @@ data "maas_vlan" "vid10" {
 ## Resources
 
 For full details, refer to the [Terraform HCL documentation](https://www.terraform.io/language)**^**.
+

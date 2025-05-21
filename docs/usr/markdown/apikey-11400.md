@@ -8,10 +8,12 @@ maas apikey [-h] [--username USERNAME] [--generate] [--delete DELETE] [--update 
 | Option              | Effect                                               |
 |---------------------|------------------------------------------------------|
 | -h, --help          | show this help message and exit                      |
-| --username USERNAME | Specifies the username for the admin.                |
-| --generate          | Generate a new api key.                              |
-| --delete DELETE     | Delete the supplied api key.                         |
-| --update UPDATE     | Update the supplied api key name.                    |
+| --username USERNAME | Specifies the username for the admin                 |
+| --generate          | Generate a new api key                               |
+| --delete DELETE     | Delete the supplied api key                          |
+| --update UPDATE     | Update the supplied api key name                     |
 | --name API_KEY_NAME | Name of the token. This argument should be passed to |
 |                     | --update or --generate options                       |
-| --with-names        | Display tokens with their names.                     |
+| --with-names        | Display tokens with their names                      |
+|                     |                                                      |
+

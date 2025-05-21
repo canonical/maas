@@ -120,3 +120,4 @@ MAAS has switched hardware information gathering from lshw/lsblk to lxd output d
 ### Bug fixes
 
 A number of bug fixes (see the [list in Launchpad](https://bugs.launchpad.net/maas/+bugs?field.milestone%3Alist=87757&field.milestone%3Alist=89662&field.milestone%3Alist=89714&field.milestone%3Alist=89840&field.milestone%3Alist=89954&field.milestone%3Alist=89682&field.status%3Alist=FIXRELEASED))**^**.
+

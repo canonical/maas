@@ -381,3 +381,4 @@ maas admin block-device set-boot-disk <node-id> 10
 ```
 
 > Only an administrator can set which block device should be used as the boot disk and only a physical block device can be set as as the boot disk. This operation should be done before a machine is allocated or the storage layout will be applied to the previous boot disk.
+

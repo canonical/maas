@@ -594,3 +594,4 @@ Some prime examples of zone usage include fault-tolerance, service performance, 
 A newly installed MAAS comes with a default zone which contains all nodes unless you create a new zone. You can therefore safely ignore the entire concept if you're not interested in leveraging zones.
 
 You cannot remove the 'default' zone or change its name.
+

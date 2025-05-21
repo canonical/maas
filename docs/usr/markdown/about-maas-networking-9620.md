@@ -1,4 +1,4 @@
-MAAS provisions bare metal servers and virtual machines. It creates a single point of control that removes a lot of the logistical errors associated with manual hookup, configuration, and discovery. MAAS also makes it very easy to run your racks -- or even your whole datacenter -- remotely.  MAAS networking makes all this possible.
+MAAS provisions bare metal servers and virtual machines. It creates a single point of control that removes a lot of the logistical errors associated with manual hookup, configuration, and discovery. MAAS also makes it easy to run your racks -- or even your whole datacenter -- remotely. MAAS networking makes all this possible.
 
 ## Network discovery
 
@@ -6,7 +6,7 @@ MAAS passively monitors ARP traffic to detect devices on the network. It records
 
 ## IPMI networking
 
-Machines have a baseboard management controller (BMC), a separate CPU dedicated to managing and monitoring device health. The BMC can power-cycle the device, so MAAS uses the BMC to turn machines on or off, or reboot them via PXE.  MAAS can't provision a machine until it's enabled to network boot, that is, until the firmware is set to boot first from device's Network Interface Card (NIC).
+Machines have a baseboard management controller (BMC), a separate CPU dedicated to managing and monitoring device health. The BMC can power-cycle the device, so MAAS uses the BMC to turn machines on or off, or reboot them via PXE. MAAS can't provision a machine until it's enabled to network boot, that is, until the firmware is set to boot first from device's Network Interface Card (NIC).
 
 ## DHCP
 
@@ -24,7 +24,7 @@ DHCP also offers several optional services, which MAAS uses to specify:
 * option 67: Also used to specify the boot file name in some DHCP configurations.
 * option 66: Points to the boot server hostname or IP address.
 
-Because MAAS needs to configure DHCP with these options, the bundled MAAS DHCP server should be used. You can use external DHCP servers or relays, but it is not recommended.  This bundled server redefines DHCP management by integrating advanced features:
+Because MAAS needs to configure DHCP with these options, the bundled MAAS DHCP server should be used. You can use external DHCP servers or relays, but it is not recommended. This bundled server redefines DHCP management by integrating advanced features:
 
 - Setting lease times and boot options: MAAS sets short lease times suitable for PXE booting and high-turnover environments, with specialized options for PXE and iPXE to support network-based system deployments.
 
@@ -50,17 +50,17 @@ MAAS also introduces non-standard capabilities for the bundled DHCP server:
 
 - Dynamic reconfiguration of DHCP settings: MAAS allows users to dynamically reconfigure DHCP settings via a web UI or API without the need for server restarts. This capability is essential for environments where network configurations frequently change, such as in data centers or development labs.
 
-- Integrated IP Address Management (IPAM): MAAS integrates DHCP with IPAM to automatically manage the allocation, tracking, and reclamation of IP addresses across large networks. This integration helps in efficiently using IP resources, reducing conflicts, and ensuring that all devices have appropriate network configurations.  This means that user IP configuration takes on a new level of reliability and granularity.
+- Integrated IP Address Management (IPAM): MAAS integrates DHCP with IPAM to automatically manage the allocation, tracking, and reclamation of IP addresses across large networks. This integration helps in efficiently using IP resources, reducing conflicts, and ensuring that all devices have appropriate network configurations. This means that user IP configuration takes on a new level of reliability and granularity.
 
-- Automated provisioning of network-dependent services: MAAS automates the provisioning of network-dependent services like DNS, NTP, and PXE boot configurations along with DHCP leases. This means that when MAAS manages a device's DHCP settings, it can also configure these devices to use specific DNS servers or NTP servers, streamlining network setup tasks.  This equates to a series of error-prone steps that the user does *not* need to worry about.
+- Automated provisioning of network-dependent services: MAAS automates the provisioning of network-dependent services like DNS, NTP, and PXE boot configurations along with DHCP leases. This means that when MAAS manages a device's DHCP settings, it can also configure these devices to use specific DNS servers or NTP servers, streamlining network setup tasks. This equates to a series of error-prone steps that the user does *not* need to worry about.
 
-- Real-time network bootstrapping: MAAS supports complex network bootstrapping scenarios including the use of next-server (PXE boot server) and bootfile-name parameters which are critical for deploying operating systems in a network environment. This is particularly useful in automated data center management where servers may need to be re-imaged or upgraded without manual intervention.  Again, this automates actions that users might normally need to undertake manually.
+- Real-time network bootstrapping: MAAS supports complex network bootstrapping scenarios including the use of next-server (PXE boot server) and bootfile-name parameters which are critical for deploying operating systems in a network environment. This is particularly useful in automated data center management where servers may need to be re-imaged or upgraded without manual intervention. Again, this automates actions that users might normally need to undertake manually.
 
 - Granular access control and security policies: MAAS offers granular control over DHCP options and includes security policies that can be customized for different nodes or subnets. Features like DHCP snooping and dynamic ARP inspection can be integrated into the DHCP process to enhance security and control over the network.
 
-- Advanced monitoring and reporting: MAAS provides advanced monitoring and reporting features for DHCP interactions, meaning that users do not have to be as fluent with command-line network diagnostics.  Administrators can view detailed logs of DHCP transactions, monitor the state of DHCP scopes, and track the historical usage of IP addresses, enabling effective troubleshooting and network management.
+- Advanced monitoring and reporting: MAAS provides advanced monitoring and reporting features for DHCP interactions, meaning that users do not have to be as fluent with command-line network diagnostics. Administrators can view detailed logs of DHCP transactions, monitor the state of DHCP scopes, and track the historical usage of IP addresses, enabling effective troubleshooting and network management.
 
-- Seamless integration with hardware enrollments: MAAS seamlessly integrates DHCP services with the hardware enrollment processes. As new machines are added to the network, MAAS can automatically enroll them, provision them based on predefined templates, and manage their lifecycle directly from the initial DHCP handshake.  This eliminates the need for users and administrators to constantly inventory the physical network to keep the headcount up-to-date.
+- Seamless integration with hardware enrollments: MAAS seamlessly integrates DHCP services with the hardware enrollment processes. As new machines are added to the network, MAAS can automatically enroll them, provision them based on predefined templates, and manage their lifecycle directly from the initial DHCP handshake. This eliminates the need for users and administrators to constantly inventory the physical network to keep the headcount up-to-date.
 
 ## IP range management and static IP assignments
 
@@ -90,7 +90,7 @@ MAAS allows you to create and manage VLANs from a single interface, enabling sec
 
 ## Subnets
 
-A subnet in MAAS is an L3 IP segment (192.168.1.0/24), tied to a VLAN within a fabric.  MAAS manages DHCP, DNS, and IP assignments per subnet.  Subnets can be managed (MAAS controls IP allocation) or unmanaged (manual configuration).
+A subnet in MAAS is an L3 IP segment (192.168.1.0/24), tied to a VLAN within a fabric. MAAS manages DHCP, DNS, and IP assignments per subnet. Subnets can be managed (MAAS controls IP allocation) or unmanaged (manual configuration).
 
 ## Spaces and fabrics
 
@@ -196,3 +196,4 @@ MAAS also supports many bonding modes:
   ARP negotiation.
   
 > *See [Bond two interfaces](https://maas.io/docs/how-to-manage-maas-networks#p-9070-bond-two-interfaces) for how-to instructions.*
+

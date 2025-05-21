@@ -1,4 +1,4 @@
-Commissioning profiles machine hardware (vendor, BIOS, network, CPU, storage, USB/PCI) to tailor deployment. A commissioning failure is low-stakes -- it prevents deployment, avoiding errors.  Successful commissioning tests the hardware and sets the machine to "Ready," meaning  successful deployment is likely.
+Commissioning profiles machine hardware (vendor, BIOS, network, CPU, storage, USB/PCI) to tailor deployment. A commissioning failure is low-stakes -- it prevents deployment, avoiding errors. Successful commissioning tests the hardware and sets the machine to "Ready," meanin. successful deployment is likely.
 
 MAAS commissions a machine like this:
 
@@ -9,7 +9,7 @@ MAAS commissions a machine like this:
 5. `cloud-init` runs built-in and custom commissioning scripts.
 6. The machine shuts down unless configured to remain on after commissioning.
 
-Administrators can specify other ephemeral boot images.  The region controller tracks and reports commissioning status.
+Administrators can specify other ephemeral boot images. The region controller tracks and reports commissioning status.
 
 ## Built-in commissioning scripts 
 
@@ -67,7 +67,7 @@ Change how commissioning runs with the following options:
 
 ## Commissioning logs 
 
-MAAS logs timestamped records of commissioning events for every machine.  If commissioning fails, check the logs first.
+MAAS logs timestamped records of commissioning events for every machine. If commissioning fails, check the logs first.
 
 ## Debugging scripts 
 
@@ -81,7 +81,7 @@ When selecting multiple machines, scripts declaring the `for_hardware` field wil
 
 ## NUMA and SR-IOV 
 
-MAAS assigns machines to a single NUMA node by default to avoid latency. Match VM boundaries to NUMA boundaries for best results.  Specify a node index for interfaces and physical block devices. 
+MAAS assigns machines to a single NUMA node by default to avoid latency. Match VM boundaries to NUMA boundaries for best results. Specify a node index for interfaces and physical block devices. 
 
 MAAS reports NUMA node details, such as the index, node count, CPU cores, memory, NICs, and node spaces. You can filter machines by CPU cores, memory, subnet, VLAN, fabric, space, storage, and RAID.
 
@@ -112,8 +112,8 @@ Here is an example of "degrade detection":
  name: example
  results:
 . memspeed:
-.   title: Memory Speed
-.   description: Bandwidth speed of memory while performing random read writes
+.  title: Memory Speed
+.  description: Bandwidth speed of memory while performing random read writes
  --- End MAAS 1.0 script metadata ---
 
 import os
@@ -124,7 +124,7 @@ memspeed = some_test()
 print('Memspeed: %s' % memspeed)
 results = {
 . 'results': {
-. .  'memspeed': memspeed,
+. . 'memspeed': memspeed,
 . }
 }
 if memspeed < 100:
@@ -134,7 +134,7 @@ if memspeed < 100:
 result_path = os.environ.get("RESULT_PATH")
 if result_path is not None:
 . with open(result_path, 'w') as results_file:
-. .  yaml.safe_dump(results, results_file)
+. . yaml.safe_dump(results, results_file)
 ```
 
 ## Tagging scripts 
@@ -177,3 +177,4 @@ MAAS can test networks and links, including connection status and link speeds. Y
 ## Delayed NW config 
 
 Once commissioned, you can configure the machine's network interface(s). Specifically, when a machine's status is either "Ready" or "Broken", interfaces can be added/removed, attached to a fabric or subnet, and provided an IP assignment mode. Tags can also be assigned to specific network interfaces.
+

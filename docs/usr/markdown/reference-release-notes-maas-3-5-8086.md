@@ -329,3 +329,4 @@ There are no exposed controls, and there is no need for users to take any action
  - [2020397](https://bugs.launchpad.net/maas/+bug/2020397)**^** : Custom images which worked ok is not working with 3.2
  - [2019216](https://bugs.launchpad.net/maas/+bug/2019216)**^** : Flaky test- dhcp notify test_sends_notification_over_socket_for_processing
  - [2026283](https://bugs.launchpad.net/maas/+bug/2026283)**^** : TestDynamicDNSUpdate.test_as_reverse_record_update flaky test
+
