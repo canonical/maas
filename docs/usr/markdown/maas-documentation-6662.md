@@ -322,7 +322,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | /docs/snap/2.7/cli/machines                             | /docs/about-machine-basics                                                |
 | /docs/storage                                           | /docs/about-machine-basics                                                |
 | /docs/about-customising-machines                        | /docs/about-machine-customization                                         |
-| /docs/machine-customisations                            | /docs/about-machine-customization                                         |
+| /docs/machine-customizations                            | /docs/about-machine-customization                                         |
 | /docs/about-device-labels                               | /docs/about-machine-groups                                                |
 | /docs/device-labelling-reference                        | /docs/about-machine-groups                                                |
 | /docs/device-labels-reference                           | /docs/about-machine-groups                                                |
@@ -472,7 +472,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | /docs/how-to-manage-regions                             | /docs/how-to-manage-controllers#p-9026-manage-region-controllers          |
 | /docs/how-to-use-images                                 | /docs/how-to-manage-images                                                |
 | /docs/how-to-use-standard-images                        | /docs/how-to-manage-images                                                |
-| /docs/image-management-and-customisation                | /docs/how-to-manage-images                                                |
+| /docs/image-management-and-customization                | /docs/how-to-manage-images                                                |
 | /docs/working-with-standard-images                      | /docs/how-to-manage-images                                                |
 | /docs/how-to-choose-images                              | /docs/how-to-manage-images#p-9030-add-a-new-boot-source                   |
 | /docs/how-to-choose-os-images                           | /docs/how-to-manage-images#p-9030-add-a-new-boot-source                   |

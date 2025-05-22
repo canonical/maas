@@ -18,8 +18,8 @@ Required String. The tag to add.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Compose a virtual machine on the host.
@@ -53,12 +53,12 @@ Optional Int. The minimum CPU speed, specified in MHz.
 Optional String. The architecture of the new machine (e.g. amd64). This must be an architecture the VM host supports.
 
 #### Keyword "storage"
-Optional String.  A list of storage constraint identifiers in the form ``label:size(tag,tag,...), label:size(tag,tag,...)``. For more information please see the CLI VM host management page of the official MAAS documentation.
+Optional String. A list of storage constraint identifiers in the form ``label:size(tag,tag,), label:size(tag,tag,)``. For more information please see the CLI VM host management page of the official MAAS documentation.
 
 #### Keyword "interfaces"
-Optional.  A labeled constraint map associating constraint labels with desired interface properties. MAAS will assign interfaces that match the given interface properties.
+Optional. A labeled constraint map associating constraint labels with desired interface properties. MAAS will assign interfaces that match the given interface properties.
 
-Format: ``label:key=value,key=value,...``
+Format: ``label:key=value,key=value,``
 
 Keys:
 
@@ -92,8 +92,8 @@ Optional Int. The ID of the pool in which to put the newly composed machine.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Deletes a VM host
@@ -109,13 +109,13 @@ maas $PROFILE vm-host delete [--help] [-d] [-k] id [data ...]
 Deletes a VM host with the given ID.
 
 #### Keyword "decompose"
-Optional Boolean. Whether to also also decompose all machines in the VM host on removal. If not provided, machines will not be removed.
+Optional Boolean. Whether to also decompose all machines in the VM host on removal. If not provided, machines will not be removed.
 
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Obtain VM host parameters
@@ -134,11 +134,11 @@ Note: This method is reserved for admin users.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
-## This operation has been deprecated in favour of 'Virtual-machine-host read'.
+## This operation has been deprecated in favor of 'Virtual-machine-host read'.
 
 ```bash
 maas $PROFILE vm-host read [--help] [-d] [-k] id [data ...] 
@@ -150,8 +150,8 @@ maas $PROFILE vm-host read [--help] [-d] [-k] id [data ...]
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Refresh a VM host
@@ -163,13 +163,13 @@ maas $PROFILE vm-host refresh [--help] [-d] [-k] id [data ...]
 #### Positional arguments
 - id
 
-Performs VM host discovery and updates all discoveredinformation and discovered machines.
+Performs VM host discovery and updates all discovered information and discovered machines.
 
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Remove a tag from a VM host
@@ -190,8 +190,8 @@ Required String. The tag to add.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Update a specific VM host
@@ -239,12 +239,12 @@ Optional String. Default macvlan mode for VM hosts that use it: bridge, passthru
 Optional String. Tag or tags (command separated) associated with the VM host.
 
 #### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
-|                |                                               |
+| Option         | Effect                                       |
+|----------------|----------------------------------------------|
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
+| -k, --insecure | Disable SSL certificate check                |
+|                |                                              |
 
 ## Create a VM host
 
@@ -258,13 +258,13 @@ Create or discover a new VM host.
 Required String. The type of VM host to create: ``lxd`` or ``virsh``.
 
 #### Keyword "power_address"
-Required String.  Address that gives MAAS access to the VM host power control. For example, for virsh ``qemu+ssh://172.16.99.2/system`` For ``lxd``, this is just the address of the host.
+Required String. Address that gives MAAS access to the VM host power control. For example, for virsh ``qemu+ssh://172.16.99.2/system`` For ``lxd``, this is just the address of the host.
 
 #### Keyword "power_user"
 Required String. Username to use for power control of the VM host. Required for ``virsh`` VM hosts that do not have SSH set up for public-key authentication.
 
 #### Keyword "power_pass"
-Required String.  Password to use for power control of the VM host. Required ``virsh`` VM hosts that do not have SSH set up for public-key authentication and for ``lxd`` if the MAAS certificate is not registered already in the LXD server.
+Required String. Password to use for power control of the VM host. Required ``virsh`` VM hosts that do not have SSH set up for public-key authentication and for ``lxd`` if the MAAS certificate is not registered already in the LXD server.
 
 #### Keyword "name"
 Optional String. The new VM host's name.
@@ -279,20 +279,20 @@ Optional String. The name of the resource pool the new VM host will belong to. M
 Optional String. A tag or list of tags ( comma delimited) to assign to the new VM host.
 
 #### Keyword "project"
-Optional String.  For ``lxd`` VM hosts, the project that MAAS will manage. If not provided, the ``default`` project will be used. If a nonexistent name is given, a new project with that name will be created.
+Optional String. For ``lxd`` VM hosts, the project that MAAS will manage. If not provided, the ``default`` project will be used. If a nonexistent name is given, a new project with that name will be created.
 
 #### Keyword "certificate"
-Optional.  X.509 certificate used to verify the identity of the user. If ``certificate`` and ``key`` are not provided, and the VM created is LXD type, a X.509 certificate will be created.
+Optional. X.509 certificate used to verify the identity of the user. If ``certificate`` and ``key`` are not provided, and the VM created is LXD type, a X.509 certificate will be created.
 
 #### Keyword "key"
 Optional String. private key used for authentication. If ``certificate`` and ``key`` are not provided, and the VM created is LXD type, a RSA key will be created.
 
 #### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
+| Option         | Effect                                       |
+|----------------|----------------------------------------------|
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
+| -k, --insecure | Disable SSL certificate check                |
 
 ## List VM hosts
 
@@ -303,9 +303,9 @@ maas $PROFILE vm-hosts read [--help] [-d] [-k] [data ...]
 Get a listing of all VM hosts. 
 
 #### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
+| Option         | Effect                                       |
+|----------------|----------------------------------------------|
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
+| -k, --insecure | Disable SSL certificate check                |
 

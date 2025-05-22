@@ -206,7 +206,7 @@ maas $PROFILE block-device update [--help] [-d] [-k] system_id id [data ...]
 
 Update block device on a given machine.
 
-Machines must have a status of Ready to have access to all options. Machines with Deployed status can only have the name, model, serial, and/or id_path updated for a block device. This is intented to allow a bad block device to be replaced while the machine remains deployed.
+Machines must have a status of Ready to have access to all options. Machines with Deployed status can only have the name, model, serial, and/or id_path updated for a block device. This is intended to allow a bad block device to be replaced while the machine remains deployed.
 
 #### Keyword "name"
 Optional String. (Physical devices) Name of the block device.

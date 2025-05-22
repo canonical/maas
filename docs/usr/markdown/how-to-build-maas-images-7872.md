@@ -71,7 +71,7 @@ sudo apt install pip
 Clone the Packer templates repository:
 
 ```bash
-git clone https://github.com/canonical/packer-maas.git
+git clone https://GitHub.com/canonical/packer-maas.git
 ```
 
 #### Download ISO files
@@ -204,9 +204,9 @@ To build the image:
 * ovmf
 * cloud-image-utils
 * [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli), v1.7.0 or newer
-* A copy of the [packer-maas](https://github.com/canonical/packer-maas) git repository:
+* A copy of the [packer-maas](https://GitHub.com/canonical/packer-maas) git repository:
 ```
-git clone https://github.com/canonical/packer-maas.git
+git clone https://GitHub.com/canonical/packer-maas.git
 ```
 Note that Ubuntu 22.04+ is required to build Windows 11 images due to ```swtpm``` (Software TPM) package requirements.
 

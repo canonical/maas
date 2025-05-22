@@ -5,7 +5,7 @@ Operating MAAS without internet access is possible, but requires planning. Four 
 3. MAAS-specific images from a local mirror
 4. Other OS images from various sources
 
-Some of these resources can also utilise a transparent proxy, minimising impact on your existing MAAS setup.
+Some of these resources can also utilize a transparent proxy, minimizing impact on your existing MAAS setup.
 
 ## Snap proxy
 
@@ -19,7 +19,7 @@ For detailed guidance, see the [official documentation](https://docs.ubuntu.com/
 
 ## Local package update
 
-Utilise the `reprepro` command to manage local Debian package repositories. It's the recommended way, as `apt-mirror` is no longer maintained. `Reprepro` does not require an external database and manages package signatures efficiently.
+Utilize the `reprepro` command to manage local Debian package repositories. It's the recommended way, as `apt-mirror` is no longer maintained. `Reprepro` does not require an external database and manages package signatures efficiently.
 
 For easier access, you might want to use a transparent proxy.
 

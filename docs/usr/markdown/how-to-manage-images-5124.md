@@ -8,22 +8,22 @@ MAAS syncs images hourly at the region level. Rack controller syncs run every 5 
 
 ## Switch image streams
 
-**UI**
+UI**
 *Images* > *Change source* > *Custom* > set *URL* to:
 - Candidate: `http://images.maas.io/ephemeral-v3/candidate`
 - Stable: `maas.io`
 
-**CLI**
+CLI**
 ```nohighlight
 BOOT_SOURCE_ID=$(maas $PROFILE boot-sources read)
 ```
 
 ## Manage images
 
-**UI**
+UI**
 *Main menu* > *Images* > *Select/Unselect* > *Save selection*
 
-**CLI**
+CLI**
 ```nohighlight
 maas $PROFILE boot-sources read  # list boot sources
 maas $PROFILE boot-source-selections create $SOURCE_ID \
@@ -59,7 +59,7 @@ Use `/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg` as the keyring file.
 
 ## Use a custom mirror
 
-**UI**
+UI**
 - *Images* > *Change source* > *Custom* > enter *URL* > *Connect*.
 - For advanced options, select *Show advanced options*.
 - Set up a local mirror (below) for faster imports.

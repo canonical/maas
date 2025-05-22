@@ -2,7 +2,7 @@ This page describes basic MAAS logging operations.
 
 ## Logging updates in MAAS 3.5
 
-In 3.5, the MAAS snap uses the [Pebble](https://github.com/canonical/pebble) service manager instead of `supervisord`. This means that the `systemd` component was renamed to `snap.maas.pebble.service`. It contains Pebble logs, as well as intercepted stdout of the services running under Pebble. The region and rack logs are cached there, as well (i.e., `regiond.log` and `rackd.log` are no more -- supervisord was redirecting the stdout of the respective services).
+In 3.5, the MAAS snap uses the [Pebble](https://GitHub.com/canonical/pebble) service manager instead of `supervisord`. This means that the `systemd` component was renamed to `snap.maas.pebble.service`. It contains Pebble logs, as well as intercepted stdout of the services running under Pebble. The region and rack logs are cached there, as well (i.e., `regiond.log` and `rackd.log` are no more -- supervisord was redirecting the stdout of the respective services).
 
 Here is a per-service breakdown how logging works in MAAS 3.5:
 
@@ -269,7 +269,7 @@ maas $PROFILE maas set-config name="remote_syslog" value=192.168.100.11
 maas $PROFILE maas set-config name="remote_syslog" value="
 ```
 
-**Note**: Only machine syslog information is forwarded, not MAAS controllers syslog files.
+Note**: Only machine syslog information is forwarded, not MAAS controllers syslog files.
 
 ## Direct log access
 

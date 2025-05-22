@@ -8,7 +8,7 @@ maas logout [-h] profile-name
 | Argument     | Effect                                                      |
 |--------------|-------------------------------------------------------------|
 | profile-name | The name with which a remote server and its credentials are |
-|              | referred to within this tool.                               |
+|              | referred to within this tool                               |
 
 #### Command-line options
 | Option     | Effect                          |

@@ -51,19 +51,19 @@ Discoveries are listed in the order they were last observed on the network (most
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
 
-## Delete all discovered neighbours
+## Delete all discovered neighbors
 
 ```bash
 maas $PROFILE discoveries clear [--help] [-d] [-k] [data ...] 
 ```
 
-Deletes all discovered neighbours and/or mDNS entries. Note: One of ``mdns``, ``neighbours``, or ``all`` parameters must be supplied.
+Deletes all discovered neighbors and/or mDNS entries. Note: One of ``mdns``, ``neighbors``, or ``all`` parameters must be supplied.
 
 #### Keyword "mdns"
 Optional Boolean. Delete all mDNS entries.
 
-#### Keyword "neighbours"
-Optional Boolean. Delete all neighbour entries.
+#### Keyword "neighbors"
+Optional Boolean. Delete all neighbor entries.
 
 #### Keyword "all"
 Optional Boolean. Delete all discovery data.
@@ -81,7 +81,7 @@ Optional Boolean. Delete all discovery data.
 maas $PROFILE discoveries clear-by-mac-and-ip [--help] [-d] [-k] [data ...]
 ```
 
-Deletes all discovered neighbours (and associated reverse DNS entries) associated with the given IP address and MAC address.
+Deletes all discovered neighbors (and associated reverse DNS entries) associated with the given IP address and MAC address.
 
 #### Keyword "ip"
 Required String. IP address
@@ -117,7 +117,7 @@ Lists all the devices MAAS has discovered. Discoveries are listed in the order t
 maas $PROFILE discoveries scan [--help] [-d] [-k] [data ...] 
 ```
 
-Immediately run a neighbour discovery scan on all rack networks.
+Immediately run a neighbor discovery scan on all rack networks.
 
 This command causes each connected rack controller to execute the 'maas-rack scan-network' command, which will scan all CIDRs configured on the rack controller using 'nmap' (if it is installed) or 'ping'.
 

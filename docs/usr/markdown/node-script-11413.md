@@ -147,13 +147,13 @@ Optional String. The title of the script.
 Optional String. A description of what the script does.
 
 #### Keyword "tags"
-Optional String. A comma seperated list of tags for this script.
+Optional String. A comma separated list of tags for this script.
 
 #### Keyword "type"
 Optional String.  The type defines when the script should be used. Can be ``commissioning``, ``testing`` or ``release``.  It defaults to ``testing``.
 
 #### Keyword "hardware_type"
-Optional String.  The hardware_type defines what type of hardware the script is assoicated with. May be ``cpu``, ``memory``, ``storage``, ``network``, or ``node``.
+Optional String.  The hardware_type defines what type of hardware the script is associated with. May be ``cpu``, ``memory``, ``storage``, ``network``, or ``node``.
 
 #### Keyword "parallel"
 Optional Int.  Whether the script may be run in parallel with other scripts. May be disabled to run by itself, instance to run along scripts with the same name, or any to run along any script. ``1`` == True, ``0`` == False.
@@ -207,13 +207,13 @@ Optional String. The title of the script.
 Optional String. A description of what the script does.
 
 #### Keyword "tags"
-Optional String. A comma seperated list of tags for this script.
+Optional String. A comma separated list of tags for this script.
 
 #### Keyword "type"
 Optional String.  The script_type defines when the script should be used: ``commissioning`` or ``testing`` or ``release``.  Defaults to ``testing``.
 
 #### Keyword "hardware_type"
-Optional String.  The hardware_type defines what type of hardware the script is assoicated with. May be CPU, memory, storage, network, or node.
+Optional String.  The hardware_type defines what type of hardware the script is associated with. May be CPU, memory, storage, network, or node.
 
 #### Keyword "parallel"
 Optional Int.  Whether the script may be run in parallel with other scripts. May be disabled to run by itself, instance to run along scripts with the same name, or any to run along any script. 1 == True, 0 == False.
@@ -264,7 +264,7 @@ Optional String.  Only return scripts for the given hardware type.  Can be ``cpu
 Optional String. Include the base64- encoded script content.
 
 #### Keyword "filters"
-Optional String. A comma seperated list to show only results with a script name or tag.
+Optional String. A comma separated list to show only results with a script name or tag.
 
 #### Command-line options
 | Option | Effect |

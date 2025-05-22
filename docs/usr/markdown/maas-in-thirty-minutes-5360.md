@@ -98,7 +98,7 @@ Assuming your machine supports hardware virtualization, we are ready to move on 
 
 <h2>Launch the MAAS and LXD Multipass environment</h2>
 
-Launching the MAAS and LXD VM is as simple as the test VM was to launch, except that this time you will pass a [cloud-init config file](https://github.com/canonical/maas-multipass/blob/main/maas.yml), and a few other parameters for CPU cores, memory, and disk space.
+Launching the MAAS and LXD VM is as simple as the test VM was to launch, except that this time you will pass a [cloud-init config file](https://GitHub.com/canonical/maas-multipass/blob/main/maas.yml), and a few other parameters for CPU cores, memory, and disk space.
 
 The following command looks a bit long, so let's break it down:
 
@@ -185,7 +185,7 @@ It's now time to deploy Ubuntu to the machine! Choose *Machines* > *AwesomeVM1*.
 
 When it's done, assuming everything went well, you should now see the machine status changes to reflect the Ubuntu version installed. Great work - the machine is now ready for us to log in and verify that it is up and running. 
 
-**Important**:  take note of the IP address displayed for your AwesomeVM1 machine in the screenshot above. We will refer to this as **`<AwesomeVM1 IP>`** in the next step. In our screenshot below, the IP address for the MAAS Multipass server is **`10.10.10.2`**, which belongs to the private network created for MAAS and LXD by Multipass.
+Important**:  take note of the IP address displayed for your AwesomeVM1 machine in the screenshot above. We will refer to this as **`<AwesomeVM1 IP>`** in the next step. In our screenshot below, the IP address for the MAAS Multipass server is **`10.10.10.2`**, which belongs to the private network created for MAAS and LXD by Multipass.
 
 <h2>Verify the VM guest is up and running</h2>
 

@@ -17,7 +17,7 @@ This section walks you through setting up the stack to ingest telemetry data and
 - an Ubuntu host with MAAS 3.2+ running
 - an Ubuntu host with enough storage capacity to hold logs and metrics' time-series
 
-Both hosts need internet access for installation. While we employ LXD for a single-host setup, it's not mandatory. For production use, consult the [Prometheus](https://prometheus.io/docs/)**^** and [Loki](https://grafana.com/docs/loki/latest/)**^** docs to enhance security and performance.
+Both hosts need internet access for installation. While we employ LXD for a single-host setup, it's not mandatory. For production use, consult the [Prometheus](https://prometheus.io/docs/) and [Loki](https://grafana.com/docs/loki/latest/) docs to enhance security and performance.
 
 ## Configuring O11y
 
@@ -31,9 +31,9 @@ Create a VM with the following script to install all required software.
 export LXD_NET=virbr0
 export GRAFANA_REPOS=https://packages.grafana.com/oss/deb
 export GRAFANA_KEY=https://packages.grafana.com/gpg.key
-export LOKI_PKG=https://github.com/grafana/loki/releases/download/v2.4.2/loki-linux-amd64.zip
-export PROM_PKG=https://github.com/prometheus/prometheus/releases/download/v2.31.1/prometheus-2.31.1.linux-amd64.tar.gz
-export PROM_ALERT_PKG=https://github.com/prometheus/alertmanager/releases/download/v0.23.0/alertmanager-0.23.0.linux-amd64.tar.gz
+export LOKI_PKG=https://GitHub.com/grafana/loki/releases/download/v2.4.2/loki-linux-amd64.zip
+export PROM_PKG=https://GitHub.com/prometheus/prometheus/releases/download/v2.31.1/prometheus-2.31.1.linux-amd64.tar.gz
+export PROM_ALERT_PKG=https://GitHub.com/prometheus/alertmanager/releases/download/v0.23.0/alertmanager-0.23.0.linux-amd64.tar.gz
 
 cat <<EOF | lxc launch ubuntu: o11y
 config:
@@ -96,7 +96,7 @@ EOF
 MAAS has a git repository of curated alert rules for Prometheus. Checkout this repository, compile the rules and copy them to prometheus directory.
 
 ```nohighlight
-git clone https://github.com/canonical/maas-prometheus-alert-rules.git
+git clone https://GitHub.com/canonical/maas-prometheus-alert-rules.git
 cd maas-prometheus-alert-rules
 make python-deps groups
 
@@ -157,7 +157,7 @@ EOF
 MAAS has a git repository of curated alert rules for Loki. Checkout this repository, compile the rules and copy them to Loki directory.
 
 ```nohighlight
-git clone https://github.com/canonical/maas-loki-alert-rules.git
+git clone https://GitHub.com/canonical/maas-loki-alert-rules.git
 cd maas-loki-alert-rules
 make groups
 
@@ -201,7 +201,7 @@ The Grafana Agent should be installed in the same host as MAAS.
 ```nohighlight
 # Set this to the address of the VM running Loki and Prometheus
 export O11y_IP=<VM_IP>
-export GRAFANA_AGENT_PKG=https://github.com/grafana/agent/releases/download/v0.22.0/agent-linux-amd64.zip
+export GRAFANA_AGENT_PKG=https://GitHub.com/grafana/agent/releases/download/v0.22.0/agent-linux-amd64.zip
 
 wget -q "${GRAFANA_AGENT_PKG}" -O /tmp/agent.zip
 unzip /tmp/agent.zip -d /opt/agent
@@ -257,7 +257,7 @@ Once your stack is set up, verifying its operation becomes crucial. You should b
 
 ## Basic O11y (3.1--)
 
-MAAS services can provide [Prometheus](https://prometheus.io/)**^** endpoints for collecting performance metrics.
+MAAS services can provide [Prometheus](https://prometheus.io/) endpoints for collecting performance metrics.
 
 ## Prometheus for MAAS
 
@@ -296,7 +296,7 @@ After installing the `python3-prometheus-client` library as describe above, run 
 
 ## Configure Prometheus
 
-Once the `/metrics` endpoint is available in MAAS services, Prometheus can be configured to scrape metric values from these. You can configure this by adding a stanza like the following to the [prometheus configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)**^**:
+Once the `/metrics` endpoint is available in MAAS services, Prometheus can be configured to scrape metric values from these. You can configure this by adding a stanza like the following to the [prometheus configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/):
 
 ```yaml
     - job_name: maas
@@ -324,9 +324,9 @@ In case of a multi-host deploy, adding a single IP for any of the MAAS hosts run
 
 ## Deploy Prometheus
 
-[Grafana](https://grafana.com/)**^** and Prometheus can be easily deployed using Juju.
+[Grafana](https://grafana.com/) and Prometheus can be easily deployed using Juju.
 
-The [MAAS performance repo](https://git.launchpad.net/~maas-committers/maas/+git/maas-performance)**^** repository provides a sample `deploy-stack` script that will deploy and configure the stack on LXD containers.
+The [MAAS performance repo](https://git.launchpad.net/~maas-committers/maas/+git/maas-performance) repository provides a sample `deploy-stack` script that will deploy and configure the stack on LXD containers.
 
 First, you must install juju via:
 

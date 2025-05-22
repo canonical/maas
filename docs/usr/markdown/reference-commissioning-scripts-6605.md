@@ -2,7 +2,7 @@ Enter keyword arguments in the form `key=value`.
 
 ## Delete a commissioning script
 
-*This operation has been deprecated in favour of `node-script delete`.*
+*This operation has been deprecated in favor of `node-script delete`.*
 
 ```bash
 maas $PROFILE commissioning-script delete [--help] [-d] [-k] name [data ...]
@@ -20,7 +20,7 @@ maas $PROFILE commissioning-script delete [--help] [-d] [-k] name [data ...]
 
 ## Read a commissioning script
 
-*This operation has been deprecated in favour of `node-script read`.*
+*This operation has been deprecated in favor of `node-script read`.*
 
 ```bash
 maas $PROFILE commissioning-script read [--help] [-d] [-k] name [data ...]
@@ -38,7 +38,7 @@ maas $PROFILE commissioning-script read [--help] [-d] [-k] name [data ...]
 
 ## Update a commissioning script
 
-*This operation has been deprecated in favour of `node-script update`.*
+*This operation has been deprecated in favor of `node-script update`.*
 
 ```bash
 maas $PROFILE commissioning-script update [--help] [-d] [-k] name [data ...]
@@ -56,7 +56,7 @@ maas $PROFILE commissioning-script update [--help] [-d] [-k] name [data ...]
 
 ## Create a new commissioning script.
 
-*This operation has been deprecated in favour of `node-scripts create`.*
+*This operation has been deprecated in favor of `node-scripts create`.*
 
 ```bash
 maas $PROFILE commissioning-scripts create [--help] [-d] [-k] [data ...]
@@ -85,7 +85,7 @@ A script file, to be uploaded in binary form.  Note: this is not a normal parame
 
 ## List commissioning scripts
 
-*This operation has been deprecated in favour of `node-scripts read`.*
+*This operation has been deprecated in favor of `node-scripts read`.*
 
 ```bash
 maas $PROFILE commissioning-scripts read [--help] [-d] [-k] [data ...] 

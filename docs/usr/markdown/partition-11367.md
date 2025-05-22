@@ -25,8 +25,8 @@ Optional Boolean. If the partition should be marked bootable.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## List partitions
@@ -42,9 +42,9 @@ maas $PROFILE partitions read [--help] [-d] [-k] system_id device_id [data ...]
 List partitions on a device with the given system_id and device_id.
 
 #### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
+| Option         | Effect                                       |
+|----------------|----------------------------------------------|
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
+| -k, --insecure | Disable SSL certificate check                |
 

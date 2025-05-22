@@ -9,7 +9,7 @@ maas $PROFILE node-results read [--help] [-d] [-k] [data ...]
 Read the commissioning results per node visible to the user, optionally filtered.
 
 #### Keyword "system_id"
-Optional String.  An optional list of system ids. Only the results related to the nodes with these system ids will be returned.
+Optional String. An optional list of system ids. Only the results related to the nodes with these system ids will be returned.
 
 #### Keyword "name"
 Optional String. An optional list of names. Only the results with the specified names will be returned.

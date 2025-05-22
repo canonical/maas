@@ -33,7 +33,7 @@ maas $PROFILE machine clear-default-gateways [--help] [-d] [-k] system_id [data 
 
 Clear any set default gateways on a machine with the given system_id.
 
-This will clear both IPv4 and IPv6 gateways on the machine. This will transition the logic of identifing the best gateway to MAAS. This logic is determined based the following criteria:
+This will clear both IPv4 and IPv6 gateways on the machine. This will transition the logic of identifying the best gateway to MAAS. This logic is determined based the following criteria:
 
 1. Managed subnets over unmanaged subnets.
 2. Bond interfaces over physical interfaces.
@@ -493,7 +493,7 @@ maas $PROFILE machine release [--help] [-d] [-k] system_id [data ...]
 
 Releases a machine with the given system_id. Note that this operation is the opposite of allocating a machine.
 
-**Erasing drives**:
+Erasing drives**:
 
 If neither ``secure_erase`` nor ``quick_erase`` are specified, MAAS will overwrite the whole disk with null bytes. This can be very slow.
 
@@ -882,7 +882,7 @@ Optional String.  The password used to access the chassis. This field is require
 Optional String. If true, all enlisted machines will be commissioned.
 
 #### Keyword "rack_controller"
-Optional String.  The system_id of the rack controller to send the add chassis command through. If none is specifed MAAS will automatically determine the rack controller to use.
+Optional String.  The system_id of the rack controller to send the add chassis command through. If none is specified MAAS will automatically determine the rack controller to use.
 
 #### Keyword "domain"
 Optional String. The domain that each new machine added should use.
@@ -1069,8 +1069,8 @@ Each key can be one of the following:
 
 - ``vendor_id``: The device vendor id
 - ``product_id``: The device product id
-- ``vendor_name``: The device vendor name, not case sensative
-- ``product_name``: The device product name, not case sensative
+- ``vendor_name``: The device vendor name, not case sensitive
+- ``product_name``: The device product name, not case sensitive
 - ``commissioning_driver``: The device uses this driver during   commissioning.
 
 #### Keyword "dry_run"
@@ -1319,8 +1319,8 @@ Each key can be one of the following:
 
 - ``vendor_id``: The device vendor id
 - ``product_id``: The device product id
-- ``vendor_name``: The device vendor name, not case sensative
-- ``product_name``: The device product name, not case sensative
+- ``vendor_name``: The device vendor name, not case sensitive
+- ``product_name``: The device product name, not case sensitive
 - ``commissioning_driver``: The device uses this driver during   commissioning.
 
 #### Command-line options

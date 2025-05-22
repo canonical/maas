@@ -100,9 +100,9 @@ Returns statistics for the specified subnet, including:
 - **total_addresses**: the sum of the available plus unavailable addresses
 - **usage**: the (floating point) usage percentage of this subnet
 - **usage_string**: the (formatted unicode) usage percentage of this subnet
-- **ranges**: the specific IP ranges present in ths subnet (if specified)
+- **ranges**: the specific IP ranges present in this subnet (if specified)
 
-Note: to supply additional optional parameters for this request, addthem to the request URI, for example:
+Note: to supply additional optional parameters for this request, add them to the request URI, for example:
 
 ``/subnets/1/?op=statistics&include_suggestions=1``
 

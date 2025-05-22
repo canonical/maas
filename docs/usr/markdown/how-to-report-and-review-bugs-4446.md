@@ -46,7 +46,7 @@ It's advised to review the generated report for confidential/sensitive data befo
 
 ## Submit the bug
 
-1. **Start here**: [Launchpad bug report page](https://bugs.launchpad.net/maas/+filebug)**^**
+1. **Start here**: [Launchpad bug report page](https://bugs.launchpad.net/maas/+filebug)
 2. **Summary**: Input your concise summary.
 3. **Details**: Paste the prepared info into "Further information".
 4. **Attachments**: Add screenshots and log files. Describe them.

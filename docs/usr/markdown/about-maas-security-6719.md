@@ -32,7 +32,7 @@ Vault is compatible with MAAS version 3.3 and above. Please upgrade if you're us
 
 ## PostgreSQL security
 
-PostgreSQL contains secrets, and should be encrypted for maximum protection. You should consider [full disk encryption ](https://help.ubuntu.com/community/Full_Disk_Encryption_Howto_2019)**^**. Also recommended is [TLS encryption between MAAS and PostgreSQL ](https://www.postgresql.org/docs/current/ssl-tcp.html)**^**.
+PostgreSQL contains secrets, and should be encrypted for maximum protection. You should consider [full disk encryption ](https://help.ubuntu.com/community/Full_Disk_Encryption_Howto_2019). Also recommended is [TLS encryption between MAAS and PostgreSQL ](https://www.postgresql.org/docs/current/ssl-tcp.html).
 
 ## Strong passwords
 
@@ -51,7 +51,7 @@ MAAS configuration files should be set to have permission `640`: readable by log
 
 ## Snap security
 
-Snaps are fully confined or 'sandboxed,' offering inherent security for the enclosed application. For more detailed information, see [this snap blog](https://snapcraft.io/blog/where-eagles-snap-a-closer-look)**^**.
+Snaps are fully confined or 'sandboxed,' offering inherent security for the enclosed application. For more detailed information, see [this snap blog](https://snapcraft.io/blog/where-eagles-snap-a-closer-look).
 
 ## Role-Based Access Control (RBAC)  
 

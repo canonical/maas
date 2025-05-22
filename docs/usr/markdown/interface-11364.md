@@ -210,7 +210,7 @@ maas $PROFILE interface update [--help] [-d] [-k] system_id id [data ...]
 
 Update an interface with the given `system_id` and interface `id`.
 
-Note: machines must have a status of Ready or Broken to have access to all options. Machines with Deployed status can only have the name and/or mac_address updated for an interface. This is intented to allow a bad interface to be replaced while the machine remains deployed.
+Note: machines must have a status of Ready or Broken to have access to all options. Machines with Deployed status can only have the name and/or mac_address updated for an interface. This is intended to allow a bad interface to be replaced while the machine remains deployed.
 
 #### Keyword "name"
 Optional String. (Physical interfaces) Name of the interface.
@@ -273,7 +273,7 @@ Optional Boolean. (Bridge interfaces) Turn spanning tree protocol on or off.  (D
 Optional Int. (Bridge interfaces) Set bridge forward delay to time seconds.  (Default: 15).
 
 #### Keyword "bond_miimon"
-Optional Int. (Bonds) The link monitoring freqeuncy in milliseconds.  (Default: 100).
+Optional Int. (Bonds) The link monitoring frequency in milliseconds.  (Default: 100).
 
 #### Keyword "bond_downdelay"
 Optional Int.  (Bonds) Specifies the time, in milliseconds, to wait before disabling a slave after a link failure has been detected.
@@ -314,7 +314,7 @@ Optional String. Maximum transmission unit.
 Optional String. Accept router advertisements. (IPv6 only)
 
 #### Keyword "link_connected"
-Optional Boolean. (Physical interfaces) Whether or not the interface is physically conntected to an uplink.  (Default: True).
+Optional Boolean. (Physical interfaces) Whether or not the interface is physically connected to an uplink.  (Default: True).
 
 #### Keyword "interface_speed"
 Optional Int. (Physical interfaces) The speed of the interface in Mbit/s. (Default: 0).
@@ -329,7 +329,7 @@ Optional Int. (Physical interfaces) The speed of the link in Mbit/s. (Default: 0
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
 
-## Create a bond inteface
+## Create a bond interface
 
 ```bash
 maas $PROFILE interfaces create-bond [--help] [-d] [-k] system_id [data ...]
@@ -376,7 +376,7 @@ Supported bonding modes:
 - ``balance-alb``: Adaptive load balancing: includes balance-tlb plus receive load balancing (rlb) for IPV4 traffic, and does not require any special switch support. The receive load balancing is achieved by ARP negotiation.
 
 #### Keyword "bond_miimon"
-Optional Int. The link monitoring freqeuncy in milliseconds.  (Default: 100).
+Optional Int. The link monitoring frequency in milliseconds.  (Default: 100).
 
 #### Keyword "bond_downdelay"
 Optional Int.  Specifies the time, in milliseconds, to wait before disabling a slave after a link failure has been detected.
@@ -393,7 +393,7 @@ hash policy to use for slave selection in balance-xor, 802.3ad, and tlb
 modes. Possible values are: ``layer2``, ``layer2+3``, ``layer3+4``, ``encap2+3``, ``encap3+4``. (Default: ``layer2``)
 
 #### Keyword "bond_num_grat_arp"
-Optional Int.  The number of peer notifications (IPv4 ARP or IPv6 Neighbour Advertisements) to be issued after a failover. (Default: 1)
+Optional Int.  The number of peer notifications (IPv4 ARP or IPv6 Neighbor Advertisements) to be issued after a failover. (Default: 1)
 
 #### Keyword "mtu"
 Optional Int. Maximum transmission unit.

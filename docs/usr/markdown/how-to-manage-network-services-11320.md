@@ -3,10 +3,10 @@ MAAS-configured network services reduce friction by eliminating setup challenges
 ## Manage DHCP
 ### Enable MAAS DHCP  
 
-**UI:**  
+UI:**  
 *Subnets > (Select VLAN) > Configure DHCP (Fill fields) > Configure DHCP*  
 
-**CLI:**  
+CLI:**  
 ```bash
 maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY_RACK
 ```
@@ -15,7 +15,7 @@ maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY
 
 ### Enable DHCP for HA
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY_RACK secondary_rack=$SECONDARY_RACK
 ```
@@ -24,10 +24,10 @@ maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY
 
 ### Set up a DHCP relay  
 
-**UI**
+UI**
 *Subnets > (Select VLAN) > Configure DHCP > Relay to another VLAN > (Select VLAN) >  Configure DHCP*
 
-**CLI:**  
+CLI:**  
 ```bash
 maas $PROFILE vlan update $FABRIC_ID $VLAN_VID_SRC relay_vlan=$VLAN_ID_TARGET
 ```
@@ -36,37 +36,37 @@ maas $PROFILE vlan update $FABRIC_ID $VLAN_VID_SRC relay_vlan=$VLAN_ID_TARGET
 
 ### Create snippets
 
-**UI**
+UI**
 *Settings > DHCP snippets > Add snippet > (Fill fields) > Save snippet*
 
-**CLI (global snippet)**  
+CLI (global snippet)**  
 ```bash
 maas $PROFILE dhcpsnippets create name=$DHCP_SNIPPET_NAME value=$DHCP_CONFIG description=$DESCRIPTION global_snippet=true
 ```
 
-**CLI (subnet snippet)**  
+CLI (subnet snippet)**  
 ```bash
 maas $PROFILE dhcpsnippets create name=$DHCP_SNIPPET_NAME value=$DHCP_CONFIG description=$DESCRIPTION subnet=$SUBNET_ID
 ```
 
-**CLI (node snippet)**  
+CLI (node snippet)**  
 ```bash
 maas $PROFILE dhcpsnippets create name=$DHCP_SNIPPET_NAME value=$DHCP_CONFIG description=$DESCRIPTION node=$NODE_ID
 ```
 
 ### List snippets
 
-**UI**
+UI**
 *Settings > DHCP snippets*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE dhcpsnippets read
 ```
 
 ### Update a snippet
 
-**UI**
+UI**
 *Settings > DHCP snippets > Actions > Pencil icon (edit) > (Edit snippet) > Save snippet*
 
 ```bash
@@ -75,10 +75,10 @@ maas $PROFILE dhcpsnippet update $DHCP_SNIPPET_ID enabled=false
 
 ### Delete a snippet
 
-**UI**
+UI**
 *Settings > DHCP snippets > Actions > Trash can icon (delete) > Delete*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE dhcpsnippet delete $DHCP_SNIPPET_ID
 ```
@@ -87,10 +87,10 @@ maas $PROFILE dhcpsnippet delete $DHCP_SNIPPET_ID
 
 ### Use external NTP  
 
-**UI:**  
+UI:**  
 *Settings > Network > NTP > (Fill in NTP address) > External Only > Save*  
 
-**CLI:**  
+CLI:**  
 ```bash
 maas $PROFILE maas set-config name=ntp_servers value=$NTP_IP_ADDRESS
 maas $PROFILE maas set-config name=ntp_external_only value=true
@@ -146,17 +146,17 @@ Ensure your new entry appears in the output.
 
 ### Set a DNS server  
 
-**UI**
+UI**
 *Settings > DNS > (Fill fields) > Save*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE subnet update $SUBNET_CIDR dns_servers=$MY_DNS_SERVER
 ```
 
 ### Set a DNS forwarder  
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE maas set-config name=upstream_dns value=$MY_UPSTREAM_DNS
 ```

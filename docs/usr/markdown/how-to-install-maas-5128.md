@@ -86,12 +86,12 @@ postgresql   RUNNING   pid 8001, uptime 0:09:17
 
 ## Enabling DHCP
 
-**UI**
+UI**
 1. **Navigate to Subnets > VLAN > Configure DHCP.**
 2. **Select the appropriate DHCP options (Managed or Relay).**
 3. **Save and apply changes.**
 
-**CLI**
+CLI**
 1. **Enable DHCP:**
    ```bash
    maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True \

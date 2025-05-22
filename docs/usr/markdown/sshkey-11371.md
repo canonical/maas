@@ -18,8 +18,8 @@ Required Int. An SSH key ID.
 #### Command-line options
 | Option | Effect |
 |-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
+| --help, -h | Show this help message and exit |
+| -d, --debug | Display more information about API responses |
 | -k, --insecure | Disable SSL certificate check |
 
 ## Retrieve an SSH key
@@ -40,8 +40,8 @@ Required Int. An SSH key ID.
 #### Command-line options
 | Option | Effect |
 |-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
+| --help, -h | Show this help message and exit |
+| -d, --debug | Display more information about API responses |
 | -k, --insecure | Disable SSL certificate check |
 
 ## Import SSH keys
@@ -53,7 +53,7 @@ maas $PROFILE sshkeys import [--help] [-d] [-k] [data ...]
 Import the requesting user's SSH keys for a given protocol and authorization ID in `protocol:auth_id` format.
 
 #### Keyword "keysource"
-Required String.  The source of the keys to import should be provided in the request payload as form data, for example:
+Required String. The source of the keys to import should be provided in the request payload as form data, for example:
 
 
 ``source:user``
@@ -64,8 +64,8 @@ Required String.  The source of the keys to import should be provided in the req
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## List SSH keys
@@ -79,7 +79,7 @@ List all keys belonging to the requesting user.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
 | -k, --insecure | Disable SSL certificate check                 |
 

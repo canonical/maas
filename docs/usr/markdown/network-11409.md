@@ -21,7 +21,7 @@ returned.
 
 ## Read network definition
 
-This operation has been deprecated in favour of `subnet read`.
+This operation has been deprecated in favor of `subnet read`.
 
 ```bash
 maas $PROFILE network read [--help] [-d] [-k] name [data ...] 
@@ -45,9 +45,9 @@ maas $PROFILE networks read [--help] [-d] [-k] [data ...]
 
 #### Keyword "node" 
 
-Optionally, nodes which must be attached to any returned networks.  If more thanone node is given, the result will be restricted to networks that these nodes have in common.
+Optionally, nodes which must be attached to any returned networks.  If more than one node is given, the result will be restricted to networks that these nodes have in common.
 
-This operation has been deprecated in favour of `subnets read`.
+This operation has been deprecated in favor of `subnets read`.
 
 #### Command-line options
 | Option | Effect |

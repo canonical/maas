@@ -18,7 +18,7 @@ A physical interface represents a hardware NIC on the machine. MAAS usually dete
 
 If the machine is already deployed, you won’t be able to modify or add physical interfaces. Bring it to a “Ready” or “Broken” state first.
 
-**CLI**
+CLI**
 ```bash 
 maas $PROFILE interfaces create-physical $SYSTEM_ID (key=value)....
 ```
@@ -97,10 +97,10 @@ Learn more about [bonds](https://maas.io/docs/about-maas-networking#p-20679-bond
 
 ##### How to create a bond
 
-**UI:**  
+UI:**  
 *Machines > (Select machine) > Network > (Select 2 physical interface) > Create bond > (Configure details) > Save interface*  
 
-**CLI:**  
+CLI:**  
 ```bash
 maas $PROFILE interfaces create-bond $SYSTEM_ID name=$BOND_NAME parents=$IFACE1_ID,$IFACE2_ID <optional parameters>
 ```
@@ -138,10 +138,10 @@ Bridging is often confused with bonding. Bonding is about failover or speed; bri
 
 To create a bridge interface:
 
-**UI**
+UI**
 *Machines > (Select machine) > Network > (Select interface) > Create bridge > (Configure details) > Save interface*  
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interfaces create-bridge $SYSTEM_ID name=br0 parent=$INTERFACE_ID
 ```
@@ -158,7 +158,7 @@ If you need to get the parent ID to create the bridge:
 maas $PROFILE interfaces read $SYSTEM_ID
 ```
 
-**CLI+jq**
+CLI+jq**
 
 You can also employ the `jq` tool to make the CLI commands a little easier to use:
 
@@ -217,10 +217,10 @@ See the [CLI reference](https://maas.io/docs/interface) for more details.
 
 Use the MAAS UI or CLI to list all interfaces for a specific machine.
 
-**UI**
+UI**
 *Machines > (Select machine) > Network*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interfaces read $SYSTEM_ID
 ```
@@ -229,10 +229,10 @@ maas $PROFILE interfaces read $SYSTEM_ID
 
 Use this to inspect one interface on a particular machine.
 
-**UI**
+UI**
 *Machines > (Select machine) > Network*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface read $SYSTEM_ID $INTERFACE_ID
 ```
@@ -246,7 +246,7 @@ Update interface parameters — but only if the machine is in `Ready` or `Broken
 
 This allows field-replacement of broken NICs without full re-commissioning.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID (key=value)...
 ```
@@ -259,7 +259,7 @@ See [the CLI subcommand reference](https://maas.io/docs/interface#p-23244-update
 
 Remove an interface that is no longer needed. This is typically used when rolling back a misconfiguration or cleaning up testing setups.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface delete $SYSTEM_ID $INTERFACE_ID
 ```
@@ -278,9 +278,9 @@ You can disconnect a given interface from its current network configuration. Thi
 - Removes assigned IP addresses
 - Detaches from any associated VLAN
 
-This actioni is only available if the machine is in a `Ready` or `Broken` state.
+This action is only available if the machine is in a `Ready` or `Broken` state.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface disconnect $SYSTEM_ID $INTERFACE_ID
 ```
@@ -289,7 +289,7 @@ maas $PROFILE interface disconnect $SYSTEM_ID $INTERFACE_ID
 
 You can connect an interface to a known subnet. This enables traffic routing and IP assignment. The subnet must exist and be discoverable by MAAS.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface link-subnet $SYSTEM_ID $INTERFACE_ID mode=<mode> subnet=<SUBNET_ID> [ip_address=<STATIC_IP>]
 ```
@@ -304,7 +304,7 @@ See [Link and interface to a subnet](https://maas.io/docs/interface#p-23244-link
 
 Use this command to remove an interface connection to a subnet without deleting the interface itself.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface unlink-subnet $SYSTEM_ID $INTERFACE_ID
 ```
@@ -313,7 +313,7 @@ maas $PROFILE interface unlink-subnet $SYSTEM_ID $INTERFACE_ID
 
 You can update the gateway for a specific subnet. This is a subnet-level setting that affects routing behavior for all devices on that subnet.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
 ```
@@ -322,10 +322,10 @@ maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
 
 Route specific traffic between source and destination subnets through a defined gateway. Useful for custom networking setups or multi-NIC systems.
 
-**UI**
+UI**
 *Networking > Subnets > (Select subnet) > Add static route > Fill fields > Save*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE static-routes create source=$SOURCE_SUBNET destination=$DEST_SUBNET gateway_ip=$GATEWAY_IP
 ```
@@ -344,7 +344,7 @@ MAAS allows you to apply **tags** to network interfaces, which can be used for f
 
 Use tags to classify interfaces — e.g., `"uplink"`, `"PXE"`, `"isolated"`, etc.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface add-tag $SYSTEM_ID $INTERFACE_ID tag="my-tag"
 ```
@@ -357,14 +357,14 @@ maas $PROFILE interface add-tag $SYSTEM_ID $INTERFACE_ID tag="my-tag"
 
 Remove any tag that is no longer needed.
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface remove-tag $SYSTEM_ID $INTERFACE_ID tag="my-tag"
 ```
 
 To view existing tags on an interface, use:
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interface read $SYSTEM_ID $INTERFACE_ID
 ```
@@ -427,10 +427,10 @@ Use network discovery to:
 
 Turn discovery on to allow MAAS to detect devices on active subnets.
 
-**UI** 
+UI** 
 *Networking > Network discovery > Configuration > Enabled*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE maas set-config name=network_discovery value="enabled"
 ```
@@ -439,10 +439,10 @@ maas $PROFILE maas set-config name=network_discovery value="enabled"
 
 Stop automatic scanning if you are done, or want manual control.
 
-**UI**
+UI**
 *Networking > Network discovery > Configuration > Disabled*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE maas set-config name=network_discovery value="disabled"
 ```
@@ -451,10 +451,10 @@ maas $PROFILE maas set-config name=network_discovery value="disabled"
 
 Control how often MAAS scans for devices.
 
-**UI**
+UI**
 *Networking > Network discovery > Configuration > Active subnet mapping interval*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE maas set-config name=active_discovery_interval value=<seconds>
 ```
@@ -463,10 +463,10 @@ maas $PROFILE maas set-config name=active_discovery_interval value=<seconds>
 
 Start fresh by removing all discoveries to date.
 
-**UI**
+UI**
 *Networking > Network discovery > Clear all discoveries*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE discoveries clear all=true
 ```
@@ -475,10 +475,10 @@ maas $PROFILE discoveries clear all=true
 
 Focus your scans to pinpoint specific servers.
 
-**UI**
+UI**
 *Networking > Network discovery > Configuration > Subnet mapping > [CIDR selections]*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE discoveries scan cidr=10.0.0.0/24
 ```
@@ -549,7 +549,7 @@ maas $PROFILE discoveries clear-by-mac-and-ip ip=10.0.0.9 mac=00:11:22:33:44:55
 
 - **Delete neighbors**
 ```bash
-maas $PROFILE discoveries clear neighbours=true
+maas $PROFILE discoveries clear neighbors=true
 ```
 
 - **Delete mDNS**
@@ -563,10 +563,10 @@ The following instructions are based on MAAS 3.4. For earlier versions, the UI e
 
 ### Examine subnets
 
-**UI**
+UI**
 *Networking > Subnets > (Select subnet)*
 
-**CLI**
+CLI**
  - List subnets:
     ```bash
     maas $PROFILE subnets read
@@ -578,10 +578,10 @@ The following instructions are based on MAAS 3.4. For earlier versions, the UI e
 
 ### Toggle subnet management
 
-**UI**
+UI**
 *Subnets > (Select subnet) > Edit > Managed allocation > Save*
 
-**CLI**
+CLI**
   - Enable management:
     ```bash
     maas $PROFILE subnet update $SUBNET_CIDR managed=true
@@ -593,20 +593,20 @@ The following instructions are based on MAAS 3.4. For earlier versions, the UI e
 
 ### Configure DNS servers per subnet
 
-**UI**
+UI**
 *Subnets > (Select subnet)j > Edit > DNS servers > Save*
 
-**CLI**
+CLI**
   ```bash
   maas $PROFILE subnet update $SUBNET_CIDR dns_servers=$DNS_SERVER_IPS
   ```
 
 ### Add static routes
 
-**UI**
+UI**
 *Subnets > (Select subnet) > Static routes > Add static route > Enter Gateway IP > Enter Destination subnet > Enter (optional) Metric > Save*
 
-**CLI**
+CLI**
   ```bash
   maas $PROFILE static-routes create source=$SOURCE_SUBNET destination=$DEST_SUBNET gateway_ip=$GATEWAY_IP
   ```
@@ -615,30 +615,30 @@ The following instructions are based on MAAS 3.4. For earlier versions, the UI e
 
 ### Create VLAN
 
-**UI**
+UI**
 *Subnets > Add > VLAN > (Fill fields) > Add VLAN*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE vlans create $FABRIC_ID name=$VLAN_NAME vid=$VLAN_ID
 ```
 
 ### Assign VLAN to interface  
 
-**UI**
+UI**
 *Machines > (Select machine> > (Select physical interface) > Actions > Add VLAN*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE interfaces create-vlan $SYSTEM_ID vlan=$VLAN_ID parent=$INTERFACE_ID
 ```
 
 ### Delete VLAN  
 
-**UI**
+UI**
 *Subnets* > (Select VLAN) > Delete VLAN > Delete VLAN*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE vlan delete $FABRIC_ID $VLAN_ID
 ```
@@ -665,27 +665,27 @@ network:
 
 #### Reserve a single IP
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE ipaddresses reserve ip=$IP_ADDRESS_STATIC_SINGLE
 ```
 
 #### Reserve a dynamic range
 
-**UI**
+UI**
 *Subnets > (Select subnet> > (Scroll down> > Reserve range > Reserve dynamic range > (Fill fields) > Reserve*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE ipranges create type=dynamic subnet=$SUBNET_ADDRESS start_ip=$IP_DYNAMIC_RANGE_LOW end_ip=$IP_DYNAMIC_RANGE_HIGH
 ```
 
 #### Reserve a static range
 
-**UI**
+UI**
 *Subnets > (Select subnet> > (Scroll down) > Reserve range > Reserve range > (Fill fields) Reserve*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE ipranges create type=reserved subnet=$SUBNET_ADDRESS start_ip=$IP_STATIC_RANGE_LOW end_ip=$IP_STATIC_RANGE_HIGH
 ```

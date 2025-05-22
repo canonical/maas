@@ -23,10 +23,10 @@ All of these should install with no additional prompts.
 
 ## Get templates
 
-You can obtain the packer templates by cloning the [packer-maas github repository](https://github.com/canonical/packer-maas.git)**^**, like this:
+You can obtain the packer templates by cloning the [packer-maas GitHub repository](https://github.com/canonical/packer-maas.git), like this:
 
 ```nohighlight
-git clone https://github.com/canonical/packer-maas.git
+git clone https://GitHub.com/canonical/packer-maas.git
 ```
 
 Make sure to pay attention to where the repository is cloned. The Packer template in this cloned repository creates a Ubuntu AMD64 image for use with MAAS.

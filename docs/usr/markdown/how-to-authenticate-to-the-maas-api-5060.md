@@ -1,4 +1,4 @@
-MAAS API utilises 0-legged OAuth for authentication. While some endpoints allow anonymous access, others require authenticated requests. This page provides examples in Python, Ruby, curl, and HTTP for fetching the list of nodes.
+MAAS API utilizes 0-legged OAuth for authentication. While some endpoints allow anonymous access, others require authenticated requests. This page provides examples in Python, Ruby, curl, and HTTP for fetching the list of nodes.
 
 ## Python
  

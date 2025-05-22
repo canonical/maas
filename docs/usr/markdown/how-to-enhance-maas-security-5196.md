@@ -118,10 +118,10 @@ Place the certificate and key in an accessible directory, such as `/var/snap/maa
 
 You can setup your own Certificate Authority (CA) server that supports the ACME protocol with these components:
 
-- [step-ca from Smallstep](https://smallstep.com/docs/step-ca)**^**
-- [Caddy server with ACME support](https://caddyserver.com/docs/caddyfile/directives/acme_server)  (available since version 2.5)**^**
+- [step-ca from Smallstep](https://smallstep.com/docs/step-ca)
+- [Caddy server with ACME support](https://caddyserver.com/docs/caddyfile/directives/acme_server)  (available since version 2.5)
 
-If you have a CA server with ACME protocol support, you can use any ACME client for an automated certificate renewal and use crontab to renew on a desired time interval. For example, [acme.sh](https://github.com/acmesh-official/acme.sh)**^**: 
+If you have a CA server with ACME protocol support, you can use any ACME client for an automated certificate renewal and use crontab to renew on a desired time interval. For example, [acme.sh](https://GitHub.com/acmesh-official/acme.sh): 
 
 ```nohighlight
 $> acme.sh --issue -d mymaas.internal --standalone --server https://ca.internal/acme/acme/directory
@@ -144,7 +144,7 @@ $> sudo acme.sh --installcert -d maas.internal \
 
 ### Use certbot
 
-[certbot](https://certbot.eff.org)**^** can be used to renew certificates, using a post-renewal hook to update MAAS:
+[certbot](https://certbot.eff.org) can be used to renew certificates, using a post-renewal hook to update MAAS:
 
 
 ```nohighlight
@@ -181,7 +181,7 @@ Note that hooks are run only on renewal.  You can test the process with a `--dry
 sudo REQUESTS_CA_BUNDLE=ca.pem certbot renew --standalone --server https://ca.internal/acme/acme/directory --dry-run
 ```
 
-Refer to the [certbot documentation](https://certbot.eff.org/instructions?ws=other&os=ubuntufocal)**^** for more information.
+Refer to the [certbot documentation](https://certbot.eff.org/instructions?ws=other&os=ubuntufocal) for more information.
 
 ### Manage PEM files
 
@@ -245,7 +245,7 @@ Note that MAAS binds to port 5240, not 80.
 
 ## Manage network ports
 
-Regulate accessible network ports for stronger MAAS security. Consider configuring your [firewall](https://ubuntu.com/server/docs/security-firewall)**^** to allow only the ports MAAS uses. Using the Ubuntu UncomplicatedFirewall:
+Regulate accessible network ports for stronger MAAS security. Consider configuring your [firewall](https://ubuntu.com/server/docs/security-firewall) to allow only the ports MAAS uses. Using the Ubuntu UncomplicatedFirewall:
 
 ```nohighlight
 sudo ufw enable
@@ -313,7 +313,7 @@ Apply these changes by restarting HAProxy:
 sudo systemctl restart haproxy
 ```
 
-Enable [HAProxy logging](https://www.digitalocean.com/community/tutorials/how-to-implement-ssl-termination-with-haproxy-on-ubuntu-14-04)**^** if desired.  Alternatively, bypass SSL without HAProxy.
+Enable [HAProxy logging](https://www.digitalocean.com/community/tutorials/how-to-implement-ssl-termination-with-haproxy-on-ubuntu-14-04) if desired.  Alternatively, bypass SSL without HAProxy.
 
 ## Use logging
 
@@ -327,12 +327,12 @@ Manage users carefully to maintain strong, proactive security.
 
 ### Add a user
 
-**UI**
+UI**
 *Settings* > *Users* > *Add user*> [Fill fields] > *Save*.
 
 Check the appropriate box to grant administrative rights.
 
-**CLI**
+CLI**
 ```nohighlight
     maas $PROFILE users create username=$USERNAME \
     email=$EMAIL_ADDRESS password=$PASSWORD is_superuser=0
@@ -340,15 +340,15 @@ Check the appropriate box to grant administrative rights.
 
 ### Edit users
 
-**UI**
+UI**
 *[Select user]* > *Details* > *[Make changes]* > *Save*
 
 ### Manage SSH keys
 
-**UI**
+UI**
 *Settings* > *Users* > *[User]* > *Pencil* > *[Follow key import steps]*
 
-**CLI**
+CLI**
 ```nohighlight
     ubuntu@maas:~$ maas $PROFILE sshkeys create key="$(cat /home/ubuntu/.ssh/id_rsa.pub)"
 ```
@@ -367,7 +367,7 @@ Check the appropriate box to grant administrative rights.
 
 Learn more about [MAAS and Hashicorp Vault](https://maas.io/docs/ensuring-security-in-maas#p-13983-hashicorp-vault).
 
-To ensure seamless integration between MAAS and Vault, you'll first need to obtain a `role_id` and `wrapped_token` through Vault's CLI. For detailed guidance, check [Hashicorp Vault's tutorial](https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#approle-response-wrapping)**^**.
+To ensure seamless integration between MAAS and Vault, you'll first need to obtain a `role_id` and `wrapped_token` through Vault's CLI. For detailed guidance, check [Hashicorp Vault's tutorial](https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#approle-response-wrapping).
 
 Here's an illustrative example on how to set up this integration using the `vault` CLI:
 

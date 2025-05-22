@@ -135,7 +135,7 @@ Click on “GET DETAILS” for the Boot Volume in the Volume list to bring up th
 
 Ensure that the Boot Volume is configured appropriately for your planned MAAS deployment, then click “Done.” Then return to the storage configuration tab and choose the Data Volume, and tune it to the appropriate parameters.
 
-Next, choose the “ADAPTERS” sub-tab to bring up information on the storage adaptors:
+Next, choose the “ADAPTERS” sub-tab to bring up information on the storage adapters:
 
 ![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/8/821edff17e3fe8f2fbf9b5cb1682928dc9bb34d7.png)
 

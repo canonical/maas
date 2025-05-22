@@ -100,7 +100,7 @@ Required String. Name of the domain.
 Optional String. Class type of the domain.
 
 #### Keyword "forward_dns_servers"
-Optional String. List of forward dns server IP addresses when MAAS is not authorititative.
+Optional String. List of forward dns server IP addresses when MAAS is not authoritative.
 
 #### Command-line options
 | Option | Effect |

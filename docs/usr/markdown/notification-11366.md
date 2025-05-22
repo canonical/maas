@@ -67,7 +67,7 @@ maas $PROFILE notification update [--help] [-d] [-k] id [data ...]
 Update a notification with a given id. This is available to admins *only*. One of the ``user``, ``users`` or ``admins`` parameters must be set to True for the notification to be visible to anyone.
 
 #### Keyword "message"
-Required String.  The message for this notification. May contain basic HTML, such as formatting. This string will be sanitised before display so that it doesn't break MAAS HTML.
+Required String.  The message for this notification. May contain basic HTML, such as formatting. This string will be sanitized before display so that it doesn't break MAAS HTML.
 
 #### Keyword "context"
 Optional String.  Optional JSON context. The root object *must* be an object (i.e. a mapping). The values herein can be referenced by ``message`` with Python's "format" (not %) codes.
@@ -87,8 +87,8 @@ Optional Boolean. True to notify all users, defaults to false, i.e. not targeted
 #### Keyword "admins"
 Optional Boolean. True to notify all admins, defaults to false, i.e. not targeted to all admins.
 
-#### Keyword "dismissable"
-Optional Boolean. True to allow users dimissing the notification. Defaults to true.
+#### Keyword "dismissible"
+Optional Boolean. True to allow users dismissing the notification. Defaults to true.
 
 #### Command-line options
 | Option | Effect |
@@ -106,7 +106,7 @@ maas $PROFILE notifications create [--help] [-d] [-k] [data ...]
 Create a new notification.  This is available to admins *only*. One of the ``user``, ``users`` or ``admins`` parameters must be set to True for the notification to be visible to anyone.
 
 #### Keyword "message"
-Required String.  The message for this notification. May contain basic HTML, such as formatting. This string will be sanitised before display so that it doesn't break MAAS HTML.
+Required String.  The message for this notification. May contain basic HTML, such as formatting. This string will be sanitized before display so that it doesn't break MAAS HTML.
 
 #### Keyword "context"
 Optional String.  Optional JSON context. The root object *must* be an object (i.e. a mapping). The values herein can be referenced by ``message`` with Python's "format" (not %) codes.

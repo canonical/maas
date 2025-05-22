@@ -10,7 +10,7 @@ A detailed picture of deployment looks something like this:
 
 Before deploying a machine, MAAS must allocate it (status 'Allocated'). Allocating a machine reserves the machine for the exclusive use of the allocation process. The machine is no longer available to any other process, including another MAAS instance, or a process such as Juju.
 
-The agent that triggers deployment may vary. For instance, if the machines are destined to run complex, inter-related services that scale up or down frequently, like a "cloud" resource, then [Juju](https://jaas.ai/)**^** is the recommended deployment agent. Juju will also install and configure services on the deployed machines. If you want to use MAAS to install a base operating system and work on the machines manually, then you can deploy a machine directly with MAAS.
+The agent that triggers deployment may vary. For instance, if the machines are destined to run complex, inter-related services that scale up or down frequently, like a "cloud" resource, then [Juju](https://jaas.ai/) is the recommended deployment agent. Juju will also install and configure services on the deployed machines. If you want to use MAAS to install a base operating system and work on the machines manually, then you can deploy a machine directly with MAAS.
 
 ## Access to deployed machines
 
@@ -20,7 +20,7 @@ Juju adds SSH keys to machines under its control.
 
 ## Pre-seeding deployments
 
-MAAS also supports machine customisation with a process called "preseeding."
+MAAS also supports machine customization with a process called "preseeding."
 
 ## Basic requirements for deployment
 
@@ -37,7 +37,7 @@ To deploy, you must configure the underlying machine to netboot. Such a machine 
 9. The machine boots the ephemeral image.
 10. The ephemeral image runs `curtin`, with passed pre-seed information, to configure the machine's hardware.
 11. The desired deployment (target) image is retrieved by `curtin`, which installs and boots that deployment image. Note that the curtin installer uses an image-based method and is now the only installer used by MAAS. Although the older debian-installer method has been removed, curtin continues to support preseed files. 
-12. The target image runs its embedded `cloud-init` script set, including any customisations and pre-seeds.
+12. The target image runs its embedded `cloud-init` script set, including any customizations and pre-seeds.
 
 Once this is done, the target image is up and running on the machine, and the machine can be considered successfully deployed.
 

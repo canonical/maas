@@ -54,7 +54,7 @@ Optional Boolean.  If True, allows a MAAS administrator to release a discovered 
 maas $PROFILE ipaddresses reserve [--help] [-d] [-k] [data ...] 
 ```
 
-Reserve an IP address for use outside of MAAS. Returns an IP adddress that MAAS will not allow any of its known nodes to use; it is free for use by the requesting user until released by the user.
+Reserve an IP address for use outside of MAAS. Returns an IP address that MAAS will not allow any of its known nodes to use; it is free for use by the requesting user until released by the user.
 
 The user must supply either a subnet or a specific IP address within a subnet.
 

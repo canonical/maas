@@ -1,14 +1,14 @@
 ## MAAS OS deployment failing with cloud-init error
 
-**Problem:**
+Problem:**
 Deployment of a JUJU controller or an OS directly on a node fails with the error "cloud-init Data source not found."
 
-**Environment:**
+Environment:**
 - MAAS version: stable (2.8 mentioned)
 - Single NIC for MAAS node and JUJU controller node
 - Ubuntu 16.04 and 18.04 tried
 
-**Potential causes and solutions:**
+Potential causes and solutions:**
 
 1. **Cloud-init unable to reach MAAS metadata server:**
    - Ensure that the nodes can reach the MAAS metadata server, which provides SSH keys and user_data.
@@ -88,10 +88,10 @@ By following these steps and checking these configurations, you should be able t
 
 ## Decoupling DNS from MAAS and resolving configuration issues
 
-**Problem:**
+Problem:**
 MAAS restarted after an update, causing DNS to fail due to duplicate subnets and configurations. This led to BIND9 failing to start, creating repeated crashes and restarts of the DNS service.
 
-**Solution:**
+Solution:**
 
 ### Steps to decouple DNS from MAAS and resolve configuration issues:
 
@@ -157,10 +157,10 @@ By following these steps, you can decouple DNS from MAAS, resolve configuration 
 
 ## Configuring the second NIC for external DHCP in MAAS
 
-**Problem:**
+Problem:**
 You have managed to deploy machines with two NICs using MAAS. The first NIC uses PXE/DHCP, but configuring the second NIC to use external DHCP is proving challenging.
 
-**Solution:**
+Solution:**
 
 ### Steps to configure the second NIC for external DHCP:
 
@@ -217,10 +217,10 @@ By following these steps, you should be able to configure the second NIC on a ma
 
 ## MAAS setup with existing/external DHCP
 
-**Problem:**
+Problem:**
 A user was trying to set up MAAS with an existing DHCP server on an Edgerouter 12. However, when attempting to PXE boot machines, they received a 'no media found' error. The goal was to use MAAS without creating VLANs or replacing the existing DHCP server.
 
-**Solution:**
+Solution:**
 
 ### Summary:
 The user ultimately resolved the issue by disabling the router's DHCP and using the built-in DHCP service in MAAS.
@@ -267,10 +267,10 @@ By following these steps, you can configure MAAS to work with an existing DHCP s
 
 ## Configuring multiple NICs on a machine with MAAS
 
-**Problem:**
+Problem:**
 You want to configure a machine with two NICs. NIC #1 is connected to a private subnet managed by MAAS, while NIC #2 is connected to a public subnet used for internet access. The user struggled to find a way to configure NIC #2 through the MAAS UI.
 
-**Solution:**
+Solution:**
 
 Yes, it is possible to have two NICs working on a machine in MAAS. Here's how you can configure both NICs:
 
@@ -327,21 +327,21 @@ Yes, it is possible to have two NICs working on a machine in MAAS. Here's how yo
 5. **Apply the configuration:**
    - Apply the network configuration using the `netplan apply` command or reboot the machine to ensure the settings take effect.
 
-**Note:**
+Note:**
 There was a mention of a bug when selecting a Fabric in the "Edit Physical" mask, causing it to jump back. Ensure that the correct fabric and subnet are selected before saving the configuration.
 
 By following these steps, you should be able to configure both NICs on your machine, allowing it to communicate on both the private MAAS-managed network and the public internet-facing network.
 
 ## Manual DHCP Allocation with MAAS
 
-**Problem:**
+Problem:**
 A casual user is considering using MAAS for his homelab, primarily for learning configuration and deployment of containers on Raspberry Pi clusters. He has traditionally used manual DHCP allocations for server IP addresses to simplify IP address management and DNS. He is concerned whether this approach will conflict with MAAS's use of DHCP.
 
-**Solution:**
+Solution:**
 
 You can use manual DHCP allocations with MAAS, but you need to ensure that the DHCP offers set the next-server address to the TFTP boot server. This is crucial as it allows MAAS machines (such as your Raspberry Pi clusters) to get the address of boot servers to request a Network Boot Program (NBP).
 
-**Steps:**
+Steps:**
 
 1. **Configure DHCP server:**
    - Ensure your DHCP server is configured to assign static IP addresses based on MAC addresses for your Raspberry Pi clusters.
@@ -372,10 +372,10 @@ By following these steps, you can integrate manual DHCP allocations with MAAS, m
 
 ## DHCP services stopped working
 
-**Problem:**
+Problem:**
 MAAS 2.9.2 (snap) DHCP services stopped working after memory and disk issues were resolved. Despite fixing the memory and disk problems and rebooting, the DHCP services are not starting.
 
-**Solution:**
+Solution:**
 
 1. **Check logs:**
    - Look into the [MAAS logs](https://maas.io/docs/how-to-use-logging).
@@ -439,10 +439,10 @@ By following these steps, you should be able to diagnose and resolve the issues 
 
 ## Setting up an upstream DNS for external DNS resolution in MAAS
 
-**Problem:**
+Problem:**
 You have set up a MAAS environment with DHCP and DNS enabled. However, your MAAS-deployed devices are unable to resolve hostnames using upstream DNS. Specifically, you are trying to resolve the hostname "grafana" but it only resolves via IP.
 
-**Solution:**
+Solution:**
 
 1. **Verify upstream DNS configuration:**
    Ensure that your MAAS configuration includes the correct upstream DNS servers. You can set this up in the MAAS UI or via the command line.
@@ -530,10 +530,10 @@ By following these steps, your MAAS-deployed devices should be able to resolve h
 
 ## Unable to commission server - cloud-init error: "Can not apply stage final, no datasource found!"
 
-**Problem:**
+Problem:**
 You are experiencing an issue where newly commissioned servers in your MAAS 3.1 environment fail with the cloud-init error "Can not apply stage final, no datasource found!" This problem is preventing you from commissioning new servers while your existing OpenStack environment has been running properly for some time.
 
-**Solution:**
+Solution:**
 
 1. **Verify network configuration:**
    - Ensure that the network configuration for the new servers is correct. Check that the servers can reach the MAAS server and that there are no network issues preventing them from accessing the necessary metadata.
@@ -601,10 +601,10 @@ By following these steps, you should be able to troubleshoot and resolve the iss
 
 ## DHCP service stops when network connection between region and racks is disconnected
 
-**Problem:**
+Problem:**
 When the network connection between the MAAS region controller and rack controllers is interrupted, the DHCP services on the rack nodes stop, causing deployed machines to lose their IP addresses after the lease time expires. The issue resolves itself when the network hardware is rebooted.
 
-**Solution:**
+Solution:**
 
 1. **Ensure network reliability:**
    - The MAAS architecture relies on constant communication between the region and rack controllers. Ensuring a stable and reliable network connection between these components is critical.
@@ -667,12 +667,12 @@ When the network connection between the MAAS region controller and rack controll
 
    If the external DHCP server is not detected, verify the network configuration and ensure that DHCP packets are correctly being relayed to MAAS.
 
-**Conclusion:**
+Conclusion:**
 By implementing redundancy, extending DHCP lease times, using external DHCP servers, and planning network maintenance effectively, you can ensure that DHCP services continue to function even during network disruptions.
 
 ## Problem with APT proxy
 
-**Problem:**
+Problem:**
 Some machines encounter errors while commissioning, specifically failing to locate packages due to issues with the APT proxy in MAAS. The error appears as follows:
 
 ```
@@ -695,7 +695,7 @@ Hit:4 http://archive.ubuntu.com/ubuntu focal-backports InRelease
 
 Switching to an external proxy (standard HTTP proxy) resolves the issue, indicating a problem with the MAAS proxy.
 
-**Solution:**
+Solution:**
 
 1. **Identifying the issue:**
    The error may be related to the Squid proxy on the MAAS node. Errors similar to:
@@ -732,15 +732,15 @@ Switching to an external proxy (standard HTTP proxy) resolves the issue, indicat
 3. **Confirmation:**
    After performing the above steps, verify if the commissioning process completes successfully without encountering the APT proxy errors.
 
-**Conclusion:**
+Conclusion:**
 Cleaning the Squid proxy cache on the MAAS node has resolved similar issues for other users. If the issue persists, further investigation into network configurations or MAAS proxy settings may be required.
 
 ## Managed Allocation and Reserved Ranges, Auto-Assign
 
-**Problem:**
+Problem:**
 Clarification needed on how MAAS handles IP address allocation in subnets, particularly concerning managed allocation, reserved ranges, dynamic ranges, and the difference between auto-assigned and DHCP-assigned IP addresses.
 
-**Solution:**
+Solution:**
 
 1. **Managed allocation in subnets:**
 
@@ -772,7 +772,7 @@ Clarification needed on how MAAS handles IP address allocation in subnets, parti
    - **DHCP-assigned IPs:**
      Nodes can be configured to use DHCP, where they will obtain their IP addresses from the MAAS-managed dynamic range. This mode is useful for nodes that may need to change their IP addresses frequently or for short-lived operations.
 
-**Steps to resolve:**
+Steps to resolve:**
 
 1. **Verify subnet configuration:**
    - Check the subnet settings in the MAAS UI to ensure managed allocation is enabled or disabled as needed.
@@ -790,10 +790,10 @@ By clarifying these points, you should have a better understanding of how MAAS h
 
 ## Error: The server connection failed with the error “Bad Gateway”
 
-**Problem:**
+Problem:**
 The MAAS UI was accessible until the network configuration was changed, putting it in its own network without an external DHCP. Now, the user gets an error: "Bad Gateway".
 
-**Solution:**
+Solution:**
 
 1. **Verify Network configuration:**
    - Ensure that the MAAS server is correctly configured in its new network.
@@ -845,10 +845,10 @@ By following these steps, you should be able to resolve the "Bad Gateway" error 
 
 ## Used IP addresses in a subnet empty even though DHCP leases are given out
 
-**Problem:**
+Problem:**
 MAAS is sending out DHCP leases to both a BMC and a machine set to PXE boot, but the MAAS UI does not show any machines or used IP addresses in the subnet. This issue is hindering the auto-discovery and provisioning process.
 
-**Solution:**
+Solution:**
 
 1. **Verify DHCP leases:**
    - Ensure that the DHCP leases are being given out correctly by checking the `dhcpd.leases` file in MAAS. You should see entries for both the BMC and the machine you're trying to PXE boot.
@@ -876,23 +876,23 @@ MAAS is sending out DHCP leases to both a BMC and a machine set to PXE boot, but
 8. **Documentation and guides:**
    - Refer to the [official MAAS documentation](https://maas.io/docs/about-dhcp-in-maas) for detailed information on how MAAS works with DHCP and how to properly configure and troubleshoot it.
 
-**Example command for checking DHCP leases:**
+Example command for checking DHCP leases:**
    - View the `dhcpd.leases` file to ensure that leases are being given out:
      ```sh
      cat /var/lib/dhcp/dhcpd.leases
      ```
 
-**Next steps:**
+Next steps:**
    - If the machine is still not discovered, consider manually adding the machine to MAAS as a last resort.
 
 By following these steps, you should be able to diagnose and resolve the issue with MAAS not recognizing the used IP addresses and new machines in the subnet.
 
 ## Networking a Dell server in MAAS
 
-**Problem:**
+Problem:**
 You have successfully set up a Dell server using MAAS, but network interfaces are not being recognized correctly in the MAAS UI, particularly when trying to create a bond interface (port channel). The second network interface (eno2) is UP and recognized by the operating system but is not shown as connected in the MAAS UI.
 
-**Solution:**
+Solution:**
 
 1. **Check hardware compatibility:**
    - Ensure that both eno1 and eno2 are physically connected and recognized by the server hardware. Check for any hardware-related issues or driver compatibility problems that might be causing one of the interfaces not to be detected.
@@ -927,10 +927,10 @@ You have successfully set up a Dell server using MAAS, but network interfaces ar
 9. **Check physical connections:**
    - Ensure that there are no physical disconnects or missing wires. Sometimes, issues can be caused by simple hardware problems like loose cables.
 
-**Example command for commissioning script:**
+Example command for commissioning script:**
    - To run a commissioning script, follow the steps in the MAAS UI to commission the machine. During commissioning, MAAS will run various scripts to validate the hardware configuration. The output of these scripts can be found in the logs section of the MAAS UI.
 
-**Follow-up actions:**
+Follow-up actions:**
 - If the BMC (Baseboard Management Controller) of the server is powered off, manually power it up and check if the network interfaces are detected correctly.
 - If the issue persists after all troubleshooting steps, consider reaching out to the MAAS support team or community forums for further assistance.
 
@@ -938,10 +938,10 @@ By methodically verifying and comparing configurations, you should be able to pi
 
 ## MAAS DHCP says there are no leases
 
-**Problem:**
+Problem:**
 You are experiencing an issue where MAAS is not responding to DHCP requests from the iDRAC of a Dell server. The iDRAC's IP address is 0.0.0.0, and DHCP requests sent to MAAS do not receive replies. The DHCP logs indicate that DHCP DISCOVER messages are received on VLAN 5004, which is outside the valid VLAN range. Additionally, replacing one switch with another resolves the issue, suggesting a potential switch configuration problem.
 
-**Solution:**
+Solution:**
 
 1. **Verify VLAN configuration:**
    - Ensure that the VLAN configuration on both switches (SWITCH1 and SWITCH2) is consistent and correct. Verify that the port connected to the server is configured to handle the appropriate VLANs.
@@ -967,7 +967,7 @@ You are experiencing an issue where MAAS is not responding to DHCP requests from
 8. **Firmware updates:**
    - Ensure that both switches and the iDRAC firmware are up-to-date. Firmware bugs can sometimes cause unexpected behavior.
 
-**Example commands for switch troubleshooting:**
+Example commands for switch troubleshooting:**
 - To display VLAN configuration on a Cisco switch:
   ```sh
   show vlan brief
@@ -978,7 +978,7 @@ You are experiencing an issue where MAAS is not responding to DHCP requests from
   show running-config interface <interface-id>
   ```
 
-**Follow-up actions:**
+Follow-up actions:**
 - If you identify a misconfiguration on SWITCH1, correct it and test the DHCP process again.
 - If the issue persists after all troubleshooting steps, consider isolating the network further or engaging with the switch vendor's support for deeper diagnostics. 
 
@@ -986,10 +986,10 @@ By methodically verifying and comparing configurations, you should be able to pi
 
 ## Issues with PXE booting from controller with two networks
 
-**Problem:**
+Problem:**
 You are running a MAAS 3.3 server from an LXD container with two interfaces, each on a different VLAN. PXE booting from "network 2" results in the server only getting an IP and timing out on the TFTP request for `bootx64.efi`. The issue does not occur on "network 1". A temporary workaround involved moving the subnet to a separate fabric and recommissioning/deploying, but the subnet eventually reverts to the original fabric, causing the problem to recur.
 
-**Solution:**
+Solution:**
 
 1. **Verify DHCP server:**
    - Ensure there are no other DHCP servers running on "network 2" that could be conflicting with MAAS. Use tools like `dhcpdump` or `tcpdump` to detect any rogue DHCP servers.
@@ -1145,13 +1145,13 @@ By following these steps, you should be able to resolve the SNMP errors and succ
 
 ## Disabling BIND (named) on IPv6 in MAAS
 
-**Scenario:**
+Scenario:**
 You need to disable BIND (named) from listening on IPv6 addresses in a MAAS setup. The solution involves editing the BIND configuration to disable IPv6.
 
-**For Snap installation:**
+For Snap installation:**
 Snap installations of MAAS do not allow direct editing of the named configuration files because they are contained within the snap. However, you can manage named options indirectly.
 
-**For Apt Installation:**
+For Apt Installation:**
 If MAAS is installed using apt, you can directly edit the BIND configuration files.
 
 ### Steps for Apt-installed MAAS
@@ -1214,13 +1214,13 @@ By following these steps, you should be able to disable BIND from listening on I
 
 ## Creating and managing DNS SRV records in MAAS
 
-**Problem:**
+Problem:**
 Difficulty in creating and resolving DNS SRV records in MAAS, where records added via the MAAS GUI do not resolve correctly despite appearing in the zone file.
 
-**Solution:**
+Solution:**
 Ensure that DNS SRV records are created correctly and troubleshoot potential issues with the web GUI by verifying the records directly in the zone file and ensuring that named.conf is properly updated.
 
-**Steps to Resolve:**
+Steps to Resolve:**
 
 1. **Verify SRV record creation via MAAS GUI:**
 
@@ -1303,7 +1303,7 @@ Ensure that DNS SRV records are created correctly and troubleshoot potential iss
      cat /etc/bind/named.conf
      ```
 
-**Example:**
+Example:**
 
 1. **Create SRV record in MAAS GUI:**
    - Navigate to the domain `test` and add the SRV record `_myservice._tcp.test`.
@@ -1331,13 +1331,13 @@ By following these steps, you can create and manage DNS SRV records in MAAS, ens
 
 ## Legacy BIOS boot from second NIC
 
-**Problem:**
+Problem:**
 When using MAAS with machines that boot via legacy BIOS, there's an issue where PXE booting from the second NIC results in a "No boot filename received" error. This occurs despite the machine receiving a DHCP offer.
 
-**Solution:**
+Solution:**
 The issue is likely due to the limitation that, until MAAS version 3.5, booting from the first NIC is required for machines using legacy BIOS. To resolve this, you need to configure the machines to boot from the first NIC and use the second NIC for other network configurations.
 
-**Steps to resolve:**
+Steps to resolve:**
 
 1. **Verify boot order:**
    - Ensure that the boot order in the BIOS settings of your machines prioritizes the first NIC for PXE booting.
@@ -1348,9 +1348,9 @@ The issue is likely due to the limitation that, until MAAS version 3.5, booting 
 3. **Update MAAS machine entries:**
    - If necessary, re-add the machines in MAAS using the MAC address of the first NIC.
 
-**Detailed steps:**
+Detailed steps:**
 
-**a. Check and configure BIOS settings:**
+a. Check and configure BIOS settings:**
 
 1. **Access BIOS/UEFI settings:**
    - Restart the machine and enter the BIOS/UEFI setup (usually by pressing F2, F10, F12, or Delete during boot).
@@ -1358,7 +1358,7 @@ The issue is likely due to the limitation that, until MAAS version 3.5, booting 
 2. **Set boot order:**
    - Navigate to the boot settings and set the first NIC as the primary boot device for PXE booting.
 
-**b. Update MAAS configuration:**
+b. Update MAAS configuration:**
 
 1. **Re-add machine with first NIC:**
    - In the MAAS UI, ensure the machine is enlisted with the MAC address of the first NIC.
@@ -1371,13 +1371,13 @@ The issue is likely due to the limitation that, until MAAS version 3.5, booting 
 2. **Verify DHCP configuration:**
    - Ensure DHCP is correctly configured for the first NIC in the subnet used for PXE booting.
 
-**Example DHCP configuration check:**
+Example DHCP configuration check:**
    ```bash
    sudo nano /etc/dhcp/dhcpd.conf
    ```
    - Ensure the correct interface and subnet are specified.
 
-**c. Re-commission the machine:**
+c. Re-commission the machine:**
 
 1. **Commission the machine:**
    - Re-commission the machine in MAAS using the first NIC for PXE booting.
@@ -1390,7 +1390,7 @@ The issue is likely due to the limitation that, until MAAS version 3.5, booting 
 2. **Check logs for errors:**
    - Monitor the [MAAS logs](https://maas.io/docs/how-to-use-logging) for any errors related to network configuration.
 
-**Example workflow:**
+Example workflow:**
 
 1. **Verify boot order in BIOS:**
    - Ensure the first NIC is set as the primary boot device.
@@ -1416,13 +1416,13 @@ By following these steps, you can ensure that machines with legacy BIOS can succ
 
 ## Using routed subnets
 
-**Problem:**
+Problem:**
 The MAAS server is set up on VLAN 1000 with subnet 10.10.10.0/24 and is configured to serve another subnet 10.20.20.0/24 via DHCP relay. Devices in the 10.20.20.0/24 subnet can receive DHCP addresses but fail to connect to the TFTP server, resulting in timeouts.
 
-**Solution:**
+Solution:**
 To resolve this issue, you need to ensure that TFTP and other necessary services can communicate properly across subnets. This involves verifying network configurations and ensuring that MAAS is set up to handle requests from both subnets.
 
-**Steps to resolve the issue:**
+Steps to resolve the issue:**
 
 1. **Check the [MAAS logs](https://maas.io/docs/how-to-use-logging)** to verify that the TFTP requests are being received and to identify any potential issues.
 
@@ -1475,7 +1475,7 @@ To resolve this issue, you need to ensure that TFTP and other necessary services
    - IP routes allowing traffic between 10.20.20.0/24 and 10.10.10.0/24
    ```
 
-**Example workflow:**
+Example workflow:**
 
 1. **Check the [MAAS logs](https://maas.io/docs/how-to-use-logging):**
 
@@ -1507,13 +1507,13 @@ By following these steps, you can troubleshoot and resolve the issue of the MAAS
 
 ## Commissioning failed due to lldpd
 
-**Problem:**
+Problem:**
 The commissioning process fails at the "lldpd" installation step due to the error "Unable to locate package lldpd." This issue occurs in a disconnected environment where a local mirror of the Ubuntu repository is used.
 
-**Solution:**
+Solution:**
 The issue is likely due to missing repository components in the local mirror configuration, particularly the "universe" component where the `lldpd` package resides.
 
-**Steps to resolve:**
+Steps to resolve:**
 
 1. **Check repository components:**
    - Ensure that the local mirror includes the necessary repository components (`main`, `universe`, `restricted`, and `multiverse`).
@@ -1581,10 +1581,10 @@ By following these steps, you can ensure that the necessary repository component
 
 ## Adding domains to the DNS search list
 
-**Problem:**
+Problem:**
 You want to add two additional domains to the DNS search list for a subnet in MAAS, but there doesn't seem to be an option to set this directly in the UI or through typical configuration methods.
 
-**Solution:**
+Solution:**
 To add additional domains to the DNS search list for a subnet in MAAS, you can use a custom cloud-init script to configure the `resolv.conf` file. Follow these steps:
 
 1. **Use cloud-init configuration:**
@@ -1635,7 +1635,7 @@ To add additional domains to the DNS search list for a subnet in MAAS, you can u
 
    - Add this configuration to your cloud-init script to prevent cloud-init from overwriting your custom DNS settings.
 
-**Example workflow:**
+Example workflow:**
 
 1. **Create custom cloud-init script:**
    ```yaml
@@ -1665,10 +1665,10 @@ By following these steps, you can add additional domains to the DNS search list 
 
 ## Clients get the image but don’t appear on the GUI
 
-**Problem:**
+Problem:**
 Clients (VMs) receive the image and boot correctly from MAAS, but they do not appear in the MAAS GUI under the Machines section.
 
-**Solution:**
+Solution:**
 This issue could be due to network misconfiguration or incorrect settings in MAAS that prevent the clients from being properly enlisted and commissioned. Follow these steps to resolve the issue:
 
 1. **Verify network configuration:**
@@ -1715,7 +1715,7 @@ This issue could be due to network misconfiguration or incorrect settings in MAA
 5. **Additional configuration:**
    - Ensure that the MAAS server and clients are on the same network and that there are no firewall rules blocking communication.
 
-**Example workflow:**
+Example workflow:**
 
 1. **Check DHCP and network configuration:**
    ```bash
@@ -1736,10 +1736,10 @@ By following these steps, you can diagnose and resolve the issue of clients rece
 
 ## HA DHCP for relayed subnets
 
-**Problem:**
+Problem:**
 Implementing high availability (HA) for DHCP in relayed subnets using MAAS is not straightforward, and the standard architecture restricts adding a secondary rack controller in these scenarios.
 
-**Solution:**
+Solution:**
 To achieve HA for DHCP services in relayed subnets with MAAS, follow these steps:
 
 1. **Understand MAAS DHCP configuration:**
@@ -1780,7 +1780,7 @@ To achieve HA for DHCP services in relayed subnets with MAAS, follow these steps
 6. **Verify configuration:**
    - After configuration, verify that both rack controllers are operational and can handle DHCP requests. Check the MAAS UI and logs to confirm there are no errors.
 
-**Example workflow:**
+Example workflow:**
 
 1. **Get fabric and VLAN IDs:**
    ```bash
@@ -1804,10 +1804,10 @@ By following these steps, you can set up HA for DHCP in relayed subnets using MA
 
 ## External DHCP configuration
 
-**Problem:**
+Problem:**
 MAAS passes the commissioning and deployment stages but gets stuck in the "rebooting" stage with an `errno 101 network is unreachable` error. This issue may be related to the external DHCP configuration.
 
-**Solution:**
+Solution:**
 To resolve issues related to external DHCP configuration in MAAS, follow these steps:
 
 1. **Verify external DHCP server:**
@@ -1870,10 +1870,10 @@ By following these steps, users can resolve the `errno 101 network is unreachabl
 
 ## Errno 101 - network is unreachable
 
-**Problem:**
+Problem:**
 MAAS passes the commissioning and deployment stages but gets stuck in the "rebooting" stage with an `errno 101 network is unreachable` error. This occurs even with a standard installation without using a cloud-init script.
 
-**Solution:**
+Solution:**
 This issue can often be related to external DHCP configuration or network misconfiguration. Here are steps to resolve the issue:
 
 1. **Verify network configuration:**
@@ -1940,10 +1940,10 @@ By following these steps, you can resolve the `errno 101 network is unreachable`
 
 ## Post-deployment network issues
 
-**Problem:**
+Problem:**
 Users face issues when switching the network interface of a deployed VM from an isolated deployment network to a bridged network, causing the VM to hang or freeze during boot.
 
-**Solution:**
+Solution:**
 MAAS does not support reassigning a deployed machine to a new subnet directly. To address this, follow these steps:
 
 1. **Avoid switching networks:**
@@ -1999,10 +1999,10 @@ By following these steps, users can manage network configurations more effective
 
 ## Controller interface/network issues
 
-**Problem:**
+Problem:**
 Users experience issues with MAAS using unintended network interfaces, particularly in multi-homed environments with Docker running on the same system. Specific challenges include unwanted interface detection, persistent subnets, and network discovery on unselected subnets.
 
-**Solution:**
+Solution:**
 To address these issues and better manage network interfaces and subnets in MAAS, follow these steps:
 
 1. **Bind MAAS to a single interface:**
@@ -2083,10 +2083,10 @@ By following these steps, users can better control which network interfaces and 
 
 ## Adding VLAN interfaces to LXD VMs
 
-**Problem:**
+Problem:**
 Users need to add VLAN interfaces to LXD VMs in MAAS but face limitations in modifying VMs post-creation and ensuring proper VLAN tagging.
 
-**Solution:**
+Solution:**
 To add VLAN interfaces to LXD VMs, follow these steps:
 
 1. **Configure VLAN interfaces on the VM host:**
@@ -2153,10 +2153,10 @@ By following these steps, users can successfully add VLAN interfaces to LXD VMs 
 
 ## Netplan configuration ignored when deploying a machine
 
-**Problem:**
+Problem:**
 The Netplan configuration provided in the `cloud-init` script is being ignored, resulting in static IP settings instead of the desired DHCP configuration.
 
-**Solution:**
+Solution:**
 To ensure the network configuration is correctly applied during deployment, follow these steps:
 
 1. **Edit machine's interfaces in MAAS:**
@@ -2213,10 +2213,10 @@ By following these steps, you can ensure that the network configuration is appli
 
 ## Pre-registering machine with IPMI address as FQDN
 
-**Problem:**
+Problem:**
 Users encounter issues when trying to set the IPMI IP address field as an FQDN in MAAS. The machine gets registered with an IPv4 address associated with the FQDN, and the commissioning process does not complete.
 
-**Solution:**
+Solution:**
 To address this issue and implement workarounds, follow these steps:
 
 1. **Direct FQDN usage:**
@@ -2266,10 +2266,10 @@ By following these steps, users can manage their MAAS setup more effectively, ev
 
 ## Automating initial configuration settings for new machines
 
-**Problem:**
+Problem:**
 Users need to manually configure network interfaces to DHCP and set power configurations to Manual for new machines added to MAAS, seeking a way to automate these settings.
 
-**Solution:**
+Solution:**
 To automate the initial configuration settings for new machines in MAAS, follow these steps:
 
 1. **Use preseed scripts:**
@@ -2320,10 +2320,10 @@ By implementing these steps, users can automate the initial configuration settin
 
 ## VLAN issues and rack controller configuration
 
-**Problem:**
+Problem:**
 Users encounter issues with VLANs not being utilized on any rack controller, leading to problems with DHCP and network connectivity.
 
-**Solution:**
+Solution:**
 To troubleshoot and resolve VLAN issues in MAAS, follow these steps:
 
 1. **Configure VLAN interfaces:**
@@ -2364,10 +2364,10 @@ By following these steps, users can troubleshoot and resolve issues with VLAN ut
 
 ## Releasing old DHCP leases
 
-**Problem:**
+Problem:**
 Deploying servers in MAAS results in an error stating "No more IPs available in subnet," despite having unused IP addresses.
 
-**Solution:**
+Solution:**
 To release old DHCP leases and resolve IP allocation issues, follow these steps:
 
 1. **Check for orphaned IP addresses:**
@@ -2418,10 +2418,10 @@ By following these steps, users can release old DHCP leases and address IP exhau
 
 ## Configuring loopback addresses
 
-**Problem:**
+Problem:**
 Configuring the loopback interface (lo) using MAAS is not straightforward, especially when deploying nodes for use with Free Range Routing (FRR) and BGP.
 
-**Solution:**
+Solution:**
 To configure loopback addresses in MAAS, follow these steps:
 
 1. **Understand loopback interface:**
@@ -2445,10 +2445,10 @@ By following these steps, users can effectively configure loopback interfaces on
 
 ## Shrinking dynamic IP range
 
-**Problem:**
+Problem:**
 Users may encounter errors when attempting to shrink the dynamic IP address range in MAAS due to conflicts with existing IP addresses or ranges.
 
-**Solution:**
+Solution:**
 To troubleshoot and resolve this issue, follow these steps:
 
 1. **Check current IP ranges and static addresses:**
@@ -2502,9 +2502,9 @@ lxc network set $LXD_BRIDGE_NAME ipv6.dhcp=false
 
 ## Nodes hang on "Commissioning"
 
-**Timing issues**: Make sure the hardware clocks on your nodes and MAAS server are synchronised.
+Timing issues**: Make sure the hardware clocks on your nodes and MAAS server are synchronised.
 
-**Network drivers**: Use Linux-compatible network adaptors if commissioning hangs due to driver issues.
+Network drivers**: Use Linux-compatible network adapters if commissioning hangs due to driver issues.
 
 Feel free to contribute additional issues and solutions.
 
@@ -2633,7 +2633,7 @@ Create a new SquashFS file with your changes:
 sudo mksquashfs xenial/ xenial-customized.squashfs -xattrs -comp xz
 ```
 
-Replace the existing MAAS image with this customised one.
+Replace the existing MAAS image with this customized one.
 
 ## Migrating snap installs
 

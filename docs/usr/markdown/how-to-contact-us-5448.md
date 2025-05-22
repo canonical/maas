@@ -6,9 +6,9 @@ We're eager to hear about your experiences with MAAS — the good, the bad, and 
 
 If you're considering adopting MAAS at an enterprise scale, or interested in forming a partnership with Canonical, don't hesitate to reach out directly.
 
-- **Business and Partnerships**: Use the [Contact Canonical](https://maas.io/contact-us)**^** form, and a team member will respond within a single working day to discuss your needs and options.
+- **Business and Partnerships**: Use the [Contact Canonical](https://maas.io/contact-us) form, and a team member will respond within a single working day to discuss your needs and options.
 
-- **Premium Support**: For organisations requiring additional layers of support, visit the [Ubuntu Pro shop](https://buy.ubuntu.com/)**^** to explore professional service offerings tailored to your needs.
+- **Premium Support**: For organizations requiring additional layers of support, visit the [Ubuntu Pro shop](https://buy.ubuntu.com/) to explore professional service offerings tailored to your needs.
 
-We look forward to connecting with you!
+We look forward to connecting with you.
 

@@ -19,10 +19,10 @@ See the [API documentation](https://maas.io/docs/api) for more info.
 
 Kick-start your journey with these useful external links:
 
-- [Python libmaas on GitHub](https://github.com/maas/python-libmaas)**^**
-- [Python libmaas in the MAAS GitHub pages](http://maas.github.io/python-libmaas/index.html)**^**
+- [Python libmaas on GitHub](https://GitHub.com/maas/python-libmaas)
+- [Python libmaas in the MAAS GitHub pages](http://maas.GitHub.io/python-libmaas/index.html)
 
-For hands-on examples to get you up and running, visit the [Python libmaas client guide](https://maas.github.io/python-libmaas/client/index.html)**^**.
+For hands-on examples to get you up and running, visit the [Python libmaas client guide](https://maas.GitHub.io/python-libmaas/client/index.html).
 
-For package details on PyPI, consult [this external link](https://pypi.python.org/pypi/python-libmaas)**^**.
+For package details on PyPI, consult [this external link](https://pypi.python.org/pypi/python-libmaas).
 

@@ -42,10 +42,10 @@ Make sure all VM hosts can reach the new rack controllers, by pinging their IPs 
 
 ### Remove a rack controller
 
-**UI**
+UI**
 *Controllers* > Select a rack controller > *Delete*
 
-**CLI**
+CLI**
 ```bash
 maas $PROFILE rack-controller delete $SYSTEM_ID
 ```
@@ -158,10 +158,10 @@ failover peer "failover-partner" {
 
 ### 🔄 Enable DHCP via UI or CLI
 
-**UI**
+UI**
 - *Subnets* > *VLAN* > *Reconfigure DHCP*
 
-**CLI**
+CLI**
 ```bash
 vid=$(maas $PROFILE subnets read | jq -r '.[] | select(.cidr == "10.0.0.0/24") | .vlan.vid')
 fabric_id=$(maas $PROFILE fabrics read | jq -r '.[] | select(.name == "fabric-1") | .id')

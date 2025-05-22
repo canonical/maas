@@ -18,8 +18,8 @@ Required Int. An SSH key ID.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Retrieve an SSL key
@@ -40,7 +40,7 @@ Required Int. An SSL key ID.
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
 | -k, --insecure | Disable SSL certificate check                 |
 

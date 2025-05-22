@@ -212,11 +212,11 @@ All layout types support UEFI boot, with MAAS automatically creating a 512MB FAT
 
 Once the initial storage layout has been configured on a machine, you can perform many operations to view and adjust the entire storage layout for the machine. In MAAS there are two different types of block devices.
 
-**Physical* 
+Physical* 
 
 A physical block device is a physically attached block device such as a 100GB hard drive connected to a server.
 
-**Virtual* 
+Virtual* 
 
 A virtual block device is a block device that is exposed by the Linux kernel when an operation is performed. Almost all the operations on a physical block device can be performed on a virtual block device, such as a RAID device exposed as md0.
 

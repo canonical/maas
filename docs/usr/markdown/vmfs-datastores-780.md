@@ -15,8 +15,8 @@ Delete a VMFS datastore with the given id from the machine with the given system
 #### Command-line options
 | Option         | Effect                                        |
 |----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
+| --help, -h     | Show this help message and exit|
+| -d, --debug    | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check                 |
 
 ## Read a VMFS datastore.
@@ -34,8 +34,8 @@ Read a VMFS datastore with the given id on the machine with the given system_id.
 #### Command-line options
 | Option | Effect |
 |-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
+| --help, -h | Show this help message and exit|
+| -d, --debug | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check |
 
 ## Update a VMFS datastore.
@@ -69,8 +69,8 @@ Optional String. Partitions to remove from the VMFS datastore.
 #### Command-line options
 | Option | Effect |
 |-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
+| --help, -h | Show this help message and exit|
+| -d, --debug | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check |
 
 ## Create a VMFS datastore.
@@ -102,8 +102,8 @@ Optional String. Partitions to add to the VMFS datastore.
 #### Command-line options
 | Option | Effect |
 |-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
+| --help, -h | Show this help message and exit|
+| -d, --debug | Display more information about API responses|
 | -k, --insecure | Disable SSL certificate check |
 
 ## List all VMFS datastores.
@@ -118,9 +118,9 @@ maas $PROFILE vmfs-datastores read [--help] [-d] [-k] system_id [data ...]
 List all VMFS datastores belonging to a machine with the given system_id.
 
 #### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| Option         | Effect                                       |
+|----------------|----------------------------------------------|
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
+| -k, --insecure | Disable SSL certificate check                |
 

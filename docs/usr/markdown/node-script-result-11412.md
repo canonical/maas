@@ -40,7 +40,7 @@ Download a compressed tar containing all results from the given system_id with t
 Optional String.  Only return scripts for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or ``storage``.  Defaults to all.
 
 #### Keyword "filters"
-Optional String. A comma seperated list to show only results that ran with a script name or tag.
+Optional String. A comma separated list to show only results that ran with a script name or tag.
 
 #### Keyword "output"
 Optional String.  Can be either ``combined``, ``stdout``, ``stderr``, or ``all``. By default only the combined output is returned.
@@ -77,7 +77,7 @@ Optional String.  Only return scripts for the given hardware type.  Can be ``nod
 Optional.  Include the base64 encoded output from the script if any value for include_output is given.
 
 #### Keyword "filters"
-Optional String. A comma seperated list to show only results that ran with a script name, tag, or id.
+Optional String. A comma separated list to show only results that ran with a script name, tag, or id.
 
 #### Command-line options
 | Option         | Effect                                        |
@@ -104,7 +104,7 @@ Update a set of test results for a given system_id and script id.
 Optional String.  Only return scripts for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or ``storage``.  Defaults to all.
 
 #### Keyword "filters"
-Optional String. A comma seperated list to show only results that ran with a script name, tag, or id.
+Optional String. A comma separated list to show only results that ran with a script name, tag, or id.
 
 #### Keyword "include_output"
 Optional String.  Include the base64 encoded output from the script if any value for include_output is given.
@@ -131,7 +131,7 @@ maas $PROFILE node-script-results read [--help] [-d] [-k] system_id [data ...]
 Return a list of script results grouped by run for the given system_id.
 
 #### Keyword "type"
-Optional String.  Only return scripts with the given type. This can be ``commissioning``, ``testing``, ``installion`` or ``release``. Defaults to showing all.
+Optional String.  Only return scripts with the given type. This can be ``commissioning``, ``testing``, ``installation`` or ``release``. Defaults to showing all.
 
 #### Keyword "hardware_type"
 Optional String.  Only return scripts for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or ``storage``.  Defaults to all.
@@ -140,7 +140,7 @@ Optional String.  Only return scripts for the given hardware type.  Can be ``nod
 Optional String.  Include base64 encoded output from the script. Note that any value of include_output will include the encoded output from the script.
 
 #### Keyword "filters"
-Optional String. A comma seperated list to show only results with a script name or tag.
+Optional String. A comma separated list to show only results with a script name or tag.
 
 #### Command-line options
 | Option         | Effect                                        |

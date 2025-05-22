@@ -1,4 +1,4 @@
-Commissioning profiles machine hardware (vendor, BIOS, network, CPU, storage, USB/PCI) to tailor deployment. A commissioning failure is low-stakes -- it prevents deployment, avoiding errors. Successful commissioning tests the hardware and sets the machine to "Ready," meanin. successful deployment is likely.
+Commissioning profiles machine hardware (vendor, BIOS, network, CPU, storage, USB/PCI) to tailor deployment. A commissioning failure is low-stakes -- it prevents deployment, avoiding errors. Successful commissioning tests the hardware and sets the machine to "Ready," meaning successful deployment is likely.
 
 MAAS commissions a machine like this:
 
@@ -172,7 +172,7 @@ You can also examine log details on any particular tests or just review the raw 
 
 ## Testing networks 
 
-MAAS can test networks and links, including connection status and link speeds. You can test Internet connectivity against a user-provided list of URLs or IP addresses. Bonded NICS are separated during this testing to check each side of a dual interface. You can also provide custom scxripts with no restrictions.
+MAAS can test networks and links, including connection status and link speeds. You can test Internet connectivity against a user-provided list of URLs or IP addresses. Bonded NICS are separated during this testing to check each side of a dual interface. You can also provide custom scripts with no restrictions.
 
 ## Delayed NW config 
 

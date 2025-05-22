@@ -1,12 +1,12 @@
 Enter keyword arguments in the form `key=value`.
 
-## Create an authorisation token
+## Create an authorizations token
 
 ```bash
-maas $PROFILE account create-authorisation-token [--help] [-d] [-k] [data ...]
+maas $PROFILE account create-authorizations-token [--help] [-d] [-k] [data ...]
 ```
 
-Create an authorisation OAuth token and OAuth consumer.
+Create an authorizations OAuth token and OAuth consumer.
 
 #### Keyword "name"
 Optional String. Optional name of the token that will be generated.
@@ -18,13 +18,13 @@ Optional String. Optional name of the token that will be generated.
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
 
-## Delete an authorisation token
+## Delete an authorizations token
 
 ```bash
-maas $PROFILE account delete-authorisation-token [--help] [-d] [-k] [data ...]
+maas $PROFILE account delete-authorizations-token [--help] [-d] [-k] [data ...]
 ```
 
-Delete an authorisation OAuth token and the related OAuth consumer.
+Delete an authorizations OAuth token and the related OAuth consumer.
 
 #### Keyword "token_key"
 Required String. The key of the token to be deleted.
@@ -36,13 +36,13 @@ Required String. The key of the token to be deleted.
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
 
-## List authorisation tokens
+## List authorizations tokens
 
 ```bash
-maas $PROFILE account list-authorisation-tokens [--help] [-d] [-k] [data ...]
+maas $PROFILE account list-authorizations-tokens [--help] [-d] [-k] [data ...]
 ```
 
-List authorisation tokens available to the currently logged-in user.
+List authorizations tokens available to the currently logged-in user.
 
 #### Command-line options
 | Option | Effect |
@@ -51,13 +51,13 @@ List authorisation tokens available to the currently logged-in user.
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
 
-## Modify authorisation token
+## Modify authorizations token
 
 ```bash
 maas $PROFILE account update-token-name [--help] [-d] [-k] [data ...]
 ```
 
-Modify the consumer name of an authorisation OAuth token.
+Modify the consumer name of an authorizations OAuth token.
 
 #### Keyword "token"
 Required String. Can be the whole token or only the token key.

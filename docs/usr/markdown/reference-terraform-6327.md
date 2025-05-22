@@ -1,4 +1,4 @@
-To use MAAS with [Terraform](https://www.terraform.io/), a [provider is available](https://github.com/maas/terraform-provider-maas). This guide gives an overview of data sources and resources accessible via this provider, without delving into the mechanics of Terraform or the MAAS Terraform provider.
+To use MAAS with [Terraform](https://www.terraform.io/), a [provider is available](https://GitHub.com/maas/terraform-provider-maas). This guide gives an overview of data sources and resources accessible via this provider, without delving into the mechanics of Terraform or the MAAS Terraform provider.
 
 The MAAS Terraform provider enables management of MAAS resources via Terraform's CRUD tool. Each section in this document provides definitions and usage examples. For more about Terraform, consult the [Terraform documentation](https://www.terraform.io/intro) or various [available tutorials](https://learn.hashicorp.com/collections/terraform/aws-get-started).
 
@@ -81,5 +81,5 @@ data "maas_vlan" "vid10" {
 
 ## Resources
 
-For full details, refer to the [Terraform HCL documentation](https://www.terraform.io/language)**^**.
+For full details, refer to the [Terraform HCL documentation](https://www.terraform.io/language).
 

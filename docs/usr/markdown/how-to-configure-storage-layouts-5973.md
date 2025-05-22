@@ -12,7 +12,7 @@ The Flat layout means one partition takes up the whole boot disk, formatted with
 | sda1  | 512 MB     | part | FAT32      | /boot/efi   |
 | sda2  | rest of sda| part | ext4       | /           |
 
-**Options:**
+Options:**
 
 - **boot_size**: Sets the size of the boot partition. Default is zero, putting `/boot` on the root filesystem.
 - **root_device**: The block device for the root partition. Usually the boot disk.
@@ -29,10 +29,10 @@ LVM (Logical Volume Management) offers flexibility. A volume group `vgroot` cove
 | sda2  | rest of sda | part  | lvm-pv(vgroot) | -           |
 | lvroot| rest of sda | lvm   | ext4           | /           |
 
-**Options:**
+Options:**
 
 - **vg_name**: Customise volume group's name.
-- **lv_name**: Personalise logical volume's name.
+- **lv_name**: Personalize logical volume's name.
 - **lv_size**: Set the size, defaulting to the entire volume group.
 
 ## bcache layout
@@ -48,7 +48,7 @@ For better disk performance, the bcache layout uses the boot disk as the backing
 | sdb1   | 100% of sdb | part      | bc-cache   | -           |
 | bcache0| per sda2    | disk      | ext4       | /           |
 
-**Options:**
+Options:**
 
 - **cache_device**: Opt for cache device, defaulting to the smallest SSD.
 - **cache_mode**: Adjust the cache mode; `writethrough` is standard.
@@ -66,7 +66,7 @@ For VMware ESXi deployments, VMFS6 is the required layout, automating both OS an
 | sda2  | 4 GB        | part       | Basic Data         |
 | sda3  | Remaining   | part       | VMFS Datastore 1   |
 
-**Options:**
+Options:**
 
 - **root_size**: Sets the default VMFS Datastore size, generally the remaining disk space.
 

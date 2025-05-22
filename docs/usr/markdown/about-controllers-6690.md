@@ -12,7 +12,7 @@ A region controller provides several services:
 * caching HTTP proxy
 * Web UI
 
-It manages either an entire data centre or a specific region and orchestrates a myriad of tasks from API request routing to keeping DNS records up to date.
+It manages either an entire data center or a specific region and orchestrates a myriad of tasks from API request routing to keeping DNS records up to date.
 
 ## Rack controllers
 
