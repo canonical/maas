@@ -396,15 +396,19 @@ def make_hosts_for_subnets(
                     }
                 )
 
+    known_mac_addresses = [host["mac"] for host in hosts]
+
     for reserved_ip in ReservedIP.objects.filter(subnet__in=subnets):
-        hosts.append(
-            {
-                "host": "",
-                "mac": reserved_ip.mac_address,
-                "ip": reserved_ip.ip,
-                "dhcp_snippets": [],
-            }
-        )
+        # LP: #2110021: don't make a duplicated host entry if it already exists
+        if reserved_ip.mac_address not in known_mac_addresses:
+            hosts.append(
+                {
+                    "host": "",
+                    "mac": reserved_ip.mac_address,
+                    "ip": reserved_ip.ip,
+                    "dhcp_snippets": [],
+                }
+            )
 
     return hosts
 
