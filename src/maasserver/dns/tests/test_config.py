@@ -853,7 +853,10 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
         ip2 = factory.make_StaticIPAddress(
             subnet=subnet, ip=subnet.get_next_ip_for_allocation()[0]
         )
-        resource.ip_addresses.add(ip2)
+
+        with post_commit_hooks:
+            resource.ip_addresses.add(ip2)
+
         message = f"DELETE-IP {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
 
         with post_commit_hooks:

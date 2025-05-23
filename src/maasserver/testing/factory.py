@@ -928,13 +928,16 @@ class Factory(maastesting.factory.Factory):
                 )
                 for ip in ip_addresses
             ]
-        dnsrr, _ = DNSResource.objects.get_or_create(
-            name=name, address_ttl=address_ttl, domain=domain
-        )
-        dnsrr.save()
-        if ip_addresses:
-            dnsrr.ip_addresses.set(ip_addresses)
-            dnsrr.save(force_update=True)
+
+        with post_commit_hooks:
+            dnsrr, _ = DNSResource.objects.get_or_create(
+                name=name, address_ttl=address_ttl, domain=domain
+            )
+            dnsrr.save()
+            if ip_addresses:
+                dnsrr.ip_addresses.set(ip_addresses)
+                dnsrr.save(force_update=True)
+
         return dnsrr
 
     def make_Script(
@@ -1348,8 +1351,9 @@ class Factory(maastesting.factory.Factory):
                 interface.ip_addresses.add(ipaddress)
                 interface.save(force_update=True)
         if dnsresource is not None:
-            dnsresource.ip_addresses.add(ipaddress)
-            dnsresource.save(force_update=True)
+            with post_commit_hooks:
+                dnsresource.ip_addresses.add(ipaddress)
+                dnsresource.save(force_update=True)
         if hostname is not None:
             if not isinstance(hostname, (tuple, list)):
                 hostname = [hostname]
@@ -1359,10 +1363,12 @@ class Factory(maastesting.factory.Factory):
                     domain = Domain.objects.get(name=domain)
                 else:
                     domain = None
-                dnsrr, created = DNSResource.objects.get_or_create(
-                    name=name, domain=domain
-                )
-                ipaddress.dnsresource_set.add(dnsrr)
+
+                with post_commit_hooks:
+                    dnsrr, created = DNSResource.objects.get_or_create(
+                        name=name, domain=domain
+                    )
+                    ipaddress.dnsresource_set.add(dnsrr)
         return reload_object(ipaddress)
 
     def make_email(self):

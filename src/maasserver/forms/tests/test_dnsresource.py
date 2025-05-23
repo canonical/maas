@@ -24,7 +24,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             request=request,
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(sip.id, dnsresource.ip_addresses.first().id)
@@ -37,7 +40,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             {"name": name, "domain": domain.id, "ip_addresses": str(sip.id)}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(sip.id, dnsresource.ip_addresses.first().id)
@@ -80,7 +86,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         actual = {ip.id for ip in dnsresource.ip_addresses.all()}
@@ -91,7 +100,10 @@ class TestDNSResourceForm(MAASServerTestCase):
         domain = factory.make_Domain()
         form = DNSResourceForm({"name": name, "domain": domain.id})
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
 
@@ -103,7 +115,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             {"name": name, "domain": domain.id, "address_ttl": ttl}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(ttl, dnsresource.address_ttl)
@@ -116,12 +131,18 @@ class TestDNSResourceForm(MAASServerTestCase):
             {"name": name, "domain": domain.id, "address_ttl": ttl}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         form = DNSResourceForm(
             instance=dnsresource, data={"address_ttl": None}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsresource = form.save()
+
+        with post_commit_hooks:
+            dnsresource = form.save()
+
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertIsNone(dnsresource.address_ttl)
@@ -145,7 +166,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         self.assertEqual(new_name, reload_object(dnsresource).name)
         self.assertEqual(new_ttl, reload_object(dnsresource).address_ttl)
         self.assertCountEqual(
@@ -165,7 +189,10 @@ class TestDNSResourceForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         self.assertEqual(new_name, reload_object(dnsresource).name)
         self.assertCountEqual(
             new_sip_ids,

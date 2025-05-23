@@ -468,7 +468,10 @@ class TestDomain(MAASServerTestCase):
     def test_update_kms_srv_creates_srv_records(self):
         domain = factory.make_Domain()
         target = f"{factory.make_name()}.{factory.make_name()}"
-        domain.update_kms_srv(target)
+
+        with post_commit_hooks:
+            domain.update_kms_srv(target)
+
         srvrr = DNSData.objects.get(
             rrtype="SRV",
             dnsresource__name="_vlmcs._tcp",
@@ -479,7 +482,10 @@ class TestDomain(MAASServerTestCase):
     def test_update_kms_srv_creates_srv_records_on_all_domains(self):
         domains = [factory.make_Domain() for _ in range(random.randint(1, 10))]
         target = f"{factory.make_name()}.{factory.make_name()}"
-        Config.objects.set_config("windows_kms_host", target)
+
+        with post_commit_hooks:
+            Config.objects.set_config("windows_kms_host", target)
+
         for domain in domains:
             srvrr = DNSData.objects.get(
                 rrtype="SRV",

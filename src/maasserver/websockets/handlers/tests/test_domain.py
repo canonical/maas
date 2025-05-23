@@ -308,9 +308,12 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
-        handler.delete_dnsresource(
-            {"domain": domain.id, "dnsresource_id": resource.id}
-        )
+
+        with post_commit_hooks:
+            handler.delete_dnsresource(
+                {"domain": domain.id, "dnsresource_id": resource.id}
+            )
+
         self.assertIsNone(reload_object(resource))
 
     def test_add_resource_as_non_admin_fails(self):
@@ -368,15 +371,18 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-        handler.create_dnsdata(
-            {
-                "domain": domain.id,
-                "name": name,
-                "ttl": ttl,
-                "rrtype": "TXT",
-                "rrdata": "turtles all the way down",
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_dnsdata(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "ttl": ttl,
+                    "rrtype": "TXT",
+                    "rrdata": "turtles all the way down",
+                }
+            )
+
         dnsresource = DNSResource.objects.get(domain=domain, name=name)
         # Expect that a single DNSData object is associated with the resource.
         [dnsdata] = dnsresource.dnsdata_set.all()
@@ -575,15 +581,17 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_name("invalid_name")
-        self.assertRaises(
-            ValidationError,
-            handler.create_address_record,
-            {
-                "domain": domain.id,
-                "name": name,
-                "ip_addresses": [factory.make_ip_address()],
-            },
-        )
+
+        with post_commit_hooks:
+            self.assertRaises(
+                ValidationError,
+                handler.create_address_record,
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "ip_addresses": [factory.make_ip_address()],
+                },
+            )
 
     def test_update_address__updates_single_address(self):
         user = factory.make_admin()

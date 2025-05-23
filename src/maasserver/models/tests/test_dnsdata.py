@@ -16,6 +16,7 @@ from maasserver.permissions import NodePermission
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 # duplicated from dnsdata.py so as to not export them
 INVALID_CNAME_MSG = "Invalid CNAME: Should be '<server>'."
@@ -201,7 +202,10 @@ class TestDNSData(MAASServerTestCase):
         target = factory.make_name("target")
         domain = factory.make_Domain()
         dnsrr = factory.make_DNSResource(name=name, domain=domain)
-        dnsrr.save()
+
+        with post_commit_hooks:
+            dnsrr.save()
+
         dnsdata = DNSData(dnsresource=dnsrr, rrtype="CNAME", rrdata=target)
         with self.assertRaisesRegex(
             ValidationError,

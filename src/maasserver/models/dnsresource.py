@@ -11,6 +11,7 @@ __all__ = [
     "validate_dnsresource_name",
 ]
 
+from functools import cached_property
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -23,13 +24,22 @@ from django.db.models import (
     PositiveIntegerField,
     PROTECT,
 )
+from django.db.models.fields.related_descriptors import (
+    create_forward_many_to_many_manager,
+    ManyToManyDescriptor,
+)
 from django.db.models.query import QuerySet
+from netaddr import IPAddress
 
+from maascommon.enums.dns import DnsUpdateAction
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import domain
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import LegacyLogger
@@ -159,6 +169,157 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
             raise PermissionDenied()
 
 
+def dnsresource_ip_addresses_manager_factory(superclass, rel, reverse):
+    manager = create_forward_many_to_many_manager(superclass, rel, reverse)
+
+    class DNSResourceIPAddressesManager(manager):
+        def add(self, *args, **kwargs):
+            if len(args) > 0:
+                if isinstance(self.instance, DNSResource):
+                    dnsrr = self.instance
+                    sip = (
+                        args[0]
+                        if isinstance(args[0], StaticIPAddress)
+                        else None
+                    )
+                elif isinstance(self.instance, StaticIPAddress):
+                    dnsrr = (
+                        args[0] if isinstance(args[0], DNSResource) else None
+                    )
+                    sip = self.instance
+
+                if dnsrr:
+                    domain = dnsrr.domain
+                    if domain.authoritative and sip:
+                        default_ttl = Config.objects.get_config(
+                            "default_dns_ttl"
+                        )
+                        ttl = (
+                            dnsrr.address_ttl
+                            if dnsrr.address_ttl
+                            else domain.ttl
+                            if domain.ttl
+                            else default_ttl
+                        )
+
+                        ip = str(sip.ip)
+
+                        DNSPublication.objects.create_for_config_update(
+                            source=f"ip {ip} linked to resource {dnsrr.name} on zone {domain.name}",
+                            action=DnsUpdateAction.INSERT,
+                            zone=domain.name,
+                            label=dnsrr.name,
+                            ttl=ttl,
+                            rtype="A"
+                            if IPAddress(ip).version == 4
+                            else "AAAA",
+                            answer=ip,
+                        )
+
+            return super().add(*args, **kwargs)
+
+        def remove(self, *args, **kwargs):
+            dnsrr = self.instance
+            domain = dnsrr.domain
+            if domain.authoritative and len(args) > 0:
+                sip = args[0] if isinstance(args[0], StaticIPAddress) else None
+                if sip:
+                    default_ttl = Config.objects.get_config("default_dns_ttl")
+                    ttl = (
+                        dnsrr.address_ttl
+                        if dnsrr.address_ttl
+                        else domain.ttl
+                        if domain.ttl
+                        else default_ttl
+                    )
+                    ip = str(sip.ip)
+
+                    DNSPublication.objects.create_for_config_update(
+                        source=f"ip {ip} unlinked from resource {dnsrr.name} on zone {domain.name}",
+                        action=DnsUpdateAction.DELETE,
+                        zone=domain.name,
+                        label=dnsrr.name,
+                        ttl=ttl,
+                        rtype="A" if IPAddress(ip).version == 4 else "AAAA",
+                        answer=ip,
+                    )
+
+            return super().remove(*args, **kwargs)
+
+        def set(self, *args, **kwargs):
+            if len(args) > 0:
+                dnsrr = self.instance
+                domain = dnsrr.domain
+                default_ttl = Config.objects.get_config("default_dns_ttl")
+                ttl = (
+                    dnsrr.address_ttl
+                    if dnsrr.address_ttl
+                    else domain.ttl
+                    if domain.ttl
+                    else default_ttl
+                )
+                elements = args[0] if isinstance(args[0], list) else []
+                for element in elements:
+                    if not isinstance(element, StaticIPAddress):
+                        continue
+                    if domain.authoritative:
+                        ip = str(element.ip)
+
+                        DNSPublication.objects.create_for_config_update(
+                            source=f"ip {ip} linked to resource {dnsrr.name} on zone {domain.name}",
+                            action=DnsUpdateAction.INSERT,
+                            zone=domain.name,
+                            label=dnsrr.name,
+                            ttl=ttl,
+                            rtype="A"
+                            if IPAddress(ip).version == 4
+                            else "AAAA",
+                            answer=ip,
+                        )
+
+                return super().set(*args, **kwargs)
+
+    return DNSResourceIPAddressesManager
+
+
+class DNSResourceIPAddressesDescriptor(ManyToManyDescriptor):
+    @cached_property
+    def related_manager_cls(self):
+        related_model = (
+            self.rel.related_model if self.reverse else self.rel.model
+        )
+        return dnsresource_ip_addresses_manager_factory(
+            related_model._default_manager.__class__,
+            self.rel,
+            reverse=self.reverse,
+        )
+
+
+class DNSResourceIPAddressesField(ManyToManyField):
+    def contribute_to_class(self, cls, name, **kwargs):
+        super().contribute_to_class(cls, name, **kwargs)
+        setattr(
+            cls,
+            self.name,
+            DNSResourceIPAddressesDescriptor(self.remote_field, reverse=False),
+        )
+
+    def contribute_to_related_class(self, cls, related):
+        super().contribute_to_related_class(cls, related)
+
+        if (
+            not self.remote_field.hidden
+            and not related.related_model._meta.swapped
+        ):
+            setattr(
+                cls,
+                related.get_accessor_name(),
+                DNSResourceIPAddressesDescriptor(
+                    self.remote_field, reverse=True
+                ),
+            )
+
+
 class DNSResource(CleanSave, TimestampedModel):
     """A `DNSResource`.
 
@@ -199,11 +360,26 @@ class DNSResource(CleanSave, TimestampedModel):
         Domain, default=get_default_domain, editable=True, on_delete=PROTECT
     )
 
-    ip_addresses = ManyToManyField(
-        "StaticIPAddress", editable=True, blank=True
+    ip_addresses = DNSResourceIPAddressesField(
+        StaticIPAddress,
+        editable=True,
+        blank=True,
     )
 
     # DNSData model has non-ipaddress entries.
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._previous_name = None
+        self._previous_domain_id = None
+
+    def __setattr__(self, name, value):
+        if (
+            hasattr(self, f"_previous_{name}")
+            and getattr(self, name) is not None
+        ):
+            setattr(self, f"_preivous_{name}", getattr(self, name))
+        super().__setattr__(name, value)
 
     def __unicode__(self):
         return "name=%s" % self.get_name()
@@ -292,4 +468,78 @@ class DNSResource(CleanSave, TimestampedModel):
         for ip in self.ip_addresses.all():
             if ip.is_safe_to_delete():
                 ip.delete()
+
+        if self.domain.authoritative:
+            DNSPublication.objects.create_for_config_update(
+                source=f"zone {self.domain.name} removed resource {self.name}",
+                action=DnsUpdateAction.DELETE,
+                label=self.name,
+                rtype="A",
+            )
+
         return super().delete(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        if self.domain.authoritative or self._previous_domain_id is not None:
+            if self.id is None:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"zone {self.domain.name} added resource {self.name}",
+                    action=DnsUpdateAction.INSERT_NAME,
+                    label=self.name,
+                    rtype="A",
+                    zone=self.domain,
+                )
+            else:
+                if (
+                    self._previous_domain_id is not None
+                    and self._previous_domain_id != self.domain_id
+                ):
+                    old_domain = Domain.objects.get(
+                        id=self._previous_domain_id
+                    )
+
+                    if old_domain.authoritative:
+                        DNSPublication.objects.create_for_config_update(
+                            source=f"zone {old_domain.name} removed resource {self._previous_name if self._previous_name else self.name}",
+                            action=DnsUpdateAction.DELETE,
+                            label=self._previous_name
+                            if self._previous_name
+                            else self.name,
+                            rtype="A",
+                            zone=old_domain.name,
+                        )
+                    if self.domain.authoritative:
+                        DNSPublication.objects.create_for_config_update(
+                            source=f"zone {self.domain.name} added resource {self.name}",
+                            action=DnsUpdateAction.INSERT_NAME,
+                            label=self.name,
+                            rtype="A",
+                            zone=self.domain,
+                        )
+                else:
+                    if (
+                        self._previous_name
+                        and self._previous_name != self.name
+                    ):
+                        DNSPublication.objects.create_for_config_update(
+                            source=f"zone {self.domain.name} removed resource {self._previous_name}",
+                            action=DnsUpdateAction.DELETE,
+                            label=self._previous_name,
+                            rtype="A",
+                        )
+                        DNSPublication.objects.create_for_config_update(
+                            source=f"zone {self.domain.name} added resource {self.name}",
+                            action=DnsUpdateAction.INSERT_NAME,
+                            label=self.name,
+                            rtype="A",
+                            ttl=self.address_ttl,
+                        )
+                    else:
+                        DNSPublication.objects.create_for_config_update(
+                            source=f"zone {self.domain.name} updated resource {self.name}",
+                            action=DnsUpdateAction.UPDATE,
+                            label=self.name,
+                            rtype="A",
+                            ttl=self.address_ttl,
+                        )
+        return super().save(*args, **kwargs)
