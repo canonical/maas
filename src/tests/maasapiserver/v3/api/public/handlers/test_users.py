@@ -324,7 +324,6 @@ class TestUsersApi(ApiCommonTests):
         assert user_response.id == new_user.id
         assert user_response.is_superuser == new_user.is_superuser
         assert user_response.username == new_user.username
-        assert user_response.password == new_user.password
         assert user_response.first_name == new_user.first_name
         assert user_response.last_name == new_user.last_name
         assert user_response.email == new_user.email
@@ -449,7 +448,6 @@ class TestUsersApi(ApiCommonTests):
         assert user_response.id == updated_user.id
         assert user_response.is_superuser == updated_user.is_superuser
         assert user_response.username == updated_user.username
-        assert user_response.password == updated_user.password
         assert user_response.first_name == updated_user.first_name
         assert user_response.last_name == updated_user.last_name
         assert user_response.email == updated_user.email

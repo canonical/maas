@@ -31,12 +31,9 @@ class TestUserResponse:
         )
         assert user_response.id == user.id
         assert user_response.username == user.username
-        assert user_response.password == user.password
         assert user_response.is_superuser == user.is_superuser
         assert user_response.first_name == user.first_name
         assert user_response.last_name == user.last_name
-        assert user_response.is_staff == user.is_staff
-        assert user_response.is_active == user.is_active
         assert user_response.date_joined == user.date_joined
         assert user_response.email == user.email
         assert user_response.last_login == user.last_login
