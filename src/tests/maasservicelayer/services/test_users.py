@@ -41,7 +41,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.consumers import Consumer
 from maasservicelayer.models.tokens import Token
-from maasservicelayer.models.users import User
+from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import (
     ConsumersService,
     ServiceCollectionV3,
@@ -85,6 +85,10 @@ TEST_USER = User(
     email="email@example.com",
     date_joined=now,
     last_login=now,
+)
+
+TEST_USER_PROFILE = UserProfile(
+    id=1, completed_intro=True, auth_last_check=None, is_local=True, user_id=1
 )
 
 
@@ -505,4 +509,14 @@ class TestUsersService:
         )
         users_repository.list_with_summary.assert_called_once_with(
             page=1, size=1000, query=QuerySpec(where=None)
+        )
+
+    async def test_complete_intro(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        users_repository.update_profile.return_value = TEST_USER_PROFILE
+        await users_service.complete_intro(user_id=1)
+
+        users_repository.update_profile.assert_called_once_with(
+            user_id=1, builder=UserProfileBuilder(completed_intro=True)
         )

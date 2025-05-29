@@ -306,3 +306,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         return await self.repository.list_with_summary(
             page=page, size=size, query=query
         )
+
+    async def complete_intro(self, user_id: int) -> UserProfile:
+        builder = UserProfileBuilder(completed_intro=True)
+        return await self.update_profile(user_id, builder)

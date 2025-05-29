@@ -65,6 +65,7 @@ class UsersHandler(Handler):
         # order to disambiguate these paths.
         return [
             "get_user_info",
+            "complete_intro",
             "list_users",
             "get_user",
             "create_user",
@@ -114,6 +115,31 @@ class UsersHandler(Handler):
         return UserInfoResponse(
             id=user.id, username=user.username, is_superuser=user.is_superuser
         )
+
+    @handler(
+        path="/users/me:complete_intro",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            204: {},
+            401: {"model": UnauthorizedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def complete_intro(
+        self,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        assert authenticated_user is not None
+        await services.users.complete_intro(authenticated_user.id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
         path="/users",

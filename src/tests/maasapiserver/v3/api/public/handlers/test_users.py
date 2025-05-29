@@ -37,7 +37,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.users import User, UserWithSummary
+from maasservicelayer.models.users import User, UserProfile, UserWithSummary
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.users import UsersService
@@ -84,6 +84,9 @@ class TestUsersApi(ApiCommonTests):
     def user_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}/me"),
+            Endpoint(
+                method="POST", path=f"{self.BASE_PATH}/me:complete_intro"
+            ),
         ]
 
     @pytest.fixture
@@ -722,3 +725,19 @@ class TestUsersApi(ApiCommonTests):
                 where=UserClauseFactory.with_username_or_email_like("example")
             ),
         )
+
+    async def test_complete_intro(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.complete_intro.return_value = Mock(UserProfile)
+
+        response = await mocked_api_client_user.post(
+            f"{V3_API_PREFIX}/users/me:complete_intro"
+        )
+        assert response.status_code == 204
+
+        # the user we use in tests has the id=0
+        services_mock.users.complete_intro.assert_called_once_with(0)
