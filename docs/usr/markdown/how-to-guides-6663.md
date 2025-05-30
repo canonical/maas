@@ -1,67 +1,69 @@
-Organize machine provisioning at scale with a structured, repeatable workflow.
-
+Knowing the components and machine states of MAAS is one thing; understanding how they fit together into a provisioning workflow is another. This cheat sheet is designed to make that process clear.
 
 ## Install and configure MAAS
 
-Only four steps are required to get MAAS up and running:
+Only four steps are required to [get MAAS up and running](https://maas.io/docs/how-to-get-maas-up-and-running):
 
- - [Install MAAS](https://maas.io/docs/how-to-install-maas#p-9034-install-maas-snap-or-packages) or [upgrade an older version](https://maas.io/docs/how-to-install-maas#p-9034-notes-on-upgrading-maas).
- - Choose whether you want a  [proof-of-concept](https://maas.io/docs/how-to-install-maas#p-9034-post-install-setup-poc) or [production](https://maas.io/docs/how-to-install-maas#p-9034-post-install-setup-production) instance.
- - [Configure MAAS](https://maas.io/docs/how-to-install-maas#p-9034-configuring-and-starting-maas) domain name services (DNS) and image acquisition.
- - [Enable DHCP](https://maas.io/docs/how-to-install-maas#p-9034-enabling-dhcp) to provide IP addresses to provisioned machines.
+ - Install MAAS or upgrade an older version.
+ - Choose whether you want to build a proof-of-concept or jump straight to production.
+ - Configure MAAS domain name services (DNS) and image acquisition.
+ - Enable DHCP to provide IP addresses to provisioned machines.
+ -  And don't forget to [back up MAAS](https://maas.io/docs/how-to-back-up-maas) once you get it running properly.
 
 ## Fine-tune MAAS networks
 
-MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine operation.  If your situation is different, you may want to fine-tune your networking:
+MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine operation. If your situation is different, you may want to [manage networks](https://maas.io/docs/how-to-manage-networks) to suit your environment:
 
-- [Make routine adjustments](https://maas.io/docs/how-to-customise-maas-networks#p-9070-routine-network-management), like default gateways, loopback, bridges, and bonds, or even [enable two-NIC interfaces](https://maas.io/docs/how-to-customise-maas-networks#p-9070-two-nic-setup).
-- [Manage network discovery](https://maas.io/docs/how-to-customise-maas-networks#p-9070-network-discovery), which automatically detects connected devices.
-- Manage day-to-day networking, like [subnets](https://maas.io/docs/how-to-customise-maas-networks#p-9070-subnets), [VLANs](https://maas.io/docs/how-to-customise-maas-networks#p-9070-vlans), local [DHCP configuration](https://maas.io/docs/how-to-customise-maas-networks#p-9070-dhcp-management), and [IP management](https://maas.io/docs/how-to-customise-maas-networks#p-9070-ip-management).
-- Nuance [NTP](https://maas.io/docs/how-to-customise-maas-networks#p-9070-ntp-management) and [DNS](https://maas.io/docs/how-to-customise-maas-networks#p-9070-dns-management) operation to match your local environment.
+- Make routine adjustments, like adding default gateways, loopback, bridges, and bonds, or even enable two-NIC interfaces.
+- Manage network discovery, which automatically detects connected devices to limit guesswork.
+- Manage standard network infrastructure, like subnets, VLANs, local DHCP configuration, and IP addresses.
+- [Manage network services](https://maas.io/docs/how-to-manage-network-services) -- like DHCP, DNS and NTP -- to match your local and corporate policies.
 
 ## Provision & manage servers
 
-Explore automated provisioning with MAAS:
+[Manage machines](https://maas.io/docs/how-to-manage-machines) to build and flex data centers with MAAS:
 
-- [Find connected machines](https://maas.io/docs/how-to-manage-machines#p-9078-find-machines).
-- [Add and configure machines](https://maas.io/docs/how-to-manage-machines#p-9078-add-configure-machines), whether bare metal or virtual, and [manage their power state](https://maas.io/docs/how-to-manage-machines#p-9078-control-machine-power).
-- Discover server capabilities by [commissioning machines](https://maas.io/docs/how-to-manage-machines#p-9078-commission-test-machines).
-- [Deploy machines](https://maas.io/docs/how-to-manage-machines#p-9078-deploy-machines) to make them productive.
-- Configure [specialty configurations](https://maas.io/docs/how-to-manage-machines#p-9078-configure-machine-settings) for specific needs.
-- [Rescue, recover](https://maas.io/docs/how-to-manage-machines#p-9078-rescue-recovery) and [recycle](https://maas.io/docs/how-to-manage-machines#p-9078-release-or-remove-machines) machines, including full data erasure.
+- Discover which devices are already connected and find them again when you need them.
+- Add and configure machines, whether bare metal or virtual, and manage their power state.
+- Discover and remember server capabilities by commissioning machines.
+- Deploy machines to make them productive.
+- Create specialty configurations for specific needs and special cases.
+- Rescue, recover and recycle machines, including full data erasure.
 
-## Group machines for easy identification
+## Group machines for quick categorization & redeployment
 
-Availability zones provide failover; resource pools group machines for easy tracking; tags and annotations provide a more freeform labeling system.  All three groups are searchable from both UI and CLI.
+[Manage machine groups](https://maas.io/docs/how-to-manage-machine-groups) create failover redundancy (availability zones), ensure functional allocation (resource pools), easily track machine capabilities(tags) and track operational status (notes and annotations):
 
-- Set up [availability zones](https://maas.io/docs/how-to-manage-machine-groups#p-19384-availability-zones) to create redundant failover.
-- Assign [resource pools](https://maas.io/docs/how-to-manage-machine-groups#p-19384-resource-pools) to budget provisioning.
-- Label and even control machine behavior with [tags and annotations](https://maas.io/docs/how-to-manage-machine-groups#p-19384-tags-and-annotations).
+- Set up to create redundant failover for critical systems.
+- Assign resource pools to budget provisioning by corporate or data center function.
+- Keep track of machine setup and tooling with tags.
+- Remember what machines are doing both offline (notes) and when in production (annotations).
 
 ## Manage deployment OS images
 
-MAAS supports a very wide range of Linux, Windows, and specialty operating systems.
+MAAS supports a wide range of Linux, Windows, and specialty operating systems, so it pays to [manage images](https://maas.io/docs/how-to-manage-images) carefully:
 
-- Set up [image SimpleStreams](https://maas.io/docs/how-to-manage-images#p-9030-switch-image-streams) to keep up-to-date.
-- Use [custom](https://maas.io/docs/how-to-manage-images#p-9030-use-a-custom-mirror) and [local](https://maas.io/docs/how-to-manage-images#p-9030-use-a-local-mirror) mirrors to improve download performance.
-- [Build your own Ubuntu images](https://maas.io/docs/how-to-build-ubuntu-images)
+- Set up [image SimpleStreams to keep your standard images up-to-date.
+- Use custom and local mirrors to improve download performance.
+- [Build your own Ubuntu images](https://maas.io/docs/how-to-build-ubuntu-images).
 - [Build custom images](https://maas.io/docs/how-to-build-custom-images), including RHEL, CentOS, Oracle Linux, VMWare ESXI, Windows, and others.
 
 ## Keep things running smoothly
 
 Performance, security, and auditing are integrated capabilities of MAAS.
 
+- [Manage high availability](https://maas.io/docs/how-to-manage-high-availability) by managing your region and rack controllers carefully and keeping them tuned.
 - [Use logging](https://maas.io/docs/how-to-use-logging) wisely to keep track.
 - [Monitor MAAS](https://maas.io/docs/how-to-monitor-maas) to manage performance and find bottlenecks.
-- [Enhance MAAS security](https://maas.io/docs/how-to-enhance-maas-security) and [manage MAAS users](https://maas.io/docs/how-to-enhance-maas-security#p-9102-manage-users) to maintain data and operational security.
-- [Enable high availability](https://maas.io/docs/how-to-enable-high-availability) to scale workloads.
+- [Enhance MAAS security](https://maas.io/docs/how-to-enhance-maas-security) and manage MAAS users to maintain data and operational security.
 
 ## Handle specialty situations
 
-Deploy real-time or FIPS-compliant kernels, run MAAS in an air-gapped environment, and write Python programs to control MAAS.  You can even deploy virtual machines on an IBM Z Series.
+Deal with a variety of special cases:
 
 - Deploy [real-time](https://maas.io/docs/how-to-deploy-a-real-time-kernel) or [FIPS-compliant](https://maas.io/docs/how-to-deploy-a-fips-compliant-kernel) kernels.
-- Run MAAS in [air-gapped mode](https://maas.io/docs/how-to-configure-an-air-gapped-maas).
-- [Script your MAAS instance with Python](https://maas.io/docs/how-to-use-the-python-api-client).
+- Run MAAS in [air-gapped mode](https://maas.io/docs/how-to-set-up-air-gapped-maas).
+- [Script your MAAS instance with Python](https://maas.io/docs/how-to-script-maas-with-python).
 - [Deploy virtual machines on an IBM Z series machine](https://maas.io/docs/how-to-deploy-vms-on-ibm-z).
 
+Some of these steps are repeated frequently or done on demand. This general workflow will drive provisioning in the right direction.
