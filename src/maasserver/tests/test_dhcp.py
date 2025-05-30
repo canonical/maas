@@ -2118,6 +2118,42 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
 
         self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
 
+    def test_avoid_duplicated_host_entry_for_reserved_ip(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        node = factory.make_Node(interface=False)
+
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
+        )
+        ip = IPAddress(
+            factory.pick_ip_in_network(
+                IPNetwork(subnet.cidr),
+            ),
+        )
+
+        factory.make_ReservedIP(str(ip), subnet, eth0.mac_address)
+        factory.make_StaticIPAddress(
+            ip=ip,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+            interface=eth0,
+        )
+        expected_hosts = [
+            {
+                "host": f"{node.hostname}-{eth0.name}",
+                "mac": str(eth0.mac_address),
+                "ip": str(ip),
+                "dhcp_snippets": [],
+            }
+        ]
+
+        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
+
 
 class TestMakeFailoverPeerConfig(MAASServerTestCase):
     """Tests for `make_failover_peer_config`."""
