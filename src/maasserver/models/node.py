@@ -5958,7 +5958,6 @@ class Node(CleanSave, TimestampedModel):
                     ),
                 ],
             ),
-            execution_timeout=timedelta(minutes=timeout),
             task_queue="region",
             id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
         )
