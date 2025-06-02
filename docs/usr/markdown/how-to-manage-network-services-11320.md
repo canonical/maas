@@ -102,49 +102,86 @@ Use the built-in, MAAS-configured DNS server to manage domains more efficiently.
 
 ### Create a DNS resource
 
-##### Prerequisites
+#### Prerequisites
+
 - You have a running MAAS installation.
 - You have administrative access to MAAS.
 - You have at least one domain set up in MAAS.
 
-##### Identify your domain
-Each DNS resource needs a domain. You can find available domains in MAAS by running:
-```sh
-maas admin domains read
+#### Identify your domain
+
+Each DNS resource needs a domain. You can find available domains in MAAS through the following commands.
+
+**UI**
+Choose *DNS* from the main menu; you will see a list of domains.
+
+**CLI**
+```bash
+maas $PROFILE domains read
 ```
 Look for the `id` or `name` of the domain you want to use.
 
-##### Choose a hostname
+#### Choose a hostname
+
 Decide on the hostname for the new DNS record. You can either:
 - Provide a fully qualified domain name (FQDN), e.g., `webserver.example.com`
 - OR specify the `name` (hostname only) and the `domain` separately.
 
-##### Assign an IP address (optional)
-If you want to create an A (IPv4) or AAAA (IPv6) record, you need an IP address:
+#### Assign an IP address (optional)
+
+If you want to create an A (IPv4) or AAAA (IPv6) record, you need an IP address.
+
+**CLI**
 ```sh
-maas admin ipaddresses read
+maas $PROFILE ipaddresses read
 ```
 This lists available IP addresses in MAAS.
 
-##### Create the DNS resource
-Run the following command:
+#### Create the DNS resource
+
+Use one of the following commands to create the DNS resource.
+
+**UI**
+*DNS* > *(Select domain)* > *Add record* > *(Fill in fields)* > *Add record*
+
+**CLI** 
 ```sh
-maas admin dnsresources create name=webserver domain=example.com ip_addresses=192.168.1.100
+maas $PROFILE dnsresources create name=webserver domain=example.com ip_addresses=192.168.1.100
 ```
+
 Alternatively, using an FQDN:
 ```sh
-maas admin dnsresources create fqdn=webserver.example.com ip_addresses=192.168.1.100
+maas $PROFILE dnsresources create fqdn=webserver.example.com ip_addresses=192.168.1.100
 ```
 This creates an A record for `webserver.example.com` pointing to `192.168.1.100`.
 
-##### Verify the DNS resource
-List all DNS resources:
+#### Verify the DNS resource
+
+List all DNS resources to verify creation.
+
+**UI**
+*DNS* > *(Select domain)* > *(Review Resource records)*
+
+**CLI**
 ```sh
-maas admin dnsresources read
+maas $PROFILE dnsresources read
 ```
 Ensure your new entry appears in the output.
 
-### Set a DNS server  
+### Delete a DNS resource
+
+You can also delete DNS resources.
+
+**UI**
+*DNS* > *(Select domain)* > *ACTIONS* > *Remove record* > *Delete record*
+
+**CLI**
+First, list DNS resources to find the ID of the DNS resources you want to delete. Then enter the command:
+
+maas $PROFILE dnsresource delete $ID
+
+
+### Set a DNS server
 
 UI**
 *Settings > DNS > (Fill fields) > Save*
@@ -154,7 +191,11 @@ CLI**
 maas $PROFILE subnet update $SUBNET_CIDR dns_servers=$MY_DNS_SERVER
 ```
 
-### Set a DNS forwarder  
+### Set a DNS forwarder
+You can also set a DNS forwarder.
+
+**UI**
+*Settings* > *Network* > *DNS* > *(Set Upstream DNS)*
 
 CLI**
 ```bash
