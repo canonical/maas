@@ -1,4 +1,4 @@
-MAAS provides pre-configured [networks](https://maas.io/docs/about-maas-networking) for convenience and efficiency.  Reconfigure these networks to suit your environment.
+MAAS provides pre-configured [networks](https://maas.io/docs/about-maas-networking) for convenience and efficiency. Reconfigure these networks to suit your environment.
 
 ## Manage interfaces 
 
@@ -18,9 +18,12 @@ A physical interface represents a hardware NIC on the machine. MAAS usually dete
 
 If the machine is already deployed, you won’t be able to modify or add physical interfaces. Bring it to a “Ready” or “Broken” state first.
 
-CLI**
+**UI**
+*Machines* > *[machine]* > *Network* > *Add interace* > [fill in form] > *Save interface*
+
+**CLI**
 ```bash 
-maas $PROFILE interfaces create-physical $SYSTEM_ID (key=value)....
+maas $PROFILE interfaces create-physical $SYSTEM_ID (key=value)
 ```
 
 Use key-value pairs to set interface properties like:
@@ -45,10 +48,12 @@ In MAAS, a VLAN is a virtual interface associated with:
 - a VLAN ID (typically between 1 and 4094)
 - a fabric (the logical layer in MAAS that manages network topology)
 
+
+**CLI**
 You can create a VLAN interface with a command of the form:
 
 ```bash
-maas $PROFILE interfaces create-vlan $SYSTEM_ID key=value...
+maas $PROFILE interfaces create-vlan $SYSTEM_ID key=value
 ```
 
 This command has two required keys and several optional key-value pairs.
@@ -83,12 +88,12 @@ If you're planning to use DHCP on this VLAN interface, ensure the VLAN is config
 
 #### Bond two interfaces
 
-Bonding is used to group two or more physical interfaces into a single logical interface.  You can bond two interfaces for any machine in the "Ready" or "Broken" state (this will not work for deployed machines).  This can:
+Bonding is used to group two or more physical interfaces into a single logical interface. You can bond two interfaces for any machine in the "Ready" or "Broken" state (this will not work for deployed machines). This can:
 
 - Provide failover if one NIC fails
 - Enable link aggregation (if supported)
 
-Bonding creates interface redundancy and increased throughput on servers with multiple NICs.  Avoid bonding if:
+Bonding creates interface redundancy and increased throughput on servers with multiple NICs. Avoid bonding if:
 
 - You are using Wi-Fi or virtual NICs
 - You do not control the network switch (and cannot configure LACP)
@@ -97,8 +102,10 @@ Learn more about [bonds](https://maas.io/docs/about-maas-networking#p-20679-bond
 
 ##### How to create a bond
 
-UI:**  
-*Machines > (Select machine) > Network > (Select 2 physical interface) > Create bond > (Configure details) > Save interface*  
+**UI:**  
+*Machines > (Select machine) > Network > (Select 2 physical interfaces) > Create bond > (Configure details) > Save interface*
+
+Note that only active, connected physical interfaces can be bonded. Disconnected interfaces cannot be bonded to other interfaces.
 
 CLI:**  
 ```bash
@@ -138,8 +145,8 @@ Bridging is often confused with bonding. Bonding is about failover or speed; bri
 
 To create a bridge interface:
 
-UI**
-*Machines > (Select machine) > Network > (Select interface) > Create bridge > (Configure details) > Save interface*  
+**UI**
+*Machines > (Select machine) > Network > (Select interface) > Create bridge > (Configure details) > Save interface*
 
 CLI**
 ```bash
@@ -184,11 +191,11 @@ maas $PROFILE interface link-subnet $SYSTEM_ID $BRIDGE_ID subnet=$SUBNET_ID mode
 - The subnet must be managed by MAAS if you're assigning static IPs.
 - You need the correct subnet ID, which may require filtering by CIDR and `managed=true`.
 
-You can bridge more than one interface, but only one at creation; add more with the `update` subcommand.  MAAS does not manage `/etc/netplan` directly — so if you bypass MAAS or work post-deploy, remember that netplan configs matter.
+You can bridge more than one interface, but only one at creation; add more with the `update` subcommand. MAAS does not manage `/etc/netplan` directly — so if you bypass MAAS or work post-deploy, remember that netplan configs matter.
 
 #### Create a bridge with netplan
 
-If you need to create a bridge after deployment -- or for bare-metal tweaking -- you will need to create it *outside* MAAS with netplan.  For example, this is what you might add to `/etc/netplan/50-cloud-init.yaml`:
+If you need to create a bridge after deployment -- or for bare-metal tweaking -- you will need to create it *outside* MAAS with netplan. For example, this is what you might add to `/etc/netplan/50-cloud-init.yaml`:
 
 ```yaml
 network:
@@ -246,20 +253,31 @@ Update interface parameters — but only if the machine is in `Ready` or `Broken
 
 This allows field-replacement of broken NICs without full re-commissioning.
 
-CLI**
+**UI**
+*Machines* > *(Select machine)* > *Network* > *(Select interface)* > *Actions* > *Edit physical* > *(Update fields)* > *Save interface*
+
+**CLI**
 ```bash
-maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID (key=value)...
+maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID (key=value)
 ```
 
 Use the appropriate parameter set for the interface type (physical, bridge, bond, VLAN, etc.).
 
 See [the CLI subcommand reference](https://maas.io/docs/interface#p-23244-update-an-interface) for key options.
 
+#### Update an alias
+
+**UI**
+*Machines* > *(Select machine)* > *Network* > *(Select interface)* > *Actions* > *Edit alias* > *(Update fields)* > *Save Alias*
+
 #### Delete an interface
 
 Remove an interface that is no longer needed. This is typically used when rolling back a misconfiguration or cleaning up testing setups.
 
-CLI**
+**UI**
+*Machines* > *(Select machine)* > *Network* > *(Select interface)* > *Actions* > *Remove physical* > *Remove*
+
+**CLI**
 ```bash
 maas $PROFILE interface delete $SYSTEM_ID $INTERFACE_ID
 ```
@@ -279,6 +297,9 @@ You can disconnect a given interface from its current network configuration. Thi
 - Detaches from any associated VLAN
 
 This action is only available if the machine is in a `Ready` or `Broken` state.
+
+**UI**
+*Machines* > *(Select machine)* > *Network* > *(Select interface)* > *Actions* > *Mark as disconnected > *Mark as disconnected*
 
 CLI**
 ```bash
@@ -313,7 +334,10 @@ maas $PROFILE interface unlink-subnet $SYSTEM_ID $INTERFACE_ID
 
 You can update the gateway for a specific subnet. This is a subnet-level setting that affects routing behavior for all devices on that subnet.
 
-CLI**
+**UI**
+*Subnets* > *(Select subnet)* > *Edit* > *Set Gateway IP* > *Save*
+
+**CLI**
 ```bash
 maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
 ```
@@ -322,29 +346,26 @@ maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
 
 Route specific traffic between source and destination subnets through a defined gateway. Useful for custom networking setups or multi-NIC systems.
 
-UI**
-*Networking > Subnets > (Select subnet) > Add static route > Fill fields > Save*
+**UI**
+*Networking* > *Subnets* > *(Select subnet)* > *Static routes* > *Add static route* > *(Fill in fields)* > *Save*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE static-routes create source=$SOURCE_SUBNET destination=$DEST_SUBNET gateway_ip=$GATEWAY_IP
 ```
 
-#### Configure a loopback interface
-
-Loopback interfaces can be added after commissioning, using a placeholder MAC address (`00:00:00:00:00:00`). This allows MAAS to recognize it as an intentional loopback, not a misconfigured NIC.
-
-To automate loopback setup, use `cloud-init`.
-
 ### Tag interfaces
 
-MAAS allows you to apply **tags** to network interfaces, which can be used for filtering, grouping, automation, or custom selection (e.g., during deployments or scripting).
+MAAS allows you to apply **tags** to physical network interfaces (not aliases). These tags can be used for filtering, grouping, automation, or custom selection (e.g., during deployments or scripting).
 
-#### Add a tag to an interface
+#### Add a tag to a physical interface
 
 Use tags to classify interfaces — e.g., `"uplink"`, `"PXE"`, `"isolated"`, etc.
 
-CLI**
+**UI**
+*Machines* > *(Select machine)* > *Network* > *(Select physical interface)* > *Actions* > *Edit Physical* > *Edit "Tags" field* > *Save interface*
+
+**CLI**
 ```bash
 maas $PROFILE interface add-tag $SYSTEM_ID $INTERFACE_ID tag="my-tag"
 ```
@@ -357,14 +378,23 @@ maas $PROFILE interface add-tag $SYSTEM_ID $INTERFACE_ID tag="my-tag"
 
 Remove any tag that is no longer needed.
 
-CLI**
+**UI**
+*Machines* > *(Select machine)* > *Network* > *(Select physical interface)* > *Actions* > *Edit Physical* > *Select "X" to right of tag to remove* > *Save interface*
+
+**CLI**
 ```bash
 maas $PROFILE interface remove-tag $SYSTEM_ID $INTERFACE_ID tag="my-tag"
 ```
 
+#### View existing interface tags
+
 To view existing tags on an interface, use:
 
-CLI**
+**UI**
+*Machines* > *(Select machine)* > *Network* > *(Select physical interface)* > *Actions* > *Edit Physical* > *(View tags in "Tags" field)* > *Cancel*
+
+
+**CLI**
 ```bash
 maas $PROFILE interface read $SYSTEM_ID $INTERFACE_ID
 ```
@@ -427,8 +457,8 @@ Use network discovery to:
 
 Turn discovery on to allow MAAS to detect devices on active subnets.
 
-UI** 
-*Networking > Network discovery > Configuration > Enabled*
+**UI** 
+*Networking* > *Network discovery* > *Configuration* > *Enabled*
 
 CLI**
 ```bash
@@ -521,7 +551,17 @@ maas $PROFILE discoveries scan thread=4
 
 #### Filter discovered devices
 
-MAAS can filter results for deeper inspection.
+MAAS UI and CLI offer complementary filters.
+
+**UI**
+MAAS UI can filter on knowns, including existing fabrics, VLANs, racks, and subnets.
+
+*Networking* > *Network discovery* > *Filters* > *(Select one or more filters)*
+
+The filter will be automatically applied as soon as it's selected.
+
+**CLI**
+MAAS CLI can filter for unknowns.
 
 - By unknown IP:
 ```bash
@@ -672,8 +712,8 @@ maas $PROFILE ipaddresses reserve ip=$IP_ADDRESS_STATIC_SINGLE
 
 #### Reserve a dynamic range
 
-UI**
-*Subnets > (Select subnet> > (Scroll down> > Reserve range > Reserve dynamic range > (Fill fields) > Reserve*
+**UI**
+*Subnets > (Select subnet) > (Scroll down) > Reserve range > Reserve dynamic range > (Fill fields) > Reserve*
 
 CLI**
 ```bash
