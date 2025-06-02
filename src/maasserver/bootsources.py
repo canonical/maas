@@ -98,6 +98,15 @@ def get_boot_sources():
     return [source.to_dict() for source in BootSource.objects.all()]
 
 
+@transactional
+def get_boot_sources_select_all():
+    """Return list of boot sources for the region to import from, ignoring selections."""
+    return [
+        source.to_dict_without_selections()
+        for source in BootSource.objects.all()
+    ]
+
+
 def _upsert_no_proxy_env(env, entry):
     """Updates $no_proxy appropriately."""
     if no_proxy := env.get("no_proxy"):
@@ -442,3 +451,31 @@ def cache_boot_sources():
     else:
         maaslog.info("Updated boot sources cache.")
         yield deferToDatabase(discard_persistent_error, component)
+
+
+def ensure_all_images_selected(source):
+    """
+    Ensure that all images listed in the given source are selected
+    for download.
+    """
+    boot_source = BootSource.objects.get(url=source["url"])
+    selections = {}
+    for image in BootSourceCache.objects.filter(boot_source=boot_source):
+        if not BootSourceSelection.objects.filter(
+            boot_source=boot_source,
+            os=image.os,
+            release=image.release,
+            arches=["*"],
+            subarches=["*"],
+            labels=["*"],
+        ).exists():
+            selections[f"{image.os}/{image.release}"] = BootSourceSelection(
+                boot_source=source,
+                os=image.os,
+                release=image.release,
+                arches=["*"],
+                subarches=["*"],
+                labels=["*"],
+            )
+    if selections:
+        BootSourceSelection.objects.bulk_create(selections.values())

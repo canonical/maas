@@ -149,6 +149,8 @@ async def main() -> None:
                 msm_activity.set_enrol,
                 msm_activity.verify_token,
                 msm_activity.set_bootsource,
+                msm_activity.get_bootsources,
+                msm_activity.delete_bootsources,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities

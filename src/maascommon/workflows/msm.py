@@ -59,3 +59,8 @@ class MSMTokenRefreshParam:
 @dataclasses.dataclass
 class MSMSetBootSourceParam:
     sm_url: str
+
+
+@dataclasses.dataclass
+class MSMDeleteBootSourcesParam:
+    ids: list[int]

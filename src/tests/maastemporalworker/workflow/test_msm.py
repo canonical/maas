@@ -25,8 +25,10 @@ from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
     MachinesCountByStatus,
     MSM_CHECK_ENROL_ACTIVITY_NAME,
+    MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
     MSM_DETAIL_EP,
     MSM_ENROL_EP,
+    MSM_GET_BOOT_SOURCES_ACTIVITY_NAME,
     MSM_GET_ENROL_ACTIVITY_NAME,
     MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
     MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
@@ -40,6 +42,7 @@ from maastemporalworker.workflow.msm import (
     MSM_VERIFY_TOKEN_ACTIVITY_NAME,
     MSMConnectorActivity,
     MSMConnectorParam,
+    MSMDeleteBootSourcesParam,
     MSMEnrolParam,
     MSMEnrolSiteWorkflow,
     MSMHeartbeatParam,
@@ -152,12 +155,24 @@ class TestMSMActivities:
         return mock_response
 
     def _mock_get(
-        self, mocker, mocked_session, status: int, body: dict[str, Any] | None
+        self,
+        mocker,
+        mocked_session,
+        status: int,
+        body: dict[str, Any] | list[dict[str, Any]] | None,
     ) -> Mock:
         mock_response = mocker.create_autospec(ClientResponse)
         type(mock_response).status = PropertyMock(return_value=status)
         mock_response.json.return_value = body
         mocked_session.get.return_value.__aenter__.return_value = mock_response
+        return mock_response
+
+    def _mock_delete(self, mocker, mocked_session, status: int) -> Mock:
+        mock_response = mocker.create_autospec(ClientResponse)
+        type(mock_response).status = PropertyMock(return_value=status)
+        mocked_session.delete.return_value.__aenter__.return_value = (
+            mock_response
+        )
         return mock_response
 
     async def test_send_enrol(self, mocker, msm_act, enrol_param):
@@ -437,6 +452,34 @@ class TestMSMActivities:
         expected_data.add_field(name="keyring_data", value=b" ")
         assert kwargs["data"]._fields == expected_data._fields
 
+    async def test_get_bootsources_activity(
+        self,
+        mocker,
+        msm_act,
+    ):
+        mocked_session = msm_act._session
+        self._mock_get(mocker, mocked_session, 200, [{"id": 1}, {"id": 2}])
+        env = ActivityEnvironment()
+        result = await env.run(
+            msm_act.get_bootsources,
+        )
+        assert result == [1, 2]
+        mocked_session.get.assert_called_once()
+        args = mocked_session.get.call_args.args
+        assert "/api/2.0/boot-sources/" in args[0]
+
+    async def test_delete_bootsources_activity(self, mocker, msm_act):
+        mocked_session = msm_act._session
+        self._mock_delete(mocker, mocked_session, 204)
+        env = ActivityEnvironment()
+        await env.run(
+            msm_act.delete_bootsources, MSMDeleteBootSourcesParam([1, 2])
+        )
+        assert mocked_session.delete.call_count == 2
+        args = [a.args[0] for a in mocked_session.delete.call_args_list]
+        assert "/api/2.0/boot-sources/1" in args[0]
+        assert "/api/2.0/boot-sources/2" in args[1]
+
 
 class TestMSMEnrolWorkflow:
     async def test_enrolment(self, enrol_param):
@@ -468,6 +511,15 @@ class TestMSMEnrolWorkflow:
         async def set_boot_source(input: MSMSetBootSourceParam) -> None:
             calls["msm-set-boot-source"].append(replace(input))
 
+        @activity.defn(name=MSM_GET_BOOT_SOURCES_ACTIVITY_NAME)
+        async def get_boot_source() -> list[int]:
+            calls["msm-get-boot-source"].append(None)
+            return [1]
+
+        @activity.defn(name=MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME)
+        async def delete_boot_source(input: MSMDeleteBootSourcesParam) -> None:
+            calls["msm-delete-boot-source"].append(replace(input))
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -475,6 +527,8 @@ class TestMSMEnrolWorkflow:
                 workflows=[MSMEnrolSiteWorkflow],
                 activities=[
                     send_enrol,
+                    get_boot_source,
+                    delete_boot_source,
                     set_boot_source,
                     check_enrol,
                     set_enrol,
@@ -499,6 +553,9 @@ class TestMSMEnrolWorkflow:
         assert verify.jwt == _JWT_ACCESS
         assert len(calls["msm-set-boot-source"]) == 1
         assert calls["msm-set-boot-source"][0].sm_url == _MSM_BASE_URL
+        assert len(calls["msm-get-boot-source"]) == 1
+        assert len(calls["msm-delete-boot-source"]) == 1
+        assert calls["msm-delete-boot-source"][0].ids == [1]
 
     async def test_enrolment_fail(self, enrol_param):
         calls = defaultdict(list)

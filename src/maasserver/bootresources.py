@@ -37,6 +37,7 @@ from maascommon.constants import IMPORT_RESOURCES_SERVICE_PERIOD
 from maasserver import locks
 from maasserver.bootsources import (
     cache_boot_sources,
+    ensure_all_images_selected,
     ensure_boot_source_definition,
     get_boot_sources,
     get_product_title,
@@ -51,6 +52,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
     BOOT_RESOURCE_TYPE,
     COMPONENT,
+    MSM_STATUS,
 )
 from maasserver.eventloop import services
 from maasserver.import_images.download_descriptions import (
@@ -74,6 +76,7 @@ from maasserver.models import (
     Event,
     RegionController,
 )
+from maasserver.msm import msm_status
 from maasserver.release_notifications import ReleaseNotifications
 from maasserver.utils import (
     absolute_reverse,
@@ -1005,6 +1008,15 @@ def _import_resources_internal(notify=None):
 
     with tempdir("keyrings") as keyrings_path:
         sources = get_boot_sources()
+        msm = msm_status()
+        # If we're enrolled with MSM, download everything
+        if msm.get("running") == MSM_STATUS.CONNECTED:
+            # there will only be one source if we're enrolled.
+            # loop in case there is a race condition while sources are being
+            # updated in the msm workflow
+            for source in sources:
+                if source["url"].startswith(msm.get("sm-url")):
+                    ensure_all_images_selected(source)
         sources = write_all_keyrings(keyrings_path, sources)
         msg = (
             f"Started importing of boot images from {len(sources)} source(s)."
