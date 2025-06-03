@@ -80,13 +80,6 @@ parts:
 
   maas:
     plugin: python
-    # By default, the Python plugin installs pip, setuptools, and wheel into the Snap.
-    # This behavior is defined here:
-    # https://github.com/canonical/snapcraft/blob/2a3f235df5b358c7973d0b72f490a48a6fe8625b/snapcraft_legacy/plugins/v2/python.py#L97
-    #
-    # We override this by setting `python-packages` to an empty list. This ensures
-    # the Snap uses only packages from apt.
-    python-packages: []
     source: .
     build-packages:
       - build-essential
@@ -240,7 +233,12 @@ parts:
       - var/lib/ieee-data
       - var/lib/temporal
     override-build: |
-      craftctl default
+      # Do not `craftctl default`: the python plugin would create an isolated venv and would need to install setuptools from pip.
+      python3 -m venv --system-site-packages $CRAFT_PART_INSTALL
+      VENV_PYTHON=$CRAFT_PART_INSTALL/bin/python3
+      $VENV_PYTHON -m pip install --no-build-isolation .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#\!.*python3.*$|#!/usr/bin/env python3|' {} +
+
       cp -a package-files/* $CRAFT_PART_INSTALL
       # If python3-netaddr contains absolute symlinks.
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
