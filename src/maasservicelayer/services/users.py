@@ -19,6 +19,7 @@ from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.builders.tokens import TokenBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
+from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.consumers import ConsumerClauseFactory
@@ -42,6 +43,7 @@ from maasservicelayer.db.repositories.users import (
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
+    NotFoundException,
     PreconditionFailedException,
 )
 from maasservicelayer.exceptions.constants import (
@@ -310,3 +312,33 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     async def complete_intro(self, user_id: int) -> UserProfile:
         builder = UserProfileBuilder(completed_intro=True)
         return await self.update_profile(user_id, builder)
+
+    async def change_password(self, user_id: int, password: str) -> None:
+        user = await self.get_by_id(user_id)
+        if user is None:
+            raise NotFoundException()
+        if user.username in SYSTEM_USERS:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PRECONDITION_FAILED,
+                        message="Cannot change password for system users.",
+                    )
+                ]
+            )
+        user_profile = await self.get_user_profile(user.username)
+        assert user_profile is not None
+        if not user_profile.is_local:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PRECONDITION_FAILED,
+                        message="Cannot change password for external users.",
+                    )
+                ]
+            )
+
+        hashed_password = UserBuilder.hash_password(password)
+        await self._update_resource(
+            user, UserBuilder(password=hashed_password)
+        )

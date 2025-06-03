@@ -36,6 +36,7 @@ from maasservicelayer.db.repositories.users import (
 )
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
+    NotFoundException,
     PreconditionFailedException,
 )
 from maasservicelayer.models.base import MaasBaseModel
@@ -520,3 +521,59 @@ class TestUsersService:
         users_repository.update_profile.assert_called_once_with(
             user_id=1, builder=UserProfileBuilder(completed_intro=True)
         )
+
+    async def test_change_password(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        users_repository.get_by_id.return_value = TEST_USER
+        users_repository.get_user_profile.return_value = TEST_USER_PROFILE
+        users_repository.update_by_id.return_value = TEST_USER
+        await users_service.change_password(TEST_USER.id, "foo")
+
+        users_repository.get_by_id.assert_called_once_with(id=TEST_USER.id)
+        users_repository.get_user_profile.assert_called_once_with(
+            TEST_USER.username
+        )
+
+        # we cannot assert with which parameters the method has been called
+        # with because of the salt.
+        users_repository.update_by_id.assert_called_once()
+
+    async def test_change_password_system_user(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        system_user = TEST_USER.copy()
+        system_user.username = "maas-init-node"
+        users_repository.get_by_id.return_value = system_user
+
+        with pytest.raises(BadRequestException) as exc:
+            await users_service.change_password(TEST_USER.id, "foo")
+
+        assert (
+            exc.value.details[0].message
+            == "Cannot change password for system users."
+        )
+
+    async def test_change_password_external_user(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        external_user_profile = TEST_USER_PROFILE.copy()
+        external_user_profile.is_local = False
+        users_repository.get_by_id.return_value = TEST_USER
+        users_repository.get_user_profile.return_value = external_user_profile
+
+        with pytest.raises(BadRequestException) as exc:
+            await users_service.change_password(TEST_USER.id, "foo")
+
+        assert (
+            exc.value.details[0].message
+            == "Cannot change password for external users."
+        )
+
+    async def test_change_password_not_found(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        users_repository.get_by_id.return_value = None
+
+        with pytest.raises(NotFoundException):
+            await users_service.change_password(TEST_USER.id, "foo")

@@ -87,6 +87,9 @@ class TestUsersApi(ApiCommonTests):
             Endpoint(
                 method="POST", path=f"{self.BASE_PATH}/me:complete_intro"
             ),
+            Endpoint(
+                method="POST", path=f"{self.BASE_PATH}/me:change_password"
+            ),
         ]
 
     @pytest.fixture
@@ -98,6 +101,9 @@ class TestUsersApi(ApiCommonTests):
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="POST", path=f"{self.BASE_PATH}/1:change_password"
+            ),
         ]
 
     # GET /users/me
@@ -741,3 +747,42 @@ class TestUsersApi(ApiCommonTests):
 
         # the user we use in tests has the id=0
         services_mock.users.complete_intro.assert_called_once_with(0)
+
+    async def test_change_password_user(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.change_password.return_value = None
+
+        json = {"password": "foo"}
+
+        response = await mocked_api_client_user.post(
+            f"{V3_API_PREFIX}/users/me:change_password", json=json
+        )
+        assert response.status_code == 204
+
+        # the user we use in tests has the id=0
+        services_mock.users.change_password.assert_called_once_with(
+            user_id=0, password="foo"
+        )
+
+    async def test_change_password_admin(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.change_password.return_value = None
+
+        json = {"password": "foo"}
+
+        response = await mocked_api_client_admin.post(
+            f"{V3_API_PREFIX}/users/1:change_password", json=json
+        )
+        assert response.status_code == 204
+
+        services_mock.users.change_password.assert_called_once_with(
+            user_id=1, password="foo"
+        )

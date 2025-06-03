@@ -4,7 +4,6 @@
 import re
 from typing import Optional
 
-from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
@@ -49,14 +48,10 @@ class UserRequest(BaseModel):
         return v.lower()
 
     def to_builder(self) -> UserBuilder:
-        hasher = PBKDF2PasswordHasher()
-        salt = hasher.salt()
-        hashed_password = hasher.encode(self.password, salt)
-        self.password = hashed_password
-
+        hashed_password = UserBuilder.hash_password(self.password)
         return UserBuilder(
             username=self.username,
-            password=self.password,
+            password=hashed_password,
             is_superuser=self.is_superuser,
             is_staff=False,
             is_active=True,
@@ -64,3 +59,7 @@ class UserRequest(BaseModel):
             last_name=self.last_name,
             email=self.email,
         )
+
+
+class UserChangePasswordRequest(BaseModel):
+    password: str = Field(..., min_length=1)

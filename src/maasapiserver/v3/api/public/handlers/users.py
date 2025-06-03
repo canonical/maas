@@ -18,6 +18,7 @@ from maasapiserver.common.api.models.responses.errors import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.users import (
+    UserChangePasswordRequest,
     UserRequest,
     UsersFiltersParams,
 )
@@ -66,11 +67,13 @@ class UsersHandler(Handler):
         return [
             "get_user_info",
             "complete_intro",
+            "change_password_user",
             "list_users",
             "get_user",
             "create_user",
             "update_user",
             "delete_user",
+            "change_password_admin",
             "list_users_with_summary",
         ]
 
@@ -139,6 +142,35 @@ class UsersHandler(Handler):
     ) -> Response:
         assert authenticated_user is not None
         await services.users.complete_intro(authenticated_user.id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/users/me:change_password",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            204: {},
+            401: {"model": UnauthorizedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def change_password_user(
+        self,
+        change_password_request: UserChangePasswordRequest,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        assert authenticated_user is not None
+        await services.users.change_password(
+            user_id=authenticated_user.id,
+            password=change_password_request.password,
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
@@ -336,6 +368,32 @@ class UsersHandler(Handler):
             )
 
         await services.users.delete_by_id(user_id, etag_if_match=etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/users/{user_id}:change_password",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            204: {},
+            401: {"model": UnauthorizedBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def change_password_admin(
+        self,
+        user_id: int,
+        change_password_request: UserChangePasswordRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.users.change_password(
+            user_id=user_id, password=change_password_request.password
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(

@@ -4,6 +4,7 @@
 from datetime import datetime
 from typing import Union
 
+from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from pydantic import Field
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
@@ -28,6 +29,12 @@ class UserBuilder(ResourceBuilder):
     last_name: Union[str, None, Unset] = Field(default=UNSET, required=False)
     password: Union[str, Unset] = Field(default=UNSET, required=False)
     username: Union[str, Unset] = Field(default=UNSET, required=False)
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        hasher = PBKDF2PasswordHasher()
+        salt = hasher.salt()
+        return hasher.encode(password, salt)
 
 
 class UserProfileBuilder(ResourceBuilder):
