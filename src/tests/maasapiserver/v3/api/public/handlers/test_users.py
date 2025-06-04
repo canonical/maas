@@ -18,6 +18,7 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserResponse,
     UsersListResponse,
     UsersWithSummaryListResponse,
+    UserWithSummaryResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
@@ -785,4 +786,35 @@ class TestUsersApi(ApiCommonTests):
 
         services_mock.users.change_password.assert_called_once_with(
             user_id=1, password="foo"
+        )
+
+    async def test_user_with_summary(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id_with_summary.return_value = (
+            UserWithSummary(
+                id=0,
+                username="foo",
+                completed_intro=True,
+                email="foo@example.com",
+                is_local=True,
+                is_superuser=False,
+                last_name="foo",
+                machines_count=2,
+                sshkeys_count=3,
+            )
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{V3_API_PREFIX}/users/me_with_summary"
+        )
+        assert response.status_code == 200
+        user_with_summary = UserWithSummaryResponse(**response.json())
+        assert user_with_summary.id == 0
+        assert user_with_summary.username == "foo"
+        services_mock.users.get_by_id_with_summary.assert_called_once_with(
+            id=0
         )

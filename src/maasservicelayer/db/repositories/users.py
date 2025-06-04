@@ -16,6 +16,7 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.sql import Select
 from sqlalchemy.sql.operators import and_, eq, gt
 
 from maasservicelayer.builders.users import UserProfileBuilder
@@ -218,22 +219,8 @@ class UsersRepository(BaseRepository[User]):
             total=total,
         )
 
-    async def list_with_summary(
-        self, page: int, size: int, query: QuerySpec
-    ) -> ListResult[UserWithSummary]:
-        total_stmt = (
-            select(func.count())
-            .select_from(UserTable)
-            .where(
-                and_(
-                    not_(UserTable.c.username.in_(SYSTEM_USERS)),
-                    eq(UserTable.c.is_active, True),
-                )
-            )
-        )
-        total_stmt = query.enrich_stmt(total_stmt)
-        total = (await self.execute_stmt(total_stmt)).scalar()
-        stmt = (
+    def _user_with_summary_stmt(self) -> Select:
+        return (
             select(
                 UserTable.c.id,
                 UserTable.c.username,
@@ -267,8 +254,6 @@ class UsersRepository(BaseRepository[User]):
                     eq(UserTable.c.is_active, True),
                 )
             )
-            .offset((page - 1) * size)
-            .limit(size)
             .group_by(
                 UserTable.c.id,
                 UserTable.c.username,
@@ -281,6 +266,27 @@ class UsersRepository(BaseRepository[User]):
             )
             .order_by(desc(UserTable.c.id))
         )
+
+    async def list_with_summary(
+        self, page: int, size: int, query: QuerySpec
+    ) -> ListResult[UserWithSummary]:
+        total_stmt = (
+            select(func.count())
+            .select_from(UserTable)
+            .where(
+                and_(
+                    not_(UserTable.c.username.in_(SYSTEM_USERS)),
+                    eq(UserTable.c.is_active, True),
+                )
+            )
+        )
+        total_stmt = query.enrich_stmt(total_stmt)
+        total = (await self.execute_stmt(total_stmt)).scalar()
+        stmt = (
+            self._user_with_summary_stmt()
+            .offset((page - 1) * size)
+            .limit(size)
+        )
         stmt = query.enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
@@ -288,3 +294,10 @@ class UsersRepository(BaseRepository[User]):
             items=[UserWithSummary(**row._asdict()) for row in result],
             total=total,
         )
+
+    async def get_by_id_with_summary(self, id: int) -> UserWithSummary | None:
+        stmt = self._user_with_summary_stmt().where(eq(UserTable.c.id, id))
+        result = (await self.execute_stmt(stmt)).one_or_none()
+        if not result:
+            return None
+        return UserWithSummary(**result._asdict())

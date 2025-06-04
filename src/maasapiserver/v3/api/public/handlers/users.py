@@ -41,6 +41,7 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
     BaseExceptionDetail,
     UnauthorizedException,
 )
@@ -65,6 +66,7 @@ class UsersHandler(Handler):
         # /users/{user_id}. Therefore we need to specify a custom registration
         # order to disambiguate these paths.
         return [
+            "get_me_with_summary",
             "get_user_info",
             "complete_intro",
             "change_password_user",
@@ -444,4 +446,40 @@ class UsersHandler(Handler):
                 )
                 else None
             ),
+        )
+
+    @handler(
+        path="/users/me_with_summary",
+        methods=["GET"],
+        tags=TAGS,
+        responses={200: {"model": UserWithSummaryResponse}},
+        summary="Get user with a summary. ONLY FOR INTERNAL USAGE.",
+        description="Get user with a summary. This endpoint is only for internal usage and might be changed or removed without notice.",
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.USER},
+                )
+            )
+        ],
+    )
+    async def get_me_with_summary(
+        self,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> UserWithSummaryResponse:
+        assert authenticated_user is not None
+        user = await services.users.get_by_id_with_summary(
+            id=authenticated_user.id
+        )
+        if user is None:
+            # only happens for system users
+            raise BadRequestException()
+        return UserWithSummaryResponse.from_model(
+            user_with_summary=user,
+            self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )

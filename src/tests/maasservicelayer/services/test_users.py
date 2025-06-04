@@ -512,6 +512,12 @@ class TestUsersService:
             page=1, size=1000, query=QuerySpec(where=None)
         )
 
+    async def test_get_by_id_with_summary(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        await users_service.get_by_id_with_summary(id=1)
+        users_repository.get_by_id_with_summary.assert_called_once_with(id=1)
+
     async def test_complete_intro(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:

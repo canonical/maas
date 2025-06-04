@@ -302,6 +302,9 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
             builder=NodeBuilder(owner_id=to_user_id),
         )
 
+    async def get_by_id_with_summary(self, id: int) -> UserWithSummary | None:
+        return await self.repository.get_by_id_with_summary(id=id)
+
     async def list_with_summary(
         self, page: int, size: int, query: QuerySpec
     ) -> ListResult[UserWithSummary]:

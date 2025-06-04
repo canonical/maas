@@ -244,3 +244,31 @@ class TestUsersRepository:
             ),
         )
         assert users_list.total == num_results
+
+    async def test_get_by_id_with_summary(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture, username="user", is_active=True)
+        await create_test_user_profile(fixture, user_id=user.id)
+        await create_test_machine_entry(fixture, owner_id=user.id)
+        await create_test_user_sshkey(fixture, key="foo", user_id=user.id)
+        await create_test_user_sshkey(fixture, key="bar", user_id=user.id)
+        users_repository = UsersRepository(Context(connection=db_connection))
+
+        user_with_summary = await users_repository.get_by_id_with_summary(
+            user.id
+        )
+        assert user_with_summary.username == "user"
+        assert user_with_summary.machines_count == 1
+        assert user_with_summary.sshkeys_count == 2
+
+    async def test_get_by_id_with_summary_system_user(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture, username="MAAS")
+        users_repository = UsersRepository(Context(connection=db_connection))
+
+        user_with_summary = await users_repository.get_by_id_with_summary(
+            user.id
+        )
+        assert user_with_summary is None
