@@ -59,12 +59,6 @@ class TestTriggersUsed(MAASServerTestCase):
     triggers_system = {
         "config_sys_dns_config_insert",
         "config_sys_dns_config_update",
-        "dnsdata_sys_dns_dnsdata_delete",
-        "dnsdata_sys_dns_dnsdata_insert",
-        "dnsdata_sys_dns_dnsdata_update",
-        "dnsdata_sys_dns_updates_maasserver_dnsdata_delete",
-        "dnsdata_sys_dns_updates_maasserver_dnsdata_insert",
-        "dnsdata_sys_dns_updates_maasserver_dnsdata_update",
         "dnspublication_sys_dns_publish",
         "interface_ip_addresses_sys_dns_nic_ip_link",
         "interface_ip_addresses_sys_dns_nic_ip_unlink",

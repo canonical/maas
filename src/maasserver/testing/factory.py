@@ -890,7 +890,10 @@ class Factory(maastesting.factory.Factory):
         dnsdata = DNSData(
             dnsresource=dnsresource, ttl=ttl, rrtype=rrtype, rrdata=rrdata
         )
-        dnsdata.save()
+
+        with post_commit_hooks:
+            dnsdata.save()
+
         return dnsdata
 
     def make_DNSResource(

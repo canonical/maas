@@ -10,7 +10,6 @@ from twisted.internet.defer import inlineCallbacks
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.models import Domain
 from maasserver.models.dnspublication import zone_serial
-from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -39,9 +38,6 @@ class TestTriggers(MAASServerTestCase):
             "staticipaddress_sys_dns_staticipaddress_update",
             "interface_ip_addresses_sys_dns_nic_ip_link",
             "interface_ip_addresses_sys_dns_nic_ip_unlink",
-            "dnsdata_sys_dns_dnsdata_insert",
-            "dnsdata_sys_dns_dnsdata_update",
-            "dnsdata_sys_dns_dnsdata_delete",
             "subnet_sys_dns_subnet_insert",
             "subnet_sys_dns_subnet_update",
             "subnet_sys_dns_subnet_delete",
@@ -88,120 +84,6 @@ class TestTriggers(MAASServerTestCase):
 class TestSysDNSUpdates(
     MAASTransactionServerTestCase, TransactionalHelpersMixin, NotifyHelperMixin
 ):
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_dns_dynamic_update_dnsdata_update(self):
-        listener = self.make_listener_without_delay()
-        yield self.set_service(listener)
-        domain = yield deferToDatabase(self.create_domain)
-        rec = yield deferToDatabase(
-            self.create_dnsresource, params={"domain": domain}
-        )
-        yield deferToDatabase(
-            self.register_trigger,
-            "maasserver_dnsdata",
-            "sys_dns_updates",
-            ops=("update",),
-        )
-        self.start_reading()
-        try:
-            dnsdata = yield deferToDatabase(
-                self.create_dnsdata,
-                params={
-                    "dnsresource": rec,
-                    "rrtype": "TXT",
-                    "rrdata": factory.make_name(),
-                },
-            )
-            dnsdata.rrdata = factory.make_name()
-            yield deferToDatabase(dnsdata.save)
-            msg = yield self.get_notify("sys_dns_updates")
-            decoded_msg = DynamicDNSUpdateNotification(
-                msg
-            ).get_decoded_message()
-            self.assertEqual(
-                decoded_msg,
-                f"UPDATE-DATA {dnsdata.id}",
-            )
-        finally:
-            self.stop_reading()
-            yield self.postgres_listener_service.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_dns_dynamic_update_dnsdata_insert(self):
-        listener = self.make_listener_without_delay()
-        yield self.set_service(listener)
-        domain = yield deferToDatabase(self.create_domain)
-        rec = yield deferToDatabase(
-            self.create_dnsresource, {"domain": domain}
-        )
-        yield deferToDatabase(
-            self.register_trigger,
-            "maasserver_dnsdata",
-            "sys_dns_updates",
-            ops=("insert",),
-        )
-        self.start_reading()
-        try:
-            dnsdata = yield deferToDatabase(
-                self.create_dnsdata,
-                params={
-                    "dnsresource": rec,
-                    "rrtype": "TXT",
-                    "rrdata": factory.make_name(),
-                },
-            )
-            msg = yield self.get_notify("sys_dns_updates")
-            decoded_msg = DynamicDNSUpdateNotification(
-                msg
-            ).get_decoded_message()
-            self.assertEqual(
-                decoded_msg,
-                f"INSERT-DATA {dnsdata.id}",
-            )
-        finally:
-            self.stop_reading()
-            yield self.postgres_listener_service.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_dns_dynamic_update_dnsdata_delete(self):
-        listener = self.make_listener_without_delay()
-        yield self.set_service(listener)
-        domain = yield deferToDatabase(self.create_domain)
-        rec = yield deferToDatabase(
-            self.create_dnsresource, params={"domain": domain}
-        )
-        dnsdata = yield deferToDatabase(
-            self.create_dnsdata,
-            params={
-                "dnsresource": rec,
-                "rrtype": "TXT",
-                "rrdata": factory.make_name(),
-            },
-        )
-        yield deferToDatabase(
-            self.register_trigger,
-            "maasserver_dnsdata",
-            "sys_dns_updates",
-            ops=("delete",),
-        )
-        self.start_reading()
-        try:
-            yield deferToDatabase(dnsdata.delete)
-            msg = yield self.get_notify("sys_dns_updates")
-            decoded_msg = DynamicDNSUpdateNotification(
-                msg
-            ).get_decoded_message()
-            self.assertEqual(
-                decoded_msg,
-                f"DELETE {domain.name} {rec.name} {dnsdata.rrtype}",
-            )
-        finally:
-            self.stop_reading()
-            yield self.postgres_listener_service.stopService()
-
     @wait_for_reactor
     @inlineCallbacks
     def test_dns_dynamic_update_subnet_reload(self):

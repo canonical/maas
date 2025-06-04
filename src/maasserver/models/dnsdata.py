@@ -16,7 +16,10 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 
+from maascommon.enums.dns import DnsUpdateAction
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import validate_domain_name
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -255,3 +258,65 @@ class DNSData(CleanSave, TimestampedModel):
                     DIFFERENT_TTL_MSG % (self.ttl, rrset.first().ttl)
                 )
         super().clean(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        created = self.id is None
+
+        super().save(*args, **kwargs)
+
+        if self.dnsresource.domain.authoritative:
+            dnsrr = self.dnsresource
+            domain = dnsrr.domain
+            default_ttl = Config.objects.get_config("default_dns_ttl")
+            ttl = (
+                self.ttl
+                if self.ttl
+                else self.dnsresource.address_ttl
+                if self.dnsresource.address_ttl
+                else self.dnsresource.domain.ttl
+                if self.dnsresource.domain.ttl
+                else default_ttl
+            )
+            if created:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"added {self.rrtype} to resource {dnsrr.name} on zone {domain.name}",
+                    action=DnsUpdateAction.INSERT_DATA,
+                    zone=self.dnsresource.domain.name,
+                    label=self.dnsresource.name,
+                    rtype=self.rrtype,
+                    ttl=ttl,
+                )
+            else:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"updated {self.rrtype} in resource {dnsrr.name} on zone {domain.name}",
+                    action=DnsUpdateAction.UPDATE_DATA,
+                    zone=self.dnsresource.domain.name,
+                    label=self.dnsresource.name,
+                    rtype=self.rrtype,
+                    ttl=ttl,
+                )
+
+    def delete(self, *args, **kwargs):
+        if self.dnsresource.domain.authoritative:
+            dnsrr = self.dnsresource
+            domain = dnsrr.domain
+            default_ttl = Config.objects.get_config("default_dns_ttl")
+            ttl = (
+                self.ttl
+                if self.ttl
+                else self.dnsresource.address_ttl
+                if self.dnsresource.address_ttl
+                else self.dnsresource.domain.ttl
+                if self.dnsresource.domain.ttl
+                else default_ttl
+            )
+            DNSPublication.objects.create_for_config_update(
+                source=f"removed {self.rrtype} from resource {dnsrr.name} on zone {domain.name}",
+                action=DnsUpdateAction.DELETE,
+                zone=self.dnsresource.domain.name,
+                label=self.dnsresource.name,
+                rtype=self.rrtype,
+                ttl=ttl,
+            )
+
+        super().delete(*args, **kwargs)

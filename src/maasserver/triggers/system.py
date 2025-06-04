@@ -297,36 +297,6 @@ CORE_GEN_RANDOM_PREFIX = dedent(
     """
 )
 
-CORE_UPDATE_DATA_DNS_NOTIFICATION_FORMAT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION update_data_dns_notification(
-        id BIGINT
-    ) RETURNS TEXT AS $$
-    DECLARE
-        result text;
-    BEGIN
-        result := gen_random_prefix() || ' UPDATE-DATA ' || id;
-        RETURN result;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-CORE_INSERT_DATA_DNS_NOTIFICATION_FORMAT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION insert_data_dns_notification(
-        id BIGINT
-    ) RETURNS TEXT AS $$
-    DECLARE
-        result text;
-    BEGIN
-        result := gen_random_prefix() || ' INSERT-DATA ' || id;
-        RETURN result;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
 CORE_DELETE_IP_DNS_NOTIFICATION_FORMAT = dedent(
     """\
     CREATE OR REPLACE FUNCTION delete_ip_dns_notification(
@@ -982,84 +952,6 @@ DNS_CONFIG_UPDATE = dedent(
 )
 
 
-# Triggered when data is added to a DNS resource. Increments the
-# zone serial and notifies that DNS needs to be updated.
-DNS_DNSDATA_INSERT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dns_dnsdata_insert()
-    RETURNS trigger as $$
-    DECLARE
-      resource maasserver_dnsresource;
-      domain maasserver_domain;
-    BEGIN
-      SELECT maasserver_dnsresource.* INTO resource
-      FROM maasserver_dnsresource
-      WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
-      SELECT maasserver_domain.* INTO domain
-      FROM maasserver_domain
-      WHERE maasserver_domain.id = resource.domain_id;
-      PERFORM sys_dns_publish_update(
-        'added ' || NEW.rrtype || ' to resource ' || resource.name ||
-        ' on zone ' || domain.name);
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
-# Triggered when data is update for a DNS resource. Increments the
-# zone serial and notifies that DNS needs to be updated.
-DNS_DNSDATA_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dns_dnsdata_update()
-    RETURNS trigger as $$
-    DECLARE
-      resource maasserver_dnsresource;
-      domain maasserver_domain;
-    BEGIN
-      SELECT maasserver_dnsresource.* INTO resource
-      FROM maasserver_dnsresource
-      WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
-      SELECT maasserver_domain.* INTO domain
-      FROM maasserver_domain
-      WHERE maasserver_domain.id = resource.domain_id;
-      PERFORM sys_dns_publish_update(
-        'updated ' || NEW.rrtype || ' in resource ' || resource.name ||
-        ' on zone ' || domain.name);
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
-# Triggered when data is removed from a DNS resource. Increments the
-# zone serial and notifies that DNS needs to be updated.
-DNS_DNSDATA_DELETE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dns_dnsdata_delete()
-    RETURNS trigger as $$
-    DECLARE
-      resource maasserver_dnsresource;
-      domain maasserver_domain;
-    BEGIN
-      SELECT maasserver_dnsresource.* INTO resource
-      FROM maasserver_dnsresource
-      WHERE maasserver_dnsresource.id = OLD.dnsresource_id;
-      SELECT maasserver_domain.* INTO domain
-      FROM maasserver_domain
-      WHERE maasserver_domain.id = resource.domain_id;
-      PERFORM sys_dns_publish_update(
-        'removed ' || OLD.rrtype || ' from resource ' || resource.name ||
-        ' on zone ' || domain.name);
-      RETURN OLD;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
 # Triggered when a subnet is updated. Increments notifies that proxy needs to
 # be updated. Only watches changes on the cidr and allow_proxy.
 PROXY_SUBNET_UPDATE = dedent(
@@ -1207,39 +1099,6 @@ RBAC_RPOOL_DELETE = dedent(
     $$ LANGUAGE plpgsql;
     """
 )
-
-
-def render_dns_dynamic_update_dnsdata_procedure(op):
-    return dedent(
-        f"""\
-        CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_dnsdata_{op}()
-        RETURNS trigger as $$
-        DECLARE
-          rname text;
-          rdomain_id bigint;
-          domain text;
-          ttl int;
-        BEGIN
-          ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
-          ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
-          IF (TG_OP = 'UPDATE' AND TG_LEVEL = 'ROW') THEN
-            IF NEW IS DISTINCT FROM OLD THEN
-                PERFORM pg_notify('sys_dns_updates', update_data_dns_notification(NEW.id));
-            ELSE
-              RETURN NULL;
-            END IF;
-          ELSIF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
-            PERFORM pg_notify('sys_dns_updates', insert_data_dns_notification(NEW.id));
-          ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
-            SELECT name, domain_id INTO rname, rdomain_id from maasserver_dnsresource WHERE id=OLD.dnsresource_id;
-            SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
-            PERFORM pg_notify('sys_dns_updates', delete_dns_notification(domain, rname, OLD.rrtype));
-          END IF;
-          RETURN NULL;
-        END;
-        $$ LANGUAGE plpgsql;
-        """
-    )
 
 
 def render_dns_dynamic_update_subnet_procedure(op):
@@ -1502,8 +1361,6 @@ def register_system_triggers():
     register_procedure(CORE_PICK_NEW_REGION)
     register_procedure(CORE_SET_NEW_REGION)
     register_procedure(CORE_GEN_RANDOM_PREFIX)
-    register_procedure(CORE_UPDATE_DATA_DNS_NOTIFICATION_FORMAT)
-    register_procedure(CORE_INSERT_DATA_DNS_NOTIFICATION_FORMAT)
     register_procedure(CORE_DELETE_IP_DNS_NOTIFICATION_FORMAT)
     register_procedure(CORE_DELETE_IFACE_IP_DNS_NOTIFICATION_FORMAT)
     register_procedure(CORE_BOOT_INTERFACE_INSERT_DNS_NOTIFICATION_FORMAT)
@@ -1551,14 +1408,6 @@ def register_system_triggers():
     register_trigger(
         "maasserver_interface_ip_addresses", "sys_dns_nic_ip_unlink", "delete"
     )
-
-    # - DNSData
-    register_procedure(DNS_DNSDATA_INSERT)
-    register_trigger("maasserver_dnsdata", "sys_dns_dnsdata_insert", "insert")
-    register_procedure(DNS_DNSDATA_UPDATE)
-    register_trigger("maasserver_dnsdata", "sys_dns_dnsdata_update", "update")
-    register_procedure(DNS_DNSDATA_DELETE)
-    register_trigger("maasserver_dnsdata", "sys_dns_dnsdata_delete", "delete")
 
     # - Subnet
     register_procedure(DNS_SUBNET_INSERT)
@@ -1627,24 +1476,6 @@ def register_system_triggers():
         "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete"
     )
 
-    register_procedure(render_dns_dynamic_update_dnsdata_procedure("insert"))
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_updates_maasserver_dnsdata_insert",
-        "update",
-    )
-    register_procedure(render_dns_dynamic_update_dnsdata_procedure("update"))
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_updates_maasserver_dnsdata_update",
-        "update",
-    )
-    register_procedure(render_dns_dynamic_update_dnsdata_procedure("delete"))
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_updates_maasserver_dnsdata_delete",
-        "delete",
-    )
     register_procedure(render_dns_dynamic_update_subnet_procedure("insert"))
     register_trigger(
         "maasserver_subnet",

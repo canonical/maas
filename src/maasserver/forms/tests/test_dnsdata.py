@@ -8,7 +8,7 @@ import random
 from maasserver.forms.dnsdata import DNSDataForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestDNSDataForm(MAASServerTestCase):
@@ -25,7 +25,10 @@ class TestDNSDataForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsdata = form.save()
+
+        with post_commit_hooks:
+            dnsdata = form.save()
+
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)
@@ -45,7 +48,10 @@ class TestDNSDataForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsdata = form.save()
+
+        with post_commit_hooks:
+            dnsdata = form.save()
+
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)
@@ -66,10 +72,16 @@ class TestDNSDataForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        dnsdata = form.save()
+
+        with post_commit_hooks:
+            dnsdata = form.save()
+
         form = DNSDataForm(instance=dnsdata, data={"ttl": None})
         self.assertTrue(form.is_valid(), form.errors)
-        dnsdata = form.save()
+
+        with post_commit_hooks:
+            dnsdata = form.save()
+
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)
@@ -89,7 +101,10 @@ class TestDNSDataForm(MAASServerTestCase):
             data={"rrtype": rrtype, "rrdata": rrdata, "ttl": new_ttl},
         )
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         dnsdata = reload_object(dnsdata)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)

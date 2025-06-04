@@ -422,15 +422,18 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         name = factory.make_hostname()
         dnsresource = factory.make_DNSResource(domain=domain, name=name)
         ttl = randint(1, 3600)
-        handler.create_dnsdata(
-            {
-                "domain": domain.id,
-                "name": name,
-                "ttl": ttl,
-                "rrtype": "TXT",
-                "rrdata": "turtles all the way down",
-            }
-        )
+
+        with post_commit_hooks:
+            handler.create_dnsdata(
+                {
+                    "domain": domain.id,
+                    "name": name,
+                    "ttl": ttl,
+                    "rrtype": "TXT",
+                    "rrdata": "turtles all the way down",
+                }
+            )
+
         # Expect that a single DNSData object is associated with the resource.
         [dnsdata] = dnsresource.dnsdata_set.all()
         self.assertEqual(dnsresource.name, name)
@@ -466,14 +469,17 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         dnsdata = factory.make_DNSData(
             dnsresource, rrtype="TXT", rrdata="original"
         )
-        handler.update_dnsdata(
-            {
-                "domain": domain.id,
-                "dnsresource_id": dnsresource.id,
-                "dnsdata_id": dnsdata.id,
-                "rrdata": "updated",
-            }
-        )
+
+        with post_commit_hooks:
+            handler.update_dnsdata(
+                {
+                    "domain": domain.id,
+                    "dnsresource_id": dnsresource.id,
+                    "dnsdata_id": dnsdata.id,
+                    "rrdata": "updated",
+                }
+            )
+
         dnsdata = reload_object(dnsdata)
         self.assertEqual("updated", dnsdata.rrdata)
 
@@ -504,7 +510,12 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(dnsresource)
-        handler.delete_dnsdata({"domain": domain.id, "dnsdata_id": dnsdata.id})
+
+        with post_commit_hooks:
+            handler.delete_dnsdata(
+                {"domain": domain.id, "dnsdata_id": dnsdata.id}
+            )
+
         dnsdata = reload_object(dnsdata)
         self.assertIsNone(dnsdata)
 
