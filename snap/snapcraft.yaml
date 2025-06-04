@@ -80,9 +80,14 @@ parts:
 
   maas:
     plugin: python
+    # By default, the Python plugin installs pip, setuptools, and wheel into the Snap.
+    # This behavior is defined here:
+    # https://github.com/canonical/snapcraft/blob/2a3f235df5b358c7973d0b72f490a48a6fe8625b/snapcraft_legacy/plugins/v2/python.py#L97
+    #
+    # We override this by setting `python-packages` to an empty list. This ensures
+    # the Snap uses only packages from apt.
+    python-packages: []
     source: .
-    python-requirements:
-      - snap/local/requirements.txt
     build-packages:
       - build-essential
       - git
@@ -92,9 +97,6 @@ parts:
       - libxslt1-dev
       - python3-setuptools
     stage-packages:
-      - libpython3-stdlib
-      - libpython3.10-stdlib
-      - libpython3.10-minimal
       - amtterm # AMT
       - avahi-utils
       - bind9
@@ -153,7 +155,7 @@ parts:
       - python3-paramiko
       - python3-petname
       - python3-pexpect
-      - python3-pip
+      - python3-pkg-resources
       - python3-prometheus-client
       - python3-protobuf # for macaroonbakery
       - python3-psycopg2
@@ -162,12 +164,12 @@ parts:
       - python3-pyparsing
       - python3-pypureomapi
       - python3-pyrsistent # for jsonschema
+      - python3-pyvmomi
       - python3-requests
       - python3-requests-toolbelt  # for pylxd
       - python3-requests-unixsocket
       - python3-rfc3339 # for macaroonbakery
       - python3-seamicroclient
-      - python3-setuptools
       - python3-simplestreams
       - python3-sqlalchemy
       - python3-starlette
@@ -178,7 +180,6 @@ parts:
       - python3-tz
       - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
-      - python3-wheel
       - python3-yaml
       - python3-zhmcclient
       - python3-zope.interface

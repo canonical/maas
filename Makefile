@@ -103,7 +103,7 @@ endif
 
 $(VENV):
 	python3 -m venv --system-site-packages --clear $@
-	$(VENV)/bin/pip install -e .[testing]
+	$(VENV)/bin/pip install --no-build-isolation -e .[testing]
 
 $(BIN_DIR):
 	mkdir $@
