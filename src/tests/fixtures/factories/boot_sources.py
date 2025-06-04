@@ -6,6 +6,16 @@ from maasservicelayer.utils.images.helpers import ImageSpec
 from maastesting.factory import factory
 
 
+def make_boot_resource() -> dict[str, str]:
+    """
+    Create a fake resource dictionary.
+    """
+    return {
+        "content_id": factory.make_name("content_id"),
+        "product_name": factory.make_name("product_name"),
+        "version_name": factory.make_name("version_name"),
+    }
+
 def make_image_spec(
     os: str | None = None,
     arch: str | None = None,
