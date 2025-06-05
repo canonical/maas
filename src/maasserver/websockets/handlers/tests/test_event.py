@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.event`"""
@@ -101,33 +101,6 @@ class TestEventHandler(MAASServerTestCase):
             handler.list({"node_id": node.id}),
         )
 
-    def test_list_default_max_days_of_30(self):
-        user = factory.make_User()
-        handler = EventHandler(user, {}, None)
-        node = factory.make_Node()
-        events = [factory.make_Event(node=node) for _ in range(3)]
-        # Event older than 30 days.
-        self.make_event_in_the_past(user, node, 31)
-        self.assertCountEqual(
-            self.dehydrate_events(events), handler.list({"node_id": node.id})
-        )
-
-    def test_list_uses_max_days(self):
-        user = factory.make_User()
-        handler = EventHandler(user, {}, None)
-        node = factory.make_Node()
-        maxdays = random.randint(3, 50)
-        events = [
-            self.make_event_in_the_past(user, node, maxdays - 1)
-            for _ in range(3)
-        ]
-        for _ in range(3):
-            self.make_event_in_the_past(user, node, maxdays + 1)
-        self.assertCountEqual(
-            self.dehydrate_events(events),
-            handler.list({"node_id": node.id, "max_days": maxdays}),
-        )
-
     def test_list_start(self):
         user = factory.make_User()
         handler = EventHandler(user, {}, None)
@@ -155,6 +128,20 @@ class TestEventHandler(MAASServerTestCase):
         expected_output = self.dehydrate_events(events[:3])
         self.assertCountEqual(
             expected_output, handler.list({"node_id": node.id, "limit": 3})
+        )
+
+    def test_list_limit_default(self):
+        user = factory.make_User()
+        handler = EventHandler(user, {}, None)
+        node = factory.make_Node()
+        events = list(
+            reversed(
+                [factory.make_Event(user=user, node=node) for _ in range(1001)]
+            )
+        )
+        expected_output = self.dehydrate_events(events[:1000])
+        self.assertCountEqual(
+            expected_output, handler.list({"node_id": node.id})
         )
 
     def test_list_start_and_limit(self):

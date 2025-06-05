@@ -1,11 +1,7 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The event handler for the WebSocket connection."""
-
-import datetime
-
-from django.utils import timezone
 
 from maasserver.models.event import Event
 from maasserver.models.eventtype import LOGGING_LEVELS
@@ -65,7 +61,7 @@ class EventHandler(TimestampedModelHandler):
 
         :param system_id: `Node.system_id` for the events.
         :param offset: Offset into the queryset to return.
-        :param limit: Maximum number of objects to return.
+        :param limit: Maximum number of objects to return. Default is 1000.
         """
         node = self.get_node(params)
         self.cache["node_ids"].append(node.id)
@@ -73,15 +69,10 @@ class EventHandler(TimestampedModelHandler):
         queryset = queryset.filter(node=node)
         queryset = queryset.order_by("-id")
 
-        # List events that where created in the past maximum number of days.
-        max_days = params.get("max_days", 30)
-        created_after = timezone.now() - datetime.timedelta(max_days)
-        queryset = queryset.filter(created__gte=created_after)
-
         if "start" in params:
             queryset = queryset.filter(id__lt=params["start"])
-        if "limit" in params:
-            queryset = queryset[: params["limit"]]
+        limit = params.get("limit", 1000)
+        queryset = queryset[:limit]
         return [self.full_dehydrate(obj, for_list=True) for obj in queryset]
 
     def clear(self, params):
