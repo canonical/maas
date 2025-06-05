@@ -89,6 +89,7 @@ parts:
       - libxml2-dev
       - libxslt1-dev
       - python3-setuptools
+      - python3-wheel
     stage-packages:
       - amtterm # AMT
       - avahi-utils
