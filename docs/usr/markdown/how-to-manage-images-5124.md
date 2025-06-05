@@ -16,6 +16,7 @@ UI**
 CLI**
 ```nohighlight
 BOOT_SOURCE_ID=$(maas $PROFILE boot-sources read)
+maas $PROFILE boot-source update $BOOT_SOURCE_ID url="http..."
 ```
 
 ## Manage images
