@@ -18,7 +18,7 @@ In the Access-Aggregation-Core (AAC) setup, the focus was on hardware. Switch-to
 
 ![Cloud Design](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/f/fd86954e48538ce9ba8fc6e02df23b0a2337ef12.jpeg)
 
-Contemporary cloud networks use a spine-and-leaf architecture of inexpensive, uniform switches and servers. All switches talk, reducing congestion and bypassing hardware limitations. Switch disaggregation is the mantra for cloud networks. Router and switch functionalities have distinct hardware and software components, paving the way for standard and budget-friendly switching, more agile networks, simpler upgrades, and a nearly-invisible network presence.
+Contemporary cloud networks use a spine-and-leaf architecture of network switches and application servers. All switches talk, reducing congestion and bypassing hardware limitations. Switch disaggregation is the mantra for cloud networks. Router and switch functionalities have distinct hardware and software components, paving the way for standard and budget-friendly switching, more agile networks, simpler upgrades, and a nearly-invisible network presence.
 
 ## Routing
 

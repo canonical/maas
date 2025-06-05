@@ -4,13 +4,13 @@ MAAS provisions bare metal servers and virtual machines. It creates a single poi
 
 ## Network discovery
 
-One of the first ways that MAAS cuts down on manual errors is called network discovery. MAAS listens passively to IP traffic on any network it can see. As it does so, it observes other devices receiving and responding to TCP packets, and it captures each device's IP address. MAAS also captures any other identifying information that's available. For example, it also uses mDNS to collect and present the hostname, if available. All of the captured information is summarized in a discovery dashboard.
+One of the first ways that MAAS cuts down on manual errors is called network discovery. MAAS listens passively to IP traffic on any network it can see. As it does so, it observes other devices receiving and responding to ARP packets, and it captures each device's IP address. MAAS also captures any other identifying information that's available. For example, it also uses mDNS to collect and present the hostname, if available. All of the captured information is summarized in a discovery dashboard.
 
 Discovery runs periodically to capture any network changes. This feature, which can be toggled, helps ensure that you quickly catch every device change in your local MAAS network.
 
 ## IPMI networking
 
-Machines that MAAS can provision have a baseboard management controller or BMC. A BMC is a separate CPU often included on the motherboard of servers and devices. Its capabilities are limited to managing and monitoring the health of the device. The BMC has sensors for physical characteristics like temperature and power supply voltage, and controls for rebooting or power-cycling the device.
+Machines that MAAS can provision have a baseboard management controller or BMC. A BMC is a separate system-on-a-chip, often included on the motherboard of servers and devices. Its capabilities are generally limited to managing and monitoring the power state and health of the device. Additionally, some will allow for remote console access. The BMC has sensors for physical characteristics like temperature and power supply voltage, and controls for rebooting or power-cycling the device.
 
 MAAS uses the BMC to turn remote devices on or off, and reboot them at will. A BMC can also monitor BIOS or UEFI, provide a serial console for the device, and do a few other things with the hardware -- but most of them are uninteresting from a MAAS perspective. For the purposes of this discussion, our main interest in the BMC is the ability to power cycle and reboot machines.
 
@@ -22,7 +22,7 @@ This also means the NIC must be capable of PXE booting (PXE stands for Preboot E
 
 ## DHCP
 
-So we've seen that the BMC handles power cycling the machine, and the NIC handles booting it remotely. Let's quickly dive into DHCP, which mediates the boot process.
+So we've seen that the BMC handles power cycling the machine, and the firmware works with the NIC to handle booting it remotely. Let's quickly dive into DHCP, which mediates the boot process.
 
 DHCP stands for Dynamic Host Control Protocol, which simply means that it gives a host a unique IP address that won't collide with other devices on that network. The DHCP protocol consists of four messages:
 
@@ -33,12 +33,10 @@ DHCP stands for Dynamic Host Control Protocol, which simply means that it gives 
 
 DHCP also offers several optional services, like configuring DNS, gateway, and routing; load-balancing and failover; and VLAN and QoS configuration. MAAS depends on one of these optional features: bootstrapping services (PXE booting). Properly configured DHCP is capable of specifying several PXE-boot parameters:
 
-* next-server: Specifies the TFTP/HTTP server for PXE booting clients.
-* filename: Specifies the path to the boot file (e.g., bootloader) for PXE boot.
-* option 67: Also used to specify the boot file name in some DHCP configurations.
-* option 66: Points to the boot server hostname or IP address.
+* filename (option 67): Used to specify the boot file name in DHCP configurations.
+* next-server (option 66): Specifies the TFTP/HTTP server for PXE booting clients, using its hostname or IP address.
 
-Because MAAS needs to provide specially-configured DHCP to a PXE-booting server – specifically the next-server address – the bundled, pre-configured MAAS DHCP server should be used. It is possible to link to external DHCP servers or relays, but not recommended.
+Because MAAS needs to provide specially-configured DHCP to a PXE-booting server – specifically the next-server address – the bundled, pre-configured MAAS DHCP server should be used. It is possible to link to external DHCP servers, but not recommended, as this requires substantial manual configuration.
 
 ## IP range management and static IP assignments
 
@@ -56,7 +54,7 @@ If you are able to correctly configure your external/relayed DHCP to provide the
 
 ## DNS
 
-MAAS directly integrates DNS management, allowing settings at the subnet level, reducing configuration drift and the all-too-common DNS errors. Whether you're using internal DNS servers for private networks or external ones for public services, MAAS provides a more streamlined and centralized solution for DNS management.
+MAAS directly integrates DNS management, allowing settings at the subnet level, reducing configuration drift and the all-too-common DNS errors. Whether you're using internal DNS servers for private networks or external ones for public services, MAAS provides a more streamlined and centralized solution for DNS management. External servers are allowed through forwarders, both on a global or per-domain basis, as well as through zone delegation.
 
 ## NTP
 
@@ -102,17 +100,15 @@ Loopback interfaces are necessary for BGP and FRR, but tricky to configure. MAAS
 
 ### Bridges
 
-Bridges aggregate interface traffic at the cost of complexity. MAAS offers centralized bridge creation and management directly from the UI or CLI. MAAS bridges are automatically integrated with VLANs and bonds, making it easier to reduce redundancy, avoid mistakes, and improve performance.
-
-Note that while Netplan provides a simpler way to configure bridges manually (through YAML files), MAAS-managed bridges don't require manual configuration. In some cases, though, such as integrating MAAS-managed systems into external environments, Netplan is the right answer.
+Bridges aggregate interface traffic. MAAS offers centralized bridge creation and management directly from the UI or CLI. MAAS bridges are able to automatically integrate with VLANs and bonds, making it easier to reduce redundancy, avoid mistakes, and improve performance.
 
 ### Multi-NIC configurations
 
-MAAS automatically detects and configures all available interfaces, including multi-NIC machines.
+MAAS automatically detects all available interfaces, including multi-NIC machines. This allows users to configure any or all interfaces on a machine.
 
 ### Gateways
 
-MAAS centralizes gateway configuration across all connected machines. You can modify gateway settings easily, which is especially useful in environments where gateway configurations need to be updated regularly for many machines.
+MAAS centralizes gateway configuration across all connected machines. You can modify gateway settings easily for a given subnet, which is especially useful in environments where gateway configurations need to be updated regularly for many machines.
 
 ### Bonds
 

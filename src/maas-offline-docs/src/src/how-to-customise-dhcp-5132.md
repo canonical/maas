@@ -84,7 +84,7 @@ maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
 ```
 ## Set up a DHCP relay
 
-Via the MAAS UI, you can set up a DHCP relay from one VLAN (source) to another VLAN (target) as follows:
+Via the MAAS UI, you can set up a DHCP relay in one VLAN (source), and relay to another VLAN (target) as follows:
 
 1. Ensure the target VLAN has DHCP enabled.
 
@@ -114,7 +114,7 @@ maas $PROFILE vlan update 2 0 relay_van=5002
 
 ## Managing DHCP snippets (UI) 
 
-To manage snippets via the MAAS UI as an administrator, select *Settings >> DHCP snippets*.
+To manage snippets via the MAAS UI as an administrator, select *Settings >> DHCP snippets*. (Note DHCP snippets are deprecated and will be removed in a future release of MAAS.)
 
 ## Search snippets (UI)
 

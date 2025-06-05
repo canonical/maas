@@ -4,7 +4,7 @@ MAAS networking combines unique and standard networking concepts applied distinc
  
 ## PXE booting
 
-PXE (Preboot eXecution Environment) lets machines boot through a Network Interface Card (NIC). It uses a small hardware footprint for simplicity and efficiency. Key components include a universal network device interface, UDP/IP stack, DHCP module, and TFTP module. As configured for MAAS, TFTP uses larger block and window sizes to boost throughput. PXE relies heavily on DHCP for IP assignment and TFTP for transferring boot programs and files.
+PXE (Preboot eXecution Environment) lets machines boot over a network, using a Network Interface Card (NIC). It uses a small hardware footprint for simplicity and efficiency. Key components include a universal network device interface, UDP/IP stack, DHCP module, and TFTP module. As configured for MAAS, TFTP uses larger block and window sizes to boost throughput. PXE relies heavily on DHCP for IP assignment and network configuration, and TFTP for transferring boot programs and files.
 
 ## Power drivers
 
@@ -12,15 +12,11 @@ Embedded in MAAS, power drivers interface with a machine's BMC (Baseboard Manage
 
 ## Proxies
 
-Proxies act as intermediaries in network transactions, offering benefits such as privacy, security, and load balancing. MAAS includes an internal HTTP caching proxy for all managed subnet hosts and allows for external proxy configuration.
-
-## RPC
-
-Remote Procedure Call (RPC) in MAAS facilitates communication between region and rack controllers, crucial for transferring PXE configurations.
+Proxies act as intermediaries in network transactions, offering benefits such as privacy, security, and load balancing. MAAS includes an internal HTTP caching proxy for all enabled, managed subnet hosts and allows for external proxy configuration.
 
 ## Network discovery
 
-MAAS listens to the network, reporting discovered devices on IPv4 subnets, including those advertising hostnames through DNS. You can add these device to MAAS as desired.
+MAAS listens to the network, reporting discovered devices on subnets, including those advertising hostnames through DNS. You can add these device to MAAS as desired.
 
 ## Subnets
 
