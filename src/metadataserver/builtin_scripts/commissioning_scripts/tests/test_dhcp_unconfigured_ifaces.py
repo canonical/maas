@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import call
@@ -131,7 +131,7 @@ DHCP6_TEMPLATE = (
     "for idx in $(seq 10); do dhclient -6 %s && break || sleep 10; done"
 )
 DHCPCD6_TEMPLATE = (
-    "for idx in $(seq 10); do dhcpcd -t 60 -6 %s && break || sleep 10; done"
+    "for idx in $(seq 10); do dhcpcd -t 30 -6 %s && break || sleep 10; done"
 )
 
 
@@ -227,9 +227,9 @@ class TestDHCPExplore(MAASTestCase):
         dhcp_unconfigured_ifaces.dhcp_explore()
         mock_call.assert_has_calls(
             [
-                call(["dhcpcd", "-t", "60", "-4", "eth1"]),
-                call(["dhcpcd", "-t", "60", "-4", "eth2"]),
-                call(["dhcpcd", "-t", "60", "-4", "eth6"]),
+                call(["dhcpcd", "-b", "-4", "eth1"]),
+                call(["dhcpcd", "-b", "-4", "eth2"]),
+                call(["dhcpcd", "-b", "-4", "eth6"]),
             ]
         )
         mock_popen.assert_has_calls(

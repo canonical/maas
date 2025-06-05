@@ -2,7 +2,7 @@
 #
 # 20-maas-01-dhcp-unconfigured-ifaces - Bring up and run DHCP on all interfaces
 #
-# Copyright (C) 2012-2020 Canonical
+# Copyright (C) 2012-2025 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -111,7 +111,7 @@ def dhcp_explore():
             call(["dhclient", "-nw", "-4", iface])
         else:
             print("INFO: Running dhcpcd -4 on %s..." % iface)
-            call(["dhcpcd", "-t", "60", "-4", iface])
+            call(["dhcpcd", "-b", "-4", iface])
 
     for iface in unconfigured_ifaces_6:
         if dhclient_available:
@@ -131,7 +131,7 @@ def dhcp_explore():
                     "sh",
                     "-c",
                     "for idx in $(seq 10); do"
-                    " dhcpcd -t 60 -6 %s && break || sleep 10; done" % iface,
+                    " dhcpcd -t 30 -6 %s && break || sleep 10; done" % iface,
                 ]
             )
         # Ignore return value and continue running dhclient on the
