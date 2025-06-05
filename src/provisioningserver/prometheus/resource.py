@@ -12,6 +12,7 @@ class PrometheusMetricsResource(Resource):
         self.prometheus_metrics = prometheus_metrics
 
     def render_GET(self, request):
+        request.setHeader(b"Content-Type", b"text/plain")
         content = self.prometheus_metrics.generate_latest()
         if content is None:
             request.setResponseCode(404)
