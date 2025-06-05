@@ -56,16 +56,22 @@ class TestCommonDomainsService(ServiceCommonTests):
             updated=now,
         )
 
-    async def test_create(self, service_instance, test_instance):
+    async def test_create(
+        self, service_instance, test_instance, builder_model
+    ):
         # pre_create_hook tested in the next tests
         service_instance.pre_create_hook = AsyncMock()
-        return await super().test_create(service_instance, test_instance)
+        return await super().test_create(
+            service_instance, test_instance, builder_model
+        )
 
     async def test_update_many(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         with pytest.raises(NotImplementedError):
-            await super().test_update_many(service_instance, test_instance)
+            await super().test_update_many(
+                service_instance, test_instance, builder_model
+            )
 
     async def test_delete_many(
         self, service_instance, test_instance: MaasBaseModel

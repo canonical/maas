@@ -66,6 +66,7 @@ from maasservicelayer.db.repositories.subnet_utilization import (
     SubnetUtilizationRepository,
 )
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
+from maasservicelayer.db.repositories.tags import TagsRepository
 from maasservicelayer.db.repositories.tokens import TokensRepository
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
@@ -125,6 +126,7 @@ from maasservicelayer.services.subnet_utilization import (
     V3SubnetUtilizationService,
 )
 from maasservicelayer.services.subnets import SubnetsService
+from maasservicelayer.services.tags import TagsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.tokens import TokensService
 from maasservicelayer.services.users import UsersService
@@ -198,6 +200,7 @@ class ServiceCollectionV3:
     staticipaddress: StaticIPAddressService
     staticroutes: StaticRoutesService
     subnets: SubnetsService
+    tags: TagsService
     temporal: TemporalService
     tokens: TokensService
     users: UsersService
@@ -247,6 +250,12 @@ class ServiceCollectionV3:
             cache=cache.get(
                 TemporalService.__name__, TemporalService.build_cache_object
             ),
+        )
+        services.tags = TagsService(
+            context=context,
+            repository=TagsRepository(context),
+            events_service=services.events,
+            temporal_service=services.temporal,
         )
         services.scriptresults = ScriptResultsService(
             context=context,

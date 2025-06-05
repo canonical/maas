@@ -1037,7 +1037,7 @@ TagTable = Table(
     Column("id", BigInteger, primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(256), nullable=False),
+    Column("name", String(256), nullable=False, unique=True),
     Column("definition", Text, nullable=False),
     Column("comment", Text, nullable=False),
     Column("kernel_opts", Text, nullable=False),

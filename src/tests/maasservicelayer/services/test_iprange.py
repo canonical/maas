@@ -60,14 +60,18 @@ class TestCommonIPRangesService(ServiceCommonTests):
             updated=utcnow(),
         )
 
-    async def test_create(self, service_instance, test_instance):
+    async def test_create(
+        self, service_instance, test_instance, builder_model
+    ):
         # pre_create_hook tested in the next tests
         service_instance.pre_create_hook = AsyncMock()
-        return await super().test_create(service_instance, test_instance)
+        return await super().test_create(
+            service_instance, test_instance, builder_model
+        )
 
     @pytest.mark.skip(reason="custom update many")
     async def test_update_many(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         pass
 

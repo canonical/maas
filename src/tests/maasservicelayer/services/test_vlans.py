@@ -61,10 +61,12 @@ class TestCommonVlansService(ServiceCommonTests):
         )
 
     async def test_update_many(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         with pytest.raises(NotImplementedError):
-            await super().test_update_many(service_instance, test_instance)
+            await super().test_update_many(
+                service_instance, test_instance, builder_model
+            )
 
     async def test_delete_many(
         self, service_instance, test_instance: MaasBaseModel

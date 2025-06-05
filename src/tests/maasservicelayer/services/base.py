@@ -64,9 +64,15 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
     def service_instance(self) -> BaseService:
         pass
 
-    async def test_create(self, service_instance, test_instance):
+    @pytest.fixture
+    def builder_model(self) -> type[ResourceBuilder]:
+        return ResourceBuilder
+
+    async def test_create(
+        self, service_instance, test_instance, builder_model
+    ):
         service_instance.repository.create.return_value = test_instance
-        builder = ResourceBuilder()
+        builder = builder_model()
         obj = await service_instance.create(builder)
         assert obj == test_instance
         service_instance.repository.create.assert_awaited_once_with(
@@ -84,10 +90,10 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
         )
 
     async def test_update_many(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         service_instance.repository.update_many.return_value = []
-        builder = ResourceBuilder()
+        builder = builder_model()
         query = QuerySpec()
         objs = await service_instance.update_many(query, builder)
         assert objs == []
@@ -96,11 +102,11 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
         )
 
     async def test_update_one(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         service_instance.repository.get_one.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        builder = ResourceBuilder()
+        builder = builder_model()
         query = QuerySpec()
         objs = await service_instance.update_one(query, builder)
         assert objs == test_instance
@@ -108,19 +114,19 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
             id=test_instance.id, builder=builder
         )
 
-    async def test_update_one_not_found(self, service_instance):
+    async def test_update_one_not_found(self, service_instance, builder_model):
         service_instance.repository.get_one.return_value = None
-        builder = ResourceBuilder()
+        builder = builder_model()
         query = QuerySpec()
         with pytest.raises(NotFoundException):
             await service_instance.update_one(query, builder)
 
     async def test_update_one_etag_match(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         service_instance.repository.get_one.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        builder = ResourceBuilder()
+        builder = builder_model()
         query = QuerySpec()
         objs = await service_instance.update_one(
             query, builder, test_instance.etag()
@@ -131,38 +137,40 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
         )
 
     async def test_update_one_etag_not_matching(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         service_instance.repository.get_one.return_value = test_instance
-        builder = ResourceBuilder()
+        builder = builder_model()
         query = QuerySpec()
         with pytest.raises(PreconditionFailedException):
             await service_instance.update_one(query, builder, "not_a_match")
 
     async def test_update_by_id(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         service_instance.repository.get_by_id.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        builder = ResourceBuilder()
+        builder = builder_model()
         objs = await service_instance.update_by_id(test_instance.id, builder)
         assert objs == test_instance
         service_instance.repository.update_by_id.assert_awaited_once_with(
             id=test_instance.id, builder=builder
         )
 
-    async def test_update_by_id_not_found(self, service_instance):
+    async def test_update_by_id_not_found(
+        self, service_instance, builder_model
+    ):
         service_instance.repository.get_by_id.return_value = None
-        builder = ResourceBuilder()
+        builder = builder_model()
         with pytest.raises(NotFoundException):
             await service_instance.update_by_id(-1, builder)
 
     async def test_update_by_id_etag_match(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         service_instance.repository.get_by_id.return_value = test_instance
         service_instance.repository.update_by_id.return_value = test_instance
-        builder = ResourceBuilder()
+        builder = builder_model()
         objs = await service_instance.update_by_id(
             test_instance.id, builder, test_instance.etag()
         )
@@ -172,10 +180,10 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
         )
 
     async def test_update_by_id_etag_not_matching(
-        self, service_instance, test_instance: MaasBaseModel
+        self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
         service_instance.repository.get_by_id.return_value = test_instance
-        builder = ResourceBuilder()
+        builder = builder_model()
         with pytest.raises(PreconditionFailedException):
             await service_instance.update_by_id(
                 test_instance.id, builder, "not_a_match"

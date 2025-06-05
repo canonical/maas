@@ -4,7 +4,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from maasservicelayer.db.tables import TagTable
+from maasservicelayer.db.tables import NodeTagTable, TagTable
 from tests.maasapiserver.fixtures.db import Fixture
 
 """Factory of TagTable entries."""
@@ -57,3 +57,15 @@ async def create_test_tag_entry(
     [created_tag] = await fixture.create(TagTable.name, tag)
 
     return created_tag
+
+
+async def create_test_tag_node_relationship(
+    fixture: Fixture, node_id: int, tag_id: int
+) -> dict[str, Any]:
+    node_tag_m2m = {
+        "node_id": node_id,
+        "tag_id": tag_id,
+    }
+
+    [created] = await fixture.create(NodeTagTable.name, node_tag_m2m)
+    return created

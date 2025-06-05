@@ -196,6 +196,7 @@ APIServerRule = Rule(
     Allow("django.contrib.auth.hashers.*"),
     Allow("fastapi|fastapi.**"),
     Allow("jose|jose.**"),
+    Allow("lxml|lxml.**"),
     Allow("maasapiserver|maasapiserver.**"),
     Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer

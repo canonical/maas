@@ -85,68 +85,84 @@ class TestCommonSshKeysService(ServiceCommonTests):
             user_id=1,
         )
 
-    async def test_update_many(self, service_instance, test_instance):
+    async def test_update_many(
+        self, service_instance, test_instance, builder_model
+    ):
         with pytest.raises(NotImplementedError):
             return await super().test_update_many(
-                service_instance, test_instance
+                service_instance, test_instance, builder_model
             )
 
-    async def test_update_one(self, service_instance, test_instance):
+    async def test_update_one(
+        self, service_instance, test_instance, builder_model
+    ):
         with pytest.raises(NotImplementedError):
             return await super().test_update_one(
-                service_instance, test_instance
+                service_instance, test_instance, builder_model
             )
 
-    async def test_update_one_not_found(self, service_instance):
+    async def test_update_one_not_found(self, service_instance, builder_model):
         with pytest.raises(NotImplementedError):
-            return await super().test_update_one_not_found(service_instance)
+            return await super().test_update_one_not_found(
+                service_instance, builder_model
+            )
 
     async def test_update_one_etag_match(
-        self, service_instance, test_instance
+        self, service_instance, test_instance, builder_model
     ):
         with pytest.raises(NotImplementedError):
             return await super().test_update_one_etag_match(
-                service_instance, test_instance
+                service_instance, test_instance, builder_model
             )
 
     async def test_update_one_etag_not_matching(
-        self, service_instance, test_instance
+        self, service_instance, test_instance, builder_model
     ):
         with pytest.raises(NotImplementedError):
             return await super().test_update_one_etag_not_matching(
-                service_instance, test_instance
+                service_instance, test_instance, builder_model
             )
 
-    async def test_update_by_id(self, service_instance, test_instance):
+    async def test_update_by_id(
+        self, service_instance, test_instance, builder_model
+    ):
         with pytest.raises(NotImplementedError):
             return await super().test_update_by_id(
-                service_instance, test_instance
+                service_instance, test_instance, builder_model
             )
 
-    async def test_update_by_id_not_found(self, service_instance):
+    async def test_update_by_id_not_found(
+        self, service_instance, builder_model
+    ):
         with pytest.raises(NotImplementedError):
-            return await super().test_update_by_id_not_found(service_instance)
+            return await super().test_update_by_id_not_found(
+                service_instance, builder_model
+            )
 
     async def test_update_by_id_etag_match(
-        self, service_instance, test_instance
+        self, service_instance, test_instance, builder_model
     ):
         with pytest.raises(NotImplementedError):
             return await super().test_update_by_id_etag_match(
-                service_instance, test_instance
+                service_instance, test_instance, builder_model
             )
 
     async def test_update_by_id_etag_not_matching(
-        self, service_instance, test_instance
+        self, service_instance, test_instance, builder_model
     ):
         with pytest.raises(NotImplementedError):
             return await super().test_update_by_id_etag_not_matching(
-                service_instance, test_instance
+                service_instance, test_instance, builder_model
             )
 
-    async def test_create(self, service_instance, test_instance):
+    async def test_create(
+        self, service_instance, test_instance, builder_model
+    ):
         # pre_create_hook tested in the next tests
         service_instance.pre_create_hook = AsyncMock()
-        return await super().test_create(service_instance, test_instance)
+        return await super().test_create(
+            service_instance, test_instance, builder_model
+        )
 
 
 class TestSshKeysService:
