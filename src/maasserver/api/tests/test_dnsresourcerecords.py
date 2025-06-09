@@ -13,7 +13,7 @@ from django.urls import reverse
 from maasserver.models.dnsdata import DNSData
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 def get_dnsresourcerecords_uri():
@@ -367,9 +367,11 @@ class TestDNSResourceRecordAPI(APITestCase.ForUser):
         self.become_admin()
         dnsdata = factory.make_DNSData()
         dnsrr = dnsdata.dnsresource
-        while dnsdata.rrtype == "CNAME":
-            dnsdata.delete()
-            dnsdata = factory.make_DNSData(dnsresource=dnsrr)
+
+        with post_commit_hooks:
+            while dnsdata.rrtype == "CNAME":
+                dnsdata.delete()
+                dnsdata = factory.make_DNSData(dnsresource=dnsrr)
         # Now create a second DNSData record for this DNSRR.
         factory.make_DNSData(rrtype=dnsdata.rrtype, dnsresource=dnsrr)
         uri = get_dnsresourcerecord_uri(dnsdata)
