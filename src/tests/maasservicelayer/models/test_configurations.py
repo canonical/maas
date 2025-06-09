@@ -1,5 +1,5 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 import re
 
 from pydantic import ValidationError
@@ -316,22 +316,6 @@ class TestMAASAutoIPMIKGBmcKeyConfig:
 
 
 class TestConfigFactory:
-    def test_parse_public_config_none_values(self):
-        for name, config in ConfigFactory.ALL_CONFIGS.items():
-            if config.is_public:
-                ConfigFactory.parse_public_config(name=name, value=None)
-
-    def test_parse_public_config_unknown_config(self):
-        with pytest.raises(ValueError):
-            ConfigFactory.parse_public_config("_not_a_valid_config", None)
-
-    def test_parse_public_config_values(self):
-        for name, config in ConfigFactory.ALL_CONFIGS.items():
-            if config.is_public:
-                ConfigFactory.parse_public_config(
-                    name=name, value=config.default
-                )
-
     @pytest.mark.parametrize(
         "name",
         [
@@ -348,8 +332,7 @@ class TestConfigFactory:
     def test_private_config(self, name: str):
         # The difference between the set of possible configuration keys and
         # those permitted via the Web API is small but important to security.
-        with pytest.raises(ValueError):
-            ConfigFactory.parse_public_config(name, None)
+        assert name not in ConfigFactory.PUBLIC_CONFIGS.keys()
 
     def test_parse_config_none_values(self):
         for config in ConfigFactory.ALL_CONFIGS:

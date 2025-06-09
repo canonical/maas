@@ -1155,28 +1155,11 @@ class ConfigFactory:
         VaultEnabledConfig.name: VaultEnabledConfig,
     }
 
-    @classmethod
-    def parse_public_config(cls, name: str, value: Any) -> Config:
-        """
-        Parses and returns a publicly exposed configuration from the API.
-
-        This method ensures that onl    y configurations explicitly marked as public
-        can be parsed and initialized with the provided value.
-
-        Args:
-            name (str): The name of the public configuration key.
-            value (Any): The value to be assigned to the configuration.
-
-        Returns:
-            Config: An instance of the corresponding public configuration model.
-
-        Raises:
-            ValueError: If the configuration name is not recognized as a public configuration.
-        """
-        model = cls.get_config_model(name)
-        if model.is_public:
-            return model(value=value)
-        raise ValueError(f"Unknown {name} configuration.")
+    PUBLIC_CONFIGS = {
+        config_name: config_model
+        for config_name, config_model in ALL_CONFIGS.items()
+        if config_model.is_public
+    }
 
     @classmethod
     def parse(cls, name: str, value: Any) -> Config:
