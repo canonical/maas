@@ -44,7 +44,7 @@ class PackageRepositoryResponse(HalResponse[BaseHal]):
             disabled_components=package_repository.disabled_components,
             disable_sources=package_repository.disable_sources,
             enabled=package_repository.enabled,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{package_repository.id}"
                 )

@@ -40,7 +40,7 @@ class DomainResponse(HalResponse[BaseHal]):
             ttl=domain.ttl,
             id=domain.id,
             name=domain.name,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{domain.id}"
                 )
@@ -173,7 +173,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                         ARecordResponse.from_model(ARecord.from_text(rrdata))
                         for rrdata in dns_record.rrdatas
                     ],
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )
@@ -189,7 +189,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                         )
                         for rrdata in dns_record.rrdatas
                     ],
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )
@@ -202,7 +202,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                     cname_record=CNAMERecordResponse.from_model(
                         CNAMERecord.from_text(dns_record.rrdatas[0])
                     ),
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )
@@ -216,7 +216,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                         MXRecordResponse.from_model(MXRecord.from_text(rrdata))
                         for rrdata in dns_record.rrdatas
                     ],
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )
@@ -230,7 +230,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                         NSRecordResponse.from_model(NSRecord.from_text(rrdata))
                         for rrdata in dns_record.rrdatas
                     ],
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )
@@ -246,7 +246,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                         )
                         for rrdata in dns_record.rrdatas
                     ],
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )
@@ -262,7 +262,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                         )
                         for rrdata in dns_record.rrdatas
                     ],
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )
@@ -278,7 +278,7 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
                         )
                         for rrdata in dns_record.rrdatas
                     ],
-                    hal_links=BaseHal(
+                    hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                         self=BaseHref(href=self_base_hyperlink.rstrip("/"))
                     ),
                 )

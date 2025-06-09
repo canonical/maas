@@ -40,7 +40,7 @@ class InterfaceResponse(HalResponse[BaseHal]):
     sriov_max_vf: int = 0
     links: list[LinkResponse] = Field(default_factory=list)
 
-    class Config:
+    class Config:  # pyright: ignore [reportIncompatibleVariableOverride]
         arbitrary_types_allowed = True
 
     @classmethod
@@ -60,7 +60,7 @@ class InterfaceResponse(HalResponse[BaseHal]):
             link_speed=interface.link_speed,
             sriov_max_vf=interface.sriov_max_vf,
             links=[LinkResponse.from_model(link) for link in interface.links],
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{interface.id}"
                 )

@@ -25,11 +25,11 @@ class ResourcePoolResponse(HalResponse[BaseHal]):
     def from_model(
         cls, resource_pool: ResourcePool, self_base_hyperlink: str
     ) -> Self:
-        return ResourcePoolResponse(
+        return cls(
             id=resource_pool.id,
             name=resource_pool.name,
             description=resource_pool.description,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{resource_pool.id}"
                 )
@@ -68,7 +68,7 @@ class ResourcePoolWithSummaryResponse(ResourcePoolResponse):
             machine_ready_count=resource_pool_with_summary.machine_ready_count,
             is_default=resource_pool_with_summary.is_default(),
             permissions=permissions,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{resource_pool_with_summary.id}"
                 )

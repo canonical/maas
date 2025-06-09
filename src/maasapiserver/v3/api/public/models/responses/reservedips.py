@@ -31,7 +31,7 @@ class ReservedIPResponse(HalResponse[BaseHal]):
             ip=reservedip.ip,
             mac_address=reservedip.mac_address,
             comment=reservedip.comment,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{reservedip.id}"
                 )

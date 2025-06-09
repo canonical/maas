@@ -26,6 +26,7 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
 
         result = (await self.execute_stmt(stmt)).first()
 
+        assert result is not None
         return result[0]
 
     async def get_publications_since_serial(
@@ -50,4 +51,6 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
             .order_by(DNSPublicationTable.c.id.desc())
         )
 
-        return (await self.execute_stmt(stmt)).first()
+        result = (await self.execute_stmt(stmt)).first()
+        assert result is not None
+        return DNSPublication(**result._asdict())

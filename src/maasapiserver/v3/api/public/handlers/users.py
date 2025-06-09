@@ -11,7 +11,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
     PreconditionFailedBodyResponse,
     UnauthorizedBodyResponse,
 )
@@ -43,6 +42,7 @@ from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
+    NotFoundException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
@@ -243,7 +243,7 @@ class UsersHandler(Handler):
     ) -> UserResponse:
         user = await services.users.get_by_id(user_id)
         if not user:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
@@ -354,7 +354,7 @@ class UsersHandler(Handler):
             query=QuerySpec(UserClauseFactory.with_id(user_id))
         )
         if not user_exists:
-            return NotFoundResponse()
+            raise NotFoundException()
         if user_id == authenticated_user.id:
             return BadRequestResponse(
                 details=[

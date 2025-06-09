@@ -273,7 +273,8 @@ class DNSResourcesService(
                     ),
                 )
             )
-            await self.repository.link_ip(dnsrr, sip)
+            assert dnsrr is not None
+            await self.repository.link_ip(dnsrr.id, sip.id)
 
     async def remove_ip(
         self, sip: StaticIPAddress, label: str, domain: Domain
@@ -308,7 +309,7 @@ class DNSResourcesService(
 
         # if no IPs are linked to the DNSResource, we should delete the DNSResource
         # otherwise, we should keep it
-        ips = await self.repository.get_ips_for_dnsresource(dnsrr)
+        ips = await self.repository.get_ips_for_dnsresource(dnsrr.id)
         if not ips:
             # if no IPs, dnsdata entires could still be linked, if not, it's safe to delete
             # otherwise, we should keep the dnsresource

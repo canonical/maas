@@ -7,7 +7,6 @@ from fastapi import Depends, Response, status
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.discoveries import (
@@ -24,6 +23,7 @@ from maasapiserver.v3.api.public.models.responses.discoveries import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -51,7 +51,7 @@ class DiscoveriesHandler(Handler):
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> DiscoveriesListResponse:
         # TODO: order by last seen
         discoveries = await services.discoveries.list(
             page=pagination_params.page,
@@ -96,10 +96,10 @@ class DiscoveriesHandler(Handler):
         discovery_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> DiscoveryResponse:
         discovery = await services.discoveries.get_by_id(discovery_id)
         if not discovery:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = discovery.etag()
         return DiscoveryResponse.from_model(
@@ -127,7 +127,8 @@ class DiscoveriesHandler(Handler):
     ) -> Response:
         if ip_and_mac.ip is not None and ip_and_mac.mac is not None:
             await services.discoveries.clear_by_ip_and_mac(
-                ip=ip_and_mac.ip, mac=ip_and_mac.mac
+                ip=ip_and_mac.ip,  # pyright: ignore [reportArgumentType]
+                mac=ip_and_mac.mac,
             )
         else:
             await services.discoveries.clear_all()

@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Network
+from ipaddress import IPv4Address, IPv4Network
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -46,8 +46,8 @@ TEST_SUBNET = Subnet(
     description="test_description",
     cidr=IPv4Network("10.10.10.10"),
     rdns_mode=RdnsMode.DEFAULT,
-    gateway_ip=None,
-    dns_servers=None,
+    gateway_ip=IPv4Address("10.10.10.100"),
+    dns_servers=["8.8.8.8"],
     allow_dns=False,
     allow_proxy=True,
     active_discovery=False,
@@ -159,15 +159,13 @@ class TestSubnetApi(ApiCommonTests):
             "description": TEST_SUBNET.description,
             "cidr": str(TEST_SUBNET.cidr),
             "dns_servers": TEST_SUBNET.dns_servers,
-            "gateway_ip": TEST_SUBNET.gateway_ip,
+            "gateway_ip": str(TEST_SUBNET.gateway_ip),
             "rdns_mode": TEST_SUBNET.rdns_mode,
             "allow_proxy": TEST_SUBNET.allow_proxy,
             "active_discovery": TEST_SUBNET.active_discovery,
             "managed": TEST_SUBNET.managed,
             "allow_dns": TEST_SUBNET.allow_dns,
             "disabled_boot_architectures": TEST_SUBNET.disabled_boot_architectures,
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
             "_links": {"self": {"href": f"{self.BASE_PATH}/{TEST_SUBNET.id}"}},
         }
 

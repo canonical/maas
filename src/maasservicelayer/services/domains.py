@@ -312,4 +312,5 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         else:
             result = await self.get_default_domain()
 
+        assert result is not None
         return result

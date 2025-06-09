@@ -33,7 +33,7 @@ class SpaceResponse(HalResponse[BaseHal]):
             subnets=BaseHref(
                 href=f"{V3_API_PREFIX}/subnets?filter=space_id eq {space.id}"
             ),
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{space.id}"
                 )

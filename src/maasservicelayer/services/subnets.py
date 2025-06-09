@@ -1,9 +1,8 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address, IPv6Address
 from typing import List
-
-from pydantic import IPvAnyAddress
 
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -66,7 +65,7 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
         self.nodegrouptorackcontrollers = nodegrouptorackcontrollers_service
 
     async def find_best_subnet_for_ip(
-        self, ip: IPvAnyAddress
+        self, ip: IPv4Address | IPv6Address
     ) -> Subnet | None:
         return await self.repository.find_best_subnet_for_ip(ip)
 

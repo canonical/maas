@@ -11,7 +11,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
@@ -35,6 +34,7 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -63,7 +63,7 @@ class DomainsHandler(Handler):
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> DomainsListResponse:
         domains = await services.domains.list(
             page=pagination_params.page,
             size=pagination_params.size,
@@ -105,10 +105,10 @@ class DomainsHandler(Handler):
         domain_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> DomainResponse:
         domain = await services.domains.get_by_id(domain_id)
         if not domain:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = domain.etag()
         return DomainResponse.from_model(
@@ -137,7 +137,7 @@ class DomainsHandler(Handler):
         response: Response,
         domain_request: DomainRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> DomainResponse:
         domain = await services.domains.create(domain_request.to_builder())
         response.headers["ETag"] = domain.etag()
         return DomainResponse.from_model(

@@ -66,7 +66,7 @@ class DiscoveryResponse(HalResponse[BaseHal]):
             is_external_dhcp=discovery.is_external_dhcp,
             subnet_id=discovery.subnet_id,
             subnet_cidr=discovery.subnet_cidr,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{discovery.id}"
                 )

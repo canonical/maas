@@ -2,12 +2,10 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends
-from starlette.responses import Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.responses.configurations import (
@@ -15,6 +13,7 @@ from maasapiserver.v3.api.public.models.responses.configurations import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.configurations import ConfigFactory
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -42,11 +41,11 @@ class ConfigurationsHandler(Handler):
         self,
         name: str,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ConfigurationResponse:
         configuration = await services.configurations.get(name)
         try:
             # Validate that the configuration being accessed is well known and public.
             ConfigFactory.parse_public_config(name, configuration)
-        except ValueError:
-            return NotFoundResponse()
+        except ValueError as err:
+            raise NotFoundException() from err
         return ConfigurationResponse(name=name, value=configuration)

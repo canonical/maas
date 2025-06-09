@@ -66,7 +66,7 @@ class LeasesService(Service):
     async def store_lease_info(self, lease: Lease) -> None:
         # Get the subnet for this IP address. If no subnet exists then something
         # is wrong as we should not be receiving message about unknown subnets.
-        subnet = await self.subnet_service.find_best_subnet_for_ip(lease.ip)
+        subnet = await self.subnet_service.find_best_subnet_for_ip(lease.ip)  # pyright: ignore [reportArgumentType]
 
         if subnet is None:
             raise LeaseUpdateError(f"No subnet exists for: {lease.ip}")

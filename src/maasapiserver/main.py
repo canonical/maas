@@ -76,7 +76,7 @@ async def prepare_app(
     config: Config,
     transaction_middleware_class: type = TransactionMiddleware,
     # In the tests the database is created in the fixture, so we need to inject it here as a parameter.
-    db: Database = None,
+    db: Database = None,  # pyright: ignore [reportArgumentType]
     add_authentication_middleware: bool = True,
     app_title: str = "APIServer",
     app_name: str = "apiserver",
@@ -124,7 +124,8 @@ async def prepare_app(
 
     # Add exception handlers for exceptions that can be thrown outside the middlewares.
     app.add_exception_handler(
-        RequestValidationError, ExceptionHandlers.validation_exception_handler
+        RequestValidationError,
+        ExceptionHandlers.validation_exception_handler,  # pyright: ignore [reportArgumentType]
     )
 
     APICommon.register(app.router)
@@ -147,7 +148,7 @@ async def create_app(
     config: Config,
     transaction_middleware_class: type = TransactionMiddleware,
     # In the tests the database is created in the fixture, so we need to inject it here as a parameter.
-    db: Database = None,
+    db: Database = None,  # pyright: ignore [reportArgumentType]
 ) -> FastAPI:
     app = await prepare_app(
         config,
@@ -165,7 +166,7 @@ async def create_internal_app(
     config: Config,
     transaction_middleware_class: type = TransactionMiddleware,
     # In the tests the database is created in the fixture, so we need to inject it here as a parameter.
-    db: Database = None,
+    db: Database = None,  # pyright: ignore [reportArgumentType]
 ) -> FastAPI:
     # DO NOT add the authentication middleware. We enable MTLS at uvicorn level.
     app = await prepare_app(
@@ -180,7 +181,7 @@ async def create_internal_app(
     return app
 
 
-def run(app_config: Config | None = None, start_internal_server: bool = True):
+def run(app_config: Config | None = None):
     """
     Run the user and the internal server in the same event loop.
     The internal server has uvicorn configured so to enable MTLS. All the internal endpoints are not authenticated at API level
@@ -208,9 +209,9 @@ def run(app_config: Config | None = None, start_internal_server: bool = True):
     user_app = loop.run_until_complete(create_app(config=app_config))
     user_server_config = uvicorn.Config(
         user_app,
-        loop=loop,
+        loop="asyncio",
         proxy_headers=True,
-        uds=api_service_socket_path(),
+        uds=str(api_service_socket_path()),
         # We configure the logging OUTSIDE the library in order to use our custom json formatter.
         log_config=None,
     )
@@ -222,12 +223,12 @@ def run(app_config: Config | None = None, start_internal_server: bool = True):
         create_internal_app(config=app_config)
     )
 
-    cert, key, cacerts = get_maas_cluster_cert_paths()
+    cert, key, cacerts = get_maas_cluster_cert_paths()  # pyright: ignore [reportGeneralTypeIssues]
     internal_server_config = uvicorn.Config(
         internal_app,
-        loop=loop,
+        loop="asyncio",
         proxy_headers=True,
-        uds=internal_api_service_socket_path(),
+        uds=internal_api_service_socket_path().as_posix(),
         ssl_keyfile=key,
         ssl_certfile=cert,
         ssl_ca_certs=cacerts,

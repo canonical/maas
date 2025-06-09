@@ -1,11 +1,10 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv6Address
+from ipaddress import IPv4Address, IPv6Address
 from operator import eq
 from typing import List, Type
 
-from pydantic import IPvAnyAddress
 from sqlalchemy import desc, func, join, select, Table
 
 from maascommon.enums.subnet import RdnsMode
@@ -63,7 +62,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
         return Subnet
 
     async def find_best_subnet_for_ip(
-        self, ip: IPvAnyAddress
+        self, ip: IPv4Address | IPv6Address
     ) -> Subnet | None:
         if isinstance(ip, IPv6Address) and ip.ipv4_mapped is not None:
             ip = ip.ipv4_mapped

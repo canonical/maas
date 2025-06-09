@@ -107,23 +107,21 @@ class TestSshKeyApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
-        services_mock.sshkeys.get_one.return_value = SSHKEY_1
+        services_mock.sshkeys.get_one.return_value = SSHKEY_2
 
         response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/{SSHKEY_1.id}",
+            f"{self.BASE_PATH}/{SSHKEY_2.id}",
         )
 
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
             "kind": "SshKey",
-            "id": SSHKEY_1.id,
-            "key": SSHKEY_1.key,
-            "auth_id": SSHKEY_1.auth_id,
-            "protocol": SSHKEY_1.protocol,
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
-            "_links": {"self": {"href": f"{self.BASE_PATH}/{SSHKEY_1.id}"}},
+            "id": SSHKEY_2.id,
+            "key": SSHKEY_2.key,
+            "auth_id": SSHKEY_2.auth_id,
+            "protocol": SSHKEY_2.protocol,
+            "_links": {"self": {"href": f"{self.BASE_PATH}/{SSHKEY_2.id}"}},
         }
 
     async def test_get_404(

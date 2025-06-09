@@ -46,7 +46,7 @@ class SubnetResponse(HalResponse[BaseHal]):
             active_discovery=subnet.active_discovery,
             managed=subnet.managed,
             disabled_boot_architectures=subnet.disabled_boot_architectures,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{subnet.id}"
                 )

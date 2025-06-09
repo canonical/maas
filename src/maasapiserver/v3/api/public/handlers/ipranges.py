@@ -8,7 +8,6 @@ from fastapi import Depends, Header, Response, status
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.ipranges import (
@@ -136,7 +135,7 @@ class IPRangesHandler(Handler):
         authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
         ),
-    ) -> Response:
+    ) -> IPRangeResponse:
         if (
             not authenticated_user.is_admin()
             and iprange_request.owner_id is not None
@@ -207,7 +206,7 @@ class IPRangesHandler(Handler):
         id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> IPRangeResponse:
         iprange = await services.ipranges.get_one(
             QuerySpec(
                 where=IPRangeClauseFactory.and_clauses(
@@ -221,7 +220,7 @@ class IPRangesHandler(Handler):
             )
         )
         if not iprange:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = iprange.etag()
         return IPRangeResponse.from_model(
@@ -318,7 +317,7 @@ class IPRangesHandler(Handler):
         authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
         ),
-    ) -> Response:
+    ) -> IPRangeResponse:
         if (
             not authenticated_user.is_admin()
             and iprange_request.owner_id != authenticated_user.id

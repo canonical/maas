@@ -175,8 +175,6 @@ class TestStaticRoutesApi(ApiCommonTests):
             "gateway_ip": str(TEST_STATICROUTE.gateway_ip),
             "destination_id": TEST_STATICROUTE.destination_id,
             "metric": TEST_STATICROUTE.metric,
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
             "_links": {
                 "self": {"href": f"{self.BASE_PATH}/{TEST_STATICROUTE.id}"}
             },

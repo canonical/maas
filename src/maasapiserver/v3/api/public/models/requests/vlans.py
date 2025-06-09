@@ -93,6 +93,7 @@ class VlanUpdateRequest(VlanCreateRequest):
     async def to_builder(
         self, services: ServiceCollectionV3, vlan_id: int | None = None
     ) -> VlanBuilder:
+        assert vlan_id is not None
         # Validate the fields first.
         if self.dhcp_on:
             if self.relay_vlan_id:
@@ -165,6 +166,7 @@ class VlanUpdateRequest(VlanCreateRequest):
             # rack was originally set (and not being changed), require the primary
             # rack to be up and running.
             current_vlan = await services.vlans.get_by_id(vlan_id)
+            assert current_vlan is not None
             if (
                 current_vlan.primary_rack_id is not None
                 and self.secondary_rack_id is not None

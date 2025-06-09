@@ -83,7 +83,7 @@ class NotificationsRepository(BaseRepository[Notification]):
         self, page: int, size: int, stmt: Select
     ) -> ListResult[Notification]:
         total_stmt = select(count()).select_from(stmt.subquery())
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             stmt.order_by(desc(self.get_repository_table().c.id))

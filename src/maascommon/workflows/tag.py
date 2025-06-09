@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 
-from lxml import etree
+from lxml import etree  # pyright: ignore [reportAttributeAccessIssue]
 
 # Workflows names
 TAG_EVALUATION_WORKFLOW_NAME = "tag-evaluation"

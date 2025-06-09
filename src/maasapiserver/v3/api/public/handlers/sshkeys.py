@@ -8,7 +8,6 @@ from fastapi import Depends, Header, Response, status
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
-    NotFoundResponse,
     PreconditionFailedBodyResponse,
     UnauthorizedBodyResponse,
 )
@@ -30,6 +29,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -111,7 +111,7 @@ class SshKeysHandler(Handler):
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SshKeyResponse:
         assert authenticated_user is not None
         ssh_key = await services.sshkeys.get_one(
             query=QuerySpec(
@@ -127,7 +127,7 @@ class SshKeysHandler(Handler):
         )
 
         if not ssh_key:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = ssh_key.etag()
 
@@ -158,7 +158,7 @@ class SshKeysHandler(Handler):
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SshKeyResponse:
         assert authenticated_user is not None
         builder = sshkey_request.to_builder(authenticated_user.id)
         created_sshkey = await services.sshkeys.create(builder)

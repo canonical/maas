@@ -749,7 +749,7 @@ class DomainsRepository(BaseRepository[Domain]):
             .filter(
                 and_(
                     eq(DomainTable.c.authoritative, False),
-                    ForwardDNSServerTable.c.id is not None,
+                    ForwardDNSServerTable.c.id.is_not(None),
                 )
             )
         )

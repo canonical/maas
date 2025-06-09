@@ -1,9 +1,9 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv4Address, IPv6Address
 from typing import List, Type
 
-from pydantic import IPvAnyAddress
 from sqlalchemy import and_, delete, func, join, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
@@ -53,7 +53,7 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         )
 
     @classmethod
-    def with_ip(cls, ip: IPvAnyAddress | None) -> Clause:
+    def with_ip(cls, ip: IPv4Address | IPv6Address | None) -> Clause:
         return Clause(condition=eq(StaticIPAddressTable.c.ip, ip))
 
     @classmethod

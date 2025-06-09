@@ -29,7 +29,7 @@ class FabricResponse(HalResponse[BaseHal]):
             description=fabric.description,
             class_type=fabric.class_type,
             vlans=BaseHref(href=f"{V3_API_PREFIX}/fabrics/{fabric.id}/vlans"),
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{fabric.id}"
                 )

@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass, field
-from typing import Union
+from typing import TypeVar
 
 from sqlalchemy import (
     and_,
@@ -39,6 +39,10 @@ class Clause:
         return self.condition.compare(other.condition)
 
 
+SUD = TypeVar("SUD", Select, Update, Delete)
+UD = TypeVar("UD", Update, Delete)
+
+
 @dataclass
 class QuerySpec:
     """
@@ -49,9 +53,7 @@ class QuerySpec:
     # In the future this is the right place where we will put additional query pieces
     # order_by: Clause | None = None
 
-    def enrich_stmt(
-        self, stmt: Union[Select, Update, Delete]
-    ) -> Union[Select, Update, Delete]:
+    def enrich_stmt(self, stmt: SUD) -> SUD:
         """Enrich the SQL statement by adding the clauses (if present) in the object.
 
         The purpose of this method is to handle all the logic for enriching a statement
@@ -103,9 +105,7 @@ class QuerySpec:
 
         return stmt
 
-    def _enrich_update_delete_stmt(
-        self, stmt: Union[Update, Delete]
-    ) -> Union[Update, Delete]:
+    def _enrich_update_delete_stmt(self, stmt: UD) -> UD:
         for join in self.where.joins:  # type: ignore
             assert join.onclause is not None, "Join onclause must be defined."
             if all(

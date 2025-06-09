@@ -5,6 +5,7 @@ from typing import Any, Type
 
 from sqlalchemy import case, insert, join, Select, select, Table
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, ne, or_
 
@@ -63,15 +64,26 @@ class EventTypesRepository(BaseRepository[EventType]):
             return t
         else:
             try:
-                # TODO: adapt for sync connections
-                async with self.context.get_connection().begin_nested():
-                    return await self.create(
-                        EventTypeBuilder(
-                            name=event_type.value,
-                            description=detail.description,
-                            level=detail.level,
+                connection = self.context.get_connection()
+                if isinstance(connection, AsyncConnection):
+                    async with connection.begin_nested():
+                        return await self.create(
+                            EventTypeBuilder(
+                                name=event_type.value,
+                                description=detail.description,
+                                level=detail.level,
+                            )
                         )
-                    )
+                else:
+                    with connection.begin_nested():
+                        return await self.create(
+                            EventTypeBuilder(
+                                name=event_type.value,
+                                description=detail.description,
+                                level=detail.level,
+                            )
+                        )
+
             except AlreadyExistsException:
                 # race, no problem
                 pass

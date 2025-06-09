@@ -57,7 +57,7 @@ class MachineResponse(HalResponse[BaseHal]):
             status=machine.status,
             power_type=machine.power_type,
             fqdn=machine.fqdn,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{machine.id}"
                 )
@@ -95,7 +95,7 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
             commissioning_driver=usb_device.commissioning_driver,
             bus_number=usb_device.bus_number,
             device_number=usb_device.device_number,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{usb_device.id}"
                 )
@@ -135,7 +135,7 @@ class PciDeviceResponse(HalResponse[BaseHal]):
             bus_number=pci_device.bus_number,
             device_number=pci_device.device_number,
             pci_address=pci_device.pci_address,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{pci_device.id}"
                 )
@@ -157,7 +157,7 @@ class PowerDriverResponse(HalResponse[BaseHal]):
         return cls(
             power_type=bmc.power_type,
             power_parameters=bmc.power_parameters,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(href=f"{self_base_hyperlink.rstrip('/')}")
             ),
         )

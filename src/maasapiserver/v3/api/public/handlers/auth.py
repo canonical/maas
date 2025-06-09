@@ -87,6 +87,7 @@ class AuthHandler(Handler):
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> AccessTokenResponse:
+        assert authenticated_user is not None
         token = await services.auth.access_token(authenticated_user)
         return AccessTokenResponse(
             token_type=self.TOKEN_TYPE, access_token=token.encoded

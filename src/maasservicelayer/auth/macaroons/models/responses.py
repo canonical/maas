@@ -26,7 +26,7 @@ class GetGroupsResponse(BaseModel):
 
 
 class ResourceListResponse(BaseModel):
-    resources: Sequence[Resource]
+    resources: list[Resource]
 
 
 class UpdateResourcesResponse(BaseModel):
@@ -47,11 +47,11 @@ class PermissionResourcesMapping(BaseModel):
     """
 
     permission: RbacPermission
-    resources: Optional[Sequence[int]]
+    resources: Optional[list[int]]
     access_all: bool = False
 
     @validator("resources", pre=True)
-    def preprocess_resources(cls, data: Optional[Sequence[str]]):
+    def preprocess_resources(cls, data: Optional[list[str]]):
         if data == [""] or data is None:
             return None
         else:

@@ -19,8 +19,8 @@ class ErrorBodyResponse(BaseModel):
 
 
 class BadRequestBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_400_BAD_REQUEST
-    message = "Bad request."
+    code: int = status.HTTP_400_BAD_REQUEST
+    message: str = "Bad request."
 
 
 class BadRequestResponse(JSONResponse):
@@ -32,8 +32,8 @@ class BadRequestResponse(JSONResponse):
 
 
 class UnauthorizedBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_401_UNAUTHORIZED
-    message = "Unauthorized."
+    code: int = status.HTTP_401_UNAUTHORIZED
+    message: str = "Unauthorized."
 
 
 class UnauthorizedResponse(JSONResponse):
@@ -47,8 +47,8 @@ class UnauthorizedResponse(JSONResponse):
 
 
 class ForbiddenBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_403_FORBIDDEN
-    message = "Forbidden."
+    code: int = status.HTTP_403_FORBIDDEN
+    message: str = "Forbidden."
 
 
 class ForbiddenResponse(JSONResponse):
@@ -60,8 +60,8 @@ class ForbiddenResponse(JSONResponse):
 
 
 class NotFoundBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_404_NOT_FOUND
-    message = "Entity not found."
+    code: int = status.HTTP_404_NOT_FOUND
+    message: str = "Entity not found."
 
 
 class NotFoundResponse(JSONResponse):
@@ -73,8 +73,8 @@ class NotFoundResponse(JSONResponse):
 
 
 class ConflictBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_409_CONFLICT
-    message = "The request could not be completed due to a conflict with an existing resource."
+    code: int = status.HTTP_409_CONFLICT
+    message: str = "The request could not be completed due to a conflict with an existing resource."
 
 
 class ConflictResponse(JSONResponse):
@@ -86,8 +86,8 @@ class ConflictResponse(JSONResponse):
 
 
 class PreconditionFailedBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_412_PRECONDITION_FAILED
-    message = "A precondition has failed."
+    code: int = status.HTTP_412_PRECONDITION_FAILED
+    message: str = "A precondition has failed."
 
 
 class PreconditionFailedResponse(JSONResponse):
@@ -101,8 +101,8 @@ class PreconditionFailedResponse(JSONResponse):
 
 
 class ValidationErrorBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_422_UNPROCESSABLE_ENTITY
-    message = "Failed to validate the request."
+    code: int = status.HTTP_422_UNPROCESSABLE_ENTITY
+    message: str = "Failed to validate the request."
 
 
 class ValidationErrorResponse(JSONResponse):
@@ -116,8 +116,8 @@ class ValidationErrorResponse(JSONResponse):
 
 
 class InternalServerErrorBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    message = "Unexpected internal server error. Please check the server logs for more details."
+    code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
+    message: str = "Unexpected internal server error. Please check the server logs for more details."
 
 
 class InternalServerErrorResponse(JSONResponse):
@@ -129,8 +129,8 @@ class InternalServerErrorResponse(JSONResponse):
 
 
 class ServiceUnavailableErrorBodyResponse(ErrorBodyResponse):
-    code = status.HTTP_503_SERVICE_UNAVAILABLE
-    message = "The service is not available. Please check the server logs for more details."
+    code: int = status.HTTP_503_SERVICE_UNAVAILABLE
+    message: str = "The service is not available. Please check the server logs for more details."
 
 
 class ServiceUnavailableErrorResponse(JSONResponse):

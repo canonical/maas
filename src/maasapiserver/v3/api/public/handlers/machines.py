@@ -1,12 +1,11 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -28,6 +27,7 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.rbac import RbacPermission
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -117,7 +117,7 @@ class MachinesHandler(Handler):
         return MachinesListResponse(
             items=[
                 MachineResponse.from_model(
-                    machine=machine,
+                    machine=machine,  # pyright: ignore [reportArgumentType]
                     self_base_hyperlink=f"{V3_API_PREFIX}/machines",
                 )
                 for machine in machines.items
@@ -153,7 +153,7 @@ class MachinesHandler(Handler):
         system_id: str,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> UsbDevicesListResponse:
         usb_devices = await services.machines.list_machine_usb_devices(
             system_id=system_id,
             page=pagination_params.page,
@@ -198,7 +198,7 @@ class MachinesHandler(Handler):
         system_id: str,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> PciDevicesListResponse:
         pci_devices = await services.machines.list_machine_pci_devices(
             system_id=system_id,
             page=pagination_params.page,
@@ -243,10 +243,10 @@ class MachinesHandler(Handler):
         self,
         system_id: str,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> PowerDriverResponse:
         bmc = await services.machines.get_bmc(system_id)
         if bmc is None:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         return PowerDriverResponse.from_model(
             bmc=bmc,

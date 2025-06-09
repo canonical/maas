@@ -26,7 +26,7 @@ from maasservicelayer.services import ServiceCollectionV3
 
 # This is used just to generate the openapi spec with the security annotations.
 oauth2_bearer_openapi = OpenapiOAuth2PasswordBearer(
-    tokenUrl=f"{V3_API_PREFIX}/auth/login"
+    tokenUrl=f"{V3_API_PREFIX}/auth/login"  # pyright: ignore [reportArgumentType]
 )
 
 
@@ -112,6 +112,9 @@ def check_permissions(
         if external_auth_info:
             # Initialize an empty object. The permissions will be populated if the handler has requested some.
             authenticated_user.rbac_permissions = RBACPermissionsPools()
+            # really pyright?
+            assert authenticated_user.rbac_permissions is not None
+
             if rbac_permissions:
                 rbac_client = await services.external_auth.get_rbac_client()
                 pool_responses = await rbac_client.get_resource_pool_ids(
@@ -130,7 +133,7 @@ def check_permissions(
                     pools = (
                         all_resource_pools
                         if resp.access_all
-                        else set(resp.resources)
+                        else set(resp.resources)  # pyright: ignore [reportArgumentType]
                     )
                     match resp.permission:
                         case RbacPermission.VIEW:
@@ -150,6 +153,6 @@ def check_permissions(
                             if resp.access_all:
                                 # The user can edit resource pools only if access_all is set
                                 authenticated_user.rbac_permissions.can_edit_all_resource_pools = True
-            return authenticated_user
+        return authenticated_user
 
     return wrapper

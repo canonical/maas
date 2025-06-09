@@ -43,14 +43,14 @@ class ZonesRepository(BaseRepository[Zone]):
         )
         result = await self.execute_stmt(stmt)
         # By design the default zone is always present.
-        zone = result.first()
+        zone = result.one()
         return Zone(**zone._asdict())
 
     async def list_with_summary(
         self, page: int, size: int
     ) -> ListResult[ZoneWithSummary]:
         total_stmt = select(count()).select_from(self.get_repository_table())
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             select(

@@ -6,7 +6,6 @@ from fastapi import Depends, Query, Response, status
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
     UnauthorizedBodyResponse,
     ValidationErrorBodyResponse,
 )
@@ -28,6 +27,7 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -63,7 +63,7 @@ class NotificationsHandler(Handler):
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> NotificationsListResponse:
         assert authenticated_user is not None
         if only_active:
             notifications_for_user = (
@@ -125,7 +125,7 @@ class NotificationsHandler(Handler):
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> NotificationResponse:
         assert authenticated_user is not None
         if authenticated_user.is_admin():
             # admins can see all the notifications
@@ -137,7 +137,7 @@ class NotificationsHandler(Handler):
                 notification_id=notification_id, user=authenticated_user
             )
         if not notification:
-            return NotFoundResponse()
+            raise NotFoundException()
         response.headers["ETag"] = notification.etag()
         return NotificationResponse.from_model(
             notification=notification,

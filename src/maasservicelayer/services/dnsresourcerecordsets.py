@@ -183,7 +183,7 @@ class V3DNSResourceRecordSetsService(Service):
                 # subnet could be not managed by MAAS.
                 static_ip_addr = await self.staticipaddress_service.create(
                     StaticIPAddressBuilder(
-                        ip=ip_address,
+                        ip=ip_address,  # pyright: ignore [reportArgumentType]
                         alloc_type=IpAddressType.USER_RESERVED,
                         user_id=user_id,
                         subnet_id=subnet.id if subnet is not None else None,

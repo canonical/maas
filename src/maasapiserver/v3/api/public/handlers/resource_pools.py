@@ -11,7 +11,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -42,6 +41,7 @@ from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ForbiddenException,
+    NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
@@ -237,7 +237,7 @@ class ResourcePoolHandler(Handler):
         resource_pool_request: ResourcePoolRequest,
         authenticated_user=Depends(get_authenticated_user),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ResourcePoolResponse:
         if (
             authenticated_user.rbac_permissions
             and not authenticated_user.rbac_permissions.can_edit_all_resource_pools
@@ -289,7 +289,7 @@ class ResourcePoolHandler(Handler):
         response: Response,
         authenticated_user=Depends(get_authenticated_user),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ResourcePoolResponse:
         if (
             authenticated_user.rbac_permissions
             and resource_pool_id
@@ -311,7 +311,7 @@ class ResourcePoolHandler(Handler):
                 resource_pool=resource_pool,
                 self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools",
             )
-        return NotFoundResponse()
+        raise NotFoundException()
 
     @handler(
         path="/resource_pools/{resource_pool_id}",
@@ -344,7 +344,7 @@ class ResourcePoolHandler(Handler):
         resource_pool_request: ResourcePoolRequest,
         authenticated_user=Depends(get_authenticated_user),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ResourcePoolResponse:
         if (
             authenticated_user.rbac_permissions
             and resource_pool_id

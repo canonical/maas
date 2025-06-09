@@ -38,7 +38,7 @@ class NotificationResponse(HalResponse[BaseHal]):
             user_id=notification.user_id,
             category=notification.category,
             dismissable=notification.dismissable,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{notification.id}"
                 )

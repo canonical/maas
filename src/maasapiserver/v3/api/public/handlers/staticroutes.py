@@ -8,7 +8,6 @@ from fastapi import Depends, Header, Response, status
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -181,7 +180,7 @@ class StaticRoutesHandler(Handler):
         id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> StaticRouteResponse:
         static_route = await services.staticroutes.get_one(
             query=QuerySpec(
                 where=StaticRoutesClauseFactory.and_clauses(
@@ -195,7 +194,7 @@ class StaticRoutesHandler(Handler):
             )
         )
         if not static_route:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = static_route.etag()
         return StaticRouteResponse.from_model(

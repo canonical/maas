@@ -1,6 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import IPv6Address
 from typing import Any, Optional
 
 from pydantic import Field, IPvAnyAddress, validator
@@ -74,7 +75,11 @@ class SubnetRequest(OptionalNamedBaseModel):
         network: IPv4v6Network = values["cidr"]
         if gateway_ip in network:
             return gateway_ip
-        elif network.version == 6 and gateway_ip.is_link_local:
+        elif (
+            network.version == 6
+            and isinstance(gateway_ip, IPv6Address)
+            and gateway_ip.is_link_local
+        ):
             # If this is an IPv6 network and the gateway is in the link-local
             # network (fe80::/64 -- required to be configured by the spec),
             # then it is also valid.

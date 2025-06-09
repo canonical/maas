@@ -8,7 +8,6 @@ from fastapi import Depends, Header, Response, status
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -133,7 +132,7 @@ class ReservedIPsHandler(Handler):
         reservedip_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ReservedIPResponse:
         reservedip = await services.reservedips.get_one(
             query=QuerySpec(
                 ReservedIPsClauseFactory.and_clauses(
@@ -148,7 +147,7 @@ class ReservedIPsHandler(Handler):
         )
 
         if not reservedip:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = reservedip.etag()
         return ReservedIPResponse.from_model(
@@ -181,7 +180,7 @@ class ReservedIPsHandler(Handler):
         reservedip_request: ReservedIPCreateRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ReservedIPResponse:
         subnet = await services.subnets.get_one(
             query=QuerySpec(
                 where=SubnetClauseFactory.and_clauses(
@@ -240,7 +239,7 @@ class ReservedIPsHandler(Handler):
             alias="if-match", default=None
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ReservedIPResponse:
         query = QuerySpec(
             where=ReservedIPsClauseFactory.and_clauses(
                 [
@@ -253,7 +252,7 @@ class ReservedIPsHandler(Handler):
         )
         existing_reservedip = await services.reservedips.get_one(query=query)
         if not existing_reservedip:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         builder = reservedip_request.to_builder(existing_reservedip)
         reservedip = await services.reservedips.update_one(

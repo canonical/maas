@@ -98,7 +98,7 @@ class JWTAuthenticationProvider(AuthenticationProvider):
         """
         Returns the issuer of this authentication provider.
         """
-        pass
+        raise NotImplementedError()
 
 
 class LocalAuthenticationProvider(JWTAuthenticationProvider):
@@ -253,6 +253,8 @@ class MacaroonAuthenticationProvider:
         if no_check and not force_check:
             return user
 
+        validate_user_response = None
+
         try:
             match auth_config.type:
                 case ExternalAuthType.CANDID:
@@ -268,6 +270,9 @@ class MacaroonAuthenticationProvider:
                     )
         except MacaroonApiException:
             return None
+
+        # pyright doesn't understand that this variable is always bound
+        assert validate_user_response is not None
 
         user_builder = UserBuilder()
         if validate_user_response.active ^ user.is_active:
@@ -339,16 +344,18 @@ class MacaroonAuthenticationProvider:
 
 
 class AuthenticationProvidersCache:
+    # All the 3 auth provider will never be None at runtime (see src/maasapiserver/main.py:113)
+    # We default them to None to easily use this in tests.
     def __init__(
         self,
         jwt_authentication_providers: Sequence[
             JWTAuthenticationProvider
-        ] = None,
-        session_authentication_provider: AuthenticationProvider = None,
-        macaroon_authentication_provider: MacaroonAuthenticationProvider = None,
+        ] = None,  # pyright: ignore [reportArgumentType]
+        session_authentication_provider: AuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
+        macaroon_authentication_provider: MacaroonAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
     ):
         self.jwt_authentication_providers_cache: Dict[
-            str, AuthenticationProvider
+            str, JWTAuthenticationProvider
         ] = (
             {}
             if not jwt_authentication_providers
@@ -365,10 +372,10 @@ class AuthenticationProvidersCache:
     def get(self, key: str) -> JWTAuthenticationProvider | None:
         return self.jwt_authentication_providers_cache.get(key, None)
 
-    def get_session_provider(self) -> AuthenticationProvider | None:
+    def get_session_provider(self) -> AuthenticationProvider:
         return self.session_authentication_provider
 
-    def get_macaroon_provider(self) -> MacaroonAuthenticationProvider | None:
+    def get_macaroon_provider(self) -> MacaroonAuthenticationProvider:
         return self.macaroon_authentication_provider
 
     def add(self, provider: JWTAuthenticationProvider) -> None:
@@ -389,7 +396,7 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        providers_cache: AuthenticationProvidersCache = AuthenticationProvidersCache(),  # noqa: B008
+        providers_cache: AuthenticationProvidersCache,
     ):
         super().__init__(app)
         self.providers_cache = providers_cache
@@ -450,9 +457,8 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
                 ]
             )
         issuer = header.get("iss")
-        provider = self.providers_cache.get(issuer)
 
-        if not provider:
+        if not issuer or not (provider := self.providers_cache.get(issuer)):
             # TODO: when OIDC providers will be added, check if the issuer is inside the cache. If it's not, retrieve the
             #  configuration from the database, initialize it and add it to the cache. Until that day we just return 400 as the
             #  token comes from an unknown issuer.

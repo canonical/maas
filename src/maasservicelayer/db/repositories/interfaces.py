@@ -77,7 +77,7 @@ class InterfaceRepository(BaseRepository):
             )
             .where(eq(NodeTable.c.id, node_id))
         )
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             self._select_all_statement()
@@ -93,7 +93,7 @@ class InterfaceRepository(BaseRepository):
         await self._find_discovered_ip_for_dhcp_links(interfaces, node_id)
 
         return ListResult[Interface](
-            items=[Interface(**iface) for iface in interfaces],
+            items=[Interface(**iface) for iface in interfaces],  # pyright: ignore [reportArgumentType]
             total=total,
         )
 
@@ -104,7 +104,7 @@ class InterfaceRepository(BaseRepository):
 
         result = (await self.execute_stmt(stmt)).all()
         return [
-            Interface(**data)
+            Interface(**data)  # pyright: ignore [reportArgumentType]
             for data in [
                 build_interface_links(row._asdict()) for row in result
             ]
@@ -129,7 +129,7 @@ class InterfaceRepository(BaseRepository):
 
         result = (await self.execute_stmt(stmt)).all()
         return [
-            Interface(**data)
+            Interface(**data)  # pyright: ignore [reportArgumentType]
             for data in [
                 build_interface_links(row._asdict()) for row in result
             ]
@@ -189,7 +189,7 @@ class InterfaceRepository(BaseRepository):
             eq(InterfaceTable.c.id, result[0])
         )
         created_instance = (await self.execute_stmt(get_instance)).one()
-        return Interface(**build_interface_links(created_instance._asdict()))
+        return Interface(**build_interface_links(created_instance._asdict()))  # pyright: ignore [reportArgumentType]
 
     async def _find_discovered_ip_for_dhcp_links(
         self, interfaces, node_id

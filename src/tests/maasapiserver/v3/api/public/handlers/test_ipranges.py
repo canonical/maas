@@ -159,10 +159,7 @@ class TestIPRangesApi(ApiCommonTests):
             "type": str(TEST_IPRANGE.type),
             "start_ip": str(TEST_IPRANGE.start_ip),
             "end_ip": str(TEST_IPRANGE.end_ip),
-            "comment": None,
             "owner_id": 0,
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
             "_links": {
                 "self": {"href": f"{self.BASE_PATH}/{TEST_IPRANGE.id}"}
             },

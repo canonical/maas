@@ -45,6 +45,7 @@ bin/maas-rack \
 bin/maas-region \
 bin/maas-sampledata \
 bin/postgresfixture \
+bin/pyright \
 bin/pytest \
 bin/rackd \
 bin/regiond \
@@ -253,8 +254,8 @@ lint-shell:
 		utilities/update-initial-sql
 .PHONY: lint-shell
 
-check-types:
-	@tox -e check-types
+check-types: bin/pyright
+	bin/pyright --stats
 .PHONY: check-types
 
 format.parallel:

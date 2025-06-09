@@ -42,4 +42,4 @@ class ZoneRequest(NamedBaseModel):
         return v if v else ""
 
     def to_builder(self) -> ZoneBuilder:
-        return ZoneBuilder(name=self.name, description=self.description)
+        return ZoneBuilder(name=self.name, description=self.description)  # pyright: ignore [reportArgumentType]

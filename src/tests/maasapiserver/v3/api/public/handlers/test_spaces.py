@@ -121,8 +121,6 @@ class TestSpaceApi(ApiCommonTests):
             "id": TEST_SPACE.id,
             "name": TEST_SPACE.name,
             "description": TEST_SPACE.description,
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
             "vlans": {
                 "href": f"{V3_API_PREFIX}/vlans?filter=space_id eq {TEST_SPACE.id}"
             },

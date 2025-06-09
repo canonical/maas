@@ -11,7 +11,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -32,6 +31,7 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -60,7 +60,7 @@ class ZonesHandler(Handler):
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         filters: ZonesFiltersParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ZonesListResponse:
         zones = await services.zones.list(
             page=pagination_params.page,
             size=pagination_params.size,
@@ -151,7 +151,7 @@ class ZonesHandler(Handler):
         response: Response,
         zone_request: ZoneRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ZoneResponse:
         zone = await services.zones.create(zone_request.to_builder())
         response.headers["ETag"] = zone.etag()
         return ZoneResponse.from_model(
@@ -180,10 +180,10 @@ class ZonesHandler(Handler):
         zone_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ZoneResponse:
         zone = await services.zones.get_by_id(zone_id)
         if not zone:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = zone.etag()
         return ZoneResponse.from_model(
@@ -213,12 +213,12 @@ class ZonesHandler(Handler):
         zone_request: ZoneRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> ZoneResponse:
         zone = await services.zones.update_by_id(
             zone_id, zone_request.to_builder()
         )
         if not zone:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = zone.etag()
         return ZoneResponse.from_model(

@@ -9,7 +9,6 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -29,6 +28,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -59,7 +59,7 @@ class VlansHandler(Handler):
         vlan_request: VlanCreateRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> VlanResponse:
         vlan_builder = await vlan_request.to_builder(services)
         vlan_builder.fabric_id = fabric_id
         vlan = await services.vlans.create(builder=vlan_builder)
@@ -137,7 +137,7 @@ class VlansHandler(Handler):
         vlan_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> VlanResponse:
         vlan = await services.vlans.get_one(
             query=QuerySpec(
                 ClauseFactory.and_clauses(
@@ -149,7 +149,7 @@ class VlansHandler(Handler):
             )
         )
         if not vlan:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = vlan.etag()
         return VlanResponse.from_model(
@@ -181,7 +181,7 @@ class VlansHandler(Handler):
         response: Response,
         vlan_request: VlanUpdateRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> VlanResponse:
         resource_builder = await vlan_request.to_builder(services, vlan_id)
         vlan = await services.vlans.update_one(
             query=QuerySpec(

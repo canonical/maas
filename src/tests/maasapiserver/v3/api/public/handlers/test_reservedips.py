@@ -159,8 +159,6 @@ class TestReservedIPsApi(ApiCommonTests):
             "ip": "10.0.0.1",
             "mac_address": "01:02:03:04:05:06",
             "comment": "test_comment",
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
             "_links": {
                 "self": {"href": f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}"}
             },

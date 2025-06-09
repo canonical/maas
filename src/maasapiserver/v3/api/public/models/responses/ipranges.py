@@ -33,7 +33,7 @@ class IPRangeResponse(HalResponse[BaseHal]):
             end_ip=iprange.end_ip,
             comment=iprange.comment,
             owner_id=iprange.user_id,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{iprange.id}"
                 )

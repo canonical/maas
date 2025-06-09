@@ -148,7 +148,7 @@ class InterfacesService(
     async def remove_ip(
         self, interface: Interface, sip: StaticIPAddress
     ) -> None:
-        await self.interface_repository.remove_ip(interface, sip)
+        await self.interface_repository.remove_ip(interface, sip.id)
 
         if (
             sip.alloc_type

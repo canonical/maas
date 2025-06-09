@@ -73,4 +73,4 @@ class ReservedIPsRepository(BaseRepository[ReservedIP]):
             )
         )
         stmt = exists(stmt).select()
-        return (await self.execute_stmt(stmt)).scalar()
+        return bool((await self.execute_stmt(stmt)).scalar())

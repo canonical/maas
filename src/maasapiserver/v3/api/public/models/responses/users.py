@@ -43,7 +43,7 @@ class UserResponse(HalResponse[BaseHal]):
             date_joined=user.date_joined,
             email=user.email,
             last_login=user.last_login,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{user.id}"
                 )
@@ -83,7 +83,7 @@ class UserWithSummaryResponse(HalResponse[BaseHal]):
             machines_count=user_with_summary.machines_count,
             sshkeys_count=user_with_summary.sshkeys_count,
             username=user_with_summary.username,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{user_with_summary.id}"
                 )

@@ -499,7 +499,9 @@ class TestDNSResourcesService:
 
         await dnsresources_service.add_ip(sip, dnsrr.name, domain)
 
-        mock_dnsresource_repository.link_ip.assert_called_once_with(dnsrr, sip)
+        mock_dnsresource_repository.link_ip.assert_called_once_with(
+            dnsrr.id, sip.id
+        )
 
     async def test_remove_ip(self):
         mock_domains_service = Mock(DomainsService)

@@ -28,7 +28,7 @@ class TagResponse(HalResponse[BaseHal]):
             comment=tag.comment,
             definition=tag.definition,
             kernel_opts=tag.kernel_opts,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{tag.id}"
                 )

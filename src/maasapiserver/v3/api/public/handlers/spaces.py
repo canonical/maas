@@ -11,7 +11,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -26,6 +25,7 @@ from maasapiserver.v3.api.public.models.responses.spaces import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -96,10 +96,10 @@ class SpacesHandler(Handler):
         space_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SpaceResponse:
         space = await services.spaces.get_by_id(space_id)
         if not space:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = space.etag()
         return SpaceResponse.from_model(
@@ -128,7 +128,7 @@ class SpacesHandler(Handler):
         response: Response,
         space_request: SpaceRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SpaceResponse:
         space = await services.spaces.create(
             builder=space_request.to_builder()
         )
@@ -160,7 +160,7 @@ class SpacesHandler(Handler):
         space_request: SpaceRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SpaceResponse:
         space = await services.spaces.update_by_id(
             id=space_id,
             builder=space_request.to_builder(),

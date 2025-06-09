@@ -78,11 +78,11 @@ async def _get_default_db_config(
             pass
 
     return DatabaseConfig(
-        name=database_name,
-        host=config.database_host,
-        username=database_user,
-        password=database_pass,
-        port=config.database_port,
+        name=str(database_name),
+        host=str(config.database_host),
+        username=str(database_user),
+        password=str(database_pass),
+        port=int(str(config.database_port)),
     )
 
 
@@ -106,7 +106,7 @@ async def read_config() -> Config:
 
     return Config(
         db=database_config,
-        debug=debug,
-        debug_queries=debug_queries,
-        debug_http=debug_http,
+        debug=bool(debug),
+        debug_queries=bool(debug_queries),
+        debug_http=bool(debug_http),
     )

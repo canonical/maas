@@ -187,7 +187,6 @@ class TestResourcePoolApi(ApiCommonTests):
             "id": TEST_RESOURCE_POOL.id,
             "name": TEST_RESOURCE_POOL.name,
             "description": TEST_RESOURCE_POOL.description,
-            "_embedded": None,
             "_links": {
                 "self": {"href": f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"}
             },

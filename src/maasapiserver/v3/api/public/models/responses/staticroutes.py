@@ -30,7 +30,7 @@ class StaticRouteResponse(HalResponse[BaseHal]):
             destination_id=static_route.destination_id,
             gateway_ip=static_route.gateway_ip,
             metric=static_route.metric,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{static_route.id}"
                 )

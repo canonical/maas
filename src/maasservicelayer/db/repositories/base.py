@@ -179,7 +179,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
         )
         exists_stmt = query.enrich_stmt(exists_stmt).exists()
         stmt = select(exists_stmt)
-        return (await self.execute_stmt(stmt)).scalar()
+        return bool((await self.execute_stmt(stmt)).scalar())
 
     async def get_many(self, query: QuerySpec) -> List[T]:
         return await self._get(query)
@@ -213,7 +213,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
         total_stmt = select(count()).select_from(self.get_repository_table())
         if query:
             total_stmt = query.enrich_stmt(total_stmt)
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             self.select_all_statement()

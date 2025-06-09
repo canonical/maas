@@ -47,7 +47,7 @@ class VlanResponse(HalResponse[BaseHal]):
                 if vlan.space_id
                 else None
             ),
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{vlan.id}"
                 )

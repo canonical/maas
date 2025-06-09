@@ -112,7 +112,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
         )
         if query:
             total_stmt = query.enrich_stmt(total_stmt)
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             self.select_all_statement()
@@ -138,7 +138,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.USB))
             .subquery()
         )
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             self._list_devices_statement(system_id)
@@ -163,7 +163,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.PCIE))
             .subquery()
         )
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             self._list_devices_statement(system_id)

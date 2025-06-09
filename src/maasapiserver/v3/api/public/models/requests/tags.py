@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from lxml import etree
+from lxml import etree  # pyright: ignore [reportAttributeAccessIssue]
 from pydantic import Field, validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel

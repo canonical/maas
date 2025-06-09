@@ -1,7 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
+from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
@@ -41,7 +41,7 @@ class InterfacesHandler(Handler):
         node_id: int,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> InterfaceListResponse:
         interfaces = await services.interfaces.list_for_node(
             node_id=node_id,
             page=pagination_params.page,

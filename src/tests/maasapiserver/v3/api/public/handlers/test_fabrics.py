@@ -123,9 +123,6 @@ class TestFabricsApi(ApiCommonTests):
             "id": TEST_FABRIC.id,
             "name": TEST_FABRIC.name,
             "description": TEST_FABRIC.description,
-            "class_type": TEST_FABRIC.class_type,
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
             "vlans": {
                 "href": f"{V3_API_PREFIX}/fabrics/{TEST_FABRIC.id}/vlans"
             },

@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Type
+from typing import Type
 
 from sqlalchemy import and_, desc, select, Table
 from sqlalchemy.sql.functions import func
@@ -20,7 +20,7 @@ from maasservicelayer.models.resource_pools import (
 
 class ResourcePoolClauseFactory(ClauseFactory):
     @classmethod
-    def with_ids(cls, ids: Optional[list[int]]) -> Clause:
+    def with_ids(cls, ids: list[int]) -> Clause:
         return Clause(condition=ResourcePoolTable.c.id.in_(ids))
 
 
@@ -44,7 +44,7 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
         )
         if query:
             total_stmt = query.enrich_stmt(total_stmt)
-        total = (await self.execute_stmt(total_stmt)).scalar()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             select(

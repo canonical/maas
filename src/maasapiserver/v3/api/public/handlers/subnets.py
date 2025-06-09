@@ -8,7 +8,6 @@ from fastapi import Depends, Header, Response, status
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -136,7 +135,7 @@ class SubnetsHandler(Handler):
         subnet_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SubnetResponse:
         subnet = await services.subnets.get_one(
             query=QuerySpec(
                 where=SubnetClauseFactory.and_clauses(
@@ -149,7 +148,7 @@ class SubnetsHandler(Handler):
             )
         )
         if not subnet:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = subnet.etag()
         return SubnetResponse.from_model(
@@ -181,7 +180,7 @@ class SubnetsHandler(Handler):
         subnet_request: SubnetRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SubnetResponse:
         vlan_exists = await services.vlans.exists(
             QuerySpec(
                 where=VlansClauseFactory.and_clauses(
@@ -234,7 +233,7 @@ class SubnetsHandler(Handler):
         subnet_request: SubnetRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> SubnetResponse:
         query = QuerySpec(
             where=SubnetClauseFactory.and_clauses(
                 [

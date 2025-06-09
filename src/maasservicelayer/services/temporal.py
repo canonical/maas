@@ -109,8 +109,8 @@ class TemporalService(Service):
         wait: Optional[bool] = True,
         override_previous_parameters: Optional[bool] = False,
         parameter_merge_func: Optional[Callable] = None,
-        *args: list[Any],
-        **kwargs: dict[str, Any],
+        *args,
+        **kwargs,
     ) -> None:
         key = self._make_key(workflow_name, workflow_id)
 

@@ -36,6 +36,8 @@ class HalResponse(GenericModel, Generic[HAL]):
     }
     """
 
+    # TODO: when switching to Pydantic 2.x change alias to serialization_alias
+    # and remove pyright ignores in the models
     hal_links: Optional[HAL] = Field(default=None, alias="_links")
     hal_embedded: Optional[Dict[str, Any]] = Field(
         default=None, alias="_embedded"

@@ -11,7 +11,6 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
     UnauthorizedBodyResponse,
 )
 from maasapiserver.v3.api import services
@@ -34,6 +33,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.sslkeys import SSLKey
 from maasservicelayer.services import ServiceCollectionV3
@@ -198,7 +198,7 @@ class SSLKeysHandler(Handler):
             ),
         )
         if not sslkey:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = sslkey.etag()
         return SSLKeyResponse.from_model(

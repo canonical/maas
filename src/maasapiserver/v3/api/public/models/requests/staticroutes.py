@@ -20,7 +20,7 @@ class StaticRouteRequest(BaseModel):
     destination_id: int = Field(
         description="Destination subnet ID for the route."
     )
-    metric: StrictNonNegativeInt = Field(
+    metric: StrictNonNegativeInt = Field(  # pyright: ignore [reportInvalidTypeForm]
         description="Weight of the route on a deployed machine.", default=0
     )
 

@@ -37,7 +37,7 @@ class ReservedIPCreateRequest(ReservedIPBaseRequest):
     ) -> ReservedIPBuilder:
         # TODO: move this logic to service layer
         existing_ip = await services.staticipaddress.get_one(
-            QuerySpec(where=StaticIPAddressClauseFactory.with_ip(self.ip))
+            QuerySpec(where=StaticIPAddressClauseFactory.with_ip(self.ip))  # pyright: ignore [reportArgument
         )
         if existing_ip is not None:
             mac_addresses = await services.staticipaddress.get_mac_addresses(

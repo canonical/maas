@@ -24,7 +24,7 @@ class ZoneResponse(HalResponse[BaseHal]):
             id=zone.id,
             name=zone.name,
             description=zone.description,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{zone.id}"
                 )
@@ -36,8 +36,11 @@ class ZonesListResponse(PaginatedResponse[ZoneResponse]):
     kind = "ZonesList"
 
 
-class ZoneWithSummaryResponse(ZoneResponse):
+class ZoneWithSummaryResponse(HalResponse[BaseHal]):
     kind = "ZoneWithSummary"
+    id: int
+    name: str
+    description: str
     devices_count: int
     machines_count: int
     controllers_count: int
@@ -53,7 +56,7 @@ class ZoneWithSummaryResponse(ZoneResponse):
             machines_count=zone_with_summary.machines_count,
             devices_count=zone_with_summary.devices_count,
             controllers_count=zone_with_summary.controllers_count,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{zone_with_summary.id}"
                 )

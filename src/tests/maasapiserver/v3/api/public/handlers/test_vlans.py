@@ -101,6 +101,7 @@ class TestVlanApi(ApiCommonTests):
             description=TEST_VLAN.description,
             vid=TEST_VLAN.vid,
             mtu=TEST_VLAN.mtu,
+            space_id=TEST_VLAN.space_id,
         )
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.create.return_value = TEST_VLAN
@@ -212,13 +213,6 @@ class TestVlanApi(ApiCommonTests):
             "description": TEST_VLAN.description,
             "mtu": TEST_VLAN.mtu,
             "dhcp_on": TEST_VLAN.dhcp_on,
-            "external_dhcp": TEST_VLAN.external_dhcp,
-            "primary_rack": TEST_VLAN.primary_rack_id,
-            "secondary_rack": TEST_VLAN.secondary_rack_id,
-            "relay_vlan_id": TEST_VLAN.relay_vlan_id,
-            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
-            "_embedded": None,
-            "space": None,
             "_links": {"self": {"href": f"{self.BASE_PATH}/{TEST_VLAN.id}"}},
         }
 

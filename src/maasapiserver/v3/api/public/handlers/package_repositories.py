@@ -10,7 +10,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.package_repositories import (
@@ -28,6 +27,7 @@ from maasapiserver.v3.api.public.models.responses.package_repositories import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -55,7 +55,7 @@ class PackageRepositoriesHandler(Handler):
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> PackageRepositoryListResponse:
         package_repositories = await services.package_repositories.list(
             page=pagination_params.page,
             size=pagination_params.size,
@@ -100,7 +100,7 @@ class PackageRepositoriesHandler(Handler):
         response: Response,
         package_repository_request: PackageRepositoryCreateRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> PackageRepositoryResponse:
         package_repository = await services.package_repositories.create(
             package_repository_request.to_builder()
         )
@@ -132,12 +132,12 @@ class PackageRepositoriesHandler(Handler):
         package_repository_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> PackageRepositoryResponse:
         package_repository = await services.package_repositories.get_by_id(
             package_repository_id
         )
         if not package_repository:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = package_repository.etag()
         return PackageRepositoryResponse.from_model(
@@ -168,13 +168,13 @@ class PackageRepositoriesHandler(Handler):
         package_repository_request: PackageRepositoryUpdateRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> PackageRepositoryResponse:
         package_repository = await services.package_repositories.get_by_id(
             package_repository_id
         )
 
         if not package_repository:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         builder = package_repository_request.to_builder(
             is_default=package_repository.default

@@ -11,7 +11,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    NotFoundResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.fabrics import FabricRequest
@@ -26,6 +25,7 @@ from maasapiserver.v3.api.public.models.responses.fabrics import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -99,10 +99,10 @@ class FabricsHandler(Handler):
         fabric_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> FabricResponse:
         fabric = await services.fabrics.get_by_id(fabric_id)
         if not fabric:
-            return NotFoundResponse()
+            raise NotFoundException()
 
         response.headers["ETag"] = fabric.etag()
         return FabricResponse.from_model(
@@ -131,7 +131,7 @@ class FabricsHandler(Handler):
         fabric_request: FabricRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> None:
+    ) -> FabricResponse:
         fabric = await services.fabrics.create(fabric_request.to_builder())
         response.headers["ETag"] = fabric.etag()
         return FabricResponse.from_model(
@@ -162,7 +162,7 @@ class FabricsHandler(Handler):
         fabric_request: FabricRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ) -> FabricResponse:
         fabric = await services.fabrics.update_by_id(
             id=fabric_id,
             builder=fabric_request.to_builder(),

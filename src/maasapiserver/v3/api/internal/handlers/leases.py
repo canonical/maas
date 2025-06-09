@@ -3,7 +3,7 @@
 
 from typing import List
 
-from fastapi import Depends, Response
+from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
@@ -27,10 +27,9 @@ class LeasesHandler(Handler):
     )
     async def store_lease_info(
         self,
-        response: Response,
         leases_info_request: List[LeaseInfoRequest],
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> Response:
+    ):
         for lease_info_request in leases_info_request:
             await services.leases.store_lease_info(
                 Lease(
