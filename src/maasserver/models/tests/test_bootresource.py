@@ -14,16 +14,12 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
 )
-from maasserver.models import bootresource, EventType
-from maasserver.models.bootresource import (
-    BootResource,
-    get_boot_resources_last_deployments,
-)
+from maasserver.models import bootresource
+from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.events import EVENT_TYPES
 from provisioningserver.testing.os import make_osystem
 
 
@@ -850,105 +846,3 @@ class TestBootResource(MAASServerTestCase):
             (cfg["commissioning_osystem"], cfg["commissioning_distro_series"]),
             resource.split_base_image(),
         )
-
-    def test_get_boot_resources_last_deployments(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        name = f"{os}/{series}"
-        arch_one = factory.make_name("arch")
-        arch_two = factory.make_name("arch")
-        event_description_str_one = f"deployed {name}/{arch_one}/generic"
-        event_description_str_two = f"deployed {name}/{arch_two}/generic"
-
-        event_one = factory.make_Event(
-            type=factory.make_EventType(name=EVENT_TYPES.IMAGE_DEPLOYED),
-            description=f"{event_description_str_one}",
-        )
-        event_two = factory.make_Event(
-            type=EventType.objects.get(name=EVENT_TYPES.IMAGE_DEPLOYED),
-            description=f"{event_description_str_two}",
-        )
-
-        _ = factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=name,
-            architecture=f"{arch_one}/generic",
-        )
-        _ = factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=name,
-            architecture=f"{arch_two}/generic",
-        )
-
-        last_deployments = get_boot_resources_last_deployments()
-        self.assertEqual(
-            last_deployments[f"{name}/{arch_one}"], event_one.created
-        )
-        self.assertEqual(
-            last_deployments[f"{name}/{arch_two}"], event_two.created
-        )
-
-    def test_get_boot_resources_last_deployments_many_subarchs(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        name = f"{os}/{series}"
-        arch = factory.make_name("arch")
-        subarch_one = factory.make_name("subarch_one")
-        subarch_two = factory.make_name("subarch_two")
-        architecture_one = f"{arch}/{subarch_one}"
-        architecture_two = f"{arch}/{subarch_two}"
-        event_description_str_one = f"deployed {name}/{architecture_one}"
-        event_description_str_two = f"deployed {name}/{architecture_two}"
-
-        event_one = factory.make_Event(
-            type=factory.make_EventType(name=EVENT_TYPES.IMAGE_DEPLOYED),
-            description=f"{event_description_str_one}",
-        )
-        event_two = factory.make_Event(
-            type=EventType.objects.get(name=EVENT_TYPES.IMAGE_DEPLOYED),
-            description=f"{event_description_str_one}",
-        )
-        event_three = factory.make_Event(
-            type=EventType.objects.get(name=EVENT_TYPES.IMAGE_DEPLOYED),
-            description=f"{event_description_str_two}",
-        )
-
-        _ = factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=name,
-            architecture=architecture_one,
-        )
-        _ = factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=name,
-            architecture=architecture_two,
-        )
-
-        last_deployments = get_boot_resources_last_deployments()
-        self.assertNotEqual(
-            last_deployments[f"{name}/{arch}"], event_one.created
-        )
-        self.assertNotEqual(
-            last_deployments[f"{name}/{arch}"], event_two.created
-        )
-        self.assertEqual(
-            last_deployments[f"{name}/{arch}"], event_three.created
-        )
-
-    def test_get_boot_resources_last_deployments_returns_None_if_no_deployments(
-        self,
-    ):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        name = f"{os}/{series}"
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        architecture = f"{arch}/{subarch}"
-
-        _ = factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=name,
-            architecture=architecture,
-        )
-        last_deployments = get_boot_resources_last_deployments()
-        self.assertNotIn(f"{name}/{arch}", last_deployments)

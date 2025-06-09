@@ -36,7 +36,6 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import BootResourceForm, BootResourceNoContentForm
 from maasserver.models import BootResource, BootResourceFile
-from maasserver.models.bootresource import get_boot_resources_last_deployments
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.node import RegionController
 from maasserver.utils.bootresource import (
@@ -108,7 +107,7 @@ def boot_resource_set_to_dict(resource_set: BootResourceSet):
     return dict_representation
 
 
-def boot_resource_to_dict(resource, with_sets=False, last_deployed=None):
+def boot_resource_to_dict(resource, with_sets=False):
     """Return dictionary representation of `BootResource`."""
     dict_representation = {
         "id": resource.id,
@@ -116,7 +115,7 @@ def boot_resource_to_dict(resource, with_sets=False, last_deployed=None):
         "name": resource.name,
         "architecture": resource.architecture,
         "resource_uri": reverse("boot_resource_handler", args=[resource.id]),
-        "last_deployed": last_deployed,
+        "last_deployed": resource.last_deployed,
     }
     dict_representation.update(resource.extra)
     if resource.base_image:
@@ -198,18 +197,9 @@ class BootResourcesHandler(OperationsHandler):
                 "types: %s" % (rtype, list(TYPE_MAPPING.keys()))
             )
 
-        last_deployments = get_boot_resources_last_deployments()
-        resource_list = []
-        for resource in resources:
-            arch, _ = resource.split_arch()
-            resource_list.append(
-                boot_resource_to_dict(
-                    resource,
-                    last_deployed=last_deployments.get(
-                        f"{resource.name}/{arch}"
-                    ),
-                )
-            )
+        resource_list = [
+            boot_resource_to_dict(resource) for resource in resources
+        ]
         stream = json_object(resource_list, request)
         return HttpResponse(
             stream,
@@ -367,13 +357,10 @@ class BootResourceHandler(OperationsHandler):
             No BootResource matches the given query.
         """
         resource = get_object_or_404(BootResource, id=id)
-        arch, _ = resource.split_arch()
-        last_deployments = get_boot_resources_last_deployments()
         stream = json_object(
             boot_resource_to_dict(
                 resource,
                 with_sets=True,
-                last_deployed=last_deployments.get(f"{resource.name}/{arch}"),
             ),
             request,
         )

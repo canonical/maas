@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.8 (Ubuntu 16.8-0ubuntu0.24.04.1)
--- Dumped by pg_dump version 16.8 (Ubuntu 16.8-0ubuntu0.24.04.1)
+-- Dumped from database version 16.9 (Ubuntu 16.9-0ubuntu0.24.04.1)
+-- Dumped by pg_dump version 16.9 (Ubuntu 16.9-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6590,7 +6590,8 @@ CREATE TABLE public.maasserver_bootresource (
     bootloader_type character varying(32),
     rolling boolean NOT NULL,
     base_image character varying(255) NOT NULL,
-    alias character varying(255)
+    alias character varying(255),
+    last_deployed timestamp without time zone
 );
 
 
@@ -11043,7 +11044,7 @@ ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('t
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0000
+0001
 \.
 
 
@@ -12150,7 +12151,7 @@ COPY public.maasserver_bmcroutablerackcontrollerrelationship (id, created, updat
 -- Data for Name: maasserver_bootresource; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bootresource (id, created, updated, rtype, name, architecture, extra, kflavor, bootloader_type, rolling, base_image, alias) FROM stdin;
+COPY public.maasserver_bootresource (id, created, updated, rtype, name, architecture, extra, kflavor, bootloader_type, rolling, base_image, alias, last_deployed) FROM stdin;
 \.
 
 

@@ -84,6 +84,25 @@ BMCTable = Table(
     Column("created_by_commissioning", Boolean, nullable=True),
 )
 
+
+BootResourceTable = Table(
+    "maasserver_bootresource",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("rtype", Integer, nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("architecture", String(255), nullable=False),
+    Column("extra", JSONB, nullable=False),
+    Column("kflavor", String(32), nullable=True),
+    Column("bootloader_type", String(32), nullable=True),
+    Column("rolling", Boolean, nullable=False),
+    Column("base_image", String(255), nullable=False),
+    Column("alias", String(255), nullable=True),
+    Column("last_deployed", DateTime(timezone=True), nullable=True),
+)
+
 ConfigTable = Table(
     "maasserver_config",
     METADATA,

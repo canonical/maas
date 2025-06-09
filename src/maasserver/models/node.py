@@ -1880,17 +1880,21 @@ class Node(CleanSave, TimestampedModel):
         Event.objects.create_node_event(self, EVENT_TYPES.DEPLOYED)
 
     def update_deployment_time(self) -> None:
+        from maasserver.models.bootresource import BootResource
         from maasserver.models.event import Event
 
-        # NOTE: as long as the latest deployment information of a boot resource is calculated
-        # based on the IMAGE_DEPLOYED events produced by this function, it is important to
-        # maintain the event_description with its current format. Otherwise, the function
-        # performing the calculation will fail.
         Event.objects.create_node_event(
             self,
             EVENT_TYPES.IMAGE_DEPLOYED,
             event_description=f"deployed {self.osystem}/{self.distro_series}/{self.architecture}",
         )
+        # Update the latest deployment time of all the images with this os/release and architecture
+        # Don't bother the sub-architecture.
+        now = timezone.now()
+        BootResource.objects.filter(
+            name=f"{self.osystem}/{self.distro_series}",
+            architecture__startswith=self.architecture.split("/", 1)[0],
+        ).update(last_deployed=now)
 
     def ip_addresses(self, ifaces=None):
         """IP addresses allocated to this node.

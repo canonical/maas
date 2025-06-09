@@ -3,19 +3,17 @@
 
 """Boot Resource."""
 
-from datetime import datetime
 from operator import attrgetter
-from typing import Dict
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
     CharField,
     Count,
+    DateTimeField,
     IntegerField,
     JSONField,
     Manager,
-    Max,
     OuterRef,
     Prefetch,
     Subquery,
@@ -33,10 +31,8 @@ from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
-from maasserver.models.event import Event, EventType
 from maasserver.models.timestampedmodel import now, TimestampedModel
 from maasserver.utils.orm import get_first, get_one
-from provisioningserver.events import EVENT_TYPES
 from provisioningserver.utils.twisted import undefined
 
 LINUX_OSYSTEMS = ("ubuntu", "centos", "rhel", "ol")
@@ -534,6 +530,10 @@ class BootResource(CleanSave, TimestampedModel):
 
     extra = JSONField(blank=True, default=dict)
 
+    last_deployed = DateTimeField(
+        null=True, blank=True, default=None, editable=False
+    )
+
     def __str__(self):
         return (
             f"<BootResource name={self.name}, alias={self.alias}, arch={self.architecture}, "
@@ -690,33 +690,3 @@ class BootResource(CleanSave, TimestampedModel):
             return False
         platforms = self.extra["supported_platforms"].split(",")
         return platform in platforms
-
-
-def get_boot_resources_last_deployments() -> Dict[str, datetime]:
-    """Get the last deployments of all boot resources"""
-    deployed_event_type = EventType.objects.filter(
-        name=EVENT_TYPES.IMAGE_DEPLOYED
-    ).values("id")
-    deployed_events = (
-        Event.objects.filter(type=Subquery(deployed_event_type))
-        .values("description")
-        .annotate(latest_created=Max("created"))
-    )
-    resource_dict = {}
-    for event in deployed_events:
-        # the below string manipulation is extracting the {os}/{series}/{arch}
-        # out of the event description.
-        #
-        # e.g.,
-        #       event["description"] = "deployed ubuntu/noble/amd64/generic"
-        #       image_identifier = "ubuntu/noble/amd64"
-        image_identifier = event["description"][len("deployed ") :].rsplit(
-            "/", 1
-        )[0]
-        if image_identifier not in resource_dict.keys():
-            resource_dict[image_identifier] = event["latest_created"]
-        else:
-            resource_dict[image_identifier] = max(
-                resource_dict[image_identifier], event["latest_created"]
-            )
-    return resource_dict
