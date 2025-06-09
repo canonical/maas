@@ -76,6 +76,7 @@ class DNSPublication:
 @dataclass
 class SerialChangesResult:
     updates: list[DynamicDNSUpdate]
+    force_reload: bool
 
 
 @dataclass
@@ -114,16 +115,21 @@ def get_zone_file_path(zone: str) -> str:
 class DNSConfigActivity(ActivityBase):
     async def _get_current_serial_from_file(
         self, svc: ServiceCollectionV3
-    ) -> int:
+    ) -> int | None:
         default_domain = (
             await svc.domains.get_default_domain()
         )  # any zonefile will have the same serial
         file_path = get_zone_file_config_dir() / f"zone.{default_domain.name}"
-        async with aiofiles.open(file_path, mode="r") as f:
-            async for line in f:
-                result = zone_serial_regexp.findall(line)
-                if result:
-                    return int(result[0])
+        try:
+            async with aiofiles.open(file_path, mode="r") as f:
+                async for line in f:
+                    result = zone_serial_regexp.findall(line)
+                    if result:
+                        return int(result[0])
+        except FileNotFoundError:
+            pass
+
+        return None
 
     async def _dnspublication_to_dnsupdate(
         self,
@@ -340,6 +346,8 @@ class DNSConfigActivity(ActivityBase):
     ) -> (int, SerialChangesResult | None):
         async with self.start_transaction() as svc:
             current_serial = await self._get_current_serial_from_file(svc)
+            if not current_serial:
+                return -1, SerialChangesResult(updates=[], force_reload=True)
             dnspublications = (
                 await svc.dnspublications.get_publications_since_serial(
                     current_serial
@@ -359,7 +367,9 @@ class DNSConfigActivity(ActivityBase):
                 dnspublications[-1].serial if dnspublications else None
             )
 
-            return latest_serial, SerialChangesResult(updates=updates)
+            return latest_serial, SerialChangesResult(
+                updates=updates, force_reload=False
+            )
 
     @activity.defn(name=GET_REGION_CONTROLLERS_NAME)
     async def get_region_controllers(self) -> RegionControllersResult:
@@ -970,12 +980,15 @@ class ConfigureDNSWorkflow:
                 GET_CHANGES_SINCE_CURRENT_SERIAL_NAME,
                 start_to_close_timeout=GET_CHANGES_SINCE_CURRENT_SERIAL_TIMEOUT,
             )
-            if latest_serial is None:
+            if latest_serial is None:  # up-to-date
                 return
 
-            for publication in updates["updates"]:
-                if publication["operation"] == DnsUpdateAction.RELOAD:
-                    need_full_reload = True
+            if updates["force_reload"]:
+                need_full_reload = True
+            else:
+                for publication in updates["updates"]:
+                    if publication["operation"] == DnsUpdateAction.RELOAD:
+                        need_full_reload = True
 
         region_controllers = await workflow.execute_activity(
             GET_REGION_CONTROLLERS_NAME,
@@ -985,6 +998,7 @@ class ConfigureDNSWorkflow:
         for region_controller_system_id in region_controllers[
             "region_controller_system_ids"
         ]:
+            new_serial = None
             if need_full_reload:
                 new_serial = await workflow.execute_activity(
                     FULL_RELOAD_DNS_CONFIGURATION_NAME,
@@ -1007,11 +1021,12 @@ class ConfigureDNSWorkflow:
                     ),
                 )
 
-            await workflow.execute_activity(
-                CHECK_SERIAL_UPDATE_NAME,
-                CheckSerialUpdateParam(serial=new_serial["serial"]),
-                start_to_close_timeout=CHECK_SERIAL_UPDATE_TIMEOUT,
-                task_queue=get_task_queue_for_update(
-                    region_controller_system_id
-                ),
-            )
+            if new_serial:
+                await workflow.execute_activity(
+                    CHECK_SERIAL_UPDATE_NAME,
+                    CheckSerialUpdateParam(serial=new_serial["serial"]),
+                    start_to_close_timeout=CHECK_SERIAL_UPDATE_TIMEOUT,
+                    task_queue=get_task_queue_for_update(
+                        region_controller_system_id
+                    ),
+                )
