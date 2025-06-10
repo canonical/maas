@@ -18,8 +18,9 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.users import (
     UserChangePasswordRequest,
-    UserRequest,
+    UserCreateRequest,
     UsersFiltersParams,
+    UserUpdateRequest,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -270,7 +271,7 @@ class UsersHandler(Handler):
     )
     async def create_user(
         self,
-        user_request: UserRequest,
+        user_request: UserCreateRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
@@ -304,7 +305,7 @@ class UsersHandler(Handler):
     async def update_user(
         self,
         user_id: int,
-        user_request: UserRequest,
+        user_request: UserUpdateRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:

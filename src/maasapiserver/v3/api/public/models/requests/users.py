@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, validator
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.users import UserClauseFactory
+from maasservicelayer.models.base import UNSET
 
 
 class UsersFiltersParams(BaseModel):
@@ -32,9 +33,8 @@ class UsersFiltersParams(BaseModel):
         )
 
 
-class UserRequest(BaseModel):
+class BaseUserRequest(BaseModel):
     username: str
-    password: str = Field(..., min_length=1)
     is_superuser: bool
     first_name: str
     last_name: str
@@ -47,11 +47,36 @@ class UserRequest(BaseModel):
             raise ValueError("A valid email address must be provided.")
         return v.lower()
 
+
+class UserCreateRequest(BaseUserRequest):
+    password: str = Field(..., min_length=1)
+
     def to_builder(self) -> UserBuilder:
         hashed_password = UserBuilder.hash_password(self.password)
         return UserBuilder(
             username=self.username,
             password=hashed_password,
+            is_superuser=self.is_superuser,
+            is_staff=False,
+            is_active=True,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            email=self.email,
+        )
+
+
+class UserUpdateRequest(BaseUserRequest):
+    password: str | None = Field(min_length=1, default=None)
+
+    def to_builder(self) -> UserBuilder:
+        password = (
+            UserBuilder.hash_password(self.password)
+            if self.password
+            else UNSET
+        )
+        return UserBuilder(
+            username=self.username,
+            password=password,
             is_superuser=self.is_superuser,
             is_staff=False,
             is_active=True,

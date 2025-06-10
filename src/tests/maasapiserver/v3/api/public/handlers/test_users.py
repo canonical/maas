@@ -12,7 +12,10 @@ from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.requests.users import UserRequest
+from maasapiserver.v3.api.public.models.requests.users import (
+    UserCreateRequest,
+    UserUpdateRequest,
+)
 from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
     UserResponse,
@@ -298,7 +301,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
-        create_user_request = UserRequest(
+        create_user_request = UserCreateRequest(
             username="new_username",
             password="new_password",
             is_superuser=False,
@@ -344,7 +347,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
-        create_user_request = UserRequest(
+        create_user_request = UserCreateRequest(
             username="new_username",
             password="new_password",
             is_superuser=False,
@@ -437,7 +440,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
 
-        user_request = UserRequest(
+        user_request = UserUpdateRequest(
             is_superuser=True,
             username="new_user",
             password="new_pass",
@@ -470,7 +473,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.side_effect = NotFoundException()
 
-        user_request = UserRequest(
+        user_request = UserUpdateRequest(
             is_superuser=True,
             username="new_user",
             password="new_pass",
@@ -500,7 +503,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = None
 
-        user_request = UserRequest(
+        user_request = UserUpdateRequest(
             is_superuser=True,
             username="new_user",
             password="new_pass",
