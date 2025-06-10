@@ -184,7 +184,6 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 [details=Mapping table] 
 | PATH                                                    | LOCATION                                                                  |
 |---------------------------------------------------------|---------------------------------------------------------------------------|
-| /docs/commissioning-script-reference                    | /docs/reference-commissioning-scripts                                     |
 | /docs/how-to-use-the-python-api-client                  | /docs/how-to-script-maas-with-python                                      |
 | /docs/how-to-configure-an-air-gapped-maas               | /docs/how-to-set-up-air-gapped-maas                                       |
 | /docs/how-to-install-maas                               | /docs/how-to-get-maas-up-and-running                                      |

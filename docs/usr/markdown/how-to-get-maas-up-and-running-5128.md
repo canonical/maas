@@ -111,6 +111,7 @@ DHCP must be enabled before MAAS can commission and deploy machines.
    maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True \
        primary_rack=$PRIMARY_RACK_CONTROLLER
    ```
+<<<<<<< HEAD
 2. Set the default gateway:
    ```bash
    maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
@@ -215,13 +216,6 @@ sudo apt update && sudo apt upgrade maas
 - **PostgreSQL 12 is deprecated in MAAS 3.3 and unsupported in 3.5.** Upgrade to PostgreSQL 14 before proceeding.
 
 ## Additional notes
-
-The following general notes apply to an upgrade:
-
-* Review PostgreSQL Requirements: MAAS 3.6 supports PostgreSQL 16 ([Upgrade instructions to Postgres 16 here.](https://maas.io/docs/how-to-upgrade-from-postgresql-v14-to-v16)). 
-* Upgrade Ubuntu if needed: Ensure you’re running Ubuntu 24.04 (Noble) before upgrading MAAS.
-* Backup your data: Always create a backup before upgrading.
-* Multi-node setups: Upgrade rack nodes first, then region nodes
 
 ### Avoiding NTP conflicts
 

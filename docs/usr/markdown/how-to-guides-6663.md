@@ -32,7 +32,7 @@ MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine oper
 
 ## Group machines for quick categorization & redeployment
 
-[Manage machine groups](https://maas.io/docs/how-to-manage-machine-groups) create failover redundancy (availability zones), ensure functional allocation (resource pools), easily track machine capabilities(tags) and track operational status (notes and annotations):
+[Manage machine groups](https://maas.io/docs/how-to-manage-machine-groups) create failover redundancy (availability zones), ensure functional allocation (resource pools), easily track machine capabilities (tags) and track operational status (notes and annotations):
 
 - Set up to create redundant failover for critical systems.
 - Assign resource pools to budget provisioning by corporate or data center function.
@@ -43,7 +43,7 @@ MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine oper
 
 MAAS supports a wide range of Linux, Windows, and specialty operating systems, so it pays to [manage images](https://maas.io/docs/how-to-manage-images) carefully:
 
-- Set up [image SimpleStreams to keep your standard images up-to-date.
+- Set up image SimpleStreams to keep your standard images up-to-date.
 - Use custom and local mirrors to improve download performance.
 - [Build your own Ubuntu images](https://maas.io/docs/how-to-build-ubuntu-images).
 - [Build custom images](https://maas.io/docs/how-to-build-custom-images), including RHEL, CentOS, Oracle Linux, VMWare ESXI, Windows, and others.
