@@ -1,8 +1,11 @@
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import pytest
 from temporalio.api.common.v1 import Payload
 from temporalio.converter import DefaultPayloadConverter
 
-from maasserver.workflow.codec.encryptor import (
+from maastemporalworker.encryptor import (
     EncryptionCodec,
     METADATA_ENCODING_ENCRYPTED,
 )

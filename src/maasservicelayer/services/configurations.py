@@ -11,7 +11,11 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsClauseFactory,
 )
-from maasservicelayer.models.configurations import Config, ConfigFactory
+from maasservicelayer.models.configurations import (
+    Config,
+    ConfigFactory,
+    UUIDConfig,
+)
 from maasservicelayer.services.base import Service
 from maasservicelayer.services.database_configurations import (
     DatabaseConfigurationNotFound,
@@ -19,6 +23,7 @@ from maasservicelayer.services.database_configurations import (
 )
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.secrets import SecretNotFound, SecretsService
+from provisioningserver.utils.version import get_running_version
 
 T = TypeVar("T", bound=Config)
 
@@ -146,3 +151,12 @@ class ConfigurationsService(Service):
             )
         )
         return configs
+
+    async def get_maas_user_agent(self):
+        # TODO: move get_running_version to maascommon.
+        version = get_running_version()
+        user_agent = f"maas/{version.short_version}/{version.extended_info}"
+        uuid = await self.get(UUIDConfig.name)
+        if uuid:
+            user_agent += f"/{uuid}"
+        return user_agent

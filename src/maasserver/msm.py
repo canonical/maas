@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -19,7 +19,7 @@ from maasserver.models.config import Config
 from maasserver.secrets import SecretManager
 from maasserver.utils.orm import with_connection
 from maasserver.workflow import cancel_workflow, start_workflow
-from maasserver.workflow.worker.worker import get_client_async
+from maastemporalworker.worker import get_client_async
 from maastemporalworker.workflow.msm import MSM_SECRET, MSMEnrolParam
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import MAAS_UUID

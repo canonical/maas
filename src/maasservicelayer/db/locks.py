@@ -1,10 +1,16 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC
+import asyncio
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
+import structlog
+
+from maasservicelayer.db import Database
+
+logger = structlog.getLogger()
 
 
 class DatabaseLockNotHeld(Exception):
@@ -60,3 +66,15 @@ class StartupLock(DatabaseLockBase):
 
     def __init__(self, connection: AsyncConnection):
         super().__init__(connection, 20120116, 1)
+
+
+async def wait_for_startup(db: Database):
+    """
+    Wait until the startup lock has been removed and we can start the application.
+    """
+    async with db.engine.connect() as conn:
+        async with conn.begin():
+            startup_lock = StartupLock(conn)
+            while await startup_lock.is_locked():
+                logger.info("Startup lock found. Retrying in 5 seconds")
+                await asyncio.sleep(5)

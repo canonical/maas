@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource File."""
@@ -31,7 +31,7 @@ from maasserver.models.node import RegionController
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.workflow import execute_workflow
-from maasserver.workflow.bootresource import (
+from maastemporalworker.workflow.bootresource import (
     DELETE_BOOTRESOURCE_WORKFLOW_NAME,
     ResourceDeleteParam,
     ResourceIdentifier,

@@ -101,7 +101,7 @@ from maasserver.workflow import (
     execute_workflow,
     REGION_TASK_QUEUE,
 )
-from maasserver.workflow.bootresource import (
+from maastemporalworker.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
     SpaceRequirementParam,

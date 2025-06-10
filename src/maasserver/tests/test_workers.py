@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.workers`"""
@@ -11,11 +11,8 @@ from unittest.mock import call
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver.workers import (
-    set_max_workers_count,
-    WorkerProcess,
-    WorkersService,
-)
+from maascommon.worker import get_worker_ids, set_max_workers_count
+from maasserver.workers import WorkerProcess, WorkersService
 from maastesting.crochet import wait_for
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import DeferredValue
@@ -32,7 +29,7 @@ class TestWorkersCount(MAASTestCase):
     def test_set_max_workers_count(self):
         worker_count = random.randint(1, 8)
         set_max_workers_count(worker_count)
-        from maasserver.workers import MAX_WORKERS_COUNT
+        from maascommon.worker import MAX_WORKERS_COUNT
 
         assert worker_count == MAX_WORKERS_COUNT
 
@@ -43,9 +40,9 @@ class TestWorkersService(MAASTestCase):
         set_max_workers_count(worker_count)
         service = WorkersService(reactor)
 
-        from maasserver.workers import MAX_WORKERS_COUNT
+        from maascommon.worker import MAX_WORKERS_COUNT
 
-        assert len(service.get_worker_ids()) == MAX_WORKERS_COUNT
+        assert len(get_worker_ids()) == MAX_WORKERS_COUNT
         assert sys.argv[0] == service.worker_cmd
 
     def test_calls_spawnWorkers_on_start(self):

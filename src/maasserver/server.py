@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Entrypoint for the maas regiond service."""
@@ -7,6 +7,8 @@ import argparse
 import os
 import signal
 import sys
+
+from maascommon.worker import set_max_workers_count
 
 # Set the default so on installed system running regiond directly just works.
 os.environ.setdefault(
@@ -77,9 +79,6 @@ def run():
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         runWorkerServices()
         return
-
-    # Circular imports.
-    from maasserver.workers import set_max_workers_count
 
     # Debug mode, run the all-in-one mode.
     if args.debug:

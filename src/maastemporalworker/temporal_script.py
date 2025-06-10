@@ -8,10 +8,20 @@ import signal
 import structlog
 
 from maasapiserver.settings import read_config
-from maasserver.workflow.worker import Worker as TemporalWorker
+from maascommon.worker import set_max_workers_count
 from maasservicelayer.db import Database
+from maasservicelayer.db.locks import wait_for_startup
 from maasservicelayer.logging.configure import configure_logging
 from maasservicelayer.services import CacheForServices
+from maastemporalworker.worker import REGION_TASK_QUEUE
+from maastemporalworker.worker import Worker as TemporalWorker
+from maastemporalworker.workflow.bootresource import (
+    BootResourcesActivity,
+    CheckBootResourcesStorageWorkflow,
+    DeleteBootResourceWorkflow,
+    DownloadBootResourceWorkflow,
+    SyncBootResourcesWorkflow,
+)
 from maastemporalworker.workflow.commission import CommissionNWorkflow
 from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
@@ -73,6 +83,9 @@ async def _stop_temporal_workers(workers: list[TemporalWorker]) -> None:
 async def main() -> None:
     # TODO check that Temporal is active
     config = await read_config()
+    # TODO: terrible. Refactor when maasserver will be dropped, please!
+    set_max_workers_count(config.num_workers)
+
     configure_logging(
         level=logging.DEBUG if config.debug else logging.INFO,
         query_level=logging.DEBUG if config.debug else logging.WARNING,
@@ -81,11 +94,18 @@ async def main() -> None:
     log.info("starting region temporal-worker process")
     log.debug("connecting to MAAS DB")
     db = Database(config.db, echo=config.debug_queries)
+
+    # In maasserver we have a startup lock. If it is set, we have to wait to start the worker as well.
+    await wait_for_startup(db)
+
     log.debug("connecting to Temporal server")
 
     maas_id = MAAS_ID.get()
 
     services_cache = CacheForServices()
+
+    boot_res_activity = BootResourcesActivity(db, services_cache)
+    await boot_res_activity.init(region_id=maas_id)
     configure_activity = ConfigureAgentActivity(db, services_cache)
     msm_activity = MSMConnectorActivity(db, services_cache)
     tag_evaluation_activity = TagEvaluationActivity(db, services_cache)
@@ -97,8 +117,16 @@ async def main() -> None:
     temporal_workers = [
         # All regions listen to a shared task queue. The first to pick up a task will execute it.
         TemporalWorker(
-            task_queue="region",
+            task_queue=REGION_TASK_QUEUE,
             workflows=[
+                # Boot resources workflows
+                CheckBootResourcesStorageWorkflow,
+                DeleteBootResourceWorkflow,
+                # DownloadBootResourceWorkflow is run by the region that executes SyncBootResourcesWorkflow to download
+                # the image on its own storage. Then, DownloadBootResourceWorkflow is scheduled on the task queues of the
+                # other regions if the HA is being used.
+                DownloadBootResourceWorkflow,
+                SyncBootResourcesWorkflow,
                 # Configuration workflows
                 ConfigureAgentWorkflow,
                 ConfigureDHCPWorkflow,
@@ -124,6 +152,10 @@ async def main() -> None:
                 TagEvaluationWorkflow,
             ],
             activities=[
+                # Boot resources activities
+                boot_res_activity.download_bootresourcefile,
+                boot_res_activity.get_bootresourcefile_endpoints,
+                boot_res_activity.get_bootresourcefile_sync_status,
                 # Configuration activities
                 configure_activity.get_rack_controller_vlans,
                 configure_activity.get_region_controller_endpoints,
@@ -160,7 +192,16 @@ async def main() -> None:
         # Individual region controller worker
         TemporalWorker(
             task_queue=f"region:{maas_id}",
+            workflows=[
+                # Boot resources workflows
+                CheckBootResourcesStorageWorkflow,
+                DownloadBootResourceWorkflow,
+            ],
             activities=[
+                # Boot resources activities
+                boot_res_activity.delete_bootresourcefile,
+                boot_res_activity.download_bootresourcefile,
+                boot_res_activity.check_disk_space,
                 # dns activities
                 dns_activity.full_reload_dns_configuration,
                 dns_activity.dynamic_update_dns_configuration,

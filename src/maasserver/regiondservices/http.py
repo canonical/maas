@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """HTTP proxy service for the region controller."""
@@ -12,6 +12,7 @@ from typing import Optional
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.worker import worker_socket_paths
 from maasserver.certificates import get_maas_certificate
 from maasserver.listener import (
     PostgresListenerService,
@@ -23,7 +24,6 @@ from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
 from maasserver.utils.bootresource import get_bootresource_store_path
 from maasserver.utils.threads import deferToDatabase
-from maasserver.workers import WorkersService
 from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_maas_data_path
@@ -35,17 +35,8 @@ from provisioningserver.utils.fs import atomic_write, get_root_path
 
 log = LegacyLogger()
 
-REGIOND_SOCKET_PATH = os.getenv(
-    "MAAS_HTTP_SOCKET_WORKER_BASE_PATH",
-    get_maas_data_path("maas-regiond-webapp.sock"),
-)
-
 
 class RegionHTTPService(Service):
-    @staticmethod
-    def build_unix_socket_path_for_worker(worker_id: str) -> str:
-        return f"{REGIOND_SOCKET_PATH}.{worker_id}"
-
     def __init__(self, postgresListener: PostgresListenerService = None):
         super().__init__()
         self.listener = postgresListener
@@ -67,13 +58,6 @@ class RegionHTTPService(Service):
                 )
 
         return super().stopService()
-
-    @staticmethod
-    def worker_socket_paths() -> list[str]:
-        return [
-            RegionHTTPService.build_unix_socket_path_for_worker(worker_id)
-            for worker_id in WorkersService.get_worker_ids()
-        ]
 
     def _getConfiguration(self):
         cert = get_maas_certificate()
@@ -98,7 +82,7 @@ class RegionHTTPService(Service):
             "tls_port": configuration.port,
             "tls_key_path": key_path,
             "tls_cert_path": cert_path,
-            "worker_socket_paths": RegionHTTPService.worker_socket_paths(),
+            "worker_socket_paths": worker_socket_paths(),
             "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
             "boot_resources_dir": str(get_bootresource_store_path()),

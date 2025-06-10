@@ -1,3 +1,6 @@
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import random
 import ssl
 from typing import Any
@@ -6,23 +9,21 @@ from aiohttp import ClientSession, ClientTimeout, TCPConnector, UnixConnector
 
 from apiclient.maas_client import MAASOAuth
 from maascommon.constants import SYSTEM_CA_FILE
-from maasserver.models.user import get_creds_tuple
+from maascommon.worker import worker_socket_paths
 
 
 class MAASAPIClient:
-    def __init__(self, url: str, token, user_agent: str = ""):
+    def __init__(self, url: str, token: str, user_agent: str = ""):
         self.url = url.rstrip("/")
         self.user_agent = user_agent
-        self._oauth = MAASOAuth(*get_creds_tuple(token))
+        self._oauth = MAASOAuth(*token.split(":"))
         self._unix_session = self._create_unix_session()
         self._session = self._create_session()
 
     def _create_unix_session(self) -> ClientSession:
         # We run all activities on the same host as the Region.
         # We want to make calls to Region API over a UNIX socket.
-        from maasserver.regiondservices.http import RegionHTTPService
-
-        path = random.choice(RegionHTTPService.worker_socket_paths())
+        path = random.choice(worker_socket_paths())
         conn = UnixConnector(path=path)
         headers = {}
         if self.user_agent:

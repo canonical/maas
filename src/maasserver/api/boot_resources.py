@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `BootResouce`."""
@@ -45,14 +45,14 @@ from maasserver.utils.bootresource import (
 )
 from maasserver.utils.orm import post_commit_do
 from maasserver.workflow import execute_workflow
-from maasserver.workflow.bootresource import (
+from maastemporalworker.worker import REGION_TASK_QUEUE
+from maastemporalworker.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
     SpaceRequirementParam,
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
-from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 
 TYPE_MAPPING = {
     "synced": BOOT_RESOURCE_TYPE.SYNCED,

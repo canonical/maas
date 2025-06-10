@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Event-loop support for the MAAS Region Controller.
@@ -185,12 +185,6 @@ def make_TemporalService():
     from maasserver.regiondservices import temporal
 
     return temporal.RegionTemporalService()
-
-
-def make_TemporalWorker():
-    from maasserver.regiondservices import temporal_worker
-
-    return temporal_worker.TemporalWorkerService(reactor)
 
 
 def make_WebApplicationService(postgresListener, statusWorker):
@@ -442,11 +436,6 @@ class RegionEventLoop:
         "temporal": {
             "only_on_master": True,
             "factory": make_TemporalService,
-            "requires": [],
-        },
-        "temporal-worker": {
-            "only_on_master": True,
-            "factory": make_TemporalWorker,
             "requires": [],
         },
     }

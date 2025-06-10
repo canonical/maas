@@ -1,17 +1,29 @@
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import asyncio
 from collections import defaultdict
 from unittest.mock import Mock
 
 import pytest
+from temporalio import workflow
 from temporalio.api.workflowservice.v1 import (
     DescribeNamespaceResponse,
     RegisterNamespaceResponse,
 )
 from temporalio.worker import Worker as TemporalWorker
 
-from maasserver.workflow.testing.dummy import DummyWorkflow
-from maasserver.workflow.worker import Worker
+from maastemporalworker.worker import Worker
 from provisioningserver.utils.env import MAAS_SHARED_SECRET
+
+
+@workflow.defn(name="DummyWorkflow", sandboxed=False)
+class DummyWorkflow:
+    """A no-op workflow for test purposes"""
+
+    @workflow.run
+    async def run(self) -> None:
+        return
 
 
 @pytest.fixture

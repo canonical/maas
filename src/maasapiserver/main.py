@@ -1,4 +1,4 @@
-# Copyright 2023-2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -43,7 +43,7 @@ from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
-from maasservicelayer.db.locks import StartupLock
+from maasservicelayer.db.locks import wait_for_startup
 from maasservicelayer.logging.configure import configure_logging
 from maasservicelayer.services import CacheForServices
 from provisioningserver.certificates import get_maas_cluster_cert_paths
@@ -58,18 +58,6 @@ def config_uvicorn_logging(level=logging.INFO) -> None:
     logging.getLogger("uvicorn.access").setLevel(
         logging.ERROR if level == logging.INFO else level
     )
-
-
-async def wait_for_startup(db: Database):
-    """
-    Wait until the startup lock has been removed and we can start the application.
-    """
-    async with db.engine.connect() as conn:
-        async with conn.begin():
-            startup_lock = StartupLock(conn)
-            while await startup_lock.is_locked():
-                logger.info("Startup lock found. Retrying in 5 seconds")
-                await asyncio.sleep(5)
 
 
 async def prepare_app(

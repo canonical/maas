@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Workers executor."""
@@ -10,19 +10,10 @@ from twisted.application import service
 from twisted.internet import protocol
 from twisted.internet.process import ProcessExitedAlready
 
+from maascommon.worker import get_worker_ids, MAX_WORKERS_COUNT
 from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
-
-MAX_WORKERS_COUNT = int(
-    os.environ.get("MAAS_REGIOND_WORKER_COUNT", os.cpu_count())
-)
-
-
-def set_max_workers_count(worker_count):
-    """Set the global `MAX_WORKERS_COUNT`."""
-    global MAX_WORKERS_COUNT
-    MAX_WORKERS_COUNT = worker_count
 
 
 class WorkerProcess(protocol.ProcessProtocol):
@@ -55,10 +46,6 @@ class WorkersService(service.Service):
     Manages the lifecycle of the workers.
     """
 
-    @staticmethod
-    def get_worker_ids() -> list[str]:
-        return [str(worker_id) for worker_id in range(MAX_WORKERS_COUNT)]
-
     def __init__(self, reactor, *, worker_cmd=None):
         super().__init__()
         self.reactor = reactor
@@ -67,7 +54,7 @@ class WorkersService(service.Service):
         if self.worker_cmd is None:
             self.worker_cmd = sys.argv[0]
         self.workers = {}
-        self.missing_worker_ids = self.get_worker_ids()
+        self.missing_worker_ids = get_worker_ids()
 
     def startService(self):
         """Start the workers."""

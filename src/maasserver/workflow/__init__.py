@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -10,7 +10,7 @@ import uuid
 from temporalio.service import RPCError
 from twisted.internet.defer import Deferred, succeed
 
-from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
+from maastemporalworker.worker import get_client_async, REGION_TASK_QUEUE
 from provisioningserver.utils.twisted import asynchronous, FOREVER
 
 

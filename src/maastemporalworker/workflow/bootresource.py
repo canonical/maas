@@ -1,5 +1,5 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
 from asyncio import gather
@@ -9,6 +9,7 @@ import shutil
 from typing import Coroutine, Sequence
 
 from aiohttp.client_exceptions import ClientError
+from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
@@ -21,8 +22,16 @@ from maasserver.utils.bootresource import (
     LocalStoreWriteBeyondEOF,
 )
 from maasserver.utils.converters import human_readable_bytes
-from maasserver.workflow.api_client import MAASAPIClient
-from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
+from maasservicelayer.db import Database
+from maasservicelayer.models.configurations import MAASUrlConfig
+from maasservicelayer.services import CacheForServices
+from maastemporalworker.worker import REGION_TASK_QUEUE
+from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.api_client import MAASAPIClient
+from maastemporalworker.workflow.utils import (
+    activity_defn_with_context,
+    workflow_run_with_context,
+)
 from provisioningserver.utils.url import compose_URL
 
 REPORT_INTERVAL = timedelta(seconds=10)
@@ -103,10 +112,24 @@ class BootResourceImportCancelled(Exception):
     """Operation was cancelled"""
 
 
-class BootResourcesActivity(MAASAPIClient):
-    def __init__(self, url: str, token, user_agent: str, region_id: str):
-        super().__init__(url, token, user_agent=user_agent)
+class BootResourcesActivity(ActivityBase):
+    def __init__(
+        self,
+        db: Database,
+        services_cache: CacheForServices,
+        connection: AsyncConnection | None = None,
+    ):
+        super().__init__(db, services_cache, connection)
+
+    async def init(self, region_id: str):
         self.region_id = region_id
+        async with self.start_transaction() as services:
+            maas_url = await services.configurations.get(MAASUrlConfig.name)
+            token = await services.users.get_MAAS_user_apikey()
+            user_agent = await services.configurations.get_maas_user_agent()
+            self.apiclient = MAASAPIClient(
+                url=maas_url, token=token, user_agent=user_agent
+            )
 
     async def report_progress(self, rfiles: list[int], size: int):
         """Report progress back to MAAS
@@ -118,8 +141,8 @@ class BootResourcesActivity(MAASAPIClient):
         Returns:
            requests.Response: Response object
         """
-        url = f"{self.url}/api/2.0/images-sync-progress/"
-        return await self.request_async(
+        url = f"{self.apiclient.url}/api/2.0/images-sync-progress/"
+        return await self.apiclient.request_async(
             "POST",
             url,
             data={
@@ -129,7 +152,7 @@ class BootResourcesActivity(MAASAPIClient):
             },
         )
 
-    @activity.defn(name=CHECK_DISK_SPACE_ACTIVITY_NAME)
+    @activity_defn_with_context(name=CHECK_DISK_SPACE_ACTIVITY_NAME)
     async def check_disk_space(self, param: SpaceRequirementParam) -> bool:
         target_dir = get_bootresource_store_path()
         _, _, free = shutil.disk_usage(target_dir)
@@ -147,19 +170,23 @@ class BootResourcesActivity(MAASAPIClient):
             )
             return False
 
-    @activity.defn(name=GET_BOOTRESOURCEFILE_SYNC_STATUS_ACTIVITY_NAME)
+    @activity_defn_with_context(
+        name=GET_BOOTRESOURCEFILE_SYNC_STATUS_ACTIVITY_NAME
+    )
     async def get_bootresourcefile_sync_status(
         self, with_sources: bool = True
     ) -> dict:
-        url = f"{self.url}/api/2.0/images-sync-progress/"
-        return await self.request_async(
+        url = f"{self.apiclient.url}/api/2.0/images-sync-progress/"
+        return await self.apiclient.request_async(
             "GET", url, params={"sources": str(with_sources)}
         )
 
-    @activity.defn(name=GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME)
+    @activity_defn_with_context(
+        name=GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME
+    )
     async def get_bootresourcefile_endpoints(self) -> dict[str, list]:
-        url = f"{self.url}/api/2.0/regioncontrollers/"
-        regions = await self.request_async("GET", url)
+        url = f"{self.apiclient.url}/api/2.0/regioncontrollers/"
+        regions = await self.apiclient.request_async("GET", url)
         regions_endpoints = {}
         for region in regions:
             # https://bugs.launchpad.net/maas/+bug/2058037
@@ -176,7 +203,7 @@ class BootResourcesActivity(MAASAPIClient):
                 )
         return regions_endpoints
 
-    @activity.defn(name=DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME)
+    @activity_defn_with_context(name=DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME)
     async def download_bootresourcefile(
         self, param: ResourceDownloadParam
     ) -> bool:
@@ -210,7 +237,7 @@ class BootResourcesActivity(MAASAPIClient):
                 return True
 
             async with (
-                self.session.get(
+                self.apiclient.session.get(
                     url,
                     verify_ssl=False,
                     chunked=True,
@@ -267,7 +294,7 @@ class BootResourcesActivity(MAASAPIClient):
         finally:
             lfile.release_lock()
 
-    @activity.defn(name=DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME)
+    @activity_defn_with_context(name=DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME)
     async def delete_bootresourcefile(
         self, param: ResourceDeleteParam
     ) -> bool:
@@ -292,7 +319,7 @@ class BootResourcesActivity(MAASAPIClient):
 class DownloadBootResourceWorkflow:
     """Downloads a BootResourceFile to this controller"""
 
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: ResourceDownloadParam) -> None:
         return await workflow.execute_activity(
             DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,
@@ -311,7 +338,7 @@ class DownloadBootResourceWorkflow:
 class CheckBootResourcesStorageWorkflow:
     """Check the BootResource Storage on this controller"""
 
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: SpaceRequirementParam) -> None:
         return await workflow.execute_activity(
             CHECK_DISK_SPACE_ACTIVITY_NAME,
@@ -326,7 +353,7 @@ class CheckBootResourcesStorageWorkflow:
 class SyncBootResourcesWorkflow:
     """Execute Boot Resource synchronization from external sources"""
 
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: SyncRequestParam) -> None:
         def _schedule_disk_check(
             res: SpaceRequirementParam,
@@ -339,7 +366,7 @@ class SyncBootResourcesWorkflow:
                 execution_timeout=DISK_TIMEOUT,
                 run_timeout=DISK_TIMEOUT,
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-                task_queue=f"{region}:region",
+                task_queue=f"region:{region}",
             )
 
         def _schedule_download(
@@ -353,7 +380,7 @@ class SyncBootResourcesWorkflow:
                 execution_timeout=DOWNLOAD_TIMEOUT,
                 run_timeout=DOWNLOAD_TIMEOUT,
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-                task_queue=f"{region}:region" if region else REGION_TASK_QUEUE,
+                task_queue=f"region:{region}" if region else REGION_TASK_QUEUE,
             )
 
         # get regions and endpoints
@@ -445,7 +472,7 @@ class SyncBootResourcesWorkflow:
 class DeleteBootResourceWorkflow:
     """Delete a BootResourceFile from this cluster"""
 
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, input: ResourceDeleteParam) -> None:
         # remove file from cluster
         endpoints = await workflow.execute_activity(

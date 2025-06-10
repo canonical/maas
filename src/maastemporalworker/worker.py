@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Temporal Worker wrapper"""
@@ -18,11 +18,11 @@ from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker as TemporalWorker
 
 from maasserver.utils.asynchronous import async_retry
-from maasserver.workflow.codec.encryptor import EncryptionCodec
+from maastemporalworker.encryptor import EncryptionCodec
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
-REGION_TASK_QUEUE = "region-internal"
+REGION_TASK_QUEUE = "region"
 TEMPORAL_HOST = "localhost"
 TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds

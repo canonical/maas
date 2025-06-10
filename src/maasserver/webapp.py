@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The MAAS Web Application."""
@@ -18,8 +18,8 @@ from twisted.web.resource import NoResource, Resource
 from twisted.web.server import Request, Site
 from twisted.web.wsgi import WSGIResource
 
+from maascommon.worker import build_unix_socket_path_for_worker
 from maasserver import concurrency
-from maasserver.regiondservices.http import RegionHTTPService
 from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.views import WebApplicationHandler
 from maasserver.websockets.protocol import WebSocketFactory
@@ -227,9 +227,7 @@ class WebApplicationService(StreamServerEndpointService):
         """Make the endpoint for the webapp."""
 
         worker_id = os.getenv("MAAS_REGIOND_WORKER_ID", "")
-        worker_socket_path = (
-            RegionHTTPService.build_unix_socket_path_for_worker(worker_id)
-        )
+        worker_socket_path = build_unix_socket_path_for_worker(worker_id)
 
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:

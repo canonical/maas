@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2025 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -89,7 +89,7 @@ func TestDecode(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Decode payload encoded by EncryptionCodec implemented in Python
-	// Check TestEncodeDecode in src/maasserver/workflow/codec/tests/test_encryptor.py
+	// Check TestEncodeDecode in src/tests/maastemporalworker/test_encryptor.py
 	key := []byte("da720fe6ceb88077ea52c1cd737769c3")
 
 	data, err := hex.DecodeString("de285b79da35289b3cff84c9739a3ec570af661b0a2" +

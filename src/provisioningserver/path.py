@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Compute paths relative to root."""
@@ -6,6 +6,8 @@
 from os import getenv, makedirs
 from os.path import abspath, dirname, join
 from pathlib import Path
+
+from maascommon.path import get_maas_data_path as maascommon_get_maas_data_path
 
 
 def get_path_env(env):
@@ -64,9 +66,12 @@ def get_data_path(*path_elements):
 
 
 def get_maas_data_path(path: str) -> str:
-    """Return a path under the MAAS data path."""
-    base_path = Path(getenv("MAAS_DATA", "/var/lib/maas"))
-    return str(base_path / path)
+    """
+    Return a path under the MAAS data path.
+
+    TODO: keep only the implementation in maascommon.
+    """
+    return maascommon_get_maas_data_path(path)
 
 
 def get_maas_cache_path(path: str) -> str:

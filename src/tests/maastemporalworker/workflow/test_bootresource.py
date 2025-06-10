@@ -1,17 +1,20 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import hashlib
 from itertools import islice, repeat
 import os
 from pathlib import Path
 import shutil
+from unittest.mock import Mock
 
 import pytest
 from temporalio.testing import ActivityEnvironment
 
-from maasserver.models.user import create_auth_token
-from maasserver.workflow.bootresource import (
+from maasservicelayer.db import Database
+from maasservicelayer.services import CacheForServices
+from maastemporalworker.workflow.api_client import MAASAPIClient
+from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     SpaceRequirementParam,
 )
@@ -45,11 +48,9 @@ def image_store_dir(maas_data_dir, mocker):
 
 @pytest.fixture
 def boot_activities(mocker, controller):
-    region_id = controller.system_id
-    token = create_auth_token(controller.owner)
-    mocker.patch.object(BootResourcesActivity, "_create_unix_session")
-    mocker.patch.object(BootResourcesActivity, "_create_session")
-    act = BootResourcesActivity("", token, "", region_id)
+    act = BootResourcesActivity(Mock(Database), CacheForServices())
+    act.apiclient = Mock(MAASAPIClient)
+    act.region_id = controller.system_id
     yield act
 
 
