@@ -1838,8 +1838,8 @@ class AnonMachinesHandler(AnonNodesHandler):
         """@description-title Create a new machine
         @description Create a new machine.
 
-        Adding a server to MAAS wipes its disks and re-installs its operating
-        system, in the event that it PXE boots.  In anonymous enlistment (and
+        description-title Create a new machine re-installs its operating
+        system, in the event that it PXE boots. In anonymous enlistment (and
         when the enlistment is done by a non-admin), the machine is held in the
         "New" state for approval by a MAAS admin.
 
@@ -1872,7 +1872,7 @@ class AnonMachinesHandler(AnonNodesHandler):
         not given the default domain is used.
 
         @param (string) "power_type" [required=false] A power management type,
-        if applicable (e.g.  "virsh", "ipmi").
+        if applicable (e.g. "virsh", "ipmi").
 
         @param (string) "power_parameters_{param}" [required=false] The
         parameter(s) for the power_type.  Note that this is dynamic as the
@@ -1883,8 +1883,11 @@ class AnonMachinesHandler(AnonNodesHandler):
         @param (boolean) "commission" [required=false,formatting=true] Request
         the newly created machine to be created with status set to
         COMMISSIONING. Machines will wait for COMMISSIONING results and not
-        time out. After commissioning is complete machines will still have to
+        time out. After commissioning is complete, machines will still have to
         be accepted by an administrator.
+
+        @param (boolean) "is_dpu" [required=false] Whether the machine is a DPU
+        or not. If not provided, the machine is considered a non-DPU machine.
 
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing the machine
@@ -2029,7 +2032,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         not given the default domain is used.
 
         @param (string) "power_type" [required=false] A power management type,
-        if applicable (e.g.  "virsh", "ipmi").
+        if applicable (e.g. "virsh", "ipmi").
 
         @param (string) "power_parameters_{param}" [required=false] The
         parameter(s) for the power_type.  Note that this is dynamic as the
@@ -2071,6 +2074,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
         commissioning scripts always run. Selecting 'update_firmware' or
         'configure_hba' will run firmware updates or configure HBA's on
         matching machines.
+
+        @param (boolean) "is_dpu" [required=false] Whether the machine is a DPU
+        or not. If not provided, the machine is considered a non-DPU machine.
 
         @param (string) "testing_scripts" [required=false] A comma seperated
         list of testing script names and tags to be run. By default all tests

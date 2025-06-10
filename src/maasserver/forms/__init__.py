@@ -179,6 +179,7 @@ from maasserver.utils.osystems import (
     list_all_usable_osystems,
     list_osystem_choices,
     list_release_choices,
+    release_a_newer_than_b,
     validate_min_hwe_kernel,
 )
 from provisioningserver.events import EVENT_TYPES
@@ -901,13 +902,14 @@ class MachineForm(NodeForm):
                 "Hardware sync is only supported for Linux based image deploys.",
             )
 
+        architecture = cleaned_data.get("architecture")
+        min_hwe_kernel = cleaned_data.get("min_hwe_kernel")
+        hwe_kernel = cleaned_data.get("hwe_kernel")
+
         if not self.instance.hwe_kernel:
             distro_series = cleaned_data.get("distro_series")
-            architecture = cleaned_data.get("architecture")
-            min_hwe_kernel = cleaned_data.get("min_hwe_kernel")
-            hwe_kernel = cleaned_data.get("hwe_kernel")
             try:
-                cleaned_data["hwe_kernel"] = get_working_kernel(
+                hwe_kernel = cleaned_data["hwe_kernel"] = get_working_kernel(
                     hwe_kernel,
                     min_hwe_kernel,
                     architecture,
@@ -916,6 +918,27 @@ class MachineForm(NodeForm):
                 )
             except ValidationError as e:
                 set_form_error(self, "hwe_kernel", e.message)
+
+        if cleaned_data.get("is_dpu"):
+            if architecture and architecture.split("/")[0] != "arm64":
+                raise ValidationError(
+                    "Invalid DPU architecture provided. Only 'arm64' architecture is supported."
+                )
+
+            if not min_hwe_kernel:
+                cleaned_data["min_hwe_kernel"] = min_hwe_kernel = "hwe-22.04"
+            else:
+                raise ValidationError(
+                    "Invalid DPU kernel provided. Only 'hwe-22.04' or newer are supported."
+                )
+
+            if hwe_kernel and release_a_newer_than_b(
+                min_hwe_kernel, hwe_kernel
+            ):
+                raise ValidationError(
+                    "Invalid DPU kernel provided. Only 'hwe-22.04' or newer are supported."
+                )
+
         return cleaned_data
 
     def is_valid(self):

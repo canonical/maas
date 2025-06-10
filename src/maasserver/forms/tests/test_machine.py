@@ -3,6 +3,7 @@
 
 
 from crochet import TimeoutError
+from nose.tools import assert_raises
 
 from maascommon.osystem import NoSuchOperatingSystem
 from maasserver import forms
@@ -728,7 +729,7 @@ class TestAdminMachineForm(MAASServerTestCase):
     def test_AdminMachineForm_sets_is_dpu(self):
         node = factory.make_Node(interface=True)
         hostname = factory.make_string()
-        arch = make_usable_architecture(self)
+        arch = make_usable_architecture(self, arch_name="arm64")
         form = AdminMachineForm(
             data={
                 "hostname": hostname,
@@ -743,6 +744,24 @@ class TestAdminMachineForm(MAASServerTestCase):
         with post_commit_hooks:
             node = form.save()
         self.assertTrue(node.is_dpu)
+
+    def test_AdminMachineForm_sets_is_dpu_with_invalid_architecture(self):
+        node = factory.make_Node(interface=True)
+        hostname = factory.make_string()
+        arch = make_usable_architecture(self, arch_name="amd64")
+        form = AdminMachineForm(
+            data={
+                "hostname": hostname,
+                "architecture": arch,
+                "power_type": "manual",
+                "power_parameters_skip_check": "true",
+                "is_dpu": "true",
+            },
+            instance=node,
+        )
+
+        with post_commit_hooks, assert_raises(ValueError):
+            form.save()
 
 
 class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
