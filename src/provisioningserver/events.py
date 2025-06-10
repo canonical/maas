@@ -197,6 +197,9 @@ class EVENT_TYPES:
     ABORTED_COMMISSIONING = EventTypeEnum.ABORTED_COMMISSIONING.value
     ABORTED_DEPLOYMENT = EventTypeEnum.ABORTED_DEPLOYMENT.value
     ABORTED_TESTING = EventTypeEnum.ABORTED_TESTING.value
+    # Boot resources
+    BOOT_SOURCE = EventTypeEnum.BOOT_SOURCE
+    BOOT_SOURCE_SELECTION = EventTypeEnum.BOOT_SOURCE_SELECTION
 
 
 # Used to create new events used for the machine's status.
