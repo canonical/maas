@@ -10,6 +10,7 @@ from maasserver.models.config import Config
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerPermissionError,
@@ -35,7 +36,10 @@ class TestConfigHandler(MAASServerTestCase):
                 if not hasattr(get_config_field(name), "choices")
             )
         )
-        Config.objects.set_config(no_choice_name, "myvalue")
+
+        with post_commit_hooks:
+            Config.objects.set_config(no_choice_name, "myvalue")
+
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
         dehydrated = handler.dehydrate_configs([no_choice_name])[0]
@@ -53,7 +57,10 @@ class TestConfigHandler(MAASServerTestCase):
         )
 
         choice_value = random.choice([value for value, _ in choices])
-        Config.objects.set_config(choice_name, choice_value)
+
+        with post_commit_hooks:
+            Config.objects.set_config(choice_name, choice_value)
+
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
         dehydrated = handler.dehydrate_configs([choice_name])[0]
