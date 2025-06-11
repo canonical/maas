@@ -29,7 +29,10 @@ from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.activity import ActivityBase
-from maastemporalworker.workflow.utils import activity_defn_with_context
+from maastemporalworker.workflow.utils import (
+    activity_defn_with_context,
+    workflow_run_with_context,
+)
 
 # Maximum power activity duration (to cope with broken BMCs)
 POWER_ACTION_ACTIVITY_TIMEOUT = timedelta(minutes=5)
@@ -120,9 +123,7 @@ class PowerOnWorkflow:
     PowerOnWorkflow is executed by the Region Controller itself.
     """
 
-    # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @workflow_run_with_context
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: PowerOnParam) -> PowerOnResult:
         result = await workflow.execute_activity(
             POWER_ON_ACTIVITY_NAME,
@@ -145,9 +146,7 @@ class PowerOffWorkflow:
     PowerOffWorkflow is executed by the Region Controller itself.
     """
 
-    # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @workflow_run_with_context
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: PowerOffParam) -> PowerOffResult:
         result = await workflow.execute_activity(
             POWER_OFF_ACTIVITY_NAME,
@@ -170,9 +169,7 @@ class PowerCycleWorkflow:
     PowerCycleWorkflow is executed by the Region Controller itself.
     """
 
-    # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @workflow_run_with_context
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: PowerCycleParam) -> PowerCycleResult:
         result = await workflow.execute_activity(
             POWER_CYCLE_ACTIVITY_NAME,
@@ -195,9 +192,7 @@ class PowerQueryWorkflow:
     PowerQueryWorkflow is executed by the Region Controller itself.
     """
 
-    # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @workflow_run_with_context
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: PowerQueryParam) -> PowerQueryResult:
         result = await workflow.execute_activity(
             POWER_QUERY_ACTIVITY_NAME,
@@ -220,9 +215,7 @@ class PowerManyWorkflow:
     It spawns requested child workflows but doesn't collect results.
     """
 
-    # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @workflow_run_with_context
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: PowerManyParam) -> None:
         for child in param.params:
             await workflow.start_child_workflow(
@@ -241,9 +234,7 @@ class PowerResetWorkflow:
     PowerResetWorkflow is executed by the Region Controller itself.
     """
 
-    # TODO: we can use structlogs from 3.7 once the power workflows are registered only on the maastemporalworker
-    # @workflow_run_with_context
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: PowerResetParam) -> PowerResetResult:
         result = await workflow.execute_activity(
             POWER_RESET_ACTIVITY_NAME,
