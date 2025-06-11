@@ -254,10 +254,11 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_issue_amttool_command_calls__run(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
+        port = factory.pick_port()
         power_pass = factory.make_name("power_pass")
         stdin = factory.make_name("stdin").encode("utf-8")
         cmd = choice(["power-cycle", "powerup"])
-        command = "amttool", ip_address, cmd, "pxe"
+        command = "amttool", f"{ip_address}:{port}", cmd, "pxe"
         _run_mock = self.patch(amt_power_driver, "_run")
         _run_mock.return_value = b"output"
 
@@ -265,6 +266,7 @@ class TestAMTPowerDriver(MAASTestCase):
             cmd,
             ip_address,
             power_pass,
+            port,
             stdin=stdin,
         )
 
@@ -398,7 +400,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_user, power_pass, port
+            "info", ip_address, power_pass, port
         )
         self.assertEqual(result, "on")
 
@@ -421,7 +423,7 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_user, power_pass, port
+            "info", ip_address, power_pass, port
         )
         self.assertEqual(result, "off")
 
@@ -449,7 +451,7 @@ class TestAMTPowerDriver(MAASTestCase):
             port,
         )
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_user, power_pass, port
+            "info", ip_address, power_pass, port
         )
 
     def test_amttool_query_state_runs_query_loop(self):
@@ -488,6 +490,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "power_cycle",
             ip_address,
             power_pass,
+            port,
             stdin=b"yes",
         )
 
@@ -513,6 +516,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "powerup",
             ip_address,
             power_pass,
+            port,
             stdin=b"yes",
         )
         amttool_query_state_mock.assert_called_once_with(
