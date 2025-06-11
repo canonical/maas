@@ -215,10 +215,11 @@ class AMTPowerDriver(PowerDriver):
         cmd: str,
         ip_address: str,
         power_pass: str,
+        port: int,
         stdin=None,
     ) -> bytes:
         """Perform a command using amttool."""
-        command = ("amttool", ip_address, cmd)
+        command = ("amttool", f"{ip_address}:{port}", cmd)
         if cmd in ("power-cycle", "powerup"):
             command += ("pxe",)
         return self._run(command, power_pass, stdin=stdin)
@@ -282,7 +283,7 @@ class AMTPowerDriver(PowerDriver):
         # Retry the state if it fails because it often fails the first time
         for _ in range(10):
             output = self._issue_amttool_command(
-                "info", ip_address, power_user, power_pass, port
+                "info", ip_address, power_pass, port
             )
             if output:
                 break
@@ -353,6 +354,7 @@ class AMTPowerDriver(PowerDriver):
             "power_cycle",
             ip_address,
             power_pass,
+            port,
             stdin=b"yes",
         )
 
@@ -365,6 +367,7 @@ class AMTPowerDriver(PowerDriver):
                 "powerup",
                 ip_address,
                 power_pass,
+                port,
                 stdin=b"yes",
             )
             if (
@@ -413,7 +416,7 @@ class AMTPowerDriver(PowerDriver):
                 return
                 # Issue the AMT command; amttool will prompt for confirmation.
             self._issue_amttool_command(
-                "powerdown", ip_address, power_pass, stdin=b"yes"
+                "powerdown", ip_address, power_pass, port, stdin=b"yes"
             )
             sleep(1)
         raise PowerActionError("Machine is not powering off.  Giving up.")

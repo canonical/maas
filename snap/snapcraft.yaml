@@ -329,6 +329,8 @@ layout:
   # Needed for nginx to enable SSL passthrough
   /usr/lib/nginx/modules:
      bind: $SNAP/usr/lib/nginx/modules
+  /usr/bin/perl:
+     bind-file: $SNAP/usr/bin/perl
   /usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/perl:
      bind: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/perl
   /usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/perl5:
