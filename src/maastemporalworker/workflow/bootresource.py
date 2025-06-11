@@ -484,7 +484,7 @@ class DeleteBootResourceWorkflow:
             await workflow.execute_activity(
                 DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
                 input,
-                task_queue=f"{r}:region",
+                task_queue=f"region:{r}",
                 start_to_close_timeout=DISK_TIMEOUT,
                 schedule_to_close_timeout=DISK_TIMEOUT,
                 retry_policy=RetryPolicy(maximum_attempts=3),
