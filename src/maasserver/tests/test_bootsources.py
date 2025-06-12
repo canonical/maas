@@ -409,6 +409,16 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             self.assertEqual(environ.get("http_proxy"), "my.http_proxy")
             self.assertEqual(environ.get("https_proxy"), "my.https_proxy")
 
+    def test_passes_user_agent_with_maas_version(self):
+        mock_download = self.patch(
+            bootsources, "download_all_image_descriptions"
+        )
+        factory.make_BootSource(keyring_data=b"1234")
+        cache_boot_sources()
+        mock_download.assert_called_once_with(
+            ANY, user_agent=get_maas_user_agent()
+        )
+
     def test_doesnt_have_env_http_and_https_proxy_set_if_disabled(self):
         proxy_address = factory.make_name("proxy")
         Config.objects.set_config("http_proxy", proxy_address)
