@@ -28,7 +28,7 @@ BlockDeviceTable = Table(
     Column("id", BigInteger, primary_key=True, unique=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(255), primary_key=True),
+    Column("name", String(255), nullable=False),
     Column("id_path", String(4096), nullable=True),
     Column("size", BigInteger, nullable=False),
     Column("block_size", Integer, nullable=False),
@@ -39,6 +39,7 @@ BlockDeviceTable = Table(
         ForeignKey("maasserver_nodeconfig.id"),
         nullable=False,
     ),
+    UniqueConstraint("node_config_id", "name"),
 )
 
 BMCTable = Table(
