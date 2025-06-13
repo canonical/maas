@@ -1,6 +1,16 @@
+MAAS logs help you find issues, spot configuration mistakes, and audit the use of your system. Several types of logs are supported, including:
+
+- System logs
+- Event logs
+- Commissioning logs
+- Testing logs
+- Audit event logs
+
+Each of these has a specific purpose, as described in this document.
+
 ## Checking Logs in Systemd (MAAS 3.5 and Newer)
 
-Starting with version 3.5, MAAS logs are saved in systemd. Use these commands to view the logs based on how you installed MAAS (snap or Debian packages):
+Understanding what MAAS is doing under the hood is critical when troubleshooting unexpected behavior — whether a machine fails to deploy, a controller won't respond, or an API call returns errors. Starting with version 3.5, MAAS uses `systemd` journal logs instead of log files written to disk. This change offers a more efficient and centralized way to inspect logs, in context, in real time.
 
 ### Region Controller Logs
 
@@ -76,29 +86,65 @@ maas admin events query | jq -r '(["HOSTNAME","TIMESTAMP","TYPE","DESCRIPTION"] 
 
 ## How to Read Commissioning Logs
 
+Commissioning is the first real test of whether MAAS can interact successfully with your machine. It verifies hardware, applies the base configuration, and gathers critical info like CPU count, RAM, disk layout, and NICs.
+
+When commissioning struggles or fails, commissioning logs help you to:
+
+- Understand hardware discovery issues: If a machine shows incomplete specs or can't be used for deployment, the logs may reveal missing drivers, unresponsive disks, or incompatible firmware.
+- Debug custom commissioning scripts: Running your own scripts? Commissioning logs are your best source for errors, output, and system state during execution.
+- Diagnose PXE/networking issues: If the machine never commissions successfully, logs often contain clues — like DHCP failures, network interface errors, or incorrect boot images.
+- Check package or script failures: Logs will reveal if MAAS couldn't install key packages, failed to mount volumes, or hit permission issues.
+
+You should check commissioning logs when: 
+
+- A newly added machine won't move past "Ready"
+- Commissioning fails with a generic error
+- Hardware details (CPU, disk, RAM) are missing or incorrect
+- You are testing or troubleshooting custom commissioning scripts
+- You see networking issues during PXE boot or image fetch
+
 ### Using the UI
 
  1. Go to the Commissioning tab of a machine.
 
  2. Click the links to see the detailed logs.
 
-### Using the Command Line
+### Using the command line
 
 ```
 maas $PROFILE node-script-result read $SYSTEM_ID $RESULTS
 ```
 
-## How to Read Testing Logs
+## How to read testing logs
 
-Example Command:
+Testing logs are the final gatekeepers in the MAAS lifecycle. They help you identify whether your machine is usable for real workloads. Often skipped over, they can save you a world of trouble when hardware flakiness or misconfiguration happens.
 
-```
+Testing confirms whether the machine is actually functioning as expected, not just booting.  It verify critical hardware functionality, validates storage health, and confirms firmware and kernel compatibility.
+
+Test logs can contain any sort of test you may add, but the general form of the command is:
+
+```bash
 maas $PROFILE node-script-result read $SYSTEM_ID type=smartctl-validate
 ```
 
 ## Auditing MAAS
 
-Track user actions at a granular level.
+MAAS is often a shared resource, when something changes or breaks, you need to know who may have taken unexpected action. Audit logs help you:
+
+- Track configuration changes
+- Monitor user activity
+- Investigate failures or unauthorized actions
+- Maintain compliance or accountability
+
+You check audit logs when:
+
+- A machine config changes unexpectedly
+- Network settings or VLANs were modified, breaking connectivity
+- A deployment fails and you suspect human error
+- You're in a shared MAAS environment and need to confirm who changed what
+- During a security review or internal audit
+
+The following commands will help you use auditing productively.
 
 ### List audit events
 
