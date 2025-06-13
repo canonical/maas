@@ -1,6 +1,6 @@
-This page explains how to build a deployable Ubuntu image with packer.
+You can build your own customized, deployable Ubuntu image with Packer.
 
-## Install packer
+## Install Packer
 
 Packer is easily installed from its Debian package:
 
@@ -23,7 +23,7 @@ All of these should install with no additional prompts.
 
 ## Get templates
 
-You can obtain the packer templates by cloning the [packer-maas GitHub repository](https://github.com/canonical/packer-maas.git), like this:
+You can obtain the Packer templates by cloning the [packer-maas GitHub repository](https://github.com/canonical/packer-maas.git), like this:
 
 ```nohighlight
 git clone https://GitHub.com/canonical/packer-maas.git
@@ -33,13 +33,13 @@ Make sure to pay attention to where the repository is cloned. The Packer templat
 
 ## Build a raw image
 
-To build a packer image, you must change to the template repository directory, then to the subdirectory for the image you want to build. From that subdirectory, you can easily build a raw image with LVM, using the Makefile:
+To build a Packer image, you must change to the template repository directory, then to the subdirectory for the image you want to build. From that subdirectory, you can easily build a raw image with LVM, using the Makefile:
 
 ```nohighlight
 $ make custom-ubuntu-lvm.dd.gz
 ```
 
-This makefile will run for a couple of minutes before attempting to boot the image. While waiting for the image to boot, packer will attempt to SSH into the machine repeatedly until it succeeds. You will see terminal messages similar to this one for upwards of three to five minutes:
+This Makefile will run for a couple of minutes before attempting to boot the image. While waiting for the image to boot, Packer will attempt to SSH into the machine repeatedly until it succeeds. You will see terminal messages similar to this one for upwards of three to five minutes:
 
 ```nohighlight
 2022/05/09 15:50:46 packer-builder-qemu plugin: [DEBUG] handshaking with SSH
@@ -98,7 +98,7 @@ meta-data                scripts       user-data-flat
 
 ## OR run manually
 
-You can also manually run packer. Your current working directory must be in the subdirectory where the packer template is located. In the case of this example, that's `packer-maas/ubuntu`. Once in `packer-maas/ubuntu`, you can generate an image with the following command sequence:
+You can also manually run Packer. Your current working directory must be in the subdirectory where the Packer template is located. In the case of this example, that's `packer-maas/ubuntu`. Once in `packer-maas/ubuntu`, you can generate an image with the following command sequence:
 
 ```nohighlight
 $ sudo PACKER_LOG=1 packer build ubuntu-lvm.json
@@ -112,7 +112,7 @@ This process is non-interactive.
 
 ## Upload to MAAS
 
-You can upload an Ubuntu raw packer image with the following command:
+You can upload an Ubuntu raw Packer image with the following command:
 
 ```nohighlight
 $ maas admin boot-resources create \
@@ -141,5 +141,9 @@ open-gannet  nk7x8y  on     Deployed  admin  custom  ubuntu-raw
 
 ## Log in to verify
 
+<<<<<<< HEAD
 You should log into your newly-deployed image and verify that it has all the customizations you added to the build process. The default username for packer-created images is `ubuntu`, the same as the default username for other MAAS images.
 
+=======
+You should log into your newly-deployed image and verify that it has all the customizations you added to the build process. The default username for Packer-created images is `ubuntu`, the same as the default username for other MAAS images.
+>>>>>>> b76727200 (fix review issues with custom image documents)

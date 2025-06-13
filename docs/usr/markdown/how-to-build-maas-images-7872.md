@@ -1,4 +1,4 @@
-This guide covers building custom images for the following operating systems using Packer for deployment in MAAS:
+Using Packer, you can build custom, MAAS-deployable images for the following operating systems:
 
 - RHEL 7
 - RHEL 8
@@ -26,7 +26,7 @@ You need a machine running Ubuntu 18.04+ or 22.04+ with the ability to run KVM v
 
 ### Gather components
 
-Collect packer, its dependencies and templates, and a suitable ISO file before starting.
+Collect Packer, its dependencies and templates, and a suitable ISO file before starting.
 
 #### Install Packer
 
@@ -276,7 +276,7 @@ Path to Microsoft Windows ISO image used to build the MAAS image.
 
 ##### PACKER_LOG
 
-Enable (1) or Disable (0) verbose packer logs. The default value is set to 0.
+Enable (1) or Disable (0) verbose Packer logs. The default value is set to 0.
 
 ##### PKEY
 
