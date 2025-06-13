@@ -82,52 +82,52 @@ maas admin machine update $SYSTEM_ID zone=$ZONE_NAME
 
 ## Resource pools
 
-MAAS uses resource pools to group machines and VM hosts for better allocation. New machines default to the "default" pool. Resource pools are useful when you are budgeting a limited number of machines across different datacenter functions.
+MAAS uses resource pools to group machines and VM hosts for better allocation. New machines default to the **"default"** pool.
 
 ### Manage resource pools
 
 Create, update, delete and list resource pools as needed.
 
-#### Create a resource pool  
+#### Create a resource pool
 
-UI** 
-- **MAAS 3.4:** *Organization* > *Pools* > *Add pool* > Enter *Name* & *Description* > *Save pool*.  
-- **Earlier versions:** *Resource* > *Add pool* > Enter *Name* & *Description* > *Add pool*.  
+**UI** 
+- **MAAS 3.4:** *Organisation* > *Pools* > *Add pool* > Enter *Name* & *Description* > *Save pool*.
+- **Earlier versions:** *Resource* > *Add pool* > Enter *Name* & *Description* > *Add pool*.
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE resource-pools create name=$NAME description="$DESCRIPTION"
 ```
-#### Update a pool  
+#### Update a pool
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE resource-pool update $RESOURCE_POOL_ID name=newname description="A new description."
 ```
 
-> `description` is optional.  
+> `description` is optional. 
 
-#### Delete a resource pool  
+#### Delete a resource pool
 
-UI**  
-- **MAAS 3.4:** *Organization* > *Pools* > *(trash can)* > *Delete*.  
-- **Earlier versions:** *Resource* > *(trash can)* > *Delete*.  
+**UI**
+- **MAAS 3.4:** *Organisation* > *Pools* > *(trash can)* > *Delete*.
+- **Earlier versions:** *Resource* > *(trash can)* > *Delete*.
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE resource-pool delete $RESOURCE_POOL_ID
 ```
 
-#### List resource pools  
+#### List resource pools
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE resource-pools read
 ```
 
-#### View a single pool  
+#### View a single pool
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE resource-pool read $RESOURCE_POOL_ID
 ```
@@ -136,45 +136,45 @@ maas $PROFILE resource-pool read $RESOURCE_POOL_ID
 
 Attach or detach machines from a resource pool at any time.
 
-#### Attach a machine to a pool  
+#### Attach a machine to a pool
 
-UI**  
-- **MAAS 3.4 forward:** *Machines* > Select machine > *Categorize* > *Set pool* > Select *Resource pool* > *Set pool*.  
-- **Earlier versions:** *Machines* > Select machine > *Configuration* > Set *Resource pool* > *Save changes*.  
+**UI**
+- **MAAS 3.4 forward:** *Machines* > Select machine > *Categorise* > *Set pool* > Select *Resource pool* > *Set pool*.
+- **Earlier versions:** *Machines* > Select machine > *Configuration* > Set *Resource pool* > *Save changes*.
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE machine update $SYSTEM_ID pool=$POOL_NAME
 ```
-#### Detach a machine from a pool  
+#### Detach a machine from a pool
 
-UI**  
-- **MAAS 3.4:** Same as "Add a machine to a pool," but select **"default"** as the resource pool.  
-- **Earlier versions:** *Machines* > *(machine)* > *Configuration* > Set pool to **"default"** > *Save changes*.  
+**UI**
+- **MAAS 3.4:** Same as "Add a machine to a pool," but select **"default"** as the resource pool.
+- **Earlier versions:** *Machines* > *(machine)* > *Configuration* > Set pool to **"default"** > *Save changes*.
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE machine update $SYSTEM_ID pool="default"
 ```
 
-#### Attach a VM host to a pool  
+#### Attach a VM host to a pool
 
-UI**  
-- **MAAS 3.4:** *KVM* > *LXD* > Select VM host > *KVM host settings* > *Resource pool* > *Save changes*.  
-- **Earlier versions:** Assign pool during VM host creation or edit VM host settings.  
+**UI**
+- **MAAS 3.4:** *KVM* > *LXD* > Select VM host > *KVM host settings* > *Resource pool* > *Save changes*.
+- **Earlier versions:** Assign pool during VM host creation or edit VM host settings.
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE vm-host update $SYSTEM_ID pool=$POOL_NAME
 ```
 
-#### Detach a VM host from a pool  
+#### Detach a VM host from a pool
 
-UI**  
-- **MAAS 3.4:** Same as "Add a VM host to a pool," but select **"default"** as the resource pool.  
-- **Earlier versions:** Edit VM host settings and assign to **"default"**.  
+**UI**
+- **MAAS 3.4:** Same as "Add a VM host to a pool," but select **"default"** as the resource pool.
+- **Earlier versions:** Edit VM host settings and assign to **"default"**.
 
-CLI**  
+**CLI**
 ```nohighlight
 maas $PROFILE vm-host update $SYSTEM_ID pool="default"
 ```
@@ -273,7 +273,7 @@ CLI (only)**
 maas $PROFILE tag rebuild $TAG
 ```
 
-This command automatically applies the tag to all machines regardless of state, even machines that are actively deployed.
+This command automatically applies the tag to all machines bearing the tag being updaed, regardless of state, even machines that are actively deployed.
 
 ### Manage automatic tags
 
@@ -295,6 +295,7 @@ MAAS will re-tag all matching machines in a background process.
 
 #### Creating automatic tags (3.3/3.2)
 
+**UI**
 *Machines* > *Tags* > *Create new tag* > (Fill in form) > *Save*
 
 > Note: Adding and XPath expression makes a tag automatic.
@@ -325,19 +326,20 @@ maas $PROFILE vmhosts read \
 | jq -r '(["vm_host_name","id"]
 |(.,map(length*"-"))),(.[]|[.name,.id])
 | @tsv' | column -t
-maas $PROFILE vmhost add-tag $VMHOST_ID	tag=$TAG_NAME
+maas $PROFILE vm-host add-tag $VMHOST_ID	tag=$TAG_NAME
 ```
 #### Remove VM host tags
 
 CLI (only)**
 ```nohighlight
-maas $PROFILE vmhost remove-tag $VMHOST_ID tag=$TAG_NAME
+maas $PROFILE vm-host remove-tag $VMHOST_ID tag=$TAG_NAME
+```
 
 ### List VM host tags
 
 CLI (only)**
 ```nohighlight
-maas $PROFILE vmhosts read | jq -r '(["vm_host_name","id","tags"]|(.,map(length*"-"))),(.[]|[.name,.id,.tags[]]) | @tsv' | column -t
+maas $PROFILE vm-hosts read | jq -r '(["vm_host_name","id","tags"]|(.,map(length*"-"))),(.[]|[.name,.id,.tags[]]) | @tsv' | column -t
 ```
 #### View VM host tags (MAAS 3.4)
 
@@ -353,7 +355,7 @@ UI**
 
 CLI**
 ```nohighlight
-maas $PROFILE vmhost read $VMHOST_ID \
+maas $PROFILE vm-host read $VMHOST_ID \
 | jq -r '(["name","id","tags"]
 |(.,map(length*"-"))),([.name,.id,.tags[]])
 | @tsv' | column -t
@@ -407,21 +409,21 @@ Set annotations using `key=value` pairs:
 
 CLI (only)**
 ```nohighlight
-maas $PROFILE machine set-owner-data $SYSTEM_ID $KEY=$VALUE
+maas $PROFILE machine set-workload-annotations $SYSTEM_ID $KEY=$VALUE
 ```
 
 #### Change an annotation
 
 CLI (only)**
 ```nohighlight
-maas $PROFILE machine set-owner-data $SYSTEM_ID $KEY=$NEW_VALUE
+maas $PROFILE machine set-workload-annotations $SYSTEM_ID $KEY=$NEW_VALUE
 ```
 
 #### Remove an annotation
 
 CLI (only)**
 ```nohighlight
-maas $PROFILE machine set-owner-data $SYSTEM_ID $KEY=""
+maas $PROFILE machine set-workload-annotations $SYSTEM_ID $KEY=""
 ```
 
 #### List annotations
