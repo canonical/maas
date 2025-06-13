@@ -5,6 +5,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    Date,
     DateTime,
     desc,
     Float,
@@ -14,6 +15,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Interval,
+    LargeBinary,
     MetaData,
     String,
     Table,
@@ -128,6 +130,113 @@ BootResourceTable = Table(
     Column("base_image", String(255), nullable=False),
     Column("alias", String(255), nullable=True),
     Column("last_deployed", DateTime(timezone=False), nullable=True),
+    Column("last_deployed", DateTime(timezone=False), nullable=True),
+    UniqueConstraint("name", "architecture", "alias"),
+)
+
+BootResourceFileTable = Table(
+    "maasserver_bootresourcefile",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("filename", String(255), nullable=False),
+    Column("filetype", String(20), nullable=False),
+    Column("extra", JSONB, nullable=False),
+    Column(
+        "largefile_id",
+        BigInteger,
+        ForeignKey("maasserver_largefile.id"),
+        index=True,
+        nullable=True,
+    ),
+    Column(
+        "resource_set_id",
+        BigInteger,
+        ForeignKey("maasserver_bootresourceset.id"),
+        index=True,
+        nullable=False,
+    ),
+    Column("sha256", String(64), index=True, nullable=False),
+    Column("size", BigInteger, nullable=False),
+    Column("filename_on_disk", String(64), nullable=False),
+    UniqueConstraint("resource_set_id", "filename"),
+)
+
+BootResourceSetTable = Table(
+    "maasserver_bootresourceset",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("version", String(255), nullable=False),
+    Column("label", String(255), nullable=False),
+    Column(
+        "resource_id",
+        BigInteger,
+        ForeignKey("maasserver_bootresource.id"),
+        index=True,
+        nullable=False,
+    ),
+    UniqueConstraint("resource_id", "version"),
+)
+
+BootSourceTable = Table(
+    "maasserver_bootsource",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("url", String(200), index=True, unique=True, nullable=False),
+    Column("keyring_filename", String(4096), nullable=False),
+    Column("keyring_data", LargeBinary, nullable=False),
+)
+
+BootSourceCacheTable = Table(
+    "maasserver_bootsourcecache",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("os", String(32), nullable=False),
+    Column("arch", String(32), nullable=False),
+    Column("subarch", String(32), nullable=False),
+    Column("release", String(32), nullable=False),
+    Column("label", String(32), nullable=False),
+    Column(
+        "boot_source_id",
+        BigInteger,
+        ForeignKey("maasserver_bootsource.id"),
+        index=True,
+        nullable=False,
+    ),
+    Column("release_codename", String(255), nullable=True),
+    Column("release_title", String(255), nullable=True),
+    Column("support_eol", Date, nullable=True),
+    Column("kflavor", String(32), nullable=True),
+    Column("bootloader_type", String(32), nullable=True),
+    Column("extra", JSONB, nullable=False),
+)
+
+BootSourceSelectionTable = Table(
+    "maasserver_bootsourceselection",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("os", String(20), nullable=False),
+    Column("release", String(20), nullable=False),
+    Column("arches", ARRAY(Text), nullable=True),
+    Column("subarches", ARRAY(Text), nullable=True),
+    Column("labels", ARRAY(Text), nullable=True),
+    Column(
+        "boot_source_id",
+        BigInteger,
+        ForeignKey("maasserver_bootsource.id"),
+        index=True,
+        nullable=False,
+    ),
+    UniqueConstraint("boot_source_id", "os", "release"),
 )
 
 CacheSetTable = Table(
