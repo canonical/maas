@@ -222,6 +222,7 @@ func (s *DHCPService) ConfigurationActivities() map[string]any {
 		// This activity should be called to force DHCP configuration update.
 		"apply-dhcp-config-via-file":  s.configureViaFile,
 		"apply-dhcp-config-via-omapi": s.configureViaOMAPI,
+		"set-active-interfaces":       s.setActiveInterfaces,
 		"restart-dhcp-service":        s.restartService,
 	}
 }
@@ -238,6 +239,10 @@ type ConfigureDHCPForAgentParam struct {
 	StaticIPAddrIDs []int  `json:"static_ip_addr_ids"` // for parity with python definition, agent should never assign this
 	ReservedIPIDs   []int  `json:"reserved_ip_ids"`    // for parity with python definition, agent should never assign this
 	FullReload      bool   `json:"full_reload"`
+}
+
+type SetActiveInterfacesParam struct {
+	Ifaces []string `json:"ifaces"`
 }
 
 func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigParam) error {
@@ -538,6 +543,11 @@ func (s *DHCPService) configureViaFile(ctx context.Context) error {
 	s.runningV6.Store(runningV6)
 	s.running.Store(runningV4 || runningV6)
 
+	return nil
+}
+
+func (s *DHCPService) setActiveInterfaces(ctx context.Context, param SetActiveInterfacesParam) error {
+	// TODO setup DHCP server on each interface
 	return nil
 }
 

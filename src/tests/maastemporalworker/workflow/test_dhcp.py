@@ -8,6 +8,7 @@ from maastemporalworker.workflow.dhcp import (
     ConfigureDHCPParam,
     DHCPConfigActivity,
     FetchHostsForUpdateParam,
+    GetActiveInterfacesForAgentParam,
     Host,
 )
 from tests.fixtures.factories.interface import create_test_interface_entry
@@ -330,3 +331,32 @@ class TestDHCPConfigActivity:
         result = await env.run(activities.get_omapi_key)
 
         assert result.key == key.value["secret"]
+
+    async def test_get_active_interfaces_for_agent(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        env = ActivityEnvironment()
+
+        rack_controller = await create_test_rack_controller_entry(fixture)
+        vlan1 = await create_test_vlan_entry(fixture, dhcp_on=True)
+        vlan2 = await create_test_vlan_entry(fixture, dhcp_on=False)
+        iface1 = await create_test_interface_entry(
+            fixture, vlan=vlan1, node=rack_controller
+        )
+        await create_test_interface_entry(
+            fixture, vlan=vlan2, node=rack_controller
+        )
+
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db, services_cache, connection=db_connection
+        )
+
+        result = await env.run(
+            activities.get_active_interfaces_for_agent,
+            GetActiveInterfacesForAgentParam(
+                system_id=rack_controller["system_id"]
+            ),
+        )
+
+        assert result.ifaces == [iface1.name]

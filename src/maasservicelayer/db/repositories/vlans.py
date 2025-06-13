@@ -42,6 +42,22 @@ class VlansClauseFactory(ClauseFactory):
     def with_node_type(cls, type: NodeTypeEnum) -> Clause:
         return Clause(condition=eq(NodeTable.c.node_type, type))
 
+    @classmethod
+    def with_dhcp_on(cls, on: bool) -> Clause:
+        return Clause(condition=eq(VlanTable.c.dhcp_on, on))
+
+    @classmethod
+    def with_relay_vlan_id(cls, relay_vlan_id: int) -> Clause:
+        return Clause(condition=eq(VlanTable.c.relay_vlan_id, relay_vlan_id))
+
+    @classmethod
+    def with_relay_vlan_exists(cls, exists: bool) -> Clause:
+        return Clause(
+            condition=VlanTable.c.relay_vlan_id.is_not(None)
+            if exists
+            else VlanTable.c.relay_vlan_id.is_(None)
+        )
+
 
 class VlansRepository(BaseRepository[Vlan]):
     def get_repository_table(self) -> Table:

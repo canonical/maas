@@ -18,6 +18,9 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPForAgentParam,
     ConfigureDHCPParam,
 )
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
+from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -29,6 +32,8 @@ from maasservicelayer.db.tables import (
     VlanTable,
 )
 from maasservicelayer.models.secrets import OMAPIKeySecret
+from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.services import ServiceCollectionV3
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -46,6 +51,7 @@ RESTART_DHCP_SERVICE_TIMEOUT = timedelta(minutes=5)
 FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME = "find-agents-for-update"
 FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME = "fetch-hosts-for-update"
 GET_OMAPI_KEY_ACTIVITY_NAME = "get-omapi-key"
+GET_ACTIVE_INTERFACES_FOR_AGENT_NAME = "get-active-interfaces-for-agent"
 
 # Executed on maasagent
 APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME = "apply-dhcp-config-via-file"
@@ -93,6 +99,16 @@ class ApplyConfigViaOmapiParam:
 @dataclass
 class OMAPIKeyResult:
     key: str
+
+
+@dataclass
+class GetActiveInterfacesForAgentParam:
+    system_id: str
+
+
+@dataclass
+class ActiveInterfacesForAgentResult:
+    ifaces: list[str]
 
 
 class DHCPConfigActivity(ActivityBase):
@@ -395,6 +411,39 @@ class DHCPConfigActivity(ActivityBase):
             )
             return OMAPIKeyResult(key=key)
 
+    async def _get_active_vlans_for_agent(
+        self, svc: ServiceCollectionV3, system_id: str
+    ) -> list[Vlan]:
+        return await svc.vlans.get_node_vlans(
+            QuerySpec(
+                where=VlansClauseFactory.and_clauses(
+                    clauses=[
+                        VlansClauseFactory.with_system_id(system_id),
+                        VlansClauseFactory.with_dhcp_on(True),
+                    ],
+                ),
+            ),
+        )
+
+    @activity_defn_with_context(name=GET_ACTIVE_INTERFACES_FOR_AGENT_NAME)
+    async def get_active_interfaces_for_agent(
+        self, param: GetActiveInterfacesForAgentParam
+    ) -> ActiveInterfacesForAgentResult:
+        async with self.start_transaction() as svc:
+            vlans = await self._get_active_vlans_for_agent(
+                svc, param.system_id
+            )
+            ifaces = await svc.interfaces.get_many(
+                query=QuerySpec(
+                    where=InterfaceClauseFactory.with_vlan_id_in(
+                        [vlan.id for vlan in vlans],
+                    ),
+                ),
+            )
+            return ActiveInterfacesForAgentResult(
+                ifaces=[iface.name for iface in ifaces]
+            )
+
 
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
@@ -413,6 +462,8 @@ class ConfigureDHCPForAgentWorkflow:
                 task_queue=f"{param.system_id}@agent:main",
                 start_to_close_timeout=RESTART_DHCP_SERVICE_TIMEOUT,
             )
+            # TODO call get_active_interfaces_for_agent and set config
+            # directly on the agent
         else:
             hosts = await workflow.execute_activity(
                 FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME,
