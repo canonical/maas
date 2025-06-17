@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from unittest.mock import patch
+
 from crochet import TimeoutError
 from nose.tools import assert_raises
 
@@ -762,6 +764,59 @@ class TestAdminMachineForm(MAASServerTestCase):
 
         with post_commit_hooks, assert_raises(ValueError):
             form.save()
+
+    @patch(
+        "maasserver.utils.osystems.BootResource.objects.get_supported_kernel_compatibility_levels"
+    )
+    def test_AdminMachineForm_sets_is_dpu_with_different_kernels(
+        self, mock_supported_kernel
+    ):
+        mock_supported_kernel.return_value = [
+            "ga-22.04",
+            "ga-22.10",
+            "ga-23.04",
+            "ga-23.10",
+            "ga-24.04",
+            "hwe-21.04",
+            "hwe-22.04",
+            "hwe-24.04",
+        ]
+        node = factory.make_Node(interface=True)
+        hostname = factory.make_string()
+        arch = make_usable_architecture(self, arch_name="arm64")
+
+        valid_kernels = ["hwe-22.04", "ga-24.04"]
+        invalid_kernels = ["ga-22.04", "hwe-20.04"]
+
+        for kernel in valid_kernels:
+            form = AdminMachineForm(
+                data={
+                    "hostname": hostname,
+                    "architecture": arch,
+                    "power_type": "manual",
+                    "power_parameters_skip_check": "true",
+                    "min_hwe_kernel": kernel,
+                    "is_dpu": "true",
+                },
+                instance=node,
+            )
+            with post_commit_hooks:
+                form.save()
+
+        for kernel in invalid_kernels:
+            form = AdminMachineForm(
+                data={
+                    "hostname": hostname,
+                    "architecture": arch,
+                    "power_type": "manual",
+                    "power_parameters_skip_check": "true",
+                    "min_hwe_kernel": kernel,
+                    "is_dpu": "true",
+                },
+                instance=node,
+            )
+            with post_commit_hooks, assert_raises(ValueError):
+                form.save()
 
 
 class TestAdminMachineWithMACAddressForm(MAASServerTestCase):

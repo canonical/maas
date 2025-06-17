@@ -857,7 +857,7 @@ def get_available_kernels_prioritising_platform(
 
 
 def validate_min_hwe_kernel(min_hwe_kernel):
-    """Check that the min_hwe_kernel is avalible."""
+    """Check that the min_hwe_kernel is available."""
     if not min_hwe_kernel or min_hwe_kernel == "":
         return ""
     compatibility_levels = (

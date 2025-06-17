@@ -334,6 +334,11 @@ class ReleaseForm(ScriptForm):
         secure_erase = self.cleaned_data.get("secure_erase", False)
         quick_erase = self.cleaned_data.get("quick_erase", False)
         if erase or secure_erase or quick_erase:
+            if self.instance.is_dpu:
+                raise ValidationError(
+                    "Erasing disk is disabled for DPUs. For more information, "
+                    "refer to the documentation."
+                )
             scripts = self.cleaned_data.setdefault("scripts", [])
             if self.WIPE_SCRIPT not in scripts:
                 scripts.append(self.WIPE_SCRIPT)

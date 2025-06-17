@@ -31,6 +31,12 @@ class TestReleaseForm:
             "scripts": ["wipe-disks"],
         }
 
+    def test_clean_erase_dpu(self, factory):
+        node = factory.make_Node(is_dpu=True)
+        user = factory.make_User()
+        form = ReleaseForm(node, user, data={"erase": "true"})
+        assert not form.is_valid()
+
     def test_clean_erase_flags(self, factory):
         node = factory.make_Node()
         user = factory.make_User()
