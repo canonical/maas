@@ -104,6 +104,14 @@ BootResourceTable = Table(
     Column("last_deployed", DateTime(timezone=True), nullable=True),
 )
 
+CacheSetTable = Table(
+    "maasserver_cacheset",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+)
+
 ConfigTable = Table(
     "maasserver_config",
     METADATA,
@@ -176,7 +184,7 @@ DiscoveryView = Table(
     Column(
         "neighbour_id",
         BigInteger,
-        ForeignKey("maasserver_neighbour"),
+        ForeignKey("maasserver_neighbour.id"),
         nullable=False,
     ),
     Column("ip", INET, nullable=False),
@@ -320,6 +328,92 @@ FabricTable = Table(
     Column("description", Text, nullable=False),
 )
 
+FileSystemTable = Table(
+    "maasserver_filesystem",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("uuid", Text, nullable=False),
+    Column("fstype", String(20), nullable=False),
+    Column("label", String(255), nullable=True),
+    Column("create_params", String(255), nullable=True),
+    Column("mount_point", String(255), nullable=True),
+    Column("mount_options", String(255), nullable=True),
+    Column("acquired", Boolean, nullable=False),
+    Column(
+        "block_device_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_blockdevice.id", deferrable=True, initially="DEFERRED"
+        ),
+        index=True,
+        nullable=True,
+    ),
+    Column(
+        "cache_set_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_cacheset.id", deferrable=True, initially="DEFERRED"
+        ),
+        index=True,
+        nullable=True,
+    ),
+    Column(
+        "filesystem_group_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_filesystemgroup.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        index=True,
+        nullable=True,
+    ),
+    Column(
+        "partition_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_partition.id", deferrable=True, initially="DEFERRED"
+        ),
+        index=True,
+        nullable=True,
+    ),
+    Column(
+        "node_config_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_nodeconfig.id", deferrable=True, initially="DEFERRED"
+        ),
+        index=True,
+        nullable=False,
+    ),
+    UniqueConstraint("block_device_id", "acquired"),
+    UniqueConstraint("partition_id", "acquired"),
+)
+
+FilesystemGroupTable = Table(
+    "maasserver_filesystemgroup",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("uuid", Text, nullable=False),
+    Column("group_type", String(20), nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("create_params", String(255), nullable=True),
+    Column("cache_mode", String(20), nullable=True),
+    Column(
+        "cache_set_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_cacheset.id", deferrable=True, initially="DEFERRED"
+        ),
+        index=True,
+        nullable=True,
+    ),
+)
+
 FileStorageTable = Table(
     "maasserver_filestorage",
     METADATA,
@@ -455,6 +549,49 @@ MDNSTable = Table(
     ),
 )
 
+PartitionTable = Table(
+    "maasserver_partition",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("uuid", Text, nullable=True),
+    Column("size", BigInteger, nullable=False),
+    Column("bootable", Boolean, nullable=False),
+    Column(
+        "partition_table_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_partitiontable.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        index=True,
+        nullable=False,
+    ),
+    Column("tags", ARRAY(Text), nullable=True),
+    Column("index", Integer, nullable=False),
+    UniqueConstraint("partition_table_id", "index"),
+)
+
+PartitionTableTable = Table(
+    "maasserver_partitiontable",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("table_type", String(20), nullable=False),
+    Column(
+        "block_device_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_blockdevice.id", deferrable=True, initially="DEFERRED"
+        ),
+        index=True,
+        nullable=False,
+    ),
+)
+
 NeighbourTable = Table(
     "maasserver_neighbour",
     METADATA,
@@ -511,7 +648,7 @@ NodeDeviceTable = Table(
     Column(
         "physical_blockdevice_id",
         BigInteger,
-        ForeignKey("maasserver_physicalblockdevice.id"),
+        ForeignKey("maasserver_physicalblockdevice.blockdevice_ptr_id"),
         nullable=True,
     ),
     Column(
@@ -1078,7 +1215,7 @@ TokenTable = Table(
     Column(
         "consumer_id",
         BigInteger,
-        ForeignKey("piston3_cosumer.id"),
+        ForeignKey("piston3_consumer.id"),
         nullable=False,
     ),
     Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
