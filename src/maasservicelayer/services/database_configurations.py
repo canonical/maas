@@ -3,11 +3,15 @@
 
 from typing import Any
 
+from maasservicelayer.builders.configurations import (
+    DatabaseConfigurationBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsRepository,
 )
+from maasservicelayer.models.configurations import DatabaseConfiguration
 from maasservicelayer.services.base import Service
 
 
@@ -50,3 +54,10 @@ class DatabaseConfigurationsService(Service):
             configuration.name: configuration.value
             for configuration in configurations
         }
+
+    async def create_or_update(
+        self, builder: DatabaseConfigurationBuilder
+    ) -> DatabaseConfiguration:
+        return await self.database_configurations_repository.create_or_update(
+            builder
+        )

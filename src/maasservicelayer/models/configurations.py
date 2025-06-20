@@ -88,18 +88,6 @@ class KernelOptsConfig(Config[Optional[str]]):
     value: Optional[str] = Field(default=default, description=description)
 
 
-class EnableHttpProxyConfig(Config[Optional[bool]]):
-    name: ClassVar[str] = "enable_http_proxy"
-    default: ClassVar[Optional[bool]] = True
-    description: ClassVar[str] = (
-        "Enable the use of an APT or YUM and HTTP/HTTPS proxy"
-    )
-    help_text: ClassVar[Optional[str]] = (
-        "Provision nodes to use the built-in HTTP proxy (or user specified proxy) for APT or YUM. MAAS also uses the proxy for downloading boot images."
-    )
-    value: Optional[bool] = Field(default=default, description=description)
-
-
 class MAASProxyPortConfig(Config[Optional[int]]):
     name: ClassVar[str] = "maas_proxy_port"
     default: ClassVar[Optional[int]] = 8000
@@ -156,18 +144,6 @@ class PreferV4ProxyConfig(Config[Optional[bool]]):
         "If prefer_v4_proxy is set, the proxy will be set to prefer IPv4 DNS resolution before it attempts to perform IPv6 DNS resolution."
     )
     value: Optional[bool] = Field(default=default, description=description)
-
-
-class HttpProxyConfig(Config[Optional[AnyHttpUrl]]):
-    name: ClassVar[str] = "http_proxy"
-    default: ClassVar[Optional[AnyHttpUrl]] = None
-    description: ClassVar[str] = "Proxy for APT or YUM and HTTP/HTTPS"
-    help_text: ClassVar[Optional[str]] = (
-        "This will be passed onto provisioned nodes to use as a proxy for APT or YUM traffic. MAAS also uses the proxy for downloading boot images. If no URL is provided, the built-in MAAS proxy will be used."
-    )
-    value: Optional[AnyHttpUrl] = Field(
-        default=default, description=description
-    )
 
 
 class DefaultDnsTtlConfig(Config[Optional[int]]):
@@ -290,81 +266,6 @@ class DNSTrustedAclConfig(Config[Optional[str]]):
         return host
 
 
-class NTPServersConfig(Config[Optional[str]]):
-    """Accepts a space/comma separated list of hostnames or IP addresses.
-
-    This field normalizes the list to a space-separated list.
-    """
-
-    _separators = re.compile(r"[,\s]+")
-
-    # Regular expressions to sniff out things that look like IP addresses;
-    # additional and more robust validation ought to be done to make sure.
-    _pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
-    _pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % _pt_ipv4
-    _pt_ip = re.compile(rf"^ (?: {_pt_ipv4} | {_pt_ipv6} ) $", re.VERBOSE)
-
-    name: ClassVar[str] = "ntp_servers"
-    default: ClassVar[Optional[str]] = "ntp.ubuntu.com"
-    description: ClassVar[str] = "Addresses of NTP servers"
-    help_text: ClassVar[Optional[str]] = (
-        "NTP servers, specified as IP addresses or hostnames delimited by commas and/or spaces, to be used as time references for MAAS itself, the machines MAAS deploys, and devices that make use of MAAS's DHCP services."
-    )
-    value: Optional[str] = Field(default=default, description=description)
-
-    @validator("value")
-    def validate_value(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return None
-        else:
-            values = map(str.strip, cls._separators.split(value))
-            values = (value for value in values if len(value) != 0)
-            values = map(cls._clean_addr_or_host, values)
-            return " ".join(values)
-
-    @classmethod
-    def _clean_addr_or_host(cls, value):
-        looks_like_ip = cls._pt_ip.match(value) is not None
-        if looks_like_ip:
-            return cls._clean_addr(value)
-        elif ":" in value:
-            # This is probably an IPv6 address. It's definitely not a
-            # hostname.
-            return cls._clean_addr(value)
-        else:
-            return cls._clean_host(value)
-
-    @classmethod
-    def _clean_addr(cls, addr):
-        try:
-            addr = IPAddress(addr)
-        except AddrFormatError as error:
-            message = str(error)  # netaddr has good messages.
-            message = message[:1].upper() + message[1:] + "."
-            raise ValueError(message)  # noqa: B904
-        else:
-            return str(addr)
-
-    @classmethod
-    def _clean_host(cls, host):
-        try:
-            validate_hostname(host)
-        except ValueError as error:
-            raise ValueError(f"Invalid hostname: {str(error)}")  # noqa: B904
-        else:
-            return host
-
-
-class NTPExternalOnlyConfig(Config[Optional[bool]]):
-    name: ClassVar[str] = "ntp_external_only"
-    default: ClassVar[Optional[bool]] = False
-    description: ClassVar[str] = "Use external NTP servers only"
-    help_text: ClassVar[Optional[str]] = (
-        "Configure all region controller hosts, rack controller hosts, and subsequently deployed machines to refer directly to the configured external NTP servers. Otherwise only region controller hosts will be configured to use those external NTP servers, rack contoller hosts will in turn refer to the regions' NTP servers, and deployed machines will refer to the racks' NTP servers."
-    )
-    value: Optional[bool] = Field(default=default, description=description)
-
-
 class RemoteSyslogConfig(Config[Optional[str]]):
     name: ClassVar[str] = "remote_syslog"
     default: ClassVar[Optional[str]] = None
@@ -421,20 +322,6 @@ class MAASSyslogPortConfig(Config[Optional[int]]):
                 "Unable to change port number. Port number is reserved for MAAS services."
             )
         return value
-
-
-class NetworkDiscoveryConfig(Config[Optional[NetworkDiscoveryEnum]]):
-    name: ClassVar[str] = "network_discovery"
-    default: ClassVar[Optional[NetworkDiscoveryEnum]] = (
-        NetworkDiscoveryEnum.ENABLED
-    )
-    description: ClassVar[str] = ""
-    help_text: ClassVar[Optional[str]] = (
-        "When enabled, MAAS will use passive techniques (such as listening to ARP requests and mDNS advertisements) to observe networks attached to rack controllers. Active subnet mapping will also be available to be enabled on the configured subnets."
-    )
-    value: Optional[NetworkDiscoveryEnum] = Field(
-        default=default, description=description
-    )
 
 
 class ActiveDiscoveryIntervalConfig(
@@ -543,16 +430,6 @@ class EnableThirdPartyDriversConfig(Config[Optional[bool]]):
     )
     help_text: ClassVar[Optional[str]] = ""
     value: Optional[bool] = Field(default=default, description=description)
-
-
-class WindowsKmsHostConfig(Config[Optional[str]]):
-    name: ClassVar[str] = "windows_kms_host"
-    default: ClassVar[Optional[str]] = None
-    description: ClassVar[str] = "Windows KMS activation host"
-    help_text: ClassVar[Optional[str]] = (
-        "FQDN or IP address of the host that provides the KMS Windows activation service. (Only needed for Windows deployments using KMS activation.)"
-    )
-    value: Optional[str] = Field(default=default, description=description)
 
 
 class EnableDiskErasingOnReleaseConfig(Config[Optional[bool]]):
@@ -1025,12 +902,130 @@ class CommissioningOSystemConfig(Config[Optional[str]]):
     value: Optional[str] = Field(default=default, description=description)
 
 
+class EnableHttpProxyConfig(Config[Optional[bool]]):
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "enable_http_proxy"
+    default: ClassVar[Optional[bool]] = True
+    description: ClassVar[str] = (
+        "Enable the use of an APT or YUM and HTTP/HTTPS proxy"
+    )
+    help_text: ClassVar[Optional[str]] = (
+        "Provision nodes to use the built-in HTTP proxy (or user specified proxy) for APT or YUM. MAAS also uses the proxy for downloading boot images."
+    )
+    value: Optional[bool] = Field(default=default, description=description)
+
+
+class HttpProxyConfig(Config[Optional[AnyHttpUrl]]):
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "http_proxy"
+    default: ClassVar[Optional[AnyHttpUrl]] = None
+    description: ClassVar[str] = "Proxy for APT or YUM and HTTP/HTTPS"
+    help_text: ClassVar[Optional[str]] = (
+        "This will be passed onto provisioned nodes to use as a proxy for APT or YUM traffic. MAAS also uses the proxy for downloading boot images. If no URL is provided, the built-in MAAS proxy will be used."
+    )
+    value: Optional[AnyHttpUrl] = Field(
+        default=default, description=description
+    )
+
+
 class MAASUrlConfig(Config[Optional[str]]):
     is_public: ClassVar[bool] = False
     name: ClassVar[str] = "maas_url"
     default: ClassVar[Optional[str]] = "http://localhost:5240/MAAS"
     description: ClassVar[str] = ""
     value: Optional[str] = Field(default=default, description=description)
+
+
+class NetworkDiscoveryConfig(Config[Optional[NetworkDiscoveryEnum]]):
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "network_discovery"
+    default: ClassVar[Optional[NetworkDiscoveryEnum]] = (
+        NetworkDiscoveryEnum.ENABLED
+    )
+    description: ClassVar[str] = ""
+    help_text: ClassVar[Optional[str]] = (
+        "When enabled, MAAS will use passive techniques (such as listening to ARP requests and mDNS advertisements) to observe networks attached to rack controllers. Active subnet mapping will also be available to be enabled on the configured subnets."
+    )
+    value: Optional[NetworkDiscoveryEnum] = Field(
+        default=default, description=description
+    )
+
+
+class NTPServersConfig(Config[Optional[str]]):
+    """Accepts a space/comma separated list of hostnames or IP addresses.
+
+    This field normalizes the list to a space-separated list.
+    """
+
+    _separators = re.compile(r"[,\s]+")
+
+    # Regular expressions to sniff out things that look like IP addresses;
+    # additional and more robust validation ought to be done to make sure.
+    _pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
+    _pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % _pt_ipv4
+    _pt_ip = re.compile(rf"^ (?: {_pt_ipv4} | {_pt_ipv6} ) $", re.VERBOSE)
+
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "ntp_servers"
+    default: ClassVar[Optional[str]] = "ntp.ubuntu.com"
+    description: ClassVar[str] = "Addresses of NTP servers"
+    help_text: ClassVar[Optional[str]] = (
+        "NTP servers, specified as IP addresses or hostnames delimited by commas and/or spaces, to be used as time references for MAAS itself, the machines MAAS deploys, and devices that make use of MAAS's DHCP services."
+    )
+    value: Optional[str] = Field(default=default, description=description)
+
+    @validator("value")
+    def validate_value(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        else:
+            values = map(str.strip, cls._separators.split(value))
+            values = (value for value in values if len(value) != 0)
+            values = map(cls._clean_addr_or_host, values)
+            return " ".join(values)
+
+    @classmethod
+    def _clean_addr_or_host(cls, value):
+        looks_like_ip = cls._pt_ip.match(value) is not None
+        if looks_like_ip:
+            return cls._clean_addr(value)
+        elif ":" in value:
+            # This is probably an IPv6 address. It's definitely not a
+            # hostname.
+            return cls._clean_addr(value)
+        else:
+            return cls._clean_host(value)
+
+    @classmethod
+    def _clean_addr(cls, addr):
+        try:
+            addr = IPAddress(addr)
+        except AddrFormatError as error:
+            message = str(error)  # netaddr has good messages.
+            message = message[:1].upper() + message[1:] + "."
+            raise ValueError(message)  # noqa: B904
+        else:
+            return str(addr)
+
+    @classmethod
+    def _clean_host(cls, host):
+        try:
+            validate_hostname(host)
+        except ValueError as error:
+            raise ValueError(f"Invalid hostname: {str(error)}")  # noqa: B904
+        else:
+            return host
+
+
+class NTPExternalOnlyConfig(Config[Optional[bool]]):
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "ntp_external_only"
+    default: ClassVar[Optional[bool]] = False
+    description: ClassVar[str] = "Use external NTP servers only"
+    help_text: ClassVar[Optional[str]] = (
+        "Configure all region controller hosts, rack controller hosts, and subsequently deployed machines to refer directly to the configured external NTP servers. Otherwise only region controller hosts will be configured to use those external NTP servers, rack contoller hosts will in turn refer to the regions' NTP servers, and deployed machines will refer to the racks' NTP servers."
+    )
+    value: Optional[bool] = Field(default=default, description=description)
 
 
 class OMAPIKeyConfig(Config[Optional[str]]):
@@ -1077,26 +1072,32 @@ class VaultEnabledConfig(Config[Optional[bool]]):
     value: Optional[bool] = Field(default=default, description=description)
 
 
+class WindowsKmsHostConfig(Config[Optional[str]]):
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "windows_kms_host"
+    default: ClassVar[Optional[str]] = None
+    description: ClassVar[str] = "Windows KMS activation host"
+    help_text: ClassVar[Optional[str]] = (
+        "FQDN or IP address of the host that provides the KMS Windows activation service. (Only needed for Windows deployments using KMS activation.)"
+    )
+    value: Optional[str] = Field(default=default, description=description)
+
+
 class ConfigFactory:
     ALL_CONFIGS: dict[str, Type[Config]] = {
         MAASNameConfig.name: MAASNameConfig,
         ThemeConfig.name: ThemeConfig,
         KernelOptsConfig.name: KernelOptsConfig,
-        EnableHttpProxyConfig.name: EnableHttpProxyConfig,
         MAASProxyPortConfig.name: MAASProxyPortConfig,
         UsePeerProxyConfig.name: UsePeerProxyConfig,
         PreferV4ProxyConfig.name: PreferV4ProxyConfig,
-        HttpProxyConfig.name: HttpProxyConfig,
         DefaultDnsTtlConfig.name: DefaultDnsTtlConfig,
         UpstreamDnsConfig.name: UpstreamDnsConfig,
         DNSSECValidationConfig.name: DNSSECValidationConfig,
         MAASInternalDomainConfig.name: MAASInternalDomainConfig,
         DNSTrustedAclConfig.name: DNSTrustedAclConfig,
-        NTPServersConfig.name: NTPServersConfig,
-        NTPExternalOnlyConfig.name: NTPExternalOnlyConfig,
         RemoteSyslogConfig.name: RemoteSyslogConfig,
         MAASSyslogPortConfig.name: MAASSyslogPortConfig,
-        NetworkDiscoveryConfig.name: NetworkDiscoveryConfig,
         ActiveDiscoveryIntervalConfig.name: ActiveDiscoveryIntervalConfig,
         DefaultBootInterfaceLinkTypeConfig.name: DefaultBootInterfaceLinkTypeConfig,
         DefaultOSystemConfig.name: DefaultOSystemConfig,
@@ -1106,7 +1107,6 @@ class ConfigFactory:
         DefaultStorageLayoutConfig.name: DefaultStorageLayoutConfig,
         CommissioningDistroSeriesConfig.name: CommissioningDistroSeriesConfig,
         EnableThirdPartyDriversConfig.name: EnableThirdPartyDriversConfig,
-        WindowsKmsHostConfig.name: WindowsKmsHostConfig,
         EnableDiskErasingOnReleaseConfig.name: EnableDiskErasingOnReleaseConfig,
         DiskEraseWithSecureEraseConfig.name: DiskEraseWithSecureEraseConfig,
         DiskEraseWithQuickEraseConfig.name: DiskEraseWithQuickEraseConfig,
@@ -1142,17 +1142,25 @@ class ConfigFactory:
         HardwareSyncIntervalConfig.name: HardwareSyncIntervalConfig,
         TlsCertExpirationNotificationEnabledConfig.name: TlsCertExpirationNotificationEnabledConfig,
         TLSCertExpirationNotificationIntervalConfig.name: TLSCertExpirationNotificationIntervalConfig,
-        SessionLengthConfig.name: SessionLengthConfig,
         AutoVlanCreationConfig.name: AutoVlanCreationConfig,
         # Private configs.
         ActiveDiscoveryLastScanConfig.name: ActiveDiscoveryLastScanConfig,
         CommissioningOSystemConfig.name: CommissioningOSystemConfig,
+        EnableHttpProxyConfig.name: EnableHttpProxyConfig,
+        HttpProxyConfig.name: HttpProxyConfig,
         MAASUrlConfig.name: MAASUrlConfig,
+        NetworkDiscoveryConfig.name: NetworkDiscoveryConfig,
+        NTPServersConfig.name: NTPServersConfig,
+        NTPExternalOnlyConfig.name: NTPExternalOnlyConfig,
         OMAPIKeyConfig.name: OMAPIKeyConfig,
         RPCSharedSecretConfig.name: RPCSharedSecretConfig,
         TLSPortConfig.name: TLSPortConfig,
         UUIDConfig.name: UUIDConfig,
+        # TODO: in the V2 api it was possible to change the session length from the API. Django will be dropped and we don't
+        #  want to expose it in the new api, so remove it when django is gone.
+        SessionLengthConfig.name: SessionLengthConfig,
         VaultEnabledConfig.name: VaultEnabledConfig,
+        WindowsKmsHostConfig.name: WindowsKmsHostConfig,
     }
 
     PUBLIC_CONFIGS = {

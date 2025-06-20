@@ -146,6 +146,8 @@ class MAASLegacyServerTestCase(MAASRegionTestCaseBase, DjangoTestCase):
 
     def setUp(self):
         super().setUp()
+        service_layer.init()
+        self.addCleanup(service_layer.close)
         self.setUpFixtures()
 
     def setUpFixtures(self):
@@ -164,14 +166,14 @@ class MAASLegacyTransactionServerTestCase(
 
     def setUp(self):
         super().setUp()
+        service_layer.init()
+        self.addCleanup(self.close_service_layer)
         self.setUpFixtures()
 
     def setUpFixtures(self):
         super().setUpFixtures()
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(PackageRepositoryFixture())
-        self.addCleanup(self.close_service_layer)
-        service_layer.init()
 
 
 class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
@@ -187,12 +189,12 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.beginTransaction()
         self.addCleanup(self.closeServiceLayer)
         self.addCleanup(self.endTransaction)
+        service_layer.init()
         self.setUpFixtures()
         if maas_data := os.getenv("MAAS_DATA"):
             os.mkdir(f"{maas_data}/image-storage")
         if maas_root := os.getenv("MAAS_ROOT"):
             os.mkdir(f"{maas_root}/certificates")
-        service_layer.init()
 
     def beginTransaction(self):
         """Begin new transaction using Django's `atomic`."""
@@ -245,8 +247,8 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.assertNotInTransaction()
         self.addCleanup(self.close_service_layer)
         self.addCleanup(self.assertNotInTransaction)
-        self.setUpFixtures()
         service_layer.init()
+        self.setUpFixtures()
         if maas_data := os.getenv("MAAS_DATA"):
             os.mkdir(f"{maas_data}/image-storage")
         if maas_root := os.getenv("MAAS_ROOT"):

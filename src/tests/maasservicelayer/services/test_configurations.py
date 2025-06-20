@@ -6,12 +6,16 @@ from unittest.mock import Mock
 
 import pytest
 
+from maasservicelayer.builders.configurations import (
+    DatabaseConfigurationBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsClauseFactory,
 )
 from maasservicelayer.models.configurations import (
+    MAASNameConfig,
     MAASProxyPortConfig,
     RPCSharedSecretConfig,
     ThemeConfig,
@@ -130,6 +134,38 @@ class TestIntegrationConfigurationsService:
                 set(expected_configs.keys())
             )
         ) == expected_configs
+
+    async def test_set_database_config(self, services: ServiceCollectionV3):
+        await services.configurations.set(MAASNameConfig.name, "bar")
+        value = await services.configurations.get(MAASNameConfig.name)
+        assert value == "bar"
+
+    async def test_set_database_config_updated(
+        self, services: ServiceCollectionV3
+    ):
+        await services.configurations.set(MAASNameConfig.name, "bar")
+        value = await services.configurations.get(MAASNameConfig.name)
+        assert value == "bar"
+
+        await services.configurations.set(MAASNameConfig.name, "newbar")
+        value = await services.configurations.get(MAASNameConfig.name)
+        assert value == "newbar"
+
+    async def test_set_secret_config(self, services: ServiceCollectionV3):
+        await services.configurations.set(VCenterPasswordConfig.name, "bar")
+        value = await services.configurations.get(VCenterPasswordConfig.name)
+        assert value == "bar"
+
+    async def test_set_secret_config_updated(
+        self, services: ServiceCollectionV3
+    ):
+        await services.configurations.set(VCenterPasswordConfig.name, "bar")
+        value = await services.configurations.get(VCenterPasswordConfig.name)
+        assert value == "bar"
+
+        await services.configurations.set(VCenterPasswordConfig.name, "newbar")
+        value = await services.configurations.get(VCenterPasswordConfig.name)
+        assert value == "newbar"
 
 
 @pytest.mark.asyncio
@@ -282,3 +318,46 @@ class TestConfigurationsService:
                 )
             )
         )
+
+    async def test_set_unkwnown(self):
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        await service.set(name="foo", value="bar")
+        service.database_configurations_service.create_or_update.assert_called_once_with(
+            DatabaseConfigurationBuilder(name="foo", value="bar")
+        )
+
+    async def test_set_database_setting(self):
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        await service.set(name=MAASNameConfig.name, value="bar")
+        service.database_configurations_service.create_or_update.assert_called_once_with(
+            DatabaseConfigurationBuilder(name=MAASNameConfig.name, value="bar")
+        )
+
+    async def test_set_secret_setting(self):
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        await service.set(name=VCenterPasswordConfig.name, value="bar")
+        service.secrets_service.set_simple_secret.assert_called_once_with(
+            VCenterPasswordConfig.secret_model, "bar"
+        )
+        service.database_configurations_service.create_or_update.assert_not_called()

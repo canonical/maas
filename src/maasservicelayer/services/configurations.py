@@ -6,6 +6,9 @@ from typing import Any, TypeVar
 
 import structlog
 
+from maasservicelayer.builders.configurations import (
+    DatabaseConfigurationBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
@@ -151,6 +154,24 @@ class ConfigurationsService(Service):
             )
         )
         return configs
+
+    async def set(self, name: str, value: Any) -> None:
+        config_model = None
+        try:
+            config_model = ConfigFactory.get_config_model(name)
+        except ValueError:
+            logger.warn(
+                f"The configuration '{name}' is not known. Anyways, it's going to be stored in the DB."
+            )
+        if config_model and config_model.stored_as_secret:
+            await self.secrets_service.set_simple_secret(
+                config_model.secret_model,  # pyright: ignore[reportArgumentType]
+                value,
+            )
+        else:
+            await self.database_configurations_service.create_or_update(
+                DatabaseConfigurationBuilder(name=name, value=value)
+            )
 
     async def get_maas_user_agent(self):
         # TODO: move get_running_version to maascommon.

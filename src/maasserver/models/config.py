@@ -16,10 +16,7 @@ from maasserver.listener import notify_action
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import post_commit_do
 from maasserver.workflow import start_workflow
-from maasservicelayer.models.configurations import (
-    ActiveDiscoveryIntervalEnum,
-    ConfigFactory,
-)
+from maasservicelayer.models.configurations import ActiveDiscoveryIntervalEnum
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import LegacyLogger
 
@@ -91,21 +88,9 @@ class ConfigManager(Manager):
         :type request: HttpRequest object.
         """
         from maasserver.audit import create_audit_event
-        from maasserver.secrets import SecretManager
 
-        config_model = None
-        try:
-            config_model = ConfigFactory.get_config_model(name)
-        except ValueError:
-            log.warn(
-                f"The configuration '{name}' is not known. Anyways, it's going to be stored in the DB."
-            )
-        if config_model and config_model.stored_as_secret:
-            SecretManager().set_simple_secret(
-                config_model.secret_model.secret_name, value
-            )
-        else:
-            self.update_or_create(name=name, defaults={"value": value})
+        service_layer.services.configurations.set(name, value)
+
         self._handle_config_value_changed(name, value)
         notify_action("config", "update", name)
         if endpoint is not None and request is not None:

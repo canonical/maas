@@ -321,12 +321,18 @@ class TestConfigFactory:
         [
             "active_discovery_last_scan",
             "commissioning_osystem",
+            "enable_http_proxy",
+            "http_proxy",
             "maas_url",
+            "network_discovery",
+            "ntp_external_only",
+            "ntp_servers",
             "omapi_key",
             "rpc_shared_secret",
             "tls_port",
             "uuid",
             "vault_enabled",
+            "windows_kms_host",
         ],
     )
     def test_private_config(self, name: str):
