@@ -367,11 +367,10 @@ class TestDNSResourceRecordAPI(APITestCase.ForUser):
         self.become_admin()
         dnsdata = factory.make_DNSData()
         dnsrr = dnsdata.dnsresource
-
-        with post_commit_hooks:
-            while dnsdata.rrtype == "CNAME":
+        while dnsdata.rrtype == "CNAME":
+            with post_commit_hooks:
                 dnsdata.delete()
-                dnsdata = factory.make_DNSData(dnsresource=dnsrr)
+            dnsdata = factory.make_DNSData(dnsresource=dnsrr)
         # Now create a second DNSData record for this DNSRR.
         factory.make_DNSData(rrtype=dnsdata.rrtype, dnsresource=dnsrr)
         uri = get_dnsresourcerecord_uri(dnsdata)
