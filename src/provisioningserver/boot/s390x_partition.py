@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2021-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """S390X DPM Partition Boot Method"""
@@ -59,8 +59,12 @@ class S390XPartitionBootMethod(BootMethod):
             cmd_line = compose_kernel_command_line(params)
             # Modify the kernel_command to inject the BOOTIF. S390X doesn't
             # support the IPAPPEND pxelinux flag.
+            # If DHCP relay is used, then we rely on the s390x_lease_mac_address extracted
+            # by the region from the lease table.
             if mac is not None:
                 return f"{cmd_line} BOOTIF={format_bootif(mac)}"
+            elif kernel_params.s390x_lease_mac_address:
+                return f"{cmd_line} BOOTIF={format_bootif(kernel_params.s390x_lease_mac_address)}"
             return cmd_line
 
         namespace["kernel_command"] = kernel_command

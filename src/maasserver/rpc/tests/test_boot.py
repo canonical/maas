@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import datetime
 from datetime import timedelta
@@ -143,6 +143,7 @@ class TestGetConfig(MAASServerTestCase):
                 "xinstall_path",
                 "ephemeral_opts",
                 "http_boot",
+                "s390x_lease_mac_address",
             },
         )
 
@@ -1766,6 +1767,85 @@ class TestGetConfig(MAASServerTestCase):
         )
         self.assertEqual(commissioning_osystem, observed_config["osystem"])
         self.assertEqual(commissioning_series, observed_config["release"])
+
+    def test_s390x_enlisted_machine(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        subnet = factory.make_Subnet()
+        remote_ip = factory.pick_ip_in_Subnet(subnet)
+        mac = factory.make_mac_address()
+        unknown_interface = factory.make_Interface(
+            INTERFACE_TYPE.UNKNOWN, vlan=subnet.vlan, mac_address=mac
+        )
+        factory.make_StaticIPAddress(ip=remote_ip, interface=unknown_interface)
+        factory.make_default_ubuntu_release_bootable("s390x")
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        observed_config = get_config(
+            rack_controller.system_id,
+            local_ip,
+            remote_ip,
+            arch="s390x",
+            mac=factory.make_mac_address(),  # the MAC address of the
+            # relay.
+        )
+        self.assertEqual(
+            mac,
+            observed_config["s390x_lease_mac_address"],
+        )
+        self.assertNotIn(
+            "system_id",
+            observed_config,
+        )
+
+    def test_s390x_known_machine(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        subnet = factory.make_Subnet()
+        remote_ip = factory.pick_ip_in_Subnet(subnet)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            architecture="s390x/generic",
+            status=NODE_STATUS.DEPLOYING,
+            subnet=subnet,
+            ip_address=remote_ip,
+        )
+        arch = node.split_arch()[0]
+        factory.make_default_ubuntu_release_bootable(arch)
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        observed_config = get_config(
+            rack_controller.system_id,
+            local_ip,
+            remote_ip,
+            arch=arch,
+            mac=factory.make_mac_address(),  # the MAC address of the
+            # relay.
+        )
+        self.assertEqual(
+            node.system_id,
+            observed_config["system_id"],
+        )
+
+    def test_s390x_lease_mac(self):
+        rack_controller = factory.make_RackController()
+        mac = factory.make_mac_address()
+        local_ip = factory.make_ip_address()
+        subnet = factory.make_Subnet()
+        remote_ip = factory.pick_ip_in_Subnet(subnet)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            architecture="s390x/generic",
+            status=NODE_STATUS.DEPLOYING,
+            subnet=subnet,
+            ip_address=remote_ip,
+        )
+        arch = node.split_arch()[0]
+        factory.make_default_ubuntu_release_bootable(arch)
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, arch=arch, mac=mac
+        )
+        self.assertEqual(
+            node.get_boot_interface().mac_address,
+            observed_config["s390x_lease_mac_address"],
+        )
 
 
 class TestGetBootFilenames(MAASServerTestCase):
