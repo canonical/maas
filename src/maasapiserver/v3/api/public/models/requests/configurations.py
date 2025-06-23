@@ -41,5 +41,24 @@ class UpdateConfigurationRequest(BaseModel):
         except ValidationError as e:
             raise ValidationException.build_for_field(
                 field="value",
-                message=f"Expected type '{model.__fields__['value'].type_.__name__}' but got '{type(self.value).__name__}'",
+                message=f"Expected type '{model.__fields__['value'].type_.__name__}' but got '{type(self.value).__name__}' for configuration '{name}'",
             ) from e
+
+
+class UpdateConfigurationItemRequest(UpdateConfigurationRequest):
+    name: PublicConfigName = Field(  # pyright: ignore [reportInvalidTypeForm]
+        description="The name of the configuration."
+    )
+
+    def check_config_typing(self):
+        super().check_typing(self.name.value)
+
+
+class UpdateConfigurationsRequest(BaseModel):
+    configurations: list[UpdateConfigurationItemRequest] = Field(
+        description="List of configurations to be updated."
+    )
+
+    def check_typing(self):
+        for configuration in self.configurations:
+            configuration.check_config_typing()

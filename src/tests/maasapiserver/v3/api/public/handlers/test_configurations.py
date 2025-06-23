@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from ipaddress import IPv4Address
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, call, Mock
 
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
@@ -9,7 +9,10 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.configurations import (
+    PublicConfigName,
+    UpdateConfigurationItemRequest,
     UpdateConfigurationRequest,
+    UpdateConfigurationsRequest,
 )
 from maasapiserver.v3.api.public.models.responses.configurations import (
     ConfigurationResponse,
@@ -235,6 +238,106 @@ class TestConfigurationsApi:
         response = await mocked_api_client_admin.put(
             f"{self.BASE_PATH}/theme",
             json=jsonable_encoder(UpdateConfigurationRequest(value={})),
+        )
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    async def test_set_configs_forbidden_for_users(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ):
+        response = await mocked_api_client_user.put(
+            self.BASE_PATH,
+            json=jsonable_encoder(
+                UpdateConfigurationsRequest(
+                    configurations=[
+                        UpdateConfigurationItemRequest(
+                            name=PublicConfigName.THEME, value=None
+                        )
+                    ]
+                )
+            ),
+        )
+        assert response.status_code == 403
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 403
+
+    async def test_set_configs_for_admins(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.events = Mock(EventsService)
+        response = await mocked_api_client_admin.put(
+            self.BASE_PATH,
+            json=jsonable_encoder(
+                UpdateConfigurationsRequest(
+                    configurations=[
+                        UpdateConfigurationItemRequest(
+                            name=PublicConfigName.THEME, value=None
+                        ),
+                        UpdateConfigurationItemRequest(
+                            name=PublicConfigName.USE_RACK_PROXY, value=False
+                        ),
+                    ]
+                )
+            ),
+        )
+        assert response.status_code == 204
+        services_mock.configurations.set.assert_has_awaits(
+            [
+                call("theme", None),
+                call("use_rack_proxy", False),
+            ]
+        )
+        services_mock.events.record_event.assert_has_awaits(
+            [
+                call(
+                    event_type=EventTypeEnum.SETTINGS,
+                    event_action=EVENT_DETAILS_MAP[
+                        EventTypeEnum.SETTINGS
+                    ].description,
+                    event_description="Updated configuration setting 'theme' to 'None'.",
+                    user_agent=ANY,
+                    ip_address=IPv4Address("127.0.0.1"),
+                    user="username",
+                    endpoint=EndpointChoicesEnum.API,
+                ),
+                call(
+                    event_type=EventTypeEnum.SETTINGS,
+                    event_action=EVENT_DETAILS_MAP[
+                        EventTypeEnum.SETTINGS
+                    ].description,
+                    event_description="Updated configuration setting 'use_rack_proxy' to 'False'.",
+                    user_agent=ANY,
+                    ip_address=IPv4Address("127.0.0.1"),
+                    user="username",
+                    endpoint=EndpointChoicesEnum.API,
+                ),
+            ]
+        )
+
+    async def test_set_configs_type_mismatch(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        response = await mocked_api_client_admin.put(
+            self.BASE_PATH,
+            json=jsonable_encoder(
+                UpdateConfigurationsRequest(
+                    configurations=[
+                        UpdateConfigurationItemRequest(
+                            name=PublicConfigName.THEME, value=[]
+                        )
+                    ]
+                )
+            ),
         )
         assert response.status_code == 422
         error_response = ErrorBodyResponse(**response.json())

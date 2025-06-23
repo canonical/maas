@@ -3,6 +3,7 @@
 
 from fastapi import Depends
 from starlette.requests import Request
+from starlette.responses import Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -14,6 +15,7 @@ from maasapiserver.v3.api.public.models.requests.configurations import (
     ConfigurationsFiltersParams,
     PublicConfigName,
     UpdateConfigurationRequest,
+    UpdateConfigurationsRequest,
 )
 from maasapiserver.v3.api.public.models.responses.configurations import (
     ConfigurationResponse,
@@ -88,6 +90,49 @@ class ConfigurationsHandler(Handler):
     ) -> ConfigurationResponse:
         configuration = await services.configurations.get(name.value)
         return ConfigurationResponse(name=name.value, value=configuration)
+
+    @handler(
+        path="/configurations",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def set_configurations(
+        self,
+        request: Request,
+        configurations_request: UpdateConfigurationsRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+    ) -> Response:
+        assert (
+            authenticated_user is not None
+        )  # make pyright happy, since this endpoint requires authentication there is always a user
+        configurations_request.check_typing()
+        for configuration in configurations_request.configurations:
+            await services.configurations.set(
+                configuration.name.value, configuration.value
+            )
+            await services.events.record_event(
+                event_type=EventTypeEnum.SETTINGS,
+                event_action=EVENT_DETAILS_MAP[
+                    EventTypeEnum.SETTINGS
+                ].description,
+                event_description=f"Updated configuration setting '{configuration.name.value}' to '{configuration.value}'.",
+                user_agent=request.headers.get("user-agent", ""),
+                ip_address=get_remote_ip(request),
+                user=authenticated_user.username,
+                endpoint=EndpointChoicesEnum.API,
+            )
+        return Response(status_code=204)
 
     @handler(
         path="/configurations/{name}",
