@@ -12,7 +12,7 @@ Only four steps are required to [get MAAS up and running](https://maas.io/docs/h
 
 ## Fine-tune MAAS networks
 
-MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine operation. If your situation is different, you may want to [manage networks](https://maas.io/docs/how-to-manage-networks) to suit your environment:
+MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine operation.  If your situation is different, you may want to [manage networks](https://maas.io/docs/how-to-manage-networks) to suit your environment:
 
 - Make routine adjustments, like adding default gateways, loopback, bridges, and bonds, or even enable two-NIC interfaces.
 - Manage network discovery, which automatically detects connected devices to limit guesswork.
@@ -41,7 +41,7 @@ MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine oper
 
 ## Manage deployment OS images
 
-MAAS supports a wide range of Linux, Windows, and specialty operating systems, so it pays to [manage images](https://maas.io/docs/how-to-manage-images) carefully:
+MAAS supports a very wide range of Linux, Windows, and specialty operating systems, so it pays to [manage images](https://maas.io/docs/how-to-manage-images) carefully:
 
 - Set up image SimpleStreams to keep your standard images up-to-date.
 - Use custom and local mirrors to improve download performance.
