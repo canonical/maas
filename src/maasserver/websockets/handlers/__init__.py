@@ -32,7 +32,6 @@ __all__ = [
     "SubnetHandler",
     "TagHandler",
     "TokenHandler",
-    "UserHandler",
     "VLANHandler",
     "VMClusterHandler",
 ]
@@ -65,6 +64,5 @@ from maasserver.websockets.handlers.staticroute import StaticRouteHandler
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maasserver.websockets.handlers.tag import TagHandler
 from maasserver.websockets.handlers.token import TokenHandler
-from maasserver.websockets.handlers.user import UserHandler
 from maasserver.websockets.handlers.vlan import VLANHandler
 from maasserver.websockets.handlers.vmcluster import VMClusterHandler

@@ -1,4 +1,4 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from contextlib import contextmanager
@@ -16,7 +16,6 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import UserSkipCreateAuthorisationTokenFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.triggers.websocket import node_fields
@@ -826,67 +825,6 @@ class TestDeviceWithParentTagListener(
             )
             yield dv.get(timeout=2)
             self.assertEqual(("update", parent.system_id), dv.value)
-        finally:
-            yield listener.stopService()
-
-
-class TestUserListener(
-    MAASTransactionServerTestCase, TransactionalHelpersMixin
-):
-    """End-to-end test of both the listeners code and the user
-    triggers code."""
-
-    def setUp(self):
-        super().setUp()
-        self.useFixture(UserSkipCreateAuthorisationTokenFixture())
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_on_create_notification(self):
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("user", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            user = yield deferToDatabase(self.create_user)
-            yield dv.get(timeout=2)
-            self.assertEqual(("create", str(user.id)), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_on_update_notification(self):
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("user", lambda *args: dv.set(args))
-        user = yield deferToDatabase(self.create_user)
-
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.update_user,
-                user.id,
-                {"username": factory.make_name("username")},
-            )
-            yield dv.get(timeout=2)
-            self.assertEqual(("update", str(user.id)), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_on_delete_notification(self):
-        listener = self.make_listener_without_delay()
-        user = yield deferToDatabase(self.create_user)
-
-        dv = DeferredValue()
-        listener.register("user", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_user, user.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(("delete", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3536,46 +3474,6 @@ class TestTokenListener(
             yield deferToDatabase(self.delete_token, token.id)
             yield dv.get(timeout=2)
             self.assertEqual(("delete", str(token.id)), dv.value)
-        finally:
-            yield listener.stopService()
-
-
-class TestUserSSLKeyListener(
-    MAASTransactionServerTestCase, TransactionalHelpersMixin
-):
-    """End-to-end test of both the listeners code and the maasserver_sslkey
-    table that notifies its user."""
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_with_update_on_create(self):
-        user = yield deferToDatabase(self.create_user)
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("user", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.create_sslkey, {"user": user})
-            yield dv.get(timeout=2)
-            self.assertEqual(("update", str(user.id)), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_with_update_on_delete(self):
-        user = yield deferToDatabase(self.create_user)
-        sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("user", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_sslkey, sslkey.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 

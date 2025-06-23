@@ -2187,24 +2187,6 @@ def register_websocket_triggers():
         "maasserver_tag", "tag_update_machine_device_notify", "update"
     )
 
-    # User table
-    register_procedure(
-        render_notification_procedure(
-            "user_create_notify", "user_create", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "user_update_notify", "user_update", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "user_delete_notify", "user_delete", "OLD.id"
-        )
-    )
-    register_triggers("auth_user", "user")
-
     # Events table
     register_procedure(
         render_notification_procedure(
@@ -2573,20 +2555,6 @@ def register_websocket_triggers():
         "maasserver_cacheset", "nd_cacheset_unlink_notify", "delete"
     )
 
-    # Token table, update to linked user.
-    register_procedure(
-        render_notification_procedure(
-            "user_token_link_notify", "user_update", "NEW.user_id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "user_token_unlink_notify", "user_update", "OLD.user_id"
-        )
-    )
-    register_trigger("piston3_token", "user_token_link_notify", "insert")
-    register_trigger("piston3_token", "user_token_unlink_notify", "delete")
-
     # Token/Consumer table.
     register_procedure(
         render_notification_procedure(
@@ -2611,22 +2579,6 @@ def register_websocket_triggers():
         "consumer_token_update_notify",
         event="update",
         fields=["name"],
-    )
-
-    # SSL key table, update to linked user.
-    register_procedure(
-        render_notification_procedure(
-            "user_sslkey_link_notify", "user_update", "NEW.user_id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "user_sslkey_unlink_notify", "user_update", "OLD.user_id"
-        )
-    )
-    register_trigger("maasserver_sslkey", "user_sslkey_link_notify", "insert")
-    register_trigger(
-        "maasserver_sslkey", "user_sslkey_unlink_notify", "delete"
     )
 
     # DHCPSnippet table

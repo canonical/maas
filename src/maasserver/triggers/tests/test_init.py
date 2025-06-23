@@ -91,9 +91,6 @@ class TestTriggersUsed(MAASServerTestCase):
     }
 
     triggers_websocket = {
-        "auth_user_user_create_notify",
-        "auth_user_user_delete_notify",
-        "auth_user_user_update_notify",
         "blockdevice_nd_blockdevice_link_notify",
         "blockdevice_nd_blockdevice_unlink_notify",
         "blockdevice_nd_blockdevice_update_notify",
@@ -223,8 +220,6 @@ class TestTriggersUsed(MAASServerTestCase):
         "space_space_delete_notify",
         "space_space_machine_update_notify",
         "space_space_update_notify",
-        "sslkey_user_sslkey_link_notify",
-        "sslkey_user_sslkey_unlink_notify",
         "staticipaddress_ipaddress_domain_delete_notify",
         "staticipaddress_ipaddress_domain_insert_notify",
         "staticipaddress_ipaddress_domain_update_notify",

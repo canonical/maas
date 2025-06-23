@@ -738,7 +738,6 @@ ALL_NOTIFIERS = {
     "subnet",
     "tag",
     "token",
-    "user",
     "vlan",
     "vmcluster",
 }
@@ -770,7 +769,6 @@ ALL_HANDLERS = {
     "subnet",
     "tag",
     "token",
-    "user",
     "vlan",
     "vmcluster",
 }
