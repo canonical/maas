@@ -21,6 +21,7 @@ from maasserver.models import (
     Event,
     Node,
     RackController,
+    StaticIPAddress,
     Subnet,
     VLAN,
 )
@@ -480,6 +481,28 @@ def get_config(
     region_ip = None
     if remote_ip is not None:
         region_ip = get_source_address(remote_ip)
+
+    # In environments with DHCP relay (see: https://bugs.launchpad.net/maas/+bug/2112637),
+    # the MAC address of the remote machine is not available. Since for s390x architecture we have to provide it,
+    # attempt to resolve it via lease table.
+    s390x_lease_mac_address = None
+    if arch == "s390x":
+        lease = (
+            StaticIPAddress.objects.filter(ip=remote_ip)
+            .order_by("-updated")
+            .first()
+        )
+        if lease:
+            s390x_interface = lease.interface_set.first()
+            if s390x_interface:
+                s390x_lease_mac_address = s390x_interface.mac_address
+                # use the MAC address that we extract from the lease, otherwise the machine would be enlisted again.
+                mac = s390x_lease_mac_address
+        if s390x_lease_mac_address is None:
+            maaslog.warning(
+                f"Could not find the lease for the s390x machine with IP '{remote_ip}'"
+            )
+
     machine = get_node_from_mac_or_hardware_uuid(mac, hardware_uuid)
 
     # Fail with no response early so no extra work is performed.
@@ -802,6 +825,7 @@ def get_config(
         # rack controllers use HTTP boot as well.
         "http_boot": True,
         "ephemeral_opts": ephemeral_opts or "",
+        "s390x_lease_mac_address": s390x_lease_mac_address,
     }
     if machine is not None:
         params["system_id"] = machine.system_id

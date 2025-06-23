@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2021-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.boot.s390x`."""
@@ -121,3 +121,17 @@ class TestS390XPartitionBootMethod(MAASTestCase):
         ]
 
         self.assertEqual([], output)
+
+    def test_get_reader_dhcp_relay_appends_bootif(self):
+        s390x_partition = S390XPartitionBootMethod()
+        mac = "00:16:3e:4a:03:01"
+        params = make_kernel_parameters(
+            self, arch="s390x", purpose="install", s390x_lease_mac_address=mac
+        )
+
+        output = s390x_partition.get_reader(None, params)
+        output = output.read(output.size).decode()
+        self.assertRegex(
+            output,
+            rf"(?ms).*^\s+append=.*BOOTIF={format_bootif(mac)}+?$",
+        )

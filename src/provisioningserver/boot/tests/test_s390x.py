@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.boot.s390x`."""
@@ -203,6 +203,19 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         output = output.read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         expected = "BOOTIF=%s" % format_bootif(fake_mac)
+        self.assertIn(expected, config["execute"]["APPEND"])
+
+    def test_get_reader_dhcp_relay_appends_bootif(self):
+        method = S390XBootMethod()
+        mac = "00:16:3e:4a:03:01"
+        params = make_kernel_parameters(
+            self, arch="s390x", purpose="install", s390x_lease_mac_address=mac
+        )
+
+        output = method.get_reader(None, params)
+        output = output.read(output.size).decode()
+        config = parse_pxe_config(output)
+        expected = "BOOTIF=%s" % format_bootif("00:16:3e:4a:03:01")
         self.assertIn(expected, config["execute"]["APPEND"])
 
     def test_format_bootif_replaces_colon(self):
