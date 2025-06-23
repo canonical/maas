@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate kernel command-line options for inclusion in PXE configs."""
@@ -47,6 +47,8 @@ KernelParametersBase = namedtuple(
         "http_boot",  # Used to make sure a MAAS 2.3 rack controller uses
         # http_boot.
         "ephemeral_opts",  # Same as 'extra_opts' but used only in the ephemeral OS
+        "s390x_lease_mac_address",  # The MAC address extracted from the lease table for the IP that requested the boot
+        # configuration
     ),
 )
 

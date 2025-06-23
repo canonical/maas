@@ -129,6 +129,7 @@ class GetBootConfig(amp.Command):
         # not defined.
         (b"http_boot", amp.Boolean(optional=True)),
         (b"ephemeral_opts", amp.Unicode(optional=True)),
+        (b"s390x_lease_mac_address", amp.Unicode(optional=True)),
     ]
     errors = {BootConfigNoResponse: b"BootConfigNoResponse"}
 

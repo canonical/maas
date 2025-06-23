@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """S390X Boot Method"""
@@ -127,10 +127,14 @@ class S390XBootMethod(BootMethod, S390XBootMetadata):
 
         # Modify the kernel_command to inject the BOOTIF. S390x fails to
         # support the IPAPPEND pxelinux flag.
+        # If DHCP relay is used, then we rely on the s390x_lease_mac_address extracted
+        # by the region from the lease table.
         def kernel_command(params):
             cmd_line = compose_kernel_command_line(params)
             if mac is not None:
                 return f"{cmd_line} BOOTIF={format_bootif(mac)}"
+            elif kernel_params.s390x_lease_mac_address:
+                return f"{cmd_line} BOOTIF={format_bootif(kernel_params.s390x_lease_mac_address)}"
             return cmd_line
 
         namespace["kernel_command"] = kernel_command
