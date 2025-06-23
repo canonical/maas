@@ -1,15 +1,12 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for working with asynchronous operations."""
 
-import asyncio
 from collections import deque
 from contextlib import contextmanager
-import functools
 from itertools import count
 from queue import Queue
-import random
 import threading
 
 from twisted.internet import reactor
@@ -246,26 +243,3 @@ class DeferredHooks(threading.local):
             log.err(None, "Failure when cancelling hook.")
         else:
             return hook
-
-
-def async_retry(retries=5, backoff_ms=1000):
-    def wrapper(fn):
-        @functools.wraps(fn)
-        async def wrapped(*args, **kwargs):
-            tries = 0
-            while True:
-                try:
-                    return await fn(*args, **kwargs)
-                except Exception as e:
-                    tries += 1
-                    if tries == retries:
-                        raise e
-                    else:
-                        sleep_ms = backoff_ms * (2**tries) + random.uniform(
-                            0, 1
-                        )
-                        await asyncio.sleep(sleep_ms / 1000)
-
-        return wrapped
-
-    return wrapper

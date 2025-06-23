@@ -1,6 +1,10 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+import asyncio
+import functools
 from functools import wraps
+import random
 
 import structlog
 from temporalio import activity, workflow
@@ -55,5 +59,28 @@ def workflow_run_with_context(func):
             elapsed_time_seconds=context.get_elapsed_time_seconds(),
         )
         return res
+
+    return wrapper
+
+
+def async_retry(retries=5, backoff_ms=1000):
+    def wrapper(fn):
+        @functools.wraps(fn)
+        async def wrapped(*args, **kwargs):
+            tries = 0
+            while True:
+                try:
+                    return await fn(*args, **kwargs)
+                except Exception as e:
+                    tries += 1
+                    if tries == retries:
+                        raise e
+                    else:
+                        sleep_ms = backoff_ms * (2**tries) + random.uniform(
+                            0, 1
+                        )
+                        await asyncio.sleep(sleep_ms / 1000)
+
+        return wrapped
 
     return wrapper

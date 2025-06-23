@@ -17,8 +17,8 @@ import temporalio.converter
 from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker as TemporalWorker
 
-from maasserver.utils.asynchronous import async_retry
 from maastemporalworker.encryptor import EncryptionCodec
+from maastemporalworker.workflow.utils import async_retry
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 

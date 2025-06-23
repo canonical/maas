@@ -61,7 +61,15 @@ from maastemporalworker.workflow.tag_evaluation import (
     TagEvaluationActivity,
     TagEvaluationWorkflow,
 )
+from maastemporalworker.workflow.utils import async_retry
 from provisioningserver.utils.env import MAAS_ID
+
+
+class MAASIDNotAvailableYetError(Exception):
+    """Raised when the MAAS ID is not available yet."""
+
+    pass
+
 
 log = structlog.getLogger()
 
@@ -78,6 +86,16 @@ async def _stop_temporal_workers(workers: list[TemporalWorker]) -> None:
     for w in workers:
         tasks.append(asyncio.create_task(w.stop()))
     await asyncio.wait(tasks)
+
+
+@async_retry(retries=10)
+async def get_maas_id() -> str:
+    maas_id = MAAS_ID.get()
+    if maas_id is None:
+        raise MAASIDNotAvailableYetError(
+            f"{MAAS_ID.path} not found. Please ensure that the regiond process is healthy."
+        )
+    return maas_id
 
 
 async def main() -> None:
@@ -100,8 +118,7 @@ async def main() -> None:
 
     log.debug("connecting to Temporal server")
 
-    maas_id = MAAS_ID.get()
-
+    maas_id = await get_maas_id()
     services_cache = CacheForServices()
 
     boot_res_activity = BootResourcesActivity(db, services_cache)

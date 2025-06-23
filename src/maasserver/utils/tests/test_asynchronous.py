@@ -1,9 +1,8 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for asynchronous utilities."""
 
-import asyncio
 from functools import partial
 import threading
 from time import time
@@ -18,7 +17,7 @@ from twisted.python.threadable import isInIOThread
 from maasserver.exceptions import IteratorReusedError
 from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.utils import asynchronous
-from maasserver.utils.asynchronous import async_retry, DeferredHooks
+from maasserver.utils.asynchronous import DeferredHooks
 from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -282,33 +281,3 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
                 raise exception_type()
 
         self.assertEqual(list(dhooks.hooks), [d1])
-
-
-class TestAsyncRetry(MAASTestCase):
-    def test_async_retry_retries_async_function(self):
-        mock = Mock()
-
-        @async_retry(retries=2, backoff_ms=1)
-        async def _fn():
-            mock.fn()
-            raise Exception()
-
-        try:
-            asyncio.run(_fn())
-        except Exception:
-            pass
-
-        mock.fn.assert_called()
-        self.assertEqual(mock.fn.call_count, 2)
-
-    def test_async_retry_does_not_retry_success(self):
-        mock = Mock()
-
-        @async_retry(retries=2, backoff_ms=1)
-        async def _fn():
-            mock.fn()
-
-        asyncio.run(_fn())
-
-        mock.fn.assert_called()
-        self.assertEqual(mock.fn.call_count, 1)
