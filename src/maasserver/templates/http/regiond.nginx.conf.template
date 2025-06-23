@@ -30,11 +30,12 @@ server {
     ssl_certificate {{tls_cert_path}};
     ssl_certificate_key {{tls_key_path}};
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers "AES256+EECDH AES256+EDH !aNULL";
-    ssl_prefer_server_ciphers on;
+    ssl_ecdh_curve X25519:prime256v1:secp384r1;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
 
-    add_header Strict-Transport-Security 'max-age=15552000; includeSubdomains' always;
+    add_header Strict-Transport-Security 'max-age=63072000; includeSubdomains' always;
     {{else}}
     listen [::]:{{http_port}};
     listen {{http_port}};
