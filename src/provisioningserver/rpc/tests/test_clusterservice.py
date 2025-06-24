@@ -3094,6 +3094,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             accept_all,
             domain,
             prefix_filter,
+            None,
         )
 
     def test_chassis_type_hmcz_logs_error_to_maaslog(self):
