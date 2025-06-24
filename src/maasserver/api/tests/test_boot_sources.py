@@ -9,6 +9,7 @@ import http.client
 from django.urls import reverse
 
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
+from maasserver.audit import Event
 from maasserver.models import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
@@ -16,6 +17,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
+from provisioningserver.events import EVENT_TYPES
 
 
 def get_boot_source_uri(boot_source):
@@ -83,6 +85,17 @@ class TestBootSourceAPI(APITestCase.ForUser):
         response = self.client.delete(get_boot_source_uri(boot_source))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
+    def test_DELETE_creates_audit_event(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        response = self.client.delete(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        events = Event.objects.filter(type__name=EVENT_TYPES.BOOT_SOURCE)
+        assert len(events) == 1
+        assert (
+            events[0].description == f"Deleted boot source {boot_source.url}"
+        )
+
     def test_PUT_updates_boot_source(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
@@ -98,6 +111,38 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.assertEqual(boot_source.url, new_values["url"])
         self.assertEqual(
             boot_source.keyring_filename, new_values["keyring_filename"]
+        )
+
+    def test_PUT_creates_general_audit_event(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "keyring_filename": factory.make_name("filename"),
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        events = Event.objects.filter(type__name=EVENT_TYPES.BOOT_SOURCE)
+        assert len(events) == 1
+        assert (
+            events[0].description == f"Updated boot source {boot_source.url}"
+        )
+
+    def test_PUT_creates_url_changed_audit_event(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        new_url = "http://new-url.com"
+        new_values = {"url": new_url}
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        events = Event.objects.filter(type__name=EVENT_TYPES.BOOT_SOURCE)
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == f"Updated boot source url from {boot_source.url} to {new_url}"
         )
 
     def test_PUT_requires_admin(self):
@@ -184,6 +229,20 @@ class TestBootSourcesAPI(APITestCase.ForUser):
             boot_source.keyring_filename, params["keyring_filename"]
         )
         self.assertEqual(boot_source.url, params["url"])
+
+    def test_POST_creates_audit_event(self):
+        self.become_admin()
+
+        params = {
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("filename"),
+            "keyring_data": b"",
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        events = Event.objects.filter(type__name=EVENT_TYPES.BOOT_SOURCE)
+        assert len(events) == 1
+        assert events[0].description == f"Created boot source {params['url']}"
 
     def test_POST_validates_boot_source(self):
         self.become_admin()

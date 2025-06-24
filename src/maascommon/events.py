@@ -285,4 +285,10 @@ EVENT_DETAILS_MAP = {
     EventTypeEnum.ABORTED_TESTING: EventDetail(
         description="Aborted testing", level=INFO
     ),
+    EventTypeEnum.BOOT_SOURCE: EventDetail(
+        description="Boot source", level=INFO
+    ),
+    EventTypeEnum.BOOT_SOURCE_SELECTION: EventDetail(
+        description="Boot source selection", level=INFO
+    ),
 }

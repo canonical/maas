@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from twisted.internet.defer import Deferred
 
+from maasserver.audit import create_audit_event
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -21,7 +22,12 @@ from maasserver.bootsources import (
     get_os_info_from_boot_sources,
     set_simplestreams_env,
 )
-from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS, NODE_TYPE
+from maasserver.enum import (
+    BOOT_RESOURCE_TYPE,
+    ENDPOINT,
+    NODE_STATUS,
+    NODE_TYPE,
+)
 from maasserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     image_passes_filter,
@@ -53,6 +59,7 @@ from maasserver.websockets.base import (
 )
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
@@ -705,6 +712,13 @@ class BootResourceHandler(Handler):
                 # database. This is because the UI only supports handling one
                 # source at a time.
                 BootSource.objects.exclude(id=source.id).delete()
+                create_audit_event(
+                    event_type=EVENT_TYPES.BOOT_SOURCE,
+                    endpoint=ENDPOINT.UI,
+                    request=self.request,
+                    description=f"Created boot source {url} and deleted all the previous boot sources",
+                )
+
             return source
         else:
             return BootSource(
@@ -738,19 +752,37 @@ class BootResourceHandler(Handler):
                     releases.add(release)
                 else:
                     continue
-                selection, _ = BootSourceSelection.objects.get_or_create(
+                selection, created = BootSourceSelection.objects.get_or_create(
                     boot_source=boot_source, os="ubuntu", release=release
                 )
                 selection.arches = osystem.get("arches", ["*"])
                 selection.subarches = ["*"]
                 selection.labels = ["*"]
                 selection.save()
+                action = "Created" if created else "Updated"
+                create_audit_event(
+                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                    endpoint=ENDPOINT.UI,
+                    request=self.request,
+                    description=f"{action} boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {boot_source.url}",
+                )
 
             if releases:
                 # Remove all selections, that are not of release.
-                BootSourceSelection.objects.filter(
-                    boot_source=boot_source, os="ubuntu"
-                ).exclude(release__in=releases).delete()
+                n_deleted, _ = (
+                    BootSourceSelection.objects.filter(
+                        boot_source=boot_source, os="ubuntu"
+                    )
+                    .exclude(release__in=releases)
+                    .delete()
+                )
+                if n_deleted > 0:
+                    create_audit_event(
+                        event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                        endpoint=ENDPOINT.UI,
+                        request=self.request,
+                        description="Deleted boot source selection for all other ubuntu releases",
+                    )
 
         notify = Deferred()
         d = stop_import_resources()
@@ -775,7 +807,16 @@ class BootResourceHandler(Handler):
         @transactional
         def update_selections(params):
             # Remove all Ubuntu Core selections.
-            BootSourceSelection.objects.filter(os="ubuntu-core").delete()
+            n_deleted, _ = BootSourceSelection.objects.filter(
+                os="ubuntu-core"
+            ).delete()
+            if n_deleted > 0:
+                create_audit_event(
+                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                    endpoint=ENDPOINT.UI,
+                    request=self.request,
+                    description="Deleted all boot source selection for ubuntu-core",
+                )
 
             # Break down the images into os/release with multiple arches.
             selections = defaultdict(list)
@@ -796,13 +837,19 @@ class BootResourceHandler(Handler):
                     # no longer available.
                     continue
                 # Create the selection for the source.
-                BootSourceSelection.objects.create(
+                selection = BootSourceSelection.objects.create(
                     boot_source=cache.boot_source,
                     os=os,
                     release=release,
                     arches=arches,
                     subarches=["*"],
                     labels=["*"],
+                )
+                create_audit_event(
+                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                    endpoint=ENDPOINT.UI,
+                    request=self.request,
+                    description=f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {cache.boot_source.url}",
                 )
 
         notify = Deferred()
@@ -828,9 +875,16 @@ class BootResourceHandler(Handler):
         @transactional
         def update_selections(params):
             # Remove all selections that are not Ubuntu.
-            BootSourceSelection.objects.exclude(
+            n_deleted, _ = BootSourceSelection.objects.exclude(
                 Q(os="ubuntu") | Q(os="ubuntu-core")
             ).delete()
+            if n_deleted > 0:
+                create_audit_event(
+                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                    endpoint=ENDPOINT.UI,
+                    request=self.request,
+                    description="Deleted all boot source selection for os different than 'ubuntu' or 'ubuntu-core'",
+                )
 
             # Break down the images into os/release with multiple arches.
             selections = defaultdict(list)
@@ -851,13 +905,19 @@ class BootResourceHandler(Handler):
                     # no longer available.
                     continue
                 # Create the selection for the source.
-                BootSourceSelection.objects.create(
+                selection = BootSourceSelection.objects.create(
                     boot_source=cache.boot_source,
                     os=os,
                     release=release,
                     arches=arches,
                     subarches=["*"],
                     labels=["*"],
+                )
+                create_audit_event(
+                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                    endpoint=ENDPOINT.UI,
+                    request=self.request,
+                    description=f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {cache.boot_source.url}",
                 )
 
         notify = Deferred()
@@ -954,6 +1014,12 @@ class BootResourceHandler(Handler):
                 ):
                     # This selection provided this image, remove it.
                     selection.delete()
+                    create_audit_event(
+                        event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                        endpoint=ENDPOINT.UI,
+                        request=self.request,
+                        description=f"Deleted boot source selection for {selection.os}/{selection.release} arches={selection.arches}",
+                    )
 
             # Remove the whole set of resources.
             BootResourceFile.objects.filestore_remove_resources(resources)
