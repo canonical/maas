@@ -156,6 +156,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
+from maastemporalworker.workflow import power as power_module
 from maastesting.crochet import wait_for
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.tests import test_hooks
@@ -10741,6 +10742,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         # Add the client to getAllClients in so that its considered a to be a
         # valid connection.
         self.patch(node_module, "getAllClients").return_value = [client]
+        self.patch(power_module, "getAllClients").return_value = [client]
 
         # Mock the confirm power driver check, we check in the test to make
         # sure it gets called.
@@ -10851,6 +10853,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         bad_client = Mock()
         bad_client.ident = layer2_rack_controller.system_id
         self.patch(node_module, "getAllClients").return_value = [bad_client]
+        self.patch(power_module, "getAllClients").return_value = [bad_client]
 
         # Mock the confirm power driver check, we check in the test to make
         # sure it gets called.
@@ -11018,6 +11021,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         # Add the client to getAllClients in so that its considered a to be a
         # valid connection.
         self.patch(node_module, "getAllClients").return_value = [client]
+        self.patch(power_module, "getAllClients").return_value = [client]
 
         # Mock the confirm power driver check, we check in the test to make
         # sure it gets called.

@@ -1,11 +1,10 @@
 # Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
 from base64 import b64encode
 import http.client
 import logging
 from random import choice
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 from django.conf import settings
 from django.core.serializers import json
@@ -68,6 +67,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
+from maastemporalworker.workflow import power as power_module
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import SCRIPT_TYPE
@@ -874,6 +874,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(
             node_module, "get_maas_facing_server_addresses"
         ).return_value = [IPAddress("127.0.0.1"), IPAddress("::1")]
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(power_module, "getAllClients").return_value = [client]
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user,
             interface=True,
@@ -932,6 +935,11 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(
             node_module, "get_maas_facing_server_addresses"
         ).return_value = [IPAddress("127.0.0.1"), IPAddress("::1")]
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+
+        self.patch(power_module, "getAllClients").return_value = [client]
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user,
             interface=True,
@@ -3029,6 +3037,10 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         subnet.vlan.dhcp_on = True
         subnet.vlan.primary_rack = rack_controller
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(power_module, "getAllClients").return_value = [client]
 
         with post_commit_hooks:
             subnet.vlan.save()
