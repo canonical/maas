@@ -8,6 +8,7 @@ from unittest.mock import ANY
 from twisted.internet import reactor
 from twisted.internet.defer import succeed
 
+from maasserver.audit import Event
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -34,6 +35,7 @@ from maasserver.websockets.base import HandlerError, HandlerValidationError
 from maasserver.websockets.handlers import bootresource
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
+from provisioningserver.events import EVENT_TYPES
 
 
 class PatchOSInfoMixin:
@@ -966,6 +968,71 @@ class TestBootResourceSaveUbuntu(
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
 
+    def test_create_audit_event_updated_and_deleted_selection(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        release = factory.make_name("release")
+        BootSourceSelection.objects.create(
+            boot_source=source,
+            os="ubuntu",
+            release=factory.make_name("release"),
+        )
+        keep_selection = BootSourceSelection.objects.create(
+            boot_source=source, os="ubuntu", release=release
+        )
+        self.patch_get_os_info_from_boot_sources([source])
+        self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_ubuntu(
+            {
+                "url": source.url,
+                "osystems": [
+                    {"osystem": "ubuntu", "release": release, "arches": []}
+                ],
+            }
+        )
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 2
+        assert (
+            events[0].description
+            == f"Updated boot source selection for {keep_selection.os}/{keep_selection.release} arches={keep_selection.arches}: {source.url}"
+        )
+        assert (
+            events[1].description
+            == "Deleted boot source selection for all other ubuntu releases"
+        )
+
+    def test_create_audit_event_only_updated_selection(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        release = factory.make_name("release")
+        keep_selection = BootSourceSelection.objects.create(
+            boot_source=source, os="ubuntu", release=release
+        )
+        self.patch_get_os_info_from_boot_sources([source])
+        self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_ubuntu(
+            {
+                "url": source.url,
+                "osystems": [
+                    {"osystem": "ubuntu", "release": release, "arches": []}
+                ],
+            }
+        )
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == f"Updated boot source selection for {keep_selection.os}/{keep_selection.release} arches={keep_selection.arches}: {source.url}"
+        )
+
 
 class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
     def setUp(self):
@@ -1018,6 +1085,26 @@ class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
         self.assertIsNotNone(reload_object(ubuntu_selection))
         self.assertIsNone(reload_object(ubuntu_core_selection))
 
+    def test_clears_all_ubuntu_core_selections_creates_audit_event(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        BootSourceSelection.objects.create(boot_source=source, os="ubuntu")
+        BootSourceSelection.objects.create(
+            boot_source=source, os="ubuntu-core"
+        )
+        self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_ubuntu_core({"images": []})
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == "Deleted all boot source selection for ubuntu-core"
+        )
+
     def test_creates_selection_with_multiple_arches(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
@@ -1043,6 +1130,45 @@ class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
         )
         self.assertIsNotNone(selection)
         self.assertCountEqual(arches, selection.arches)
+
+    def test_creates_selection_with_multiple_arches_creates_audit_event(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        arches = [factory.make_name("arch") for _ in range(3)]
+        images = []
+        BootSourceSelection.objects.create(
+            boot_source=source, os="ubuntu-core"
+        )
+        for arch in arches:
+            factory.make_BootSourceCache(
+                boot_source=source,
+                os="ubuntu-core",
+                release="16-pc",
+                arch=arch,
+            )
+            images.append("ubuntu-core/%s/subarch/16-pc" % arch)
+            self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_ubuntu_core({"images": images})
+        selection = get_one(
+            BootSourceSelection.objects.filter(
+                boot_source=source, os="ubuntu-core", release="16-pc"
+            )
+        )
+
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 2
+        assert (
+            events[0].description
+            == "Deleted all boot source selection for ubuntu-core"
+        )
+        assert (
+            events[1].description
+            == f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {source.url}"
+        )
 
     def test_calls_stop_and_import_resources(self):
         owner = factory.make_admin()
@@ -1114,6 +1240,25 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         self.assertIsNotNone(reload_object(ubuntu_selection))
         self.assertIsNone(reload_object(other_selection))
 
+    def test_clears_all_other_os_selections_creates_audit_event(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        BootSourceSelection.objects.create(
+            boot_source=source, os=factory.make_name("os")
+        )
+        self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_other({"images": []})
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == "Deleted all boot source selection for os different than 'ubuntu' or 'ubuntu-core'"
+        )
+
     def test_creates_selection_with_multiple_arches(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
@@ -1138,6 +1283,44 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         )
         self.assertIsNotNone(selection)
         self.assertCountEqual(arches, selection.arches)
+
+    def test_creates_selection_with_multiple_arches_creates_audit_event(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        os = factory.make_name("os")
+        release = factory.make_name("release")
+        arches = [factory.make_name("arch") for _ in range(3)]
+        images = []
+        BootSourceSelection.objects.create(
+            boot_source=source, os=factory.make_name("os")
+        )
+        for arch in arches:
+            factory.make_BootSourceCache(
+                boot_source=source, os=os, release=release, arch=arch
+            )
+            images.append(f"{os}/{arch}/subarch/{release}")
+            self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_other({"images": images})
+
+        selection = get_one(
+            BootSourceSelection.objects.filter(
+                boot_source=source, os=os, release=release
+            )
+        )
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 2
+        assert (
+            events[0].description
+            == "Deleted all boot source selection for os different than 'ubuntu' or 'ubuntu-core'"
+        )
+        assert (
+            events[1].description
+            == f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {source.url}"
+        )
 
     def test_calls_stop_and_import_resources(self):
         owner = factory.make_admin()
@@ -1465,3 +1648,35 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         )
         handler.delete_image({"id": resource.id})
         self.assertIsNone(reload_object(resource))
+
+    def test_deletes_uploaded_image_creates_audit_events_for_selection(self):
+        self.useFixture(SignalsDisabled("bootsources"))
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        os = factory.make_name("os")
+        release = factory.make_name("release")
+        arch = factory.make_name("arch")
+        subarch = factory.make_name("subarch")
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=f"{os}/{release}",
+            architecture=f"{arch}/{subarch}",
+        )
+        BootSourceSelection.objects.create(
+            boot_source=source,
+            os=os,
+            release=release,
+            arches=[arch],
+            subarches=[subarch],
+            labels=["*"],
+        )
+        handler.delete_image({"id": resource.id})
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == f"Deleted boot source selection for {os}/{release} arches={[arch]}"
+        )

@@ -8,9 +8,12 @@ from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
 from maasserver.api.support import OperationsHandler
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import BootSourceSelectionForm
 from maasserver.models import BootSource, BootSourceSelection
+from provisioningserver.events import EVENT_TYPES
 
 DISPLAYED_BOOTSOURCESELECTION_FIELDS = (
     "boot_source_id",
@@ -98,7 +101,14 @@ class BootSourceSelectionHandler(OperationsHandler):
             data=request.data, instance=boot_source_selection
         )
         if form.is_valid():
-            return form.save()
+            boot_source_selection = form.save()
+            create_audit_event(
+                event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                endpoint=ENDPOINT.API,
+                request=request,
+                description=f"Updated boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arches={boot_source_selection.arches}: {boot_source.url}",
+            )
+            return boot_source_selection
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -123,6 +133,12 @@ class BootSourceSelectionHandler(OperationsHandler):
             BootSourceSelection, boot_source=boot_source, id=id
         )
         boot_source_selection.delete()
+        create_audit_event(
+            event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+            endpoint=ENDPOINT.API,
+            request=request,
+            description=f"Deleted boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arches={boot_source_selection.arches}",
+        )
         return rc.DELETED
 
     @classmethod
@@ -210,6 +226,13 @@ class BootSourceSelectionsHandler(OperationsHandler):
             data=request.data, boot_source=boot_source
         )
         if form.is_valid():
-            return form.save()
+            boot_source_selection = form.save()
+            create_audit_event(
+                event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                endpoint=ENDPOINT.API,
+                request=request,
+                description=f"Created boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arches={boot_source_selection.arches}: {boot_source.url}",
+            )
+            return boot_source_selection
         else:
             raise MAASAPIValidationError(form.errors)

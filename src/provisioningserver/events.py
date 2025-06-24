@@ -164,6 +164,8 @@ class EVENT_TYPES:
     ABORTED_COMMISSIONING = "ABORTED_COMMISSIONING"
     ABORTED_DEPLOYMENT = "ABORTED_DEPLOYMENT"
     ABORTED_TESTING = "ABORTED_TESTING"
+    BOOT_SOURCE = "BOOT_SOURCE"
+    BOOT_SOURCE_SELECTION = "BOOT_SOURCE_SELECTION"
 
 
 # Used to create new events used for the machine's status.
@@ -460,6 +462,12 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.ABORTED_TESTING: EventDetail(
         description="Aborted testing", level=INFO
+    ),
+    EVENT_TYPES.BOOT_SOURCE: EventDetail(
+        description="Boot source", level=INFO
+    ),
+    EVENT_TYPES.BOOT_SOURCE_SELECTION: EventDetail(
+        description="Boot source selection", level=INFO
     ),
 }
 

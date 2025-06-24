@@ -11,12 +11,14 @@ from django.urls import reverse
 from maasserver.api.boot_source_selections import (
     DISPLAYED_BOOTSOURCESELECTION_FIELDS,
 )
+from maasserver.audit import Event
 from maasserver.models import BootSourceSelection
 from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from provisioningserver.events import EVENT_TYPES
 
 
 def get_boot_source_selection_uri(boot_source_selection):
@@ -86,6 +88,22 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(boot_source_selection))
 
+    def test_DELETE_create_audit_event(self):
+        self.become_admin()
+        boot_source_selection = factory.make_BootSourceSelection()
+        response = self.client.delete(
+            get_boot_source_selection_uri(boot_source_selection)
+        )
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == f"Deleted boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arches={boot_source_selection.arches}"
+        )
+
     def test_DELETE_requires_admin(self):
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.delete(
@@ -133,6 +151,43 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         )
         self.assertEqual(
             boot_source_selection.labels, [boot_source_caches[0].label]
+        )
+
+    def test_PUT_create_audit_event(self):
+        self.become_admin()
+        boot_source_selection = factory.make_BootSourceSelection()
+        new_os = factory.make_name("os")
+        new_release = factory.make_name("release")
+        boot_source_caches = factory.make_many_BootSourceCaches(
+            2,
+            boot_source=boot_source_selection.boot_source,
+            os=new_os,
+            release=new_release,
+        )
+        new_arches = [boot_source_caches[0].arch, boot_source_caches[1].arch]
+        new_values = {
+            "os": new_os,
+            "release": new_release,
+            "arches": new_arches,
+            "subarches": [
+                boot_source_caches[0].subarch,
+                boot_source_caches[1].subarch,
+            ],
+            "labels": [boot_source_caches[0].label],
+        }
+        response = self.client.put(
+            get_boot_source_selection_uri(boot_source_selection), new_values
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == f"Updated boot source selection for {new_os}/{new_release} arches={new_arches}: {boot_source_selection.boot_source.url}"
         )
 
     def test_PUT_requires_admin(self):
@@ -224,6 +279,36 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
         )
         self.assertEqual(
             boot_source_selection.labels, [boot_source_caches[0].label]
+        )
+
+    def test_POST_create_audit_event(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        os = factory.make_name("os")
+        new_release = factory.make_name("release")
+        boot_source_caches = factory.make_many_BootSourceCaches(
+            2, boot_source=boot_source, os=os, release=new_release
+        )
+        arches = [boot_source_caches[0].arch, boot_source_caches[1].arch]
+        params = {
+            "os": os,
+            "release": new_release,
+            "arches": arches,
+            "subarches": ["*"],
+            "labels": ["*"],
+        }
+        response = self.client.post(
+            reverse("boot_source_selections_handler", args=[boot_source.id]),
+            params,
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 1
+        assert (
+            events[0].description
+            == f"Created boot source selection for {os}/{new_release} arches={[boot_source_caches[0].arch, boot_source_caches[1].arch]}: {boot_source.url}"
         )
 
     def test_POST_requires_admin(self):
