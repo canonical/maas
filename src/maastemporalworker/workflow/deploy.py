@@ -44,6 +44,7 @@ from maasservicelayer.db.tables import (
 )
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.power import (
+    POWER_ACTION_ACTIVITY_TIMEOUT,
     POWER_CYCLE_ACTIVITY_NAME,
     POWER_ON_ACTIVITY_NAME,
     POWER_QUERY_ACTIVITY_NAME,
@@ -398,7 +399,7 @@ class DeployWorkflow:
                 is_dpu=params.power_params.is_dpu,
             ),
             task_queue=params.power_params.task_queue,
-            start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+            start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
             retry_policy=RetryPolicy(
                 maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
             ),
@@ -415,7 +416,7 @@ class DeployWorkflow:
                     is_dpu=params.power_params.is_dpu,
                 ),
                 task_queue=params.power_params.task_queue,
-                start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+                start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
                     maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
                 ),
@@ -431,7 +432,7 @@ class DeployWorkflow:
                     is_dpu=params.power_params.is_dpu,
                 ),
                 task_queue=params.power_params.task_queue,
-                start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+                start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
                     maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
                 ),
@@ -472,7 +473,7 @@ class DeployWorkflow:
                     order=boot_order["order"],
                 ),
                 task_queue=params.power_params.task_queue,
-                start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+                start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
                     maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
                 ),
