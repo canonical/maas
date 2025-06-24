@@ -6,7 +6,7 @@ from datetime import datetime
 import http.client
 import logging
 from random import choice
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 from django.conf import settings
 from django.db import transaction
@@ -57,6 +57,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import post_commit, reload_object
+from maasserver.workflow import power as power_module
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import SCRIPT_TYPE
@@ -848,6 +849,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(
             node_module, "get_maas_facing_server_addresses"
         ).return_value = [IPAddress("127.0.0.1"), IPAddress("::1")]
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(power_module, "getAllClients").return_value = [client]
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user,
             interface=True,
@@ -903,6 +907,10 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(
             node_module, "get_maas_facing_server_addresses"
         ).return_value = [IPAddress("127.0.0.1"), IPAddress("::1")]
+        client = Mock()
+        client.ident = rack_controller.system_id
+
+        self.patch(power_module, "getAllClients").return_value = [client]
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user,
             interface=True,
@@ -2814,6 +2822,10 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
             subnet=subnet,
             interface=interface,
         )
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(power_module, "getAllClients").return_value = [client]
 
         # Pre-claim the only addresses.
         with transaction.atomic():

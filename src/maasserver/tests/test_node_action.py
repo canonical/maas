@@ -3,7 +3,7 @@
 
 import json
 import random
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 from django.db import transaction
 from netaddr import IPNetwork
@@ -71,6 +71,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
+from maasserver.workflow import power as power_module
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -1080,6 +1081,10 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
             subnet=subnet,
             interface=interface,
         )
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(power_module, "getAllClients").return_value = [client]
+
         make_usable_osystem(self)
 
         # Pre-claim the only addresses.
