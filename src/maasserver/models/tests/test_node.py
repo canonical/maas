@@ -8904,7 +8904,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         vlan = factory.make_VLAN(dhcp_on=True)
         subnet = factory.make_Subnet(version=6, vlan=vlan)
         rack_subnet = factory.make_Subnet(version=4, vlan=vlan)
-        rack_controller = factory.make_RackController()
+        rack_controller = factory.make_RackController(subnet=rack_subnet)
         Interface.objects.filter(
             node_config_id=rack_controller.current_config_id,
         )
