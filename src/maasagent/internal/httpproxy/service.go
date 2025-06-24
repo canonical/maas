@@ -130,6 +130,7 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 
 	if err := workflow.RunAsLocalActivity(ctx, func(_ context.Context) error {
 		var wg sync.WaitGroup
+		var mu sync.Mutex
 
 		for _, endpoint := range endpointsResult.Endpoints {
 			wg.Add(1)
@@ -153,7 +154,9 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 					return
 				}
 
+				mu.Lock()
 				targets = append(targets, u)
+				mu.Unlock()
 
 				if err := conn.Close(); err != nil {
 					// We cannot do anything here and this is not critical, but not good.
