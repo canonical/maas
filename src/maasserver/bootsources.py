@@ -21,7 +21,6 @@ from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maascommon.osystem.ubuntu import UbuntuOS
-from maascommon.utils.fs import tempdir
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,

@@ -103,11 +103,20 @@ def download_all_image_descriptions(
     """
     boot = BootImageMapping()
     for source in sources:
+        keyring_path = source.get("keyring", None)
+
         repo_boot = service_layer.services.boot_sources.fetch(
             source["url"],
-            keyring_path=source.get("keyring", None),
+            keyring_path=keyring_path,
             keyring_data=source.get("keyring_data", None),
             validate_products=validate_products,
         )
+
+        # If keyring_path isn't provided, then the call to the service layer
+        # will write it with the temporary path of the keyring file that the
+        # keyring_data was written to. We update it here to maintain the
+        # selection checking that happens.
+        source["keyring"] = keyring_path
+
         boot_merge(boot, repo_boot, source["selections"])
     return boot
