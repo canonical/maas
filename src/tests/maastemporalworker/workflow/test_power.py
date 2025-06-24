@@ -17,7 +17,6 @@ from maascommon.workflows.power import (
     PowerOnParam,
     PowerQueryParam,
 )
-from maasserver.models import bmc as model_bmc
 from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTable
 from maasservicelayer.services import CacheForServices
@@ -46,7 +45,7 @@ class TestGetTemporalQueueForMachine:
             get_temporal_task_queue_for_bmc(machine)
 
     def test_get_temporal_task_queue_for_bmc_machine_with_bmc_with_vlan(
-        self, factory
+        self, factory, mocker
     ):
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
@@ -60,8 +59,100 @@ class TestGetTemporalQueueForMachine:
         ip = factory.make_StaticIPAddress(subnet=subnet)
         bmc = factory.make_BMC(ip_address=ip)
         machine = factory.make_Machine(bmc=bmc)
+
+        mocked_get_all_clients = mocker.patch(
+            "maastemporalworker.workflow.power.getAllClients"
+        )
+        client = Mock()
+        client.ident = rack.system_id
+        mocked_get_all_clients.return_value = [client]
+
         queue = get_temporal_task_queue_for_bmc(machine)
         assert queue == f"agent:power@vlan-{vlan.id}"
+
+    def test_get_temporal_task_queue_for_bmc_machine_with_rackd_offline_on_vlan(
+        self, factory, mocker
+    ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
+        vlan1 = factory.make_VLAN()
+        subnet1 = factory.make_Subnet(vlan=vlan1)
+        rack1 = factory.make_RackController()
+        factory.make_Interface(
+            node=rack1,
+            vlan=vlan1,
+            subnet=subnet1,
+            ip=subnet1.get_next_ip_for_allocation()[0],
+        )
+
+        ip = factory.make_StaticIPAddress(subnet=subnet1)
+        bmc = factory.make_BMC(ip_address=ip)
+        machine = factory.make_Machine(bmc=bmc)
+
+        subnet2 = factory.make_Subnet()
+        rack2 = factory.make_RackController()
+        factory.make_Interface(
+            node=rack2,
+            ip=subnet2.get_next_ip_for_allocation()[0],
+        )
+
+        factory.make_BMCRoutableRackControllerRelationship(bmc, rack2)
+
+        mocked_get_all_clients = mocker.patch(
+            "maastemporalworker.workflow.power.getAllClients"
+        )
+        mocked_bmc_get_all_clients = mocker.patch(
+            "maasserver.models.bmc.getAllClients"
+        )
+
+        client = Mock()
+        client.ident = rack2.system_id
+
+        mocked_get_all_clients.return_value = [client]
+        mocked_bmc_get_all_clients.return_value = [client]
+
+        queue = get_temporal_task_queue_for_bmc(machine)
+        assert queue == f"{rack2.system_id}@agent:power"
+
+    def test_get_temporal_task_queue_for_bmc_machine_with_rackd_online_on_vlan(
+        self, factory, mocker
+    ):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
+        vlan1 = factory.make_VLAN()
+        subnet1 = factory.make_Subnet(vlan=vlan1)
+        rack1 = factory.make_RackController()
+        factory.make_Interface(
+            node=rack1,
+            vlan=vlan1,
+            subnet=subnet1,
+            ip=subnet1.get_next_ip_for_allocation()[0],
+        )
+
+        ip = factory.make_StaticIPAddress(subnet=subnet1)
+        bmc = factory.make_BMC(ip_address=ip)
+        machine = factory.make_Machine(bmc=bmc)
+
+        subnet2 = factory.make_Subnet()
+        rack2 = factory.make_RackController()
+        factory.make_Interface(
+            node=rack2,
+            ip=subnet2.get_next_ip_for_allocation()[0],
+        )
+
+        factory.make_BMCRoutableRackControllerRelationship(bmc, rack2)
+        mocked_get_all_clients = mocker.patch(
+            "maastemporalworker.workflow.power.getAllClients"
+        )
+
+        client = Mock()
+        client.ident = rack1.system_id
+        mocked_get_all_clients.return_value = [client]
+
+        queue = get_temporal_task_queue_for_bmc(machine)
+        assert queue == f"agent:power@vlan-{vlan1.id}"
 
     def test_get_temporal_task_queue_for_bmc_machine_with_bmc_without_vlan(
         self, factory, mocker
@@ -79,8 +170,8 @@ class TestGetTemporalQueueForMachine:
         machine = factory.make_Machine(bmc=bmc)
         factory.make_BMCRoutableRackControllerRelationship(bmc, rack)
 
-        mocked_get_all_clients = mocker.patch.object(
-            model_bmc, "getAllClients"
+        mocked_get_all_clients = mocker.patch(
+            "maasserver.models.bmc.getAllClients"
         )
 
         client = Mock()

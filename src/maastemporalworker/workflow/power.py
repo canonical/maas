@@ -23,6 +23,7 @@ from maascommon.workflows.power import (
     PowerOnParam,
     PowerQueryParam,
 )
+from maasserver.rpc import getAllClients
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 from maasservicelayer.models.nodes import NodeBuilder
 from maasservicelayer.utils.date import utcnow
@@ -231,9 +232,24 @@ def get_temporal_task_queue_for_bmc(machine: Any) -> str:
     except AttributeError:
         pass
 
+    # TODO: check that picked rack/agent has connection to Temporal
+    # as of now, we exclude all the racks without RPC connection.
+    conn_rack_ids = [client.ident for client in getAllClients()]
+
+    # Circular imports.
+    from maasserver.models.node import RackController
+
+    disconn_racks = [
+        rack
+        for rack in RackController.objects.all()
+        if rack.system_id not in conn_rack_ids
+    ]
+
     # Check if there are any rack controllers that are connected to this VLAN.
     # If such rack controllers exist, use vlan specific task queue.
-    if bmc_vlan and bmc_vlan.connected_rack_controllers():
+    if bmc_vlan and bmc_vlan.connected_rack_controllers(
+        exclude_racks=disconn_racks
+    ):
         return f"agent:power@vlan-{bmc_vlan.id}"
 
     # Check if there are any rack controllers/agents that have access to
