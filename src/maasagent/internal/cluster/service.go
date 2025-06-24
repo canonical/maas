@@ -144,7 +144,8 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 				Version: "UNKNOWN",
 				// Microcluster is using logrus and the format will be slightly different
 				// than zerolog of MAAS Agent.
-				Debug: zerolog.GlobalLevel() == zerolog.DebugLevel,
+				Debug:            zerolog.GlobalLevel() == zerolog.DebugLevel,
+				ExtensionsSchema: schemaExtensions,
 			})
 			if err != nil {
 				log.Error("Failed to start Microcluster", "err", err)
