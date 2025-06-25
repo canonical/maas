@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from ipaddress import IPv4Address, IPv6Address
 from pathlib import Path
 import re
+import socket
 from typing import Any, Optional
 
 import aiodns
@@ -948,15 +949,16 @@ class DNSConfigActivity(ActivityBase):
 
         return DNSUpdateResult(serial=updates.new_serial)
 
-    def _get_resolver(self) -> aiodns.DNSResolver:
+    async def _get_resolver(self) -> aiodns.DNSResolver:
         loop = asyncio.get_event_loop()
-        return aiodns.DNSResolver(loop=loop)
+        loopback = await asyncio.to_thread(socket.gethostbyname, "localhost")
+        return aiodns.DNSResolver(loop=loop, nameservers=[loopback])
 
     @activity.defn(name=CHECK_SERIAL_UPDATE_NAME)
     async def check_serial_update(
         self, serial: CheckSerialUpdateParam
     ) -> None:
-        resolver = self._get_resolver()
+        resolver = await self._get_resolver()
 
         domain = None
 
