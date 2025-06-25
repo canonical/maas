@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.subnet import RdnsMode
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -36,6 +37,7 @@ from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
+from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
@@ -62,6 +64,7 @@ class TestCommonSubnetsService(ServiceCommonTests):
             staticroutes_service=Mock(StaticRoutesService),
             reservedips_service=Mock(ReservedIPsService),
             dhcpsnippets_service=Mock(DhcpSnippetsService),
+            dnspublications_service=Mock(DNSPublicationsService),
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService
             ),
@@ -130,6 +133,7 @@ class TestSubnetsService:
         subnets_repository_mock.create.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
+        mock_dnspublications = Mock(DNSPublicationsService)
 
         subnets_service = SubnetsService(
             context=Context(),
@@ -142,6 +146,7 @@ class TestSubnetsService:
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService
             ),
+            dnspublications_service=mock_dnspublications,
             subnets_repository=subnets_repository_mock,
         )
 
@@ -163,6 +168,13 @@ class TestSubnetsService:
             ConfigureDHCPParam(subnet_ids=[subnet.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
+        )
+        mock_dnspublications.create_for_config_update(
+            source=f"added subnet {subnet.cidr}",
+            action=DnsUpdateAction.RELOAD,
+            zone="",
+            label="",
+            rtype="",
         )
 
     async def test_update(self) -> None:
@@ -187,9 +199,12 @@ class TestSubnetsService:
 
         subnets_repository_mock = Mock(SubnetsRepository)
         subnets_repository_mock.get_one.return_value = subnet
-        subnets_repository_mock.update_by_id.return_value = subnet
+        new_subnet = subnet.copy()
+        new_subnet.allow_dns = False
+        subnets_repository_mock.update_by_id.return_value = new_subnet
 
         mock_temporal = Mock(TemporalService)
+        mock_dnspublications = Mock(DNSPublicationsService)
 
         subnets_service = SubnetsService(
             context=Context(),
@@ -199,6 +214,7 @@ class TestSubnetsService:
             staticroutes_service=Mock(StaticRoutesService),
             reservedips_service=Mock(ReservedIPsService),
             dhcpsnippets_service=Mock(DhcpSnippetsService),
+            dnspublications_service=mock_dnspublications,
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService
             ),
@@ -208,7 +224,7 @@ class TestSubnetsService:
         builder = SubnetBuilder(
             cidr=subnet.cidr,
             rdns_mode=subnet.rdns_mode,
-            allow_dns=subnet.allow_dns,
+            allow_dns=False,
             allow_proxy=subnet.allow_proxy,
             active_discovery=subnet.active_discovery,
             managed=subnet.managed,
@@ -225,6 +241,13 @@ class TestSubnetsService:
             ConfigureDHCPParam(subnet_ids=[subnet.id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
+        )
+        mock_dnspublications.create_for_config_update.assert_called_once_with(
+            source=f"subnet {subnet.cidr} allow_dns changed to {not subnet.allow_dns}",
+            action=DnsUpdateAction.RELOAD,
+            zone="",
+            label="",
+            rtype="",
         )
 
     async def test_delete(self) -> None:
@@ -257,6 +280,7 @@ class TestSubnetsService:
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
         dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
         nodegrouptorackcontrollers_service_mock = Mock(
             NodeGroupToRackControllersService
         )
@@ -270,6 +294,7 @@ class TestSubnetsService:
             reservedips_service=reservedips_service_mock,
             subnets_repository=subnets_repository_mock,
             dhcpsnippets_service=dhcpsnippets_service_mock,
+            dnspublications_service=dnspublications_service_mock,
             nodegrouptorackcontrollers_service=nodegrouptorackcontrollers_service_mock,
         )
 
@@ -324,6 +349,13 @@ class TestSubnetsService:
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
+        dnspublications_service_mock.create_for_config_update.assert_called_once_with(
+            source=f"removed subnet {subnet.cidr}",
+            action=DnsUpdateAction.RELOAD,
+            zone="",
+            label="",
+            rtype="",
+        )
 
     async def test_delete_etag_matching(self) -> None:
         now = utcnow()
@@ -355,6 +387,7 @@ class TestSubnetsService:
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
         dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
         nodegrouptorackcontrollers_service_mock = Mock(
             NodeGroupToRackControllersService
         )
@@ -368,6 +401,7 @@ class TestSubnetsService:
             reservedips_service=reservedips_service_mock,
             subnets_repository=subnets_repository_mock,
             dhcpsnippets_service=dhcpsnippets_service_mock,
+            dnspublications_service=dnspublications_service_mock,
             nodegrouptorackcontrollers_service=nodegrouptorackcontrollers_service_mock,
         )
 
@@ -446,6 +480,7 @@ class TestSubnetsService:
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
         dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
         nodegrouptorackcontrollers_service_mock = Mock(
             NodeGroupToRackControllersService
         )
@@ -459,6 +494,7 @@ class TestSubnetsService:
             reservedips_service=reservedips_service_mock,
             subnets_repository=subnets_repository_mock,
             dhcpsnippets_service=dhcpsnippets_service_mock,
+            dnspublications_service=dnspublications_service_mock,
             nodegrouptorackcontrollers_service=nodegrouptorackcontrollers_service_mock,
         )
 

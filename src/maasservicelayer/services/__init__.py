@@ -406,6 +406,7 @@ class ServiceCollectionV3:
             staticroutes_service=services.staticroutes,
             reservedips_service=services.reservedips,
             dhcpsnippets_service=services.dhcpsnippets,
+            dnspublications_service=services.dnspublications,
             nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
             subnets_repository=SubnetsRepository(context),
         )
