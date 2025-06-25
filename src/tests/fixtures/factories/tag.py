@@ -7,8 +7,6 @@ from typing import Any
 from maasservicelayer.db.tables import NodeTagTable, TagTable
 from tests.maasapiserver.fixtures.db import Fixture
 
-"""Factory of TagTable entries."""
-
 
 async def create_test_tag_entry(
     fixture: Fixture,

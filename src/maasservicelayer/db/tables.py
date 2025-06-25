@@ -23,7 +23,7 @@ from sqlalchemy import (
     text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB, OID
 
 METADATA = MetaData()
 
@@ -130,14 +130,13 @@ BootResourceTable = Table(
     Column("base_image", String(255), nullable=False),
     Column("alias", String(255), nullable=True),
     Column("last_deployed", DateTime(timezone=False), nullable=True),
-    Column("last_deployed", DateTime(timezone=False), nullable=True),
     UniqueConstraint("name", "architecture", "alias"),
 )
 
 BootResourceFileTable = Table(
     "maasserver_bootresourcefile",
     METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("filename", String(255), nullable=False),
@@ -147,26 +146,30 @@ BootResourceFileTable = Table(
         "largefile_id",
         BigInteger,
         ForeignKey("maasserver_largefile.id"),
-        index=True,
         nullable=True,
     ),
     Column(
         "resource_set_id",
         BigInteger,
         ForeignKey("maasserver_bootresourceset.id"),
-        index=True,
         nullable=False,
     ),
-    Column("sha256", String(64), index=True, nullable=False),
+    Column("sha256", String(64), nullable=False),
     Column("size", BigInteger, nullable=False),
     Column("filename_on_disk", String(64), nullable=False),
     UniqueConstraint("resource_set_id", "filename"),
+    Index("maasserver__sha256_f07a8e_idx", "sha256"),
+    Index("maasserver_bootresourcefile_largefile_id_cf035187", "largefile_id"),
+    Index(
+        "maasserver_bootresourcefile_resource_set_id_2fd093ab",
+        "resource_set_id",
+    ),
 )
 
 BootResourceSetTable = Table(
     "maasserver_bootresourceset",
     METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("version", String(255), nullable=False),
@@ -175,27 +178,36 @@ BootResourceSetTable = Table(
         "resource_id",
         BigInteger,
         ForeignKey("maasserver_bootresource.id"),
-        index=True,
         nullable=False,
     ),
     UniqueConstraint("resource_id", "version"),
+    Index("maasserver_bootresourceset_resource_id_c320a639", "resource_id"),
 )
 
 BootSourceTable = Table(
     "maasserver_bootsource",
     METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("url", String(200), index=True, unique=True, nullable=False),
+    Column("url", String(200), nullable=False),
     Column("keyring_filename", String(4096), nullable=False),
     Column("keyring_data", LargeBinary, nullable=False),
+    Column("priority", Integer, nullable=False),
+    Column("skip_keyring_verification", Boolean, nullable=False),
+    UniqueConstraint("priority", name="maasserver_bootsource_priority_key"),
+    UniqueConstraint("url"),
+    Index(
+        "maasserver_bootsource_url_54c78ba3_like",
+        "url",
+        postgresql_ops={"url": "varchar_pattern_ops"},
+    ),
 )
 
 BootSourceCacheTable = Table(
     "maasserver_bootsourcecache",
     METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("os", String(32), nullable=False),
@@ -207,7 +219,6 @@ BootSourceCacheTable = Table(
         "boot_source_id",
         BigInteger,
         ForeignKey("maasserver_bootsource.id"),
-        index=True,
         nullable=False,
     ),
     Column("release_codename", String(255), nullable=True),
@@ -216,12 +227,15 @@ BootSourceCacheTable = Table(
     Column("kflavor", String(32), nullable=True),
     Column("bootloader_type", String(32), nullable=True),
     Column("extra", JSONB, nullable=False),
+    Index(
+        "maasserver_bootsourcecache_boot_source_id_73abe4d2", "boot_source_id"
+    ),
 )
 
 BootSourceSelectionTable = Table(
     "maasserver_bootsourceselection",
     METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True, nullable=False),
+    Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("os", String(20), nullable=False),
@@ -233,10 +247,13 @@ BootSourceSelectionTable = Table(
         "boot_source_id",
         BigInteger,
         ForeignKey("maasserver_bootsource.id"),
-        index=True,
         nullable=False,
     ),
     UniqueConstraint("boot_source_id", "os", "release"),
+    Index(
+        "maasserver_bootsourceselection_boot_source_id_b911aa0f",
+        "boot_source_id",
+    ),
 )
 
 CacheSetTable = Table(
@@ -730,6 +747,24 @@ IPRangeTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Index("maasserver_iprange_user_id_5d0f7718", "user_id"),
     Index("maasserver_iprange_subnet_id_de83b8f1", "subnet_id"),
+)
+
+LargeFileTable = Table(
+    "maasserver_largefile",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("sha256", String(64), nullable=False),
+    Column("total_size", BigInteger, nullable=False),
+    Column("content", OID, nullable=False),
+    Column("size", BigInteger, nullable=False),
+    UniqueConstraint("sha256", name="maasserver_largefile_sha256_key"),
+    Index(
+        "maasserver_largefile_sha256_40052db0_like",
+        "sha256",
+        postgresql_ops={"sha256": "varchar_pattern_ops"},
+    ),
 )
 
 MDNSTable = Table(
