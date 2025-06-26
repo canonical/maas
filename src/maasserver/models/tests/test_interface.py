@@ -2545,7 +2545,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         network = factory.make_ip4_or_6_network()
         cidr = str(network)
         address = str(network.ip)
-        interface.update_ip_addresses([cidr])
+
+        with post_commit_hooks:
+            interface.update_ip_addresses([cidr])
 
         subnets = Subnet.objects.filter(
             cidr=str(network.cidr), vlan=interface.vlan

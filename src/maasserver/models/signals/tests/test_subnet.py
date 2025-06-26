@@ -6,6 +6,7 @@
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 
 class TestSubnetSignals(MAASServerTestCase):
@@ -53,7 +54,9 @@ class TestSubnetSignals(MAASServerTestCase):
         # Update the subnet to have the CIDR of network2.
         subnet.cidr = network2.cidr
         subnet.gateway_ip = None
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
 
         # IP1 should not have a subnet, and IP2 should not have the subnet.
         ip_address1.refresh_from_db()

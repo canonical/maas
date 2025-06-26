@@ -12,7 +12,7 @@ from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maastesting.djangotestcase import count_queries
@@ -127,7 +127,10 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
-        handler.delete({"id": subnet.id})
+
+        with post_commit_hooks:
+            handler.delete({"id": subnet.id})
+
         subnet = reload_object(subnet)
         self.assertIsNone(subnet)
 
@@ -153,7 +156,12 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
-        result = handler.create({"vlan": vlan.id, "cidr": "192.168.0.0/24"})
+
+        with post_commit_hooks:
+            result = handler.create(
+                {"vlan": vlan.id, "cidr": "192.168.0.0/24"}
+            )
+
         subnet = Subnet.objects.get(id=result["id"])
         self.assertEqual("192.168.0.0/24", subnet.cidr)
 
@@ -162,9 +170,12 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
         space = factory.make_Space()
-        result = handler.create(
-            {"vlan": vlan.id, "cidr": "192.168.0.0/24", "space": space.id}
-        )
+
+        with post_commit_hooks:
+            result = handler.create(
+                {"vlan": vlan.id, "cidr": "192.168.0.0/24", "space": space.id}
+            )
+
         subnet = Subnet.objects.get(id=result["id"])
         self.assertEqual("192.168.0.0/24", subnet.cidr)
 
@@ -172,8 +183,10 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
-        with self.assertRaisesRegex(AssertionError, "Permission denied."):
-            handler.create({"vlan": vlan.id, "cidr": "192.168.0.0/24"})
+
+        with post_commit_hooks:
+            with self.assertRaisesRegex(AssertionError, "Permission denied."):
+                handler.create({"vlan": vlan.id, "cidr": "192.168.0.0/24"})
 
     def test_create_reloads_user(self):
         user = factory.make_admin()
@@ -191,7 +204,10 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
         new_description = "does anyone use this field?"
-        handler.update({"id": subnet.id, "description": new_description})
+
+        with post_commit_hooks:
+            handler.update({"id": subnet.id, "description": new_description})
+
         subnet = reload_object(subnet)
         self.assertEqual(new_description, subnet.description)
 
@@ -201,13 +217,16 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
         subnet = factory.make_Subnet(description="sad subnet")
         space = factory.make_Space()
         new_description = "happy subnet"
-        handler.update(
-            {
-                "id": subnet.id,
-                "space": space.id,
-                "description": new_description,
-            }
-        )
+
+        with post_commit_hooks:
+            handler.update(
+                {
+                    "id": subnet.id,
+                    "space": space.id,
+                    "description": new_description,
+                }
+            )
+
         subnet = reload_object(subnet)
         self.assertEqual(new_description, subnet.description)
 

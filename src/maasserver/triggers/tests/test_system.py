@@ -38,9 +38,6 @@ class TestTriggers(MAASServerTestCase):
             "staticipaddress_sys_dns_staticipaddress_update",
             "interface_ip_addresses_sys_dns_nic_ip_link",
             "interface_ip_addresses_sys_dns_nic_ip_unlink",
-            "subnet_sys_dns_subnet_insert",
-            "subnet_sys_dns_subnet_update",
-            "subnet_sys_dns_subnet_delete",
             "node_sys_dns_node_update",
             "node_sys_dns_node_delete",
             "interface_sys_dns_interface_update",
@@ -84,29 +81,6 @@ class TestTriggers(MAASServerTestCase):
 class TestSysDNSUpdates(
     MAASTransactionServerTestCase, TransactionalHelpersMixin, NotifyHelperMixin
 ):
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_dns_dynamic_update_subnet_reload(self):
-        listener = self.make_listener_without_delay()
-        yield self.set_service(listener)
-        yield deferToDatabase(
-            self.register_trigger,
-            "maasserver_subnet",
-            "sys_dns_updates",
-            ops=("insert",),
-        )
-        self.start_reading()
-        try:
-            yield deferToDatabase(self.create_subnet)
-            msg = yield self.get_notify("sys_dns_updates")
-            decoded_msg = DynamicDNSUpdateNotification(
-                msg
-            ).get_decoded_message()
-            self.assertEqual(decoded_msg, "RELOAD")
-        finally:
-            self.stop_reading()
-            yield self.postgres_listener_service.stopService()
-
     @wait_for_reactor
     @inlineCallbacks
     def test_dns_dynamic_update_interface_static_ip_address_insert(self):

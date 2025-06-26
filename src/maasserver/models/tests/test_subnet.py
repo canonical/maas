@@ -12,6 +12,7 @@ from fixtures import FakeLogger
 from hypothesis import given, settings
 from hypothesis.strategies import integers
 from netaddr import AddrFormatError, IPAddress, IPNetwork
+from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.utils.network import (
     inet_ntop,
@@ -23,6 +24,10 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
 )
+from maascommon.workflows.dns import (
+    CONFIGURE_DNS_WORKFLOW_NAME,
+    ConfigureDNSParam,
+)
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -32,6 +37,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import Config, Notification, Space
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import subnet as subnet_module
 from maasserver.models.subnet import (
     create_cidr,
@@ -507,8 +513,10 @@ class TestSubnet(MAASServerTestCase):
             subnet, start_ip="10.0.0.1", end_ip="10.255.255.254"
         )
         subnet.description = "foo"
-        subnet.save()
-        subnet.delete()
+
+        with post_commit_hooks:
+            subnet.save()
+            subnet.delete()
         iprange.delete()
 
     def test_can_create_update_and_delete_subnet_with_assigned_ips(self):
@@ -560,7 +568,10 @@ class TestSubnet(MAASServerTestCase):
             allow_proxy=allow_proxy,
             allow_dns=allow_dns,
         )
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
+
         subnet_from_db = Subnet.objects.get(name=name)
         self.assertEqual(subnet_from_db.name, name)
         self.assertEqual(subnet_from_db.vlan, vlan)
@@ -588,7 +599,10 @@ class TestSubnet(MAASServerTestCase):
             gateway_ip=gateway_ip,
             dns_servers=dns_servers,
         )
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
+
         subnet_from_db = Subnet.objects.get(name=name)
         self.assertEqual(subnet_from_db.name, name)
         self.assertEqual(subnet_from_db.vlan, vlan)
@@ -617,7 +631,10 @@ class TestSubnet(MAASServerTestCase):
             dns_servers=dns_servers,
             rdns_mode=rdns_mode,
         )
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
+
         subnet_from_db = Subnet.objects.get(cidr=cidr)
         self.assertEqual(subnet_from_db.name, str(cidr))
         self.assertEqual(subnet_from_db.vlan, vlan)
@@ -643,7 +660,10 @@ class TestSubnet(MAASServerTestCase):
             dns_servers=dns_servers,
             rdns_mode=rdns_mode,
         )
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
+
         subnet_from_db = Subnet.objects.get(cidr=cidr)
         self.assertEqual(subnet_from_db.name, str(cidr))
         self.assertEqual(subnet_from_db.vlan, vlan)
@@ -692,7 +712,10 @@ class TestSubnet(MAASServerTestCase):
         vlan = factory.make_VLAN()
         cidr = str(factory.make_ip4_or_6_network().cidr)
         name = "subnet-" + cidr
-        subnet = Subnet.objects.create_from_cidr(cidr, vlan)
+
+        with post_commit_hooks:
+            subnet = Subnet.objects.create_from_cidr(cidr, vlan)
+
         self.assertEqual(subnet.name, name)
         self.assertEqual(subnet.vlan, vlan)
         self.assertEqual(subnet.cidr, cidr)
@@ -781,8 +804,12 @@ class TestSubnet(MAASServerTestCase):
 
     def test_cannot_delete_with_dhcp_enabled(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
-        with self.assertRaisesRegex(ValidationError, "servicing a dynamic"):
-            subnet.delete()
+
+        with post_commit_hooks:
+            with self.assertRaisesRegex(
+                ValidationError, "servicing a dynamic"
+            ):
+                subnet.delete()
 
     def test_save_calls_configure_dhcp_workflow(self):
         mock_start_workflow = self.patch(subnet_module, "start_workflow")
@@ -816,6 +843,30 @@ class TestSubnet(MAASServerTestCase):
             task_queue="region",
         )
 
+    def test_save_calls_configure_dns_workflow(self):
+        vlan = factory.make_VLAN()
+        subnet = Subnet(
+            cidr="10.0.0.0/24",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+
+        mock_start_workflow = self.patch(
+            dnspublication_module, "start_workflow"
+        )
+
+        with post_commit_hooks:
+            subnet.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
+            param=ConfigureDNSParam(need_full_reload=True),
+            task_queue="region",
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+        )
+
     def test_delete_calls_configure_dhcp_workflow(self):
         mock_start_workflow = self.patch(subnet_module, "start_workflow")
         subnet = factory.make_Subnet()
@@ -834,6 +885,25 @@ class TestSubnet(MAASServerTestCase):
                 task_queue="region",
             ),
             mock_start_workflow.mock_calls,
+        )
+
+    def test_delete_calls_dns_workflow(self):
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+
+        mock_start_workflow = self.patch(
+            dnspublication_module, "start_workflow"
+        )
+
+        with post_commit_hooks:
+            subnet.delete()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
+            param=ConfigureDNSParam(need_full_reload=True),
+            task_queue="region",
+            workflow_id="configure-dns",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
 

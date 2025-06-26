@@ -785,7 +785,9 @@ class TestZoneGenerator(MAASServerTestCase):
 
         subnet = factory.make_Subnet(cidr="10.0.0.0/29")
         subnet.rdns_mode = RDNS_MODE.ENABLED
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
         default_domain = Domain.objects.get_default_domain()
         domains = Domain.objects.filter(name="one")
         subnets = Subnet.objects.all()

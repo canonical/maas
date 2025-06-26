@@ -9,7 +9,7 @@ from maasserver.forms.subnet import SubnetForm
 from maasserver.models.fabric import Fabric
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from provisioningserver.boot import BootMethodRegistry
 
 
@@ -103,7 +103,10 @@ class TestSubnetForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        subnet = form.save()
+
+        with post_commit_hooks:
+            subnet = form.save()
+
         self.assertEqual(subnet.name, subnet_name)
         self.assertEqual(subnet.description, subnet_description)
         self.assertEqual(subnet.vlan, vlan)
@@ -114,7 +117,10 @@ class TestSubnetForm(MAASServerTestCase):
     def test_removes_host_bits_and_whitespace(self):
         form = SubnetForm({"cidr": " 10.0.0.1/24 "})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        subnet = form.save()
+
+        with post_commit_hooks:
+            subnet = form.save()
+
         self.assertEqual("10.0.0.0/24", subnet.cidr)
 
     def test_creates_subnet_name_equal_to_cidr(self):
@@ -123,7 +129,10 @@ class TestSubnetForm(MAASServerTestCase):
         cidr = str(network.cidr)
         form = SubnetForm({"vlan": vlan.id, "cidr": cidr})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        subnet = form.save()
+
+        with post_commit_hooks:
+            subnet = form.save()
+
         self.assertEqual(subnet.name, cidr)
         self.assertEqual(subnet.vlan, vlan)
         self.assertEqual(subnet.cidr, cidr)
@@ -133,7 +142,10 @@ class TestSubnetForm(MAASServerTestCase):
         cidr = str(network.cidr)
         form = SubnetForm({"cidr": cidr})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        subnet = form.save()
+
+        with post_commit_hooks:
+            subnet = form.save()
+
         self.assertEqual(subnet.name, cidr)
         self.assertEqual(subnet.cidr, cidr)
         self.assertEqual(
@@ -146,7 +158,10 @@ class TestSubnetForm(MAASServerTestCase):
         cidr = str(network.cidr)
         form = SubnetForm({"cidr": cidr, "fabric": fabric.id, "vlan": None})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        subnet = form.save()
+
+        with post_commit_hooks:
+            subnet = form.save()
+
         self.assertEqual(subnet.name, cidr)
         self.assertEqual(subnet.cidr, cidr)
         self.assertEqual(subnet.vlan, fabric.get_default_vlan())
@@ -157,7 +172,10 @@ class TestSubnetForm(MAASServerTestCase):
         cidr = str(network.cidr)
         form = SubnetForm({"cidr": cidr, "vid": vlan.vid, "vlan": None})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        subnet = form.save()
+
+        with post_commit_hooks:
+            subnet = form.save()
+
         self.assertEqual(subnet.name, cidr)
         self.assertEqual(subnet.cidr, cidr)
         self.assertEqual(subnet.vlan, vlan)
@@ -171,7 +189,10 @@ class TestSubnetForm(MAASServerTestCase):
             {"cidr": cidr, "fabric": fabric.id, "vid": vlan.vid, "vlan": None}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        subnet = form.save()
+
+        with post_commit_hooks:
+            subnet = form.save()
+
         self.assertEqual(subnet.name, cidr)
         self.assertEqual(subnet.cidr, cidr)
         self.assertEqual(subnet.vlan, vlan)
@@ -244,7 +265,10 @@ class TestSubnetForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertEqual(subnet.name, new_name)
         self.assertEqual(subnet.description, new_description)
@@ -256,7 +280,10 @@ class TestSubnetForm(MAASServerTestCase):
     def test_updates_subnet_name_to_cidr(self):
         subnet = factory.make_Subnet()
         subnet.name = subnet.cidr
-        subnet.save()
+
+        with post_commit_hooks:
+            subnet.save()
+
         new_network = factory.make_ip4_or_6_network()
         new_cidr = str(new_network.cidr)
         new_gateway_ip = factory.pick_ip_in_network(new_network)
@@ -265,7 +292,10 @@ class TestSubnetForm(MAASServerTestCase):
             data={"cidr": new_cidr, "gateway_ip": new_gateway_ip},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertEqual(subnet.name, new_cidr)
         self.assertEqual(subnet.cidr, new_cidr)
@@ -301,7 +331,10 @@ class TestSubnetForm(MAASServerTestCase):
             instance=subnet, data={"name": factory.make_name("subnet")}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertEqual(dns_servers, subnet.dns_servers)
 
@@ -310,7 +343,10 @@ class TestSubnetForm(MAASServerTestCase):
         original_subnet = factory.make_Subnet()
         form = SubnetForm(instance=original_subnet, data={"name": new_name})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(original_subnet)
         self.assertEqual(subnet.name, new_name)
         self.assertEqual(subnet.vlan, original_subnet.vlan)
@@ -324,7 +360,10 @@ class TestSubnetForm(MAASServerTestCase):
             instance=subnet, data={"gateway_ip": "", "dns_servers": ""}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertIsNone(subnet.gateway_ip)
         self.assertEqual(subnet.dns_servers, [])
@@ -338,7 +377,10 @@ class TestSubnetForm(MAASServerTestCase):
             instance=subnet, data={"dns_servers": ",".join(dns_servers)}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertEqual(dns_servers, subnet.dns_servers)
 
@@ -351,7 +393,10 @@ class TestSubnetForm(MAASServerTestCase):
             instance=subnet, data={"dns_servers": " ".join(dns_servers)}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertEqual(dns_servers, subnet.dns_servers)
 
@@ -371,7 +416,10 @@ class TestSubnetForm(MAASServerTestCase):
             data={"disabled_boot_architectures": ",".join(disabled_arches)},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertCountEqual(
             disabled_arches, subnet.disabled_boot_architectures
@@ -393,7 +441,10 @@ class TestSubnetForm(MAASServerTestCase):
             data={"disabled_boot_architectures": " ".join(disabled_arches)},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertCountEqual(
             disabled_arches, subnet.disabled_boot_architectures
@@ -418,7 +469,10 @@ class TestSubnetForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertCountEqual(
             [bm.name for bm in disabled_arches],
@@ -447,7 +501,10 @@ class TestSubnetForm(MAASServerTestCase):
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
-        form.save()
+
+        with post_commit_hooks:
+            form.save()
+
         subnet = reload_object(subnet)
         self.assertCountEqual(
             [bm.name for bm in disabled_arches],

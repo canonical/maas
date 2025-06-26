@@ -657,76 +657,6 @@ DNS_NIC_IP_UNLINK = dedent(
 )
 
 
-# Triggered when a subnet is inserted. Increments the zone serial and notifies
-# that DNS needs to be updated. Doesn't notify if the rdns_mode is
-# disabled (0).
-DNS_SUBNET_INSERT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dns_subnet_insert()
-    RETURNS trigger as $$
-    DECLARE
-      changes text[];
-    BEGIN
-      IF NEW.rdns_mode != 0 THEN
-        PERFORM sys_dns_publish_update('added subnet ' || text(NEW.cidr));
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
-# Triggered when a subnet is updated. Increments the zone serial and notifies
-# that DNS needs to be updated. Only watches changes on the cidr, rdns_mode
-# and allow_dns.
-DNS_SUBNET_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dns_subnet_update()
-    RETURNS trigger as $$
-    BEGIN
-      IF OLD.cidr != NEW.cidr THEN
-        PERFORM sys_dns_publish_update(
-            'subnet ' || text(OLD.cidr) || ' changed to ' || text(NEW.CIDR));
-        RETURN NEW;
-      END IF;
-      IF OLD.rdns_mode != NEW.rdns_mode THEN
-        PERFORM sys_dns_publish_update(
-            'subnet ' || text(NEW.cidr) || ' rdns changed to ' ||
-            NEW.rdns_mode);
-      END IF;
-      IF OLD.allow_dns != NEW.allow_dns THEN
-        PERFORM sys_dns_publish_update(
-            'subnet ' || text(NEW.cidr) || ' allow_dns changed to ' ||
-            NEW.allow_dns);
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
-# Triggered when a subnet is deleted. Increments the zone serial and notifies
-# that DNS needs to be updated. Doesn't notify if the rdns_mode is
-# disabled (0).
-DNS_SUBNET_DELETE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dns_subnet_delete()
-    RETURNS trigger as $$
-    DECLARE
-      changes text[];
-    BEGIN
-      IF OLD.rdns_mode != 0 THEN
-        PERFORM sys_dns_publish_update('removed subnet ' || text(OLD.cidr));
-      END IF;
-      RETURN OLD;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
 # Triggered when a node is updated. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches changes on the hostname and
 # linked domain for the node.
@@ -1101,22 +1031,6 @@ RBAC_RPOOL_DELETE = dedent(
 )
 
 
-def render_dns_dynamic_update_subnet_procedure(op):
-    return dedent(
-        f"""\
-        CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_subnet_{op}()
-        RETURNS trigger as $$
-        BEGIN
-          ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
-          ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
-          PERFORM pg_notify('sys_dns_updates', reload_dns_notification());
-          RETURN NULL;
-        END;
-        $$ LANGUAGE plpgsql;
-        """
-    )
-
-
 def render_dns_dynamic_update_interface_static_ip_address(op):
     return dedent(
         f"""\
@@ -1409,14 +1323,6 @@ def register_system_triggers():
         "maasserver_interface_ip_addresses", "sys_dns_nic_ip_unlink", "delete"
     )
 
-    # - Subnet
-    register_procedure(DNS_SUBNET_INSERT)
-    register_trigger("maasserver_subnet", "sys_dns_subnet_insert", "insert")
-    register_procedure(DNS_SUBNET_UPDATE)
-    register_trigger("maasserver_subnet", "sys_dns_subnet_update", "update")
-    register_procedure(DNS_SUBNET_DELETE)
-    register_trigger("maasserver_subnet", "sys_dns_subnet_delete", "delete")
-
     # - Node
     register_procedure(DNS_NODE_UPDATE)
     register_trigger("maasserver_node", "sys_dns_node_update", "update")
@@ -1476,24 +1382,6 @@ def register_system_triggers():
         "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete"
     )
 
-    register_procedure(render_dns_dynamic_update_subnet_procedure("insert"))
-    register_trigger(
-        "maasserver_subnet",
-        "sys_dns_updates_maasserver_subnet_insert",
-        "insert",
-    )
-    register_procedure(render_dns_dynamic_update_subnet_procedure("update"))
-    register_trigger(
-        "maasserver_subnet",
-        "sys_dns_updates_maasserver_subnet_update",
-        "update",
-    )
-    register_procedure(render_dns_dynamic_update_subnet_procedure("delete"))
-    register_trigger(
-        "maasserver_subnet",
-        "sys_dns_updates_maasserver_subnet_delete",
-        "delete",
-    )
     register_procedure(
         render_dns_dynamic_update_interface_static_ip_address("insert")
     )

@@ -141,6 +141,9 @@ class TestSetVaultConfiguredDbCommand:
             RegionController as RegionControllerObject,
         )
 
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
         node = factory.make_RegionController()
         MAAS_ID.set(factory.make_UUID())
         mocker.patch.object(
@@ -178,6 +181,9 @@ class TestConfigVaultMigrateCommand:
             Command().handle(command=Command.MIGRATE_COMMAND)
 
     def test_raises_when_vault_not_configured_somewhere(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
         mocker.patch.object(
             config_vault, "get_region_vault_client"
         ).return_value = MagicMock()
@@ -296,7 +302,10 @@ class TestMigrateSecrets:
         with pytest.raises(CommandError, match=expected_error):
             Command()._handle_migrate({})
 
-    def test_get_online_regions_returns_correct_online_status(self):
+    def test_get_online_regions_returns_correct_online_status(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
         running = factory.make_RegionController(hostname="running")
         factory.make_RegionController(hostname="stopped")
         for j in range(2):
@@ -337,6 +346,9 @@ class TestMigrateSecrets:
         )  # One sleep at the start, two in the loop
 
     def test_restart_regions_will_raise_when_attempts_exhausted(self, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
         target = Command()
         online_regions_mock = mocker.patch.object(
             target, "_get_online_regions"
@@ -351,7 +363,10 @@ class TestMigrateSecrets:
 
 @pytest.mark.usefixtures("maasdb")
 class TestStatus:
-    def test_status_not_enabled(self, capsys):
+    def test_status_not_enabled(self, capsys, mocker):
+        mocker.patch("maasserver.utils.orm.post_commit_hooks")
+        mocker.patch("maasserver.utils.orm.post_commit_do")
+
         region_one = factory.make_RegionController(hostname="one")
         region_two = factory.make_RegionController(hostname="two")
         ControllerInfo(node=region_one, vault_configured=True).save()
@@ -365,6 +380,7 @@ class TestStatus:
     def test_status_enabled(self, capsys, mocker):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
+
         region_one = factory.make_RegionController(hostname="one")
         region_two = factory.make_RegionController(hostname="two")
         ControllerInfo(node=region_one, vault_configured=True).save()

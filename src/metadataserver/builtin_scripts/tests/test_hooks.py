@@ -2061,13 +2061,16 @@ class TestProcessLXDResults(MAASServerTestCase):
         uuid = factory.make_UUID()
         data = make_lxd_output(uuid=uuid)
         data["storage-extra"] = {"invalid": "data"}
-        self.assertRaises(
-            ConfigError,
-            process_lxd_results,
-            node,
-            json.dumps(data).encode(),
-            0,
-        )
+
+        with post_commit_hooks:
+            self.assertRaises(
+                ConfigError,
+                process_lxd_results,
+                node,
+                json.dumps(data).encode(),
+                0,
+            )
+
         [event] = Event.objects.all()
         self.assertEqual(event.node, node)
         self.assertEqual(event.type.name, EVENT_TYPES.SCRIPT_RESULT_ERROR)

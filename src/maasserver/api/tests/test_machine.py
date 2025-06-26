@@ -44,6 +44,7 @@ from maasserver.models import (
     ScriptSet,
     StaticIPAddress,
 )
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import node as node_module
 from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models.bmc import Pod
@@ -3846,6 +3847,7 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
         self.patch(staticipaddress_module, "post_commit_do")
+        self.patch(dnspublication_module, "post_commit_do")
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""
@@ -3920,7 +3922,6 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
 
         machine.restore_network_interfaces()
         machine.set_initial_networking_configuration()
-
         response = self.client.post(
             self.get_machine_uri(machine),
             {"op": "restore_networking_configuration"},
