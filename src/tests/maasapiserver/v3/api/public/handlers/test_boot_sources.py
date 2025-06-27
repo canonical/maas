@@ -8,22 +8,50 @@ from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
     BootSourceFetchRequest,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceFetchListResponse,
     BootSourceFetchResponse,
+    BootSourceResponse,
+    BootSourcesListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from maasservicelayer.utils.images.helpers import ImageSpec
 from tests.fixtures.factories.boot_sources import set_resource
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
+)
+
+TEST_BOOTSOURCE_1 = BootSource(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    url="http://example.com/v1/",
+    keyring_filename="/path/to/keyring.gpg",
+    keyring_data=b"",
+    priority=10,
+    skip_keyring_verification=False,
+)
+
+TEST_BOOTSOURCE_2 = BootSource(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    url="http://example.com/v2/",
+    keyring_filename="/path/to/keyring.gpg",
+    keyring_data=b"",
+    priority=10,
+    skip_keyring_verification=False,
 )
 
 IMAGE_DESC_1 = {
@@ -67,12 +95,76 @@ class TestBootSourcesApi(ApiCommonTests):
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
         return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=f"{self.BASE_PATH}:fetch"),
         ]
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
         return []
+
+    async def test_list_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.list.return_value = ListResult[BootSource](
+            items=[TEST_BOOTSOURCE_1], total=1
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        boot_sources_response = BootSourcesListResponse(**response.json())
+        assert len(boot_sources_response.items) == 1
+        assert boot_sources_response.total == 1
+        assert boot_sources_response.next is None
+
+    async def test_list_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.list.return_value = ListResult[BootSource](
+            items=[TEST_BOOTSOURCE_1, TEST_BOOTSOURCE_2], total=2
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        boot_sources_response = BootSourcesListResponse(**response.json())
+        assert len(boot_sources_response.items) == 2
+        assert boot_sources_response.total == 2
+        assert boot_sources_response.next == f"{self.BASE_PATH}?page=2&size=1"
+
+    async def test_get_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        boot_source_response = BootSourceResponse(**response.json())
+        assert boot_source_response.id == TEST_BOOTSOURCE_1.id
+
+    async def test_get_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = None
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/101")
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
 
     async def test_fetch_boot_sources(
         self,

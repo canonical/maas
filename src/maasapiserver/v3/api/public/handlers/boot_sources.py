@@ -1,21 +1,34 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from fastapi import Depends, Response
 from base64 import b64decode
 
 from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
+from maasapiserver.common.api.models.responses.errors import (
+    NotFoundBodyResponse,
+)
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
+    # BootSourceRequest,
     BootSourceFetchRequest,
+)
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
+from maasapiserver.v3.api.public.models.responses.base import (
+    OPENAPI_ETAG_HEADER,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceFetchListResponse,
     BootSourceFetchResponse,
+    BootSourceResponse,
+    BootSourcesListResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -23,6 +36,80 @@ class BootSourcesHandler(Handler):
     """BootSources API handler."""
 
     TAGS = ["BootSources"]
+
+    @handler(
+        path="/boot_sources",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootSourcesListResponse,
+            }
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_boot_sources(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourcesListResponse:
+        boot_sources = await services.boot_sources.list(
+            page=pagination_params.page, size=pagination_params.size
+        )
+        return BootSourcesListResponse(
+            items=[
+                BootSourceResponse.from_model(
+                    boot_source=boot_source,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources",
+                )
+                for boot_source in boot_sources.items
+            ],
+            total=boot_sources.total,
+            next=(
+                f"{V3_API_PREFIX}/boot_sources?"
+                f"{pagination_params.to_next_href_format()}"
+                if boot_sources.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootSourceResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_boot_source(
+        self,
+        boot_source_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceResponse:
+        boot_source = await services.boot_sources.get_by_id(boot_source_id)
+        if boot_source is None:
+            raise NotFoundException()
+        response.headers["ETag"] = boot_source.etag()
+        return BootSourceResponse.from_model(
+            boot_source=boot_source,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources",
+        )
 
     @handler(
         path="/boot_sources:fetch",

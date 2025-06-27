@@ -22,7 +22,7 @@ async def create_test_bootsource_entry(
         "updated": updated_at,
         "url": url,
         "keyring_filename": "/path/to/keyring.gpg",
-        "keyring_data": "data".encode("utf-8"),
+        "keyring_data": b"data",
         "priority": priority,
         "skip_keyring_verification": False,
     }
