@@ -5,7 +5,7 @@
 # Author: Andres Rodriguez <andres.rodriguez@canonical.com>
 #         Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2013-2021 Canonical
+# Copyright (C) 2013-2025 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -118,7 +118,7 @@ class BMCConfig(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def __str__(self):
+    def __str__(self) -> str:
         """The pretty name of the BMC type."""
 
     @abstractproperty
@@ -126,7 +126,7 @@ class BMCConfig(metaclass=ABCMeta):
         """The power_type of the BMC."""
 
     @abstractmethod
-    def detected(self):
+    def detected(self) -> bool:
         """Returns boolean value of whether the BMC was detected."""
 
     def add_bmc_user(self):
@@ -536,16 +536,22 @@ class IPMI(IPMIBase):
         # Verify the BMC uses IPMI.
         try:
             output = _get_ipmi_locate_output()
-        except Exception:
+        except Exception as err:
+            print(
+                f"DEBUG: Exception occurred when trying to execute ipmi-locate command: {str(err)}"
+            )
             return False
         else:
             m = re.search(r"(IPMI\ Version:) (\d\.\d)", output)
-            # ipmi-locate always returns 0. If The regex doesn't match
+            # ipmi-locate always returns 0. If the IPMI version regex doesn't match,
             # check if /dev/ipmi[0-9] exists. This is needed on the PPC64
             # host in the MAAS CI.
             if m or len(glob.glob("/dev/ipmi[0-9]")):
                 return True
             else:
+                print(
+                    "DEBUG: Could not find IPMI version or an IPMI device in /dev"
+                )
                 return False
 
     def configure(self):
@@ -630,7 +636,7 @@ class IPMI(IPMIBase):
         return None, None, mac_address
 
     def get_bmc_ip(self):
-        """Configure and retreive IPMI BMC IP."""
+        """Configure and retrieve IPMI BMC IP."""
         section_name, ip_address, mac_address = self._get_bmc_ip()
         if ip_address:
             return ip_address, mac_address
@@ -690,22 +696,30 @@ class HPMoonshot(BMCConfig):
     username = "Administrator"
     password = "password"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "HP Moonshot"
 
-    def detected(self):
+    def detected(self) -> bool:
+        output = ""
         try:
             output = check_output(
                 ["ipmitool", "raw", "06", "01"],
                 timeout=COMMAND_TIMEOUT,
                 stderr=DEVNULL,
             ).decode()
-        except Exception:
+        except Exception as err:
+            print(
+                f"DEBUG: Exception occurred executing ipmitool command: {str(err)}"
+            )
             return False
         # 14 is the code that identifies the BMC as HP Moonshot
-        if output.split()[0] == "14":
+        device_id = output.split()[0]
+        if device_id == "14":
             return True
         else:
+            print(
+                f"DEBUG: Detected BMC is not HP Moonshot, has device ID {device_id}"
+            )
             return False
 
     def _get_local_address(self):
@@ -868,16 +882,21 @@ class Wedge(BMCConfig):
         # First detect this is a known switch
         try:
             switch_type = self._detect_known_switch()
-        except (CalledProcessError, TimeoutExpired, FileNotFoundError):
+        except (CalledProcessError, TimeoutExpired, FileNotFoundError) as err:
+            print(
+                f"DEBUG: Exception occurred when trying to detect switch: {str(err)}"
+            )
             return False
         else:
             if switch_type is None:
+                print("DEBUG: Unknown/no switch detected.")
                 return False
         try:
             # Second, lets verify if this is a known endpoint
             # First try to hit the API. This would work on Wedge 100.
+            local_addr = _get_wedge_local_addr()
             response = urllib.request.urlopen(
-                "http://[%s]:8080/api" % _get_wedge_local_addr()
+                f"http://[{local_addr}]:8080/api"
             )
             if b"Wedge RESTful API Entry" in response.read():
                 return True
@@ -886,6 +905,7 @@ class Wedge(BMCConfig):
         if self.get_bmc_ip():
             # If the above failed, try to hit the SSH. This would work on Wedge 40.
             return True
+        print("DEBUG: Unable to connect to the Wedge device via SSH or API.")
         return False
 
     def get_bmc_ip(self):
@@ -1034,8 +1054,21 @@ class Redfish(IPMIBase):
         if data is None:
             raise ConfigurationError("Missing SMBIOS data")
 
-        vendor_id = get_smbios_value(data, "idVendor")[2:]
-        product_id = get_smbios_value(data, "idProduct")[2:]
+        vendor_id = get_smbios_value(data, "idVendor")
+        if vendor_id is None:
+            raise ConfigurationError(
+                "'idVendor' key not present in SMBIOS data"
+            )
+        else:
+            vendor_id = vendor_id[2:]
+
+        product_id = get_smbios_value(data, "idProduct")
+        if product_id is None:
+            raise ConfigurationError(
+                "'idProduct' key not present in SMBIOS data"
+            )
+        else:
+            product_id = product_id[2:]
 
         if not all((vendor_id, product_id)):
             raise ConfigurationError(
@@ -1043,13 +1076,22 @@ class Redfish(IPMIBase):
             )
 
         iface = None
-        with open(os.environ["MAAS_RESOURCES_FILE"]) as fd:
-            machine_resources_data = json.load(fd)
-            iface = get_network_interface(
-                machine_resources_data, vendor_id, product_id
-            )
-            if iface is None:
-                raise ConfigurationError("Missing Redfish Host Interface")
+        try:
+            with open(os.environ["MAAS_RESOURCES_FILE"]) as fd:
+                machine_resources_data = json.load(fd)
+                iface = get_network_interface(
+                    machine_resources_data, vendor_id, product_id
+                )
+                if iface is None:
+                    raise ConfigurationError("Missing Redfish Host Interface")
+        except ConfigurationError:
+            # Pass on the known configuration error
+            raise
+        except Exception as e:
+            # Catch any other exception and raise a wrapping ConfigurationError
+            raise ConfigurationError(
+                "Failed to get network interface for Redfish"
+            ) from e
 
         self._configure_network(iface, data)
 
@@ -1064,13 +1106,15 @@ class Redfish(IPMIBase):
         if not all((self._redfish_ip, self._redfish_port)):
             raise ConfigurationError("Missing Redfish Service information.")
 
-    def detected(self):
+    def detected(self) -> bool:
         try:
             self._detect()
             return self.get_bmc_ip() is not None
         # XXX: we should know which exceptions to expect, so we can handle them
         except ConfigurationError as err:
-            print(f"ERROR: Redfish configuration failed. {err}")
+            print(
+                f"DEBUG: Redfish detection and configuration failed. Reason: {str(err)}"
+            )
             return False
 
     def _get_manager_id(self):
@@ -1222,15 +1266,16 @@ class Redfish(IPMIBase):
         }
 
 
-def detect_and_configure(args, bmc_config_path):
+def detect_and_configure(args, bmc_config_path: str) -> None:
     # Order matters here. HPMoonshot is a specical IPMI device, so try to
     # detect it first.
-    for bmc_class in [HPMoonshot, Redfish, IPMI, Wedge]:
+    bmc_list = [HPMoonshot, Redfish, IPMI, Wedge]
+    for bmc_class in bmc_list:
         try:
             bmc = bmc_class(**vars(args))
-            print("INFO: Checking for %s..." % bmc)
+            print(f"INFO: Checking for {bmc}...")
             if bmc.detected():
-                print("INFO: %s detected!" % bmc)
+                print(f"INFO: {bmc} detected!")
                 bmc.configure()
                 bmc.add_bmc_user()
                 with open(bmc_config_path, "w") as f:
@@ -1243,6 +1288,11 @@ def detect_and_configure(args, bmc_config_path):
                         default_flow_style=False,
                     )
                 return
+            else:
+                msg = f"INFO: No {bmc} detected."
+                if bmc_class is not bmc_list[-1]:
+                    msg += " Trying next BMC type..."
+                print(msg)
         except Exception as e:
             print(f"ERROR: {bmc_class.__name__} {e}\n{traceback.format_exc()}")
     print("INFO: No BMC automatically detected!")

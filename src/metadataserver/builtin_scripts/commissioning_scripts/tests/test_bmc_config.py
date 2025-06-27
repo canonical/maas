@@ -3,13 +3,14 @@
 
 from collections import OrderedDict
 import io
+from json.decoder import JSONDecodeError
 import os
 import random
 import re
 from subprocess import CalledProcessError, DEVNULL, TimeoutExpired
 import tempfile
 import textwrap
-from unittest.mock import call, MagicMock
+from unittest.mock import call, MagicMock, patch
 import urllib
 import urllib.request
 
@@ -250,6 +251,23 @@ EndSection
         )
         mock_get_ipmi_locate_output.return_value = factory.make_string()
         self.assertFalse(self.ipmi.detected())
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Could not find IPMI version or an IPMI device in /dev"
+        )
+
+    def test_detected_command_exception(self):
+        mock_get_ipmi_locate_output = self.patch(
+            bmc_config, "_get_ipmi_locate_output"
+        )
+        mock_get_ipmi_locate_output.side_effect = CalledProcessError(
+            cmd=["ipmi-locate"], returncode=1
+        )
+
+        self.assertFalse(self.ipmi.detected())
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Exception occurred when trying to execute ipmi-locate command: "
+            "Command '['ipmi-locate']' returned non-zero exit status 1."
+        )
 
     def test_generate_random_password(self):
         for attempt in range(0, 100):  # noqa: B007
@@ -1101,6 +1119,42 @@ class TestHPMoonshot(MAASTestCase):
             [call(local_address, output), call(node_address, output)]
         )
 
+    def test_detected_false_when_ipmitool_call_error(self):
+        self.mock_check_output.side_effect = factory.make_exception(
+            CalledProcessError(
+                cmd=["ipmitool", "raw", "06", "01"], returncode=1
+            )
+        )
+
+        self.assertFalse(self.hp_moonshot.detected())
+
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Exception occurred executing ipmitool command: "
+            "Command '['ipmitool', 'raw', '06', '01']' "
+            "returned non-zero exit status 1."
+        )
+        self.mock_check_output.assert_called_once_with(
+            ["ipmitool", "raw", "06", "01"],
+            timeout=bmc_config.COMMAND_TIMEOUT,
+            stderr=DEVNULL,
+        )
+
+    def test_detected_false_when_bmc_not_moonshot(self):
+        self.mock_check_output.return_value = " ".join(
+            ["15"] + self.make_hex_array(10)
+        ).encode()
+
+        self.assertFalse(self.hp_moonshot.detected())
+
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Detected BMC is not HP Moonshot, has device ID 15"
+        )
+        self.mock_check_output.assert_called_once_with(
+            ["ipmitool", "raw", "06", "01"],
+            timeout=bmc_config.COMMAND_TIMEOUT,
+            stderr=DEVNULL,
+        )
+
 
 class TestRedfish(MAASTestCase):
     class FakeSocket:
@@ -1114,6 +1168,7 @@ class TestRedfish(MAASTestCase):
         super().setUp()
         self.redfish = bmc_config.Redfish()
         self.mock_check_output = self.patch(bmc_config, "check_output")
+        self.mock_print = self.patch(bmc_config, "print")
 
     def test_str(self):
         self.assertEqual("Redfish", str(self.redfish))
@@ -1611,6 +1666,40 @@ class TestRedfish(MAASTestCase):
         )
         self.assertFalse(self.redfish.detected())
 
+    @patch.dict(os.environ, {}, clear=True)
+    def test_detected_no_resources_file_env_key_set(self):
+        """Catch IO related issue with potentially unset environment key."""
+        self.patch(self.redfish, "_get_smbios_data").return_value = ""
+        self.patch(bmc_config, "get_smbios_value").return_value = "aaa"
+
+        self.assertFalse(self.redfish.detected())
+
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Redfish detection and configuration failed. Reason: "
+            "Failed to get network interface for Redfish"
+        )
+
+    @patch.dict(
+        os.environ, {"MAAS_RESOURCES_FILE": "/tmp/res_file"}, clear=True
+    )
+    def test_detected_no_resources_file(self):
+        """Catch IO related issue with potentially missing resources file."""
+
+        self.patch(self.redfish, "_get_smbios_data").return_value = ""
+        self.patch(bmc_config, "get_smbios_value").return_value = "aaa"
+
+        json_load_mock = self.patch(bmc_config, "json.load")
+        json_load_mock.side_effect = factory.make_exception_type(
+            (JSONDecodeError,)
+        )
+
+        self.assertFalse(self.redfish.detected())
+
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Redfish detection and configuration failed. Reason: "
+            "Failed to get network interface for Redfish"
+        )
+
     def test_get_credentials(self):
         ip = factory.make_ip_address()
         self.patch(self.redfish, "get_bmc_ip").return_value = ip
@@ -1673,6 +1762,7 @@ class TestWedge(MAASTestCase):
         super().setUp()
         self.wedge = bmc_config.Wedge()
         self.mock_check_output = self.patch(bmc_config, "check_output")
+        self.mock_print = self.patch(bmc_config, "print")
         bmc_config._get_wedge_local_addr.cache_clear()
 
     def test_power_type(self):
@@ -1708,6 +1798,29 @@ class TestWedge(MAASTestCase):
     def test_detected_unknown_switch(self):
         self.patch(self.wedge, "_detect_known_switch").return_value = None
         self.assertFalse(self.wedge.detected())
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Unknown/no switch detected."
+        )
+
+    def test_detected_error_detecting_switch(self):
+        """
+        Simulate throwing an error calling any dmidecode command.
+
+        Check printed error message is what we'd expect.
+        """
+        mock_detect_known_switch = self.patch(
+            self.wedge, "_detect_known_switch"
+        )
+        mock_detect_known_switch.side_effect = CalledProcessError(
+            cmd=["dmidecode", "-s", "system-manufacturer"], returncode=1
+        )
+
+        self.assertFalse(self.wedge.detected())
+        self.mock_print.assert_called_once_with(
+            "DEBUG: Exception occurred when trying to detect switch: "
+            "Command '['dmidecode', '-s', 'system-manufacturer']' "
+            "returned non-zero exit status 1."
+        )
 
     def test_detected_dmidecode_error(self):
         self.patch(
@@ -1802,7 +1915,7 @@ class TestWedge(MAASTestCase):
 class TestDetectAndConfigure(MAASTestCase):
     def setUp(self):
         super().setUp()
-        self.patch(bmc_config, "print")
+        self.mock_print = self.patch(bmc_config, "print")
 
     def test_finds_first(self):
         bmc_config_path = os.path.join(
@@ -1868,8 +1981,23 @@ class TestDetectAndConfigure(MAASTestCase):
 
         self.assertFalse(os.path.exists(bmc_config_path))
         bmc_config.HPMoonshot.detected.assert_called_once()
+        bmc_config.Redfish.detected.assert_called_once()
         bmc_config.IPMI.detected.assert_called_once()
         bmc_config.Wedge.detected.assert_called_once()
+
+        self.mock_print.assert_has_calls(
+            [
+                call("INFO: Checking for HP Moonshot..."),
+                call("INFO: No HP Moonshot detected. Trying next BMC type..."),
+                call("INFO: Checking for Redfish..."),
+                call("INFO: No Redfish detected. Trying next BMC type..."),
+                call("INFO: Checking for IPMI..."),
+                call("INFO: No IPMI detected. Trying next BMC type..."),
+                call("INFO: Checking for Facebook Wedge..."),
+                call("INFO: No Facebook Wedge detected."),
+                call("INFO: No BMC automatically detected!"),
+            ]
+        )
 
 
 class TestMain(MAASTestCase):
