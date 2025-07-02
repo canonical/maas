@@ -29,11 +29,13 @@ class BootSourceResponse(HalResponse[BaseHal]):
     def from_model(
         cls, boot_source: BootSource, self_base_hyperlink: str
     ) -> Self:
+        keyring_data = boot_source.keyring_data or b""
+        keyring_data = keyring_data.decode("utf-8")
         return cls(
             id=boot_source.id,
             url=boot_source.url,
             keyring_filename=boot_source.keyring_filename,
-            keyring_data=boot_source.keyring_data,
+            keyring_data=keyring_data,
             priority=boot_source.priority,
             skip_keyring_verification=boot_source.skip_keyring_verification,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]

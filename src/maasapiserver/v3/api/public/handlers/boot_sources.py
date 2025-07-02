@@ -1,10 +1,9 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Response
 from base64 import b64decode
 
-from fastapi import Depends
+from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -12,8 +11,8 @@ from maasapiserver.common.api.models.responses.errors import (
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
-    # BootSourceRequest,
     BootSourceFetchRequest,
+    BootSourceRequest,
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
@@ -105,6 +104,36 @@ class BootSourcesHandler(Handler):
         boot_source = await services.boot_sources.get_by_id(boot_source_id)
         if boot_source is None:
             raise NotFoundException()
+        response.headers["ETag"] = boot_source.etag()
+        return BootSourceResponse.from_model(
+            boot_source=boot_source,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources",
+        )
+
+    @handler(
+        path="/boot_sources",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {
+                "model": BootSourceResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def create_boot_source(
+        self,
+        boot_source_request: BootSourceRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceResponse:
+        builder = boot_source_request.to_builder()
+        boot_source = await services.boot_sources.create(builder)
         response.headers["ETag"] = boot_source.etag()
         return BootSourceResponse.from_model(
             boot_source=boot_source,

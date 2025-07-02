@@ -2,9 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timezone
-from typing import Any
 
 from maasservicelayer.db.tables import BootSourceTable
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from maasservicelayer.utils.images.helpers import ImageSpec
 from maastesting.factory import factory
@@ -13,7 +13,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 async def create_test_bootsource_entry(
     fixture: Fixture, url, priority, **extra_details
-) -> dict[str, Any]:
+) -> BootSource:
     created_at = datetime.now(timezone.utc).astimezone()
     updated_at = datetime.now(timezone.utc).astimezone()
 
@@ -32,7 +32,7 @@ async def create_test_bootsource_entry(
         BootSourceTable.name, bootsource
     )
 
-    return created_bootsource
+    return BootSource(**created_bootsource)
 
 
 def make_image_spec(

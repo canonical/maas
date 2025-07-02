@@ -14,13 +14,14 @@ from maasservicelayer.utils.date import utcnow
 class TestBootSourceResponse:
     def test_from_model(self) -> None:
         now = utcnow()
+        data = base64.b64encode("data".encode("utf-8"))
         boot_source = BootSource(
             id=1,
             created=now,
             updated=now,
             url="my-url",
             keyring_filename="keyring-filename",
-            keyring_data=base64.b64encode(b"data"),
+            keyring_data=data,
             priority=10,
             skip_keyring_verification=False,
         )
