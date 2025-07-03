@@ -402,34 +402,32 @@ def cache_boot_sources():
     errors = []
     sources = yield deferToDatabase(get_sources)
     for source in sources:
-        with tempdir("keyrings") as keyrings_path:
-            [source] = write_all_keyrings(keyrings_path, [source])
-            try:
-                descriptions = yield deferToDatabase(
-                    download_all_image_descriptions,
-                    [source],
+        try:
+            descriptions = yield deferToDatabase(
+                download_all_image_descriptions,
+                [source],
+            )
+        except (OSError, ConnectionError) as error:
+            msg = f"Failed to import images from {source['url']}: {error}"
+            errors.append(msg)
+            maaslog.error(msg)
+        except sutil.SignatureMissingException as error:
+            # Raise an error to the UI.
+            proxy = yield deferToDatabase(get_proxy)
+            if not proxy:
+                msg = (
+                    f"Failed to import images from {source['url']} ({error}). Verify "
+                    "network connectivity and try again."
                 )
-            except (OSError, ConnectionError) as error:
-                msg = f"Failed to import images from {source['url']}: {error}"
-                errors.append(msg)
-                maaslog.error(msg)
-            except sutil.SignatureMissingException as error:
-                # Raise an error to the UI.
-                proxy = yield deferToDatabase(get_proxy)
-                if not proxy:
-                    msg = (
-                        f"Failed to import images from {source['url']} ({error}). Verify "
-                        "network connectivity and try again."
-                    )
-                else:
-                    msg = (
-                        f"Failed to import images from {source['url']} ({error}). Verify "
-                        "network connectivity via your external "
-                        f"proxy ({proxy}) and try again."
-                    )
-                errors.append(msg)
             else:
-                yield deferToDatabase(_update_cache, source, descriptions)
+                msg = (
+                    f"Failed to import images from {source['url']} ({error}). Verify "
+                    "network connectivity via your external "
+                    f"proxy ({proxy}) and try again."
+                )
+            errors.append(msg)
+        else:
+            yield deferToDatabase(_update_cache, source, descriptions)
 
     yield deferToDatabase(restore_pristine_env, pristine_env)
     yield deferToDatabase(check_commissioning_series_selected)
