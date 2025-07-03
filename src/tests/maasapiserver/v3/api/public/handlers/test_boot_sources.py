@@ -235,6 +235,18 @@ class TestBootSourcesApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 409
 
+    async def test_delete_resource(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.delete_by_id.side_effect = None
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/100"
+        )
+        assert response.status_code == 204
+
     async def test_fetch_boot_sources(
         self,
         services_mock: ServiceCollectionV3,

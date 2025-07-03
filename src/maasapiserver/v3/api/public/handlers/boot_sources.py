@@ -3,7 +3,7 @@
 
 from base64 import b64decode
 
-from fastapi import Depends, Response
+from fastapi import Depends, Header, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -139,6 +139,29 @@ class BootSourcesHandler(Handler):
             boot_source=boot_source,
             self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources",
         )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_boot_source(
+        self,
+        boot_source_id: int,
+        etag_if_match: str | None = Header(alias="if-match", default=None),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.boot_sources.delete_by_id(boot_source_id, etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
         path="/boot_sources:fetch",
