@@ -142,6 +142,40 @@ class BootSourcesHandler(Handler):
 
     @handler(
         path="/boot_sources/{boot_source_id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootSourceResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_boot_source(
+        self,
+        boot_source_id: int,
+        boot_source_request: BootSourceRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceResponse:
+        builder = boot_source_request.to_builder()
+        boot_source = await services.boot_sources.update_by_id(
+            boot_source_id, builder
+        )
+        response.headers["ETag"] = boot_source.etag()
+        return BootSourceResponse.from_model(
+            boot_source=boot_source,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources",
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}",
         methods=["DELETE"],
         tags=TAGS,
         responses={

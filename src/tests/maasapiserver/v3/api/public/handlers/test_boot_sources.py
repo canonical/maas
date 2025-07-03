@@ -22,8 +22,10 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -45,7 +47,7 @@ TEST_BOOTSOURCE_1 = BootSource(
     updated=utcnow(),
     url="http://example.com/v1/",
     keyring_filename="/path/to/keyring.gpg",
-    keyring_data=b"",
+    keyring_data="",
     priority=10,
     skip_keyring_verification=False,
 )
@@ -56,7 +58,7 @@ TEST_BOOTSOURCE_2 = BootSource(
     updated=utcnow(),
     url="http://example.com/v2/",
     keyring_filename="/path/to/keyring.gpg",
-    keyring_data=b"",
+    keyring_data="",
     priority=10,
     skip_keyring_verification=False,
 )
@@ -166,6 +168,71 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_by_id.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/101")
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+        updated = TEST_BOOTSOURCE_1.copy()
+        updated.url = "http://example.com/v2/"
+        updated.priority = 15
+        services_mock.boot_sources.update_by_id.return_value = updated
+
+        update_request = {
+            "url": "http://example.com/v2/",
+            "keyring_filename": "/path/to/keyring.gpg",
+            "keyring_data": "",
+            "priority": 15,
+            "skip_keyring_verification": False,
+        }
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_request),
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        updated_boot_source_response = BootSourceResponse(**response.json())
+        assert updated_boot_source_response.id == updated.id
+        assert updated_boot_source_response.url == updated.url
+        assert updated_boot_source_response.priority == updated.priority
+
+    async def test_put_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.update_by_id.side_effect = NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message="Resource with such identifiers does not exist.",
+                )
+            ]
+        )
+
+        update_request = {
+            "url": "http://example.com/v2/",
+            "keyring_filename": "/path/to/keyring.gpg",
+            "keyring_data": "",
+            "priority": 15,
+            "skip_keyring_verification": False,
+        }
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_request),
+        )
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
