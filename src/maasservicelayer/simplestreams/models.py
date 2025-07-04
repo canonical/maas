@@ -144,8 +144,8 @@ class Version(BaseModel, ABC):
 
 
 class BootloaderVersion(Version):
-    grub2_signed: BootloaderFile | None = Field(..., alias="grub2-signed")
-    shim_signed: BootloaderFile | None = Field(..., alias="shim-signed")
+    grub2_signed: BootloaderFile | None = Field(None, alias="grub2-signed")
+    shim_signed: BootloaderFile | None = Field(None, alias="shim-signed")
     grub2: BootloaderFile | None
     syslinux: BootloaderFile | None
 

@@ -94,30 +94,30 @@ BOOTLOADER_PRODUCTS = {
                         },
                     }
                 },
-                "20221029.0": {
-                    "items": {
-                        "grub2-signed": {
-                            "ftype": "archive.tar.xz",
-                            "path": "bootloaders/uefi/amd64/20221029.0/grub2-signed.tar.xz",
-                            "sha256": "505b50ca2f7ac189da478696acddba23466fb8ae98a2be3d29c69184546d113d",
-                            "size": 375908,
-                            "src_package": "grub2-signed",
-                            "src_release": "focal",
-                            "src_version": "1.173.2~20.04.1+2.04-1ubuntu47.4",
-                        },
-                        "shim-signed": {
-                            "ftype": "archive.tar.xz",
-                            "path": "bootloaders/uefi/amd64/20221029.0/shim-signed.tar.xz",
-                            "sha256": "74cf7286febd0b29b33ef09362ddb443358df6722dd28c261fcd820591979333",
-                            "size": 322268,
-                            "src_package": "shim-signed",
-                            "src_release": "focal",
-                            "src_version": "1.40.7+15.4-0ubuntu9",
-                        },
-                    }
-                },
             },
-        }
+        },
+        "com.ubuntu.maas.stable:1:pxelinux:pxe:amd64": {
+            "arch": "amd64",
+            "arches": "amd64, i386",
+            "bootloader-type": "pxe",
+            "label": "stable",
+            "os": "pxelinux",
+            "versions": {
+                "20230615.0": {
+                    "items": {
+                        "syslinux": {
+                            "ftype": "archive.tar.xz",
+                            "path": "bootloaders/pxe/amd64/20230615.0/syslinux.tar.xz",
+                            "sha256": "7475e75e559366a484fc910b797fbddd616e10694c9ca1bea2b070311b17cdf8",
+                            "size": 419944,
+                            "src_package": "syslinux",
+                            "src_release": "jammy",
+                            "src_version": "3:6.04~git20190206.bf6db5b4+dfsg1-3ubuntu1",
+                        }
+                    }
+                }
+            },
+        },
     },
     "updated": "Thu, 26 Jun 2025 08:02:41 +0000",
 }
@@ -280,10 +280,10 @@ class TestBootloaderProductList:
         bootloader_product_list = SimpleStreamsBootloaderProductList(
             **BOOTLOADER_PRODUCTS
         )
-        assert len(bootloader_product_list.products) == 1
+        assert len(bootloader_product_list.products) == 2
         product = bootloader_product_list.products[0]
         assert isinstance(product, BootloaderProduct)
-        assert len(product.versions) == 2
+        assert len(product.versions) == 1
         version = product.versions[0]
         assert isinstance(version, BootloaderVersion)
         files = version.get_downloadable_files()
