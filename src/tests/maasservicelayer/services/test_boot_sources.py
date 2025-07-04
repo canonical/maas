@@ -21,7 +21,7 @@ from tests.maasservicelayer.services.base import ServiceCommonTests
 @pytest.mark.asyncio
 class TestBootSourcesService(ServiceCommonTests):
     @pytest.fixture
-    def boot_service_instance(self) -> BootSourcesService:
+    def service_instance(self) -> BootSourcesService:
         return BootSourcesService(
             context=Context(),
             repository=Mock(BootSourcesRepository),
@@ -48,14 +48,14 @@ class TestBootSourcesService(ServiceCommonTests):
         self,
         mock_urlmirrorreader: MagicMock,
         mock_repodumper_sync: MagicMock,
-        boot_service_instance: BootSourcesService,
+        service_instance: BootSourcesService,
     ) -> None:
         source_url = factory.make_url()
         user_agent = "maas/3.6.4/g.12345678"
 
         expected_mirror_url = "streams/v1/index.sjson"
 
-        boot_service_instance._fetch(source_url, user_agent=user_agent)
+        service_instance._fetch(source_url, user_agent=user_agent)
 
         mock_repodumper_sync.assert_called_once_with(
             mock_urlmirrorreader.return_value,
@@ -71,18 +71,18 @@ class TestBootSourcesService(ServiceCommonTests):
     async def test_fetch_gets_maas_user_agent(
         self,
         mock_fetch_submethod: MagicMock,
-        boot_service_instance: BootSourcesService,
+        service_instance: BootSourcesService,
     ) -> None:
         source_url = factory.make_url()
         user_agent = "maas/3.6.4/g.12345678"
 
-        mock_configurations_service = boot_service_instance.configuration_service
+        mock_configurations_service = service_instance.configuration_service
         mock_configurations_service.get_maas_user_agent.return_value = (
             user_agent
         )
 
         # Test the async fetch calls the _fetch submethod with the maas user agent.
-        await boot_service_instance.fetch(source_url)
+        await service_instance.fetch(source_url)
 
         mock_configurations_service.get_maas_user_agent.assert_called_once()
         mock_fetch_submethod.assert_called_once_with(
@@ -99,13 +99,13 @@ class TestBootSourcesService(ServiceCommonTests):
         self,
         mock_urlmirrorreader: MagicMock,
         mock_repodumper_sync: MagicMock,
-        boot_service_instance: BootSourcesService,
+        service_instance: BootSourcesService,
     ) -> None:
         source_url = factory.make_url()
         expected_mirror_url = "streams/v1/index.sjson"
         user_agent = "maas/3.6.4/g.12345678"
 
-        boot_service_instance._fetch(source_url, user_agent=user_agent)
+        service_instance._fetch(source_url, user_agent=user_agent)
 
         # Also doesn't pass user agent when not set.
         mock_repodumper_sync.assert_called_once_with(
@@ -124,7 +124,7 @@ class TestBootSourcesService(ServiceCommonTests):
         self,
         mock_urlmirrorreader: MagicMock,
         mock_repodumper_sync: MagicMock,
-        boot_service_instance: BootSourcesService,
+        service_instance: BootSourcesService,
     ) -> None:
         # This is a test covering simplestream-specific behavior that could be
         # removed should we move away from this library.
@@ -132,14 +132,14 @@ class TestBootSourcesService(ServiceCommonTests):
         source_url = factory.make_url()
         user_agent = "maas/3.6.4/g.12345678"
 
-        mock_configurations_service = boot_service_instance.configuration_service
+        mock_configurations_service = service_instance.configuration_service
         mock_configurations_service.get_maas_user_agent.return_value = (
             user_agent
         )
 
         mock_urlmirrorreader.side_effect = [TypeError(), MagicMock()]
 
-        boot_service_instance._fetch(source_url, user_agent=user_agent)
+        service_instance._fetch(source_url, user_agent=user_agent)
 
         mock_repodumper_sync.assert_called()
         mock_urlmirrorreader.assert_has_calls(
@@ -199,20 +199,20 @@ class TestBootSourcesService(ServiceCommonTests):
         self,
         mock_write_keyring: MagicMock,
         mock_fetch_submethod: MagicMock,
-        boot_service_instance: BootSourcesService,
+        service_instance: BootSourcesService,
     ) -> None:
         source_url = factory.make_url()
         keyring_path = "/tmp/keyrings/abc"
         user_agent = "maas/3.6.4/g.12345678"
 
-        mock_configurations_service = boot_service_instance.configuration_service
+        mock_configurations_service = service_instance.configuration_service
         mock_configurations_service.get_maas_user_agent.return_value = (
             user_agent
         )
 
         mock_fetch_submethod.return_value = BootImageMapping()
 
-        await boot_service_instance.fetch(
+        await service_instance.fetch(
             source_url,
             keyring_path=keyring_path,
             keyring_data=None,

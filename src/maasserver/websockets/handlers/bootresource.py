@@ -13,7 +13,6 @@ from django.db.models import Q
 from twisted.internet.defer import Deferred
 
 from maascommon.osystem import OperatingSystemRegistry
-from maascommon.utils.fs import tempdir
 from maasserver.audit import create_audit_event
 from maasserver.bootresources import (
     import_resources,

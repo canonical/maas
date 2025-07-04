@@ -21,7 +21,6 @@ from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maascommon.osystem.ubuntu import UbuntuOS
-from maascommon.utils.fs import tempdir
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -40,7 +39,6 @@ from maasserver.models import (
 from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
-from maasservicelayer.utils.images.keyrings import write_all_keyrings
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.logger import get_maas_logger, LegacyLogger
