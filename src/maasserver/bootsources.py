@@ -29,7 +29,6 @@ from maasserver.enum import COMPONENT
 from maasserver.import_images.download_descriptions import (
     download_all_image_descriptions,
 )
-from maasserver.import_images.keyrings import write_all_keyrings
 from maasserver.models import (
     BootSource,
     BootSourceCache,
@@ -38,14 +37,12 @@ from maasserver.models import (
     Notification,
 )
 from maasserver.models.timestampedmodel import now
-from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.arch import get_architecture
-from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, FOREVER
 
 log = LegacyLogger()
@@ -403,39 +400,32 @@ def cache_boot_sources():
     errors = []
     sources = yield deferToDatabase(get_sources)
     for source in sources:
-        with tempdir("keyrings") as keyrings_path:
-            [source] = write_all_keyrings(keyrings_path, [source])
-            try:
-                user_agent = yield deferToDatabase(get_maas_user_agent)
-                descriptions = download_all_image_descriptions(
-                    [source], user_agent=user_agent
+        try:
+            descriptions = yield deferToDatabase(
+                download_all_image_descriptions,
+                [source],
+            )
+        except (OSError, ConnectionError) as error:
+            msg = f"Failed to import images from {source['url']}: {error}"
+            errors.append(msg)
+            maaslog.error(msg)
+        except sutil.SignatureMissingException as error:
+            # Raise an error to the UI.
+            proxy = yield deferToDatabase(get_proxy)
+            if not proxy:
+                msg = (
+                    f"Failed to import images from {source['url']} ({error}). Verify "
+                    "network connectivity and try again."
                 )
-            except (OSError, ConnectionError) as error:
-                msg = "Failed to import images from %s: %s" % (
-                    source["url"],
-                    error,
-                )
-                errors.append(msg)
-                maaslog.error(msg)
-            except sutil.SignatureMissingException as error:
-                # Raise an error to the UI.
-                proxy = yield deferToDatabase(get_proxy)
-                if not proxy:
-                    msg = (
-                        "Failed to import images from %s (%s). Verify "
-                        "network connectivity and try again."
-                        % (source["url"], error)
-                    )
-                else:
-                    msg = (
-                        "Failed to import images from %s (%s). Verify "
-                        "network connectivity via your external "
-                        "proxy (%s) and try again."
-                        % (source["url"], error, proxy)
-                    )
-                errors.append(msg)
             else:
-                yield deferToDatabase(_update_cache, source, descriptions)
+                msg = (
+                    f"Failed to import images from {source['url']} ({error}). Verify "
+                    "network connectivity via your external "
+                    f"proxy ({proxy}) and try again."
+                )
+            errors.append(msg)
+        else:
+            yield deferToDatabase(_update_cache, source, descriptions)
 
     yield deferToDatabase(restore_pristine_env, pristine_env)
     yield deferToDatabase(check_commissioning_series_selected)

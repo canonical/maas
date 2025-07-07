@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.import_images.download_resources`."""
@@ -13,12 +13,12 @@ from django.utils import timezone
 from simplestreams.contentsource import ChecksummingContentSource
 from simplestreams.objectstores import FileStore
 
+from maascommon.utils.fs import tempdir
 from maasserver.import_images import download_resources
 from maasserver.import_images.product_mapping import ProductMapping
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import DEFAULT_IMAGES_URL
-from provisioningserver.utils.fs import tempdir
 
 
 class MockDateTime(mock.MagicMock):

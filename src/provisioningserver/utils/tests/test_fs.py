@@ -9,7 +9,6 @@ import os
 import os.path
 from pathlib import Path
 import random
-from shutil import rmtree
 import stat
 from subprocess import CalledProcessError, PIPE
 import tempfile
@@ -46,7 +45,6 @@ from provisioningserver.utils.fs import (
     sudo_delete_file,
     sudo_write_file,
     SystemLock,
-    tempdir,
     write_text_file,
 )
 
@@ -684,102 +682,6 @@ class TestSudoDeleteFileScript(MAASTestCase):
         self.assertRegex(
             stdio.getError(),
             rf"(?s)usage: .* Given filename {filename} is not in the allowed list. Choose from: .*",
-        )
-
-
-class TestTempDir(MAASTestCase):
-    def test_creates_real_fresh_directory(self):
-        stored_text = factory.make_string()
-        filename = factory.make_name("test-file")
-        with tempdir() as directory:
-            self.assertTrue(os.path.isdir(directory))
-            write_text_file(os.path.join(directory, filename), stored_text)
-            retrieved_text = read_text_file(os.path.join(directory, filename))
-            files = os.listdir(directory)
-
-        self.assertEqual(stored_text, retrieved_text)
-        self.assertEqual([filename], files)
-
-    def test_creates_unique_directory(self):
-        with tempdir() as dir1, tempdir() as dir2:
-            pass
-        self.assertNotEqual(dir1, dir2)
-
-    def test_cleans_up_on_successful_exit(self):
-        with tempdir() as directory:
-            file_path = factory.make_file(directory)
-
-        self.assertFalse(os.path.isdir(directory))
-        self.assertFalse(os.path.exists(file_path))
-
-    def test_cleans_up_on_exception_exit(self):
-        class DeliberateFailure(Exception):
-            pass
-
-        with self.assertRaisesRegex(
-            DeliberateFailure, "Exiting context by exception"
-        ):
-            with tempdir() as directory:
-                file_path = factory.make_file(directory)
-                raise DeliberateFailure("Exiting context by exception")
-
-        self.assertFalse(os.path.isdir(directory))
-        self.assertFalse(os.path.exists(file_path))
-
-    def test_tolerates_disappearing_dir(self):
-        with tempdir() as directory:
-            rmtree(directory)
-
-        self.assertFalse(os.path.isdir(directory))
-
-    def test_uses_location(self):
-        temp_location = self.make_dir()
-        with tempdir(location=temp_location) as directory:
-            self.assertTrue(os.path.isdir(directory))
-            location_listing = os.listdir(temp_location)
-
-        self.assertNotEqual(temp_location, directory)
-        self.assertTrue(directory.startswith(temp_location + os.path.sep))
-        self.assertIn(os.path.basename(directory), location_listing)
-        self.assertTrue(os.path.isdir(temp_location))
-        self.assertFalse(os.path.isdir(directory))
-
-    def test_yields_unicode(self):
-        with tempdir() as directory:
-            pass
-
-        self.assertIsInstance(directory, str)
-
-    def test_accepts_unicode_from_mkdtemp(self):
-        fake_dir = os.path.join(self.make_dir(), factory.make_name("tempdir"))
-        self.assertIsInstance(fake_dir, str)
-        self.patch(tempfile, "mkdtemp").return_value = fake_dir
-
-        with tempdir() as directory:
-            pass
-
-        self.assertEqual(fake_dir, directory)
-        self.assertIsInstance(directory, str)
-
-    def test_uses_prefix(self):
-        prefix = factory.make_string(3)
-        with tempdir(prefix=prefix) as directory:
-            pass
-
-        self.assertTrue(os.path.basename(directory).startswith(prefix))
-
-    def test_uses_suffix(self):
-        suffix = factory.make_string(3)
-        with tempdir(suffix=suffix) as directory:
-            pass
-
-        self.assertTrue(os.path.basename(directory).endswith(suffix))
-
-    def test_restricts_access(self):
-        with tempdir() as directory:
-            mode = os.stat(directory).st_mode
-        self.assertEqual(
-            stat.S_IMODE(mode), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
         )
 
 

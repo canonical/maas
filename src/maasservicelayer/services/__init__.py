@@ -75,6 +75,7 @@ from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
+from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
@@ -164,6 +165,7 @@ class ServiceCollectionV3:
     # Keep them in alphabetical order, please
     agents: AgentsService
     auth: AuthService
+    boot_sources: BootSourcesService
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
     consumers: ConsumersService
@@ -499,5 +501,9 @@ class ServiceCollectionV3:
             context=context,
             repository=PackageRepositoriesRepository(context),
             events_service=services.events,
+        )
+        services.boot_sources = BootSourcesService(
+            context=context,
+            configuration_service=services.configurations,
         )
         return services

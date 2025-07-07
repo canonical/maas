@@ -15,6 +15,7 @@ from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.python.filepath import FilePath
 
 from maascommon.bootmethods import WindowsPXEBootMetadata
+from maascommon.utils.fs import tempdir
 from provisioningserver.boot import (
     BootMethod,
     BootMethodError,
@@ -27,7 +28,6 @@ from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.utils import tftp
-from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, deferred
 
 maaslog = get_maas_logger("windows")

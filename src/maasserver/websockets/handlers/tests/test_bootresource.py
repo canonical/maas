@@ -1,4 +1,4 @@
-# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import base64
 import datetime
@@ -15,7 +15,6 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
 )
-from maasserver.import_images.boot_image_mapping import BootImageMapping
 from maasserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
@@ -35,7 +34,6 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import get_one, reload_object
 from maasserver.websockets.base import (
@@ -45,6 +43,7 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers import bootresource
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
+from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.events import EVENT_TYPES
 
@@ -1367,8 +1366,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         mock_set_env = self.patch(bootresource, "set_simplestreams_env")
-        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
-        mock_write_keyrings.side_effect = lambda _, sources: sources
+
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions"
         )
@@ -1393,17 +1391,13 @@ class TestBootResourceFetch(MAASServerTestCase):
         )
         self.assertEqual("Mirror provides no Ubuntu images.", str(error))
         mock_set_env.assert_called_once()
-        mock_write_keyrings.assert_called_once_with(ANY, [expected_source])
 
-        mock_download.assert_called_once_with(
-            [expected_source], user_agent=get_maas_user_agent()
-        )
+        mock_download.assert_called_once_with([expected_source])
 
     def test_url_without_trailing_slash(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
-        mock_write_keyrings.side_effect = lambda _, sources: sources
+
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions"
         )
@@ -1415,19 +1409,20 @@ class TestBootResourceFetch(MAASServerTestCase):
             "keyring_data": base64.b64decode(keyring_data),
             "selections": [],
         }
-        self.assertRaises(
+        error = self.assertRaises(
             HandlerError,
             handler.fetch,
             {"url": url, "keyring_data": keyring_data},
         )
-        mock_write_keyrings.assert_called_once_with(ANY, [expected_source])
+        self.assertEqual("Mirror provides no Ubuntu images.", str(error))
+
+        mock_download.assert_called_once_with([expected_source])
 
     def test_raises_error_on_downloading_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
-        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
-        mock_write_keyrings.side_effect = lambda _, sources: sources
+
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions"
         )
@@ -1446,8 +1441,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
-        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
-        mock_write_keyrings.side_effect = lambda _, sources: sources
+
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions"
         )
@@ -1484,8 +1478,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
-        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
-        mock_write_keyrings.side_effect = lambda _, sources: sources
+
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions"
         )
@@ -1534,8 +1527,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
-        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
-        mock_write_keyrings.side_effect = lambda _, sources: sources
+
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions"
         )
@@ -1579,8 +1571,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
-        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
-        mock_write_keyrings.side_effect = lambda _, sources: sources
+
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions"
         )

@@ -453,6 +453,7 @@ ServiceLayerRule = Rule(
     Allow("pydantic|pydantic.**"),
     Allow("pymacaroons|pymacaroons.**"),
     Allow("pythonjsonlogger|pythonjsonlogger.**"),
+    Allow("simplestreams|simplestreams.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow("structlog|structlog.**"),
     Allow("starlette.datastructures.Headers"),

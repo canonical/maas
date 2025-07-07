@@ -1299,7 +1299,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         set_simplestreams_env.assert_not_called()
 
     def test_import_resources_holds_lock(self):
-        fake_write_all_keyrings = self.patch(
+        mock_write_all_keyrings = self.patch(
             bootresources, "write_all_keyrings"
         )
 
@@ -1307,17 +1307,19 @@ class TestImportImages(MAASTransactionServerTestCase):
             self.assertTrue(bootresources.locks.import_images.is_locked())
             return []
 
-        fake_write_all_keyrings.side_effect = test_for_held_lock
+        mock_write_all_keyrings.side_effect = test_for_held_lock
 
         bootresources._import_resources()
         self.assertFalse(bootresources.locks.import_images.is_locked())
 
     def test_import_resources_calls_functions_with_correct_parameters(self):
-        write_all_keyrings = self.patch(bootresources, "write_all_keyrings")
-        write_all_keyrings.return_value = []
         image_descriptions = self.patch(
             bootresources, "download_all_image_descriptions"
         )
+
+        write_all_keyrings = self.patch(bootresources, "write_all_keyrings")
+        write_all_keyrings.return_value = []
+
         descriptions = Mock()
         descriptions.is_empty.return_value = False
         image_descriptions.return_value = descriptions
@@ -1336,7 +1338,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         bootresources.ensure_boot_source_definition.assert_called_once()
         bootresources.cache_boot_sources.assert_called_once()
         write_all_keyrings.assert_called_once_with(ANY, [])
-        image_descriptions.assert_called_once_with([], get_maas_user_agent())
+        image_descriptions.assert_called_once_with([])
         map_products.assert_called_once_with(descriptions)
         download_all_boot_resources.assert_called_once_with(
             [], sentinel.mapping, notify=None
@@ -1420,13 +1422,20 @@ class TestImportImages(MAASTransactionServerTestCase):
         image_descriptions.return_value = descriptions
         map_products = self.patch(bootresources, "map_products")
         map_products.return_value = sentinel.mapping
-        self.patch(bootresources, "download_all_boot_resources")
-        self.patch(bootresources, "set_global_default_releases")
+        mock_download_all_boot_resources = self.patch(
+            bootresources, "download_all_boot_resources"
+        )
+        mock_set_global_default_releases = self.patch(
+            bootresources, "set_global_default_releases"
+        )
 
         bootresources._import_resources()
 
-        # write_all_keyrings is called once per
-        self.assertEqual(2, mock_write_all_keyrings.call_count)
+        # These should call twice: once, then again on import restart
+        self.assertEqual(mock_write_all_keyrings.call_count, 2)
+        self.assertEqual(mock_image_descriptions.call_count, 2)
+        self.assertEqual(mock_download_all_boot_resources.call_count, 2)
+        self.assertEqual(mock_set_global_default_releases.call_count, 2)
 
     def test_restarts_import_if_selection_changed(self):
         # Regression test for LP:1766370
@@ -1468,13 +1477,20 @@ class TestImportImages(MAASTransactionServerTestCase):
         image_descriptions.return_value = descriptions
         map_products = self.patch(bootresources, "map_products")
         map_products.return_value = sentinel.mapping
-        self.patch(bootresources, "download_all_boot_resources")
-        self.patch(bootresources, "set_global_default_releases")
+        mock_download_all_boot_resources = self.patch(
+            bootresources, "download_all_boot_resources"
+        )
+        mock_set_global_default_releases = self.patch(
+            bootresources, "set_global_default_releases"
+        )
 
         bootresources._import_resources()
 
-        # write_all_keyrings is called once per
-        self.assertEqual(2, mock_write_all_keyrings.call_count)
+        # These should call twice: once, then again on import restart
+        self.assertEqual(mock_write_all_keyrings.call_count, 2)
+        self.assertEqual(mock_image_descriptions.call_count, 2)
+        self.assertEqual(mock_download_all_boot_resources.call_count, 2)
+        self.assertEqual(mock_set_global_default_releases.call_count, 2)
 
 
 class TestImportResourcesInThread(MAASTestCase):

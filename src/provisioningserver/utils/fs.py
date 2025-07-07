@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generic utilities for dealing with files and the filesystem."""
@@ -12,7 +12,7 @@ import os
 from os import chown, rename, stat
 from pathlib import Path
 from random import randint
-from shutil import copyfile, rmtree
+from shutil import copyfile
 import string
 from subprocess import PIPE, Popen
 import tempfile
@@ -351,34 +351,6 @@ def sudo_delete_file(filename):
         stdout, stderr = proc.communicate()
         if proc.returncode != 0:
             raise ExternalProcessError(proc.returncode, command, stderr)
-
-
-@contextmanager
-def tempdir(suffix="", prefix="maas-", location=None):
-    """Context manager: temporary directory.
-
-    Creates a temporary directory (yielding its path, as `unicode`), and
-    cleans it up again when exiting the context.
-
-    The directory will be readable, writable, and searchable only to the
-    system user who creates it.
-
-    >>> with tempdir() as playground:
-    ...     my_file = os.path.join(playground, "my-file")
-    ...     with open(my_file, 'wb') as handle:
-    ...         handle.write(b"Hello.\n")
-    ...     files = os.listdir(playground)
-    >>> files
-    [u'my-file']
-    >>> os.path.isdir(playground)
-    False
-    """
-    path = tempfile.mkdtemp(suffix, prefix, location)
-    assert isinstance(path, str)
-    try:
-        yield path
-    finally:
-        rmtree(path, ignore_errors=True)
 
 
 def read_text_file(path, encoding="utf-8"):

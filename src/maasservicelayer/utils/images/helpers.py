@@ -1,14 +1,11 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2025 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Miscellaneous small definitions in support of boot-resource import."""
 
 from collections import namedtuple
 import functools
+from typing import Callable
 
 from simplestreams.util import policy_read_signed
-
-from provisioningserver.logger import get_maas_logger
 
 # A tuple of the items that together select a boot image.
 ImageSpec = namedtuple(
@@ -16,7 +13,9 @@ ImageSpec = namedtuple(
 )
 
 
-def get_signing_policy(path, keyring=None):
+def get_signing_policy(
+    path: str, keyring: str | None = None
+) -> Callable | functools.partial:
     """Return Simplestreams signing policy for the given path.
 
     :param path: Path to the Simplestreams index file.
@@ -31,7 +30,7 @@ def get_signing_policy(path, keyring=None):
         # index would have a suffix of '.sjson'.  Use a policy that doesn't
         # check anything.
 
-        def policy(content, path, keyring):
+        def policy(content, path, keyring=None):
             return content
 
     else:
@@ -46,7 +45,7 @@ def get_signing_policy(path, keyring=None):
     return policy
 
 
-def get_os_from_product(item):
+def get_os_from_product(item: dict[str, str]) -> str:
     """Returns the operating system that the product is refering to.
 
     Originally products did not contain the os field. This handles that missing
@@ -57,6 +56,3 @@ def get_os_from_product(item):
         return item["os"]
     except KeyError:
         return "ubuntu"
-
-
-maaslog = get_maas_logger("import-images")
