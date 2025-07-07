@@ -1,5 +1,8 @@
+import pytest
+
 from maasserver.forms.ephemeral import ReleaseForm
 from metadataserver.enum import SCRIPT_TYPE
+from provisioningserver.rpc.exceptions import UnsupportedEraseOperationError
 
 
 class TestReleaseForm:
@@ -35,7 +38,8 @@ class TestReleaseForm:
         node = factory.make_Node(is_dpu=True)
         user = factory.make_User()
         form = ReleaseForm(node, user, data={"erase": "true"})
-        assert not form.is_valid()
+        with pytest.raises(UnsupportedEraseOperationError):
+            form.is_valid()
 
     def test_clean_erase_flags(self, factory):
         node = factory.make_Node()

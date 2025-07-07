@@ -76,6 +76,11 @@ class CannotRemoveHostMap(Exception):
     """The host map could not be removed."""
 
 
+class UnsupportedEraseOperationError(Exception):
+    """Raised when trying to erase something that cannot be
+    erased. E.g. a DPUs disk"""
+
+
 class NodeAlreadyExists(Exception):
     """A node already exists with a given MAC address."""
 

@@ -22,6 +22,7 @@ from maasserver.models import Script
 from maasserver.node_action import get_node_action
 from maasserver.utils.forms import set_form_error
 from metadataserver.enum import SCRIPT_TYPE
+from provisioningserver.rpc.exceptions import UnsupportedEraseOperationError
 
 
 class ScriptForm(Form):
@@ -335,7 +336,7 @@ class ReleaseForm(ScriptForm):
         quick_erase = self.cleaned_data.get("quick_erase", False)
         if erase or secure_erase or quick_erase:
             if self.instance.is_dpu:
-                raise ValidationError(
+                raise UnsupportedEraseOperationError(
                     "Erasing disk is disabled for DPUs. For more information, "
                     "refer to the documentation."
                 )
