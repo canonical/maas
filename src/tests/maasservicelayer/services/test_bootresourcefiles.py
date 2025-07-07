@@ -112,3 +112,9 @@ class TestBootResourceFilesService(ServiceCommonTests):
         service = BootResourceFilesService(context=Context(), repository=repo)
         filename = await service.calculate_filename_on_disk(sha)
         assert filename == expected_filename
+
+    async def test_get_files_in_resource_set(self) -> None:
+        repo = Mock(BootResourceFilesRepository)
+        service = BootResourceFilesService(context=Context(), repository=repo)
+        await service.get_files_in_resource_set(1)
+        repo.get_files_in_resource_set.assert_called_once_with(1)

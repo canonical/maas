@@ -1418,8 +1418,6 @@ class TestBootResourceFetch(MAASServerTestCase):
 
         mock_download.assert_called_once_with([expected_source])
 
-        mock_download.assert_called_once_with([expected_source])
-
     def test_raises_error_on_downloading_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)

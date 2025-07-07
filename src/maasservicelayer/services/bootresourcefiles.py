@@ -55,3 +55,8 @@ class BootResourceFilesService(
             return sha256
         else:
             return sha256[:SHORTSHA256_MIN_PREFIX_LEN]
+
+    async def get_files_in_resource_set(
+        self, resource_set_id: int
+    ) -> list[BootResourceFile]:
+        return await self.repository.get_files_in_resource_set(resource_set_id)

@@ -166,6 +166,36 @@ BootResourceFileTable = Table(
     ),
 )
 
+BootResourceFileSyncTable = Table(
+    "maasserver_bootresourcefilesync",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("size", BigInteger, nullable=False),
+    Column(
+        "file_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_bootresourcefile.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+    ),
+    Column(
+        "region_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    UniqueConstraint("file_id", "region_id"),
+    Index("maasserver_bootresourcefilesync_file_id_22508d9b", "file_id"),
+    Index("maasserver_bootresourcefilesync_region_id_b11e2230", "region_id"),
+)
+
 BootResourceSetTable = Table(
     "maasserver_bootresourceset",
     METADATA,
