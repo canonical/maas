@@ -59,6 +59,9 @@ class Config(GenericModel, Generic[T]):
     # If the config should be stored as secret.
     stored_as_secret: ClassVar[bool] = False
 
+    # If a custom hook is required
+    hook_required: ClassVar[bool] = False
+
     # The secret model to use.
     secret_model: ClassVar[Optional[GlobalSecret]] = None
     value: T
@@ -779,6 +782,83 @@ class MAASAutoIPMIWorkaroundFlagsConfig(
     )
 
 
+class NTPServersConfig(Config[Optional[str]]):
+    """Accepts a space/comma separated list of hostnames or IP addresses.
+
+    This field normalizes the list to a space-separated list.
+    """
+
+    _separators = re.compile(r"[,\s]+")
+
+    # Regular expressions to sniff out things that look like IP addresses;
+    # additional and more robust validation ought to be done to make sure.
+    _pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
+    _pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % _pt_ipv4
+    _pt_ip = re.compile(rf"^ (?: {_pt_ipv4} | {_pt_ipv6} ) $", re.VERBOSE)
+
+    name: ClassVar[str] = "ntp_servers"
+    hook_required: ClassVar[bool] = True
+    default: ClassVar[Optional[str]] = "ntp.ubuntu.com"
+    description: ClassVar[str] = "Addresses of NTP servers"
+    help_text: ClassVar[Optional[str]] = (
+        "NTP servers, specified as IP addresses or hostnames delimited by commas and/or spaces, to be used as time references for MAAS itself, the machines MAAS deploys, and devices that make use of MAAS's DHCP services."
+    )
+    value: Optional[str] = Field(default=default, description=description)
+
+    @validator("value")
+    def validate_value(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        else:
+            values = map(str.strip, cls._separators.split(value))
+            values = (value for value in values if len(value) != 0)
+            values = map(cls._clean_addr_or_host, values)
+            return " ".join(values)
+
+    @classmethod
+    def _clean_addr_or_host(cls, value):
+        looks_like_ip = cls._pt_ip.match(value) is not None
+        if looks_like_ip:
+            return cls._clean_addr(value)
+        elif ":" in value:
+            # This is probably an IPv6 address. It's definitely not a
+            # hostname.
+            return cls._clean_addr(value)
+        else:
+            return cls._clean_host(value)
+
+    @classmethod
+    def _clean_addr(cls, addr):
+        try:
+            addr = IPAddress(addr)
+        except AddrFormatError as error:
+            message = str(error)  # netaddr has good messages.
+            message = message[:1].upper() + message[1:] + "."
+            raise ValueError(message)  # noqa: B904
+        else:
+            return str(addr)
+
+    @classmethod
+    def _clean_host(cls, host):
+        try:
+            validate_hostname(host)
+        except ValueError as error:
+            raise ValueError(f"Invalid hostname: {str(error)}")  # noqa: B904
+        else:
+            return host
+
+
+class NTPExternalOnlyConfig(Config[Optional[bool]]):
+    name: ClassVar[str] = "ntp_external_only"
+    hook_required: ClassVar[bool] = True
+    default: ClassVar[Optional[bool]] = False
+    description: ClassVar[str] = "Use external NTP servers only"
+    help_text: ClassVar[Optional[str]] = (
+        "Configure all region controller hosts, rack controller hosts, and subsequently deployed machines to refer directly to the configured external NTP servers. Otherwise only region controller hosts will be configured to use those external NTP servers, rack contoller hosts will in turn refer to the regions' NTP servers, and deployed machines will refer to the racks' NTP servers."
+    )
+    value: Optional[bool] = Field(default=default, description=description)
+
+
 class VCenterServerConfig(Config[Optional[str]]):
     name: ClassVar[str] = "vcenter_server"
     default: ClassVar[Optional[str]] = ""
@@ -863,6 +943,7 @@ class TLSCertExpirationNotificationIntervalConfig(Config[Optional[int]]):
 
 class SessionLengthConfig(Config[Optional[int]]):
     name: ClassVar[str] = "session_length"
+    hook_required: ClassVar[bool] = True
     default: ClassVar[Optional[int]] = 1209600
     description: ClassVar[str] = "Session timeout (seconds)"
     help_text: ClassVar[Optional[str]] = (
@@ -949,83 +1030,6 @@ class NetworkDiscoveryConfig(Config[Optional[NetworkDiscoveryEnum]]):
     value: Optional[NetworkDiscoveryEnum] = Field(
         default=default, description=description
     )
-
-
-class NTPServersConfig(Config[Optional[str]]):
-    """Accepts a space/comma separated list of hostnames or IP addresses.
-
-    This field normalizes the list to a space-separated list.
-    """
-
-    _separators = re.compile(r"[,\s]+")
-
-    # Regular expressions to sniff out things that look like IP addresses;
-    # additional and more robust validation ought to be done to make sure.
-    _pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
-    _pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % _pt_ipv4
-    _pt_ip = re.compile(rf"^ (?: {_pt_ipv4} | {_pt_ipv6} ) $", re.VERBOSE)
-
-    is_public: ClassVar[bool] = False
-    name: ClassVar[str] = "ntp_servers"
-    default: ClassVar[Optional[str]] = "ntp.ubuntu.com"
-    description: ClassVar[str] = "Addresses of NTP servers"
-    help_text: ClassVar[Optional[str]] = (
-        "NTP servers, specified as IP addresses or hostnames delimited by commas and/or spaces, to be used as time references for MAAS itself, the machines MAAS deploys, and devices that make use of MAAS's DHCP services."
-    )
-    value: Optional[str] = Field(default=default, description=description)
-
-    @validator("value")
-    def validate_value(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return None
-        else:
-            values = map(str.strip, cls._separators.split(value))
-            values = (value for value in values if len(value) != 0)
-            values = map(cls._clean_addr_or_host, values)
-            return " ".join(values)
-
-    @classmethod
-    def _clean_addr_or_host(cls, value):
-        looks_like_ip = cls._pt_ip.match(value) is not None
-        if looks_like_ip:
-            return cls._clean_addr(value)
-        elif ":" in value:
-            # This is probably an IPv6 address. It's definitely not a
-            # hostname.
-            return cls._clean_addr(value)
-        else:
-            return cls._clean_host(value)
-
-    @classmethod
-    def _clean_addr(cls, addr):
-        try:
-            addr = IPAddress(addr)
-        except AddrFormatError as error:
-            message = str(error)  # netaddr has good messages.
-            message = message[:1].upper() + message[1:] + "."
-            raise ValueError(message)  # noqa: B904
-        else:
-            return str(addr)
-
-    @classmethod
-    def _clean_host(cls, host):
-        try:
-            validate_hostname(host)
-        except ValueError as error:
-            raise ValueError(f"Invalid hostname: {str(error)}")  # noqa: B904
-        else:
-            return host
-
-
-class NTPExternalOnlyConfig(Config[Optional[bool]]):
-    is_public: ClassVar[bool] = False
-    name: ClassVar[str] = "ntp_external_only"
-    default: ClassVar[Optional[bool]] = False
-    description: ClassVar[str] = "Use external NTP servers only"
-    help_text: ClassVar[Optional[str]] = (
-        "Configure all region controller hosts, rack controller hosts, and subsequently deployed machines to refer directly to the configured external NTP servers. Otherwise only region controller hosts will be configured to use those external NTP servers, rack contoller hosts will in turn refer to the regions' NTP servers, and deployed machines will refer to the racks' NTP servers."
-    )
-    value: Optional[bool] = Field(default=default, description=description)
 
 
 class OMAPIKeyConfig(Config[Optional[str]]):
@@ -1135,11 +1139,15 @@ class ConfigFactory:
         MAASAutoIPMIKGBmcKeyConfig.name: MAASAutoIPMIKGBmcKeyConfig,
         MAASAutoIPMICipherSuiteIDConfig.name: MAASAutoIPMICipherSuiteIDConfig,
         MAASAutoIPMIWorkaroundFlagsConfig.name: MAASAutoIPMIWorkaroundFlagsConfig,
+        NTPServersConfig.name: NTPServersConfig,
+        NTPExternalOnlyConfig.name: NTPExternalOnlyConfig,
         VCenterServerConfig.name: VCenterServerConfig,
         VCenterUsernameConfig.name: VCenterUsernameConfig,
         VCenterPasswordConfig.name: VCenterPasswordConfig,
         VCenterDatacenterConfig.name: VCenterDatacenterConfig,
         HardwareSyncIntervalConfig.name: HardwareSyncIntervalConfig,
+        # TODO: drop this when websocket will be removed (MAAS 4.0, hopefully).
+        SessionLengthConfig.name: SessionLengthConfig,
         TlsCertExpirationNotificationEnabledConfig.name: TlsCertExpirationNotificationEnabledConfig,
         TLSCertExpirationNotificationIntervalConfig.name: TLSCertExpirationNotificationIntervalConfig,
         AutoVlanCreationConfig.name: AutoVlanCreationConfig,
@@ -1150,15 +1158,10 @@ class ConfigFactory:
         HttpProxyConfig.name: HttpProxyConfig,
         MAASUrlConfig.name: MAASUrlConfig,
         NetworkDiscoveryConfig.name: NetworkDiscoveryConfig,
-        NTPServersConfig.name: NTPServersConfig,
-        NTPExternalOnlyConfig.name: NTPExternalOnlyConfig,
         OMAPIKeyConfig.name: OMAPIKeyConfig,
         RPCSharedSecretConfig.name: RPCSharedSecretConfig,
         TLSPortConfig.name: TLSPortConfig,
         UUIDConfig.name: UUIDConfig,
-        # TODO: in the V2 api it was possible to change the session length from the API. Django will be dropped and we don't
-        #  want to expose it in the new api, so remove it when django is gone.
-        SessionLengthConfig.name: SessionLengthConfig,
         VaultEnabledConfig.name: VaultEnabledConfig,
         WindowsKmsHostConfig.name: WindowsKmsHostConfig,
     }

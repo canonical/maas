@@ -345,3 +345,6 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         await self._update_resource(
             user, UserBuilder(password=hashed_password)
         )
+
+    async def clear_all_sessions(self) -> None:
+        await self.repository.clear_all_sessions()

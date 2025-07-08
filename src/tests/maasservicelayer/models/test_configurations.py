@@ -325,8 +325,6 @@ class TestConfigFactory:
             "http_proxy",
             "maas_url",
             "network_discovery",
-            "ntp_external_only",
-            "ntp_servers",
             "omapi_key",
             "rpc_shared_secret",
             "tls_port",

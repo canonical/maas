@@ -127,6 +127,9 @@ class UsersRepository(BaseRepository[User]):
             return None
         return User(**row._asdict())
 
+    async def clear_all_sessions(self) -> None:
+        await self.execute_stmt(delete(SessionTable))
+
     async def get_user_profile(self, username: str) -> UserProfile | None:
         stmt = (
             select(UserProfileTable)

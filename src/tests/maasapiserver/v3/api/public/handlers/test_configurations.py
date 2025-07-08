@@ -30,6 +30,7 @@ from maasservicelayer.models.events import EndpointChoicesEnum
 from maasservicelayer.services import (
     ConfigurationsService,
     EventsService,
+    HookedConfigurationsService,
     ServiceCollectionV3,
 )
 
@@ -206,7 +207,7 @@ class TestConfigurationsApi:
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ):
-        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.hooked_configurations = Mock(HookedConfigurationsService)
         services_mock.events = Mock(EventsService)
         response = await mocked_api_client_admin.put(
             f"{self.BASE_PATH}/theme",
@@ -217,7 +218,7 @@ class TestConfigurationsApi:
         assert configuration_response.kind == "Configuration"
         assert configuration_response.name == "theme"
         assert configuration_response.value is None
-        services_mock.configurations.set.assert_awaited_once_with(
+        services_mock.hooked_configurations.set.assert_awaited_once_with(
             "theme", None
         )
         services_mock.events.record_event.assert_awaited_once_with(

@@ -94,6 +94,9 @@ from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.filestorage import FileStorageService
+from maasservicelayer.services.hooked_configurations import (
+    HookedConfigurationsService,
+)
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService
@@ -179,6 +182,7 @@ class ServiceCollectionV3:
     external_auth: ExternalAuthService
     fabrics: FabricsService
     filestorage: FileStorageService
+    hooked_configurations: HookedConfigurationsService
     interfaces: InterfacesService
     ipranges: IPRangesService
     leases: LeasesService
@@ -505,5 +509,11 @@ class ServiceCollectionV3:
         services.boot_sources = BootSourcesService(
             context=context,
             configuration_service=services.configurations,
+        )
+        services.hooked_configurations = HookedConfigurationsService(
+            context=context,
+            configurations_service=services.configurations,
+            users_service=services.users,
+            vlans_service=services.vlans,
         )
         return services

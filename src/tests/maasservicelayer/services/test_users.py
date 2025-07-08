@@ -583,3 +583,9 @@ class TestUsersService:
 
         with pytest.raises(NotFoundException):
             await users_service.change_password(TEST_USER.id, "foo")
+
+    async def test_clear_all_sessions(
+        self, users_service: UsersService, users_repository: Mock
+    ):
+        await users_service.clear_all_sessions()
+        users_repository.clear_all_sessions.assert_awaited_once()

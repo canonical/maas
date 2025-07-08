@@ -163,7 +163,9 @@ class ConfigurationsHandler(Handler):
         )  # make pyright happy, since this endpoint requires authentication there is always a user
         config_name = name.value
         body_request.check_typing(config_name)
-        await services.configurations.set(config_name, body_request.value)
+        await services.hooked_configurations.set(
+            config_name, body_request.value
+        )
         await services.events.record_event(
             event_type=EventTypeEnum.SETTINGS,
             event_action=EVENT_DETAILS_MAP[EventTypeEnum.SETTINGS].description,

@@ -89,7 +89,9 @@ class ConfigManager(Manager):
         """
         from maasserver.audit import create_audit_event
 
-        service_layer.services.configurations.set(name, value)
+        service_layer.services.configurations.set(
+            name, value, hook_guard=False
+        )
 
         self._handle_config_value_changed(name, value)
         notify_action("config", "update", name)

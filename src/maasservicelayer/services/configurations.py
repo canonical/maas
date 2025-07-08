@@ -155,13 +155,19 @@ class ConfigurationsService(Service):
         )
         return configs
 
-    async def set(self, name: str, value: Any) -> None:
+    async def set(
+        self, name: str, value: Any, hook_guard: bool = True
+    ) -> None:
         config_model = None
         try:
             config_model = ConfigFactory.get_config_model(name)
         except ValueError:
             logger.warn(
                 f"The configuration '{name}' is not known. Anyways, it's going to be stored in the DB."
+            )
+        if config_model and (config_model.hook_required and hook_guard):
+            raise RuntimeError(
+                f"The configuration '{name}' requires a hook but the check is not bypassed. This is likely to be a programming error. Please use HookedConfigurationService instead."
             )
         if config_model and config_model.stored_as_secret:
             await self.secrets_service.set_simple_secret(

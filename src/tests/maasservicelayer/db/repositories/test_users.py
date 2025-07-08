@@ -72,6 +72,22 @@ class TestUsersRepository:
             await users_repository.find_by_sessionid("test_session")
         ) is None
 
+    async def test_clear_all_sessions(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        await create_test_session(fixture, user.id, "test_session")
+        await create_test_session(fixture, user.id, "test_session2")
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+        await users_repository.clear_all_sessions()
+        assert (
+            await users_repository.find_by_sessionid("test_session")
+        ) is None
+        assert (
+            await users_repository.find_by_sessionid("test_session2")
+        ) is None
+
     async def test_get_user_profile(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:

@@ -11,7 +11,10 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.vlans import VlansRepository
+from maasservicelayer.db.repositories.vlans import (
+    VlansClauseFactory,
+    VlansRepository,
+)
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -102,3 +105,14 @@ class VlansService(BaseService[Vlan, VlansRepository, VlanBuilder]):
         # TODO: When implemented, adjust FabricsService.post_delete_hook
         #       and its associated unit tests.
         raise NotImplementedError("Not implemented yet.")
+
+    async def reconfigure_all_active_dhcp(self):
+        vlans = await self.repository.get_many(
+            QuerySpec(where=VlansClauseFactory.with_dhcp_on(on=True))
+        )
+        self.temporal_service.register_or_update_workflow_call(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(vlan_ids=[vlan.id for vlan in vlans]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )

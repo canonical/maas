@@ -1,7 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 
@@ -393,3 +393,36 @@ class TestVlansService:
 
         with pytest.raises(BadRequestException):
             await vlans_service.delete_by_id(vlan.id)
+
+    async def test_reconfigure_all_active_dhcp(self):
+        now = utcnow()
+        vlan = Vlan(
+            id=1,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=0,
+            dhcp_on=True,
+            primary_rack_id=2,
+            fabric_id=1,
+            created=now,
+            updated=now,
+        )
+
+        vlans_repository_mock = Mock(VlansRepository)
+        vlans_repository_mock.get_many.return_value = [vlan]
+
+        vlans_service = VlansService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            nodes_service=Mock(NodesService),
+            vlans_repository=vlans_repository_mock,
+        )
+
+        await vlans_service.reconfigure_all_active_dhcp()
+        vlans_service.temporal_service.register_or_update_workflow_call.assert_called_once_with(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(vlan_ids=[1]),
+            parameter_merge_func=ANY,
+            wait=False,
+        )
