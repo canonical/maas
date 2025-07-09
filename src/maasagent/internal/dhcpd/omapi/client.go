@@ -18,9 +18,14 @@ package omapi
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+)
+
+var (
+	ErrHostAlreadyExists = errors.New("specified host already exists")
 )
 
 const (
@@ -148,6 +153,10 @@ func (c *Client) AddHost(ip net.IP, mac net.HardwareAddr) error {
 	_, err := c.send(message, func(resp *Message) error {
 		if resp.Operation != OpUpdate {
 			if text, ok := resp.Message["message"]; ok && len(text) > 0 {
+				if string(text) == "specified object already exists" {
+					return ErrHostAlreadyExists
+				}
+
 				return fmt.Errorf("%s", text)
 			}
 
