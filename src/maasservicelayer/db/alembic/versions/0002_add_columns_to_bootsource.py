@@ -29,14 +29,14 @@ def upgrade() -> None:
         sa.Column("priority", sa.Integer(), nullable=True),
     )
     # - backfill priority based on creation order
-    #   - older boot sources (earlier 'created' timestamps) get higher priority
+    #   - newer boot sources (later 'created' timestamps) get higher priority
     #   - values are spaced out (e.g., 10, 20, 30...) to leave room for future
     #     insertions without immediate reordering
     #   - a unique constraint will be added later, so all priorities must be
     #     distinct
     op.execute("""
         WITH ranked AS (
-            SELECT id, ROW_NUMBER() OVER (ORDER BY created DESC) AS priority
+            SELECT id, ROW_NUMBER() OVER (ORDER BY created ASC) AS priority
             FROM maasserver_bootsource
         )
         UPDATE maasserver_bootsource
