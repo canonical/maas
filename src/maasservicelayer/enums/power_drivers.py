@@ -14,7 +14,6 @@ class PowerTypeEnum(str, Enum):
     MOONSHOT = "moonshot"
     MSCM = "mscm"
     MICROSOFT_OCS = "msftocs"
-    NOVA = "nova"
     OPENBMC = "openbmc"
     PROXMOX = "proxmox"
     RARITAN = "raritan"
