@@ -127,8 +127,6 @@ class DjangoPristineDatabaseManager(TestResourceManager):
         from django.conf import settings
         from django.core.management import call_command
 
-        from maasserver import dbviews, triggers
-
         # For each database, create a ${name}_test database.
         databases = DjangoDatabases(
             database
@@ -171,21 +169,8 @@ class DjangoPristineDatabaseManager(TestResourceManager):
                         str(initial),
                     )
 
-        # First, drop any views that may already exist. We don't want views
-        # that that depend on a particular schema to prevent schema changes
-        # due to the dependency. The views will be recreated at the end of
-        # this process.
-        dbviews.drop_all_views()
-
-        # Apply all current migrations. We use `migrate` here instead of
-        # `dbupgrade` because we don't need everything that the latter
-        # provides, and, more importantly, we need it to run in-process so
-        # that it sees the effects of our settings changes.
-        call_command("migrate", interactive=False)
-
-        # Install all database functions, triggers, and views.
-        triggers.register_all_triggers()
-        dbviews.register_all_views()
+        # dbupgrade will run all the django and alembic migrations
+        call_command("dbupgrade")
 
         # Ensure that there are no sessions from Django.
         close_all_connections()
