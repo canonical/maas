@@ -175,3 +175,20 @@ class TestBootSource(MAASServerTestCase):
         boot_source_1.save()
         boot_source_2 = make_BootSource()
         assert boot_source_2.priority == 11
+
+    def test_generate_skip_keyring_verification(self):
+        # create a boot source providing a basic URL
+        boot_source_1 = make_BootSource()
+        assert not boot_source_1.skip_keyring_verification
+        # create a boot source using an unsigned json index
+        boot_source_2 = factory.make_BootSource(
+            url="https://images.maas.io/ephemeral-v3/candidate/streams/v1/index.json"
+        )
+        assert boot_source_2.skip_keyring_verification
+        boot_source_2.skip_keyring_verification = False
+        assert not boot_source_2.skip_keyring_verification
+        # create a boot source using a signed json index
+        boot_source_3 = factory.make_BootSource(
+            url="https://images.maas.io/ephemeral-v3/candidate/streams/v1/index.sjson"
+        )
+        assert not boot_source_3.skip_keyring_verification

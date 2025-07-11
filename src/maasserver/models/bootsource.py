@@ -45,7 +45,6 @@ class BootSource(CleanSave, TimestampedModel):
 
     skip_keyring_verification = BooleanField(
         null=False,
-        default=False,
         editable=True,
         help_text="If true, keyring signature verification will be skipped.",
     )
@@ -97,7 +96,7 @@ class BootSource(CleanSave, TimestampedModel):
     def _generate_skip_keyring_verification(self):
         skip = self.skip_keyring_verification
         if self.skip_keyring_verification is None:
-            skip = self.url.endswith("json")
+            skip = self.url.endswith(".json")
         return skip
 
     def to_dict_without_selections(self):
