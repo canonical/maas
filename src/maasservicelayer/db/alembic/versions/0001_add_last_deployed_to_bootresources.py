@@ -1,3 +1,6 @@
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 """Add last_deployed to bootresources
 
 Revision ID: 0001
@@ -26,21 +29,21 @@ def upgrade() -> None:
     # we use substring with a regex to take the image name and image architecture.
     # (A bit hard to read, look at capturing groups ())
     op.execute("""
-UPDATE maasserver_bootresource SET last_deployed = deployed_image.last_deployed FROM
-  (
-    SELECT
-      substring(maasserver_event.description from '(\\w*\\/\\w*)\\/\\w*\\/\\w*') as name,
-      substring(maasserver_event.description from '\\w*\\/\\w*\\/(\\w*)\\/\\w*') as arch,
-      MAX(maasserver_event.created) AS last_deployed
-    FROM maasserver_event
+    UPDATE maasserver_bootresource SET last_deployed = deployed_image.last_deployed FROM
+      (
+        SELECT
+          substring(maasserver_event.description from '(\\w*\\/\\w*)\\/\\w*\\/\\w*') as name,
+          substring(maasserver_event.description from '\\w*\\/\\w*\\/(\\w*)\\/\\w*') as arch,
+          MAX(maasserver_event.created) AS last_deployed
+        FROM maasserver_event
+        WHERE
+          maasserver_event.type_id = (SELECT et.id FROM maasserver_eventtype et WHERE et.name = 'IMAGE_DEPLOYED')
+        GROUP BY (name, arch)
+      ) AS deployed_image
     WHERE
-      maasserver_event.type_id = (SELECT et.id FROM maasserver_eventtype et WHERE et.name = 'IMAGE_DEPLOYED')
-    GROUP BY (name, arch)
-  ) AS deployed_image
-WHERE
-  maasserver_bootresource.name = deployed_image.name AND
-  substring( maasserver_bootresource.architecture from '^(\\w*)\\/') = deployed_image.arch;
-""")
+      maasserver_bootresource.name = deployed_image.name AND
+      substring( maasserver_bootresource.architecture from '^(\\w*)\\/') = deployed_image.arch;
+    """)
 
 
 def downgrade() -> None:

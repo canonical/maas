@@ -9,8 +9,11 @@ from simplestreams.util import path_from_mirror_url
 import structlog
 
 from maascommon.utils.fs import tempdir
+from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.services.base import Service
+from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from maasservicelayer.utils.images.helpers import get_signing_policy
@@ -23,13 +26,16 @@ from maasservicelayer.utils.images.repo_dumper import RepoDumper
 logger = structlog.getLogger()
 
 
-class BootSourcesService(Service):
+class BootSourcesService(
+    BaseService[BootSource, BootSourcesRepository, BootSourceBuilder]
+):
     def __init__(
         self,
         context: Context,
+        repository: BootSourcesRepository,
         configuration_service: ConfigurationsService,
     ) -> None:
-        super().__init__(context)
+        super().__init__(context, repository)
         self.configuration_service = configuration_service
 
     async def fetch(

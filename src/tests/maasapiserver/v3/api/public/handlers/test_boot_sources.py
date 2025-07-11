@@ -8,22 +8,59 @@ from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
     BootSourceFetchRequest,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceFetchListResponse,
     BootSourceFetchResponse,
+    BootSourceResponse,
+    BootSourcesListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from maasservicelayer.utils.images.helpers import ImageSpec
 from tests.fixtures.factories.boot_sources import set_resource
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
+)
+
+TEST_BOOTSOURCE_1 = BootSource(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    url="http://example.com/v1/",
+    keyring_filename="/path/to/keyring.gpg",
+    keyring_data="",
+    priority=10,
+    skip_keyring_verification=False,
+)
+
+TEST_BOOTSOURCE_2 = BootSource(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    url="http://example.com/v2/",
+    keyring_filename="/path/to/keyring.gpg",
+    keyring_data="",
+    priority=10,
+    skip_keyring_verification=False,
 )
 
 IMAGE_DESC_1 = {
@@ -67,12 +104,215 @@ class TestBootSourcesApi(ApiCommonTests):
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
         return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=f"{self.BASE_PATH}:fetch"),
         ]
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
         return []
+
+    async def test_list_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.list.return_value = ListResult[BootSource](
+            items=[TEST_BOOTSOURCE_1], total=1
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        boot_sources_response = BootSourcesListResponse(**response.json())
+        assert len(boot_sources_response.items) == 1
+        assert boot_sources_response.total == 1
+        assert boot_sources_response.next is None
+
+    async def test_list_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.list.return_value = ListResult[BootSource](
+            items=[TEST_BOOTSOURCE_1, TEST_BOOTSOURCE_2], total=2
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        boot_sources_response = BootSourcesListResponse(**response.json())
+        assert len(boot_sources_response.items) == 2
+        assert boot_sources_response.total == 2
+        assert boot_sources_response.next == f"{self.BASE_PATH}?page=2&size=1"
+
+    async def test_get_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}"
+        )
+        assert response.status_code == 200
+        assert response.headers["ETag"]
+        boot_source_response = BootSourceResponse(**response.json())
+        assert boot_source_response.id == TEST_BOOTSOURCE_1.id
+
+    async def test_get_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = None
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/101")
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+        updated = TEST_BOOTSOURCE_1.copy()
+        updated.url = "http://example.com/v2/"
+        updated.priority = 15
+        services_mock.boot_sources.update_by_id.return_value = updated
+
+        update_request = {
+            "url": "http://example.com/v2/",
+            "keyring_filename": "/path/to/keyring.gpg",
+            "keyring_data": "",
+            "priority": 15,
+            "skip_keyring_verification": False,
+        }
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_request),
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        updated_boot_source_response = BootSourceResponse(**response.json())
+        assert updated_boot_source_response.id == updated.id
+        assert updated_boot_source_response.url == updated.url
+        assert updated_boot_source_response.priority == updated.priority
+
+    async def test_put_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.update_by_id.side_effect = NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message="Resource with such identifiers does not exist.",
+                )
+            ]
+        )
+
+        update_request = {
+            "url": "http://example.com/v2/",
+            "keyring_filename": "/path/to/keyring.gpg",
+            "keyring_data": "",
+            "priority": 15,
+            "skip_keyring_verification": False,
+        }
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_request),
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_post_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.create.return_value = TEST_BOOTSOURCE_1
+
+        create_request = {
+            "url": TEST_BOOTSOURCE_1.url,
+            "keyring_filename": TEST_BOOTSOURCE_1.keyring_filename,
+            "priority": TEST_BOOTSOURCE_1.priority,
+            "skip_keyring_verification": TEST_BOOTSOURCE_1.skip_keyring_verification,
+        }
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(create_request)
+        )
+        assert response.status_code == 201
+        assert response.headers["ETag"]
+        boot_source_response = BootSourceResponse(**response.json())
+
+        assert boot_source_response.url == TEST_BOOTSOURCE_1.url
+        assert (
+            boot_source_response.keyring_filename
+            == TEST_BOOTSOURCE_1.keyring_filename
+        )
+        assert boot_source_response.priority == TEST_BOOTSOURCE_1.priority
+        assert not boot_source_response.skip_keyring_verification
+        assert (
+            boot_source_response.hal_links.self.href
+            == f"{self.BASE_PATH}/{boot_source_response.id}"
+        )
+
+    async def test_post_409(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.create.side_effect = AlreadyExistsException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                    message="A resource with such identifiers already exist.",
+                )
+            ]
+        )
+        create_request = {
+            "url": TEST_BOOTSOURCE_1.url,
+            "keyring_filename": TEST_BOOTSOURCE_1.keyring_filename,
+            "priority": TEST_BOOTSOURCE_1.priority,
+            "skip_keyring_verification": TEST_BOOTSOURCE_1.skip_keyring_verification,
+        }
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(create_request)
+        )
+        assert response.status_code == 409
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+
+    async def test_delete_resource(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.delete_by_id.side_effect = None
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/100"
+        )
+        assert response.status_code == 204
 
     async def test_fetch_boot_sources(
         self,

@@ -47,6 +47,10 @@ from collections import OrderedDict
 from typing import Callable, cast
 
 from maascommon.enums.bmc import BmcType
+from maascommon.enums.boot_resources import (
+    BootResourceFileType,
+    BootResourceType,
+)
 from maascommon.enums.interface import InterfaceLinkType, InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.ipranges import IPRangeType
@@ -435,9 +439,9 @@ DEPLOYMENT_TARGET_CHOICES = enum_choices(
 class BOOT_RESOURCE_TYPE:
     """Possible types for `BootResource`."""
 
-    SYNCED = 0  # downloaded from BootSources
+    SYNCED = BootResourceType.SYNCED.value  # downloaded from BootSources
     # index 1 was GENERATED, now unused
-    UPLOADED = 2  # uploaded by user
+    UPLOADED = BootResourceType.UPLOADED.value  # uploaded by user
 
 
 # Django choices for BOOT_RESOURCE_TYPE: sequence of tuples (key, UI
@@ -455,49 +459,49 @@ class BOOT_RESOURCE_FILE_TYPE:
     """The vocabulary of possible file types for `BootResource`."""
 
     # Tarball of root image.
-    ROOT_TGZ = "root-tgz"
-    ROOT_TBZ = "root-tbz"
-    ROOT_TXZ = "root-txz"
+    ROOT_TGZ = BootResourceFileType.ROOT_TGZ.value
+    ROOT_TBZ = BootResourceFileType.ROOT_TBZ.value
+    ROOT_TXZ = BootResourceFileType.ROOT_TXZ.value
 
     # Tarball of dd image.
-    ROOT_DD = "root-dd"
-    ROOT_DDTAR = "root-dd.tar"
+    ROOT_DD = BootResourceFileType.ROOT_DD.value
+    ROOT_DDTAR = BootResourceFileType.ROOT_DDTAR.value
 
     # Raw dd image
-    ROOT_DDRAW = "root-dd.raw"
+    ROOT_DDRAW = BootResourceFileType.ROOT_DDRAW.value
 
     # Compressed dd image types
-    ROOT_DDBZ2 = "root-dd.bz2"
-    ROOT_DDGZ = "root-dd.gz"
-    ROOT_DDXZ = "root-dd.xz"
+    ROOT_DDBZ2 = BootResourceFileType.ROOT_DDBZ2.value
+    ROOT_DDGZ = BootResourceFileType.ROOT_DDGZ.value
+    ROOT_DDXZ = BootResourceFileType.ROOT_DDXZ.value
 
     # Compressed tarballs of dd images
-    ROOT_DDTBZ = "root-dd.tar.bz2"
-    ROOT_DDTXZ = "root-dd.tar.xz"
+    ROOT_DDTBZ = BootResourceFileType.ROOT_DDTBZ.value
+    ROOT_DDTXZ = BootResourceFileType.ROOT_DDTXZ.value
     # For backwards compatibility, DDTGZ files are named root-dd
-    ROOT_DDTGZ = "root-dd"
+    ROOT_DDTGZ = BootResourceFileType.ROOT_DDTGZ.value
 
     # Following are not allowed on user upload. Only used for syncing
     # from another simplestreams source. (Most likely images.maas.io)
 
     # Root Image (gets converted to root-image root-tgz, on the rack)
-    ROOT_IMAGE = "root-image.gz"
+    ROOT_IMAGE = BootResourceFileType.ROOT_IMAGE.value
 
     # Root image in SquashFS form, does not need to be converted
-    SQUASHFS_IMAGE = "squashfs"
+    SQUASHFS_IMAGE = BootResourceFileType.SQUASHFS_IMAGE.value
 
     # Boot Kernel
-    BOOT_KERNEL = "boot-kernel"
+    BOOT_KERNEL = BootResourceFileType.BOOT_KERNEL.value
 
     # Boot Initrd
-    BOOT_INITRD = "boot-initrd"
+    BOOT_INITRD = BootResourceFileType.BOOT_INITRD.value
 
     # Boot DTB
-    BOOT_DTB = "boot-dtb"
+    BOOT_DTB = BootResourceFileType.BOOT_DTB.value
 
     # tar.xz of files which need to be extracted so the files are usable
     # by MAAS
-    ARCHIVE_TAR_XZ = "archive.tar.xz"
+    ARCHIVE_TAR_XZ = BootResourceFileType.ARCHIVE_TAR_XZ.value
 
 
 # Django choices for BOOT_RESOURCE_FILE_TYPE: sequence of tuples (key, UI

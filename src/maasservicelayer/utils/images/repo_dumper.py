@@ -180,7 +180,7 @@ class RepoDumper(BasicMirrorWriter):
                     base_image._replace(subarch=subarch), compact_item
                 )
 
-            # HWE resources need to map to a specfic resource, and not just to
+            # HWE resources need to map to a specific resource, and not just to
             # any of the supported subarchitectures for that resource.
             subarch = item.get("subarch", "generic")
             self.boot_images_dict.set(

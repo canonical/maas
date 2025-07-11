@@ -4,7 +4,15 @@
 """Model for a source of boot resources."""
 
 from django.core.exceptions import ValidationError
-from django.db.models import BinaryField, CharField, URLField
+from django.core.validators import MinValueValidator
+from django.db.models import (
+    BinaryField,
+    BooleanField,
+    CharField,
+    IntegerField,
+    Max,
+    URLField,
+)
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -29,6 +37,18 @@ class BootSource(CleanSave, TimestampedModel):
         editable=True,
     )
 
+    priority = IntegerField(
+        null=False,
+        validators=[MinValueValidator(0)],
+        help_text="Priority value. Higher values mean higher priority. Must be non-negative.",
+    )
+
+    skip_keyring_verification = BooleanField(
+        null=False,
+        editable=True,
+        help_text="If true, keyring signature verification will be skipped.",
+    )
+
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
 
@@ -45,6 +65,39 @@ class BootSource(CleanSave, TimestampedModel):
                 "Only one of keyring_filename or keyring_data can be "
                 "specified."
             )
+
+    def clean_fields(self, exclude=None):
+        self.priority = self._generate_priority()
+        self.skip_keyring_verification = (
+            self._generate_skip_keyring_verification()
+        )
+        super().clean_fields(exclude)
+
+    def _generate_priority(self):
+        is_new_entry = False
+
+        if self.pk:
+            try:
+                BootSource.objects.get(pk=self.pk)
+            except BootSource.DoesNotExist:
+                is_new_entry = True
+        else:
+            is_new_entry = True
+
+        if is_new_entry:
+            max_priority = (
+                BootSource.objects.aggregate(Max("priority"))["priority__max"]
+                or 0
+            )
+            return max_priority + 1
+
+        return self.priority
+
+    def _generate_skip_keyring_verification(self):
+        skip = self.skip_keyring_verification
+        if self.skip_keyring_verification is None:
+            skip = self.url.endswith(".json")
+        return skip
 
     def to_dict_without_selections(self):
         """Return the current `BootSource` as a dict, without including any
@@ -122,3 +175,7 @@ class BootSource(CleanSave, TimestampedModel):
                 }
             )
         return data
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)

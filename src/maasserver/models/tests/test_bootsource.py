@@ -4,6 +4,7 @@
 """Tests for `BootSource`."""
 
 import os
+from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
 
@@ -153,3 +154,41 @@ class TestBootSource(MAASServerTestCase):
         self.assertTrue(
             boot_source.compare_dict_without_selections(boot_source_dict)
         )
+
+    def test_generate_priority_boot_source(self):
+        # create a boot source
+        boot_source_1 = make_BootSource()
+        assert boot_source_1.priority == 1
+        # update boot source: _generate_priority() is called
+        boot_source_1.url = "http://%s.com/" % factory.make_name("source-url")
+        boot_source_1._generate_priority = Mock(
+            return_value=boot_source_1.priority
+        )
+        boot_source_1.save()
+        boot_source_1._generate_priority.assert_called()
+        assert boot_source_1.priority == 1
+        # create a new boot source (max priority == 1)
+        boot_source_2 = make_BootSource()
+        assert boot_source_2.priority == 2
+        # create a new boot source (max priority == 10)
+        boot_source_1._generate_priority.return_value = 10
+        boot_source_1.save()
+        boot_source_2 = make_BootSource()
+        assert boot_source_2.priority == 11
+
+    def test_generate_skip_keyring_verification(self):
+        # create a boot source providing a basic URL
+        boot_source_1 = make_BootSource()
+        assert not boot_source_1.skip_keyring_verification
+        # create a boot source using an unsigned json index
+        boot_source_2 = factory.make_BootSource(
+            url="https://images.maas.io/ephemeral-v3/candidate/streams/v1/index.json"
+        )
+        assert boot_source_2.skip_keyring_verification
+        boot_source_2.skip_keyring_verification = False
+        assert not boot_source_2.skip_keyring_verification
+        # create a boot source using a signed json index
+        boot_source_3 = factory.make_BootSource(
+            url="https://images.maas.io/ephemeral-v3/candidate/streams/v1/index.sjson"
+        )
+        assert not boot_source_3.skip_keyring_verification

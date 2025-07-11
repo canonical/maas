@@ -109,5 +109,6 @@ def download_all_image_descriptions(
             keyring_data=source.get("keyring_data", None),
             validate_products=validate_products,
         )
+
         boot_merge(boot, repo_boot, source["selections"])
     return boot
