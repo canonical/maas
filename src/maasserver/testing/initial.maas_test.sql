@@ -6728,7 +6728,9 @@ CREATE TABLE public.maasserver_bootsource (
     updated timestamp with time zone NOT NULL,
     url character varying(200) NOT NULL,
     keyring_filename character varying(4096) NOT NULL,
-    keyring_data bytea NOT NULL
+    keyring_data bytea NOT NULL,
+    priority integer NOT NULL,
+    skip_keyring_verification boolean NOT NULL
 );
 
 
@@ -11044,7 +11046,7 @@ ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('t
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0001
+0002
 \.
 
 
@@ -12183,7 +12185,7 @@ COPY public.maasserver_bootresourceset (id, created, updated, version, label, re
 -- Data for Name: maasserver_bootsource; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bootsource (id, created, updated, url, keyring_filename, keyring_data) FROM stdin;
+COPY public.maasserver_bootsource (id, created, updated, url, keyring_filename, keyring_data, priority, skip_keyring_verification) FROM stdin;
 \.
 
 
@@ -14209,6 +14211,14 @@ ALTER TABLE ONLY public.maasserver_bootresourceset
 
 ALTER TABLE ONLY public.maasserver_bootsource
     ADD CONSTRAINT maasserver_bootsource_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_bootsource maasserver_bootsource_priority_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_bootsource
+    ADD CONSTRAINT maasserver_bootsource_priority_key UNIQUE (priority);
 
 
 --
