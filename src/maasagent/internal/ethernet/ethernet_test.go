@@ -17,6 +17,7 @@ package ethernet
 
 import (
 	"io"
+	"net"
 	"net/netip"
 	"testing"
 
@@ -254,6 +255,62 @@ func TestEthernetFrameExtractARP(t *testing.T) {
 			if err == nil {
 				assert.Equal(t, tc.out, pkt)
 			}
+		})
+	}
+}
+
+func TestEthernetFrameMarshalBinary(t *testing.T) {
+	testcases := map[string]struct {
+		in  *EthernetFrame
+		out []byte
+		err error
+	}{
+		"non-special type": {
+			in: &EthernetFrame{
+				DstMAC:       net.HardwareAddr{0x11, 0x22, 0x33, 0x44, 0x55, 0x66},
+				SrcMAC:       net.HardwareAddr{0xab, 0xcd, 0xef, 0x11, 0x22, 0x33},
+				EthernetType: EthernetTypeIPv4,
+			},
+			out: []byte{
+				0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0xab, 0xcd, 0xef, 0x11, 0x22, 0x33,
+				0x08, 0x00,
+			},
+		},
+		"LLC type": {
+			in: &EthernetFrame{
+				DstMAC:       net.HardwareAddr{0x11, 0x22, 0x33, 0x44, 0x55, 0x66},
+				SrcMAC:       net.HardwareAddr{0xab, 0xcd, 0xef, 0x11, 0x22, 0x33},
+				EthernetType: EthernetTypeLLC,
+				Len:          10,
+			},
+			out: []byte{
+				0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0xab, 0xcd, 0xef, 0x11, 0x22, 0x33,
+				0x00, 0x0a,
+			},
+		},
+		"LLC type no length": {
+			in: &EthernetFrame{
+				DstMAC:       net.HardwareAddr{0x11, 0x22, 0x33, 0x44, 0x55, 0x66},
+				SrcMAC:       net.HardwareAddr{0xab, 0xcd, 0xef, 0x11, 0x22, 0x33},
+				EthernetType: EthernetTypeLLC,
+			},
+			err: ErrMalformedFrame,
+		},
+	}
+
+	for tname, tc := range testcases {
+		t.Run(tname, func(t *testing.T) {
+			out, err := tc.in.MarshalBinary()
+			if err != nil {
+				if tc.err != nil {
+					assert.ErrorIs(t, err, tc.err)
+					return
+				}
+
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, out, tc.out)
 		})
 	}
 }

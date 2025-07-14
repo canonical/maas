@@ -32,7 +32,7 @@ func setupSchema(ctx context.Context, tx *sql.Tx) error {
 	return cluster.SchemaAppendDHCP(ctx, tx)
 }
 
-func withTestDatabase(t *testing.T) (*sql.DB, error) {
+func withTestDatabase(t testing.TB) (*sql.DB, error) {
 	f, err := os.CreateTemp(t.TempDir(), t.Name()+".db")
 	if err != nil {
 		return nil, err

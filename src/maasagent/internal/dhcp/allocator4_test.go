@@ -229,12 +229,10 @@ func TestAllocator4GetOfferFromDiscover(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
-			allocator.tx = tx
-
-			offer, err := allocator.GetOfferFromDiscover(ctx, &tc.in, 1, testMAC)
+			offer, err := allocator.GetOfferFromDiscover(ctx, tx, &tc.in, 1, testMAC)
 			if err != nil {
 				if tc.err != nil {
 					assert.ErrorIs(t, err, tc.err)
@@ -338,7 +336,7 @@ func TestGetVLANForAllocation(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
 			vlan, err := allocator.getVLANForAllocation(ctx, tx, tc.in)
@@ -457,7 +455,7 @@ func TestGetLeaseIfExists(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
 			lease, err := allocator.getLeaseIfExists(ctx, tx, tc.in.vlanID, tc.in.mac)
@@ -569,7 +567,7 @@ func TestGetHostReservationIfExists(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
 			hr, err := allocator.getHostReservationIfExists(ctx, tx, tc.in.vlanID, tc.in.mac)
@@ -662,7 +660,7 @@ func TestGetIPRangeForAllocation(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
 			iprange, err := allocator.getIPRangeForAllocation(ctx, tx, tc.in, true)
@@ -773,7 +771,7 @@ func TestGetIPForAllocation(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
 			ip, err := allocator.getIPForAllocation(ctx, tx, &tc.in)
@@ -822,7 +820,7 @@ func TestSetIPRangeFull(t *testing.T) {
 	`)
 	require.NoError(t, err)
 
-	allocator, err := newDQLiteAllocator4(db)
+	allocator, err := newDQLiteAllocator4()
 	require.NoError(t, err)
 
 	err = allocator.setIPRangeFull(ctx, tx, 3)
@@ -946,7 +944,7 @@ func TestCreateOfferedLease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
 			lease, err := allocator.createOfferedLease(ctx, tx, &tc.in.offer, tc.in.mac, tc.in.iprangeID)
@@ -1050,12 +1048,10 @@ func TestAckLease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
-			allocator.tx = tx
-
-			lease, err := allocator.ACKLease(ctx, tc.in.ip, tc.in.mac)
+			lease, err := allocator.ACKLease(ctx, tx, tc.in.ip, tc.in.mac)
 			if err != nil {
 				if tc.err != nil {
 					assert.ErrorIs(t, err, tc.err)
@@ -1102,7 +1098,7 @@ func TestNACKRelease(t *testing.T) {
 				ip  net.IP
 				mac net.HardwareAddr
 			}{
-				ip:  net.ParseIP("10.0.0.2"),
+				ip:  net.ParseIP("10.0.0.2").To4(),
 				mac: net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
 			},
 		},
@@ -1117,7 +1113,7 @@ func TestNACKRelease(t *testing.T) {
 				ip  net.IP
 				mac net.HardwareAddr
 			}{
-				ip:  net.ParseIP("10.0.0.2"),
+				ip:  net.ParseIP("10.0.0.2").To4(),
 				mac: net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
 			},
 			err: sql.ErrNoRows,
@@ -1149,12 +1145,10 @@ func TestNACKRelease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
-			allocator.tx = tx
-
-			err = allocator.NACKLease(ctx, tc.in.ip, tc.in.mac)
+			err = allocator.NACKLease(ctx, tx, tc.in.ip, tc.in.mac)
 			if err != nil {
 				if tc.err != nil {
 					assert.ErrorIs(t, err, tc.err)
@@ -1243,12 +1237,10 @@ func TestUpdateForRenewal(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
-			allocator.tx = tx
-
-			err = allocator.UpdateForRenewal(ctx, tc.in.ip, tc.in.mac)
+			err = allocator.UpdateForRenewal(ctx, tx, tc.in.ip, tc.in.mac)
 			if err != nil {
 				if tc.err != nil {
 					assert.ErrorIs(t, err, tc.err)
@@ -1350,12 +1342,10 @@ func TestRelease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4(db)
+			allocator, err := newDQLiteAllocator4()
 			require.NoError(t, err)
 
-			allocator.tx = tx
-
-			err = allocator.Release(ctx, tc.in.ifaceIdx, tc.in.mac)
+			err = allocator.Release(ctx, tx, tc.in.ifaceIdx, tc.in.mac)
 			if err != nil {
 				if tc.err != nil {
 					assert.ErrorIs(t, err, tc.err)
