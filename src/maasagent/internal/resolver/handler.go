@@ -319,7 +319,6 @@ func (h *RecursiveHandler) handleSearch(q dns.Question) (*dns.Msg, error) {
 	singleMsg.Question = []dns.Question{q}
 
 	msg, err := h.nonAuthoritativeQuery(singleMsg)
-
 	if err != nil {
 		return nil, err
 	}

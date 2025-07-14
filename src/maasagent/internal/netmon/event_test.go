@@ -55,8 +55,8 @@ func TestEventString(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tc.out, tc.in.String())
-			_, err := tc.in.ValidString()
 
+			_, err := tc.in.ValidString()
 			if err != nil {
 				assert.ErrorIs(t, err, tc.err)
 			}
@@ -135,8 +135,8 @@ func TestEventUnmarshalJSON(t *testing.T) {
 			t.Parallel()
 
 			var e Event
-			err := e.UnmarshalJSON(tc.in)
 
+			err := e.UnmarshalJSON(tc.in)
 			if err == nil {
 				assert.Equal(t, tc.out, e)
 			} else {

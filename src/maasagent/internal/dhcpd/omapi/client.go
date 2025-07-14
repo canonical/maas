@@ -165,7 +165,6 @@ func (c *Client) AddHost(ip net.IP, mac net.HardwareAddr) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("adding host %s failed: %w", mac, err)
 	}
@@ -247,7 +246,6 @@ func (c *Client) DeleteHost(mac net.HardwareAddr) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed deleting host %s: %w", mac, err)
 	}
@@ -265,7 +263,6 @@ func (c *Client) DeleteHost(mac net.HardwareAddr) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed deleting host %s: %w", mac, err)
 	}

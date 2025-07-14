@@ -53,6 +53,7 @@ func (h *HMACMD5Authenticator) AuthLen() uint32 {
 
 func (h *HMACMD5Authenticator) Sign(data []byte) []byte {
 	h.hasher.Write(data)
+
 	signature := h.hasher.Sum(nil)
 	defer h.hasher.Reset()
 

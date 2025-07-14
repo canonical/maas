@@ -107,6 +107,7 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 	param := getAgentVLANsParam{SystemID: systemID}
 
 	var vlansResult getAgentVLANsResult
+
 	err := tworkflow.ExecuteActivity(
 		tworkflow.WithActivityOptions(ctx,
 			tworkflow.ActivityOptions{
@@ -115,7 +116,6 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 			}),
 		"get-rack-controller-vlans", param).
 		Get(ctx, &vlansResult)
-
 	if err != nil {
 		return err
 	}
@@ -319,10 +319,10 @@ func powerCommand(ctx context.Context, action string, isDPU bool, driver string,
 	log := activity.GetLogger(ctx)
 
 	maasPowerCLI, err := pathFactory(powerCLIExecutableName())
-
 	if err != nil {
 		log.Error("MAAS power CLI executable path lookup failure",
 			tag.Builder().Error(err).KeyVals...)
+
 		return "", err
 	}
 

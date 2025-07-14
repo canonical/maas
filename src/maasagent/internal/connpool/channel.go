@@ -102,6 +102,7 @@ func (c *channelPool) Get() (net.Conn, error) {
 func (c *channelPool) Close() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	conns := c.conns
 	c.conns = nil
 	c.factory = nil

@@ -70,5 +70,6 @@ func (p *Conn) Close() error {
 func (p *Conn) MarkUnusable() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	p.unusable = true
 }

@@ -95,6 +95,7 @@ func NewDeleteMessage(handle uint32) *Message {
 // with ISC-DHCP OMAPI protocol.
 func (m *Message) MarshalBinary() ([]byte, error) {
 	var buf bytes.Buffer
+
 	writer := &errWriter{w: &buf}
 
 	if m.signed {

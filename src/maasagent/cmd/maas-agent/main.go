@@ -175,7 +175,6 @@ func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
 	tracingInterceptor, err := temporalotel.NewTracingInterceptor(temporalotel.TracerOptions{
 		Tracer: tracer,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed setting up tracing interceptor: %w", err)
 	}
@@ -564,7 +563,6 @@ func Run() int {
 	workflowRun, err := temporalClient.ExecuteWorkflow(ctx, workflowOptions,
 		"configure-agent", configureAgentParam{SystemID: cfg.SystemID},
 	)
-
 	if err != nil {
 		log.Err(err).Msg("Failed to execute configure-agent workflow")
 		return 1

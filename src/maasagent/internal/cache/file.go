@@ -242,8 +242,8 @@ func (c *FileCache) set(key string, value io.Reader, valueSize int64) (err error
 
 	defer func() {
 		origErr := err
-		closeErr := f.Close()
 
+		closeErr := f.Close()
 		if closeErr != nil {
 			err = errors.Join(err, closeErr)
 		}
