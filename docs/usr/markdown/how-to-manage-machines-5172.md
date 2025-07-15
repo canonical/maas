@@ -239,28 +239,6 @@ Use this method to initiate a system shutdown.
 maas $PROFILE machine stop $SYSTEM_ID force=false
 ```
 
-### Set power type 
-
-Set the correct power type so MAAS can control the machine.
-
-UI**
-*Machines* > *[machine]* > *Configuration* > *Power* > *Edit*
-
-CLI**
-```bash
-    maas $PROFILE machine update $SYSTEM_ID power_type="$POWER_TYPE"
-```
-
-#### Verifying Redfish activation
-
-You can check if a machine communicates via Redfish with the command:
-
-```nohighlight
-    dmidecode -t 42
-```
-
-You can also review the `30-maas-01-bmc-config` commissioning script's output if the machine is already enlisted in MAAS.
-
 ## Commission & test machines
 
 Commissioning gathers hardware information needed to correctly deploy images.

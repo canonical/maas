@@ -47,6 +47,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 2     | how-to-back-up-maas                       | [Back up MAAS](/t/-/5096)                     |
 | 2     | how-to-manage-networks                    | [Manage networks](/t/-/5164)                  |
 | 2     | how-to-manage-network-services            | [Manage network services](/t/-/11320)         |
+| 2     | how-to-set-up-power-driver                | [Set up power drivers](/t/-/5246)             |
 | 2     | how-to-manage-machines                    | [Manage machines](/t/-/5172)                  |
 | 2     | how-to-manage-machine-groups              | [Manage machine groups](/t/-/8833)            |
 | 2     | how-to-manage-images                      | [Manage images](/t/-/5124)                    |
@@ -658,7 +659,6 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | /docs/snap/2.8/ui/interactive-search                    | /docs/how-to-manage-machines#p-9078-discover-and-find-machines                  |
 | /docs/how-to-test-machines                              | /docs/how-to-manage-machines#p-9078-run-tests                                   |
 | /docs/deb/2.8/ui/kernel-boot-options                    | /docs/how-to-manage-machines#p-9078-set-kernel-parameters                       |
-| /docs/how-to-set-up-power-drivers                       | /docs/how-to-manage-machines#p-9078-set-power-type                              |
 | /docs/enabling-dhcp                                     | /docs/how-to-manage-network-services#p-23190-manage-dhcp                        |
 | /docs/how-to-manage-dhcp                                | /docs/how-to-manage-network-services#p-23190-manage-dhcp                        |
 | /docs/how-to-enable-dhcp                                | /docs/how-to-manage-network-services#p-23190-manage-dhcp                        |
