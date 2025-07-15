@@ -338,6 +338,66 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPINotRunningV6() {
 	s.Equal(errors.Unwrap(err).Error(), ErrV6NotActive.Error())
 }
 
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4NoErrorHostAlreadyExisting() {
+	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
+
+	hosts := []Host{
+		{
+			IP:  net.ParseIP("10.0.0.1"),
+			MAC: net.HardwareAddr{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+		},
+	}
+
+	s.svc.runningV4.Store(true)
+	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
+		return &mockOMAPIClient{
+			assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
+				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
+				return omapi.ErrHostAlreadyExists
+			},
+		}, nil
+	}
+	_, err := s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-omapi",
+		ApplyConfigViaOMAPIParam{
+			Secret: secret,
+			Hosts:  hosts,
+		},
+	)
+
+	s.NoError(err)
+}
+
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6NoErrorHostAlreadyExisting() {
+	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
+
+	hosts := []Host{
+		{
+			IP:  net.ParseIP("::1"),
+			MAC: net.HardwareAddr{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+		},
+	}
+
+	s.svc.runningV6.Store(true)
+	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
+		return &mockOMAPIClient{
+			assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
+				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
+				return omapi.ErrHostAlreadyExists
+			},
+		}, nil
+	}
+	_, err := s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-omapi",
+		ApplyConfigViaOMAPIParam{
+			Secret: secret,
+			Hosts:  hosts,
+		},
+	)
+
+	s.NoError(err)
+}
+
 // TestConfigureViaFile ensures that provided JSON decoded and written
 // properly into corresponding files.
 func (s *DHCPServiceTestSuite) TestConfigureViaFile() {
