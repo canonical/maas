@@ -155,6 +155,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 | 2     | about-lxd-projects                        | [LXD projects](/t/-/7869)                     |
 | 2     | about-machine-groups                      | [Machine groups](/t/-/11160)                  |
 | 2     | about-maas-networking                     | [Networking](/t/-/9620)                       |
+| 2     | about-power-drivers                       | [Power drivers](/t/-/6843)                    |
 | 2     | about-controllers                         | [Controllers](/t/-/6690)                      |
 | 2     | about-images                              | [Images](/t/-/7904)                           |
 | 2     | about-maas-performance                    | [Performance](/t/-/6178)                      |
