@@ -145,6 +145,35 @@ func (s *ClientTestSuite) TestClientAddHost() {
 	assert.Equal(s.T(), mac, host.MAC)
 }
 
+// TestClientAddExistingHost verifies that the OMAPI client doesn't raise an error when
+// adding an already existing host.
+// The test performs the following steps:
+//
+// 1. Uses the OMAPI client to create a new host entry with the AddHost method.
+// 2. Verifies that no errors are being returned
+// 3. Create the same host again through the OMAPI client
+// 4. Verifies that the ErrHostAlreadyExists errors is returned
+// 5. Calls the GetHost method to retrieve the newly created host entry.
+// 6. Asserts that the retrieved host entry matches the properties of the host that was created.
+func (s *ClientTestSuite) TestClientAddExistingHost() {
+	ip := s.dummyIP
+	mac := net.HardwareAddr([]byte{0xca, 0xfe, 0xc0, 0xff, 0xee, 0x00})
+
+	err := s.client.AddHost(ip, mac)
+	assert.NoError(s.T(), err)
+
+	err = s.client.AddHost(ip, mac)
+	assert.ErrorIs(s.T(), err, ErrHostAlreadyExists)
+
+	options := map[string][]byte{"hardware-address": mac}
+
+	host, err := s.client.GetHost(options)
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), ip.To4(), host.IP)
+	assert.Equal(s.T(), mac, host.MAC)
+}
+
 // TestClientDeleteHost verifies the OMAPI client's functionality for deleting a host.
 // It performs the following steps:
 //
