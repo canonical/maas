@@ -5,6 +5,9 @@ from typing import Callable, Self
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionsRepository,
+)
 from maasservicelayer.db.repositories.consumers import ConsumersRepository
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsRepository,
@@ -78,6 +81,9 @@ from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.bootsourceselections import (
+    BootSourceSelectionsService,
+)
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
@@ -172,6 +178,7 @@ class ServiceCollectionV3:
     agents: AgentsService
     auth: AuthService
     boot_sources: BootSourcesService
+    boot_source_selections: BootSourceSelectionsService
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
     consumers: ConsumersService
@@ -517,6 +524,10 @@ class ServiceCollectionV3:
             context=context,
             repository=BootSourcesRepository(context),
             configuration_service=services.configurations,
+        )
+        services.boot_source_selections = BootSourceSelectionsService(
+            context=context,
+            repository=BootSourceSelectionsRepository(context),
         )
         services.hooked_configurations = HookedConfigurationsService(
             context=context,

@@ -13,6 +13,10 @@ from maasservicelayer.models.bootsourceselections import BootSourceSelection
 
 class BootSourceSelectionClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(BootSourceSelectionTable.c.id, id))
+
+    @classmethod
     def with_boot_source_id(cls, boot_source_id: int) -> Clause:
         return Clause(
             condition=eq(

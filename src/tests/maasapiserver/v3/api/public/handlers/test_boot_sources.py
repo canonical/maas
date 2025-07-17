@@ -12,6 +12,10 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
     BootSourceFetchRequest,
 )
+from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
+    BootSourceSelectionListResponse,
+    BootSourceSelectionResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceFetchListResponse,
     BootSourceFetchResponse,
@@ -30,8 +34,12 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.bootsourceselections import (
+    BootSourceSelectionsService,
+)
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from maasservicelayer.utils.images.helpers import ImageSpec
@@ -96,6 +104,18 @@ IMAGE_DESC_3 = {
     "support_eol": "2029-05-31",
     "kflavor": "generic",
 }
+
+TEST_BOOTSOURCESELECTION = BootSourceSelection(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    os="ubuntu",
+    release="noble",
+    arches=["amd64", "arm64"],
+    subarches=["*"],
+    labels=["*"],
+    boot_source_id=12,
+)
 
 
 class TestBootSourcesApi(ApiCommonTests):
@@ -410,3 +430,56 @@ class TestBootSourcesApi(ApiCommonTests):
             keyring_data=expected_bytes,
             validate_products=True,
         )
+
+    async def test_get_list_boot_source_selection_given_a_boot_source(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.list.return_value = ListResult[
+            BootSourceSelection
+        ](items=[TEST_BOOTSOURCESELECTION], total=1)
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCESELECTION.boot_source_id}/selections?page=1&size=1"
+        )
+        assert response.status_code == 200
+        boot_source_selections_response = BootSourceSelectionListResponse(
+            **response.json()
+        )
+        assert len(boot_source_selections_response.items) == 1
+        assert boot_source_selections_response.total == 1
+        assert not boot_source_selections_response.next
+
+    async def test_get_boot_source_selection_given_a_boot_source(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCESELECTION.boot_source_id}/selections/{TEST_BOOTSOURCESELECTION.id}"
+        )
+        assert response.status_code == 200
+        assert response.headers["ETag"]
+        boot_source_selection_response = BootSourceSelectionResponse(
+            **response.json()
+        )
+        assert boot_source_selection_response.id == TEST_BOOTSOURCESELECTION.id
+        assert boot_source_selection_response.os == "ubuntu"
+        assert boot_source_selection_response.release == "noble"
+        assert sorted(boot_source_selection_response.arches) == [
+            "amd64",
+            "arm64",
+        ]
+        assert boot_source_selection_response.subarches == ["*"]
+        assert boot_source_selection_response.labels == ["*"]
+        assert boot_source_selection_response.boot_source_id == 12

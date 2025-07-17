@@ -9,6 +9,7 @@ from maasservicelayer.builders.bootsourceselections import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
     BootSourceSelectionsRepository,
 )
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
@@ -17,6 +18,20 @@ from tests.fixtures.factories.bootsourceselections import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+
+
+class TestBootSourceSelectionClauseFactory:
+    def test_with_id(self) -> None:
+        clause = BootSourceSelectionClauseFactory.with_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselection.id = 1")
+
+    def test_with_boot_source_id(self) -> None:
+        clause = BootSourceSelectionClauseFactory.with_boot_source_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselection.boot_source_id = 1")
 
 
 class TestBootSourceSelectionRepository(

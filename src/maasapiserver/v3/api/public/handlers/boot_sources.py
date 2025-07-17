@@ -18,6 +18,10 @@ from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
+from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
+    BootSourceSelectionListResponse,
+    BootSourceSelectionResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceFetchListResponse,
     BootSourceFetchResponse,
@@ -27,6 +31,10 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -236,4 +244,97 @@ class BootSourcesHandler(Handler):
                 BootSourceFetchResponse.from_model(boot_source)
                 for boot_source in boot_source_mapping.items()
             ],
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": BootSourceSelectionListResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_boot_source_boot_source_selection(
+        self,
+        boot_source_id: int,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSelectionListResponse:
+        boot_source_selections = await services.boot_source_selections.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=QuerySpec(
+                where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                    boot_source_id
+                )
+            ),
+        )
+        return BootSourceSelectionListResponse(
+            items=[
+                BootSourceSelectionResponse.from_model(
+                    boot_source_selection=boot_source_selection,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/",
+                )
+                for boot_source_selection in boot_source_selections.items
+            ],
+            next=(
+                f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections?"
+                f"{pagination_params.to_next_href_format()}"
+                if boot_source_selections.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+            total=boot_source_selections.total,
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootSourceSelectionResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_boot_source_boot_source_selection(
+        self,
+        boot_source_id: int,
+        id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSelectionResponse:
+        boot_source_selection = await services.boot_source_selections.get_one(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(id),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            boot_source_id
+                        ),
+                    ]
+                )
+            )
+        )
+        if not boot_source_selection:
+            raise NotFoundException()
+
+        response.headers["ETag"] = boot_source_selection.etag()
+        return BootSourceSelectionResponse.from_model(
+            boot_source_selection=boot_source_selection,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/",
         )
