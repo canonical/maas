@@ -69,6 +69,7 @@ from maasservicelayer.db.repositories.subnet_utilization import (
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.db.repositories.tags import TagsRepository
 from maasservicelayer.db.repositories.tokens import TokensRepository
+from maasservicelayer.db.repositories.ui_subnets import UISubnetsRepository
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
@@ -134,6 +135,7 @@ from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.tags import TagsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.tokens import TokensService
+from maasservicelayer.services.ui_subnets import UISubnetsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.services.vmcluster import VmClustersService
@@ -215,6 +217,7 @@ class ServiceCollectionV3:
     v3subnet_utilization: V3SubnetUtilizationService
     vlans: VlansService
     vmclusters: VmClustersService
+    ui_subnets: UISubnetsService
     zones: ZonesService
 
     @classmethod
@@ -224,6 +227,9 @@ class ServiceCollectionV3:
         cache: CacheForServices,
     ) -> Self:
         services = cls()
+        services.ui_subnets = UISubnetsService(
+            context=context, ui_subnets_repository=UISubnetsRepository(context)
+        )
         services.events = EventsService(
             context=context,
             events_repository=EventsRepository(context),

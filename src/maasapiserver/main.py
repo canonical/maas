@@ -30,7 +30,7 @@ from maasapiserver.settings import (
     read_config,
 )
 from maasapiserver.v3.api.internal.handlers import APIv3Internal
-from maasapiserver.v3.api.public.handlers import APIv3
+from maasapiserver.v3.api.public.handlers import APIv3, APIv3UI
 from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
@@ -147,6 +147,7 @@ async def create_app(
         "maasapiserver",
     )
     APIv3.register(app.router)
+    APIv3UI.register(app.router)
     return app
 
 

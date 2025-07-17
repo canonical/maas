@@ -14,7 +14,10 @@ from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
 from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetsListResponse,
 )
-from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.api.public.models.responses.ui_subnets import (
+    UISubnetsListResponse,
+)
+from maasapiserver.v3.constants import V3_API_PREFIX, V3_API_UI_PREFIX
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
@@ -28,9 +31,11 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.models.ui_subnets import UISubnet
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.subnets import SubnetsService
+from maasservicelayer.services.ui_subnets import UISubnetsService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -72,6 +77,29 @@ TEST_SUBNET_2 = Subnet(
     managed=True,
     disabled_boot_architectures=[],
     vlan_id=1,
+)
+
+TEST_UI_SUBNET = UISubnet(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    name="test_ui_",
+    description="test_description_2",
+    cidr=IPv4Network("12.12.12.12"),
+    rdns_mode=RdnsMode.DEFAULT,
+    gateway_ip=None,
+    dns_servers=None,
+    allow_dns=False,
+    allow_proxy=True,
+    active_discovery=False,
+    managed=True,
+    disabled_boot_architectures=[],
+    vlan_id=1,
+    vlan_vid=0,
+    fabric_id=1,
+    fabric_name="fabric_name",
+    space_id=1,
+    space_name="space_name",
 )
 
 
@@ -330,3 +358,77 @@ class TestSubnetApi(ApiCommonTests):
             ),
             etag_if_match="wrong_etag",
         )
+
+
+class TestUISubnetApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_UI_PREFIX}/subnets"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_ui_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ui_subnets = Mock(UISubnetsService)
+        services_mock.ui_subnets.list.return_value = ListResult[UISubnet](
+            items=[TEST_UI_SUBNET], total=1
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        subnets_response = UISubnetsListResponse(**response.json())
+        assert len(subnets_response.items) == 1
+        assert subnets_response.total == 1
+        assert subnets_response.next is None
+
+    async def test_list_ui_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ui_subnets = Mock(UISubnetsService)
+        services_mock.ui_subnets.list.return_value = ListResult[UISubnet](
+            items=[TEST_UI_SUBNET], total=2
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        subnets_response = UISubnetsListResponse(**response.json())
+        assert len(subnets_response.items) == 1
+        assert subnets_response.total == 2
+        assert subnets_response.next == f"{self.BASE_PATH}?page=2&size=1"
+
+    async def test_ui_get(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ui_subnets = Mock(SubnetsService)
+        services_mock.ui_subnets.get_by_id.return_value = TEST_UI_SUBNET
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_UI_SUBNET.id}"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+    async def test_ui_get_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ui_subnets = Mock(SubnetsService)
+        services_mock.ui_subnets.get_by_id.return_value = None
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404

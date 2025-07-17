@@ -12,6 +12,10 @@ from maasapiserver.common.api.models.responses.errors import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
+from maasapiserver.v3.api.public.models.requests.ui_subnets import (
+    UISubnetFiltersParams,
+    UISubnetOrderByQueryFilter,
+)
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
@@ -19,8 +23,12 @@ from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetResponse,
     SubnetsListResponse,
 )
+from maasapiserver.v3.api.public.models.responses.ui_subnets import (
+    UISubnetResponse,
+    UISubnetsListResponse,
+)
 from maasapiserver.v3.auth.base import check_permissions
-from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX, V3_API_UI_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
@@ -290,3 +298,91 @@ class SubnetsHandler(Handler):
             query=query, etag_if_match=etag_if_match
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class UISubnetsHandler(Handler):
+    """UI Subnets API handler."""
+
+    TAGS = ["UI Subnets"]
+
+    @handler(
+        path="/subnets",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": UISubnetsListResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_subnets(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: UISubnetFiltersParams = Depends(),  # noqa: B008
+        order_by: UISubnetOrderByQueryFilter = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> UISubnetsListResponse:
+        query = QuerySpec(
+            where=filters.to_clause(), order_by=order_by.to_clauses()
+        )
+        subnets = await services.ui_subnets.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=query,
+        )
+
+        next_link = None
+        if subnets.has_next(pagination_params.page, pagination_params.size):
+            next_link = f"{V3_API_UI_PREFIX}/subnets?{pagination_params.to_next_href_format()}"
+            if query_filters := filters.to_href_format():
+                next_link += f"&{query_filters}"
+            if order_by_filters := order_by.to_href_format():
+                next_link += f"&{order_by_filters}"
+
+        return UISubnetsListResponse(
+            items=[
+                UISubnetResponse.from_model(
+                    subnet=subnet,
+                    self_base_hyperlink=f"{V3_API_UI_PREFIX}/subnets",
+                )
+                for subnet in subnets.items
+            ],
+            total=subnets.total,
+            next=next_link,
+        )
+
+    @handler(
+        path="/subnets/{subnet_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": UISubnetResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_subnet(
+        self,
+        subnet_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> UISubnetResponse:
+        subnet = await services.ui_subnets.get_by_id(subnet_id)
+        if not subnet:
+            raise NotFoundException()
+
+        response.headers["ETag"] = subnet.etag()
+        return UISubnetResponse.from_model(
+            subnet=subnet,
+            self_base_hyperlink=f"{V3_API_UI_PREFIX}/subnets",
+        )

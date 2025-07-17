@@ -192,11 +192,42 @@ maasserver_podhost = dedent(
 """
 )
 
+maasserver_ui_subnet_view = dedent("""\
+    SELECT
+            subnet.id,
+            subnet.created,
+            subnet.updated,
+            subnet.name,
+            subnet.cidr,
+            subnet.gateway_ip,
+            subnet.dns_servers,
+            subnet.rdns_mode,
+            subnet.allow_proxy,
+            subnet.description,
+            subnet.active_discovery,
+            subnet.managed,
+            subnet.allow_dns,
+            subnet.disabled_boot_architectures,
+            subnet.vlan_id,
+            vlan.vid as vlan_vid,
+            space.id as space_id,
+            space.name as space_name,
+            fabric.id as fabric_id,
+            fabric.name as fabric_name
+    FROM maasserver_subnet subnet
+    LEFT JOIN maasserver_vlan vlan
+        ON subnet.vlan_id = vlan.id
+    LEFT JOIN maasserver_fabric fabric
+        ON vlan.fabric_id = fabric.id
+    LEFT JOIN maasserver_space space
+        ON vlan.space_id = space.id
+    """)
 
 _ALL_VIEWS = {
     "maasserver_discovery": maasserver_discovery,
     "maasserver_routable_pairs": maasserver_routable_pairs,
     "maasserver_podhost": maasserver_podhost,
+    "maasserver_ui_subnet_view": maasserver_ui_subnet_view,
 }
 
 

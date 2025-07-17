@@ -212,7 +212,9 @@ class ReadOnlyRepository(Repository, Generic[T]):
     ) -> ListResult[T]:
         total_stmt = select(count()).select_from(self.get_repository_table())
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            # Don't apply the order by clause in the total_stmt
+            where_query = QuerySpec(where=query.where)
+            total_stmt = where_query.enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (

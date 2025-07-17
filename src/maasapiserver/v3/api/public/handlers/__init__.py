@@ -33,12 +33,15 @@ from maasapiserver.v3.api.public.handlers.sslkeys import SSLKeysHandler
 from maasapiserver.v3.api.public.handlers.staticroutes import (
     StaticRoutesHandler,
 )
-from maasapiserver.v3.api.public.handlers.subnets import SubnetsHandler
+from maasapiserver.v3.api.public.handlers.subnets import (
+    SubnetsHandler,
+    UISubnetsHandler,
+)
 from maasapiserver.v3.api.public.handlers.tags import TagsHandler
 from maasapiserver.v3.api.public.handlers.users import UsersHandler
 from maasapiserver.v3.api.public.handlers.vlans import VlansHandler
 from maasapiserver.v3.api.public.handlers.zones import ZonesHandler
-from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX, V3_API_UI_PREFIX
 
 APIv3 = API(
     prefix=V3_API_PREFIX,
@@ -67,5 +70,12 @@ APIv3 = API(
         UsersHandler(),
         VlansHandler(),
         ZonesHandler(),
+    ],
+)
+
+APIv3UI = API(
+    prefix=V3_API_UI_PREFIX,
+    handlers=[
+        UISubnetsHandler(),
     ],
 )

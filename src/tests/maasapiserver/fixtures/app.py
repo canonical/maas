@@ -18,7 +18,7 @@ from maasapiserver.common.middlewares.exceptions import (
 )
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
-from maasapiserver.v3.api.public.handlers import APIv3
+from maasapiserver.v3.api.public.handlers import APIv3, APIv3UI
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
 )
@@ -84,7 +84,6 @@ def create_app_with_mocks(
         title="MAASAPIServer",
         name="maasapiserver",
     )
-    api = APIv3
 
     app.add_middleware(InjectUserInRequest)
     app.add_middleware(InjectServicesMocks)
@@ -92,7 +91,8 @@ def create_app_with_mocks(
     app.add_exception_handler(
         RequestValidationError, ExceptionHandlers.validation_exception_handler
     )
-    api.register(app.router)
+    APIv3.register(app.router)
+    APIv3UI.register(app.router)
     return app
 
 

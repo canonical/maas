@@ -6,14 +6,24 @@ from typing import TypeVar
 
 from sqlalchemy import (
     and_,
+    asc,
     ColumnElement,
     Delete,
+    desc,
     Join,
     not_,
     or_,
     Select,
     Update,
 )
+
+
+@dataclass
+class OrderByClause:
+    column: ColumnElement
+
+    def __eq__(self, other) -> bool:
+        return self.column.compare(other.column)
 
 
 @dataclass
@@ -50,8 +60,9 @@ class QuerySpec:
     """
 
     where: Clause | None = None
+    # order_by can't be a single clause as SQLAlchemy requires the order_by args to be a list
+    order_by: list[OrderByClause] = field(default_factory=list)
     # In the future this is the right place where we will put additional query pieces
-    # order_by: Clause | None = None
 
     def enrich_stmt(self, stmt: SUD) -> SUD:
         """Enrich the SQL statement by adding the clauses (if present) in the object.
@@ -69,15 +80,18 @@ class QuerySpec:
         the join condition inside the where clause and SQLAlchemy will do the rest.
         In both cases, we only add the join if it's not redundant.
 
+        The order_by, instead, will only be applied to select statements.
+
         Params:
             stmt: the SQL statement to enrich
         Returns:
             The original statement (possibly) enriched with the clauses.
         """
-        if not self.where:
+        if not self.where and not self.order_by:
             return stmt
 
-        stmt = stmt.where(self.where.condition)
+        if self.where:
+            stmt = stmt.where(self.where.condition)
 
         if isinstance(stmt, Select):
             stmt = self._enrich_select_stmt(stmt)
@@ -88,8 +102,16 @@ class QuerySpec:
 
     def _enrich_select_stmt(self, stmt: Select) -> Select:
         already_joined = self._get_already_joined(stmt)
+        joins = []
+        joins.extend(self.where.joins if self.where else [])
 
-        for join in self.where.joins:  # type: ignore
+        if self.order_by:
+            # Reset the already present order by
+            stmt = stmt.order_by(None)
+
+            stmt = stmt.order_by(*[clause.column for clause in self.order_by])
+
+        for join in joins:
             left_in_joined = join.left in already_joined
             right_in_joined = join.right in already_joined
 
@@ -106,7 +128,9 @@ class QuerySpec:
         return stmt
 
     def _enrich_update_delete_stmt(self, stmt: UD) -> UD:
-        for join in self.where.joins:  # type: ignore
+        # Order by won't be applied to update/delete statements.
+        joins = self.where.joins if self.where else []
+        for join in joins:
             assert join.onclause is not None, "Join onclause must be defined."
             if all(
                 not join.onclause.compare(existing)
@@ -149,3 +173,15 @@ class ClauseFactory:
     @classmethod
     def not_clause(cls, clause: Clause):
         return Clause(condition=not_(clause.condition), joins=clause.joins)
+
+
+class OrderByClauseFactory:
+    @staticmethod
+    def asc_clause(clause: OrderByClause) -> OrderByClause:
+        clause.column = asc(clause.column)
+        return clause
+
+    @staticmethod
+    def desc_clause(clause: OrderByClause) -> OrderByClause:
+        clause.column = desc(clause.column)
+        return clause

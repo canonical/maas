@@ -4,6 +4,7 @@
 from operator import eq
 
 from sqlalchemy import (
+    asc,
     BigInteger,
     Column,
     delete,
@@ -18,7 +19,12 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import MetaData
 
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    Clause,
+    ClauseFactory,
+    OrderByClause,
+    QuerySpec,
+)
 
 METADATA = MetaData()
 
@@ -211,7 +217,7 @@ class TestClauseFactory:
 
 
 class TestQuerySpec:
-    def test_enrich_stmt_select(self):
+    def test_enrich_stmt_select_where(self):
         stmt = select(A.c.id)
         query = QuerySpec(
             where=Clause(
@@ -228,6 +234,50 @@ class TestQuerySpec:
                 )
             ).replace("\n", "")
             == "SELECT test_table_a.id FROM test_table_a JOIN test_table_b ON test_table_a.b_id = test_table_b.id WHERE test_table_b.id = 1"
+        )
+
+    def test_enrich_stmt_select_order_by(self):
+        stmt = select(A.c.id)
+        query = QuerySpec(
+            order_by=[
+                OrderByClause(
+                    column=asc(A.c.id),
+                )
+            ]
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "SELECT test_table_a.id FROM test_table_a ORDER BY test_table_a.id ASC"
+        )
+
+    def test_enrich_stmt_select_combined(self):
+        stmt = select(A.c.id)
+        query = QuerySpec(
+            where=Clause(
+                condition=eq(B.c.id, 1),
+                joins=[join(A, B, eq(A.c.b_id, B.c.id))],
+            ),
+            order_by=[
+                OrderByClause(
+                    column=asc(A.c.id),
+                )
+            ],
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "SELECT test_table_a.id FROM test_table_a JOIN test_table_b ON test_table_a.b_id = test_table_b.id WHERE test_table_b.id = 1 ORDER BY test_table_a.id ASC"
         )
 
     def test_enrich_stmt_update(self):
@@ -249,6 +299,26 @@ class TestQuerySpec:
             == "UPDATE test_table_a SET id=100 FROM test_table_b WHERE test_table_b.id = 1 AND test_table_a.b_id = test_table_b.id"
         )
 
+    def test_enrich_stmt_update_order_by(self):
+        stmt = update(A).values(id=100)
+        query = QuerySpec(
+            order_by=[
+                OrderByClause(
+                    column=asc(A.c.id),
+                )
+            ]
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "UPDATE test_table_a SET id=100"
+        )
+
     def test_enrich_stmt_delete(self):
         stmt = delete(A).where(A.c.id < 3)
         query = QuerySpec(
@@ -266,6 +336,26 @@ class TestQuerySpec:
                 )
             ).replace("\n", "")
             == "DELETE FROM test_table_a USING test_table_b WHERE test_table_a.id < 3 AND test_table_b.id = 1 AND test_table_a.b_id = test_table_b.id"
+        )
+
+    def test_enrich_stmt_delete_order_by(self):
+        stmt = delete(A).where(A.c.id < 3)
+        query = QuerySpec(
+            order_by=[
+                OrderByClause(
+                    column=asc(A.c.id),
+                )
+            ]
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "DELETE FROM test_table_a WHERE test_table_a.id < 3"
         )
 
     def test_enrich_stmt_select_multiple_joins(self):
@@ -409,7 +499,7 @@ class TestQuerySpec:
             == "SELECT test_table_a.id FROM test_table_a JOIN test_table_b ON test_table_a.b_id = test_table_b.id JOIN test_table_c ON test_table_b.c_id = test_table_c.id WHERE test_table_b.id = 1 AND test_table_b.id = 2"
         )
 
-    def test_enrich_stmt_select_update_redundant_joins(self):
+    def test_enrich_stmt_update_redundant_joins(self):
         stmt = update(A).values(id=100)
         query = QuerySpec(
             ClauseFactory.and_clauses(
@@ -436,7 +526,7 @@ class TestQuerySpec:
             == "UPDATE test_table_a SET id=100 FROM test_table_b WHERE test_table_b.id = 1 AND test_table_b.id = 2 AND test_table_a.b_id = test_table_b.id"
         )
 
-    def test_enrich_stmt_select_delete_redundant_joins(self):
+    def test_enrich_stmt_delete_redundant_joins(self):
         stmt = delete(A).where(A.c.id < 3)
         query = QuerySpec(
             ClauseFactory.and_clauses(

@@ -1,10 +1,16 @@
 from datetime import datetime, timezone
+from operator import eq
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import array
 
 from maascommon.enums.subnet import RdnsMode
+from maasservicelayer.db.tables import UISubnetView
+from maasservicelayer.models.spaces import Space
+from maasservicelayer.models.ui_subnets import UISubnet
+from maasservicelayer.models.vlans import Vlan
 from maastesting.factory import factory
+from tests.fixtures.factories.spaces import create_test_space_entry
 from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -40,3 +46,22 @@ async def create_test_subnet_entry(
         [subnet],
     )
     return created_subnet
+
+
+async def create_test_ui_subnet_entry(
+    fixture: Fixture,
+    space: Space | None = None,
+    vlan: Vlan | None = None,
+    **extra_details,
+) -> UISubnet:
+    if not space:
+        space = await create_test_space_entry(fixture)
+    if not vlan:
+        vlan = Vlan(**await create_test_vlan_entry(fixture, space_id=space.id))
+    subnet = await create_test_subnet_entry(
+        fixture, vlan_id=vlan.id, **extra_details
+    )
+    [ui_subnet] = await fixture.get_typed(
+        UISubnetView.name, UISubnet, eq(UISubnetView.c.id, subnet["id"])
+    )
+    return ui_subnet

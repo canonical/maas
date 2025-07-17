@@ -1594,6 +1594,43 @@ SubnetTable = Table(
     Index("maasserver_subnet_vlan_id_d4e96e9a", "vlan_id"),
 )
 
+UISubnetView = Table(
+    "maasserver_ui_subnet_view",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("cidr", CIDR, nullable=False),
+    Column("gateway_ip", INET, nullable=True),
+    Column("dns_servers", ARRAY(Text), nullable=True),
+    Column("rdns_mode", Integer, nullable=False),
+    Column("allow_proxy", Boolean, nullable=False),
+    Column("description", Text, nullable=False),
+    Column("active_discovery", Boolean, nullable=False),
+    Column("managed", Boolean, nullable=False),
+    Column("allow_dns", Boolean, nullable=False),
+    Column("disabled_boot_architectures", ARRAY(String(64)), nullable=False),
+    Column(
+        "vlan_id", BigInteger, ForeignKey("maasserver_vlan.id"), nullable=False
+    ),
+    Column("vlan_vid", Integer, nullable=False),
+    Column(
+        "fabric_id",
+        BigInteger,
+        ForeignKey("maasserver_fabric.id"),
+        nullable=False,
+    ),
+    Column("fabric_name", String(256), nullable=True),
+    Column(
+        "space_id",
+        BigInteger,
+        ForeignKey("maasserver_space.id"),
+        nullable=True,
+    ),
+    Column("space_name", String(256), nullable=True),
+)
+
 TagTable = Table(
     "maasserver_tag",
     METADATA,
