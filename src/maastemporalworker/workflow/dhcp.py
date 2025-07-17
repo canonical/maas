@@ -4,7 +4,9 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Optional
+import os
+import structlog
+from typing import Any, Optional
 
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -12,6 +14,7 @@ from temporalio import workflow
 from temporalio.common import WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
+from maascommon.enums.ipranges import IPRangeType
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -20,6 +23,9 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
+from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
+from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -31,7 +37,10 @@ from maasservicelayer.db.tables import (
     SubnetTable,
     VlanTable,
 )
+from maasservicelayer.models.interfaces import Interface
+from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.secrets import OMAPIKeySecret
+from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
 from maastemporalworker.workflow.activity import ActivityBase
@@ -107,8 +116,69 @@ class GetActiveInterfacesForAgentParam:
 
 
 @dataclass
+class SetActiveInterfacesParam:
+    ifaces: list[str]
+
+
+@dataclass
 class ActiveInterfacesForAgentResult:
     ifaces: list[str]
+
+
+@dataclass
+class VlanData:
+    id: int
+    vid: int
+    relayed_vlan_id: int
+    mtu: int
+
+
+@dataclass
+class SubnetData:
+    id: int
+    cidr: str
+    gateway_ip: str
+    dns_servers: list[str]
+    allow_dns: bool
+    vlan_id: int
+
+
+@dataclass
+class InterfaceData:
+    id: int
+    vlan_id: int
+    name: str
+
+
+@dataclass
+class IPRangeData:
+    id: int
+    subnet_id: int
+    dynamic: bool
+    start_ip: str
+    end_ip: str
+
+
+@dataclass
+class DHCPDataForAgent:
+    vlans: list[VlanData]
+    subnets: list[SubnetData]
+    ipranges: list[IPRangeData]
+    interfaces: list[InterfaceData]
+
+
+@dataclass
+class GetDHCPDataForAgentParam:
+    system_id: str
+
+
+@dataclass
+class ConfigDQLiteParam:
+    configure_as_new: bool
+    vlans: list[dict[str, Any]]
+    subnets: list[dict[str, Any]]
+    interfaces: list[dict[str, Any]]
+    ipranges: list[dict[str, Any]]
 
 
 class DHCPConfigActivity(ActivityBase):
@@ -433,22 +503,70 @@ class DHCPConfigActivity(ActivityBase):
             vlans = await self._get_active_vlans_for_agent(
                 svc, param.system_id
             )
-            ifaces = await svc.interfaces.get_many(
-                query=QuerySpec(
-                    where=InterfaceClauseFactory.with_vlan_id_in(
-                        [vlan.id for vlan in vlans],
-                    ),
-                ),
-            )
+            node = await svc.nodes.get_one(query=QuerySpec(where=NodeClauseFactory.with_system_id(param.system_id)))
+            ifaces = await svc.interfaces.get_many(query=QuerySpec(where=InterfaceClauseFactory.and_clauses(clauses=[
+                InterfaceClauseFactory.with_node_config_id(node.current_config_id),
+                InterfaceClauseFactory.with_vlan_id_in([vlan.id for vlan in vlans])
+            ])))
             return ActiveInterfacesForAgentResult(
-                ifaces=[iface.name for iface in ifaces]
+                ifaces=[iface.name for iface in ifaces if iface.vlan_id in [ vlan.id for vlan in vlans ]]
+            )
+
+    @activity_defn_with_context(name="get_dhcp_data_for_agent")
+    async def get_dhcp_data_for_agent(self, param: GetDHCPDataForAgentParam) -> DHCPDataForAgent:
+        async with self.start_transaction() as svc:
+            vlans = await self._get_active_vlans_for_agent(svc, param.system_id)
+            node = await svc.nodes.get_one(query=QuerySpec(where=NodeClauseFactory.with_system_id(param.system_id)))
+            ifaces = await svc.interfaces.get_many(query=QuerySpec(where=InterfaceClauseFactory.and_clauses(clauses=[
+                InterfaceClauseFactory.with_node_config_id(node.current_config_id),
+                InterfaceClauseFactory.with_vlan_id_in([vlan.id for vlan in vlans]),
+            ])))
+            subnets = await svc.subnets.get_many(query=QuerySpec(where=SubnetClauseFactory.with_vlan_id_in([vlan.id for vlan in vlans])))
+            ipranges = await svc.ipranges.get_many(query=QuerySpec(where=IPRangeClauseFactory.with_subnet_ids([subnet.id for subnet in subnets])))
+            return DHCPDataForAgent(
+                interfaces=[InterfaceData(id=iface.id, name=iface.name, vlan_id=iface.vlan_id) for iface in ifaces],
+                vlans=[VlanData(id=vlan.id, vid=vlan.vid, relayed_vlan_id=vlan.relayed_vlan_id, mtu=vlan.mtu) for vlan in vlans],
+                subnets=[SubnetData(id=subnet.id, cidr=str(subnet.cidr), vlan_id=subnet.vlan_id, gateway_ip=str(subnet.gateway_ip), dns_servers=subnet.dns_servers, allow_dns=subnet.allow_dns) for subnet in subnets],
+                ipranges=[IPRangeData(id=iprange.id, subnet_id=iprange.subnet_id, start_ip=str(iprange.start_ip), end_ip=str(iprange.end_ip), dynamic=iprange.type == IPRangeType.DYNAMIC) for iprange in ipranges],
             )
 
 
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
+    async def _run_internal(self, param: ConfigureDHCPForAgentParam) -> None:
+        data = await workflow.execute_activity(
+            "get_dhcp_data_for_agent",
+            GetDHCPDataForAgentParam(
+                system_id=param.system_id,
+            ),
+            start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
+        )
+
+        await workflow.execute_activity(
+            "set-active-interfaces",
+            SetActiveInterfacesParam(ifaces=[iface["name"] for iface in data["interfaces"]]),
+            task_queue=f"{param.system_id}@agent:main",
+            start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
+        )
+    
+        await workflow.execute_activity(
+            "apply-dhcp-config-via-dqlite",
+            ConfigDQLiteParam(
+                configure_as_new=param.full_reload,
+                vlans=[VlanData(**vlan) for vlan in data["vlans"]],
+                subnets=[SubnetData(**subnet) for subnet in data["subnets"]],
+                interfaces=[InterfaceData(**interface) for interface in data["interfaces"]],
+                ipranges=[IPRangeData(**iprange) for iprange in data["ipranges"]],
+            ),
+            task_queue=f"{param.system_id}@agent:main",
+            start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
+        )
+
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
+        if os.environ.get("INTERNAL_DHCP") == "1":
+            await self._run_internal(param)
+        return
         # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
         # scenario we want to update the dhcpd config.
         await workflow.execute_activity(

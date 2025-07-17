@@ -30,6 +30,10 @@ class SubnetClauseFactory(ClauseFactory):
         return Clause(condition=eq(SubnetTable.c.vlan_id, vlan_id))
 
     @classmethod
+    def with_vlan_id_in(cls, vlan_ids: list[int]) -> Clause:
+        return Clause(condition=SubnetTable.c.vlan_id.in_(vlan_ids))
+
+    @classmethod
     def with_fabric_id(cls, fabric_id: int) -> Clause:
         return Clause(
             condition=eq(VlanTable.c.fabric_id, fabric_id),

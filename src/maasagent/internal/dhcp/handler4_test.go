@@ -289,7 +289,8 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 						allocator, err := newDQLiteAllocator4()
 						require.NoError(t, err)
 
-						handler := NewDORAHandler(allocator, s)
+						handler := NewDORAHandler(allocator)
+						handler.SetClusterState(s)
 
 						handler.discoverReplyOverride = func(ctx context.Context, ifaceIdx int, resp *dhcpv4.DHCPv4) error {
 							assert.Equal(t, resp, tc.out)
@@ -316,6 +317,9 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 							t.Fatal(err)
 						}
 
+						return nil
+					},
+					PostBootstrap: func(_ context.Context, _ state.State, cfg map[string]string) error {
 						return nil
 					},
 				},

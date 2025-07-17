@@ -141,6 +141,7 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 		s.T().Name(),
 		mockControllerV4,
 		mockControllerV6,
+		false,
 		WithOMAPIConnFactory(func(_ string, _ string) (net.Conn, error) {
 			return client, nil
 		}),

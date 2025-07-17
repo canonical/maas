@@ -20,10 +20,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"syscall"
 
 	"github.com/canonical/microcluster/v2/state"
@@ -45,6 +47,7 @@ var (
 
 var (
 	optionMarshalers = map[uint16]func(string) ([]byte, error){
+		uint16(dhcpv4.OptionSubnetMask): hex.DecodeString,
 		uint16(dhcpv4.OptionIPAddressLeaseTime): func(s string) ([]byte, error) {
 			n, err := strconv.Atoi(s)
 			if err != nil {
@@ -56,10 +59,20 @@ var (
 			return buf, nil
 		},
 		uint16(dhcpv4.OptionRouter):           ipOptionMarshal,
-		uint16(dhcpv4.OptionSubnetMask):       ipOptionMarshal,
 		uint16(dhcpv4.OptionTimeServer):       ipOptionMarshal,
 		uint16(dhcpv4.OptionNameServer):       ipOptionMarshal,
 		uint16(dhcpv4.OptionDomainNameServer): ipOptionMarshal,
+		uint16(dhcpv4.OptionInterfaceMTU): func(s string) ([]byte, error) {
+			mtu, err := strconv.Atoi(s)
+			if err != nil {
+				return nil, err
+			}
+
+			buf := make([]byte, 4)
+			binary.BigEndian.PutUint32(buf, uint32(mtu))
+
+			return buf, nil
+		},
 	}
 
 	anyIP4     = net.ParseIP("0.0.0.0").To4()
@@ -81,6 +94,7 @@ func ipOptionMarshal(s string) ([]byte, error) {
 
 type DORAHandler struct {
 	allocator             Allocator4
+	stateLock             *sync.RWMutex
 	clusterState          state.State
 	server                *Server
 	discoverReplyOverride func(context.Context, int, *dhcpv4.DHCPv4) error
@@ -88,17 +102,27 @@ type DORAHandler struct {
 	informReplyOverride   func(context.Context, *dhcpv4.DHCPv4) error
 }
 
-func NewDORAHandler(a Allocator4, clusterState state.State) *DORAHandler {
+func NewDORAHandler(a Allocator4) *DORAHandler {
 	return &DORAHandler{
-		allocator:    a,
-		clusterState: clusterState,
+		allocator: a,
+		stateLock: &sync.RWMutex{},
 	}
+}
+
+func (d *DORAHandler) SetClusterState(s state.State) {
+	d.stateLock.Lock()
+	defer d.stateLock.Unlock()
+
+	d.clusterState = s
 }
 
 func (d *DORAHandler) ServeDHCPv4(ctx context.Context, msg Message) error {
 	if msg.Pkt4 == nil {
 		return ErrNotDHCPv4
 	}
+
+	d.stateLock.RLock()
+	defer d.stateLock.RUnlock()
 
 	switch msg.Pkt4.MessageType() {
 	case dhcpv4.MessageTypeDiscover:
@@ -136,7 +160,7 @@ func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.Hardwa
 
 	iface, err := net.InterfaceByIndex(ifaceIdx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching reply interface: %w", err)
 	}
 
 	eth := layers.Ethernet{
@@ -185,14 +209,14 @@ func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.Hardwa
 
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, 0)
 	if err != nil {
-		return err
+		return fmt.Errorf("error opening raw reply socket: %w", err)
 	}
 
 	defer syscall.Close(fd)
 
 	err = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
 	if err != nil {
-		return err
+		return fmt.Errorf("error setting raw socket options: %w", err)
 	}
 
 	dstMac := make([]byte, 8)
@@ -206,8 +230,11 @@ func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.Hardwa
 	}
 
 	err = syscall.Sendto(fd, data, 0, &ethAddr)
+	if err != nil {
+		return fmt.Errorf("error writing raw frame: %w", err)
+	}
 
-	return err
+	return nil
 }
 
 func getServerAddr(msg Message) (net.IP, error) {
@@ -244,6 +271,8 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		err   error
 	)
 
+	log.Info().Msgf("DISCOVER: %+v", msg)
+
 	err = d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		offer, err = d.allocator.GetOfferFromDiscover(ctx, tx, msg.Pkt4, int(msg.IfaceIdx), msg.SrcMAC)
 
@@ -252,6 +281,8 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 	if err != nil {
 		return err
 	}
+
+	log.Info().Msgf("OFFER: %+v", offer)
 
 	serverIP, err := getServerAddr(msg)
 	if err != nil {
@@ -285,6 +316,8 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 			reply.GatewayIPAddr = net.IP(value)
 		}
 	}
+
+	log.Info().Msgf("REPLY: %+v", reply)
 
 	if d.discoverReplyOverride != nil {
 		return d.discoverReplyOverride(ctx, int(msg.IfaceIdx), reply)

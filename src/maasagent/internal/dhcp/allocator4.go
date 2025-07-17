@@ -40,10 +40,11 @@ SELECT hr.* FROM vlan AS v
 	WHERE v.id = $1 AND hr.mac_address = $3;
 `
 	getIPRangeForAllocationStmt = `
-SELECT * FROM ip_range AS ir WHERE dynamic = $2 AND fully_allocated = false AND id >= (abs(random()) % (SELECT max(iprange.id) FROM vlan AS v
+SELECT ir.* FROM vlan AS v 
 	JOIN subnet AS s ON s.vlan_id = v.id
-	JOIN ip_range as iprange ON iprange.subnet_id = s.id
-	WHERE v.id = $1 AND iprange.dynamic = $2 AND iprange.fully_allocated = false));
+	JOIN ip_range as ir ON ir.subnet_id = s.id
+	WHERE v.id = $1 AND ir.dynamic = $2 AND ir.fully_allocated = false
+	ORDER BY RANDOM() LIMIT 1;
 `
 	getLeaseInVLANStmt = `
 SELECT l.* FROM lease AS l
@@ -259,7 +260,7 @@ func (d *dqliteAllocator4) getHostReservationIfExists(ctx context.Context, tx *s
 func (d *dqliteAllocator4) getIPRangeForAllocation(ctx context.Context, tx *sql.Tx, vlanID int, dynamic bool) (*IPRange, error) {
 	rows, err := tx.QueryContext(ctx, getIPRangeForAllocationStmt, vlanID, dynamic)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error querying for iprange: %w", err)
 	}
 
 	defer func() {
@@ -284,7 +285,7 @@ func (d *dqliteAllocator4) getIPRangeForAllocation(ctx context.Context, tx *sql.
 			&iprange.SubnetID,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error reading iprange: %w", err)
 		}
 
 		iprange.StartIP = net.ParseIP(startIPStr)
@@ -292,6 +293,8 @@ func (d *dqliteAllocator4) getIPRangeForAllocation(ctx context.Context, tx *sql.
 
 		// use first available if there are more than one
 		return iprange, nil
+	} else if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error scanning iprange: %w", err)
 	}
 
 	return nil, ErrNoAvailableIP
@@ -307,7 +310,7 @@ func (d *dqliteAllocator4) getIPForAllocation(ctx context.Context, tx *sql.Tx, i
 			return iprange.StartIP.To4(), nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("error finding previous allocated IP in range: %w", err)
 	}
 
 	nextIP := make(net.IP, 4)
@@ -323,7 +326,7 @@ func (d *dqliteAllocator4) getIPForAllocation(ctx context.Context, tx *sql.Tx, i
 				return nextIP, nil
 			}
 
-			return nil, err
+			return nil, fmt.Errorf("error querying for free IP: %w", err)
 		}
 
 		if !row.Next() {
@@ -342,7 +345,7 @@ func (d *dqliteAllocator4) getIPForAllocation(ctx context.Context, tx *sql.Tx, i
 				return nextIP, nil
 			}
 
-			return nil, err
+			return nil, fmt.Errorf("error scanning range for free IP: %w", err)
 		}
 
 		if !row.Next() {
@@ -354,7 +357,7 @@ func (d *dqliteAllocator4) getIPForAllocation(ctx context.Context, tx *sql.Tx, i
 
 	err = d.setIPRangeFull(ctx, tx, iprange.ID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error marking iprange fully allocated: %w", err)
 	}
 
 	return nil, ErrRangeFull
