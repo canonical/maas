@@ -9218,6 +9218,37 @@ ALTER SEQUENCE public.maasserver_template_id_seq OWNED BY public.maasserver_temp
 
 
 --
+-- Name: maasserver_ui_subnet_view; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.maasserver_ui_subnet_view AS
+ SELECT subnet.id,
+    subnet.created,
+    subnet.updated,
+    subnet.name,
+    subnet.cidr,
+    subnet.gateway_ip,
+    subnet.dns_servers,
+    subnet.rdns_mode,
+    subnet.allow_proxy,
+    subnet.description,
+    subnet.active_discovery,
+    subnet.managed,
+    subnet.allow_dns,
+    subnet.disabled_boot_architectures,
+    subnet.vlan_id,
+    vlan.vid AS vlan_vid,
+    space.id AS space_id,
+    space.name AS space_name,
+    fabric.id AS fabric_id,
+    fabric.name AS fabric_name
+   FROM (((public.maasserver_subnet subnet
+     LEFT JOIN public.maasserver_vlan vlan ON ((subnet.vlan_id = vlan.id)))
+     LEFT JOIN public.maasserver_fabric fabric ON ((vlan.fabric_id = fabric.id)))
+     LEFT JOIN public.maasserver_space space ON ((vlan.space_id = space.id)));
+
+
+--
 -- Name: maasserver_userprofile; Type: TABLE; Schema: public; Owner: -
 --
 
