@@ -157,21 +157,21 @@ class ClauseFactory:
         return joins
 
     @classmethod
-    def or_clauses(cls, clauses: list[Clause]):
+    def or_clauses(cls, clauses: list[Clause]) -> Clause:
         return Clause(
             condition=or_(*[clause.condition for clause in clauses]),
             joins=cls._combine_joins(clauses),
         )
 
     @classmethod
-    def and_clauses(cls, clauses: list[Clause]):
+    def and_clauses(cls, clauses: list[Clause]) -> Clause:
         return Clause(
             condition=and_(*[clause.condition for clause in clauses]),
             joins=cls._combine_joins(clauses),
         )
 
     @classmethod
-    def not_clause(cls, clause: Clause):
+    def not_clause(cls, clause: Clause) -> Clause:
         return Clause(condition=not_(clause.condition), joins=clause.joins)
 
 

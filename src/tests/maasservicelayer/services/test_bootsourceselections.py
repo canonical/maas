@@ -5,11 +5,16 @@ from unittest.mock import Mock
 
 import pytest
 
+from maasservicelayer.builders.bootsourceselections import (
+    BootSourceSelectionBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionsRepository,
 )
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
+from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
@@ -24,6 +29,7 @@ class TestBootSourceSelectionsService(ServiceCommonTests):
         return BootSourceSelectionsService(
             context=Context(),
             repository=Mock(BootSourceSelectionsRepository),
+            boot_source_cache_service=Mock(BootSourceCacheService),
         )
 
     @pytest.fixture
@@ -40,3 +46,40 @@ class TestBootSourceSelectionsService(ServiceCommonTests):
             labels=["*"],
             boot_source_id=1,
         )
+
+    @pytest.fixture
+    def builder_model(self) -> type[BootSourceSelectionBuilder]:
+        return BootSourceSelectionBuilder
+
+    async def test_create(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance.repository.create.return_value = test_instance
+        builder = BootSourceSelectionBuilder(
+            os="ubuntu",
+            release="jammy",
+            arches=["amd64"],
+            subarches=["*"],
+            labels=["*"],
+            boot_source_id=1,
+        )
+        obj = await service_instance.create(builder)
+        assert obj == test_instance
+        service_instance.repository.create.assert_awaited_once_with(
+            builder=builder
+        )
+
+    async def test_create_with_available_boot_resource(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance.boot_source_cache_service.exists.return_value = True
+        await self.test_create(service_instance, test_instance, builder_model)
+
+    async def test_create_with_inexistent_boot_resource(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance.boot_source_cache_service.exists.return_value = False
+        with pytest.raises(NotFoundException):
+            await self.test_create(
+                service_instance, test_instance, builder_model
+            )

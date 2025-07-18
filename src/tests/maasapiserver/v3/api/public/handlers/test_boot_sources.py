@@ -483,3 +483,36 @@ class TestBootSourcesApi(ApiCommonTests):
         assert boot_source_selection_response.subarches == ["*"]
         assert boot_source_selection_response.labels == ["*"]
         assert boot_source_selection_response.boot_source_id == 12
+
+    async def test_post_boot_source_selection_to_a_boot_source(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = TEST_BOOTSOURCE_1
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.create.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        create_request = {
+            "os": "ubuntu",
+            "release": "noble",
+            "arches": ["amd64", "arm64"],
+            "subarches": ["*"],
+            "labels": ["*"],
+        }
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections",
+            json=jsonable_encoder(create_request),
+        )
+        assert response.status_code == 201
+        response = BootSourceSelectionResponse(**response.json())
+        assert response.os == "ubuntu"
+        assert response.release == "noble"
+        assert response.arches == ["amd64", "arm64"]
+        assert response.subarches == ["*"]
+        assert response.labels == ["*"]

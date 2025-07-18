@@ -6,14 +6,25 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+    BootSourcesRepository,
+)
 from maasservicelayer.models.bootsources import BootSource
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestBootSourceRepository(RepositoryCommonTests[BootSource]):
+class TestBootSourcesClauseFactory:
+    def test_with_id(self) -> None:
+        clause = BootSourcesClauseFactory.with_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsource.id = 1")
+
+
+class TestBootSourcesRepository(RepositoryCommonTests[BootSource]):
     @pytest.fixture
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int

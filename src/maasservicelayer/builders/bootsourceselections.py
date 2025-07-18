@@ -16,11 +16,17 @@ class BootSourceSelectionBuilder(ResourceBuilder):
     the generated code.
     """
 
-    arches: Union[list[str], Unset] = Field(default=UNSET, required=False)
+    arches: Union[list[str], None, Unset] = Field(
+        default=UNSET, required=False
+    )
     boot_source_id: Union[int, Unset] = Field(default=UNSET, required=False)
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    labels: Union[list[str], Unset] = Field(default=UNSET, required=False)
+    labels: Union[list[str], None, Unset] = Field(
+        default=UNSET, required=False
+    )
     os: Union[str, Unset] = Field(default=UNSET, required=False)
     release: Union[str, Unset] = Field(default=UNSET, required=False)
-    subarches: Union[list[str], Unset] = Field(default=UNSET, required=False)
+    subarches: Union[list[str], None, Unset] = Field(
+        default=UNSET, required=False
+    )
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

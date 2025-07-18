@@ -10,6 +10,9 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
+    BootSourceSelectionRequest,
+)
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
     BootSourceFetchRequest,
     BootSourceRequest,
@@ -32,6 +35,9 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
@@ -275,6 +281,9 @@ class BootSourcesHandler(Handler):
                 )
             ),
         )
+        if not boot_source_selections:
+            raise NotFoundException()
+
         return BootSourceSelectionListResponse(
             items=[
                 BootSourceSelectionResponse.from_model(
@@ -337,4 +346,41 @@ class BootSourcesHandler(Handler):
         return BootSourceSelectionResponse.from_model(
             boot_source_selection=boot_source_selection,
             self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/",
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {"model": BootSourceSelectionResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def create_boot_source_boot_source_selection(
+        self,
+        boot_source_id: int,
+        boot_source_selection_request: BootSourceSelectionRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSelectionResponse:
+        boot_source = await services.boot_sources.get_one(
+            query=QuerySpec(
+                where=BootSourcesClauseFactory.with_id(boot_source_id)
+            )
+        )
+        if not boot_source:
+            raise NotFoundException()
+
+        builder = boot_source_selection_request.to_builder(boot_source)
+        boot_source_selection = await services.boot_source_selections.create(
+            builder
+        )
+
+        return BootSourceSelectionResponse.from_model(
+            boot_source_selection=boot_source_selection,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections",
         )
