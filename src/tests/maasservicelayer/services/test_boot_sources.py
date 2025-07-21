@@ -8,9 +8,20 @@ from unittest.mock import ANY, call, MagicMock, Mock, patch
 import pytest
 
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsourcecache import (
+    BootSourceCacheClauseFactory,
+)
 from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.bootsourcecache import BootSourceCacheService
+from maasservicelayer.services.bootsourceselections import (
+    BootSourceSelectionsService,
+)
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
@@ -25,6 +36,8 @@ class TestBootSourcesService(ServiceCommonTests):
         return BootSourcesService(
             context=Context(),
             repository=Mock(BootSourcesRepository),
+            boot_source_cache_service=Mock(BootSourceCacheService),
+            boot_source_selections_service=Mock(BootSourceSelectionsService),
             configuration_service=Mock(ConfigurationsService),
         )
 
@@ -219,3 +232,42 @@ class TestBootSourcesService(ServiceCommonTests):
         )
 
         mock_write_keyring.assert_not_called()
+
+    async def test_delete(self, test_instance):
+        boot_source = test_instance
+
+        repository_mock = Mock(BootSourcesRepository)
+        repository_mock.get_one.return_value = boot_source
+        repository_mock.delete_by_id.return_value = boot_source
+
+        boot_source_cache_service_mock = Mock(BootSourceCacheService)
+        boot_source_selections_service_mock = Mock(BootSourceSelectionsService)
+        configuration_service_mock = Mock(ConfigurationsService)
+
+        boot_source_service = BootSourcesService(
+            context=Context(),
+            repository=repository_mock,
+            boot_source_cache_service=boot_source_cache_service_mock,
+            boot_source_selections_service=boot_source_selections_service_mock,
+            configuration_service=configuration_service_mock,
+        )
+
+        query = Mock(QuerySpec)
+        await boot_source_service.delete_one(query)
+
+        repository_mock.delete_by_id.assert_called_once_with(id=boot_source.id)
+
+        boot_source_cache_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
+                where=BootSourceCacheClauseFactory.with_boot_source_id(
+                    boot_source.id
+                )
+            )
+        )
+        boot_source_selections_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
+                where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                    boot_source.id
+                )
+            )
+        )

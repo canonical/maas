@@ -23,6 +23,10 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourcesListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -131,7 +135,11 @@ class TestBootSourcesApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+        ]
 
     async def test_list_no_other_page(
         self,
@@ -431,6 +439,26 @@ class TestBootSourcesApi(ApiCommonTests):
             validate_products=True,
         )
 
+
+class TestBootSourceSelectionsApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/boot_sources"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/selections"),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/selections/10"),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="POST", path=f"{self.BASE_PATH}/1/selections"),
+            Endpoint(
+                method="DELETE", path=f"{self.BASE_PATH}/1/selections/10"
+            ),
+        ]
+
     async def test_get_list_boot_source_selection_given_a_boot_source(
         self,
         services_mock: ServiceCollectionV3,
@@ -516,3 +544,63 @@ class TestBootSourcesApi(ApiCommonTests):
         assert response.arches == ["amd64", "arm64"]
         assert response.subarches == ["*"]
         assert response.labels == ["*"]
+
+    async def test_204_delete_boot_source_selection_from_a_boot_source(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        boot_source_id = 196
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.delete_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{boot_source_id}/selections/{TEST_BOOTSOURCESELECTION.id}",
+        )
+        assert response.status_code == 204
+
+    async def test_404_delete_boot_source_selection_from_a_boot_source(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        boot_source_id = 196
+        boot_source_selection_id = 10
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.delete_one.side_effect = (
+            NotFoundException()
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{boot_source_id}/selections/{boot_source_selection_id}",
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+        services_mock.boot_source_selections.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(
+                            boot_source_selection_id
+                        ),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            boot_source_id
+                        ),
+                    ]
+                )
+            ),
+            etag_if_match=None,
+        )

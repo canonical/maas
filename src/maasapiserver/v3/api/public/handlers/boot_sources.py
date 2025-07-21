@@ -384,3 +384,40 @@ class BootSourcesHandler(Handler):
             boot_source_selection=boot_source_selection,
             self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections",
         )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_boot_source_boot_source_selection(
+        self,
+        boot_source_id: int,
+        id: int,
+        etag_if_match: str | None = Header(alias="if-match", default=None),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        query = QuerySpec(
+            where=BootSourceSelectionClauseFactory.and_clauses(
+                [
+                    BootSourceSelectionClauseFactory.with_id(id),
+                    BootSourceSelectionClauseFactory.with_boot_source_id(
+                        boot_source_id
+                    ),
+                ]
+            )
+        )
+        await services.boot_source_selections.delete_one(
+            query=query,
+            etag_if_match=etag_if_match,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

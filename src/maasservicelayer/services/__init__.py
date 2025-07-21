@@ -525,11 +525,6 @@ class ServiceCollectionV3:
             repository=PackageRepositoriesRepository(context),
             events_service=services.events,
         )
-        services.boot_sources = BootSourcesService(
-            context=context,
-            repository=BootSourcesRepository(context),
-            configuration_service=services.configurations,
-        )
         services.boot_source_cache = BootSourceCacheService(
             context=context,
             repository=BootSourceCacheRepository(context),
@@ -538,6 +533,13 @@ class ServiceCollectionV3:
             context=context,
             repository=BootSourceSelectionsRepository(context),
             boot_source_cache_service=services.boot_source_cache,
+        )
+        services.boot_sources = BootSourcesService(
+            context=context,
+            repository=BootSourcesRepository(context),
+            boot_source_cache_service=services.boot_source_cache,
+            boot_source_selections_service=services.boot_source_selections,
+            configuration_service=services.configurations,
         )
         services.hooked_configurations = HookedConfigurationsService(
             context=context,
