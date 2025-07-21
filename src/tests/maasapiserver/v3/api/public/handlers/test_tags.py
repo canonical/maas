@@ -66,6 +66,7 @@ class TestTagsApi(ApiCommonTests):
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/2"),
+            Endpoint(method="POST", path=f"{self.BASE_PATH}/1:evaluate"),
         ]
 
     async def test_list_other_page(
@@ -292,3 +293,51 @@ class TestTagsApi(ApiCommonTests):
             headers={"if-match": "my_etag"},
         )
         assert response.status_code == 204
+
+    async def test_tag_evaluate(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        tag_id_to_evaluate = 1
+
+        services_mock.tags = Mock(TagsService)
+        services_mock.tags.get_by_id.return_value = AUTOMATIC_TAG
+
+        response = await mocked_api_client_admin.post(
+            url=f"{self.BASE_PATH}/{tag_id_to_evaluate}:evaluate",
+        )
+
+        assert response.status_code == 202
+
+        services_mock.tags.get_by_id.assert_called_once_with(
+            id=tag_id_to_evaluate,
+        )
+        services_mock.tags.evaluate_tag.assert_called_once_with(
+            tag_to_evaluate=AUTOMATIC_TAG,
+        )
+
+    async def test_tag_evaluate_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        tag_id_to_evaluate = 1
+
+        services_mock.tags = Mock(TagsService)
+        services_mock.tags.get_by_id.return_value = None
+
+        response = await mocked_api_client_admin.post(
+            url=f"{self.BASE_PATH}/{tag_id_to_evaluate}:evaluate",
+        )
+
+        assert response.status_code == 404
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+        services_mock.tags.get_by_id.assert_called_once_with(
+            id=tag_id_to_evaluate,
+        )
+        services_mock.tags.evaluate_tag.assert_not_called()

@@ -278,3 +278,30 @@ class TestTagsService:
             event_type=EventTypeEnum.TAG,
             event_description=f"Tag '{AUTOMATIC_TAG.name}' deleted.",
         )
+
+    async def test_evaluate_tag(
+        self,
+        temporal_mock: Mock,
+        tags_service: TagsService,
+    ) -> None:
+        await tags_service.evaluate_tag(AUTOMATIC_TAG)
+
+        temporal_mock.register_workflow_call.assert_called_once_with(
+            workflow_name=TAG_EVALUATION_WORKFLOW_NAME,
+            workflow_id="tag-evaluation",
+            parameter=TagEvaluationParam(
+                AUTOMATIC_TAG.id, AUTOMATIC_TAG.definition
+            ),
+        )
+
+    async def test_evaluate_tag_leaves_manual_tags(
+        self,
+        temporal_mock: Mock,
+        tags_service: TagsService,
+    ) -> None:
+        new_tag = AUTOMATIC_TAG
+        new_tag.definition = ""
+
+        await tags_service.evaluate_tag(new_tag)
+
+        temporal_mock.register_workflow_call.assert_not_called()

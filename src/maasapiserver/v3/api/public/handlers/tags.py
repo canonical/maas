@@ -187,3 +187,29 @@ class TagsHandler(Handler):
     ) -> Response:
         await services.tags.delete_by_id(tag_id, etag_if_match)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/tags/{tag_id}:evaluate",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def evaluate_tag(
+        self,
+        tag_id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        tag = await services.tags.get_by_id(id=tag_id)
+        if tag is None:
+            raise NotFoundException()
+
+        await services.tags.evaluate_tag(tag_to_evaluate=tag)
+        return Response(status_code=status.HTTP_202_ACCEPTED)

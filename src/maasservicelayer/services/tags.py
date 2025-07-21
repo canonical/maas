@@ -110,3 +110,6 @@ class TagsService(BaseService[Tag, TagsRepository, TagBuilder]):
         return await super()._update_resource(
             existing_resource, builder, etag_if_match
         )
+
+    async def evaluate_tag(self, tag_to_evaluate: Tag) -> None:
+        await self._start_tag_evaluation_wf(tag_to_evaluate)
