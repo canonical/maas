@@ -9,6 +9,6 @@ from maasservicelayer.models.base import generate_builder, MaasBaseModel
 @generate_builder()
 class FileStorage(MaasBaseModel):
     filename: str
-    content: str
+    content: bytes
     key: str
     owner_id: Optional[int]
