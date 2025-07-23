@@ -118,7 +118,7 @@ class ConfigurationsHandler(Handler):
         )  # make pyright happy, since this endpoint requires authentication there is always a user
         configurations_request.check_typing()
         for configuration in configurations_request.configurations:
-            await services.configurations.set(
+            await services.hooked_configurations.set(
                 configuration.name.value, configuration.value
             )
             await services.events.record_event(

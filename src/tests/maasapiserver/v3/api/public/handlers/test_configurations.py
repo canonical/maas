@@ -272,7 +272,7 @@ class TestConfigurationsApi:
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ):
-        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.hooked_configurations = Mock(HookedConfigurationsService)
         services_mock.events = Mock(EventsService)
         response = await mocked_api_client_admin.put(
             self.BASE_PATH,
@@ -290,7 +290,7 @@ class TestConfigurationsApi:
             ),
         )
         assert response.status_code == 204
-        services_mock.configurations.set.assert_has_awaits(
+        services_mock.hooked_configurations.set.assert_has_awaits(
             [
                 call("theme", None),
                 call("use_rack_proxy", False),
