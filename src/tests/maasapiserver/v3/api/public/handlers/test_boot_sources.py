@@ -454,12 +454,13 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="POST", path=f"{self.BASE_PATH}/1/selections"),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1/selections/10"),
             Endpoint(
                 method="DELETE", path=f"{self.BASE_PATH}/1/selections/10"
             ),
         ]
 
-    async def test_get_list_boot_source_selection_given_a_boot_source(
+    async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
@@ -479,9 +480,32 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         )
         assert len(boot_source_selections_response.items) == 1
         assert boot_source_selections_response.total == 1
-        assert not boot_source_selections_response.next
+        assert boot_source_selections_response.next is None
 
-    async def test_get_boot_source_selection_given_a_boot_source(
+    async def test_list_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.list.return_value = ListResult[
+            BootSourceSelection
+        ](items=[TEST_BOOTSOURCESELECTION] * 2, total=2)
+
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.list.return_value = ListResult[BootSource](
+            items=[TEST_BOOTSOURCE_1, TEST_BOOTSOURCE_2], total=2
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        boot_sources_response = BootSourcesListResponse(**response.json())
+        assert len(boot_sources_response.items) == 2
+        assert boot_sources_response.total == 2
+        assert boot_sources_response.next == f"{self.BASE_PATH}?page=2&size=1"
+
+    async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
@@ -512,7 +536,27 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert boot_source_selection_response.labels == ["*"]
         assert boot_source_selection_response.boot_source_id == 12
 
-    async def test_post_boot_source_selection_to_a_boot_source(
+    async def test_get_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = None
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCESELECTION.boot_source_id}/selections/459"
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_post_201(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
@@ -545,7 +589,97 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert response.subarches == ["*"]
         assert response.labels == ["*"]
 
-    async def test_204_delete_boot_source_selection_from_a_boot_source(
+    async def test_put_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_by_id.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        updated = TEST_BOOTSOURCESELECTION.copy()
+        updated.arches = ["*"]
+        services_mock.boot_source_selections.update_by_id.return_value = (
+            updated
+        )
+
+        update_request = {
+            "os": "ubuntu",
+            "release": "noble",
+            "arches": ["*"],
+            "subarches": ["*"],
+            "labels": ["*"],
+        }
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections/{TEST_BOOTSOURCESELECTION.id}",
+            json=jsonable_encoder(update_request),
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        updated_boot_source_selection_response = BootSourceSelectionResponse(
+            **response.json()
+        )
+        assert updated_boot_source_selection_response.os == updated.os
+        assert (
+            updated_boot_source_selection_response.release == updated.release
+        )
+        assert updated_boot_source_selection_response.arches == updated.arches
+        assert (
+            updated_boot_source_selection_response.subarches
+            == updated.subarches
+        )
+        assert updated_boot_source_selection_response.labels == updated.labels
+
+    async def test_put_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_by_id.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        services_mock.boot_source_selections.update_by_id.side_effect = (
+            NotFoundException()
+        )
+
+        update_request = {
+            "os": "ubuntu",
+            "release": "noble",
+            "arches": ["*"],
+            "subarches": ["*"],
+            "labels": ["*"],
+        }
+
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections/{TEST_BOOTSOURCESELECTION.id}",
+            json=jsonable_encoder(update_request),
+        )
+
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_delete_204(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
@@ -563,7 +697,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         )
         assert response.status_code == 204
 
-    async def test_404_delete_boot_source_selection_from_a_boot_source(
+    async def test_delete_404(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,

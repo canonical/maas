@@ -18,6 +18,7 @@ from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
+from maasservicelayer.services.events import EventsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -30,6 +31,7 @@ class TestBootSourceSelectionsService(ServiceCommonTests):
             context=Context(),
             repository=Mock(BootSourceSelectionsRepository),
             boot_source_cache_service=Mock(BootSourceCacheService),
+            events_service=Mock(EventsService),
         )
 
     @pytest.fixture
@@ -83,3 +85,88 @@ class TestBootSourceSelectionsService(ServiceCommonTests):
             await self.test_create(
                 service_instance, test_instance, builder_model
             )
+
+    async def test_update_by_id(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance.repository.get_by_id.return_value = test_instance
+        service_instance.repository.update_by_id.return_value = test_instance
+        builder = BootSourceSelectionBuilder(
+            os="ubuntu",
+            release="jammy",
+            arches=["amd64"],
+            subarches=["*"],
+            labels=["*"],
+            boot_source_id=1,
+        )
+        objs = await service_instance.update_by_id(test_instance.id, builder)
+        assert objs == test_instance
+        service_instance.repository.update_by_id.assert_awaited_once_with(
+            id=test_instance.id, builder=builder
+        )
+
+    async def test_update_by_id_with_available_boot_resource(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance.boot_source_cache_service.exists.return_value = True
+        await self.test_update_by_id(
+            service_instance, test_instance, builder_model
+        )
+
+    async def test_update_by_id_with_inexistent_boot_resource(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance.boot_source_cache_service.exists.return_value = False
+        with pytest.raises(NotFoundException):
+            await self.test_update_by_id(
+                service_instance, test_instance, builder_model
+            )
+
+    async def test_update_by_id_not_found(
+        self, service_instance, builder_model
+    ):
+        builder = Mock(
+            return_value=BootSourceSelectionBuilder(
+                os="ubuntu",
+                release="jammy",
+                arches=["amd64"],
+                subarches=["*"],
+                labels=["*"],
+                boot_source_id=1,
+            )
+        )
+        await super().test_update_by_id_not_found(service_instance, builder)
+
+    async def test_update_by_id_etag_not_matching(
+        self, service_instance, test_instance, builder_model
+    ):
+        builder = Mock(
+            return_value=BootSourceSelectionBuilder(
+                os="ubuntu",
+                release="jammy",
+                arches=["amd64"],
+                subarches=["*"],
+                labels=["*"],
+                boot_source_id=1,
+            )
+        )
+        await super().test_update_by_id_etag_not_matching(
+            service_instance, test_instance, builder
+        )
+
+    async def test_update_by_id_etag_match(
+        self, service_instance, test_instance, builder_model
+    ):
+        builder = Mock(
+            return_value=BootSourceSelectionBuilder(
+                os="ubuntu",
+                release="jammy",
+                arches=["amd64"],
+                subarches=["*"],
+                labels=["*"],
+                boot_source_id=1,
+            )
+        )
+        await super().test_update_by_id_etag_match(
+            service_instance, test_instance, builder
+        )

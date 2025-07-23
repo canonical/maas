@@ -8,6 +8,7 @@ from simplestreams.mirrors import UrlMirrorReader
 from simplestreams.util import path_from_mirror_url
 import structlog
 
+from maascommon.enums.events import EventTypeEnum
 from maascommon.utils.fs import tempdir
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
@@ -26,6 +27,7 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.events import EventsService
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from maasservicelayer.utils.images.helpers import get_signing_policy
 from maasservicelayer.utils.images.keyrings import (
@@ -47,11 +49,32 @@ class BootSourcesService(
         boot_source_cache_service: BootSourceCacheService,
         boot_source_selections_service: BootSourceSelectionsService,
         configuration_service: ConfigurationsService,
+        events_service: EventsService,
     ) -> None:
         super().__init__(context, repository)
         self.boot_source_cache_service = boot_source_cache_service
         self.boot_source_selections_service = boot_source_selections_service
+        self.events_service = events_service
         self.configuration_service = configuration_service
+
+    async def post_create_hook(self, resource: BootSource) -> None:
+        await super().post_create_hook(resource)
+        await self.events_service.record_event(
+            event_type=EventTypeEnum.BOOT_SOURCE,
+            event_description=f"Created boot source {resource.url}",
+        )
+
+    async def post_update_hook(
+        self, old_resource: BootSource, updated_resource: BootSource
+    ) -> None:
+        if updated_resource.url != old_resource.url:
+            description = f"Updated boot source url from {old_resource.url} to {updated_resource.url}"
+        else:
+            description = f"Updated boot source {updated_resource.url}"
+        await self.events_service.record_event(
+            event_type=EventTypeEnum.BOOT_SOURCE,
+            event_description=description,
+        )
 
     async def post_delete_hook(self, resource: BootSource) -> None:
         # cascade delete
@@ -68,6 +91,11 @@ class BootSourcesService(
                     resource.id
                 )
             )
+        )
+
+        await self.events_service.record_event(
+            event_type=EventTypeEnum.BOOT_SOURCE,
+            event_description=f"Deleted boot source {resource.url}",
         )
 
     async def fetch(

@@ -387,6 +387,46 @@ class BootSourcesHandler(Handler):
 
     @handler(
         path="/boot_sources/{boot_source_id}/selections/{id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootSourceResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_boot_source_boot_source_selection(
+        self,
+        boot_source_id: int,
+        id: int,
+        boot_source_selection_request: BootSourceSelectionRequest,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        boot_source = await services.boot_sources.get_by_id(boot_source_id)
+        if not boot_source:
+            raise NotFoundException()
+
+        builder = boot_source_selection_request.to_builder(boot_source)
+        boot_source_selection = (
+            await services.boot_source_selections.update_by_id(id, builder)
+        )
+
+        response.headers["ETag"] = boot_source_selection.etag()
+        return BootSourceSelectionResponse.from_model(
+            boot_source_selection=boot_source_selection,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections",
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{id}",
         methods=["DELETE"],
         tags=TAGS,
         responses={

@@ -23,6 +23,7 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.events import EventsService
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from maastesting.factory import factory
@@ -39,6 +40,7 @@ class TestBootSourcesService(ServiceCommonTests):
             boot_source_cache_service=Mock(BootSourceCacheService),
             boot_source_selections_service=Mock(BootSourceSelectionsService),
             configuration_service=Mock(ConfigurationsService),
+            events_service=Mock(EventsService),
         )
 
     @pytest.fixture
@@ -243,6 +245,7 @@ class TestBootSourcesService(ServiceCommonTests):
         boot_source_cache_service_mock = Mock(BootSourceCacheService)
         boot_source_selections_service_mock = Mock(BootSourceSelectionsService)
         configuration_service_mock = Mock(ConfigurationsService)
+        events_service_mock = Mock(EventsService)
 
         boot_source_service = BootSourcesService(
             context=Context(),
@@ -250,6 +253,7 @@ class TestBootSourcesService(ServiceCommonTests):
             boot_source_cache_service=boot_source_cache_service_mock,
             boot_source_selections_service=boot_source_selections_service_mock,
             configuration_service=configuration_service_mock,
+            events_service=events_service_mock,
         )
 
         query = Mock(QuerySpec)
