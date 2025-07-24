@@ -1,6 +1,23 @@
 ## Release history
 
 This section recaps the release history of MAAS version 3.5.
+### MAAS 3.5.6 has been released
+
+We are happy to announce that MAAS 3.5.6 has been released, with the following bug fixes
+- [2063458](https://bugs.launchpad.net/maas/+bug/2063458): Node has no address family in common with server" when deploying a LXD VM on an IPv6-only bridge
+- [2109360](https://bugs.launchpad.net/bugs/2109360):  MAAS incorrectly calculates cache_size for SNAP
+- [2109681](https://bugs.launchpad.net/bugs/2109681): Proxmox power driver regression fix
+- maas-ui 3.5.0 46934a94591e7355fefff6a50bd55e1b4b8d8591
+
+### MAAS 3.5.5 has been released
+
+We are happy to announce that MAAS 3.5.5 has been released, with the following bug fixes
+- [2103903](https://bugs.launchpad.net/bugs/2103903): Deployment fails when using interface with OVS bridge
+- [2104260](https://bugs.launchpad.net/bugs/2104260):  Cloud-init 24.04.1 requires OVS bridge interface not to be optional in the netplan preseed network
+- [2104278](https://bugs.launchpad.net/bugs/2104278): MAAS KVM deploy with 24.04 fails sshd.service not found
+- [2104530](https://bugs.launchpad.net/bugs/2104530): plucky deployments fail after reboot to disk due to no network
+- [2104838](https://bugs.launchpad.net/bugs/2104838): MAAS snap incorrectly calculates cache_size
+- [2104907](https://bugs.launchpad.net/bugs/2104907): Enabling 'Verify SSL connections with system CA certificates' for Proxmox power type fails
 
 ### MAAS 3.5.4 has been released
 
@@ -47,7 +64,7 @@ We are happy to announce that MAAS 3.5.1 has been released, with the following b
 - [2073731](https://bugs.launchpad.net/bugs/2073731): BMC commissioning error on HPE Gen 10 with ILO 5
 - [1953049](https://bugs.launchpad.net/bugs/1953049): Error while calling ScanNetworks: Unable to get RPC connection for rack controller
 - [1980000](https://bugs.launchpad.net/bugs/1980000): dhcpd.conf not written due to byte size of hosts value in rpc
-- [2073575](https://bugs.launchpad.net/bugs/2073575): Incorrect display of bonding options
+- [2073575](https://bugs.launchpad.net/bugs/2073575): Incorrect display of bondig options
 - [2076292](https://bugs.launchpad.net/bugs/2076292): Installing MAAS does not install the required simplestream version
 - [2073540](https://bugs.launchpad.net/bugs/2073540): 	Error: ('Connection aborted.', FileNotFoundError(2, 'No such file or directory'))
 
@@ -319,7 +336,7 @@ There are no exposed controls, and there is no need for users to take any action
  - [2041854](https://bugs.launchpad.net/maas/+bug/2041854) : maas config-vault migrate failed due to region not restarting
  - [2039455](https://bugs.launchpad.net/maas/+bug/2039455) : Temporal system status traceback
  - [2015411](https://bugs.launchpad.net/maas/+bug/2015411) : StaticIPAddress matching query does not exist
- - [1923315](https://bugs.launchpad.net/maas/+bug/1923315) : MAAS API ignores osystem and distro parameters
+ - [1923315](https://bugs.launchpad.net/maas/+bug/1923315) : MaaS API ignores osystem and distro parameters
  - [1979058](https://bugs.launchpad.net/maas/+bug/1979058) : "space" option still exists as available on Subnet API while being deprecated
  - [2036759](https://bugs.launchpad.net/maas/+bug/2036759) : Adding a custom MAAS sstreams image source without trailing / fails
  - [2037420](https://bugs.launchpad.net/maas/+bug/2037420) : MAAS metadata_url contains a domain name even when DNS resolution is disallowed
@@ -329,4 +346,3 @@ There are no exposed controls, and there is no need for users to take any action
  - [2020397](https://bugs.launchpad.net/maas/+bug/2020397) : Custom images which worked ok is not working with 3.2
  - [2019216](https://bugs.launchpad.net/maas/+bug/2019216) : Flaky test- dhcp notify test_sends_notification_over_socket_for_processing
  - [2026283](https://bugs.launchpad.net/maas/+bug/2026283) : TestDynamicDNSUpdate.test_as_reverse_record_update flaky test
-

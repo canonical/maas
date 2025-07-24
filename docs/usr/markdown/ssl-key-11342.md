@@ -1,4 +1,45 @@
-In the MAAS CLI, the `sslkey` parameter was previously used to manage Secure Socket Layer (SSL) keys, which are an obsolete method for secure communication between clients and the MAAS server.  The `sslkey` parameter allowed administrators to add, update, or remove SSL keys and their associated certificates within the MAAS environment.
+Enter keyword arguments in the form `key=value`.
 
-MAAS now uses TLS (Transport Layer Security), which replaces and deprecates the old SSL capability.  This newer functionality ensures that data transmitted over the network remains secure and confidential.
+## Delete an SSL key
 
+```bash
+maas $PROFILE sslkey delete [--help] [-d] [-k] id [data ...] 
+```
+
+#### Positional arguments
+- id
+
+
+Deletes the SSL key with the given ID.
+
+#### Keyword "id"
+Required Int. An SSH key ID.
+
+#### Command-line options
+| Option         | Effect                                        |
+|----------------|-----------------------------------------------|
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
+| -k, --insecure | Disable SSL certificate check                 |
+
+## Retrieve an SSL key
+
+```bash
+maas $PROFILE sslkey read [--help] [-d] [-k] id [data ...] 
+```
+
+#### Positional arguments
+- id
+
+
+Retrieves an SSL key with the given ID.
+
+#### Keyword "id"
+Required Int. An SSL key ID.
+
+#### Command-line options
+| Option         | Effect                                        |
+|----------------|-----------------------------------------------|
+| --help, -h     | Show this help message and exit              |
+| -d, --debug    | Display more information about API responses |
+| -k, --insecure | Disable SSL certificate check                 |

@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-3-0" target = "_blank">Let us know.</a>*
-
 We are happy to announce the release of MAAS 3.0. This release provides new features, along with critical and high-priority [bug fixes](#heading--maas-3-bug-fixes).
 
 MAAS 3.0 can be installed fresh (recommended) with:
@@ -34,7 +32,7 @@ At this point, you may proceed with a normal installation.
 
 With the advent of MAAS 3.0, we are removing support for RSD pods. Registered pods and their machines will be removed by MAAS upon upgrading to MAAS 3.0.
 
-Note that new features are categorized by the level of release at which they became accessible to users.
+Note that new features are categorised by the level of release at which they became accessible to users.
 
 ## MAAS 3.0 RC1
 
@@ -182,7 +180,7 @@ On the API using the allocate operation on the machines endpoint a machine may a
 
 ### IBM Z DPM partition support
 
-IBM Z14 GA2 (LinuxOne II) and above mainframe partitions are supported in MAAS 3.0. Note that partitions (LPARS) must pre-configured and use qeth-based network devices (use HyperV sockets and properly-defined storage groups like Hipersockets or OSA adapters) and properly-defined (FCP) storage groups.. IBM Z DPM Partitions can be added as a chassis, which allows you to add all partitions at once.
+IBM Z14 GA2 (LinuxOne II) and above mainframe partitions are supported in MAAS 3.0. Note that partitions (LPARS) must pre-configured and use qeth-based network devices (use HyperV sockets and properly-defined storage groups like Hipersockets or OSA adaptors) and properly-defined (FCP) storage groups.. IBM Z DPM Partitions can be added as a chassis, which allows you to add all partitions at once.
 
 ### Proxmox support
 
@@ -323,7 +321,7 @@ Here are the bugs that have been `Fix Released` in MAAS 3.0 Beta 4:
 |[#1923842](https://bugs.launchpad.net/bugs/1923842)|Can't use action menu on machine details page |High |
 |[#1917667](https://bugs.launchpad.net/bugs/1917669)|Commissioning/testing scripts no longer show ETA or progress |Undecided |
 |[#1917669](https://bugs.launchpad.net/bugs/1917669)|No way to view previous commissioning or testing script results |Undecided |
-|[#1917670](https://bugs.launchpad.net/bugs/1917670)|Storage and interface tests not associated with a device |Undecided |
+|[#1917670](https://bugs.launchpad.net/bugs/1917670)|Storage and interface tests not assoicated with a device |Undecided |
 |[#1917671](https://bugs.launchpad.net/bugs/1917671)|Commissioning/testing scripts not updated after starting commissioning or testing |Undecided |
 |[#1917794](https://bugs.launchpad.net/bugs/1917794)|Unable to view full history of events in UI |Undecided |
 |[#1918964](https://bugs.launchpad.net/bugs/1918964)|UI shows action unavailable after performing action |Undecided |
@@ -400,4 +398,3 @@ Here are the bugs that have been `Fix Released` in MAAS 3.0 Beta 1:
 |[#1916073](https://bugs.launchpad.net/bugs/1916073)|MAAS should install qemu-efi-aarch64 on arm64 KVM pods |Undecided| 
 |[#1916317](https://bugs.launchpad.net/bugs/1916317)|UI is using API to request scripts with full content |Undecided| 
 |[#1919381](https://bugs.launchpad.net/bugs/1919381)|typo "veryiying" in info message in smartctl-validate |Undecided|
-

@@ -1,30 +1,29 @@
-MAAS supports two SimpleStreams: candidate and stable. Both contain Ubuntu, CentOS, bootloaders, and release notifications. MAAS defaults to stable.  MAAS standard provisioning images include:
+MAAS relies on a repository of OS images for machine deployment, called a SimpleStreams source.  There are two streams: candidate and stable.  The stable stream is fully tested, reliable, and generally considered production-ready.  Candidate images are essentially pre-release images -- they are newer, so they may have bugs or incomplete testing. Use the stable stream if you're deploying machines in production, and candidate if you need support for a newer OS version that is not yet stable. MAAS defaults to stable if you do not make a choice.
 
-- Ubuntu and CentOS OS images.
-- Bootloaders extracted from the Ubuntu archive.
-- Release notifications.
-
-MAAS syncs images hourly at the region level. Rack controller syncs run every 5 minutes. MAAS can only work with one boot source at a time.
+Both contain either Ubuntu or CentOS, a bootloader, an initial RAMdisk filesystem, and release notifications.  MAAS syncs images hourly at the region level. Rack controllers cache files as needed.
 
 ## Switch image streams
 
-UI**
-*Images* > *Change source* > *Custom* > set *URL* to:
-- Candidate: `http://images.maas.io/ephemeral-v3/candidate`
-- Stable: `maas.io`
+You can switch streams at any time using these procedures:
 
-CLI**
+**UI**
+*Images* > *Change source* > *Custom* > set *URL* to:
+- Stable: `http://images.maas.io/ephemeral-v3/stable`
+- Candidate: `http://images.maas.io/ephemeral-v3/candidate`
+
+**CLI**
 ```nohighlight
 BOOT_SOURCE_ID=$(maas $PROFILE boot-sources read)
-maas $PROFILE boot-source update $BOOT_SOURCE_ID url="http..."
 ```
 
 ## Manage images
 
-UI**
+Choose which images to keep locally.  Images must be downloaded before they can be deployed.
+
+**UI**
 *Main menu* > *Images* > *Select/Unselect* > *Save selection*
 
-CLI**
+**CLI**
 ```nohighlight
 maas $PROFILE boot-sources read  # list boot sources
 maas $PROFILE boot-source-selections create $SOURCE_ID \
@@ -56,11 +55,11 @@ maas $PROFILE boot-sources create \
     url=$URL keyring_filename=$KEYRING_FILE
 ```
 
-Use `/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg` as the keyring file.
+Use `/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg` as the keyring file if the new source is a mirror of the official streams.
 
 ## Use a custom mirror
 
-UI**
+**UI**
 - *Images* > *Change source* > *Custom* > enter *URL* > *Connect*.
 - For advanced options, select *Show advanced options*.
 - Set up a local mirror (below) for faster imports.
@@ -100,4 +99,3 @@ MAAS saves images to the directory defined by 'IMAGE_DIR'. The new boot source U
 Verify image availability at the URL above. Regularly update your mirror with `cron` to fetch the latest images.
 
 Set `URL=https://$MIRROR/maas/images/ephemeral-v3/stable/` and `KEYRING_FILE=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg`, where `$MIRROR` is the mirror server.
-

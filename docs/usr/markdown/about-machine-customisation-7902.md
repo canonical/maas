@@ -78,7 +78,7 @@ For deployments necessitating advanced storage configurations, consider using th
 
 ### LVM layout
 
-The Logical Volume Management (LVM) layout in MAAS provides a flexible disk configuration, allowing for dynamic resizing and management of storage volumes.
+The LVM (Logical Volume Management) layout in MAAS provides a flexible disk configuration, allowing for dynamic resizing and management of storage volumes.
 
 LVM abstracts physical storage devices, grouping physical drives into volume groups. LVM supports logical volumes that span multiple disks, which makes it easy to resize volumes and move data with minimal downtime.
 
@@ -192,7 +192,7 @@ The bcache layout is particularly beneficial in scenarios where:
 
 ### RAID and MAAS
 
-A Redundant Array of Independent Disks (RAID) in MAAS offers a method to enhance storage performance by combining multiple physical disks into a single logical unit. MAAS supports both software and hardware RAID configurations, each with its own setup considerations.
+RAID (Redundant Array of Independent Disks) in MAAS offers a method to enhance storage performance by combining multiple physical disks into a single logical unit. MAAS supports both software and hardware RAID configurations, each with its own setup considerations.
 
 #### Software RAID
 
@@ -212,11 +212,11 @@ All layout types support UEFI boot, with MAAS automatically creating a 512MB FAT
 
 Once the initial storage layout has been configured on a machine, you can perform many operations to view and adjust the entire storage layout for the machine. In MAAS there are two different types of block devices.
 
-Physical* 
+**Physical* 
 
 A physical block device is a physically attached block device such as a 100GB hard drive connected to a server.
 
-Virtual* 
+**Virtual* 
 
 A virtual block device is a block device that is exposed by the Linux kernel when an operation is performed. Almost all the operations on a physical block device can be performed on a virtual block device, such as a RAID device exposed as md0.
 
@@ -287,7 +287,7 @@ Additionally, the template for each phase typically consists of two files. The f
 
 The `enlist` template, for example, contains only minimal variables, whereas `enlist_userdata` includes both user variables and initialization logic.
 
-Tempita's inheritance mechanism is the reverse of what you might expect. Inherited files, such as `enlist_userdata`, become the new template which can then reference variables from the higher-level file, such as `enlist`.
+Tempura's inheritance mechanism is the reverse of what you might expect. Inherited files, such as `enlist_userdata`, become the new template which can then reference variables from the higher-level file, such as `enlist`.
 
 ### Template naming 
 

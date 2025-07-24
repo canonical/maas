@@ -1,44 +1,35 @@
-Using Packer, you can build custom, MAAS-deployable images for the following operating systems:
+Using packer, you can build custom, MAAS-deployable images for an ever growing list of operating systems, including:
 
-- RHEL 7
-- RHEL 8
-- CentOS 7
-- Oracle Linux 8
-- Oracle Linux 9
-- VMware ESXi
+- RHEL 7/8/9/10
+- Rocky
+- SLES
+- Oracle Linux 8/9
+- VMware ESXi 8/9
+- Windows 2025
 
-You can also build deployment [Windows](https://maas.io/docs/how-to-build-maas-images#p-17423-build-windows-images) images.
+You can find the current list of templates [here](https://github.com/canonical/packer-maas?tab=readme-ov-file#existing-templates)
 
 ## Build Linux images
 
 ### Verify requirements
 
-You need a machine running Ubuntu 18.04+ or 22.04+ with the ability to run KVM virtual machines. Ensure the following components are available:
+You need a machine running Ubuntu 22.04+ with the ability to run KVM virtual machines. Additional packages might be necessary, and you can check your environment by running the following command in the template directory:
 
-| **OS**              | **Additional Requirements**                                                                 |
-|---------------------|---------------------------------------------------------------------------------------------|
-| RHEL 7          | MAAS 2.3+, Curtin 18.1-59+, RHEL 7 DVD ISO                                                 |
-| RHEL 8          | MAAS 2.3+, Curtin 18.1-59+, RHEL 8 DVD ISO                                                 |
-| CentOS 7        | MAAS 2.3+, Curtin 18.1-59+                                                                 |
-| Oracle Linux 8  | MAAS 3.5+, Curtin 23.1+, libnbd-bin, nbdkit, fuse2fs, Oracle Linux 8 DVD ISO               |
-| Oracle Linux 9  | MAAS 3.5+, Curtin 23.1+, libnbd-bin, nbdkit, fuse2fs, Oracle Linux 9 DVD ISO               |
-| VMware ESXi     | MAAS 2.5+, qemu-kvm, qemu-utils, VMware ESXi ISO                                           |
+```bash
+make check-deps
+```
 
 ### Gather components
 
-Collect Packer, its dependencies and templates, and a suitable ISO file before starting.
+Collect packer, its dependencies and templates, and a suitable ISO file before starting.
+
+For most templates, Packer is not capable of automatically downloading the ISO due to licensing. In these cases the user is responsible for obtaining the required files manually and point the template to the local file.
 
 #### Install Packer
 
 Packer is the tool of choice for building custom MAAS images.
 
-##### For Ubuntu 18.04+
-
-```bash
-sudo apt install packer
-```
-
-##### For Ubuntu 22.04+ (Required for Oracle Linux 8/9)
+##### For Ubuntu 22.04+
 
 ```bash
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
@@ -71,36 +62,18 @@ sudo apt install pip
 Clone the Packer templates repository:
 
 ```bash
-git clone https://GitHub.com/canonical/packer-maas.git
+git clone https://github.com/canonical/packer-maas.git
 ```
 
 #### Download ISO files
 
-Download the appropriate ISO for your desired OS version and place it in the corresponding subdirectory:
-
-| **OS**              | **ISO Location**                    | **Subdirectory**  |
-|---------------------|--------------------------------------|-------------------|
-| RHEL 7          | RHEL 7 DVD ISO                      | `rhel7`           |
-| RHEL 8          | RHEL 8 DVD ISO                      | `rhel8`           |
-| CentOS 7        | Downloaded via template             | `centos7`         |
-| Oracle Linux 8  | Oracle Linux 8 DVD ISO              | `ol8`             |
-| Oracle Linux 9  | Oracle Linux 9 DVD ISO              | `ol9`             |
-| VMware ESXi     | VMware ESXi ISO                     | `vmware-esxi`     |
+Download the appropriate ISO for your desired OS version and place it in the corresponding subdirectory. Please check the template's README for the exact type of media that is required. 
 
 ### Customize the image
 
-Modify the Kickstart file to customize the deployment image:
+Most images can be customized by updating the auto-installer configuration file, for example a Kickstart file (RHEL based distros) or YAML file.
 
-| **OS**              | **Kickstart File**            |
-|---------------------|-------------------------------|
-| RHEL 7          | `http/rhel7.ks`               |
-| RHEL 8          | `http/rhel8.ks`               |
-| CentOS 7        | `http/centos7.ks`             |
-| Oracle Linux 8  | `http/ol8.ks`                 |
-| Oracle Linux 9  | `http/ol9.ks`                 |
-| VMware ESXi     | `packer-maas/vmware-esxi/KS.CFG` |
-
-Refer to the respective Kickstart documentation for detailed customization options.
+Refer to the template's README for detailed customization options.
 
 ### Configure a build proxy (optional)
 
@@ -124,58 +97,15 @@ export KS_PROXY=$HTTP_PROXY
 
 ### Build the image
 
-#### Using the makefile
-
-Run the following command in the appropriate subdirectory (`rhel7`, `rhel8`, `centos7`, `ol8`, `ol9`, `vmware-esxi`):
+Run the following command in the appropriate subdirectory (`rhel7`, `rhel8`, `centos7`, `ol8`, `ol9`, `vmware-esxi`, etc):
 
 ```bash
 make ISO=/PATH/TO/your-iso-file.iso
 ```
 
-#### Manually, Using Packer
-
-Alternatively, manually run Packer:
-
-For RHEL 7/8:
-
-```bash
-sudo PACKER_LOG=1 packer build -var 'iso_path=/PATH/TO/your-iso-file.iso' rhel7.json  # or rhel8.json
-```
-
-For CentOS 7:
-
-```bash
-sudo PACKER_LOG=1 packer build centos7.json
-```
-
-For Oracle Linux 8/9:
-
-```bash
-packer init .
-PACKER_LOG=1 packer build .
-```
-
-For VMware ESXi:
-
-```bash
-sudo PACKER_LOG=1 packer build -var 'vmware_esxi_iso_path=/PATH/TO/your-esxi-iso-file.iso' vmware-esxi.json
-```
-
-Note: Packer runs in headless mode by default. To view the installation output, connect via VNC or set `headless` to `false`.
-
 ### Upload the image to MAAS
 
-#### Commands for each OS
-
-| **OS**              | **Upload Command**                                                                                       |
-|---------------------|---------------------------------------------------------------------------------------------------------|
-| RHEL 7          | `maas $PROFILE boot-resources create name='rhel/7-custom' title='RHEL 7 Custom' ...`                   |
-| RHEL 8          | `maas $PROFILE boot-resources create name='rhel/8-custom' title='RHEL 8 Custom' ...`                   |
-| CentOS 7        | `maas $PROFILE boot-resources create name='centos/7-custom' title='CentOS 7 Custom' ...`               |
-| Oracle Linux 8  | `maas $PROFILE boot-resources create name='ol/8.8' title='Oracle Linux 8.8' ...`                       |
-| Oracle Linux 9  | `maas $PROFILE boot-resources create name='ol/9.2' title='Oracle Linux 9.2' ...`                       |
-| VMware ESXi     | `maas $PROFILE boot-resources create name='esxi/6.7' title='VMware ESXi 6.7' ...`                      |
-
+Please refer to the template's README file for upload instructions
 
 ### Verify and log in
 
@@ -187,7 +117,6 @@ Deploy the image and log in to verify customizations:
 | CentOS 7        | `centos`             |
 | Oracle Linux 8/9| `cloud-user`         |
 | VMware ESXi     | `root`               |
-
 
 ## Build Windows images
 
@@ -204,9 +133,9 @@ To build the image:
 * ovmf
 * cloud-image-utils
 * [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli), v1.7.0 or newer
-* A copy of the [packer-maas](https://GitHub.com/canonical/packer-maas) git repository:
+* A copy of the [packer-maas](https://github.com/canonical/packer-maas) git repository:
 ```
-git clone https://GitHub.com/canonical/packer-maas.git
+git clone https://github.com/canonical/packer-maas.git
 ```
 Note that Ubuntu 22.04+ is required to build Windows 11 images due to ```swtpm``` (Software TPM) package requirements.
 
@@ -276,7 +205,7 @@ Path to Microsoft Windows ISO image used to build the MAAS image.
 
 ##### PACKER_LOG
 
-Enable (1) or Disable (0) verbose Packer logs. The default value is set to 0.
+Enable (1) or Disable (0) verbose packer logs. The default value is set to 0.
 
 ##### PKEY
 
@@ -310,4 +239,3 @@ maas admin boot-resources create \
     filetype='ddtgz' \
     content@=windows-server-amd64-root-dd.gz
 ```
-

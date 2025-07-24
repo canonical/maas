@@ -95,4 +95,3 @@ output=$(sudo hprest get EmbeddedSata --selector HpB...
 ```
 
 And there you have it: A quick rundown for handling commissioning scripts in MAAS, simplified for easy use.
-

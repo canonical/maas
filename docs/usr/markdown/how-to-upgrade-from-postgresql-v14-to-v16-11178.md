@@ -89,4 +89,3 @@ Finally, delete configuration files and data from the old version:
 ```
 
 This completes the upgrade from PostgreSQL v14 to v16.
-

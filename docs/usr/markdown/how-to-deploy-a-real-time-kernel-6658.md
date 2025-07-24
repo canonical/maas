@@ -81,4 +81,3 @@ After deployment, execute these commands on the host to confirm RT kernel activa
 ```
 
 Your machine should now be up and running with an RT kernel.
-

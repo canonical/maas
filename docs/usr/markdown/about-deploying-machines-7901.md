@@ -20,7 +20,7 @@ Juju adds SSH keys to machines under its control.
 
 ## Pre-seeding deployments
 
-MAAS also supports machine customization with a process called "preseeding."
+MAAS also supports machine customisation with a process called "preseeding."
 
 ## Basic requirements for deployment
 
@@ -37,7 +37,7 @@ To deploy, you must configure the underlying machine to netboot. Such a machine 
 9. The machine boots the ephemeral image.
 10. The ephemeral image runs `curtin`, with passed pre-seed information, to configure the machine's hardware.
 11. The desired deployment (target) image is retrieved by `curtin`, which installs and boots that deployment image. Note that the curtin installer uses an image-based method and is now the only installer used by MAAS. Although the older debian-installer method has been removed, curtin continues to support preseed files. 
-12. The target image runs its embedded `cloud-init` script set, including any customizations and pre-seeds.
+12. The target image runs its embedded `cloud-init` script set, including any customisations and pre-seeds.
 
 Once this is done, the target image is up and running on the machine, and the machine can be considered successfully deployed.
 
@@ -49,9 +49,8 @@ Also note that, before deploying, you should take two key actions:
 
 ## Deploying ephemeral OS instances (MAAS 3.5 and higher)
 
-With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images are possible. These ephemeral deployments run completely in the machine's memory and need not access (or be aware of) any disk resources. 
+With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images are possible.  These ephemeral deployments run completely in the machine's memory and need not access (or be aware of) any disk resources.  
 
 Note that networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
 
 You can choose an ephemeral OS deployment from the deployment configuration screen in the machine list: Just select the "Deploy in memory" option and deploy as normal.
-

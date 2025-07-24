@@ -206,7 +206,7 @@ maas $PROFILE block-device update [--help] [-d] [-k] system_id id [data ...]
 
 Update block device on a given machine.
 
-Machines must have a status of Ready to have access to all options. Machines with Deployed status can only have the name, model, serial, and/or id_path updated for a block device. This is intended to allow a bad block device to be replaced while the machine remains deployed.
+Machines must have a status of Ready to have access to all options. Machines with Deployed status can only have the name, model, serial, and/or id_path updated for a block device. This is intented to allow a bad block device to be replaced while the machine remains deployed.
 
 #### Keyword "name"
 Optional String. (Physical devices) Name of the block device.
@@ -264,7 +264,7 @@ Optional String. Model of the block device.
 Optional String. Serial number of the block device.
 
 #### Keyword "id_path"
-Optional String. Only used if model and serial cannot be provided. This should be a path that is fixed and doesn't change depending on the boot order or kernel version.
+Optional String.  Only used if model and serial cannot be provided. This should be a path that is fixed and doesn't change depending on the boot order or kernel version.
 
 #### Keyword "size"
 Required String. Size of the block device.
@@ -296,4 +296,3 @@ List all block devices belonging to a machine.
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
-

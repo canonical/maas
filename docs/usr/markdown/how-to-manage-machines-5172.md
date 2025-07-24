@@ -1,4 +1,4 @@
-MAAS offers powerful tools to manage machines, from discovery and commissioning to deployment, configuration, and troubleshooting. This guide covers everything you need, whether working with bare metal servers, virtual machines, or pre-deployed systems.
+Maas offers powerful tools to manage machines, from discovery and commissioning to deployment, configuration, and troubleshooting. This guide covers everything you need, whether working with bare metal servers, virtual machines, or pre-deployed systems.
 
 ## Discover machines 
 
@@ -8,10 +8,10 @@ Before managing machines, you need to discover, identify, and locate them.
 
 MAAS monitors network traffic to automatically detect connected devices, including machines, switches, bridges, and other network hardware. 
 
-UI**
+**UI**
 *Networking* > *Network discovery*
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE discoveries read
 ```
@@ -20,10 +20,10 @@ CLI**
 
 #### Show all registered machines
 
-UI**
+**UI**
 *Machines* (View list)
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE machines read | jq -r '(["HOSTNAME","SYSID","STATUS"] | join(","))'
 ```
@@ -32,21 +32,21 @@ CLI**
 
 Every machine has a unique system ID; find them with this command:
 
-UI**
+**UI**
 1. *Machines* > *[machine]* 
 2. Check browser URL: `...machine/<SYSTEM_ID>/summary`)
 
-CLI**
+**CLI**
 ```bash
     maas admin machines read | jq -r '(["HOSTNAME","SYSID"] | (., map(length*"-"))),(.[] | [.hostname, .system_id]) | @tsv' | column -t
 ```
 
 Use the system ID to get details for a particular machine.
 
-UI**
+**UI**
 *Machines* > [Select machine]
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE machine read $SYSTEM_ID
 ```
@@ -55,17 +55,17 @@ CLI**
 
 Use MAAS search syntax to find specific machines.
 
-UI**
+**UI**
 *Hardware* > *Machines > *[Search bar]* and enter a search term; MAAS updates the list dynamically.
 
 Search syntax:
 | Type | Example |
 |:----|:----|
 | Exact | pod:=able-cattle |
-| Partial | pod:able,cattle |
+|Partial | pod:able,cattle |
 | Negation | pod:!cattle |
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE machines read | jq -r '(["HOSTNAME","SYSID","STATUS"] | join(","))'
 ```
@@ -74,7 +74,7 @@ CLI**
 
 Filter your search against many attributes, using the MAAS UI.
 
-UI**
+**UI**
 *Hardware* > *Machines* > *Filters*
 
 MAAS dynamically builds search terms that you can mimic, copy and re-use.
@@ -87,10 +87,10 @@ Machines are automatically commissioned when added to MAAS.
 
 To manually add a machine, provide architecture, MAC address, and power settings.
 
-UI**
+**UI**
 *Machines* > *Add hardware*
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE machines create architecture=$ARCH \
     mac_addresses=$MAC_ADDRESS power_type=$POWER_TYPE \
@@ -108,7 +108,7 @@ MAAS automatically commissions newly-added machines.  To change this, enter:
 
 Use the chassis feature to add multiple machines at once. 
 
-UI**
+**UI**
 *Machines* > *Add hardware* > *Chassis* > (fill in the form) > *Save*
 
 The required fields will change based on the type of chassis you choose.
@@ -117,10 +117,10 @@ The required fields will change based on the type of chassis you choose.
  
 Quickly duplicate an existing machine’s configuration.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Clone*
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE machine clone $SOURCE_SYSTEM_ID new_hostname=$NEW_HOSTNAME
 ```
@@ -162,12 +162,12 @@ MAAS can also provision virtual machines (VMs).  LXD is the recommended VM host.
 
 Use the recommended LXD host to create new LXD VMs.
 
-UI**
-1. *KVM* > *LXD* > *Add LXD host* > Enter *Name*, *LXD address* and select *Generate new certificate*.
-2. Run the provided command in the terminal to add trust.
-3. *Check authentication* > *Add new project* | *Select existing project* > *Save LXD host*.
+**UI**
+1. *KVM* > *LXD* > *Add LXD host* > Enter *Name*, *LXD address* and select *Generate new certificate*
+3. Run the provided command in the terminal to add trust.
+4. *Check authentication* > *Add new project* | *Select existing project* > *Save LXD host*.
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE vm-hosts create type=lxd power_address=$LXD_ADDRESS project=$PROJECT_NAME
 ```
@@ -176,10 +176,10 @@ CLI**
 
 Newly-created LXD VMs are automatically commissioned by default.
 
-UI**
+**UI**
 *KVM* > *VM host name* > *Add VM* > *Name* > *Cores* > *RAM* > *Disks* > *Compose machine*
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE vm-host compose $VM_HOST_ID cores=4 memory=8G disks=1:size=20G
 ```
@@ -195,10 +195,10 @@ LXD VMs can be moved between [LXD projects](https://maas.io/docs/about-lxd).
 
 Deleted VMs cannot be recovered.
 
-UI**
+**UI**
 *Machine* > *[machine]* > *Delete* > *Delete machine*
 
-CLI**
+**CLI**
   ```bash
   maas $PROFILE machine delete $SYSTEM_ID
   ```
@@ -207,14 +207,14 @@ CLI**
 
 Turn machines on if needed; turn them off abruptly or gracefully.
 
-### Turn on a machines
+### Turn on a machine
 
 Machine booting varies by PXE or deployed OS.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Power on*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine start $SYSTEM_ID
 ```
@@ -223,10 +223,10 @@ maas $PROFILE machine start $SYSTEM_ID
 
 Use this method when you want to immediately turn off a machine.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Power off*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine stop $SYSTEM_ID
 ```
@@ -243,10 +243,10 @@ maas $PROFILE machine stop $SYSTEM_ID force=false
 
 Set the correct power type so MAAS can control the machine.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Configuration* > *Power* > *Edit*
 
-CLI**
+**CLI**
 ```bash
     maas $PROFILE machine update $SYSTEM_ID power_type="$POWER_TYPE"
 ```
@@ -269,10 +269,10 @@ Commissioning gathers hardware information needed to correctly deploy images.
 
 Commission a machine to make it deployable.
 
-UI**
+**UI**
 *Machines* > *[machine(s)]* > *Take action* > *Commission*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine commission $SYSTEM_ID
 ```
@@ -281,10 +281,10 @@ maas $PROFILE machine commission $SYSTEM_ID
 
 Ensure the hardware is working correctly.
 
-UI**
+**UI**
 *Machines* > *[machine(s)]* > *Take action* > *Test*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine test $SYSTEM_ID tests=cpu,storage
 ```
@@ -293,20 +293,20 @@ maas $PROFILE machine test $SYSTEM_ID tests=cpu,storage
 
 Periodically review test results, even when there are no failures.
 
-UI**
+**UI**
 *Machines* > *[machine(s)]* > *Test results*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine read $SYSTEM_ID | jq '.test_results'
 ```
 
 #### Override failed tests
 
-UI**
+**UI**
 *Machines* > *[machine(s)]* > *Take action* > *Override test results*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine set-test-result $SYSTEM_ID result=passed
 ```
@@ -350,30 +350,30 @@ Many kernel parameters, including the kernel version, can be specified prior to 
 
 Set the system-wide, default minimum kernel version for commissioning:
 
-UI**
+**UI**
 *Settings* > *Configuration* > *Commissioning* > *Default minimum kernel version*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE maas set-config name=default_min_hwe_kernel value=$KERNEL
 ```
 
 Set a default minimum kernel version per machine:
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Configuration* > *Edit* > *Minimum kernel*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine update $SYSTEM_ID min_hwe_kernel=$HWE_KERNEL
 ```
 
 Deploy a machine with a specific kernel:
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Deploy* > *[Choose kernel]*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine deploy $SYSTEM_ID distro_series=$SERIES hwe_kernel=$KERNEL
 ```
@@ -382,10 +382,10 @@ maas $PROFILE machine deploy $SYSTEM_ID distro_series=$SERIES hwe_kernel=$KERNEL
 
 Specify system-wide boot options.
 
-UI**
+**UI**
 *Settings* > *Kernel parameters*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE maas set-config name=kernel_opts value='$KERNEL_OPTIONS'
 ```
@@ -394,20 +394,20 @@ maas $PROFILE maas set-config name=kernel_opts value='$KERNEL_OPTIONS'
 
 Specify a default layout for all machines:
 
-UI**
+**UI**
 *Settings > Storage > Default layout*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE maas set-config name=default_storage_layout value=$LAYOUT_TYPE
 ```
 
 Specify a storage layout for a specific machine:
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Storage* > *[Edit layout]*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=$LAYOUT_TYPE
 ```
@@ -418,10 +418,10 @@ Machines must be in the "Ready" state to modify their storage layout.
 
 A flat layout means one partition uses the whole disk, formatted with an `ext4` filesystem and mounted as root (`/`).  Create a per-machine flat layout with these commands:
 
-UI**
+**UI**
 *Machines* > Choose machine > *Storage* > *Change storage layout* > Choose dropdown "Flat"
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=flat
 ```
@@ -434,10 +434,10 @@ The flat layout is ideal for general-purpose filesystems that support large file
 
 An LVM layout offers flexible and dynamic disk management, with easier resizing, snapshots, and volume management.  Create an LVM layout with the following commands:
 
-UI**
+**UI**
 *Machines* > Choose machine > *Storage* > *Change storage layout* > Choose dropdown "LVM"
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=lvm
 ```
@@ -448,14 +448,14 @@ LVM comes in handy when using multiple physical disks as a single, larger volume
 
 #### bcache layout
 
-The bcache layout uses the boot disk as the backing device and a Solid-State Drive (SSD) as the cache.  This arrangement speeds up read and write operations by caching frequently-accessed data on the SSD.
+The bcache layout uses the boot disk as the backing device and a Solid-State Drive (SSD) as the cache.  This arrangement speeds up read and write operations by caching frequently-access data on the SSD.
 
 Create a bcache layout with the following commands:
 
-UI**
+**UI**
 *Machines* > Choose machine > *Storage* > *Change storage layout* > Choose dropdown "bcache"
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=bcache
 ```
@@ -470,12 +470,12 @@ The `bcache` layout is useful and cost effective when you want to improve I/O pe
 
 #### VMFS6/VMFS7 layouts
 
-The VMFS6 layout is specifically designed for deploying VMWare ESXi hosts.  It automates the creation of the partitions and datastores required for VMWare.  Use the following commands to create a `vmfs6` or `vmfs7` layout:
+The VMFS6 layout is specifically design for deploying VMWare ESXi hosts.  It automates the creation of the partitions and datastores required for VMWare.  Use the following commands to create a `vmfs6` or `vmfs7` layout:
 
-UI**
+**UI**
 *Machines* > Choose machine > *Storage* > *Change storage layout* > Choose dropdown "VMFS6" or dropdown "VMFS7"
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=vmfs6
 ```
@@ -492,10 +492,10 @@ The choice of VMFS6 or VMFS7 depends on the VMWare version being deployed.  Both
 
 The `blank` layout removes all existing storage configuration from a machine's disks.  No actual disk layout is provided, so partitions, filesystems and mount points must be created manually.  Create this layout with the following commands:
 
-UI**
+**UI**
 *Machines* > Choose machine > *Storage* > *Change storage layout* > Choose dropdown "No storage..."
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=blank
 ```
@@ -521,16 +521,16 @@ The configuration contains two main sections:
 
 ```nohighlight
 "mounts": {
-	"/": {
-		"device": "sda2",
-		"options": "noatime"
-	},
-	"/boot/efi": {
-		"device": "sda1"
-	},
-	"/data": {
-		"device": "raid0"
-	}
+  "/": {
+    "device": "sda2",
+    "options": "noatime"
+  },
+  "/boot/efi": {
+    "device": "sda1"
+  },
+  "/data": {
+    "device": "raid0"
+  }
 }
 ```
 
@@ -538,8 +538,8 @@ A complete `$MAAS_STORAGE_CONFIG_FILE` would look like this:
 
 ```nohighlight
 {
-	"layouts": {
-		"sda": {
+    "layouts": {
+        "sda": {
            ...
         },
         "raid0": {
@@ -607,10 +607,10 @@ The following details can be specified:
 }
 ```
 
-An `lvm` entry defines a VG (volume group) composed by a set of disks or partitions (listed as `members`). Optionally it's possible to specify the LVs (logical volumes) to create.
+An `lvm` entry defines a VG (volume group) composed by a set of disks or partitions (listed as `members`). Optionally it's possible to specify the the LVs (logical volumes) to create.
 Those are defined similarly to partitions, with a name and size (and optionally the filesystem).
 
-##### bcache
+##### Bcache
 
 ```nohighlight
 "bcache0": {
@@ -641,8 +641,6 @@ Optionally the `cache-mode` for the Bcache can be specified.
     "sde"
   ],
   "fs": "btrfs"
-  ...
-  }
 ```
 
 A `raid` entry defines a RAID with a set of member devices.
@@ -656,10 +654,10 @@ Deploy machines to make them available for use.
 
 Claim exclusive ownership of a machine to avoid conflicts.
 
-UI**
+**UI**
 *Machines* > *[machine(s)]* > *Take action* > *Allocate*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machines allocate system_id=$SYSTEM_ID
 ```
@@ -668,24 +666,24 @@ maas $PROFILE machines allocate system_id=$SYSTEM_ID
 
 Simultaneously deploy multiple machines, if desired, within resource limits.
 
-UI**
+**UI**
 *Machines* > *[machine(s)]* > *Take action* > *Deploy* > *Deploy machine*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine deploy $SYSTEM_ID
 ```
 
-#### Deploy to RAM 
+### Deploy to RAM (ephemeral deployment) 
 
 Deploy an ephemeral instance (into machine RAM, ignoring any disk drives).
 
 Learn more about [ephemeral deployment](https://maas.io/docs/about-deploying-machines#p-17464-deploying-ephemeral-os-instances-maas-35-and-higher)
 
-UI**
+**UI**
 *Machines* > *[machine(s)]* > *Take action* > *Deploy* > *Deploy in memory* > *Deploy machine*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine deploy $SYSTEM_ID ephemeral_deploy=true
 ```
@@ -694,10 +692,10 @@ maas $PROFILE machine deploy $SYSTEM_ID ephemeral_deploy=true
 
 Deploy a bare-metal machine as a virtual machine host.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Deploy* > *Install KVM*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine deploy $SYSTEM_ID install_kvm=True
 ```
@@ -706,10 +704,10 @@ maas $PROFILE machine deploy $SYSTEM_ID install_kvm=True
 
 Use cloud-init to vary machine use-cases and application loads.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Deploy* > *Configuration options*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine deploy $SYSTEM_ID cloud_init_userdata="$(cat cloud-init.yaml)"
 ```
@@ -720,10 +718,10 @@ Use rescue mode to log onto a running machine and diagnose issues.
 
 ### Enter rescue mode
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Enter rescue mode*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine enter-rescue-mode $SYSTEM_ID
 ```
@@ -740,10 +738,10 @@ Diagnose machine failures using standard tools and methods.
 
 Attempt to put the machine back in service.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Exit rescue mode*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine exit-rescue-mode $SYSTEM_ID
 ```
@@ -752,10 +750,10 @@ maas $PROFILE machine exit-rescue-mode $SYSTEM_ID
 
 Indicate to all users that a machine is not currently usable.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Mark broken*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machines mark-broken $SYSTEM_ID
 ```
@@ -764,10 +762,10 @@ maas $PROFILE machines mark-broken $SYSTEM_ID
 
 Remove the "broken" designation.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Mark fixed*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machines mark-fixed $SYSTEM_ID
 ```
@@ -780,10 +778,10 @@ Release a machine to return it to the "Ready" state.  Remove a machine to perman
 
 MAAS will indicate if a machine cannot currently be released.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Release*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machines release $SYSTEM_ID
 ```
@@ -792,10 +790,10 @@ maas $PROFILE machines release $SYSTEM_ID
 
 Erasing a disk can take a long time, depending on the chosen method.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Release* > *Enable disk erasure options*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine release $SYSTEM_ID erase=true secure_erase=true quick_erase=true
 ```
@@ -804,10 +802,10 @@ maas $PROFILE machine release $SYSTEM_ID erase=true secure_erase=true quick_eras
 
 Once deleted, a machine cannot be recovered.
 
-UI**
+**UI**
 *Machines* > *[machine]* > *Take action* > *Delete*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machine delete $SYSTEM_ID
 ```
@@ -824,11 +822,10 @@ maas $PROFILE machine delete $SYSTEM_ID force=true
 
 Periodically review your machine list to verify settings.
 
-UI**
+**UI**
 *Machines* > *(View list or search)*
 
-CLI**
+**CLI**
 ```bash
 maas $PROFILE machines read | jq -r '.[].hostname'
 ```
-

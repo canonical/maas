@@ -8,4 +8,3 @@ maas migrate [-h]
 | Option     | Effect                          |
 |------------|---------------------------------|
 | -h, --help | show this help message and exit |
-

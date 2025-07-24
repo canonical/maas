@@ -100,7 +100,7 @@ Required String. Name of the domain.
 Optional String. Class type of the domain.
 
 #### Keyword "forward_dns_servers"
-Optional String. List of forward dns server IP addresses when MAAS is not authoritative.
+Optional String. List of forward dns server IP addresses when MAAS is not authorititative.
 
 #### Command-line options
 | Option | Effect |
@@ -141,4 +141,3 @@ Required Int. Serial number to use next.
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
-

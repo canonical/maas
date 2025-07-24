@@ -1,4 +1,4 @@
-This page provides a MAAS metrics reference, categorized into two sections: "Cluster metrics" and "Performance metrics."
+This page provides a MAAS metrics reference, categorised into two sections: "Cluster metrics" and "Performance metrics."
 
 ## Cluster metrics
 
@@ -663,4 +663,3 @@ Time required to transfer a file to a machine using TFTP
    | maas_id | MAAS cluster UUID |
    | filename | file requested |
    [/details]
-

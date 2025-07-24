@@ -1,21 +1,21 @@
 Operating MAAS without internet access is possible, but requires planning. Four key elements must be in place for a seamless experience:
 
-1. Snap updates via snap proxy
+1. Snap updates via the Enterprise Store.
 2. Local package repository
 3. MAAS-specific images from a local mirror
 4. Other OS images from various sources
 
 Some of these resources can also utilize a transparent proxy, minimizing impact on your existing MAAS setup.
 
-## Snap proxy
+## Enterprise Store
 
-To manage snaps in an air-gapped setup, use the Snap Store Proxy. This feature is currently in a password-protected internal Beta. The proxy serves as an intermediary, eliminating the need for devices to connect to the internet. Steps to get this up:
+To manage snaps in an air-gapped setup, use the Enterprise Store. This  eliminates the need for devices to connect to the internet. Steps to get this up:
 
-1. Register the Snap Store Proxy on a machine with internet access.
-2. Secure your proxy with HTTP.
-3. Populate the proxy with snaps needed for your MAAS environment.
+1. Register the Enterprise Store on a machine with internet access.
+2. Secure your deployment with HTTP.
+3. Populate the store with snaps needed for your MAAS environment.
 
-For detailed guidance, see the [official documentation](https://docs.ubuntu.com/snap-store-proxy/en/airgap).
+For detailed guidance, see the [official documentation](https://documentation.ubuntu.com/enterprise-store).
 
 ## Local package update
 
@@ -54,4 +54,3 @@ To avoid altering MAAS or Ubuntu settings, establish a transparent proxy:
 3. Adjust DNS settings to point to these local mirrors.
 
 This way, your existing configurations remain untouched.
-
