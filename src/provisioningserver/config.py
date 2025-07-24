@@ -148,6 +148,8 @@ DEFAULT_KEYRINGS_PATH = os.getenv(
     "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
 )
 
+TFTP_MAX_BLKSIZE = 8192
+
 
 class BootSourceSelection(Schema):
     """Configuration validator for boot source selection configuration."""
@@ -792,6 +794,11 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
             accept_python=True,
             if_missing=get_maas_data_path("tftp_root"),
         ),
+    )
+    tftp_max_blksize = ConfigurationOption(
+        "tftp_max_blksize",
+        "The maximum block size allowed for TFTP sessions. Used to cap the negotiated block size if a higher value is requested by the clients.",
+        Number(min=8, max=TFTP_MAX_BLKSIZE, if_missing=TFTP_MAX_BLKSIZE),
     )
 
     # GRUB options.
