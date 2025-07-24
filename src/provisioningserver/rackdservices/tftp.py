@@ -454,10 +454,19 @@ def track_tftp_latency(
 
 
 class TransferTimeTrackingTFTP(TFTP):
+    def __init__(self, backend, max_blksize):
+        super().__init__(backend)
+        self.max_blksize = max_blksize
+
     @inlineCallbacks
     def _startSession(
         self, datagram, addr, mode, prometheus_metrics=PROMETHEUS_METRICS
     ):
+        # Hack to enforce a max blksize. Remove in case https://github.com/shylent/python-tx-tftp/pull/33 will be merged upstream.
+        blksize = datagram.options.get(b"blksize")
+        if blksize and int(blksize) > self.max_blksize:
+            datagram.options[b"blksize"] = b"%d" % self.max_blksize
+
         session = yield super()._startSession(datagram, addr, mode)
         stream_session = getattr(session, "session", None)
         # replace the standard cancel() method with one that tracks
@@ -505,7 +514,7 @@ class TFTPService(MultiService):
 
     """
 
-    def __init__(self, resource_root, port, client_service):
+    def __init__(self, resource_root, port, max_blksize, client_service):
         """
         :param resource_root: The root directory for this TFTP server.
         :param port: The port on which each server should be started.
@@ -514,6 +523,7 @@ class TFTPService(MultiService):
         super().__init__()
         self.backend = TFTPBackend(resource_root, client_service)
         self.port = port
+        self.max_blksize = max_blksize
         # Establish a periodic call to self.updateServers() every 45
         # seconds, so that this service eventually converges on truth.
         # TimerService ensures that a call is made to it's target
@@ -545,7 +555,7 @@ class TFTPService(MultiService):
             if not IPAddress(address).is_link_local():
                 tftp_service = UDPServer(
                     self.port,
-                    TransferTimeTrackingTFTP(self.backend),
+                    TransferTimeTrackingTFTP(self.backend, self.max_blksize),
                     interface=address,
                 )
                 tftp_service.setName(address)

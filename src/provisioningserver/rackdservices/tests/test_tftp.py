@@ -720,6 +720,7 @@ class TestTFTPService(MAASTestCase):
             resource_root=example_root,
             client_service=example_client_service,
             port=example_port,
+            max_blksize=8196,
         )
         tftp_service.updateServers()
         # The "tftp" service is a multi-service containing UDP servers for
@@ -760,6 +761,7 @@ class TestTFTPService(MAASTestCase):
             resource_root=self.make_dir(),
             client_service=Mock(),
             port=factory.pick_port(),
+            max_blksize=8196,
         )
         tftp_service.updateServers()
 
@@ -806,6 +808,7 @@ class TestTFTPService(MAASTestCase):
             resource_root=self.make_dir(),
             client_service=Mock(),
             port=factory.pick_port(),
+            max_blksize=8196,
         )
         tftp_service.updateServers()
 
@@ -833,7 +836,7 @@ class TestTransferTimeTrackingTFTP(MAASTestCase):
 
     def clean_filename(self, path):
         datagram = RQDatagram(path, b"octet", {})
-        tftp = TransferTimeTrackingTFTP(sentinel.backend)
+        tftp = TransferTimeTrackingTFTP(sentinel.backend, 8196)
         return tftp._clean_filename(datagram)
 
     def test_clean_filename(self):
@@ -882,7 +885,7 @@ class TestTransferTimeTrackingTFTPStartSession(MAASTestCase):
         session = FakeSession(stream_session)
         tftp_mock = self.patch(tftp.protocol.TFTP, "_startSession")
         tftp_mock.return_value = succeed(session)
-        tracking_tftp = TransferTimeTrackingTFTP(sentinel.backend)
+        tracking_tftp = TransferTimeTrackingTFTP(sentinel.backend, 8196)
         datagram = RQDatagram(b"file.txt", b"octet", {})
         result = yield tracking_tftp._startSession(
             datagram,
@@ -898,6 +901,34 @@ class TestTransferTimeTrackingTFTPStartSession(MAASTestCase):
             'maas_tftp_file_transfer_latency_count{filename="file.txt"} 1.0',
             metrics,
         )
+
+    @inlineCallbacks
+    def test_max_blksize_is_used(self):
+        prometheus_metrics = create_metrics(
+            METRICS_DEFINITIONS, registry=prometheus_client.CollectorRegistry()
+        )
+        stream_session = FakeStreamSession()
+        session = FakeSession(stream_session)
+        tftp_mock = self.patch(tftp.protocol.TFTP, "_startSession")
+        tftp_mock.return_value = succeed(session)
+        tracking_tftp = TransferTimeTrackingTFTP(sentinel.backend, 512)
+        datagram = RQDatagram(b"file.txt", b"octet", {b"blksize": b"1048"})
+        yield tracking_tftp._startSession(
+            datagram,
+            "192.168.1.1",
+            "read",
+            prometheus_metrics=prometheus_metrics,
+        )
+
+        call_args = tftp_mock.call_args[0]
+        datagram_arg = call_args[0]
+
+        self.assertIsInstance(datagram_arg, RQDatagram)
+        self.assertEqual(datagram_arg.options[b"blksize"], b"512")
+        self.assertEqual(datagram_arg.filename, b"file.txt")
+        self.assertEqual(datagram_arg.mode, b"octet")
+        self.assertEqual(call_args[1], "192.168.1.1")
+        self.assertEqual(call_args[2], "read")
 
 
 class TestTrackTFTPLatency(MAASTestCase):
