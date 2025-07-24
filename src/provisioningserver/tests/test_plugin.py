@@ -298,8 +298,10 @@ class TestProvisioningServiceMaker(MAASTestCase):
         with ClusterConfiguration.open() as config:
             tftp_root = config.tftp_root
             tftp_port = config.tftp_port
+            tftp_max_blksize = config.tftp_max_blksize
 
         self.assertEqual(tftp_service.port, tftp_port)
         self.assertIsInstance(tftp_service.backend, TFTPBackend)
         self.assertEqual(tftp_service.backend.base.path, tftp_root)
+        self.assertEqual(tftp_service.max_blksize, tftp_max_blksize)
         self.assertTrue(os.path.exists(tftp_root))

@@ -76,12 +76,17 @@ class ProvisioningServiceMaker:
         http_service.setName("http_service")
         return http_service
 
-    def _makeTFTPService(self, tftp_root, tftp_port, rpc_service):
+    def _makeTFTPService(
+        self, tftp_root, tftp_port, tftp_max_blksize, rpc_service
+    ):
         """Create the dynamic TFTP service."""
         from provisioningserver.rackdservices.tftp import TFTPService
 
         tftp_service = TFTPService(
-            resource_root=tftp_root, port=tftp_port, client_service=rpc_service
+            resource_root=tftp_root,
+            port=tftp_port,
+            max_blksize=tftp_max_blksize,
+            client_service=rpc_service,
         )
         tftp_service.setName("tftp")
 
@@ -170,7 +175,9 @@ class ProvisioningServiceMaker:
         update_check_service.setName("version_update_check")
         return update_check_service
 
-    def _makeServices(self, tftp_root, tftp_port, clock=reactor):
+    def _makeServices(
+        self, tftp_root, tftp_port, tftp_max_blksize, clock=reactor
+    ):
         # Several services need to make use of the RPC service.
         rpc_service = self._makeRPCService()
         yield rpc_service
@@ -185,7 +192,9 @@ class ProvisioningServiceMaker:
         yield self._makeSnapUpdateCheckService(rpc_service)
         # The following are network-accessible services.
         yield self._makeHTTPService()
-        yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)
+        yield self._makeTFTPService(
+            tftp_root, tftp_port, tftp_max_blksize, rpc_service
+        )
 
     def _loadSettings(self):
         # Load the settings from rackd.conf.
@@ -225,6 +234,7 @@ class ProvisioningServiceMaker:
         with ClusterConfiguration.open() as config:
             tftp_root = config.tftp_root
             tftp_port = config.tftp_port
+            tftp_max_blksize = config.tftp_max_blksize
 
         from provisioningserver.boot import install_boot_method_templates
 
@@ -242,7 +252,7 @@ class ProvisioningServiceMaker:
         if secret is not None:
             # only setup services if the shared secret is configured
             for service in self._makeServices(
-                tftp_root, tftp_port, clock=clock
+                tftp_root, tftp_port, tftp_max_blksize, clock=clock
             ):
                 service.setServiceParent(services)
 
