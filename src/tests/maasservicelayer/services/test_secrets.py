@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
 from typing import Any
@@ -16,6 +16,7 @@ from maasservicelayer.services.secrets import (
     LocalSecretsStorageService,
     SecretNotFound,
     SecretsService,
+    SecretsServiceCache,
     SecretsServiceFactory,
     VaultSecretsService,
 )
@@ -189,8 +190,32 @@ class TestVaultSecretService(SecretsServiceTestSuite):
         connection = Mock(AsyncConnection)
         context = Context(connection=connection)
         return VaultSecretsService(
-            context=context, vault_manager=AsyncVaultManagerMock()
+            context=context,
+            cache=SecretsServiceCache(vault_manager=AsyncVaultManagerMock()),
         )
+
+    async def test_vault_manager_is_cached(self, mocker):
+        connection = Mock(AsyncConnection)
+        context = Context(connection=connection)
+        vault_service = VaultSecretsService(
+            context=context, cache=SecretsServiceCache()
+        )
+
+        get_region_vault_manager_mock = mocker.patch(
+            "maasservicelayer.services.secrets.get_region_vault_manager",
+            return_value=AsyncVaultManagerMock(),
+        )
+
+        await vault_service.get_simple_secret(
+            self.DEFAULT_PATH, default=self.DEFAULT_SECRET
+        )
+        get_region_vault_manager_mock.assert_called_once()
+
+        await vault_service.get_simple_secret(
+            self.DEFAULT_PATH, default=self.DEFAULT_SECRET
+        )
+        # Should have been cached
+        get_region_vault_manager_mock.assert_called_once()
 
 
 @pytest.mark.asyncio

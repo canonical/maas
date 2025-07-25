@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Type
 
@@ -363,3 +363,17 @@ class TestAsyncVaultApiClient:
                 request=KvV2WriteRequest(data={"test_key": "test_value"}),
                 headers=headers,
             )
+
+    @pytest.mark.asyncio
+    async def test_close(self, mock_aioresponse) -> None:
+        client = AsyncVaultApiClient(base_url="http://test:5200/")
+        await client.close()
+        headers = {"X-Vault-Token": "wrong"}
+        with pytest.raises(RuntimeError) as e:
+            await client.kv_v2_create_or_update(
+                "test/dummy",
+                "secret",
+                request=KvV2WriteRequest(data={"test_key": "test_value"}),
+                headers=headers,
+            )
+        assert str(e.value) == "Session is closed"

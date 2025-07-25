@@ -1,8 +1,7 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import os
-import signal
 
 from asyncpg import Connection
 import structlog
@@ -25,4 +24,4 @@ class VaultMigrationPostgresListener(PostgresListener):
         logger.info(
             "sys_vault_migration notification has been received. Shutting down the application."
         )
-        os.kill(os.getpid(), signal.SIGTERM)
+        os._exit(0)
