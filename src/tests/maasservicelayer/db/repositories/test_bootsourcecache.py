@@ -100,6 +100,17 @@ class TestBootSourceCacheClauseFactory:
             == "maasserver_bootsourcecache.boot_source_id = 1"
         )
 
+    def test_with_ids(self) -> None:
+        clause = BootSourceCacheClauseFactory.with_ids({1, 2})
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_bootsourcecache.id IN (1, 2)"
+        )
+
 
 class TestBootSourceCacheRepository(RepositoryCommonTests[BootSourceCache]):
     @pytest.fixture

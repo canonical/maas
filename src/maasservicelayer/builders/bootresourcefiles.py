@@ -2,12 +2,18 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
+import os
+from typing import Self, Union
 
 from pydantic import Field
 
 from maascommon.enums.boot_resources import BootResourceFileType
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
+from maasservicelayer.simplestreams.models import (
+    BootloaderFile,
+    DownloadableFile,
+    ImageFile,
+)
 
 
 class BootResourceFileBuilder(ResourceBuilder):
@@ -33,3 +39,47 @@ class BootResourceFileBuilder(ResourceBuilder):
     sha256: Union[str, Unset] = Field(default=UNSET, required=False)
     size: Union[int, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+
+    @classmethod
+    def _from_simplestreams_file(
+        cls, file: DownloadableFile, resource_set_id: int, extra: dict
+    ) -> Self:
+        return cls(
+            filename=os.path.basename(file.path),
+            sha256=file.sha256,
+            size=file.size,
+            filetype=BootResourceFileType(file.ftype),
+            extra=extra,
+            resource_set_id=resource_set_id,
+        )
+
+    @classmethod
+    def _from_simplestreams_bootloader_file(
+        cls, file: BootloaderFile, resource_set_id: int
+    ) -> Self:
+        extra = {
+            "src_package": file.src_package,
+            "src_release": file.src_release,
+            "src_version": file.src_version,
+        }
+        return cls._from_simplestreams_file(file, resource_set_id, extra)
+
+    @classmethod
+    def _from_simplestreams_image_file(
+        cls, file: ImageFile, resource_set_id: int
+    ) -> Self:
+        extra = {"kpackage": file.kpackage} if file.kpackage else {}
+        return cls._from_simplestreams_file(file, resource_set_id, extra)
+
+    @classmethod
+    def from_simplestreams_file(
+        cls, file: DownloadableFile, resource_set_id: int
+    ) -> Self:
+        if isinstance(file, BootloaderFile):
+            return cls._from_simplestreams_bootloader_file(
+                file, resource_set_id
+            )
+        elif isinstance(file, ImageFile):
+            return cls._from_simplestreams_image_file(file, resource_set_id)
+        else:
+            raise Exception("Unknown simplestreams file.")

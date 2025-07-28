@@ -26,6 +26,7 @@ import sys
 from types import FunctionType, ModuleType
 from typing import get_args, get_origin, Self, TypeVar, Union
 
+from pydantic import BaseModel
 from pydantic.fields import ModelField
 
 MODELS_PATH = "src/maasservicelayer/models"
@@ -217,9 +218,7 @@ class BuilderModel(GenericModel):
         for field in sorted(self.fields, key=lambda f: f.name):
             field_lines += f"    {field.name}: {process_string(str(field.annotation))} = Field(default=UNSET, required=False)\n"
         method_lines = ""
-        for method_name, method_obj in self.methods:
-            if method_name.startswith("__"):
-                continue
+        for _, method_obj in self.methods:
             method_lines += "".join(inspect.getsourcelines(method_obj)[0])
         return CLASS_TEMPLATE.format(
             model_name=self.name,
@@ -260,8 +259,9 @@ class BuilderModule(GenericModule[BuilderModel]):
             if name.endswith("Builder") and name != "ResourceBuilder":
                 builder_methods = inspect.getmembers(
                     class_,
-                    lambda x: inspect.isfunction(x)
-                    and not getattr(ResourceBuilder, x.__name__, False),
+                    lambda x: (inspect.isfunction(x) or inspect.ismethod(x))
+                    and not getattr(ResourceBuilder, x.__name__, False)
+                    and not getattr(BaseModel, x.__name__, False),
                 )
                 fields = list(class_.__fields__.values())
                 fields = [f for f in fields if f.name not in EXCLUDED_FIELDS]

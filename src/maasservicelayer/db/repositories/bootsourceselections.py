@@ -24,6 +24,16 @@ class BootSourceSelectionClauseFactory(ClauseFactory):
             )
         )
 
+    @classmethod
+    def with_os(cls, os: str) -> Clause:
+        return Clause(condition=eq(BootSourceSelectionTable.c.os, os))
+
+    @classmethod
+    def with_release(cls, release: str) -> Clause:
+        return Clause(
+            condition=eq(BootSourceSelectionTable.c.release, release)
+        )
+
 
 class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
     def get_repository_table(self) -> Table:

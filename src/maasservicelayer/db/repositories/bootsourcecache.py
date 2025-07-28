@@ -42,6 +42,10 @@ class BootSourceCacheClauseFactory(ClauseFactory):
             condition=eq(BootSourceCacheTable.c.boot_source_id, boot_source_id)
         )
 
+    @classmethod
+    def with_ids(cls, ids: set[int]) -> Clause:
+        return Clause(condition=BootSourceCacheTable.c.id.in_(ids))
+
 
 class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
     def get_repository_table(self) -> Table:

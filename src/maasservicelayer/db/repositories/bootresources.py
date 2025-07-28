@@ -24,6 +24,12 @@ class BootResourceClauseFactory(ClauseFactory):
         )
 
     @classmethod
+    def with_architecture_starting_with(cls, partial_arch: str) -> Clause:
+        return Clause(
+            condition=BootResourceTable.c.architecture.startswith(partial_arch)
+        )
+
+    @classmethod
     def with_alias(cls, alias: str | None) -> Clause:
         return Clause(condition=eq(BootResourceTable.c.alias, alias))
 

@@ -3,15 +3,23 @@
 
 from operator import eq
 
-from sqlalchemy import Table
+from sqlalchemy import join, Table
 
+from maascommon.enums.boot_resources import BootResourceFileType
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import BootResourceFileTable
+from maasservicelayer.db.tables import (
+    BootResourceFileTable,
+    BootResourceSetTable,
+)
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 
 
 class BootResourceFileClauseFactory(ClauseFactory):
+    @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=BootResourceFileTable.c.id.in_(ids))
+
     @classmethod
     def with_sha256_starting_with(cls, partial_sha256: str) -> Clause:
         return Clause(
@@ -23,10 +31,62 @@ class BootResourceFileClauseFactory(ClauseFactory):
         return Clause(condition=eq(BootResourceFileTable.c.sha256, sha256))
 
     @classmethod
+    def with_sha256_in(cls, sha256_list: list[str]) -> Clause:
+        return Clause(
+            condition=BootResourceFileTable.c.sha256.in_(sha256_list)
+        )
+
+    @classmethod
+    def with_resource_set_ids(cls, ids: list[int]) -> Clause:
+        return Clause(
+            condition=BootResourceFileTable.c.resource_set_id.in_(ids)
+        )
+
+    @classmethod
     def with_resource_set_id(cls, id: int) -> Clause:
         return Clause(
             condition=eq(BootResourceFileTable.c.resource_set_id, id)
         )
+
+    @classmethod
+    def with_boot_resource_ids(cls, ids: list[int]) -> Clause:
+        return Clause(
+            condition=BootResourceSetTable.c.resource_id.in_(ids),
+            joins=[
+                join(
+                    BootResourceSetTable,
+                    BootResourceFileTable,
+                    eq(
+                        BootResourceSetTable.c.id,
+                        BootResourceFileTable.c.resource_set_id,
+                    ),
+                )
+            ],
+        )
+
+    @classmethod
+    def with_boot_resource_id(cls, id: int) -> Clause:
+        return Clause(
+            condition=eq(BootResourceSetTable.c.resource_id, id),
+            joins=[
+                join(
+                    BootResourceSetTable,
+                    BootResourceFileTable,
+                    eq(
+                        BootResourceSetTable.c.id,
+                        BootResourceFileTable.c.resource_set_id,
+                    ),
+                )
+            ],
+        )
+
+    @classmethod
+    def with_filename(cls, filename: str) -> Clause:
+        return Clause(condition=eq(BootResourceFileTable.c.filename, filename))
+
+    @classmethod
+    def with_filetype(cls, filetype: BootResourceFileType) -> Clause:
+        return Clause(condition=eq(BootResourceFileTable.c.filetype, filetype))
 
 
 class BootResourceFilesRepository(BaseRepository[BootResourceFile]):

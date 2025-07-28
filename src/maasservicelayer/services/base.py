@@ -274,6 +274,12 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         await self.post_update_hook(existing_resource, updated_resource)
         return updated_resource
 
+    async def pre_delete_many_hook(self, resources: List[M]) -> None:
+        """
+        Override this function in your Service to perform pre-hooks with the objects to be deleted
+        """
+        return None
+
     async def post_delete_many_hook(self, resources: List[M]) -> None:
         """
         Override this function in your Service to perform post-hooks with the deleted objects
@@ -281,6 +287,8 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         return None
 
     async def delete_many(self, query: QuerySpec) -> List[M]:
+        resources = await self.get_many(query)
+        await self.pre_delete_many_hook(resources)
         resources = await self.repository.delete_many(query=query)
         await self.post_delete_many_hook(resources)
         return resources

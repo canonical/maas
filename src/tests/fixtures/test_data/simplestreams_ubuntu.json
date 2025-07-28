@@ -1,0 +1,286 @@
+{
+ "content_id": "com.ubuntu.maas:stable:v3:download",
+ "datatype": "image-ids",
+ "format": "products:1.0",
+ "products": {
+  "com.ubuntu.maas.stable:v3:boot:22.04:amd64:ga-22.04": {
+   "arch": "amd64",
+   "kflavor": "generic",
+   "krel": "jammy",
+   "label": "stable",
+   "os": "ubuntu",
+   "release": "jammy",
+   "release_codename": "Jammy Jellyfish",
+   "release_title": "22.04 LTS",
+   "subarch": "ga-22.04",
+   "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t,hwe-u,hwe-v,hwe-w,ga-16.04,ga-16.10,ga-17.04,ga-17.10,ga-18.04,ga-18.10,ga-19.04,ga-19.10,ga-20.04,ga-20.10,ga-21.04,ga-21.10,ga-22.04",
+   "support_eol": "2027-04-21",
+   "support_esm_eol": "2032-04-21",
+   "version": "22.04",
+   "versions": {
+    "20250615": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic",
+       "path": "jammy/amd64/20250615/ga-22.04/generic/boot-initrd",
+       "sha256": "9da92e6190185bd398e2ee4308d7d8ec34b848c28ffeaffa5912c811573eae98",
+       "size": 115936699
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic",
+       "path": "jammy/amd64/20250615/ga-22.04/generic/boot-kernel",
+       "sha256": "ed3c73945b3117daa4e95c3a1070c368ee409b541e6c02fc42e3ec2c8d5c9488",
+       "size": 11731176
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "jammy/amd64/20250615/squashfs.manifest",
+       "sha256": "ca86e6acc56964970e618a7ea74f7fa15e9934e738b460bbf005ca431280b6c3",
+       "size": 17668
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "jammy/amd64/20250615/squashfs",
+       "sha256": "480c285d96db9e501e63d44b64714288448b368007e0b3eb97bf77a2a64cfd78",
+       "size": 455872512
+      }
+     }
+    },
+    "20250718": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic",
+       "path": "jammy/amd64/20250718/ga-22.04/generic/boot-initrd",
+       "sha256": "df84c92a3c918b7602930aba078b5809cce99328f463813927fc5effc8676d38",
+       "size": 115876578
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic",
+       "path": "jammy/amd64/20250718/ga-22.04/generic/boot-kernel",
+       "sha256": "54fe42a379c138a86bf12279ed26e5ac2b4c0821823978831ce288c2cd9a121f",
+       "size": 11708744
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "jammy/amd64/20250718/squashfs.manifest",
+       "sha256": "4fde9ca48290efe6afd7e911083a547d3f94a3ee9d3755914e29aa7805a7d456",
+       "size": 17741
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "jammy/amd64/20250718/squashfs",
+       "sha256": "edbd57a3d69392e6942ef4a35bc7c062cc234b9d1d48d99bf3e15401ceda0d46",
+       "size": 455462912
+      }
+     }
+    }
+   }
+  },
+    "com.ubuntu.maas.stable:v3:boot:22.04:amd64:hwe-22.04": {
+   "arch": "amd64",
+   "kflavor": "generic",
+   "krel": "jammy",
+   "label": "stable",
+   "os": "ubuntu",
+   "release": "jammy",
+   "release_codename": "Jammy Jellyfish",
+   "release_title": "22.04 LTS",
+   "subarch": "hwe-22.04",
+   "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t,hwe-u,hwe-v,hwe-w,ga-16.04,ga-16.10,ga-17.04,ga-17.10,ga-18.04,ga-18.10,ga-19.04,ga-19.10,ga-20.04,ga-20.10,ga-21.04,ga-21.10,ga-22.04",
+   "support_eol": "2027-04-21",
+   "support_esm_eol": "2032-04-21",
+   "version": "22.04",
+   "versions": {
+    "20250718": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic-hwe-22.04",
+       "path": "jammy/amd64/20250718/hwe-22.04/generic/boot-initrd",
+       "sha256": "f5f0cde6d0d8e69c75a6bfeca0aeb0746ef53871f121b620393505a2f1acbb6b",
+       "size": 180542978
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic-hwe-22.04",
+       "path": "jammy/amd64/20250718/hwe-22.04/generic/boot-kernel",
+       "sha256": "1fba6d0211f35cc71440d8ae481f21afd9bad7e8e706b2b82cfcb60e2464ba16",
+       "size": 14969224
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "jammy/amd64/20250718/squashfs.manifest",
+       "sha256": "4fde9ca48290efe6afd7e911083a547d3f94a3ee9d3755914e29aa7805a7d456",
+       "size": 17741
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "jammy/amd64/20250718/squashfs",
+       "sha256": "edbd57a3d69392e6942ef4a35bc7c062cc234b9d1d48d99bf3e15401ceda0d46",
+       "size": 455462912
+      }
+     }
+    }
+   }
+  },
+  "com.ubuntu.maas.stable:v3:boot:24.04:amd64:ga-24.04": {
+   "arch": "amd64",
+   "kflavor": "generic",
+   "krel": "noble",
+   "label": "stable",
+   "os": "ubuntu",
+   "release": "noble",
+   "release_codename": "Noble Numbat",
+   "release_title": "24.04 LTS",
+   "subarch": "ga-24.04",
+   "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t,hwe-u,hwe-v,hwe-w,ga-16.04,ga-16.10,ga-17.04,ga-17.10,ga-18.04,ga-18.10,ga-19.04,ga-19.10,ga-20.04,ga-20.10,ga-21.04,ga-21.10,ga-22.04,ga-22.10,ga-23.04,ga-23.10,ga-24.04",
+   "support_eol": "2029-05-31",
+   "support_esm_eol": "2034-04-25",
+   "version": "24.04",
+   "versions": {
+    "20250618": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic",
+       "path": "noble/amd64/20250618/ga-24.04/generic/boot-initrd",
+       "sha256": "d7262e7ee88328da4bfe8d5f397cba0866906c7c8d4861a9139b739a2521d410",
+       "size": 78324089
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic",
+       "path": "noble/amd64/20250618/ga-24.04/generic/boot-kernel",
+       "sha256": "f96b6171267e9106e6def3b0988c1e9f3df4ae1328eb29267a62f7ac0f242c67",
+       "size": 14997896
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "noble/amd64/20250618/squashfs.manifest",
+       "sha256": "fdcef4d5a862685251f77824947e3aa4ea248e29bdae016ffac0d17b5705fa4b",
+       "size": 18852
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "noble/amd64/20250618/squashfs",
+       "sha256": "b3b0b967b7e95f62d85c1267e0bc2ffca8a1e506a3a604ba782f01b2e665ce82",
+       "size": 270860288
+      }
+     }
+    },
+    "20250709": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic",
+       "path": "noble/amd64/20250709/ga-24.04/generic/boot-initrd",
+       "sha256": "ec523c5128d4fa5197cd52f075d90e219d7e9b4454da06a90bf25053b9510dcc",
+       "size": 78320319
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic",
+       "path": "noble/amd64/20250709/ga-24.04/generic/boot-kernel",
+       "sha256": "67cd9af083515de2101de032b49a64fc4b65778e5383df6ef21cf788a3f4688e",
+       "size": 15010184
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "noble/amd64/20250709/squashfs.manifest",
+       "sha256": "853abc65d6cb756ac4a6c93dc71e1e9fd1c4b4723d52e9087c3a6f427842a133",
+       "size": 18932
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "noble/amd64/20250709/squashfs",
+       "sha256": "4e30804d8f2cbad61b17bf94be758518209759ac26e8e065b094f9b51eaf5fdc",
+       "size": 271732736
+      }
+     }
+    }
+   }
+  },
+  "com.ubuntu.maas.stable:v3:boot:24.04:arm64:ga-24.04": {
+   "arch": "arm64",
+   "kflavor": "generic",
+   "krel": "noble",
+   "label": "stable",
+   "os": "ubuntu",
+   "release": "noble",
+   "release_codename": "Noble Numbat",
+   "release_title": "24.04 LTS",
+   "subarch": "ga-24.04",
+   "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t,hwe-u,hwe-v,hwe-w,ga-16.04,ga-16.10,ga-17.04,ga-17.10,ga-18.04,ga-18.10,ga-19.04,ga-19.10,ga-20.04,ga-20.10,ga-21.04,ga-21.10,ga-22.04,ga-22.10,ga-23.04,ga-23.10,ga-24.04",
+   "support_eol": "2029-05-31",
+   "support_esm_eol": "2034-04-25",
+   "version": "24.04",
+   "versions": {
+    "20250618": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic",
+       "path": "noble/arm64/20250618/ga-24.04/generic/boot-initrd",
+       "sha256": "f7c88c2983b6bc629d63df00966712db386f16adc099e21a7ac9a43e10c0500d",
+       "size": 74940238
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic",
+       "path": "noble/arm64/20250618/ga-24.04/generic/boot-kernel",
+       "sha256": "d832f53f67b90e267fc44ec99ada56d59c7c95bdfe9da1f9dcef67fb9c58f6c3",
+       "size": 18297314
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "noble/arm64/20250618/squashfs.manifest",
+       "sha256": "fcf9fcb8955ed237cdd01d75fd49206bfa4ec90459bb16e2f4f476b339c08332",
+       "size": 18504
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "noble/arm64/20250618/squashfs",
+       "sha256": "f553a34601a72db5d146cd71d7ecec534e037b451dc41289bd51f506ef96216e",
+       "size": 259092480
+      }
+     }
+    },
+    "20250709": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic",
+       "path": "noble/arm64/20250709/ga-24.04/generic/boot-initrd",
+       "sha256": "e8ddc78ceb5f445f446397086f6d14426368f848e0b2fde0459b4ae0295584a4",
+       "size": 74936777
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic",
+       "path": "noble/arm64/20250709/ga-24.04/generic/boot-kernel",
+       "sha256": "23c878a1a6f70b643cc644b4b6ed67f6a369ffbc852935f88991312c9a316a8a",
+       "size": 18298233
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "noble/arm64/20250709/squashfs.manifest",
+       "sha256": "a674cdc91c58d93ffcb4be19c1393e96b6203f37ecf640b931e4b1da56cae16f",
+       "size": 18584
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "noble/arm64/20250709/squashfs",
+       "sha256": "7256a16b08321a60483c924c35c03e352baaa147adda485cdad043a0fde94fc1",
+       "size": 260210688
+      }
+     }
+    }
+   }
+  }
+ },
+ "updated": "Thu, 24 Jul 2025 09:01:43 +0000"
+}

@@ -99,7 +99,7 @@ class TestBootResourceFileSyncService:
         assert n_regions == 1
         nodes_service_mock.get_many.assert_called_once_with(
             query=QuerySpec(
-                where=NodeClauseFactory.and_clauses(
+                where=NodeClauseFactory.or_clauses(
                     [
                         NodeClauseFactory.with_type(
                             NodeTypeEnum.REGION_CONTROLLER

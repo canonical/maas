@@ -2,12 +2,18 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
+from typing import Self, Union
 
 from pydantic import Field
 
 from maascommon.enums.boot_resources import BootResourceType
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
+from maasservicelayer.simplestreams.models import (
+    BootloaderProduct,
+    MultiFileProduct,
+    Product,
+    SingleFileProduct,
+)
 
 
 class BootResourceBuilder(ResourceBuilder):
@@ -35,3 +41,74 @@ class BootResourceBuilder(ResourceBuilder):
         default=UNSET, required=False
     )
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+
+    @classmethod
+    def _from_simplestreams_bootloader_product(
+        cls, product: BootloaderProduct
+    ) -> Self:
+        return cls(
+            rtype=BootResourceType.SYNCED,
+            name=f"{product.os}/{product.bootloader_type}",
+            architecture=f"{product.arch}/generic",
+            kflavor=None,
+            bootloader_type=product.bootloader_type,
+            alias=None,
+            extra={},
+            rolling=False,
+            base_image="",
+        )
+
+    @classmethod
+    def _from_simplestreams_single_file_product(
+        cls, product: SingleFileProduct
+    ) -> Self:
+        return cls(
+            rtype=BootResourceType.SYNCED,
+            name=f"{product.os}/{product.release}",
+            architecture=f"{product.arch}/{product.subarch}",
+            kflavor=None,
+            bootloader_type=None,
+            alias=f"{product.os}/{product.version}",
+            extra={"subarches": product.subarches},
+            rolling=False,
+            base_image="",
+        )
+
+    @classmethod
+    def _from_simplestreams_multi_file_product(
+        cls, product: MultiFileProduct
+    ) -> Self:
+        # The rack controller assumes the subarch is the kernel. We need to
+        # include the kflavor in the subarch otherwise the rack will
+        # overwrite the generic kernel with each kernel flavor.
+        if product.kflavor not in (product.subarch, "generic") and (
+            "hwe-" in product.subarch or "ga-" in product.subarch
+        ):
+            if product.subarch.endswith("-edge"):
+                subarch = f"{product.subarch.removesuffix('-edge')}-{product.kflavor}-edge"
+            else:
+                subarch = f"{product.subarch}-{product.kflavor}"
+        else:
+            subarch = product.subarch
+        return cls(
+            rtype=BootResourceType.SYNCED,
+            name=f"{product.os}/{product.release}",
+            architecture=f"{product.arch}/{subarch}",
+            kflavor=product.kflavor,
+            bootloader_type=None,
+            alias=f"{product.os}/{product.version}",
+            extra={"subarches": product.subarches},
+            rolling=False,
+            base_image="",
+        )
+
+    @classmethod
+    def from_simplestreams_product(cls, product: Product) -> Self:
+        if isinstance(product, BootloaderProduct):
+            return cls._from_simplestreams_bootloader_product(product)
+        elif isinstance(product, SingleFileProduct):
+            return cls._from_simplestreams_single_file_product(product)
+        elif isinstance(product, MultiFileProduct):
+            return cls._from_simplestreams_multi_file_product(product)
+        else:
+            raise Exception("Unknown simplestreams product")

@@ -33,6 +33,18 @@ class TestBootSourceSelectionClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootsourceselection.boot_source_id = 1")
 
+    def test_with_os(self) -> None:
+        clause = BootSourceSelectionClauseFactory.with_os("ubuntu")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselection.os = 'ubuntu'")
+
+    def test_with_release(self) -> None:
+        clause = BootSourceSelectionClauseFactory.with_release("noble")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselection.release = 'noble'")
+
 
 class TestBootSourceSelectionRepository(
     RepositoryCommonTests[BootSourceSelection]

@@ -163,7 +163,6 @@ from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.zone import Zone
 from maasserver.permissions import NodePermission, ResourcePoolPermission
 from maasserver.storage_layouts import VMFS6StorageLayout, VMFS7StorageLayout
-from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
@@ -182,6 +181,7 @@ from maasserver.utils.osystems import (
     release_a_newer_than_b,
     validate_min_hwe_kernel,
 )
+from maasservicelayer.utils.image_local_files import LocalBootResourceFile
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network

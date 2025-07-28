@@ -1,0 +1,206 @@
+{
+ "content_id": "com.ubuntu.maas:stable:1:bootloader-download",
+ "datatype": "image-ids",
+ "format": "products:1.0",
+ "products": {
+  "com.ubuntu.maas.stable:1:grub-efi-signed:uefi:amd64": {
+   "arch": "amd64",
+   "arches": "amd64",
+   "bootloader-type": "uefi",
+   "label": "stable",
+   "os": "grub-efi-signed",
+   "versions": {
+    "20230222.0": {
+     "items": {
+      "grub2-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/amd64/20230222.0/grub2-signed.tar.xz",
+       "sha256": "4c2e76ba5e9bb64d51a90f088c2550275aba5332e9e370b8c010bc733681d28c",
+       "size": 1227860,
+       "src_package": "grub2-signed",
+       "src_release": "focal",
+       "src_version": "1.187.3~20.04.1+2.06-2ubuntu14.1"
+      },
+      "shim-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/amd64/20230222.0/shim-signed.tar.xz",
+       "sha256": "56907c165c327e03972e3616f1410253aa90c0d866e8de2154bbe1dca14ec6ff",
+       "size": 322352,
+       "src_package": "shim-signed",
+       "src_release": "focal",
+       "src_version": "1.40.7+15.4-0ubuntu9"
+      }
+     }
+    },
+    "20231004.0": {
+     "items": {
+      "grub2-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/amd64/20231004.0/grub2-signed.tar.xz",
+       "sha256": "5897d6ffc29e2ec670a8e3ceb3ddc2b888e17fc7f5e5d42429ebf986cdcc7501",
+       "size": 1228336,
+       "src_package": "grub2-signed",
+       "src_release": "jammy",
+       "src_version": "1.187.6+2.06-2ubuntu14.4"
+      },
+      "shim-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/amd64/20231004.0/shim-signed.tar.xz",
+       "sha256": "4467e0cc7947c8d5a787cd1cb846e7488bbf3427ee98fc7932b8453a02532de3",
+       "size": 321940,
+       "src_package": "shim-signed",
+       "src_release": "jammy",
+       "src_version": "1.51.3+15.7-0ubuntu1"
+      }
+     }
+    }
+   }
+  },
+  "com.ubuntu.maas.stable:1:grub-efi:uefi:arm64": {
+   "arch": "arm64",
+   "arches": "arm64",
+   "bootloader-type": "uefi",
+   "label": "stable",
+   "os": "grub-efi",
+   "versions": {
+    "20230222.0": {
+     "items": {
+      "grub2-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/arm64/20230222.0/grub2-signed.tar.xz",
+       "sha256": "2a0e4e3bbab9519dceebd9ca122b24200190c0e928c2621adde21772bf1ee470",
+       "size": 1207112,
+       "src_package": "grub2-signed",
+       "src_release": "focal",
+       "src_version": "1.187.3~20.04.1+2.06-2ubuntu14.1"
+      },
+      "shim-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/arm64/20230222.0/shim-signed.tar.xz",
+       "sha256": "7824b956392da972061629a3f9eb5049f7d3f9c0b6694c17765def510ccd4dc1",
+       "size": 247168,
+       "src_package": "shim-signed",
+       "src_release": "focal",
+       "src_version": "1.40.7+15.4-0ubuntu9"
+      }
+     }
+    },
+    "20231004.0": {
+     "items": {
+      "grub2-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/arm64/20231004.0/grub2-signed.tar.xz",
+       "sha256": "497bc88ad4e5773c89a8008cfda98011bdf3a4bc764f66f2298c4a2e625d436f",
+       "size": 1207316,
+       "src_package": "grub2-signed",
+       "src_release": "jammy",
+       "src_version": "1.187.6+2.06-2ubuntu14.4"
+      },
+      "shim-signed": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/uefi/arm64/20231004.0/shim-signed.tar.xz",
+       "sha256": "6a8b8d8b5ffb87d5ce10fdd2ea36afebd6b0fc16d89ac5c4bf938e2c521a8196",
+       "size": 293492,
+       "src_package": "shim-signed",
+       "src_release": "jammy",
+       "src_version": "1.51.3+15.7-0ubuntu1"
+      }
+     }
+    }
+   }
+  },
+  "com.ubuntu.maas.stable:1:grub-ieee1275:open-firmware:ppc64el": {
+   "arch": "ppc64el",
+   "arches": "ppc64el,ppc64",
+   "bootloader-type": "open-firmware",
+   "label": "stable",
+   "os": "grub-ieee1275",
+   "versions": {
+    "20201124.0": {
+     "items": {
+      "grub2": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/open-firmware/ppc64el/20201124.0/grub2.tar.xz",
+       "sha256": "6f861c44bbe4b497951afccaa7a9509e4a4133b5e1f0d1dad34f9d170f8d133f",
+       "size": 516068,
+       "src_package": "grub2",
+       "src_release": "xenial",
+       "src_version": "2.02~beta2-36ubuntu3.29"
+      }
+     }
+    },
+    "20210509.0": {
+     "items": {
+      "grub2": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/open-firmware/ppc64el/20210509.0/grub2.tar.xz",
+       "sha256": "9cd689c35a03f4186ca53d1bc08fbaedded33860c03381b5699d88b676483d93",
+       "size": 516068,
+       "src_package": "grub2",
+       "src_release": "xenial",
+       "src_version": "2.02~beta2-36ubuntu3.32"
+      }
+     }
+    }
+   }
+  },
+  "com.ubuntu.maas.stable:1:pxelinux:pxe:amd64": {
+   "arch": "amd64",
+   "arches": "amd64, i386",
+   "bootloader-type": "pxe",
+   "label": "stable",
+   "os": "pxelinux",
+   "versions": {
+    "20230615.0": {
+     "items": {
+      "syslinux": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/pxe/amd64/20230615.0/syslinux.tar.xz",
+       "sha256": "7475e75e559366a484fc910b797fbddd616e10694c9ca1bea2b070311b17cdf8",
+       "size": 419944,
+       "src_package": "syslinux",
+       "src_release": "jammy",
+       "src_version": "3:6.04~git20190206.bf6db5b4+dfsg1-3ubuntu1"
+      }
+     }
+    }
+   }
+  },
+  "com.ubuntu.maas.stable:1:pxelinux:pxe:i386": {
+   "arch": "i386",
+   "arches": "i386,amd64",
+   "bootloader-type": "pxe",
+   "label": "stable",
+   "os": "pxelinux",
+   "versions": {
+    "20180807.0": {
+     "items": {
+      "syslinux": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/pxe/i386/20180807.0/syslinux.tar.xz",
+       "sha256": "8f9e916b55a193474b4a489ec34ffa7acd22eaf3cd7daa698593eee26b4f02e5",
+       "size": 414756,
+       "src_package": "syslinux",
+       "src_release": "bionic",
+       "src_version": "3:6.03+dfsg1-2"
+      }
+     }
+    },
+    "20210203.0": {
+     "items": {
+      "syslinux": {
+       "ftype": "archive.tar.xz",
+       "path": "bootloaders/pxe/i386/20210203.0/syslinux.tar.xz",
+       "sha256": "9ef4a36dddc584a726e2f83934996ca57bcb260b16f2c6d6bc621d8f500e2dae",
+       "size": 424200,
+       "src_package": "syslinux",
+       "src_release": "focal",
+       "src_version": "3:6.04~git20190206.bf6db5b4+dfsg1-2"
+      }
+     }
+    }
+   }
+  }
+ },
+ "updated": "Thu, 24 Jul 2025 09:01:42 +0000"
+}

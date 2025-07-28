@@ -16,34 +16,9 @@ from maasservicelayer.simplestreams.client import (
 from maasservicelayer.simplestreams.models import (
     SimpleStreamsProductListFactory,
 )
+from tests.fixtures import get_test_data_file
 
-SAMPLE_INDEX = {
-    "format": "index:1.0",
-    "index": {
-        "com.ubuntu.maas:stable:1:bootloader-download": {
-            "datatype": "image-ids",
-            "format": "products:1.0",
-            "path": "streams/v1/com.ubuntu.maas:stable:1:bootloader-download.sjson",
-            "products": [],
-            "updated": "Wed, 25 Jun 2025 11:01:49 +0000",
-        },
-        "com.ubuntu.maas:stable:centos-bases-download": {
-            "datatype": "image-ids",
-            "format": "products:1.0",
-            "path": "streams/v1/com.ubuntu.maas:stable:centos-bases-download.sjson",
-            "products": [],
-            "updated": "Wed, 25 Jun 2025 11:01:49 +0000",
-        },
-        "com.ubuntu.maas:stable:v3:download": {
-            "datatype": "image-ids",
-            "format": "products:1.0",
-            "path": "streams/v1/com.ubuntu.maas:stable:v3:download.sjson",
-            "products": [],
-            "updated": "Wed, 25 Jun 2025 11:01:49 +0000",
-        },
-    },
-    "updated": "Wed, 25 Jun 2025 11:01:49 +0000",
-}
+SAMPLE_INDEX = json.loads(get_test_data_file("simplestreams_index.json"))
 
 SIGNED_SAMPLE_INDEX = f"""\
 -----BEGIN PGP SIGNED MESSAGE-----

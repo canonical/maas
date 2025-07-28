@@ -1,7 +1,10 @@
-# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Utilities for working with local boot resources."""
+"""Utilities for working with local boot resources.
+
+Moved from src/maasserver/utils/boot_resources.py
+"""
 
 from __future__ import annotations
 
@@ -17,11 +20,9 @@ from typing import BinaryIO
 
 import aiofiles
 
-from provisioningserver.path import get_maas_data_path, get_maas_lock_path
+from maascommon.path import get_maas_data_path, get_maas_lock_path
 
 CHUNK_SIZE = 4 * (2**20)
-
-BOOTLOADERS_DIR = "bootloaders"
 
 
 class LocalStoreWriteBeyondEOF(Exception):
@@ -47,14 +48,14 @@ def get_bootresource_store_path() -> Path:
 class MMapedLocalFile(mmap.mmap):
     def __new__(cls, lfile: LocalBootResourceFile, fileno: int):
         obj = super().__new__(cls, fileno=fileno, length=lfile.total_size)
-        obj.lfile = lfile
+        obj.lfile = lfile  # pyright: ignore
         return obj
 
-    def write(self, content: bytes) -> int:
+    def write(self, content: bytes) -> int:  # pyright: ignore
         self._check_content_size(content)
         try:
             wrote = super().write(content)
-            self.lfile._size = self.tell()
+            self.lfile._size = self.tell()  # pyright: ignore
             return wrote
         except ValueError as e:
             raise LocalStoreWriteBeyondEOF(e)  # noqa: B904
@@ -71,14 +72,14 @@ class MMapedLocalFile(mmap.mmap):
             LocalStoreWriteBeyondEOF: Content too big
         """
         if hasattr(content, "seekable") and content.seekable():
-            to_write = content.seek(0, os.SEEK_END)  # type: ignore[attr-defined]
-            if self.lfile._size + to_write > self.lfile.total_size:
+            to_write = content.seek(0, os.SEEK_END)
+            if self.lfile._size + to_write > self.lfile.total_size:  # pyright: ignore
                 msg = (
                     "Attempt to write beyond EOF, current "
-                    f"{self.lfile._size}/{self.lfile.total_size}, new {to_write}"
+                    f"{self.lfile._size}/{self.lfile.total_size}, new {to_write}"  # pyright: ignore
                 )
                 raise LocalStoreWriteBeyondEOF(msg)
-            content.seek(0, os.SEEK_SET)  # type: ignore[attr-defined]
+            content.seek(0, os.SEEK_SET)
 
 
 class LocalBootResourceFile:
@@ -206,8 +207,8 @@ class LocalBootResourceFile:
         except IOError as e:
             raise LocalStoreAllocationFail(e)  # noqa: B904
 
-    @contextmanager
-    def store(self, autocommit: bool = True) -> MMapedLocalFile:
+    @contextmanager  # pyright: ignore
+    def store(self, autocommit: bool = True) -> MMapedLocalFile:  # pyright: ignore
         """Store file in the local disk
 
         Args:
@@ -234,15 +235,15 @@ class LocalBootResourceFile:
             ) as mm,
         ):
             mm.seek(self._size, os.SEEK_SET)
-            yield mm
+            yield mm  # pyright: ignore
         if autocommit and self.complete:
             if self.valid:
                 self.commit()
             else:
                 raise LocalStoreInvalidHash()
 
-    @asynccontextmanager
-    async def astore(self, autocommit: bool = True) -> MMapedLocalFile:
+    @asynccontextmanager  # pyright: ignore
+    async def astore(self, autocommit: bool = True) -> MMapedLocalFile:  # pyright: ignore
         """Store file in the local disk (async)
 
         Args:
@@ -269,7 +270,7 @@ class LocalBootResourceFile:
             ) as mm,
         ):
             mm.seek(self._size, os.SEEK_SET)
-            yield mm
+            yield mm  # pyright: ignore
         if autocommit and self.complete:
             if await self.avalid():
                 self.commit()

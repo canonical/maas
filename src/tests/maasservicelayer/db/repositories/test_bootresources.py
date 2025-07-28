@@ -32,6 +32,14 @@ class TestBootResourceClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootresource.architecture = 'amd64/generic'")
 
+    def test_with_architecture_starting_with(self) -> None:
+        clause = BootResourceClauseFactory.with_architecture_starting_with(
+            "amd64"
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootresource.architecture LIKE 'amd64' || '%'")
+
     def test_with_alias(self) -> None:
         clause = BootResourceClauseFactory.with_alias("ubuntu/24.04")
         assert str(

@@ -1,3 +1,8 @@
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Moved from src/tests/maasserver/utils/test_bootresource.py."""
+
 import hashlib
 from io import BytesIO
 from itertools import islice, repeat
@@ -7,7 +12,7 @@ import shutil
 
 import pytest
 
-from maasserver.utils.bootresource import (
+from maasservicelayer.utils.image_local_files import (
     LocalBootResourceFile,
     LocalStoreAllocationFail,
     LocalStoreInvalidHash,

@@ -4,6 +4,18 @@
 from typing import Callable, Self
 
 from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.bootresourcefiles import (
+    BootResourceFilesRepository,
+)
+from maasservicelayer.db.repositories.bootresourcefilesync import (
+    BootResourceFileSyncRepository,
+)
+from maasservicelayer.db.repositories.bootresources import (
+    BootResourcesRepository,
+)
+from maasservicelayer.db.repositories.bootresourcesets import (
+    BootResourceSetsRepository,
+)
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheRepository,
 )
@@ -84,6 +96,14 @@ from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.bootresourcefiles import (
+    BootResourceFilesService,
+)
+from maasservicelayer.services.bootresourcefilesync import (
+    BootResourceFileSyncService,
+)
+from maasservicelayer.services.bootresources import BootResourceService
+from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
@@ -109,6 +129,7 @@ from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.hooked_configurations import (
     HookedConfigurationsService,
 )
+from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService
@@ -181,6 +202,10 @@ class ServiceCollectionV3:
     # Keep them in alphabetical order, please
     agents: AgentsService
     auth: AuthService
+    boot_resources: BootResourceService
+    boot_resource_sets: BootResourceSetsService
+    boot_resource_files: BootResourceFilesService
+    boot_resource_file_sync: BootResourceFileSyncService
     boot_sources: BootSourcesService
     boot_source_cache: BootSourceCacheService
     boot_source_selections: BootSourceSelectionsService
@@ -198,6 +223,7 @@ class ServiceCollectionV3:
     fabrics: FabricsService
     filestorage: FileStorageService
     hooked_configurations: HookedConfigurationsService
+    image_sync: ImageSyncService
     interfaces: InterfacesService
     ipranges: IPRangesService
     leases: LeasesService
@@ -276,6 +302,9 @@ class ServiceCollectionV3:
                 TemporalService.__name__, TemporalService.build_cache_object
             ),
         )
+        services.notifications = NotificationsService(
+            context=context, repository=NotificationsRepository(context)
+        )
         services.tags = TagsService(
             context=context,
             repository=TagsRepository(context),
@@ -292,6 +321,59 @@ class ServiceCollectionV3:
             events_service=services.events,
             scriptresults_service=services.scriptresults,
             nodes_repository=NodesRepository(context),
+        )
+        services.boot_source_cache = BootSourceCacheService(
+            context=context,
+            repository=BootSourceCacheRepository(context),
+        )
+        services.boot_source_selections = BootSourceSelectionsService(
+            context=context,
+            repository=BootSourceSelectionsRepository(context),
+            events_service=services.events,
+            boot_source_cache_service=services.boot_source_cache,
+        )
+        services.boot_sources = BootSourcesService(
+            context=context,
+            repository=BootSourcesRepository(context),
+            boot_source_cache_service=services.boot_source_cache,
+            boot_source_selections_service=services.boot_source_selections,
+            configuration_service=services.configurations,
+            events_service=services.events,
+        )
+        services.boot_resource_files = BootResourceFilesService(
+            context=context,
+            repository=BootResourceFilesRepository(context),
+            temporal_service=services.temporal,
+        )
+        services.boot_resource_sets = BootResourceSetsService(
+            context=context,
+            repository=BootResourceSetsRepository(context),
+            boot_resource_files_service=services.boot_resource_files,
+        )
+        services.boot_resources = BootResourceService(
+            context=context,
+            repository=BootResourcesRepository(context),
+            boot_resource_sets_service=services.boot_resource_sets,
+        )
+        services.boot_resource_file_sync = BootResourceFileSyncService(
+            context=context,
+            repository=BootResourceFileSyncRepository(context),
+            nodes_service=services.nodes,
+            bootresourcesets_service=services.boot_resource_sets,
+            bootresourcefiles_service=services.boot_resource_files,
+        )
+        services.image_sync = ImageSyncService(
+            context=context,
+            boot_sources_service=services.boot_sources,
+            boot_source_cache_service=services.boot_source_cache,
+            boot_source_selections_service=services.boot_source_selections,
+            boot_resources_service=services.boot_resources,
+            boot_resource_sets_service=services.boot_resource_sets,
+            boot_resource_files_service=services.boot_resource_files,
+            boot_resource_file_sync_service=services.boot_resource_file_sync,
+            events_service=services.events,
+            configurations_service=services.configurations,
+            notifications_service=services.notifications,
         )
         services.vmclusters = VmClustersService(
             context=context, vmcluster_repository=VmClustersRepository(context)
@@ -347,9 +429,6 @@ class ServiceCollectionV3:
         services.sslkeys = SSLKeysService(
             context=context,
             sslkey_repository=SSLKeysRepository(context),
-        )
-        services.notifications = NotificationsService(
-            context=context, repository=NotificationsRepository(context)
         )
         services.filestorage = FileStorageService(
             context=context, repository=FileStorageRepository(context)
@@ -523,24 +602,6 @@ class ServiceCollectionV3:
         services.package_repositories = PackageRepositoriesService(
             context=context,
             repository=PackageRepositoriesRepository(context),
-            events_service=services.events,
-        )
-        services.boot_source_cache = BootSourceCacheService(
-            context=context,
-            repository=BootSourceCacheRepository(context),
-        )
-        services.boot_source_selections = BootSourceSelectionsService(
-            context=context,
-            repository=BootSourceSelectionsRepository(context),
-            events_service=services.events,
-            boot_source_cache_service=services.boot_source_cache,
-        )
-        services.boot_sources = BootSourcesService(
-            context=context,
-            repository=BootSourcesRepository(context),
-            boot_source_cache_service=services.boot_source_cache,
-            boot_source_selections_service=services.boot_source_selections,
-            configuration_service=services.configurations,
             events_service=services.events,
         )
         services.hooked_configurations = HookedConfigurationsService(

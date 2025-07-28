@@ -23,6 +23,17 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestBootResourceFileClauseFactory:
+    def test_with_id(self) -> None:
+        clause = BootResourceFileClauseFactory.with_ids([1, 2])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_bootresourcefile.id IN (1, 2)"
+        )
+
     def test_with_sha256_starting_with(self) -> None:
         clause = BootResourceFileClauseFactory.with_sha256_starting_with(
             "abcdef"
@@ -48,6 +59,20 @@ class TestBootResourceFileClauseFactory:
             == f"maasserver_bootresourcefile.sha256 = '{sha}'"
         )
 
+    def test_with_sha256_in(self) -> None:
+        sha1 = "abcdef" * 8
+        sha2 = "012345" * 8
+        shas = [sha1, sha2]
+        clause = BootResourceFileClauseFactory.with_sha256_in(shas)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == f"maasserver_bootresourcefile.sha256 IN ('{sha1}', '{sha2}')"
+        )
+
     def test_with_resource_set_id(self) -> None:
         clause = BootResourceFileClauseFactory.with_resource_set_id(1)
         assert (
@@ -57,6 +82,75 @@ class TestBootResourceFileClauseFactory:
                 )
             )
             == "maasserver_bootresourcefile.resource_set_id = 1"
+        )
+
+    def test_with_resource_set_ids(self) -> None:
+        clause = BootResourceFileClauseFactory.with_resource_set_ids([1, 2])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_bootresourcefile.resource_set_id IN (1, 2)"
+        )
+
+    def test_with_boot_resource_id(self) -> None:
+        clause = BootResourceFileClauseFactory.with_boot_resource_id(1)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_bootresourceset.resource_id = 1"
+        )
+        assert (
+            str(
+                clause.joins[0].compile(compile_kwargs={"literal_binds": True})
+            )
+            == "maasserver_bootresourceset JOIN maasserver_bootresourcefile ON maasserver_bootresourceset.id = maasserver_bootresourcefile.resource_set_id"
+        )
+
+    def test_with_boot_resource_ids(self) -> None:
+        clause = BootResourceFileClauseFactory.with_boot_resource_ids([1, 2])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_bootresourceset.resource_id IN (1, 2)"
+        )
+        assert (
+            str(
+                clause.joins[0].compile(compile_kwargs={"literal_binds": True})
+            )
+            == "maasserver_bootresourceset JOIN maasserver_bootresourcefile ON maasserver_bootresourceset.id = maasserver_bootresourcefile.resource_set_id"
+        )
+
+    def test_with_filename(self) -> None:
+        clause = BootResourceFileClauseFactory.with_filename("filename")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_bootresourcefile.filename = 'filename'"
+        )
+
+    def test_with_filetype(self) -> None:
+        clause = BootResourceFileClauseFactory.with_filetype(
+            BootResourceFileType.ARCHIVE_TAR_XZ
+        )
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == f"maasserver_bootresourcefile.filetype = '{BootResourceFileType.ARCHIVE_TAR_XZ}'"
         )
 
 

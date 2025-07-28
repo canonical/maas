@@ -48,7 +48,7 @@ class BootResourceFileSyncService(
         return len(
             await self.nodes_service.get_many(
                 query=QuerySpec(
-                    where=NodeClauseFactory.and_clauses(
+                    where=NodeClauseFactory.or_clauses(
                         [
                             NodeClauseFactory.with_type(
                                 NodeTypeEnum.REGION_CONTROLLER
@@ -63,7 +63,9 @@ class BootResourceFileSyncService(
         )
 
     async def get_current_sync_size_for_files(self, file_ids: set[int]) -> int:
-        return await self.repository.get_current_sync_size_for_files(file_ids)
+        return int(
+            await self.repository.get_current_sync_size_for_files(file_ids)
+        )
 
     async def file_sync_progress(self, file_id: int) -> float:
         """Calculate the sync progress for a file.

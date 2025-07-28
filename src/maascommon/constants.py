@@ -17,3 +17,6 @@ GENERIC_CONSUMER = "MAAS consumer"
 MAAS_USER_USERNAME = "MAAS"
 MAAS_USER_LAST_NAME = "Special user"
 MAAS_USER_EMAIL = "maas@localhost"
+
+
+BOOTLOADERS_DIR = "bootloaders"

@@ -179,7 +179,6 @@ class MultiFileImageVersion(Version):
         files = [
             self.boot_initrd,
             self.boot_kernel,
-            self.manifest,
             self.squashfs,
             self.root_image_gz,
         ]
@@ -192,7 +191,7 @@ class SingleFileImageVersion(Version):
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
-        return [self.manifest, self.root_tgz]
+        return [self.root_tgz]
 
 
 class Product(BaseModel, ABC):
@@ -228,7 +227,7 @@ class Product(BaseModel, ABC):
             v["versions"] = versions
         return v
 
-    def get_latest_version(self) -> Type[Version]:
+    def get_latest_version(self) -> Version:
         # we are usually interested only in the last version
         return sorted(self.versions, key=lambda v: v.version_name)[-1]
 
@@ -249,6 +248,9 @@ class BootloaderProduct(Product):
     def version_class() -> Type[Version]:
         return BootloaderVersion
 
+    def __hash__(self):
+        return hash((self.os, self.arch, self.bootloader_type))
+
 
 class ImageProduct(Product):
     release: str
@@ -262,6 +264,9 @@ class ImageProduct(Product):
     _validate_support_eol = validator(
         "support_eol", pre=True, allow_reuse=True
     )(support_eol_validator)
+
+    def __hash__(self):
+        return hash((self.os, self.release, self.arch, self.subarch))
 
 
 class MultiFileProduct(ImageProduct):

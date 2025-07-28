@@ -121,11 +121,11 @@ from maasserver.sessiontimeout import SessionStore
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
-from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
+from maasservicelayer.utils.image_local_files import LocalBootResourceFile
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from metadataserver.builtin_scripts import load_builtin_scripts

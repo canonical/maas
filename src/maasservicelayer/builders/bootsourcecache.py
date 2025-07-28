@@ -2,11 +2,18 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import date, datetime
-from typing import Union
+from typing import Self, Union
 
 from pydantic import Field
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
+from maasservicelayer.simplestreams.models import (
+    BootloaderProduct,
+    MultiFileProduct,
+    Product,
+    SimpleStreamsProductList,
+    SingleFileProduct,
+)
 
 
 class BootSourceCacheBuilder(ResourceBuilder):
@@ -38,3 +45,114 @@ class BootSourceCacheBuilder(ResourceBuilder):
         default=UNSET, required=False
     )
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+
+    def __hash__(self):
+        return hash(
+            (
+                self.os,
+                self.arch,
+                self.subarch,
+                self.release,
+                self.label,
+                self.kflavor if not isinstance(self.kflavor, Unset) else None,
+            )
+        )
+
+    @classmethod
+    def _from_simplestreams_bootloader_product(
+        cls, product: BootloaderProduct, boot_source_id: int
+    ) -> set[Self]:
+        return {
+            cls(
+                os=product.os,
+                arch=product.arch,
+                subarch="generic",
+                release=product.os,
+                label=product.label,
+                bootloader_type=product.bootloader_type,
+                boot_source_id=boot_source_id,
+                kflavor="bootloader",
+                extra={},
+            )
+        }
+
+    @classmethod
+    def _from_simplestreams_single_file_product(
+        cls, product: SingleFileProduct, boot_source_id: int
+    ) -> set[Self]:
+        return {
+            cls(
+                os=product.os,
+                arch=product.arch,
+                subarch=subarch,
+                release=product.release,
+                label=product.label,
+                boot_source_id=boot_source_id,
+                release_title=product.release_title,
+                support_eol=product.support_eol,
+                kflavor="generic",
+                extra={},
+            )
+            for subarch in product.subarches.split(",")
+        }
+
+    @classmethod
+    def _from_simplestreams_multi_file_product(
+        cls, product: MultiFileProduct, boot_source_id: int
+    ) -> set[Self]:
+        subarches = [product.subarch] + product.subarches.split(",")
+        # HWE resources with generic, should map to the HWE that ships
+        # with that release. Starting with Xenial kernels changed from
+        # using the naming format hwe-<letter> to ga-<version>. Look
+        # for both.
+        hwe_archs = [f"ga-{product.version}", f"hwe-{product.release}"]
+        if product.subarch in hwe_archs and "generic" in product.subarches:
+            subarches.append("generic")
+        subarches = set(subarches)
+        builders = {
+            cls(
+                os=product.os,
+                arch=product.arch,
+                subarch=subarch,
+                release=product.release,
+                label=product.label,
+                boot_source_id=boot_source_id,
+                release_codename=product.release_codename,
+                release_title=product.release_title,
+                support_eol=product.support_eol,
+                kflavor=product.kflavor,
+                extra={},
+            )
+            for subarch in subarches
+        }
+        return builders
+
+    @classmethod
+    def from_simplestreams_product(
+        cls, product: Product, boot_source_id: int
+    ) -> set[Self]:
+        if isinstance(product, BootloaderProduct):
+            return cls._from_simplestreams_bootloader_product(
+                product, boot_source_id
+            )
+        elif isinstance(product, SingleFileProduct):
+            return cls._from_simplestreams_single_file_product(
+                product, boot_source_id
+            )
+        elif isinstance(product, MultiFileProduct):
+            return cls._from_simplestreams_multi_file_product(
+                product, boot_source_id
+            )
+        else:
+            raise Exception("Unknown simplestreams product")
+
+    @classmethod
+    def from_simplestreams_product_list(
+        cls, product_list: SimpleStreamsProductList, boot_source_id: int
+    ) -> set[Self]:
+        builders = set()
+        for product in product_list.products:
+            builders = builders.union(
+                cls.from_simplestreams_product(product, boot_source_id)
+            )
+        return builders

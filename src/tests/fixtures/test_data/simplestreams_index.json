@@ -1,0 +1,42 @@
+{
+ "format": "index:1.0",
+ "index": {
+  "com.ubuntu.maas:stable:1:bootloader-download": {
+   "datatype": "image-ids",
+   "format": "products:1.0",
+   "path": "streams/v1/com.ubuntu.maas:stable:1:bootloader-download.json",
+   "products": [
+    "com.ubuntu.maas.stable:1:grub-efi-signed:uefi:amd64",
+    "com.ubuntu.maas.stable:1:grub-efi:uefi:arm64",
+    "com.ubuntu.maas.stable:1:grub-ieee1275:open-firmware:ppc64el",
+    "com.ubuntu.maas.stable:1:pxelinux:pxe:amd64",
+    "com.ubuntu.maas.stable:1:pxelinux:pxe:i386"
+   ],
+   "updated": "Thu, 24 Jul 2025 08:01:48 +0000"
+  },
+  "com.ubuntu.maas:stable:centos-bases-download": {
+   "datatype": "image-ids",
+   "format": "products:1.0",
+   "path": "streams/v1/com.ubuntu.maas:stable:centos-bases-download.json",
+   "products": [
+    "com.ubuntu.maas.stable:centos-bases:7.0:amd64",
+    "com.ubuntu.maas.stable:centos-bases:8:amd64"
+   ],
+   "updated": "Thu, 24 Jul 2025 08:01:48 +0000"
+  },
+  "com.ubuntu.maas:stable:v3:download": {
+   "datatype": "image-ids",
+   "format": "products:1.0",
+   "path": "streams/v1/com.ubuntu.maas:stable:v3:download.json",
+   "products": [
+    "com.ubuntu.maas.stable:v3:boot:22.04:amd64:ga-22.04",
+    "com.ubuntu.maas.stable:v3:boot:22.04:arm64:ga-22.04",
+    "com.ubuntu.maas.stable:v3:boot:24.04:amd64:ga-24.04",
+    "com.ubuntu.maas.stable:v3:boot:24.04:arm64:ga-24.04"
+   ],
+   "updated": "Thu, 24 Jul 2025 08:01:49 +0000"
+  }
+ },
+ "updated": "Thu, 24 Jul 2025 08:01:49 +0000"
+}
+

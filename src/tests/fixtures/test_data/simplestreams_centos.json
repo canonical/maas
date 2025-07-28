@@ -1,0 +1,98 @@
+{
+ "content_id": "com.ubuntu.maas:stable:centos-bases-download",
+ "datatype": "image-ids",
+ "format": "products:1.0",
+ "products": {
+  "com.ubuntu.maas.stable:centos-bases:7.0:amd64": {
+   "arch": "amd64",
+   "label": "stable",
+   "os": "centos",
+   "release": "centos70",
+   "release_title": "CentOS 7",
+   "subarch": "generic",
+   "subarches": "generic",
+   "support_eol": "2024-06-30",
+   "version": "7.0",
+   "versions": {
+    "20240604_01": {
+     "items": {
+      "manifest": {
+       "ftype": "manifest",
+       "path": "centos/centos70/amd64/20240604_01/root-tgz.manifest",
+       "sha256": "02c149f923aeb48317aeb8b9ec1e202c99a3bf51022416a84b0b29e50e2eb8b6",
+       "size": 10451
+      },
+      "root-tgz": {
+       "ftype": "root-tgz",
+       "path": "centos/centos70/amd64/20240604_01/root-tgz",
+       "sha256": "70356b8147c22035ccb3cb4572b5e8b80ca834fdf0bb19dfc551cb9bc72e3a79",
+       "size": 517394513
+      }
+     }
+    },
+    "20240622_01": {
+     "items": {
+      "manifest": {
+       "ftype": "manifest",
+       "path": "centos/centos70/amd64/20240622_01/root-tgz.manifest",
+       "sha256": "6bef17306800f33ba540655a1550bf4b781a8b8948c63dfee223eed8630b065d",
+       "size": 10801
+      },
+      "root-tgz": {
+       "ftype": "root-tgz",
+       "path": "centos/centos70/amd64/20240622_01/root-tgz",
+       "sha256": "50da6ac4baa9bfb9c89eb0961af3ef57d1c98b274f49f141ed5ebf084abc1852",
+       "size": 542967263
+      }
+     }
+    }
+   }
+  },
+  "com.ubuntu.maas.stable:centos-bases:8:amd64": {
+   "arch": "amd64",
+   "label": "stable",
+   "os": "centos",
+   "release": "8",
+   "release_title": "CentOS 8",
+   "subarch": "generic",
+   "subarches": "generic",
+   "support_eol": "2029-05-31",
+   "version": "8",
+   "versions": {
+    "20211029_01": {
+     "items": {
+      "manifest": {
+       "ftype": "manifest",
+       "path": "centos/8/amd64/20211029_01/root-tgz.manifest",
+       "sha256": "427abed4b13d8cea3d8a21e202ac671804d094c18b0cb2bd7ba30400ed57e4e2",
+       "size": 14314
+      },
+      "root-tgz": {
+       "ftype": "root-tgz",
+       "path": "centos/8/amd64/20211029_01/root-tgz",
+       "sha256": "4065aa771a823ec142fd588563a7508372bd8e968b9bc93a087ac410568e12f7",
+       "size": 655933894
+      }
+     }
+    },
+    "20211104_01": {
+     "items": {
+      "manifest": {
+       "ftype": "manifest",
+       "path": "centos/8/amd64/20211104_01/root-tgz.manifest",
+       "sha256": "5c869ab4ceb3111ce620683e0ddbfb1088801ce10fb81d420cad010073071d95",
+       "size": 14332
+      },
+      "root-tgz": {
+       "ftype": "root-tgz",
+       "path": "centos/8/amd64/20211104_01/root-tgz",
+       "sha256": "a67e18e6b9a12722be2248557910d2e4f55132c12014a6fbef9061a2b24f660b",
+       "size": 655801637
+      }
+     }
+    }
+   }
+  }
+ },
+ "updated": "Thu, 24 Jul 2025 09:01:42 +0000"
+}

@@ -16,3 +16,6 @@ class BootSource(MaasTimestampedBaseModel):
     keyring_data: Optional[bytes]
     priority: int
     skip_keyring_verification: bool
+
+    def __hash__(self):
+        return hash(self.url)

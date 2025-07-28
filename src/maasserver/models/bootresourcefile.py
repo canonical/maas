@@ -19,6 +19,11 @@ from django.db.models import (
     Sum,
 )
 
+from maascommon.workflows.bootresource import (
+    DELETE_BOOTRESOURCE_WORKFLOW_NAME,
+    ResourceDeleteParam,
+    ResourceIdentifier,
+)
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
@@ -29,13 +34,8 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.largefile import LargeFile
 from maasserver.models.node import RegionController
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.workflow import execute_workflow
-from maastemporalworker.workflow.bootresource import (
-    DELETE_BOOTRESOURCE_WORKFLOW_NAME,
-    ResourceDeleteParam,
-    ResourceIdentifier,
-)
+from maasservicelayer.utils.image_local_files import LocalBootResourceFile
 
 SHORTSHA256_MIN_PREFIX_LEN = 7
 

@@ -38,13 +38,13 @@ from maasserver.forms import BootResourceForm, BootResourceNoContentForm
 from maasserver.models import BootResource, BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.node import RegionController
-from maasserver.utils.bootresource import (
+from maasserver.utils.orm import post_commit_do
+from maasserver.workflow import execute_workflow
+from maasservicelayer.utils.image_local_files import (
     LocalBootResourceFile,
     LocalStoreInvalidHash,
     LocalStoreWriteBeyondEOF,
 )
-from maasserver.utils.orm import post_commit_do
-from maasserver.workflow import execute_workflow
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
