@@ -3,12 +3,19 @@
 
 import asyncio
 from logging.config import fileConfig
+from pathlib import Path
+import sys
 
 from alembic import context  # type: ignore
 from alembic.script import ScriptDirectory
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
+# this allows lint-py-imports to pass
+sys.path.insert(0, str(Path(sys.path[0]) / "src"))
+
+from maasservicelayer.db.tables import METADATA
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,10 +27,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None
+target_metadata = METADATA
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -53,9 +58,18 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         process_revision_directives=process_revision_directives,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
+
+
+# Ignore tables not in SQLAlchemy metadata
+def include_object(object, name, type_, reflected, compare_to):
+    # Only include tables that are in the SQLAlchemy metadata
+    if type_ == "table":
+        return name in target_metadata.tables
+    return True
 
 
 async def run_async_migrations() -> None:
@@ -65,6 +79,10 @@ async def run_async_migrations() -> None:
     """
 
     alembic_config = config.get_section(config.config_ini_section, {})
+
+    if url := context.get_x_argument(as_dictionary=True).get("db_url"):
+        alembic_config["sqlalchemy.url"] = url
+
     connectable = async_engine_from_config(
         alembic_config,
         prefix="sqlalchemy.",
@@ -87,7 +105,6 @@ def run_migrations_offline() -> None:
 
     Calls to context.execute() here emit the given string to the
     script output.
-
     """
     url = context.get_x_argument(as_dictionary=True).get("db_url")
     if not url:

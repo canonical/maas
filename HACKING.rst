@@ -417,7 +417,15 @@ If you have to change a Django model (i.e. a change to a file in
 
 You can scaffold a new alembic migration by running::
 
-    $ python3 -m alembic -c src/maasservicelayer/db/alembic/alembic.ini -x db_url="postgresql+asyncpg://<username>:<password>@localhost/<maasdb>" revision -m "My new migration" --sql
+    $ python3 -m alembic -c src/maasservicelayer/db/alembic/alembic.ini -x db_url="postgresql+asyncpg://<username>:<password>@localhost/<maasdb>" revision -m "my new migration" --sql
+
+You can autogenerate a new alembic migration by running:
+
+    $ python3 -m alembic -c src/maasservicelayer/db/alembic/alembic.ini -x db_url="postgresql+asyncpg://<username>:<password>@localhost/<maasdb>" revision --autogenerate -m "my new migration"
+
+If you are using maas-test-db:
+
+    $ python3 -m alembic -c src/maasservicelayer/db/alembic/alembic.ini -x db_url="postgresql+asyncpg://postgres@/maasdb?host=/var/snap/maas-test-db/common/postgres/sockets" revision --autogenerate -m "my new migration"
 
 To apply that migration, run::
 

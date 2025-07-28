@@ -27,6 +27,18 @@ from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB, OID
 
 METADATA = MetaData()
 
+
+# NOTE:
+# Alembic autogeneration compares index names, and Django uses its own naming
+# convention for indexes—especially for pattern ops (e.g., LIKE indexes).
+# If we don't explicitly match Django's index names in our SQLAlchemy
+# definitions, Alembic may generate unnecessary migrations that drop and
+# recreate indexes purely due to name mismatches.
+#
+# To avoid this, we manually assign Django-compatible names to indexes when
+# needed.
+
+
 # Keep them in alphabetical order!
 
 BlockDeviceTable = Table(
@@ -43,7 +55,11 @@ BlockDeviceTable = Table(
     Column(
         "node_config_id",
         BigInteger,
-        ForeignKey("maasserver_nodeconfig.id"),
+        ForeignKey(
+            "maasserver_nodeconfig.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     UniqueConstraint("node_config_id", "name"),
@@ -60,7 +76,11 @@ BMCTable = Table(
     Column(
         "ip_address_id",
         BigInteger,
-        ForeignKey("maasserver_staticipaddress.id"),
+        ForeignKey(
+            "maasserver_staticipaddress.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Column("architectures", ARRAY(Text), nullable=True),
@@ -74,16 +94,35 @@ BMCTable = Table(
     Column(
         "pool_id",
         Integer,
-        ForeignKey("maasserver_resourcepool.id"),
+        ForeignKey(
+            "maasserver_resourcepool.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Column(
-        "zone_id", BigInteger, ForeignKey("maasserver_zone.id"), nullable=False
+        "zone_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_zone.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
     ),
     Column("tags", ARRAY(Text), nullable=True),
     Column("cpu_over_commit_ratio", Float, nullable=False),
     Column("memory_over_commit_ratio", Float, nullable=False),
-    Column("default_storage_pool_id", BigInteger, nullable=True),
+    Column(
+        "default_storage_pool_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_podstoragepool.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+    ),
     Column("power_parameters", JSONB, nullable=False),
     Column("default_macvlan_mode", String(32), nullable=True),
     Column("version", Text, nullable=False),
@@ -145,13 +184,21 @@ BootResourceFileTable = Table(
     Column(
         "largefile_id",
         BigInteger,
-        ForeignKey("maasserver_largefile.id"),
+        ForeignKey(
+            "maasserver_largefile.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Column(
         "resource_set_id",
         BigInteger,
-        ForeignKey("maasserver_bootresourceset.id"),
+        ForeignKey(
+            "maasserver_bootresourceset.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     Column("sha256", String(64), nullable=False),
@@ -207,7 +254,11 @@ BootResourceSetTable = Table(
     Column(
         "resource_id",
         BigInteger,
-        ForeignKey("maasserver_bootresource.id"),
+        ForeignKey(
+            "maasserver_bootresource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     UniqueConstraint("resource_id", "version"),
@@ -220,13 +271,11 @@ BootSourceTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("url", String(200), nullable=False),
+    Column("url", String(200), nullable=False, unique=True),
     Column("keyring_filename", String(4096), nullable=False),
     Column("keyring_data", LargeBinary, nullable=False),
-    Column("priority", Integer, nullable=False),
+    Column("priority", Integer, nullable=False, unique=True),
     Column("skip_keyring_verification", Boolean, nullable=False),
-    UniqueConstraint("priority", name="maasserver_bootsource_priority_key"),
-    UniqueConstraint("url"),
     Index(
         "maasserver_bootsource_url_54c78ba3_like",
         "url",
@@ -248,7 +297,11 @@ BootSourceCacheTable = Table(
     Column(
         "boot_source_id",
         BigInteger,
-        ForeignKey("maasserver_bootsource.id"),
+        ForeignKey(
+            "maasserver_bootsource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     Column("release_codename", String(255), nullable=True),
@@ -276,7 +329,11 @@ BootSourceSelectionTable = Table(
     Column(
         "boot_source_id",
         BigInteger,
-        ForeignKey("maasserver_bootsource.id"),
+        ForeignKey(
+            "maasserver_bootsource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     UniqueConstraint("boot_source_id", "os", "release"),
@@ -312,7 +369,16 @@ ConsumerTable = Table(
     Column("key", String(18), nullable=False),
     Column("secret", String(32), nullable=False),
     Column("status", String(16), nullable=False),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey(
+            "auth_user.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+    ),
     Index("piston3_consumer_user_id_ede69093", "user_id"),
 )
 
@@ -323,7 +389,14 @@ DefaultResourceTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column(
-        "zone_id", BigInteger, ForeignKey("maasserver_zone.id"), nullable=False
+        "zone_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_zone.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
     ),
     Index("maasserver_defaultresource_zone_id_29a5153a", "zone_id"),
 )
@@ -338,24 +411,43 @@ DHCPSnippetTable = Table(
     Column("description", Text, nullable=False),
     Column("enabled", Boolean, nullable=False),
     Column(
-        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=True
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
     ),
     Column(
         "subnet_id",
         BigInteger,
-        ForeignKey("maasserver_subnet.id"),
+        ForeignKey(
+            "maasserver_subnet.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Column(
         "value_id",
         BigInteger,
-        ForeignKey("maasserver_versionedtextfile.id"),
+        ForeignKey(
+            "maasserver_versionedtextfile.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     Column(
         "iprange_id",
         BigInteger,
-        ForeignKey("maasserver_iprange.id"),
+        ForeignKey(
+            "maasserver_iprange.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Index("maasserver_dhcpsnippet_value_id_58a6a467", "value_id"),
@@ -403,7 +495,11 @@ DNSDataTable = Table(
     Column(
         "dnsresource_id",
         BigInteger,
-        ForeignKey("maasserver_dnsresource.id"),
+        ForeignKey(
+            "maasserver_dnsresource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     Column("ttl", Integer, nullable=True),
@@ -418,7 +514,7 @@ DNSPublicationTable = Table(
     "maasserver_dnspublication",
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
-    Column("serial", BigInteger, nullable=False, unique=True),
+    Column("serial", BigInteger, nullable=False),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("source", String(255), nullable=False),
     Column("update", String(255), nullable=False),
@@ -430,14 +526,18 @@ DNSResourceTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(191), nullable=True, unique=False),
+    Column("name", String(191), nullable=True),
     Column(
         "domain_id",
         Integer,
-        ForeignKey("maasserver_domain.id"),
+        ForeignKey(
+            "maasserver_domain.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
-    Column("address_ttl", Integer, nullable=True, unique=False),
+    Column("address_ttl", Integer, nullable=True),
     Index("maasserver_dnsresource_domain_id_c5abb245", "domain_id"),
 )
 
@@ -448,15 +548,24 @@ DNSResourceIPAddressTable = Table(
     Column(
         "dnsresource_id",
         BigInteger,
-        ForeignKey("maasserver_dnsresource.id"),
+        ForeignKey(
+            "maasserver_dnsresource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     Column(
         "staticipaddress_id",
         BigInteger,
-        ForeignKey("maasserver_staticipaddress.id"),
+        ForeignKey(
+            "maasserver_staticipaddress.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
+    UniqueConstraint("dnsresource_id", "staticipaddress_id"),
     Index(
         "maasserver_dnsresource_ip_addresses_staticipaddress_id_794f210e",
         "staticipaddress_id",
@@ -489,12 +598,23 @@ EventTable = Table(
     Column("description", Text, nullable=False),
     Column("action", Text, nullable=False),
     Column(
-        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=True
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
     ),
     Column(
         "type_id",
         BigInteger,
-        ForeignKey("maasserver_eventtype.id"),
+        ForeignKey(
+            "maasserver_eventtype.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     Column("node_hostname", String(255), nullable=False),
@@ -535,7 +655,7 @@ FabricTable = Table(
     Column("id", Integer, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(256), nullable=True),
+    Column("name", String(256), nullable=True, unique=True),
     Column("class_type", String(256), nullable=True),
     Column("description", Text, nullable=False),
     Index("maasserver_fabric_name_3aaa3e4d_like", "name"),
@@ -637,7 +757,12 @@ FileStorageTable = Table(
     Column("filename", String(255), nullable=False),
     Column("content", Text, nullable=False),
     Column("key", String(36), nullable=False, unique=True),
-    Column("owner_id", Integer, ForeignKey("auth_user.id"), nullable=True),
+    Column(
+        "owner_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=True,
+    ),
     UniqueConstraint("filename", "owner_id"),
     Index("maasserver_filestorage_owner_id_24d47e43", "owner_id"),
     Index("maasserver_filestorage_key_4458fcee_like", "key"),
@@ -650,7 +775,7 @@ ForwardDNSServerTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("ip_address", INET, nullable=False, unique=True),
-    Column("port", Integer, nullable=False, unique=False),
+    Column("port", Integer, nullable=False),
 )
 
 ForwardDNSServerDomainsTable = Table(
@@ -660,15 +785,22 @@ ForwardDNSServerDomainsTable = Table(
     Column(
         "domain_id",
         Integer,
-        ForeignKey("maasserver_domain.id"),
+        ForeignKey(
+            "maasserver_domain.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Column(
         "forwarddnsserver_id",
         BigInteger,
-        ForeignKey("maasserver_forwarddnsserver.id"),
+        ForeignKey(
+            "maasserver_forwarddnsserver.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
+    UniqueConstraint("forwarddnsserver_id", "domain_id"),
     Index(
         "maasserver_forwarddnsserver_domains_domain_id_02e252ac", "domain_id"
     ),
@@ -687,7 +819,9 @@ GlobalDefaultTable = Table(
     Column(
         "domain_id",
         Integer,
-        ForeignKey("maasserver_domain.id"),
+        ForeignKey(
+            "maasserver_domain.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Index("maasserver_globaldefault_domain_id_11c3ee74", "domain_id"),
@@ -697,8 +831,25 @@ InterfaceIPAddressTable = Table(
     "maasserver_interface_ip_addresses",
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
-    Column("interface_id", BigInteger, nullable=False),
-    Column("staticipaddress_id", BigInteger, nullable=False),
+    Column(
+        "interface_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Column(
+        "staticipaddress_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_staticipaddress.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+    ),
+    UniqueConstraint("interface_id", "staticipaddress_id"),
     Index(
         "maasserver_interface_ip_addresses_staticipaddress_id_5fa63951",
         "staticipaddress_id",
@@ -722,7 +873,12 @@ InterfaceTable = Table(
     Column("tags", Text, nullable=True),
     Column("enabled", Boolean, nullable=False),
     Column(
-        "vlan_id", BigInteger, ForeignKey("maasserver_vlan.id"), nullable=True
+        "vlan_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_vlan.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
     ),
     Column("acquired", Boolean, nullable=False),
     Column("mdns_discovery_state", Boolean, nullable=False),
@@ -736,16 +892,21 @@ InterfaceTable = Table(
     Column(
         "numa_node_id",
         BigInteger,
-        ForeignKey("maasserver_numanode.id"),
+        ForeignKey(
+            "maasserver_numanode.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column("sriov_max_vf", Integer, nullable=False),
     Column(
         "node_config_id",
         BigInteger,
-        ForeignKey("maasserver_nodeconfig.id"),
+        ForeignKey(
+            "maasserver_nodeconfig.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
+    UniqueConstraint("node_config_id", "name"),
     Index("maasserver_interface_vlan_id_5f39995d", "vlan_id"),
     Index("maasserver_interface_numa_node_id_6e790407", "numa_node_id"),
     Index("maasserver_interface_node_config_id_a52b0f8a", "node_config_id"),
@@ -765,14 +926,21 @@ IPRangeTable = Table(
     Column(
         "subnet_id",
         BigInteger,
-        ForeignKey("maasserver_subnet.id"),
+        ForeignKey(
+            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
-    Column("type", String(20), nullable=False, unique=False),
-    Column("start_ip", INET, nullable=False, unique=False),
-    Column("end_ip", INET, nullable=False, unique=False),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
-    Column("comment", String(255), nullable=True, unique=False),
+    Column("type", String(20), nullable=False),
+    Column("start_ip", INET, nullable=False),
+    Column("end_ip", INET, nullable=False),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=True,
+    ),
+    Column("comment", String(255), nullable=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Index("maasserver_iprange_user_id_5d0f7718", "user_id"),
@@ -782,14 +950,13 @@ IPRangeTable = Table(
 LargeFileTable = Table(
     "maasserver_largefile",
     METADATA,
-    Column("id", BigInteger, primary_key=True, nullable=False),
+    Column("id", BigInteger, Identity(), primary_key=True, nullable=False),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("sha256", String(64), nullable=False),
+    Column("sha256", String(64), nullable=False, unique=True),
     Column("total_size", BigInteger, nullable=False),
     Column("content", OID, nullable=False),
     Column("size", BigInteger, nullable=False),
-    UniqueConstraint("sha256", name="maasserver_largefile_sha256_key"),
     Index(
         "maasserver_largefile_sha256_40052db0_like",
         "sha256",
@@ -809,7 +976,9 @@ MDNSTable = Table(
     Column(
         "interface_id",
         BigInteger,
-        ForeignKey("maasserver_interface.id"),
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Index("maasserver_mdns_interface_id_ef297041", "interface_id"),
@@ -863,6 +1032,29 @@ PartitionTableTable = Table(
     ),
 )
 
+PodStoragePoolTable = Table(
+    "maasserver_podstoragepool",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("name", String(255), nullable=False),
+    Column("pool_id", String(255), nullable=False),
+    Column("pool_type", String(255), nullable=False),
+    Column("path", String(4095), nullable=False),
+    Column("storage", BigInteger, nullable=False),
+    Column(
+        "pod_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_bmc.id",
+            deferrable=True,
+            initially="DEFERRED",
+            name="maasserver_podstoragepool_pod_id_11db94aa_fk",
+        ),
+        nullable=False,
+    ),
+    Index("maasserver_podstoragepool_pod_id_11db94aa", "pod_id"),
+)
+
 NeighbourTable = Table(
     "maasserver_neighbour",
     METADATA,
@@ -877,9 +1069,12 @@ NeighbourTable = Table(
     Column(
         "interface_id",
         BigInteger,
-        ForeignKey("maasserver_interface.id"),
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
+    UniqueConstraint("interface_id", "vid", "mac_address", "ip"),
     Index("maasserver_neighbour_interface_id_dd458d65", "interface_id"),
 )
 
@@ -891,8 +1086,14 @@ NodeConfigTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("name", Text, nullable=False),
     Column(
-        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
     ),
+    UniqueConstraint("node_id", "name"),
     Index("maasserver_nodeconfig_node_id_c9235109", "node_id"),
 )
 
@@ -915,26 +1116,41 @@ NodeDeviceTable = Table(
     Column(
         "numa_node_id",
         BigInteger,
-        ForeignKey("maasserver_numanode.id"),
+        ForeignKey(
+            "maasserver_numanode.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Column(
         "physical_blockdevice_id",
         BigInteger,
-        ForeignKey("maasserver_physicalblockdevice.blockdevice_ptr_id"),
+        ForeignKey(
+            "maasserver_physicalblockdevice.blockdevice_ptr_id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
+        unique=True,
     ),
     Column(
         "physical_interface_id",
         BigInteger,
-        ForeignKey("maasserver_interface.id"),
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
+        unique=True,
     ),
     Column(
         "node_config_id",
         BigInteger,
-        ForeignKey("maasserver_nodeconfig.id"),
+        ForeignKey(
+            "maasserver_nodeconfig.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
+    ),
+    UniqueConstraint(
+        "node_config_id", "bus_number", "device_number", "pci_address"
     ),
     Index("maasserver_nodedevice_numa_node_id_fadf5b46", "numa_node_id"),
     Index("maasserver_nodedevice_node_config_id_3f91f0a0", "node_config_id"),
@@ -948,9 +1164,12 @@ NodeDeviceVpdTable = Table(
     Column("value", Text, nullable=False),
     Column(
         "node_device_id",
-        ForeignKey("maasserver_nodedevice.id"),
+        ForeignKey(
+            "maasserver_nodedevice.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
+    UniqueConstraint("node_device_id", "key"),
     Index(
         "maasserver_nodedevicevpd_node_device_id_9c998e15", "node_device_id"
     ),
@@ -965,7 +1184,9 @@ NodeGroupToRackControllerTable = Table(
     Column(
         "subnet_id",
         BigInteger,
-        ForeignKey("maasserver_subnet.id"),
+        ForeignKey(
+            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Index(
@@ -979,8 +1200,8 @@ NodeTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("system_id", String(41), nullable=False),
-    Column("hostname", String(255), nullable=False),
+    Column("system_id", String(41), nullable=False, unique=True),
+    Column("hostname", String(255), nullable=False, unique=True),
     Column("status", Integer, nullable=False),
     Column("bios_boot_method", String(31), nullable=True),
     Column("osystem", String(255), nullable=False),
@@ -1002,38 +1223,106 @@ NodeTable = Table(
     Column("enable_ssh", Boolean, nullable=False),
     Column("skip_networking", Boolean, nullable=False),
     Column("skip_storage", Boolean, nullable=False),
-    Column("boot_interface_id", BigInteger, nullable=True),
-    Column("gateway_link_ipv4_id", BigInteger, nullable=True),
-    Column("gateway_link_ipv6_id", BigInteger, nullable=True),
-    Column("owner_id", Integer, ForeignKey("auth_user.id"), nullable=True),
     Column(
-        "parent_id",
+        "boot_interface_id",
         BigInteger,
-        ForeignKey("maasserver_node.id"),
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column(
-        "zone_id", BigInteger, ForeignKey("maasserver_zone.id"), nullable=False
+        "gateway_link_ipv4_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_staticipaddress.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+    ),
+    Column(
+        "gateway_link_ipv6_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_staticipaddress.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+    ),
+    Column(
+        "owner_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=True,
+    ),
+    Column(
+        "parent_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
+    ),
+    Column(
+        "zone_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_zone.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
     ),
     Column(
         "boot_disk_id",
         BigInteger,
-        ForeignKey("maasserver_physicalblockdevice.blockdevice_ptr_id"),
+        ForeignKey(
+            "maasserver_physicalblockdevice.blockdevice_ptr_id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Column("node_type", Integer, nullable=False),
     Column(
-        "domain_id", Integer, ForeignKey("maasserver_domain.id"), nullable=True
+        "domain_id",
+        Integer,
+        ForeignKey(
+            "maasserver_domain.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
     ),
-    Column("dns_process_id", BigInteger, nullable=True),
     Column(
-        "bmc_id", BigInteger, ForeignKey("maasserver_bmc.id"), nullable=True
+        "dns_process_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_regioncontrollerprocess.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+        unique=True,
+    ),
+    Column(
+        "bmc_id",
+        BigInteger,
+        ForeignKey("maasserver_bmc.id", deferrable=True, initially="DEFERRED"),
+        nullable=True,
     ),
     Column("address_ttl", Integer, nullable=True),
     Column("status_expires", DateTime(timezone=True), nullable=True),
     Column("power_state_queried", DateTime(timezone=True), nullable=True),
     Column("url", String(255), nullable=False),
-    Column("managing_process_id", BigInteger, nullable=True),
+    Column(
+        "managing_process_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_regioncontrollerprocess.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+    ),
     Column("last_image_sync", DateTime(timezone=True), nullable=True),
     Column("previous_status", Integer, nullable=False),
     Column("default_user", String(32), nullable=False),
@@ -1041,25 +1330,33 @@ NodeTable = Table(
     Column(
         "current_commissioning_script_set_id",
         BigInteger,
-        ForeignKey("maasserver_scriptset.id"),
+        ForeignKey(
+            "maasserver_scriptset.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column(
         "current_installation_script_set_id",
         BigInteger,
-        ForeignKey("maasserver_scriptset.id"),
+        ForeignKey(
+            "maasserver_scriptset.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column(
         "current_testing_script_set_id",
         BigInteger,
-        ForeignKey("maasserver_scriptset.id"),
+        ForeignKey(
+            "maasserver_scriptset.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column(
         "current_release_script_set_id",
         BigInteger,
-        ForeignKey("maasserver_scriptset.id"),
+        ForeignKey(
+            "maasserver_scriptset.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column("install_rackd", Boolean, nullable=False),
@@ -1067,12 +1364,14 @@ NodeTable = Table(
     Column(
         "pool_id",
         Integer,
-        ForeignKey("maasserver_resourcepool.id"),
+        ForeignKey(
+            "maasserver_resourcepool.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column("instance_power_parameters", JSONB, nullable=False),
     Column("install_kvm", Boolean, nullable=False),
-    Column("hardware_uuid", String(36), nullable=True),
+    Column("hardware_uuid", String(36), nullable=True, unique=True),
     Column("ephemeral_deploy", Boolean, nullable=False),
     Column("description", Text, nullable=False),
     Column("dynamic", Boolean, nullable=False),
@@ -1081,7 +1380,9 @@ NodeTable = Table(
     Column(
         "current_config_id",
         BigInteger,
-        ForeignKey("maasserver_nodeconfig.id"),
+        ForeignKey(
+            "maasserver_nodeconfig.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column("enable_hw_sync", Boolean, nullable=False),
@@ -1089,6 +1390,7 @@ NodeTable = Table(
     Column("sync_interval", Integer, nullable=True),
     Column("enable_kernel_crash_dump", Boolean, nullable=False),
     Column("is_dpu", Boolean, nullable=False),
+    # UniqueConstraint(),
     Index("maasserver_node_zone_id_97213f69", "zone_id"),
     Index(
         "maasserver_node_hardware_uuid_6b491c84_like",
@@ -1145,11 +1447,20 @@ NodeTagTable = Table(
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
     Column(
-        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
     ),
     Column(
-        "tag_id", BigInteger, ForeignKey("maasserver_tag.id"), nullable=False
+        "tag_id",
+        BigInteger,
+        ForeignKey("maasserver_tag.id", deferrable=True, initially="DEFERRED"),
+        nullable=False,
     ),
+    UniqueConstraint("node_id", "tag_id"),
     Index("maasserver_node_tags_tag_id_f4728372", "tag_id"),
     Index("maasserver_node_tags_node_id_a662a9f1", "node_id"),
 )
@@ -1165,7 +1476,12 @@ NotificationTable = Table(
     Column("admins", Boolean, nullable=False),
     Column("message", Text, nullable=False),
     Column("context", JSONB, nullable=False),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=True,
+    ),
     Column("category", String(10), nullable=False),
     Column("dismissable", Boolean, nullable=False),
     Index("maasserver_notification_user_id_5a4d1d18", "user_id"),
@@ -1182,11 +1498,18 @@ NotificationDismissalTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=False),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=False,
+    ),
     Column(
         "notification_id",
         BigInteger,
-        ForeignKey("maasserver_notification.id"),
+        ForeignKey(
+            "maasserver_notification.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Index("maasserver_notificationdismissal_user_id_87cc11da", "user_id"),
@@ -1209,11 +1532,11 @@ NumaNodeTable = Table(
         "node_id",
         BigInteger,
         ForeignKey(
-            "maasserver_node.id",
-            name="maasserver_numanode_node_id_539a7e2f_fkR",
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
         ),
         nullable=False,
     ),
+    UniqueConstraint("node_id", "index"),
     Index("maasserver_numanode_node_id_539a7e2f", "node_id"),
 )
 
@@ -1243,9 +1566,10 @@ PhysicalBlockDeviceTable = Table(
     Column(
         "blockdevice_ptr_id",
         BigInteger,
-        ForeignKey("maasserver_blockdevice.id"),
+        ForeignKey(
+            "maasserver_blockdevice.id", deferrable=True, initially="DEFERRED"
+        ),
         primary_key=True,
-        unique=True,
     ),
     Column("model", String(255), nullable=False),
     Column("serial", String(255), nullable=False),
@@ -1253,7 +1577,9 @@ PhysicalBlockDeviceTable = Table(
     Column(
         "numa_node_id",
         BigInteger,
-        ForeignKey("maasserver_numanode.id"),
+        ForeignKey(
+            "maasserver_numanode.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Index(
@@ -1272,10 +1598,36 @@ RDNSTable = Table(
     Column(
         "observer_id",
         BigInteger,
-        ForeignKey("maasserver_node.id"),
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
+    UniqueConstraint("ip", "observer_id"),
     Index("maasserver_rdns_observer_id_85a64c6b", "observer_id"),
+)
+
+RegionControllerProcessTable = Table(
+    "maasserver_regioncontrollerprocess",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("pid", Integer, nullable=False),
+    Column(
+        "region_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+    ),
+    UniqueConstraint("region_id", "pid"),
+    Index(
+        "maasserver_regioncontrollerprocess_region_id_ee210efa", "region_id"
+    ),
 )
 
 ReservedIPTable = Table(
@@ -1285,15 +1637,17 @@ ReservedIPTable = Table(
     Column(
         "subnet_id",
         BigInteger,
-        ForeignKey("maasserver_subnet.id"),
+        ForeignKey(
+            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
-        unique=False,
     ),
     Column("ip", INET, nullable=False, unique=True),
-    Column("mac_address", Text, nullable=False, unique=False),
-    Column("comment", String(255), nullable=True, unique=False),
+    Column("mac_address", Text, nullable=False),
+    Column("comment", String(255), nullable=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
+    UniqueConstraint("mac_address", "subnet_id"),
     Index("maasserver_reservedip_subnet_id_548dd59f", "subnet_id"),
 )
 
@@ -1303,7 +1657,7 @@ ResourcePoolTable = Table(
     Column("id", Integer, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(256), nullable=False),
+    Column("name", String(256), nullable=False, unique=True),
     Column("description", Text, nullable=False),
     Index(
         "maasserver_resourcepool_name_dc5d41eb_like",
@@ -1336,19 +1690,27 @@ ScriptResultTable = Table(
     Column(
         "script_id",
         BigInteger,
-        ForeignKey("maasserver_script.id"),
+        ForeignKey(
+            "maasserver_script.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column(
         "script_set_id",
         BigInteger,
-        ForeignKey("maasserver_scriptset.id"),
+        ForeignKey(
+            "maasserver_scriptset.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Column(
         "script_version_id",
         BigInteger,
-        ForeignKey("maasserver_versionedtextfile.id"),
+        ForeignKey(
+            "maasserver_versionedtextfile.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Column("output", Text, nullable=False),
@@ -1358,14 +1720,20 @@ ScriptResultTable = Table(
     Column(
         "physical_blockdevice_id",
         BigInteger,
-        ForeignKey("maasserver_physicalblockdevice.blockdevice_ptr_id"),
+        ForeignKey(
+            "maasserver_physicalblockdevice.blockdevice_ptr_id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Column("suppressed", Boolean, nullable=False),
     Column(
         "interface_id",
         BigInteger,
-        ForeignKey("maasserver_interface.id"),
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Index(
@@ -1390,7 +1758,12 @@ ScriptSetTable = Table(
     Column("last_ping", DateTime(timezone=True), nullable=True),
     Column("result_type", Integer, nullable=False),
     Column(
-        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
     ),
     Column("power_state_before_transition", String(10), nullable=False),
     Column("tags", Text, nullable=True),
@@ -1403,7 +1776,7 @@ ScriptTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(255), nullable=False),
+    Column("name", String(255), nullable=False, unique=True),
     Column("description", Text, nullable=False),
     Column("tags", Text, nullable=True),
     Column("script_type", Integer, nullable=False),
@@ -1413,8 +1786,13 @@ ScriptTable = Table(
     Column(
         "script_id",
         BigInteger,
-        ForeignKey("maasserver_versionedtextfile.id"),
+        ForeignKey(
+            "maasserver_versionedtextfile.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
+        unique=True,
     ),
     Column("title", String(255), nullable=False),
     Column("hardware_type", Integer, nullable=False),
@@ -1455,9 +1833,12 @@ ServiceStatusTable = Table(
     Column(
         "node_id",
         BigInteger,
-        ForeignKey("maasserver_node.id"),
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
+    UniqueConstraint("node_id", "name"),
     Index("maasserver_service_node_id_891637d4", "node_id"),
 )
 
@@ -1482,7 +1863,12 @@ SshKeyTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("key", Text, nullable=False),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=False),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=False,
+    ),
     Column("auth_id", String(255), nullable=True),
     Column("protocol", String(64), nullable=True),
     Index("maasserver_sshkey_user_id_84b68559", "user_id"),
@@ -1494,7 +1880,7 @@ SpaceTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(256), nullable=True),
+    Column("name", String(256), nullable=True, unique=True),
     Column("description", Text, nullable=False),
     Index(
         "maasserver_space_name_38f1b4f5_like",
@@ -1510,8 +1896,13 @@ SSLKeyTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("key", Text, nullable=False),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=False),
-    UniqueConstraint("key", "user_id", name="unique_id_sslkey"),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=False,
+    ),
+    UniqueConstraint("key", "user_id"),
     Index("maasserver_sslkey_user_id_d871db8c", "user_id"),
 )
 
@@ -1526,12 +1917,20 @@ StaticIPAddressTable = Table(
     Column(
         "subnet_id",
         BigInteger,
-        ForeignKey("maasserver_subnet.id"),
+        ForeignKey(
+            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=True,
+    ),
     Column("lease_time", Integer, nullable=False),
     Column("temp_expires_on", DateTime(timezone=True), nullable=True),
+    UniqueConstraint("alloc_type", "ip"),
     Index("maasserver_staticipaddress_user_id_a7e5e455", "user_id"),
     Index(
         "maasserver_staticipaddress_temp_expires_on_1cb8532a",
@@ -1558,15 +1957,20 @@ StaticRouteTable = Table(
     Column(
         "destination_id",
         BigInteger,
-        ForeignKey("maasserver_subnet.id"),
+        ForeignKey(
+            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Column(
         "source_id",
         BigInteger,
-        ForeignKey("maasserver_subnet.id"),
+        ForeignKey(
+            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
+    UniqueConstraint("source_id", "destination_id", "gateway_ip"),
     Index("maasserver_staticroute_source_id_3321277a", "source_id"),
     Index("maasserver_staticroute_destination_id_4d1b294b", "destination_id"),
 )
@@ -1578,11 +1982,16 @@ SubnetTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("name", String(255), nullable=False),
-    Column("cidr", CIDR, nullable=False),
+    Column("cidr", CIDR, nullable=False, unique=True),
     Column("gateway_ip", INET, nullable=True),
     Column("dns_servers", ARRAY(Text), nullable=True),
     Column(
-        "vlan_id", BigInteger, ForeignKey("maasserver_vlan.id"), nullable=False
+        "vlan_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_vlan.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
     ),
     Column("rdns_mode", Integer, nullable=False),
     Column("allow_proxy", Boolean, nullable=False),
@@ -1612,20 +2021,29 @@ UISubnetView = Table(
     Column("allow_dns", Boolean, nullable=False),
     Column("disabled_boot_architectures", ARRAY(String(64)), nullable=False),
     Column(
-        "vlan_id", BigInteger, ForeignKey("maasserver_vlan.id"), nullable=False
+        "vlan_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_vlan.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
     ),
     Column("vlan_vid", Integer, nullable=False),
     Column(
         "fabric_id",
         BigInteger,
-        ForeignKey("maasserver_fabric.id"),
+        ForeignKey(
+            "maasserver_fabric.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Column("fabric_name", String(256), nullable=True),
     Column(
         "space_id",
         BigInteger,
-        ForeignKey("maasserver_space.id"),
+        ForeignKey(
+            "maasserver_space.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column("space_name", String(256), nullable=True),
@@ -1659,10 +2077,17 @@ TokenTable = Table(
     Column(
         "consumer_id",
         BigInteger,
-        ForeignKey("piston3_consumer.id"),
+        ForeignKey(
+            "piston3_consumer.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=True,
+    ),
     Index("piston3_token_user_id_e5cd818c", "user_id"),
     Index("piston3_token_consumer_id_b178993d", "consumer_id"),
 )
@@ -1674,7 +2099,13 @@ UserProfileTable = Table(
     Column("completed_intro", Boolean, nullable=False),
     Column("auth_last_check", DateTime(timezone=True), nullable=True),
     Column("is_local", Boolean, nullable=False),
-    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=False),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=False,
+        unique=True,
+    ),
 )
 
 UserTable = Table(
@@ -1684,10 +2115,10 @@ UserTable = Table(
     Column("password", String(128), nullable=False),
     Column("last_login", DateTime(timezone=True), nullable=True),
     Column("is_superuser", Boolean, nullable=False),
-    Column("username", String(150), nullable=False),
+    Column("username", String(150), nullable=False, unique=True),
     Column("first_name", String(150), nullable=False),
     Column("last_name", String(150), nullable=False),
-    Column("email", String(254), nullable=True),
+    Column("email", String(254), nullable=True, unique=True),
     Column("is_staff", Boolean, nullable=False),
     Column("is_active", Boolean, nullable=False),
     Column("date_joined", DateTime(timezone=True), nullable=False),
@@ -1722,7 +2153,11 @@ VersionedTextFileTable = Table(
     Column(
         "previous_version_id",
         BigInteger,
-        ForeignKey("maasserver_versionedtextfile.id"),
+        ForeignKey(
+            "maasserver_versionedtextfile.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,
     ),
     Index(
@@ -1737,16 +2172,22 @@ VirtualBlockDeviceTable = Table(
     Column(
         "blockdevice_ptr_id",
         BigInteger,
-        ForeignKey("maasserver_blockdevice.id"),
+        ForeignKey(
+            "maasserver_blockdevice.id", deferrable=True, initially="DEFERRED"
+        ),
         primary_key=True,
     ),
+    Column("uuid", Text, nullable=False),
     Column(
         "filesystem_group_id",
         BigInteger,
-        ForeignKey("maasserver_filesystem.filesystem_group_id"),
+        ForeignKey(
+            "maasserver_filesystemgroup.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
-    Column("uuid", Text, nullable=False, unique=True),
     Index(
         "maasserver_virtualblockdevice_filesystem_group_id_405a7fc4",
         "filesystem_group_id",
@@ -1765,26 +2206,47 @@ VlanTable = Table(
     Column(
         "fabric_id",
         Integer,
-        ForeignKey("maasserver_fabric.id"),
+        ForeignKey(
+            "maasserver_fabric.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Column("dhcp_on", Boolean, nullable=False),
-    Column("primary_rack_id", BigInteger, nullable=True),
-    Column("secondary_rack_id", BigInteger, nullable=True),
+    Column(
+        "primary_rack_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
+    ),
+    Column(
+        "secondary_rack_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
+    ),
     Column("external_dhcp", INET, nullable=True),
     Column("description", Text, nullable=False),
     Column(
         "relay_vlan_id",
         BigInteger,
-        ForeignKey("maasserver_vlan.id"),
+        ForeignKey(
+            "maasserver_vlan.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column(
         "space_id",
         BigInteger,
-        ForeignKey("maasserver_space.id"),
+        ForeignKey(
+            "maasserver_space.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
+    UniqueConstraint("vid", "fabric_id"),
     Index("maasserver_vlan_space_id_5e1dc51f", "space_id"),
     Index("maasserver_vlan_secondary_rack_id_3b97d19a", "secondary_rack_id"),
     Index("maasserver_vlan_relay_vlan_id_c026b672", "relay_vlan_id"),
@@ -1799,17 +2261,21 @@ VmClusterTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("name", Text, nullable=False, unique=True),
-    Column("project", Text, nullable=False, unique=False),
+    Column("project", Text, nullable=False),
     Column(
         "pool_id",
         Integer,
-        ForeignKey("maasserver_resourcepool.id"),
+        ForeignKey(
+            "maasserver_resourcepool.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=True,
     ),
     Column(
         "zone_id",
         BigInteger,
-        ForeignKey("maasserver_zone.id"),
+        ForeignKey(
+            "maasserver_zone.id", deferrable=True, initially="DEFERRED"
+        ),
         nullable=False,
     ),
     Index("maasserver_vmcluster_zone_id_07623572", "zone_id"),
