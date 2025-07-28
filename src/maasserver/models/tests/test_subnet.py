@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
@@ -9,8 +9,6 @@ from unittest.mock import call
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 from fixtures import FakeLogger
-from hypothesis import given, settings
-from hypothesis.strategies import integers
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 from temporalio.common import WorkflowIDReusePolicy
 
@@ -48,7 +46,6 @@ from maasserver.models.subnet import (
 from maasserver.models.timestampedmodel import now
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory, RANDOM, RANDOM_OR_NONE
-from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maastesting.djangotestcase import count_queries
@@ -727,28 +724,10 @@ class TestSubnet(MAASServerTestCase):
         self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().first, subnet)
         self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().last, subnet)
 
-    def test_get_subnets_with_ip_finds_most_specific_subnet(self):
-        subnet1 = factory.make_Subnet(cidr=IPNetwork("10.0.0.0/8"))
-        subnet2 = factory.make_Subnet(cidr=IPNetwork("10.0.0.0/16"))
-        subnet3 = factory.make_Subnet(cidr=IPNetwork("10.0.0.0/24"))
-        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().first, subnet3)
-        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().last, subnet1)
-        self.assertIPBestMatchesSubnet(subnet2.get_ipnetwork().last, subnet2)
-        self.assertIPBestMatchesSubnet(subnet3.get_ipnetwork().last, subnet3)
-
     def test_get_subnets_with_ip_finds_matching_ipv6_subnet(self):
         subnet = factory.make_Subnet(cidr=factory.make_ipv6_network())
         self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().first, subnet)
         self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().last, subnet)
-
-    def test_get_subnets_with_ip_finds_most_specific_ipv6_subnet(self):
-        subnet1 = factory.make_Subnet(cidr=IPNetwork("2001:db8::/32"))
-        subnet2 = factory.make_Subnet(cidr=IPNetwork("2001:db8::/48"))
-        subnet3 = factory.make_Subnet(cidr=IPNetwork("2001:db8::/64"))
-        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().first, subnet3)
-        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().last, subnet1)
-        self.assertIPBestMatchesSubnet(subnet2.get_ipnetwork().last, subnet2)
-        self.assertIPBestMatchesSubnet(subnet3.get_ipnetwork().last, subnet3)
 
     def test_get_subnets_with_ip_returns_empty_list_if_not_found(self):
         network = factory._make_random_network()
@@ -767,40 +746,6 @@ class TestSubnet(MAASServerTestCase):
         parent = IPNetwork("%s/%d" % (net.network, net.prefixlen - bits))
         parent = IPNetwork("%s/%d" % (parent.network, parent.prefixlen))
         return parent
-
-    def test_get_smallest_enclosing_sane_subnet_returns_none_when_none(self):
-        subnet = factory.make_Subnet()
-        self.assertIsNone(subnet.get_smallest_enclosing_sane_subnet())
-
-    @settings(deadline=None)
-    @given(integers(25, 29), integers(2, 5))
-    def test_get_smallest_enclosing_sane_subnet_finds_parent_ipv4(
-        self, subnet_mask, parent_bits
-    ):
-        with rollback():  # Needed when using `hypothesis`.
-            subnet = factory.make_Subnet(cidr="192.168.0.0/%d" % subnet_mask)
-            net = IPNetwork(subnet.cidr)
-            self.assertIsNone(subnet.get_smallest_enclosing_sane_subnet())
-            parent = self.make_random_parent(net, bits=parent_bits)
-            parent = factory.make_Subnet(cidr=parent.cidr)
-            self.assertEqual(
-                parent, subnet.get_smallest_enclosing_sane_subnet()
-            )
-
-    @settings(deadline=None)
-    @given(integers(100, 126), integers(2, 20))
-    def test_get_smallest_enclosing_sane_subnet_finds_parent_ipv6(
-        self, subnet_mask, parent_bits
-    ):
-        with rollback():  # Needed when using `hypothesis`.
-            subnet = factory.make_Subnet(cidr="2001:db8::d0/%d" % subnet_mask)
-            net = IPNetwork(subnet.cidr)
-            self.assertIsNone(subnet.get_smallest_enclosing_sane_subnet())
-            parent = self.make_random_parent(net, bits=parent_bits)
-            parent = factory.make_Subnet(cidr=parent.cidr)
-            self.assertEqual(
-                parent, subnet.get_smallest_enclosing_sane_subnet()
-            )
 
     def test_cannot_delete_with_dhcp_enabled(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
@@ -867,6 +812,121 @@ class TestSubnet(MAASServerTestCase):
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
+    def test_overlapping_subnets_not_allowed(self):
+        vlan = factory.make_VLAN()
+        subnet = Subnet(
+            cidr="10.1.0.0/16",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+        with post_commit_hooks:
+            subnet.save()
+
+        with self.assertRaisesRegex(
+            ValidationError,
+            "Subnet 10.1.1.0/24 would overlap with existing subnets",
+        ):
+            overlapping_subnet = Subnet(
+                cidr="10.1.1.0/24",
+                vlan=vlan,
+                allow_dns=True,
+                rdns_mode=RDNS_MODE.ENABLED,
+            )
+            with post_commit_hooks:
+                overlapping_subnet.save()
+
+    def test_overlapping_subnets_not_allowed_ipv6(self):
+        vlan = factory.make_VLAN()
+        subnet = Subnet(
+            cidr="2001:db8::/32",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+        with post_commit_hooks:
+            subnet.save()
+
+        with self.assertRaisesRegex(
+            ValidationError,
+            "Subnet 2001:db8:0:1::/64 would overlap with existing subnets",
+        ):
+            overlapping_subnet = Subnet(
+                cidr="2001:db8:0:1::/64",  # This is within 2001:db8::/32
+                vlan=vlan,
+                allow_dns=True,
+                rdns_mode=RDNS_MODE.ENABLED,
+            )
+            with post_commit_hooks:
+                overlapping_subnet.save()
+
+    def test_update_overlapping_subnets_not_allowed(self):
+        vlan = factory.make_VLAN()
+        subnet = Subnet(
+            cidr="10.1.0.0/16",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+        subnet2 = Subnet(
+            cidr="20.1.0.0/16",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+        with post_commit_hooks:
+            subnet.save()
+            subnet2.save()
+
+        with self.assertRaisesRegex(
+            ValidationError,
+            "Subnet 10.1.1.0/24 would overlap with existing subnets",
+        ):
+            subnet2.cidr = "10.1.1.0/24"
+            with post_commit_hooks:
+                subnet2.save()
+
+    def test_update_overlapping_subnets_not_allowed_ipv6(self):
+        vlan = factory.make_VLAN()
+        subnet = Subnet(
+            cidr="2001:db8::/32",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+        subnet2 = Subnet(
+            cidr="3001:db8::/32",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+        with post_commit_hooks:
+            subnet.save()
+            subnet2.save()
+
+        with self.assertRaisesRegex(
+            ValidationError,
+            "Subnet 2001:db8:0:1::/64 would overlap with existing subnets",
+        ):
+            subnet2.cidr = "2001:db8:0:1::/64"
+            with post_commit_hooks:
+                subnet2.save()
+
+    def test_update_overlapping_subnets_excludes_itself(self):
+        vlan = factory.make_VLAN()
+        subnet = Subnet(
+            cidr="10.1.0.0/16",
+            vlan=vlan,
+            allow_dns=True,
+            rdns_mode=RDNS_MODE.ENABLED,
+        )
+        with post_commit_hooks:
+            subnet.save()
+
+        subnet.cidr = "10.1.1.0/24"
+        with post_commit_hooks:
+            subnet.save()
+
     def test_delete_calls_configure_dhcp_workflow(self):
         mock_start_workflow = self.patch(subnet_module, "start_workflow")
         subnet = factory.make_Subnet()
@@ -908,31 +968,10 @@ class TestSubnet(MAASServerTestCase):
 
 
 class TestGetBestSubnetForIP(MAASServerTestCase):
-    def test_returns_most_specific_ipv4_subnet(self):
-        factory.make_Subnet(cidr="10.0.0.0/8")
-        expected_subnet = factory.make_Subnet(cidr="10.1.1.0/24")
-        factory.make_Subnet(cidr="10.1.0.0/16")
-        subnet = Subnet.objects.get_best_subnet_for_ip("10.1.1.1")
-        self.assertEqual(subnet, expected_subnet)
-
-    def test_returns_most_specific_ipv6_subnet(self):
-        factory.make_Subnet(cidr="2001::/16")
-        expected_subnet = factory.make_Subnet(cidr="2001:db8:1:2::/64")
-        factory.make_Subnet(cidr="2001:db8::/32")
-        subnet = Subnet.objects.get_best_subnet_for_ip("2001:db8:1:2::1")
-        self.assertEqual(subnet, expected_subnet)
-
-    def test_returns_most_specific_ipv4_subnet___ipv4_mapped_ipv6_addr(self):
-        factory.make_Subnet(cidr="10.0.0.0/8")
-        expected_subnet = factory.make_Subnet(cidr="10.1.1.0/24")
-        factory.make_Subnet(cidr="10.1.0.0/16")
-        subnet = Subnet.objects.get_best_subnet_for_ip("::ffff:10.1.1.1")
-        self.assertEqual(subnet, expected_subnet)
-
     def test_returns_none_if_no_subnet_found(self):
         factory.make_Subnet(cidr="10.0.0.0/8")
-        factory.make_Subnet(cidr="10.1.1.0/24")
-        factory.make_Subnet(cidr="10.1.0.0/16")
+        factory.make_Subnet(cidr="20.1.1.0/24")
+        factory.make_Subnet(cidr="30.1.0.0/16")
         subnet = Subnet.objects.get_best_subnet_for_ip("::")
         self.assertIsNone(subnet)
 

@@ -1,11 +1,11 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv6Address
 from operator import eq
 from typing import List, Type
 
-from sqlalchemy import desc, func, join, select, Table
+from sqlalchemy import desc, join, or_, select, Table
 
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
@@ -16,6 +16,7 @@ from maasservicelayer.exceptions.catalog import (
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import PRECONDITION_FAILED
+from maasservicelayer.models.fields import IPv4v6Network
 from maasservicelayer.models.subnets import Subnet
 
 
@@ -53,6 +54,15 @@ class SubnetClauseFactory(ClauseFactory):
     def with_not_rdns_mode(cls, rdns_mode: RdnsMode) -> Clause:
         return Clause(condition=(SubnetTable.c.rdns_mode != rdns_mode))
 
+    @classmethod
+    def with_cidr_overlap(cls, cidr: IPv4v6Network) -> Clause:
+        return Clause(
+            condition=or_(
+                SubnetTable.c.cidr.op(">>")(cidr),
+                SubnetTable.c.cidr.op("<<")(cidr),
+            )
+        )
+
 
 class SubnetsRepository(BaseRepository[Subnet]):
     def get_repository_table(self) -> Table:
@@ -70,7 +80,6 @@ class SubnetsRepository(BaseRepository[Subnet]):
         stmt = (
             select(
                 SubnetTable,
-                func.masklen(SubnetTable.c.cidr).label("prefixlen"),
                 VlanTable.c.dhcp_on,
             )
             .select_from(SubnetTable)
@@ -80,7 +89,6 @@ class SubnetsRepository(BaseRepository[Subnet]):
             )
             .order_by(
                 desc(VlanTable.c.dhcp_on),
-                desc("prefixlen"),
             )
             .where(SubnetTable.c.cidr.op(">>")(ip))
         )
@@ -90,7 +98,6 @@ class SubnetsRepository(BaseRepository[Subnet]):
             return None
 
         res = result._asdict()
-        del res["prefixlen"]
         del res["dhcp_on"]
         return Subnet(**res)
 

@@ -79,16 +79,6 @@ class TestDiscoveryModel(MAASServerTestCase):
         factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertEqual(subnet, Discovery.objects.first().subnet)
 
-    def test_associates_best_subnet(self):
-        rack = factory.make_RackController()
-        iface = factory.make_Interface(node=rack)
-        # Seems unlikely, but we'll test it anyway. ;-)
-        subnet = factory.make_Subnet(cidr="10.0.0.0/24", vlan=iface.vlan)
-        factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
-        factory.make_Discovery(interface=iface, ip="10.0.0.1")
-        self.assertEqual(subnet, Discovery.objects.first().subnet)
-        self.assertEqual(1, Discovery.objects.count())
-
     def test_is_external_dhcp(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)

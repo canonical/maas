@@ -32,9 +32,13 @@ from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
-from maasservicelayer.exceptions.catalog import PreconditionFailedException
-from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.exceptions.catalog import (
+    PreconditionFailedException,
+    ValidationException,
+)
+from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
@@ -49,7 +53,97 @@ from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
+from tests.fixtures.factories.fabric import create_test_fabric_entry
+from tests.fixtures.factories.subnet import create_test_subnet_entry
+from tests.fixtures.factories.vlan import create_test_vlan_entry
+from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.services.base import ServiceCommonTests
+
+
+@pytest.mark.asyncio
+class TestIntegrationSubnetsService:
+    @pytest.mark.parametrize(
+        "first_subnet_cidr, second_subnet_cidr, should_raise",
+        [
+            ("10.0.0.0/16", "10.0.1.0/24", True),
+            ("10.0.0.0/24", "10.0.1.0/24", False),
+            ("2001:db8::/32", "2001:db8:0:1::/64", True),
+            ("2001:db8::/64", "2001:db8:1::/64", False),
+        ],
+    )
+    async def test_create_with_overlap(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+        first_subnet_cidr: str,
+        second_subnet_cidr: str,
+        should_raise: bool,
+    ):
+        fabric = await create_test_fabric_entry(fixture)
+        vlan = await create_test_vlan_entry(fixture, fabric_id=fabric.id)
+        await create_test_subnet_entry(
+            fixture, vlan_id=vlan["id"], cidr=first_subnet_cidr
+        )
+
+        builder = SubnetBuilder(
+            name=second_subnet_cidr,
+            cidr=second_subnet_cidr,
+            description="",
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=vlan["id"],
+        )
+
+        if should_raise:
+            with pytest.raises(ValidationException) as e:
+                await services.subnets.create(builder)
+            assert e.value.details[0].type == "InvalidArgumentViolation"
+        else:
+            await services.subnets.create(builder)
+
+    @pytest.mark.parametrize(
+        "first_subnet_cidr, second_subnet_cidr, new_second_subnet_cidr, should_raise",
+        [
+            ("10.0.0.0/16", "20.0.0.0/24", "10.0.1.0/24", True),
+            ("10.0.0.0/24", "20.0.0.0/16", "20.0.1.0/24", False),
+            ("2001:db8::/32", "3001:db8::/32", "2001:db8:0:1::/64", True),
+            ("2001:db8:1::/48", "2001:db8:2::/48", "2001:db8:2::/64", False),
+            ("fd00::/8", "fd01::/64", "fd00:abcd::/64", True),
+            ("fd00:1::/48", "fd00:2::/48", "fd00:3::/48", False),
+        ],
+    )
+    async def test_update_with_overlap(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+        first_subnet_cidr: str,
+        second_subnet_cidr: str,
+        new_second_subnet_cidr: str,
+        should_raise: bool,
+    ):
+        fabric = await create_test_fabric_entry(fixture)
+        vlan = await create_test_vlan_entry(fixture, fabric_id=fabric.id)
+        await create_test_subnet_entry(
+            fixture, vlan_id=vlan["id"], cidr=first_subnet_cidr
+        )
+        second_subnet = await create_test_subnet_entry(
+            fixture, vlan_id=vlan["id"], cidr=second_subnet_cidr
+        )
+
+        builder = SubnetBuilder(cidr=new_second_subnet_cidr)
+
+        if should_raise:
+            with pytest.raises(ValidationException) as e:
+                await services.subnets.update_by_id(
+                    second_subnet["id"], builder
+                )
+            assert e.value.details[0].type == "InvalidArgumentViolation"
+        else:
+            await services.subnets.update_by_id(second_subnet["id"], builder)
 
 
 @pytest.mark.asyncio
@@ -70,6 +164,10 @@ class TestCommonSubnetsService(ServiceCommonTests):
             ),
             subnets_repository=Mock(SubnetsRepository),
         )
+
+    @pytest.fixture
+    def builder_model(self) -> type[ResourceBuilder]:
+        return SubnetBuilder
 
     @pytest.fixture
     def test_instance(self) -> MaasBaseModel:
@@ -130,6 +228,7 @@ class TestSubnetsService:
         )
 
         subnets_repository_mock = Mock(SubnetsRepository)
+        subnets_repository_mock.exists.return_value = False
         subnets_repository_mock.create.return_value = subnet
 
         mock_temporal = Mock(TemporalService)
@@ -198,6 +297,7 @@ class TestSubnetsService:
         )
 
         subnets_repository_mock = Mock(SubnetsRepository)
+        subnets_repository_mock.exists.return_value = False
         subnets_repository_mock.get_one.return_value = subnet
         new_subnet = subnet.copy()
         new_subnet.allow_dns = False

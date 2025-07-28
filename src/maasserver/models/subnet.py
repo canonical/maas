@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for subnets."""
@@ -11,6 +11,7 @@ from typing import Iterable, Optional
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator
+from django.db import connection
 from django.db.models import (
     BooleanField,
     CharField,
@@ -115,14 +116,9 @@ class SubnetQueriesMixin(MAASQueriesMixin):
 
     # Note: << is the postgresql "is contained within" operator.
     # See http://www.postgresql.org/docs/8.4/static/functions-net.html
-    # Use an ORDER BY and LIMIT clause to match the most specific
-    # subnet for the given IP address.
-    # Also, when using "SELECT DISTINCT", the items in ORDER BY must be
-    # present in the SELECT. (hence the extra field)
     find_best_subnet_for_ip_query = """
-        SELECT DISTINCT
+        SELECT
             subnet.*,
-            masklen(subnet.cidr) "prefixlen",
             vlan.dhcp_on "dhcp_on"
         FROM maasserver_subnet AS subnet
         INNER JOIN maasserver_vlan AS vlan
@@ -132,10 +128,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         ORDER BY
             /* Pick subnet that is on a VLAN that is managed over a subnet
                that is not managed on a VLAN. */
-            dhcp_on DESC,
-            /* If there are multiple subnets we want to pick the most specific
-               one that the IP address falls within. */
-            prefixlen DESC
+            dhcp_on DESC
         LIMIT 1
         """
 
@@ -475,8 +468,31 @@ class Subnet(CleanSave, TimestampedModel):
             self.name = str(self.cidr)
         super().clean_fields(*args, **kwargs)
 
+    def validate_cidr(self, exclude_id: int | None):
+        if self.cidr:
+            with connection.cursor() as cursor:
+                params = [self.cidr, self.cidr]
+                query = """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM maasserver_subnet
+                        WHERE
+                            (cidr >>= %s OR cidr <<= %s)
+                """
+                if exclude_id is not None:
+                    query += " AND id != %s"
+                    params.append(exclude_id)
+                query += ")"
+
+                cursor.execute(query, params)
+                if cursor.fetchone()[0]:
+                    raise ValidationError(
+                        f"Subnet {self.cidr} would overlap with existing subnets."
+                    )
+
     def clean(self, *args, **kwargs):
         self.validate_gateway_ip()
+        self.validate_cidr(self.id)
 
     def delete(self, *args, **kwargs):
         from maasserver.models.staticipaddress import FreeIPAddress
@@ -784,28 +800,6 @@ class Subnet(CleanSave, TimestampedModel):
         for iprange in self.get_dynamic_ranges():
             if ip in iprange.netaddr_iprange:
                 return iprange
-        return None
-
-    def get_smallest_enclosing_sane_subnet(self):
-        """Return the subnet that includes this subnet.
-
-        It must also be at least big enough to be a parent in the RFC2317
-        world (/24 in IPv4, /124 in IPv6).
-
-        If no such subnet exists, return None.
-        """
-        find_rfc2137_parent_query = """
-            SELECT * FROM maasserver_subnet
-            WHERE
-                %s << cidr AND (
-                    (family(cidr) = 6 and masklen(cidr) <= 124) OR
-                    (family(cidr) = 4 and masklen(cidr) <= 24))
-            ORDER BY
-                masklen(cidr) DESC
-            LIMIT 1
-            """
-        for s in Subnet.objects.raw(find_rfc2137_parent_query, (self.cidr,)):
-            return s
         return None
 
     def update_allocation_notification(self):

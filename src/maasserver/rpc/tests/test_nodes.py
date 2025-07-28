@@ -482,7 +482,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         rack = factory.make_RackController()
         rack_interface = rack.get_boot_interface()
         subnet = factory.make_Subnet(
-            cidr=str(factory.make_ipv6_network(slash=8))
+            cidr=str(factory.make_ipv6_network(slash=24))
         )
         factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet),
@@ -518,7 +518,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         rack = factory.make_RackController()
         rack_interface = rack.get_boot_interface()
         subnet = factory.make_Subnet(
-            cidr=str(factory.make_ipv6_network(slash=8))
+            cidr=str(factory.make_ipv6_network(slash=24))
         )
         factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet),
