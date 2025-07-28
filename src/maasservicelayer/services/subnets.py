@@ -30,7 +30,12 @@ from maasservicelayer.db.repositories.staticipaddress import (
 from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
-from maasservicelayer.db.repositories.subnets import SubnetsRepository
+from maasservicelayer.db.repositories.subnets import (
+    SubnetClauseFactory,
+    SubnetsRepository,
+)
+from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.base import Unset
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
@@ -74,6 +79,31 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
     ) -> Subnet | None:
         return await self.repository.find_best_subnet_for_ip(ip)
 
+    async def _validate_cidr(
+        self, existing_resource: Subnet | None, builder: SubnetBuilder
+    ):
+        if not isinstance(builder.cidr, Unset):
+            conditions = [SubnetClauseFactory.with_cidr_overlap(builder.cidr)]
+            if existing_resource is not None:
+                conditions.append(
+                    SubnetClauseFactory.not_clause(
+                        SubnetClauseFactory.with_id(existing_resource.id)
+                    )
+                )
+            exists = await self.exists(
+                query=QuerySpec(
+                    where=SubnetClauseFactory.and_clauses(conditions)
+                )
+            )
+            if exists:
+                raise ValidationException.build_for_field(
+                    "cidr",
+                    f"The CIDR {builder.cidr} would overlap with existing subnets",
+                )
+
+    async def pre_create_hook(self, builder: SubnetBuilder) -> None:
+        await self._validate_cidr(None, builder)
+
     async def post_create_hook(self, resource: Subnet) -> None:
         # TODO: proxy workflow
         self.temporal_service.register_or_update_workflow_call(
@@ -91,6 +121,14 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
                 label="",
                 rtype="",
             )
+
+    async def pre_update_many(self, builder: SubnetBuilder) -> None:
+        await self._validate_cidr(None, builder)
+
+    async def pre_update_instance(
+        self, existing_resource: Subnet, builder: SubnetBuilder
+    ) -> None:
+        await self._validate_cidr(existing_resource, builder)
 
     async def post_update_hook(
         self, old_resource: Subnet, updated_resource: Subnet

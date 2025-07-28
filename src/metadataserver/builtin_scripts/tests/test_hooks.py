@@ -5188,7 +5188,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             interface=True,
             status=NODE_STATUS.COMMISSIONING,
         )
-        subnet = factory.make_Subnet(cidr="10.245.136.0/24")
+        subnet = factory.make_Subnet(cidr="10.245.116.0/24")
         vlan = factory.make_VLAN()
         existing_enP2p1s0v0 = factory.make_Interface(
             name="enP2p1s0v0",

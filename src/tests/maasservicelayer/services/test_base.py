@@ -188,6 +188,25 @@ class TestBaseService:
         repository_mock.get_one.assert_awaited_once_with(query=query)
         repository_mock.update_by_id.assert_not_called()
 
+    async def test_update_one_calls_pre_hook(self, repository_mock, service):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_one.return_value = resource
+        repository_mock.update_by_id.return_value = resource
+        builder = ResourceBuilder()
+        query = QuerySpec()
+
+        called = {"flag": False}
+
+        async def _mock_pre_update_hook(existing_resource_arg, builder_arg):
+            assert existing_resource_arg == resource
+            assert builder == builder_arg
+            called["flag"] = True
+
+        service.pre_update_instance = _mock_pre_update_hook
+
+        await service.update_one(query, builder, None)
+        assert called["flag"] is True
+
     async def test_update_by_id(self, repository_mock, service):
         resource = DummyMaasBaseModel(id=0)
         repository_mock.get_by_id.return_value = resource
@@ -231,6 +250,24 @@ class TestBaseService:
             await service.update_by_id(0, builder, "not a match")
         repository_mock.get_by_id.assert_awaited_once_with(id=0)
         repository_mock.update_by_id.assert_not_called()
+
+    async def test_update_by_id_calls_pre_hook(self, repository_mock, service):
+        resource = DummyMaasBaseModel(id=0)
+        repository_mock.get_by_id.return_value = resource
+        repository_mock.update_by_id.return_value = resource
+        builder = ResourceBuilder()
+
+        called = {"flag": False}
+
+        async def _mock_pre_update_hook(existing_resource_arg, builder_arg):
+            assert existing_resource_arg == resource
+            assert builder == builder_arg
+            called["flag"] = True
+
+        service.pre_update_instance = _mock_pre_update_hook
+
+        await service.update_by_id(0, builder, None)
+        assert called["flag"] is True
 
     async def test_update_many(self, repository_mock, service):
         resources = [DummyMaasBaseModel(id=0)]

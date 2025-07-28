@@ -373,7 +373,7 @@ class TestZoneGenerator(MAASServerTestCase):
         vlan1 = factory.make_VLAN(vid=1, dhcp_on=True)
         vlan2 = factory.make_VLAN(vid=2, dhcp_on=True)
         subnet1 = factory.make_Subnet(cidr="10.232.36.0/24", vlan=vlan1)
-        subnet2 = factory.make_Subnet(cidr="10.232.32.0/21", vlan=vlan2)
+        subnet2 = factory.make_Subnet(cidr="10.0.32.0/21", vlan=vlan2)
         subnet3 = factory.make_Subnet(cidr="10.232.6.0/24", vlan=vlan1)
         subnet4 = factory.make_Subnet(cidr="10.2.36.0/24", vlan=vlan1)
         subnet5 = factory.make_Subnet(cidr="10.231.36.0/24", vlan=vlan1)
@@ -390,21 +390,22 @@ class TestZoneGenerator(MAASServerTestCase):
             ],  # purposely out of order to assert subnets are being sorted
             serial=random.randint(0, 65535),
         ).as_list()
-        self.assertEqual(len(zones), 13)  # 5 /24s and 8 from the /21
+        self.assertEqual(len(zones), 14)  # 5 /24s and 8 from the /21
         expected_domains = [
             "overlap",
-            "36.232.10.in-addr.arpa",
-            "32.232.10.in-addr.arpa",
             "6.232.10.in-addr.arpa",
             "36.2.10.in-addr.arpa",
             "36.231.10.in-addr.arpa",
             "40.232.10.in-addr.arpa",
-            "38.232.10.in-addr.arpa",
-            "34.232.10.in-addr.arpa",
-            "35.232.10.in-addr.arpa",
-            "39.232.10.in-addr.arpa",
-            "37.232.10.in-addr.arpa",
-            "33.232.10.in-addr.arpa",
+            "36.232.10.in-addr.arpa",
+            "32.0.10.in-addr.arpa",
+            "33.0.10.in-addr.arpa",
+            "34.0.10.in-addr.arpa",
+            "35.0.10.in-addr.arpa",
+            "36.0.10.in-addr.arpa",
+            "37.0.10.in-addr.arpa",
+            "38.0.10.in-addr.arpa",
+            "39.0.10.in-addr.arpa",
         ]
         zone_names = [
             info.zone_name for zone in zones for info in zone.zone_info
@@ -678,107 +679,6 @@ class TestZoneGenerator(MAASServerTestCase):
             return net
         return None
 
-    def test_supernet_inherits_rfc2317_net(self):
-        domain = Domain.objects.get_default_domain()
-        subnet1 = factory.make_Subnet(host_bits=2)
-        net1 = IPNetwork(subnet1.cidr)
-        if net1.version == 6:
-            prefixlen = random.randint(121, 124)
-        else:
-            prefixlen = random.randint(22, 24)
-        parent = IPNetwork(f"{net1.network}/{prefixlen:d}")
-        parent = IPNetwork(f"{parent.network}/{prefixlen:d}")
-        subnet2 = factory.make_Subnet(cidr=parent)
-        net2 = IPNetwork(subnet2.cidr)
-        node = factory.make_Node_with_Interface_on_Subnet(
-            subnet=subnet1,
-            vlan=subnet1.vlan,
-            fabric=subnet1.vlan.fabric,
-            domain=domain,
-        )
-        boot_iface = node.boot_interface
-        factory.make_StaticIPAddress(interface=boot_iface, subnet=subnet1)
-        default_ttl = random.randint(10, 300)
-        Config.objects.set_config("default_dns_ttl", default_ttl)
-        serial = random.randint(0, 65535)
-        zones = ZoneGenerator(
-            domain,
-            [subnet1, subnet2],
-            default_ttl=default_ttl,
-            serial=serial,
-        ).as_list()
-        expected = [
-            DNSForwardZoneConfig(
-                domain.name,
-                serial=serial,
-                default_ttl=default_ttl,
-            ),
-        ]
-        for net in [net1, net2]:
-            if (
-                net.version == 6 and net.prefixlen < 124
-            ) or net.prefixlen < 24:
-                for network in ZoneGenerator._split_large_subnet(net2):
-                    expected.append(
-                        DNSReverseZoneConfig(domain.name, network=network)
-                    )
-            elif net.version == 6 and net.prefixlen > 124:
-                expected.append(
-                    DNSReverseZoneConfig(
-                        domain.name, network=IPNetwork(f"{net.network}/124")
-                    )
-                )
-                expected.append(DNSReverseZoneConfig(domain.name, network=net))
-            elif net.version == 4 and net.prefixlen > 24:
-                expected.append(
-                    DNSReverseZoneConfig(
-                        domain.name, network=IPNetwork(f"{net.network}/24")
-                    )
-                )
-                expected.append(DNSReverseZoneConfig(domain.name, network=net))
-            else:
-                expected.append(DNSReverseZoneConfig(domain.name, network=net))
-        self.assertCountEqual(
-            set([(zone.domain, zone._network) for zone in zones]),
-            set((e.domain, e._network) for e in expected),
-            f"{subnet1} {subnet2}",
-        )
-        self.assertEqual(set(), zones[1]._rfc2317_ranges)
-        self.assertEqual({net1}, zones[2]._rfc2317_ranges)
-
-    def test_with_many_yields_many_zones(self):
-        # This demonstrates ZoneGenerator in all-singing all-dancing mode.
-        default_domain = Domain.objects.get_default_domain()
-        domains = [default_domain] + [factory.make_Domain() for _ in range(3)]
-        for _ in range(3):
-            factory.make_Subnet()
-        subnets = Subnet.objects.all()
-        expected_zones = set()
-        for domain in domains:
-            expected_zones.add(DNSForwardZoneConfig(domain.name))
-        for subnet in subnets:
-            networks = ZoneGenerator._split_large_subnet(
-                IPNetwork(subnet.cidr)
-            )
-            for network in networks:
-                expected_zones.add(
-                    DNSReverseZoneConfig(default_domain.name, network=network)
-                )
-                if rfc2317_net := self.rfc2317_network(network):
-                    expected_zones.add(
-                        DNSReverseZoneConfig(
-                            default_domain.name,
-                            network=IPNetwork(rfc2317_net.cidr),
-                        )
-                    )
-        actual_zones = ZoneGenerator(
-            domains, subnets, serial=random.randint(0, 65535)
-        ).as_list()
-        self.assertCountEqual(
-            [(zone.domain, zone._network) for zone in actual_zones],
-            [(zone.domain, zone._network) for zone in expected_zones],
-        )
-
     def test_zone_generator_handles_rdns_mode_equal_enabled(self):
         with post_commit_hooks:
             Domain.objects.get_or_create(name="one")
@@ -838,365 +738,6 @@ class TestZoneGenerator(MAASServerTestCase):
         assertFwdRecord(fwd3, domains[2])
         assertIsReverseZoneWithDomain(self, rev1, default_domain.name, "10/29")
         assertIsReverseZoneWithDomain(self, rev2, default_domain.name, "10/24")
-
-    def test_configs_are_merged_when_overlapping(self):
-        self.patch(warn_loopback)
-        default_domain = Domain.objects.get_default_domain()
-        subnet1 = factory.make_Subnet(cidr="10.0.1.0/24")
-        subnet2 = factory.make_Subnet(cidr="10.0.0.0/21")
-        subnet1_ips = [
-            factory.make_StaticIPAddress(
-                ip=factory.pick_ip_in_Subnet(subnet1), subnet=subnet1
-            )
-            for _ in range(3)
-        ]
-        subnet2_ips = [
-            factory.make_StaticIPAddress(
-                ip=factory.pick_ip_in_Subnet(subnet2), subnet=subnet2
-            )
-            for _ in range(3)
-        ]
-        subnet1_records = [
-            factory.make_DNSResource(domain=default_domain, ip_addresses=[ip])
-            for ip in subnet1_ips
-        ]
-        subnet2_records = [
-            factory.make_DNSResource(domain=default_domain, ip_addresses=[ip])
-            for ip in subnet2_ips
-        ]
-        serial = random.randint(0, 65535)
-        dynamic_updates = [
-            DynamicDNSUpdate(
-                operation="INSERT",
-                name=record.name,
-                zone=default_domain.name,
-                rectype="A",
-                ttl=record.address_ttl,
-                answer=ip.ip,
-            )
-            for record in subnet1_records + subnet2_records
-            for ip in record.ip_addresses.all()
-        ]
-        zones = ZoneGenerator(
-            [default_domain],
-            [subnet1, subnet2],
-            serial=serial,
-            dynamic_updates=dynamic_updates,
-        ).as_list()
-
-        def _generate_mapping_for_network(network, records):
-            mapping = {}
-            for record in records:
-                if ip_set := set(
-                    ipaddress.ip_address(ip.ip)
-                    for ip in record.ip_addresses.all()
-                    if IPAddress(ip.ip) in network
-                ):
-                    mapping[f"{record.name}.{default_domain.name}"] = (
-                        HostnameIPMapping(
-                            None,
-                            record.address_ttl,
-                            ip_set,
-                            None,
-                            1,
-                            None,
-                        )
-                    )
-            return mapping
-
-        expected = [
-            DNSForwardZoneConfig(
-                default_domain.name,
-                mapping={
-                    record.name: HostnameIPMapping(
-                        None,
-                        record.address_ttl,
-                        {
-                            ipaddress.ip_address(ip.ip)
-                            for ip in record.ip_addresses.all()
-                        },
-                        None,
-                        1,
-                        None,
-                    )
-                    for record in subnet1_records + subnet2_records
-                },
-                dynamic_updates=dynamic_updates,
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork(subnet1.cidr),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork(subnet1.cidr), subnet1_records + subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork(subnet1.cidr)
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork(subnet1.cidr)
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork("10.0.0.0/24"),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork("10.0.0.0/24"), subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork("10.0.0.0/24")
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork("10.0.0.0/24")
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork("10.0.2.0/24"),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork("10.0.2.0/24"), subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork("10.0.2.0/24")
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork("10.0.2.0/24")
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork("10.0.3.0/24"),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork("10.0.3.0/24"), subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork("10.0.3.0/24")
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork("10.0.3.0/24")
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork("10.0.4.0/24"),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork("10.0.4.0/24"), subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork("10.0.4.0/24")
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork("10.0.4.0/24")
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork("10.0.5.0/24"),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork("10.0.5.0/24"), subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork("10.0.5.0/24")
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork("10.0.5.0/24")
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork("10.0.6.0/24"),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork("10.0.6.0/24"), subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork("10.0.6.0/24")
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork("10.0.6.0/24")
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork("10.0.7.0/24"),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork("10.0.7.0/24"), subnet2_records
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork("10.0.7.0/24")
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork("10.0.7.0/24")
-                ],
-            ),
-        ]
-
-        for i, zone in enumerate(zones):
-            self.assertEqual(zone.domain, expected[i].domain)
-            self.assertEqual(zone._network, expected[i]._network)
-            self.assertCountEqual(
-                zone._mapping,
-                expected[i]._mapping,
-            )
-            self.assertCountEqual(
-                zone._dynamic_updates, expected[i]._dynamic_updates
-            )
-            if isinstance(zone, DNSReverseZoneConfig):
-                self.assertCountEqual(
-                    zone._dynamic_ranges, expected[i]._dynamic_ranges
-                )
-                self.assertCountEqual(
-                    zone._rfc2317_ranges, expected[i]._rfc2317_ranges
-                )
-
-    def test_configs_are_merged_when_glue_overlaps(self):
-        self.patch(warn_loopback)
-        default_domain = Domain.objects.get_default_domain()
-        subnet1 = factory.make_Subnet(cidr="10.0.1.0/24")
-        subnet2 = factory.make_Subnet(cidr="10.0.1.0/26")
-        subnet1_ips = [
-            factory.make_StaticIPAddress(
-                ip=f"10.0.1.{253 + i}",
-                subnet=subnet1,  # avoid allocation collision
-            )
-            for i in range(3)
-        ]
-        subnet2_ips = [
-            factory.make_StaticIPAddress(
-                ip=factory.pick_ip_in_Subnet(subnet2), subnet=subnet2
-            )
-            for _ in range(3)
-        ]
-        subnet1_records = [
-            factory.make_DNSResource(domain=default_domain, ip_addresses=[ip])
-            for ip in subnet1_ips
-        ]
-        subnet2_records = [
-            factory.make_DNSResource(domain=default_domain, ip_addresses=[ip])
-            for ip in subnet2_ips
-        ]
-        serial = random.randint(0, 65535)
-        dynamic_updates = [
-            DynamicDNSUpdate(
-                operation="INSERT",
-                name=record.name,
-                zone=default_domain.name,
-                rectype="A",
-                ttl=record.address_ttl,
-                answer=ip.ip,
-            )
-            for record in subnet1_records + subnet2_records
-            for ip in record.ip_addresses.all()
-        ]
-        zones = ZoneGenerator(
-            [default_domain],
-            [subnet1, subnet2],
-            serial=serial,
-            dynamic_updates=dynamic_updates,
-        ).as_list()
-
-        def _generate_mapping_for_network(network, other_network, records):
-            mapping = {}
-            for record in records:
-                ip_set = set(
-                    ipaddress.ip_address(ip.ip)
-                    for ip in record.ip_addresses.all()
-                    if IPAddress(ip.ip) in network
-                    and (
-                        IPAddress(ip.ip) not in other_network
-                        or other_network.prefixlen < network.prefixlen
-                    )
-                )
-                if len(ip_set) > 0:
-                    mapping[f"{record.name}.{default_domain.name}"] = (
-                        HostnameIPMapping(
-                            None,
-                            record.address_ttl,
-                            ip_set,
-                            None,
-                            1,
-                            None,
-                        )
-                    )
-            return mapping
-
-        expected = [
-            DNSForwardZoneConfig(
-                default_domain.name,
-                mapping={
-                    record.name: HostnameIPMapping(
-                        None,
-                        record.address_ttl,
-                        set(
-                            ipaddress.ip_address(ip.ip)
-                            for ip in record.ip_addresses.all()
-                        ),
-                        None,
-                        1,
-                        None,
-                    )
-                    for record in subnet1_records + subnet2_records
-                },
-                dynamic_updates=dynamic_updates,
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork(subnet2.cidr),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork(subnet2.cidr),
-                    IPNetwork(subnet1.cidr),
-                    subnet1_records + subnet2_records,
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork(subnet2.cidr)
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork(subnet2.cidr)
-                ],
-            ),
-            DNSReverseZoneConfig(
-                default_domain.name,
-                network=IPNetwork(subnet1.cidr),
-                mapping=_generate_mapping_for_network(
-                    IPNetwork(subnet1.cidr),
-                    IPNetwork(subnet2.cidr),
-                    subnet1_records + subnet2_records,
-                ),
-                dynamic_updates=[
-                    DynamicDNSUpdate.as_reverse_record_update(
-                        update, IPNetwork(subnet1.cidr)
-                    )
-                    for update in dynamic_updates
-                    if update.answer_as_ip in IPNetwork(subnet1.cidr)
-                ],
-                rfc2317_ranges=set([IPNetwork(subnet2.cidr)]),
-            ),
-        ]
-
-        for i, zone in enumerate(zones):
-            self.assertEqual(zone.domain, expected[i].domain)
-            self.assertEqual(zone._network, expected[i]._network)
-            self.assertCountEqual(
-                zone._mapping,
-                expected[i]._mapping,
-            )
-            self.assertCountEqual(
-                zone._dynamic_updates, expected[i]._dynamic_updates
-            )
-            if isinstance(zone, DNSReverseZoneConfig):
-                self.assertCountEqual(
-                    zone._dynamic_ranges, expected[i]._dynamic_ranges
-                )
-                self.assertCountEqual(
-                    zone._rfc2317_ranges, expected[i]._rfc2317_ranges
-                )
 
 
 class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
@@ -1543,8 +1084,8 @@ class TestZoneGeneratorEndToEnd(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain()
         domain = factory.make_Domain()
         subnet1 = factory.make_Subnet(cidr="10.0.1.0/24")
-        subnet2 = factory.make_Subnet(cidr="10.0.0.0/22")
-        subnet3 = factory.make_Subnet(cidr="10.0.1.0/27")
+        subnet2 = factory.make_Subnet(cidr="20.0.0.0/24")
+        subnet3 = factory.make_Subnet(cidr="30.0.1.0/24")
         subnet1_ips = [
             factory.make_StaticIPAddress(
                 ip=factory.pick_ip_in_Subnet(subnet1), subnet=subnet1

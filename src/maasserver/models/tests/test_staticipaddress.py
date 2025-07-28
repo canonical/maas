@@ -1632,13 +1632,14 @@ class TestStaticIPAddress(MAASServerTestCase):
             static_ip_address_module, "start_workflow"
         )
         subnet1 = factory.make_Subnet(cidr="10.0.0.0/20")
-        subnet2 = factory.make_Subnet(cidr="10.0.0.0/24")
+        subnet2 = factory.make_Subnet(cidr="20.0.0.0/24")
         ip = StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="10.0.0.1", subnet=subnet1
         )
 
         with post_commit_hooks:
             ip.save()
+            ip.ip = "20.0.0.1"
             ip.subnet = subnet2
             ip.save()
 

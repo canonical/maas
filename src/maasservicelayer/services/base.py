@@ -198,7 +198,14 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         """
         return None
 
+    async def pre_update_many(self, builder: B) -> None:
+        """
+        Override this function in your Service to perform pre-hooks for the objects to update
+        """
+        pass
+
     async def update_many(self, query: QuerySpec, builder: B) -> List[M]:
+        await self.pre_update_many(builder)
         updated_resources = await self.repository.update_many(
             query=query, builder=builder
         )
@@ -212,6 +219,14 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         Override this function in your Service to perform post-hooks with the updated object
         """
         return None
+
+    async def pre_update_instance(
+        self, existing_resource: M, builder: B
+    ) -> None:
+        """
+        Override this function in your Service to perform pre-hooks for the object to update
+        """
+        pass
 
     async def update_one(
         self,
@@ -251,6 +266,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
                 ]
             )
 
+        await self.pre_update_instance(existing_resource, builder)
         self.etag_check(existing_resource, etag_if_match)
         updated_resource = await self.repository.update_by_id(
             id=existing_resource.id, builder=builder

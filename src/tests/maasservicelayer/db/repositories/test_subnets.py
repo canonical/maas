@@ -27,15 +27,19 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestSubnetClauseFactory:
-    def test_builder(self) -> None:
+    def test_with_id(self) -> None:
         clause = SubnetClauseFactory.with_id(id=1)
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_subnet.id = 1")
+
+    def test_with_vlan_id(self) -> None:
         clause = SubnetClauseFactory.with_vlan_id(vlan_id=1)
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_subnet.vlan_id = 1")
+
+    def test_with_fabric_id(self) -> None:
         clause = SubnetClauseFactory.with_fabric_id(fabric_id=1)
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
@@ -44,6 +48,14 @@ class TestSubnetClauseFactory:
             clause.joins[0].compile(compile_kwargs={"literal_binds": True})
         ) == (
             "maasserver_subnet JOIN maasserver_vlan ON maasserver_subnet.vlan_id = maasserver_vlan.id"
+        )
+
+    def test_with_cidr_overlap(self) -> None:
+        clause = SubnetClauseFactory.with_cidr_overlap(cidr="10.0.0.0/24")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "(maasserver_subnet.cidr >> '10.0.0.0/24') OR (maasserver_subnet.cidr << '10.0.0.0/24')"
         )
 
 
