@@ -20,4 +20,3 @@ This page describes the MAAS documentation style in a concise table.
 - **Active voice**: Talk to the user. Use active rather than passive voice for clarity.
 - **Clear comparisons**: Complexity loses readers. Use simple, relatable comparisons to explain concepts. You're teaching, not boasting.
 - **Conversational Rhythm**: Mix short sentences with longer explanatory ones.
-

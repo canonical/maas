@@ -29,7 +29,7 @@ maas $PROFILE license-key read [--help] [-d] [-k] osystem distro_series [data ..
 - osystem
 - distro_series
 
-Read a license key for the given operating system and distro series.
+Read a license key for the given operating sytem and distro series.
 
 #### Command-line options
 | Option | Effect |
@@ -99,4 +99,3 @@ List all available license keys.
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check |
-

@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-2-8" target = "_blank">Let us know.</a>*
-
 ## Release history
 ### MAAS 2.8.4 released
 
@@ -146,5 +144,4 @@ We've also fixed number of bugs (see the [list in Launchpad](https://bugs.launch
 
 - **MAAS keys count in user list is bogus:** ([see bug report](https://bugs.launchpad.net/maas/+bug/1884112)) The count of keys shown in the User list in the UI is wrong.
 
-- **Leftover lock files may be present under some conditions:** Even if you purge an old MAAS Debian package, it can leave lock files in `/run/lock/maas*`. This can cause issues if you later reinstall MAAS, and the previous MAAS user UID has been reassigned. At that point, MAAS can't remove those files and create new ones. If this occurs, it is easily fixed by removing those files manually before reinstalling.
-
+- **Leftover lock files may be present under some conditions:** Even if you purge an old MAAS Debian package, it can leave lock files in `/run/lock/maas*`. This can cause issues if you later reinstall MAAS, and the previous MAAS user UID has been reassigned. At that point, MAAS can't remove those files and create new ones. If this occurs, it is easily fixed by removing those files manually before reinstallin.g

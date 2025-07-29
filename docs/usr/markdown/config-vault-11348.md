@@ -26,5 +26,3 @@ maas config-vault status [-h]
 | -h, --help    | show this help message and exit                |
 | --mount MOUNT | Vault KV mount path (default: secret)          |
 | --yes         | Skip interactive confirmation (default: False) |
-
-

@@ -1,69 +1,93 @@
-Knowing the components and machine states of MAAS is one thing; understanding how they fit together into a provisioning workflow is another. This cheat sheet is designed to make that process clear.
+This section provides practical, step-by-step guidance for getting the most out of MAAS — from planning your deployment to integrating with automation tools. Use this guide when you're ready to apply MAAS in real-world scenarios and want clear, operational documentation.
 
-## Install and configure MAAS
+## Plan and prepare
 
-Only four steps are required to [get MAAS up and running](https://maas.io/docs/how-to-get-maas-up-and-running):
+Before installing anything, make sure MAAS is the right fit. Confirm that your intended use matches the reference architecture. Clarify your environment's requirements, choose the right installation method (Snap vs. Deb), and decide on deployment targets: bare metal, VMs, or a mix. These choices will shape your entire setup.
 
- - Install MAAS or upgrade an older version.
- - Choose whether you want to build a proof-of-concept or jump straight to production.
- - Configure MAAS domain name services (DNS) and image acquisition.
- - Enable DHCP to provide IP addresses to provisioned machines.
- -  And don't forget to [back up MAAS](https://maas.io/docs/how-to-back-up-maas) once you get it running properly.
+<!-- * *Confirm intended use matches reference architecture* -->
+* [Examine and confirm requirements](https://maas.io/docs/installation-requirements)
+* [Choose the installation type](https://maas.io/docs/how-to-get-maas-up-and-running#p-9034-install-maas-snap-or-packages)
 
-## Fine-tune MAAS networks
+## Install and set up
 
-MAAS provides pre-configured versions of DHCP, NTP, STP and DNS for routine operation.  If your situation is different, you may want to [manage networks](https://maas.io/docs/how-to-manage-networks) to suit your environment:
+Here, you'll install and initialize MAAS, then configure it to manage your infrastructure. Whether you're working with LXD, KVM, or another cloud provider, this section walks you through connecting MAAS to your virtual or physical environment.
 
-- Make routine adjustments, like adding default gateways, loopback, bridges, and bonds, or even enable two-NIC interfaces.
-- Manage network discovery, which automatically detects connected devices to limit guesswork.
-- Manage standard network infrastructure, like subnets, VLANs, local DHCP configuration, and IP addresses.
-- [Manage network services](https://maas.io/docs/how-to-manage-network-services) -- like DHCP, DNS and NTP -- to match your local and corporate policies.
+* [Install MAAS](https://maas.io/docs/how-to-get-maas-up-and-running)
+* [Initialize MAAS](https://maas.io/docs/how-to-get-maas-up-and-running#p-9034-post-install-setup-poc)
+* [Set up your cloud](https://maas.io/docs/how-to-manage-machines#p-9078-enable-new-machines)
 
-## Provision & manage servers
+## Provision and deploy
 
-[Manage machines](https://maas.io/docs/how-to-manage-machines) to build and flex data centers with MAAS:
+This section covers how to enlist machines into MAAS, test and commission them, and then deploy your desired OS or workloads. It also includes advanced topics like custom image creation, ephemeral deployments, and how to manage machines MAAS didn’t originally deploy.
 
-- Discover which devices are already connected and find them again when you need them.
-- Add and configure machines, whether bare metal or virtual, and manage their power state.
-- Discover and remember server capabilities by commissioning machines.
-- Deploy machines to make them productive.
-- Create specialty configurations for specific needs and special cases.
-- Rescue, recover and recycle machines, including full data erasure.
+* [Enlist machines](https://maas.io/docs/how-to-manage-machines#p-9078-discover-machines)
+* [Commission/test machines](https://maas.io/docs/how-to-manage-machines#p-9078-commission-test-machines)
+* [Deploy machines](https://maas.io/docs/how-to-manage-machines#p-9078-deploy-machines)
+* [Confirm deployment](https://maas.io/docs/how-to-manage-machines#p-9078-ssh-into-a-machine-to-diagnose-issues)
+* [Customize deployment](https://maas.io/docs/how-to-manage-machines#p-9078-configure-deployment)
+* Special deployments
+  * [Custom images: building, using, and maintaining](https://maas.io/docs/how-to-build-custom-images)
+  * [Ephemeral deployments](https://maas.io/docs/how-to-manage-machines#p-9078-deploy-to-ram-ephemeral-deployment)
+<!--  * *Enlisting running machines (as if deployed by MAAS)* -->
 
-## Group machines for quick categorization & redeployment
+## Manage MAAS
 
-[Manage machine groups](https://maas.io/docs/how-to-manage-machine-groups) create failover redundancy (availability zones), ensure functional allocation (resource pools), easily track machine capabilities (tags) and track operational status (notes and annotations):
+Once your systems are running, it's time to manage them effectively. Learn how to label machines with metadata (tags, zones, annotations), configure storage layouts, and handle networking at the fabric, VLAN, and subnet level—including advanced options like DHCP overrides and air gaps.
 
-- Set up to create redundant failover for critical systems.
-- Assign resource pools to budget provisioning by corporate or data center function.
-- Keep track of machine setup and tooling with tags.
-- Remember what machines are doing both offline (notes) and when in production (annotations).
+* [Labeling machines](https://maas.io/docs/how-to-manage-machine-groups)
+  * [Tags](https://maas.io/docs/how-to-manage-machine-groups#p-19384-tags-and-annotations)
+  * [Resource pools](https://maas.io/docs/how-to-manage-machine-groups#p-19384-resource-pools)
+  * [Availability zones](https://maas.io/docs/how-to-manage-machine-groups#p-19384-availability-zones)
+  * [Notes](https://maas.io/docs/how-to-manage-machine-groups#p-19384-manage-notes)
+  * [Annotations](https://maas.io/docs/how-to-manage-machine-groups#p-19384-manage-dynamic-annotations)
+* Storage
+  * [Storage types](https://maas.io/docs/reference-maas-storage)
+  * [Storage layout](https://maas.io/docs/how-to-manage-machines#p-9078-configure-storage-layout)
+* [Networks](https://maas.io/docs/how-to-manage-networks)
+  * [VLANs](https://maas.io/docs/how-to-manage-networks#p-9070-manage-vlans)
+  * [Subnets](https://maas.io/docs/how-to-manage-networks#p-9070-manage-subnets)
+  * [Special DNS / DHCP / NTP settings](https://maas.io/docs/how-to-manage-network-services)
+  * [Creating an air gap](https://maas.io/docs/how-to-set-up-air-gapped-maas)
+* [Power control](https://maas.io/docs/how-to-manage-machines#p-9078-control-machine-power)
+  * [Specific machine types](https://maas.io/docs/how-to-manage-machines#p-9078-set-power-type)
+ <!-- * Generic IPMI -->
+<!--  * Webhook -->
+<!--  * Other generic power types -->
+<!-- * PXE booting
+  * OOB BMC
+  * WakeOnLAN
+  * S5/G0 loops
+  * PXE-power-type interactions -->
+<!--  * Integrating with corporate systems -->
+<!--  * Fabrics -->
+<!--  * Spaces -->
+  
+## Monitor and troubleshoot
 
-## Manage deployment OS images
+This section helps you observe and debug your MAAS deployment using tools like Prometheus and Loki. Learn to identify issues with logs, performance, or machine behavior—and get strategies for fixing common problems across your infrastructure.
 
-MAAS supports a very wide range of Linux, Windows, and specialty operating systems, so it pays to [manage images](https://maas.io/docs/how-to-manage-images) carefully:
+* [Using Prometheus and Loki](https://maas.io/docs/how-to-monitor-maas)
+* [Debugging via logs](https://maas.io/docs/how-to-use-logging)
+* [Auditing with logs](https://maas.io/docs/how-to-use-logging#p-14514-auditing-maas)
+* [Troubleshooting machine behaviors](https://maas.io/docs/how-to-manage-machines#p-9078-rescue-recovery)
+* [Troubleshooting network issues](https://maas.io/docs/maas-troubleshooting-guide)
+<!-- * Troubleshooting performance -->
 
-- Set up image SimpleStreams to keep your standard images up-to-date.
-- Use custom and local mirrors to improve download performance.
-- [Build your own Ubuntu images](https://maas.io/docs/how-to-build-ubuntu-images).
-- [Build custom images](https://maas.io/docs/how-to-build-custom-images), including RHEL, CentOS, Oracle Linux, VMWare ESXI, Windows, and others.
+## Scale and optimize
 
-## Keep things running smoothly
+Ready to grow? Learn how to replicate controllers for high availability, set up VM clusters, combine hardware and virtual setups, and handle complex deployments. This section is essential for production-grade MAAS installations.
 
-Performance, security, and auditing are integrated capabilities of MAAS.
+* [Setting up HA & controller replication](https://maas.io/docs/how-to-manage-high-availability)
+* [Advanced deployments](https://maas.io/docs/reference-terraform)
+<!-- * Clustering VMs -->
+<!-- * Hybrid hardware/VM configurations -->
 
-- [Manage high availability](https://maas.io/docs/how-to-manage-high-availability) by managing your region and rack controllers carefully and keeping them tuned.
-- [Use logging](https://maas.io/docs/how-to-use-logging) wisely to keep track.
-- [Monitor MAAS](https://maas.io/docs/how-to-monitor-maas) to manage performance and find bottlenecks.
-- [Enhance MAAS security](https://maas.io/docs/how-to-enhance-maas-security) and manage MAAS users to maintain data and operational security.
+## Automate and integrate
 
-## Handle specialty situations
+Finally, make MAAS part of your larger automation pipeline. Learn how to use the MAAS API, CLI scripting, Terraform, and integrate with tools like Charmed MAAS. Use this section to build repeatable, scalable provisioning workflows.
 
-Deal with a variety of special cases:
-
-- Deploy [real-time](https://maas.io/docs/how-to-deploy-a-real-time-kernel) or [FIPS-compliant](https://maas.io/docs/how-to-deploy-a-fips-compliant-kernel) kernels.
-- Run MAAS in [air-gapped mode](https://maas.io/docs/how-to-set-up-air-gapped-maas).
-- [Script your MAAS instance with Python](https://maas.io/docs/how-to-script-maas-with-python).
-- [Deploy virtual machines on an IBM Z series machine](https://maas.io/docs/how-to-deploy-vms-on-ibm-z).
-
-Some of these steps are repeated frequently or done on demand. This general workflow will drive provisioning in the right direction.
+* [Using the MAAS API](https://maas.io/docs/api) <!-- & webhooks -->
+* [Using Terraform](https://maas.io/docs/reference-terraform)
+<!-- * Integrating MAAS into a cloud-provisioning workflow -->
+<!-- * Scripting with the MAAS CLI -->
+<!-- * Charmed MAAS -->

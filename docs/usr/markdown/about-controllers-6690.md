@@ -1,40 +1,49 @@
-Understanding how controllers work in MAAS is critical to managing metal infrastructure reliably. MAAS uses two types of controllers — region controllers and rack controllers — to distribute responsibilities and scale service delivery. These components form a layered architecture, designed to balance high-throughput demands with robust coordination.
+Understanding controllers within the MAAS ecosystem helps to metal infrastructure. You may find it useful to [tweak your controller settings](https://maas.io/docs/how-to-manage-controllers) based on your specific network and machine count. Even consider opting for a [high availability setup](https://maas.io/docs/how-to-manage-controllers#p-9026-enable-ha) for robustness.
 
-You may find it useful to adjust your controller settings based on your network design and expected load. As your environment grows, consider a high availability (HA) setup to protect against downtime and performance degradation.
+At the core of MAAS are its controllers: region controllers and rack controllers. While the region controller is the interaction hub for operators, the rack controller focuses on delivering high-bandwidth services to the machines.
 
-## Controller roles
+## Region controllers
 
-### Region controllers
+A region controller provides several services:
 
-Region controllers serve as the interface layer for users and automation. It manages either an entire data center or a specific region and orchestrates a myriad of tasks from API request routing to keeping DNS records up to date.
+* REST API server (TCP port 5240)
+* PostgreSQL database
+* DNS
+* caching HTTP proxy
+* Web UI
 
-These services enable users to interact with MAAS, manage infrastructure, and coordinate operations across all rack controllers.
+It manages either an entire data centre or a specific region and orchestrates a myriad of tasks from API request routing to keeping DNS records up to date.
 
-Region controllers manage one or more racks (and by extension, the machines those racks serve). They are not stateless: they maintain session context, perform validation, and coordinate concurrent tasks. As such, load-balancing region controllers requires care, especially under high load.
+## Rack controllers
 
-### Rack controllers
+Rack controllers manage fabrics, offering four key services:
 
-Rack controllers deliver high-bandwidth services directly to machines. Each rack controller provides:
+- DHCP
+- TFTP
+- HTTP (for images)
+- Power management
 
-* DHCP (for address assignment)
-* A recursive DNS resolve
-* TFTP (for PXE boot)
-* HTTP (for image distribution)
-* An NTP stratum
-* Power management
-* Reading APR for network discovery (collected data is sent back to the region controller for persistent storage)
+Racks caches essential resources like OS install images for better performance.
 
-Rack controllers also cache critical assets such as OS images to reduce network congestion and improve provisioning speed. They serve as the final handoff layer between MAAS and bare-metal machines.
+## Fabrics
 
-## Communication flow
+Fabrics link otherwise isolate VLANs, so they can communicate under specific conditions.
 
-The MAAS controller hierarchy works as follows:
+## Controllers connect
 
-1. Users and automation tools interact with region controllers.
-2. Region controllers communicate with all rack controllers.
-3. Rack controllers interact with machines.
+The hierarchy of communication in MAAS flows from the UI/API to the region controller, then to the rack controller, and finally to the machines. [High availability](https://maas.io/docs/how-to-manage-controllers#p-9026-enable-ha) (HA) setups introduce redundancy but don't alter this fundamental flow.
 
-All provisioning, configuration, and control flows pass through this hierarchy.
+## Racks to machines
+
+All communications from machines route through rack controllers. This includes everything from DNS lookups to APT cache-and-forward proxies via Squid. A unique DNS resource is created for each subnet, which machines use to find an available rack controller.
+
+## Region and rack
+
+Messaging between the region and rack controllers involves multiple steps.
+
+<details><summary>Tell me about the DHCP "next-server" statement</summary>
+
+The `next-server` directive specifies the host from which a machine should load its initial boot file. In the context of MAAS, the rack controller serving DHCP roles as this host, acting as a broker for boot file delivery.
+</details>
 
 ![MAAS Architecture](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/1X/02a7ca58b989c67c74421b9d5e0c8b32907a2de1.jpeg)
-

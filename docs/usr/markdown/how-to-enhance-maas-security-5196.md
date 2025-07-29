@@ -1,4 +1,4 @@
-Enhance MAAS security along many different vectors.
+MAAS security depends on encryption, logging, and user access management.  This document describes how to keep all of these in reliable working order.
 
 ## Use TLS termination (MAAS 3.3+)
 
@@ -121,7 +121,7 @@ You can setup your own Certificate Authority (CA) server that supports the ACME 
 - [step-ca from Smallstep](https://smallstep.com/docs/step-ca)
 - [Caddy server with ACME support](https://caddyserver.com/docs/caddyfile/directives/acme_server)  (available since version 2.5)
 
-If you have a CA server with ACME protocol support, you can use any ACME client for an automated certificate renewal and use crontab to renew on a desired time interval. For example, [acme.sh](https://GitHub.com/acmesh-official/acme.sh): 
+If you have a CA server with ACME protocol support, you can use any ACME client for an automated certificate renewal and use crontab to renew on a desired time interval. For example, [acme.sh](https://github.com/acmesh-official/acme.sh): 
 
 ```nohighlight
 $> acme.sh --issue -d mymaas.internal --standalone --server https://ca.internal/acme/acme/directory
@@ -327,12 +327,12 @@ Manage users carefully to maintain strong, proactive security.
 
 ### Add a user
 
-UI**
+**UI**
 *Settings* > *Users* > *Add user*> [Fill fields] > *Save*.
 
 Check the appropriate box to grant administrative rights.
 
-CLI**
+**CLI**
 ```nohighlight
     maas $PROFILE users create username=$USERNAME \
     email=$EMAIL_ADDRESS password=$PASSWORD is_superuser=0
@@ -340,15 +340,15 @@ CLI**
 
 ### Edit users
 
-UI**
+**UI**
 *[Select user]* > *Details* > *[Make changes]* > *Save*
 
 ### Manage SSH keys
 
-UI**
+**UI**
 *Settings* > *Users* > *[User]* > *Pencil* > *[Follow key import steps]*
 
-CLI**
+**CLI**
 ```nohighlight
     ubuntu@maas:~$ maas $PROFILE sshkeys create key="$(cat /home/ubuntu/.ssh/id_rsa.pub)"
 ```
@@ -439,4 +439,3 @@ Complete the integration by migrating the secrets:
 $ sudo maas config-vault migrate
 ```
 For detailed information, it's recommended to refer to the [Vault documentation](https://developer.hashicorp.com/vault/docs) and consider [Vault certification](https://developer.hashicorp.com/vault/tutorials/associate-cert).
-

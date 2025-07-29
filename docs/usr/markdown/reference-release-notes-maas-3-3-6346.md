@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-3-3" target = "_blank">Let us know.</a>*
-
 These are the release notes for MAAS 3.3.
 
 ## Release history
@@ -144,7 +142,7 @@ Improved capabilities include the following:
 
 - [UI performance improvements for large machine counts](#heading--UI-performance-improvements): We've improved the performance of the UI machine list for large (>10000 machines) MAAS instances. The machine list now goes live just a few seconds after the first visible page loads, with the rest of the list loading in background.
 
-- [Enhanced MIB support for Windows OS images](#heading--Enhanced-MIB-support-for-Windows-OS-images): The [procedure](/t/customizing-images-for-specific-needs/5104#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
+- [Enhanced MIB support for Windows OS images](#heading--Enhanced-MIB-support-for-Windows-OS-images): The [procedure](/t/customising-images-for-specific-needs/5104#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
 
 Greatly expanded documentation sections include:
 
@@ -305,7 +303,7 @@ In MAAS 3.2 and earlier, machine search and filter requires that all machines be
 
 ### Enhanced MIB support for Windows OS images
 
-The [procedure](/t/customizing-images-for-specific-needs/5104#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
+The [procedure](/t/customising-images-for-specific-needs/5104#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
 
 #### Ten words or less
 
@@ -404,7 +402,7 @@ In this major documentation update, we've standardised on the MAAS CLI events qu
 
  - WARNING: failures which may or may not affect MAAS performance; shows WARNING and ERROR events. A typical warning event, for example, might include the inability to find and boot a machine.
 
- - DEBUG: information which would help debug MAAS behavior; shows DEBUG and INFO events. Typical DEBUG events involve routine image import activities, for example.
+ - DEBUG: information which would help debug MAAS behaviour; shows DEBUG and INFO events. Typical DEBUG events involve routine image import activities, for example.
 
  - AUDIT: information which helps determine settings and user actions in MAAS; shows only AUDIT events. They are covered in more detail elsewhere.
 
@@ -589,7 +587,7 @@ As part of the updates to our "[How to work with audit event logs](/t/auditing-m
 418627  ERROR    Failed to power on node           Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node's BMC: Failed to power pbpncx. BMC never transitioned from off to on.
 ```
 
-In this case, we managed to recognise, rather quickly, that no physical interface had been defined for `ruling-bobcat`, hence deployment fails because MAAS can't communicate with the node's BMC. There are many other issues you can recognise with careful use of MAAS events to audit machine behaviors. We welcome your feedback on this new documentation endeavour.
+In this case, we managed to recognise, rather quickly, that no physical interface had been defined for `ruling-bobcat`, hence deployment fails because MAAS can't communicate with the node's BMC. There are many other issues you can recognise with careful use of MAAS events to audit machine behaviours. We welcome your feedback on this new documentation endeavour.
 
 
 ## Installation
@@ -597,7 +595,7 @@ In this case, we managed to recognise, rather quickly, that no physical interfac
 MAAS will run on just about any modern hardware configuration, even a development laptop. If you're not sure whether your target server will handle MAAS, [you can always double-check](/t/installation-requirements/6233).
 
 
-NOTE** that PostgreSQL 12 is deprecated with the release of MAAS 3.3, in favor of PostgreSQL 14. Support for PostgreSQL 12 will be discontinued in MAAS 3.4. Also note, though, that Postgres 14 does not run on Focal 20.04 LTS.
+**NOTE** that PostgreSQL 12 is deprecated with the release of MAAS 3.3, in favour of PostgreSQL 14. Support for PostgreSQL 12 will be discontinued in MAAS 3.4. Also note, though, that Postgres 14 does not run on Focal 20.04 LTS.
 
 
 ### How to do a fresh snap install of MAAS 3.3
@@ -614,20 +612,20 @@ Maybe instead of a fresh install, you want to upgrade from a earlier snap versio
 
     $ sudo snap refresh --channel=3.3 maas
 
-After entering your password, the snap will refresh from the 3.3 candidate channel. You will **not** need to re-initialize MAAS.
+After entering your password, the snap will refresh from the 3.3 candidate channel. You will **not** need to re-initialise MAAS.
 
 If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.
 
-### How to initialize MAAS 3.3 snap for a test or POC environment
+### How to initialise MAAS 3.3 snap for a test or POC environment
 
-You can initialize MAAS as a compact version for testing. To achieve this, we provide a separate snap, called `maas-test-db`, which contains a PostgreSQL database for use in testing and evaluating MAAS.  The following instructions will help you take advantage of this test configuration.
+You can initialise MAAS as a compact version for testing. To achieve this, we provide a separate snap, called `maas-test-db`, which contains a PostgreSQL database for use in testing and evaluating MAAS.  The following instructions will help you take advantage of this test configuration.
 
 Once MAAS is installed, you can use the `--help` flag with `maas init` to get relevant instructions:
  
     $ sudo maas init --help
     usage: maas init [-h] {region+rack,region,rack} . . .
 
-    Initialize MAAS in the specified run mode.
+    Initialise MAAS in the specified run mode.
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -659,7 +657,7 @@ Note that this step installs a a running PostgreSQL and a MAAS-ready database in
 
     postgres=# \l
 
-This will produce a list of databases, one of which will be `maasdb`, owned by `maas`. Note that this database is still empty because MAAS is not yet initialized and, hence, is not yet using the database. Once this is done, you can run the `maas init` command:
+This will produce a list of databases, one of which will be `maasdb`, owned by `maas`. Note that this database is still empty because MAAS is not yet initialised and, hence, is not yet using the database. Once this is done, you can run the `maas init` command:
 
     sudo maas init region+rack --database-uri maas-test-db:///
 
@@ -691,7 +689,7 @@ Let's assume you just want a local testing user named `admin`:
 
 At this point, MAAS is basically set up and running. You can confirm this with `sudo maas status`. If you need an API key, you can obtain this with `sudo maas apikey --username yourusername`. Now you will be able to test and evaluate MAAS by going to the URL you entered or accepted above and entering your `admin` username and password.
 
-### Initialize MAAS for a production configuration
+### Initialise MAAS for a production configuration
 
 To install MAAS in a production configuration, you need to setup PostgreSQL, as described below.
 
@@ -716,7 +714,7 @@ To set up PostgreSQL, even if it's running on a different machine, you can use t
 
         host    $MAAS_DBNAME    $MAAS_DBUSER    0/0     md5
 
-5. You can then initialize MAAS via the following command:
+5. You can then initialise MAAS via the following command:
 
         sudo maas init region+rack --database-uri "postgres://$MAAS_DBUSER:$MAAS_DBPASS@$HOSTNAME/$MAAS_DBNAME"
 
@@ -820,7 +818,7 @@ Check whether your upgrade has been successful by entering:
 lsb_release -a
 ```
 
-If the upgrade was successful, this command should yield output similar to the following:
+If the ugprade was successful, this command should yield output similar to the following:
 
 ```nohighlight
 No LSB modules are available.
@@ -930,7 +928,7 @@ So far in MAAS 3.3, we've fixed well over 100 bugs:
 - [1984994](https://bugs.launchpad.net/bugs/1984994): machine.list fails for some group_key values
 - [1985741](https://bugs.launchpad.net/bugs/1985741): Commissioning script 'maas-kernel-cmdline' fails with bonded interfaces
 - [1986372](https://bugs.launchpad.net/bugs/1986372): UI: Setting Default minimum kernel version for commissioning blocks deployments
-- [1987874](https://bugs.launchpad.net/bugs/1987874): interface.update_ip_addresses raise an Exception when exists multiple StaticIPAddress
+- [1987874](https://bugs.launchpad.net/bugs/1987874): interface.update_ip_addresses raise an Exception when exsits multiple StaticIPAddress
 - [1988543](https://bugs.launchpad.net/bugs/1988543): VM Discovery fails, resulting in " Error: An architecture is required." when composing a LXD VM
 - [1988759](https://bugs.launchpad.net/bugs/1988759): Provisioning LXD vmhost fails
 - [1988769](https://bugs.launchpad.net/bugs/1988769): The ppc64 machine in our lab fails during commissioning
@@ -999,4 +997,3 @@ More bug-fixes are planned for later 3.3 releases.
 ### MAAS 3.3.0 bug list
 
 - [2003888](https://bugs.launchpad.net/maas/+bug/2003888): Grouped machine list view: Inconsistent display when machine state changes
-

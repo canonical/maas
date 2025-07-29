@@ -1,96 +1,74 @@
-MAAS-configured network services reduce friction by eliminating setup challenges.
+MAAS-configured network services simplify deployment and reduce setup friction by automating DHCP, DNS, and time sync. But while enabling these services is straightforward, it helps to understand when, why, and how to configure them --- especially in environments where external services already exist or where high availability matters.
 
-## Manage DHCP
-### Enable MAAS DHCP  
+This guide walks through MAAS-managed DHCP, DNS, NTP, and network snippets, offering both UI and CLI examples ---  along with a quick breakdown of the risks and trade-offs for each.
 
-UI:**  
-*Subnets > (Select VLAN) > Configure DHCP (Fill fields) > Configure DHCP*  
+MAAS can provide DHCP for each VLAN it manages, allowing automated address assignment during machine enlistment, commissioning, and deployment. This eliminates the need for an external DHCP server — but you must ensure **only one DHCP service** is active on any given subnet to avoid conflicts.
 
-CLI:**  
+## Enable MAAS DHCP
+
+Generally, only use this when MAAS is the only DHCP provider for the VLAN.  You can have more than one DHCP server, but there are some conditions.
+
+**UI:**
+*Subnets > (Select VLAN) > Configure DHCP > Fill in fields > Configure DHCP*
+
+**CLI:**
 ```bash
 maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY_RACK
 ```
 
-> *Note: Make sure you have the correct $VLAN_ID (vid in the help output).*
+Enabling MAAS DHCP on a VLAN already served by another DHCP server (like your router or a VM host) can lead to conflicts and failed deployments.   
+
+### An example
+
+Let's say you're using both MAAS DHCP and a relay from your corporate DHCP server.  You're suprised to find that machines PXE boot intermittently.  
+
+In this case, the corporate DHCP server may not be setting DHCP Option 66 (TFTP server) or Option 67 (Network Boot Package filename).  As a result, if a machine accepts an offer from your DHCP relay, it has an IP address, but it can't go any farther because it doesn't know that it's supposed to do so.   To make this configuration work, you'd need to add the IP address of the TFTP server as Option 66 for your corporate DHCP server, and the name of a valid NBP file as Option 67.  
 
 ### Enable DHCP for HA
 
-CLI**
+Use this approach when you want failover across two rack controllers.
+
 ```bash
-maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY_RACK secondary_rack=$SECONDARY_RACK
+maas $PROFILE vlan update $FABRIC_ID $VLAN_ID \
+  dhcp_on=True primary_rack=$PRIMARY_RACK secondary_rack=$SECONDARY_RACK
 ```
 
-> *Note: Make sure you have the correct $VLAN_ID (vid in the help output).*
+This enables ISC DHCP failover between two racks. You’ll still need to configure lease syncing manually if you're customizing the DHCP config directly.
 
-### Set up a DHCP relay  
+### Set up a DHCP relay
 
-UI**
-*Subnets > (Select VLAN) > Configure DHCP > Relay to another VLAN > (Select VLAN) >  Configure DHCP*
+Use this when DHCP must be relayed from one VLAN to another — common in enterprise environments where routing rules or firewall policies segment traffic.
 
-CLI:**  
+**UI:**
+*Subnets > (Select VLAN) > Configure DHCP > Relay to another VLAN > Select > Configure*
+
+**CLI:**
 ```bash
 maas $PROFILE vlan update $FABRIC_ID $VLAN_VID_SRC relay_vlan=$VLAN_ID_TARGET
 ```
 
 ## Manage DHCP snippets
 
-### Create snippets
+Use snippets to customize the DHCP configuration — globally, per-subnet, or per-node. This is useful when:
 
-UI**
-*Settings > DHCP snippets > Add snippet > (Fill fields) > Save snippet*
+* You need to inject custom options (like PXE boot settings)
+* You’re integrating with existing infrastructure
+* You need fine-grained control over leases or classes
 
-CLI (global snippet)**  
-```bash
-maas $PROFILE dhcpsnippets create name=$DHCP_SNIPPET_NAME value=$DHCP_CONFIG description=$DESCRIPTION global_snippet=true
-```
-
-CLI (subnet snippet)**  
-```bash
-maas $PROFILE dhcpsnippets create name=$DHCP_SNIPPET_NAME value=$DHCP_CONFIG description=$DESCRIPTION subnet=$SUBNET_ID
-```
-
-CLI (node snippet)**  
-```bash
-maas $PROFILE dhcpsnippets create name=$DHCP_SNIPPET_NAME value=$DHCP_CONFIG description=$DESCRIPTION node=$NODE_ID
-```
-
-### List snippets
-
-UI**
-*Settings > DHCP snippets*
-
-CLI**
-```bash
-maas $PROFILE dhcpsnippets read
-```
-
-### Update a snippet
-
-UI**
-*Settings > DHCP snippets > Actions > Pencil icon (edit) > (Edit snippet) > Save snippet*
-
-```bash
-maas $PROFILE dhcpsnippet update $DHCP_SNIPPET_ID enabled=false
-```
-
-### Delete a snippet
-
-UI**
-*Settings > DHCP snippets > Actions > Trash can icon (delete) > Delete*
-
-CLI**
-```bash
-maas $PROFILE dhcpsnippet delete $DHCP_SNIPPET_ID
-```
+Note that malformed snippets can break DHCP service on the rack controller. Always test in a development environment first.
 
 ## Manage NTP
 
-### Use external NTP  
+If your machines need to maintain accurate time (they usually do), MAAS can configure NTP automatically using its own services or upstream servers. This helps with:
 
-UI:**  
-*Settings > Network > NTP > (Fill in NTP address) > External Only > Save*  
+* Certificate trust
+* Coordinated logs
+* PXE boot sanity
 
-CLI:**  
+### Use External NTP
+
+Use this when MAAS should not act as an NTP server (e.g., you're using chrony, or a centralized NTP pool).
+
 ```bash
 maas $PROFILE maas set-config name=ntp_servers value=$NTP_IP_ADDRESS
 maas $PROFILE maas set-config name=ntp_external_only value=true
@@ -98,107 +76,40 @@ maas $PROFILE maas set-config name=ntp_external_only value=true
 
 ## Manage DNS
 
-Use the built-in, MAAS-configured DNS server to manage domains more efficiently. 
+MAAS runs an internal DNS server to track nodes, domains, and records. This works best when MAAS owns the DNS zone (e.g., `maas.internal`) or when integrated into your broader DNS setup via forwarders.
 
 ### Create a DNS resource
 
-#### Prerequisites
+Use this when you want MAAS to create an A or AAAA record for a node or IP.
 
-- You have a running MAAS installation.
-- You have administrative access to MAAS.
-- You have at least one domain set up in MAAS.
+You’ll need:
 
-#### Identify your domain
+* A domain (from `maas domains read`)
+* A hostname
+* An IP address (or let MAAS pick one)
 
-Each DNS resource needs a domain. You can find available domains in MAAS through the following commands.
-
-**UI**
-Choose *DNS* from the main menu; you will see a list of domains.
-
-**CLI**
 ```bash
-maas $PROFILE domains read
-```
-Look for the `id` or `name` of the domain you want to use.
-
-#### Choose a hostname
-
-Decide on the hostname for the new DNS record. You can either:
-- Provide a fully qualified domain name (FQDN), e.g., `webserver.example.com`
-- OR specify the `name` (hostname only) and the `domain` separately.
-
-#### Assign an IP address (optional)
-
-If you want to create an A (IPv4) or AAAA (IPv6) record, you need an IP address.
-
-**CLI**
-```sh
-maas $PROFILE ipaddresses read
-```
-This lists available IP addresses in MAAS.
-
-#### Create the DNS resource
-
-Use one of the following commands to create the DNS resource.
-
-**UI**
-*DNS* > *(Select domain)* > *Add record* > *(Fill in fields)* > *Add record*
-
-**CLI** 
-```sh
-maas $PROFILE dnsresources create name=webserver domain=example.com ip_addresses=192.168.1.100
+maas admin dnsresources create name=webserver domain=example.com ip_addresses=192.168.1.100
 ```
 
-Alternatively, using an FQDN:
-```sh
-maas $PROFILE dnsresources create fqdn=webserver.example.com ip_addresses=192.168.1.100
+You can also use a full FQDN:
+
+```bash
+maas admin dnsresources create fqdn=webserver.example.com ip_addresses=192.168.1.100
 ```
-This creates an A record for `webserver.example.com` pointing to `192.168.1.100`.
 
-#### Verify the DNS resource
+### Set a DNS server for a subnet
 
-List all DNS resources to verify creation.
+This lets you override the default MAAS DNS for a specific subnet.
 
-**UI**
-*DNS* > *(Select domain)* > *(Review Resource records)*
-
-**CLI**
-```sh
-maas $PROFILE dnsresources read
-```
-Ensure your new entry appears in the output.
-
-### Delete a DNS resource
-
-You can also delete DNS resources.
-
-**UI**
-*DNS* > *(Select domain)* > *ACTIONS* > *Remove record* > *Delete record*
-
-**CLI**
-First, list DNS resources to find the ID of the DNS resources you want to delete. Then enter the command:
-
-maas $PROFILE dnsresource delete $ID
-
-
-### Set a DNS server
-
-UI**
-*Settings > DNS > (Fill fields) > Save*
-
-CLI**
 ```bash
 maas $PROFILE subnet update $SUBNET_CIDR dns_servers=$MY_DNS_SERVER
 ```
 
 ### Set a DNS forwarder
-You can also set a DNS forwarder.
 
-**UI**
-*Settings* > *Network* > *DNS* > *(Set Upstream DNS)*
+Use this if MAAS should forward DNS queries it can’t resolve.
 
-CLI**
 ```bash
 maas $PROFILE maas set-config name=upstream_dns value=$MY_UPSTREAM_DNS
 ```
-

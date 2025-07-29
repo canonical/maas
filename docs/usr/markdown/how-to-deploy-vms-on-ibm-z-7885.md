@@ -1,6 +1,4 @@
-This page explains how to deploy virtual machines on the IBM Z series.
-
-*MAAS 2.9 does not support IBM Z*
+You can deploy virtual machines on the IBM Z series with MAAS version 3.0 or higher.
 
 The IBM Z or LinuxONE system can host MAAS controllers and is able to deploy predefined logical partitions (LPARs) KVM host(s), and virtual machines, if the mainframe is set up properly for MAAS.
 
@@ -135,7 +133,7 @@ Click on “GET DETAILS” for the Boot Volume in the Volume list to bring up th
 
 Ensure that the Boot Volume is configured appropriately for your planned MAAS deployment, then click “Done.” Then return to the storage configuration tab and choose the Data Volume, and tune it to the appropriate parameters.
 
-Next, choose the “ADAPTERS” sub-tab to bring up information on the storage adapters:
+Next, choose the “ADAPTERS” sub-tab to bring up information on the storage adaptors:
 
 ![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/8/821edff17e3fe8f2fbf9b5cb1682928dc9bb34d7.png)
 
@@ -152,4 +150,3 @@ Change any settings as necessary to support your planned MAAS deployment.
 ## Set up your IBM Z virtual machine for enlistment
 
 To cause IBM Z KVM partition guests to enlist, it’s necessary to manually put in the BMC information for each guest. MAAS can then detect the guest, enlist it, and boot it as necessary.
-

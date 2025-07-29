@@ -83,8 +83,8 @@ Read the following information from MAAS audit logs.
 
 | Event type    | Endpoint | Req'd params | Audited user event                                             |
 |---------------|----------|--------------|----------------------------------------------------------------|
-| AUTHORIZATION | API      | None         | "Created token."                                               |
-| AUTHORIZATION | API      | None         | "Deleted token."                                               |
+| AUTHORISATION | API      | None         | "Created token."                                               |
+| AUTHORISATION | API      | None         | "Deleted token."                                               |
 | NODE          | API      | `system_id`  | "Created bcache."                                              |
 | NODE          | API      | `system_id`  | "Deleted bcache."                                              |
 | NODE          | API      | `system_id`  | "Updated bcache."                                              |
@@ -105,9 +105,8 @@ Read the following information from MAAS audit logs.
 |               | API      | None         | "Tag `tag.name` created."                                      |
 |               | API      | None         | "Created SSH key."                                             |
 |               | API      | None         | "Deleted SSH key."                                             |
-| AUTHORIZATION |          | None         | "Created SSL key."                                             |
+| AUTHORISATION |          | None         | "Created SSL key."                                             |
 |               |          | None         | "Updated `dhcp_snippet.name`."                                 |
 |               |          | None         | "Updated `package_repository.name`."                           |
 | SETTINGS      |          | None         | "Saved script `script.name`."                                  |
 | SETTINGS      | CLI      | None         | "Updated configuration setting `key`."                         |
-

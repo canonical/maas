@@ -24,4 +24,3 @@ maas config-tls disable [-h]
 | -p PORT, --port PORT | HTTPS port (default: 5443)                            |
 | --yes                | Skip interactive confirmation (default: False)        |
 |                      |                                                       |
-

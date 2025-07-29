@@ -26,7 +26,7 @@ MAAS 2.9 allows you to create an OpenVswitch bridge type when creating a bridge.
 
 ### NUMA, SR-IOV, and hugepages
 
-MAAS 2.9 adds extensive optimization tools for using NUMA with virtual machines. You can now see how many VMs are allocated to each NUMA node, along with the allocations of cores, storage, and memory. You can quickly spot a VM running in multiple NUMA nodes, and optimize accordingly, with instant updates on pinning and allocations. You can also tell which VMs are currently running. Using the CLI, you can also pin nodes to specific cores, and configure hugepages for use by VMs.
+MAAS 2.9 adds extensive optimisation tools for using NUMA with virtual machines. You can now see how many VMs are allocated to each NUMA node, along with the allocations of cores, storage, and memory. You can quickly spot a VM running in multiple NUMA nodes, and optimise accordingly, with instant updates on pinning and allocations. You can also tell which VMs are currently running. Using the CLI, you can also pin nodes to specific cores, and configure hugepages for use by VMs.
 
 Specifically, there are five new features available to support NUMA, SR-IOV, and hugepages:
 
@@ -209,9 +209,9 @@ Four improvements have been made to speed up the commissioning process, mostly b
 
 - Deselecting all architectures in the Ubuntu extra architectures repo [blocks all deployments](https://bugs.launchpad.net/maas/+bug/1894116). The default architectures have been changed to prevent this issue.
 
-- MAAS does not allow [FQDNs to be used in place of IPs](https://bugs.launchpad.net/maas/+bug/1911825) when a BMC extracts the address from the `power_address`. This incorrect behavior was changed in 2.9.2.
+- MAAS does not allow [FQDNs to be used in place of IPs](https://bugs.launchpad.net/maas/+bug/1911825) when a BMC extracts the address from the `power_address`. This incorrect behaviour was changed in 2.9.2.
 
-- The Proxmox driver [uses a hard-coded port that cannot be customized](https://bugs.launchpad.net/maas/+bug/1914165). This port can now be customized in 2.9.2.
+- The Proxmox driver [uses a hard-coded port that cannot be customised](https://bugs.launchpad.net/maas/+bug/1914165). This port is now customisable in 2.9.2.
 
 ### Bugs fixed in 2.9.1 release
 
@@ -248,4 +248,3 @@ Running migrations:
 ```
 
 This warning message has no effect on the installation or operation of MAAS, so it can be safely ignored.
-

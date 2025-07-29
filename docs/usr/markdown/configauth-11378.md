@@ -19,4 +19,3 @@ maas configauth [-h] [--candid-agent-file CANDID_AGENT_FILE] [--candid-domain CA
 |                                         | choose from                                          |
 | --json                                  | Return the current authentication configuration as    |
 |                                         | JSON                                                  |
-

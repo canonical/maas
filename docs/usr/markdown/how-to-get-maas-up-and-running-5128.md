@@ -1,4 +1,4 @@
-MAAS can be installed from snap or Debian packages, and configured for a Proof-of-Concept (POC) or a production-capable environment.
+MAAS can be installed from snap or Debian packages, and configured for a Proof-of-Concept (POC) or a production environment.
 
 ## Install MAAS (snap or packages)
 
@@ -21,22 +21,22 @@ sudo apt-get -y install maas
 
 The MAAS snap can use a POC configuration with the [`maas-test-db`](https://snapcraft.io/maas-test-db) snap. Enter `maas init --help` and follow the instructions to set up this configuration.
 
-## Post-install setup (production-capable)
+## Post-install setup (production)
 
-Setting up MAAS for a production-capable environment is a little more involved than a POC, but not particularly difficult to accomplish using the following steps:
+Setting up MAAS for production is a little more involved than a POC, but not particularly difficult to accomplish using the following steps:
 
 1. **Disable conflicting NTP:**
    ```nohighlight
    sudo systemctl disable --now systemd-timesyncd
    ```
 
-2. **Create a production-capable PostgreSQL configuration:**
+2. **Configure PostgreSQL for production:**
    ```nohighlight
    sudo apt install -y postgresql
    sudo -i -u postgres psql -c "CREATE USER \"$DBUSER\" WITH ENCRYPTED PASSWORD '$DBPASS'"
    sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"
    ```
-3. **Edit `/etc/postgresql/16/main/pg_hba.conf`**, adding a line for the newly created database:
+3. **Edit `/etc/postgresql/14/main/pg_hba.conf`**, adding a line for the newly created database:
    ```nohighlight
     host    $MAAS_DBNAME    $MAAS_DBUSER    0/0     md5
 
@@ -111,7 +111,6 @@ DHCP must be enabled before MAAS can commission and deploy machines.
    maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True \
        primary_rack=$PRIMARY_RACK_CONTROLLER
    ```
-<<<<<<< HEAD
 2. Set the default gateway:
    ```bash
    maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
@@ -120,8 +119,8 @@ DHCP must be enabled before MAAS can commission and deploy machines.
 
 The following general notes apply to an upgrade:
 
-- **Review PostgreSQL Requirements:** MAAS 3.6 and later require PostgreSQL 16. [Upgrade instructions here](/t/how-to-upgrade-from-postgresql-v14-to-v16/11178).
-- **Upgrade Ubuntu if needed:** Ensure you're running Ubuntu 24.04 (Noble) before upgrading MAAS.
+- **Review PostgreSQL Requirements:** MAAS 3.5 and later require PostgreSQL 14. [Upgrade instructions here](/t/how-to-upgrade-postgresql-v12-to-v14/7203).
+- **Upgrade Ubuntu if needed:** Ensure you're running Ubuntu 22.04 (Jammy) before upgrading MAAS.
 - **Backup your data:** Always create a backup before upgrading.
 - **Multi-node setups:** Upgrade rack nodes first, then region nodes.
 
@@ -216,6 +215,13 @@ sudo apt update && sudo apt upgrade maas
 - **PostgreSQL 12 is deprecated in MAAS 3.3 and unsupported in 3.5.** Upgrade to PostgreSQL 14 before proceeding.
 
 ## Additional notes
+
+The following general notes apply to an upgrade:
+
+* Review PostgreSQL Requirements: MAAS 3.6 supports Postgres 14 and recommends PostgreSQL 16. [Upgrade instructions to Postgres 14 here.](https://maas.io/docs/how-to-upgrade-postgresql-v12-to-v14) [Upgrade instructions to Postgres 16 here.](https://maas.io/docs/how-to-upgrade-from-postgresql-v14-to-v16)
+* Upgrade Ubuntu if needed: Ensure you’re running Ubuntu 24.04 (Noble) before upgrading MAAS.
+* Backup your data: Always create a backup before upgrading.
+* Multi-node setups: Upgrade rack nodes first, then region nodes
 
 ### Avoiding NTP conflicts
 

@@ -1,5 +1,3 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-3-1" target = "_blank">Let us know.</a>*
-
 We are happy to announce that MAAS 3.1 is now available. This release provides new features and critical bug fixes.
 
 ## Features
@@ -84,7 +82,7 @@ MAAS version 3.1 allows you to enlist deployed machines into MAAS, without distu
 
 When adding machines to MAAS, MAAS (non-destructively) boots them into an ephemeral environment to gather hardware information. Previously, this didn't work for deployed machines, since you don't want to disrupt deployed workloads or mark deployed machines as ready.
 
-Now you may add deployed machines, without normal commissioning process or relabeling the machine. In order to update the information, a script is provided to run minimal commissioning scripts and update to MAAS.
+Now you may add deployed machines, without normal commissioning process or relabelling the machine. In order to update the information, a script is provided to run minimal commissioning scripts and update to MAAS.
 
 #### How to enlist a machine that’s already running a workload
 
@@ -148,7 +146,7 @@ Users can upload, deploy and reuse a bootable ubuntu image
 
 #### About this feature
 
-MAAS supports deploying custom OS images. Canonical provides both [lp:maas-image-builder](https://launchpad.net/maas-image-builder) and [gh:canonical/packer-maas](https://GitHub.com/canonical/packer-maas) to create custom images. With 3.1, these custom images can include static Ubuntu images, created with whatever tool you choose, deployed as described below. Canonical still suggests customizing Ubuntu using cloud-init user_data or Curtin preseed data, if possible.
+MAAS supports deploying custom OS images. Canonical provides both [lp:maas-image-builder](https://launchpad.net/maas-image-builder) and [gh:canonical/packer-maas](https://github.com/canonical/packer-maas) to create custom images. With 3.1, these custom images can include static Ubuntu images, created with whatever tool you choose, deployed as described below. Canonical still suggests customising Ubuntu using cloud-init user_data or Curtin preseed data, if possible.
 
 #### About static Ubuntu images
 
@@ -156,13 +154,13 @@ MAAS allows you to build an Ubuntu image to deploy with MAAS, using any chosen i
 
 #### About uploading hand-built Ubuntu images
 
-You can upload and deploy hand-built Ubuntu images, containing kernel, bootloader, and fixed configuration. The image can be built by tool, e.g., [packer](https://GitHub.com/canonical/packer-maas), or by scripts. You can upload these images to the boot-resources endpoint, where they will be available for deployment.
+You can upload and deploy hand-built Ubuntu images, containing kernel, bootloader, and fixed configuration. The image can be built by tool, e.g., [packer](https://github.com/canonical/packer-maas), or by scripts. You can upload these images to the boot-resources endpoint, where they will be available for deployment.
 
-The minimum image must contain a kernel, bootloader, and `/curtin/curtin-hooks` script that configures the network. Samples can be found in the [packer-maas repos](https://GitHub.com/canonical/packer-maas/tree/master/ubuntu/scripts). The image must be in raw img file format so MAAS will accept the upload. When built, you will upload this img file to the boot-resources endpoint, specifying the image architecture.
+The minimum image must contain a kernel, bootloader, and `/curtin/curtin-hooks` script that configures the network. Samples can be found in the [packer-maas repos](https://github.com/canonical/packer-maas/tree/master/ubuntu/scripts). The image must be in raw img file format so MAAS will accept the upload. When built, you will upload this img file to the boot-resources endpoint, specifying the image architecture.
 
 #### About how MAAS handles these images
 
-MAAS will save the image as a `tar.gz` file in the database. MAAS can differentiate between image types and generate appropriate pre-seed configurations. MAAS also recognizes the base Ubuntu version, so it can apply the correct ephemeral OS for installation. Custom images are always deployed with the ephemeral OS, where the `base_image` field indicates the appropriate ephemeral version to avoid errors, ensuring smooth deployment later.
+MAAS will save the image as a `tar.gz` file in the database. MAAS can differentiate between image types and generate appropriate pre-seed configurations. MAAS also recognises the base Ubuntu version, so it can apply the correct ephemeral OS for installation. Custom images are always deployed with the ephemeral OS, where the `base_image` field indicates the appropriate ephemeral version to avoid errors, ensuring smooth deployment later.
 
 #### About how MAAS boots these images
 
@@ -269,7 +267,7 @@ Easier MAAS to LXD connection that uses certificates for authentication.
 
 MAAS 3.1 provides a smoother experience when connecting an existing LXD server to MAAS, guiding the user through manual steps and providing increased connection security with use of certificates. Currently, each MAAS region/rack controller has its own certificate. To add a LXD VM host to MAAS, the user needs to either add the certificate for each controller that can reach the LXD server to the trust list in LXD, or use the trust_password (in which case the controller talking to LXD will automatically add its certificate to the trust).
 
-This doesn’t provide a great user experience, as the former process is cumbersome, and the latter is not suggested for production use for security reasons. To improve this, MAAS 3.1 manages per-LXD keys/certificates, and provide a way for users to get the content of certificates, to authorize MAAS in LXD.
+This doesn’t provide a great user experience, as the former process is cumbersome, and the latter is not suggested for production use for security reasons. To improve this, MAAS 3.1 manages per-LXD keys/certificates, and provide a way for users to get the content of certificates, to authorise MAAS in LXD.
 
 #### About on-the-spot certificate creation
 
@@ -418,4 +416,3 @@ MAAS 3.1 bug fixes can be found in the following milestones:
 - [MAAS 3.1 Beta3 bug fixes](https://launchpad.net/maas/+milestone/3.1.0-beta3)
 - [MAAS 3.1 Beta2 bug fixes](https://launchpad.net/maas/+milestone/3.1.0-beta2)
 - [MAAS 3.1 Beta1 bug fixes](https://launchpad.net/maas/+milestone/3.1.0-beta1)
-

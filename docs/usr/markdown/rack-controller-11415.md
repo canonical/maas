@@ -434,8 +434,8 @@ Each key can be one of the following:
 
 - ``vendor_id``: The device vendor id
 - ``product_id``: The device product id
-- ``vendor_name``: The device vendor name, not case sensitive
-- ``product_name``: The device product name, not case sensitive
+- ``vendor_name``: The device vendor name, not case sensative
+- ``product_name``: The device product name, not case sensative
 - ``commissioning_driver``: The device uses this driver during commissioning.
 
 #### Command-line options
@@ -465,4 +465,3 @@ Required String. The node to add.
 | --help, -h     | Show this help message and exit.              |
 | -d, --debug    | Display more information about API responses. |
 | -k, --insecure | Disable SSL certificate check                 |
-
