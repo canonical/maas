@@ -37,154 +37,156 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 ## Navigation
 
 [details=Navigation items]
-|Level | Path | Navlink|
-|--- | --- | ---|
-|0 | / | [Home](/t/-/6662)|
-|0 |  | |
-|1 | how-to-guides | [How-to guides](/t/-/6663)|
-|2 | how-to-get-maas-up-and-running | [Get MAAS up and running](/t/-/5128)|
-|2 | how-to-back-up-maas | [Back up MAAS](/t/-/5096)|
-|2 | how-to-manage-networks | [Manage networks](/t/-/5164)|
-|2 | how-to-manage-network-services | [Manage network services](/t/-/11320)|
-|2 | how-to-manage-machines | [Manage machines](/t/-/5172)|
-|2 | how-to-manage-machine-groups | [Manage machine groups](/t/-/8833)|
-|2 | how-to-manage-images | [Manage images](/t/-/5124)|
-|2 | how-to-build-ubuntu-images | [Build Ubuntu images](/t/-/7873)|
-|2 | how-to-build-custom-images | [Build custom images](/t/-/7872)|
-|2 | how-to-manage-high-availability | [Manage high-availability](/t/-/5120)|
-|2 | how-to-use-logging | [Use logging](/t/-/6956)|
-|2 | how-to-monitor-maas | [Monitor MAAS](/t/-/5204)|
-|2 | how-to-enhance-maas-security | [Enhance MAAS security](/t/-/5196)|
-|2 | how-to-deploy-a-real-time-kernel | [Deploy a real-time kernel](/t/-/6658)|
-|2 | how-to-deploy-a-fips-compliant-kernel | [Deploy a FIPS kernel](/t/-/7743)|
-|2 | how-to-set-up-air-gapped-maas | [Set up air-gapped MAAS](/t/-/5212)|
-|2 | how-to-script-maas-with-python | [Script MAAS with Python](/t/-/5404)|
-|2 | how-to-deploy-vms-on-ibm-z | [Deploy VMs on IBM Z](/t/-/7885)|
-|1 | reference | [Reference](/t/-/6143)|
-|2 | release-notes-and-upgrade-instructions | [Release notes](/t/-/5292)|
-|2 |  | API reference|
-|3 | how-to-authenticate-to-the-maas-api | [API login](/t/-/5060)|
-|3 | profile | [API profile](/t/-/11347)|
-|3 | reference-api-documentation | [API reference](/docs/api)|
-|2 |  | CLI reference|
-|3 | account | [account](/t/-/3205)|
-|3 | apikey | [apikey](/t/-/11400)|
-|3 | bcache | [bcache](/t/-/6836)|
-|3 | bcache-cache-set | [bcache-cache-set](/t/-/11401)|
-|3 | block-device | [block-device](/t/-/2357)|
-|3 | boot-resource | [boot-resource](/t/-/11355)|
-|3 | boot-source-selection | [boot-source-selection](/t/-/11402)|
-|3 | boot-source | [boot-source](/t/-/6850)|
-|3 | changepassword | [changepassword](/t/-/11380)|
-|3 | commissioning-scripts | [commissioning-scripts](/t/-/6605)|
-|3 | configauth | [configauth](/t/-/11378)|
-|3 | config | [config](/t/-/11403)|
-|3 | config-tls | [config-tls](/t/-/11351)|
-|3 | config-vault | [config-vault](/t/-/11348)|
-|3 | createadmin | [createadmin](/t/-/11379)|
-|3 | device | [device](/t/-/11356)|
-|3 | dhcp-snippet | [dhcp-snippet](/t/-/11357)|
-|3 | discovery | [discovery](/t/-/758)|
-|3 | dnsresource-records | [dnsresource-records](/t/-/11404)|
-|3 | dnsresource | [dnsresource](/t/-/11352)|
-|3 | domain | [domain](/t/-/11405)|
-|3 | events | [events](/t/-/6373)|
-|3 | fabric | [fabric](/t/-/11359)|
-|3 | file | [file](/t/-/11360)|
-|3 | init | [init](/t/-/11350)|
-|3 | interface | [interface](/t/-/11364)|
-|3 | ipaddresses | [ipaddresses](/t/-/761)|
-|3 | iprange | [iprange](/t/-/760)|
-|3 | license-key | [license-key](/t/-/11362)|
-|3 | list | [list](/t/-/11406)|
-|3 | login | [login](/t/-/11345)|
-|3 | logout | [logout](/t/-/11407)|
-|3 | maas | [maas](/t/-/11408)|
-|3 | machine | [machine](/t/-/11365)|
-|3 | migrate | [migrate](/t/-/11381)|
-|3 | network | [network](/t/-/11409)|
-|3 | node | [node](/t/-/11431)|
-|3 | node-device | [node-device](/t/-/11410)|
-|3 | node-result | [node-result](/t/-/11411)|
-|3 | node-script-result | [node-script-result](/t/-/11412)|
-|3 | node-script | [node-script](/t/-/11413)|
-|3 | notification | [notification](/t/-/11366)|
-|3 | package-repository | [package-repository](/t/-/814)|
-|3 | partition | [partition](/t/-/11367)|
-|3 | pod | [pod](/t/-/823)|
-|3 | cli-rack-controller | [rack-controller](/t/-/11415)|
-|3 | raid | [raid](/t/-/11369)|
-|3 | refresh | [refresh](/t/-/11414)|
-|3 | cli-region-controller | [region-controller](/t/-/11344)|
-|3 | resource-pool | [resource-pool](/t/-/3089)|
-|3 | space | [space](/t/-/11370)|
-|3 | sshkey | [sshkey](/t/-/11371)|
-|3 | sslkey | [sslkey](/t/-/11342)|
-|3 | static-route | [static-route](/t/-/11372)|
-|3 | status | [status](/t/-/11349)|
-|3 | subnet | [subnet](/t/-/766)|
-|3 | tag | [tag](/t/-/6941)|
-|3 | user | [user](/t/-/11374)|
-|3 | version | [version](/t/-/11341)|
-|3 | vlan | [vlan](/t/-/11375)|
-|3 | vm-cluster | [vm-cluster](/t/-/11340)|
-|3 | vmfs-datastores | [vmfs-datastores](/t/-/780)|
-|3 | vm-host | [vm-host](/t/-/11376)|
-|3 | volume-group | [volume-group](/t/-/11339)|
-|3 | zone | [zone](/t/-/11377)|
-|2 |  | Configuration guides|
-|3 | installation-requirements | [Installation requirements](/t/-/6233)|
-|3 | how-to-use-cloud-init-with-maas | [Cloud-init](/t/-/9122)|
-|3 | configuration-reference | [Configuration tables](/t/-/8035)|
-|3 | reference-hardware-test-scripts | [Hardware test scripts](/t/-/5392)|
-|3 | maas-logging-reference | [Logging](/t/-/10405)|
-|3 | reference-maas-metrics | [Metrics](/t/-/7268)|
-|3 | reference-power-drivers | [Power drivers](/t/-/7882)|
-|3 | reference-maas-storage | [Storage](/t/-/7898)|
-|3 | reference-terraform | [Terraform](/t/-/6327)|
-|3 | maas-troubleshooting-guide | [Troubleshooting](/t/-/5333)|
-|1 | explanation | [Explanation](/t/-/6141)|
-|2 | about-machine-basics | [Machine basics](/t/-/7917)|
-|2 | about-the-machine-life-cycle | [The machine life-cycle](/t/-/7847)|
-|2 | about-commissioning-machines | [Commissioning machines](/t/-/7853)|
-|2 | reference-commissioning-scripts | [Commissioning scripts](/t/-/11432)|
-|2 | about-machine-customization | [Machine customization](/t/-/7902)|
-|2 | about-deploying-machines | [Deploying machines](/t/-/7901)|
-|2 | about-deploying-running-machines | [Deploying running machines](/t/-/7903)|
-|2 | about-lxd-projects | [LXD projects](/t/-/7869)|
-|2 | about-machine-groups | [Machine groups](/t/-/11160)|
-|2 | about-maas-networking | [Networking](/t/-/9620)|
-|2 | about-controllers | [Controllers](/t/-/6690)|
-|2 | about-images | [Images](/t/-/7904)|
-|2 | about-maas-performance | [Performance](/t/-/6178)|
-|2 | about-maas-events | [Events](/t/-/6510)|
-|2 | about-maas-logging | [Logging](/t/-/5240)|
-|2 | about-maas-security | [Security](/t/-/6719)|
-|0 |  | |
-| | reference-maas-glossary | [MAAS glossary](/t/-/5416)|
-| | how-to-engage-on-the-discourse-forum | [Join our forum](/t/-/6802)|
-| | how-to-contribute-to-maas-documentation | [Improve our documentation](/t/-/6949)|
-| | how-to-request-features | [Request a feature](/t/-/4447)|
-| | how-to-report-and-review-bugs | [Report a bug](/t/-/4446)|
-| | how-to-contact-us | [Contact us](/t/-/5448)|
-| | postgresql-deprecation-notices | [PostgreSQL deprecation notices](/t/-/8089)|
-| | how-to-manage-block-devices | [Manage block devices](/t/-/7893)|
-| | how-to-manage-partitions | [Manage partitions](/t/-/7894)|
-| | how-to-manage-vmfs-datastores | [Manage VMFS datastores](/t/-/7895)|
-| | how-to-configure-storage-layouts | [Configure storage](/t/-/5973)|
-| | how-to-create-custom-storage | [Create custom storage](/t/-/7896)|
-| | reference-release-notes-maas-3-3 | [MAAS 3.3 release notes](/t/-/6346)|
-| | reference-release-notes-maas-3-2 | [MAAS 3.2 release notes](/t/-/5962)|
-| | reference-release-notes-maas-3-1 | [MAAS 3.1 release notes](/t/-/5964)|
-| | reference-release-notes-maas-3-0 | [MAAS 3.0 release notes](/t/-/5963)|
-| | reference-release-notes-maas-2-9 | [MAAS 2.9 release notes](/t/-/5961)|
-| | reference-release-notes-maas-2-8 | [MAAS 2.8 release notes](/t/-/5994)|
-| | reference-release-notes-maas-2-7 | [MAAS 2.7 release notes](/t/-/5993)|
-| | how-to-upgrade-from-postgresql-v14-to-v16 | [Upgrade to PostgreSQL v16](/t/-/11178)|
-| | how-to-upgrade-postgresql-v12-to-v14 | [Upgrade to PostgreSQL v14](/t/-/7203)|
-| | maas-documentation-style-guide | [MAAS documentation style guide](/t/-/4186)|
-| | proposed-how-to-landing-page | [Proposed how-to landing page](/t/-/4917)|
-
+| Level | Path                                      | Navlink                                       |
+|-------|-------------------------------------------|-----------------------------------------------|
+| 0     | /                                         | [Home](/t/-/6662)                             |
+| 0     |                                           |                                               |
+| 1     | maas-in-thirty-minutes                    | [Tutorial: MAAS in thirty minutes](/t/-/5360) |
+| 1     | how-to-guides                             | [How-to guides](/t/-/6663)                    |
+| 2     | how-to-get-maas-up-and-running            | [Get MAAS up and running](/t/-/5128)          |
+| 2     | how-to-back-up-maas                       | [Back up MAAS](/t/-/5096)                     |
+| 2     | how-to-manage-networks                    | [Manage networks](/t/-/5164)                  |
+| 2     | how-to-manage-network-services            | [Manage network services](/t/-/11320)         |
+| 2     | how-to-manage-machines                    | [Manage machines](/t/-/5172)                  |
+| 2     | how-to-manage-machine-groups              | [Manage machine groups](/t/-/8833)            |
+| 2     | how-to-manage-images                      | [Manage images](/t/-/5124)                    |
+| 2     | how-to-build-ubuntu-images                | [Build Ubuntu images](/t/-/7873)              |
+| 2     | how-to-build-custom-images                | [Build custom images](/t/-/7872)              |
+| 2     | how-to-manage-high-availability           | [Manage high-availability](/t/-/5120)         |
+| 2     | how-to-use-logging                        | [Use logging](/t/-/6956)                      |
+| 2     | how-to-monitor-maas                       | [Monitor MAAS](/t/-/5204)                     |
+| 2     | how-to-enhance-maas-security              | [Enhance MAAS security](/t/-/5196)            |
+| 2     | how-to-deploy-a-real-time-kernel          | [Deploy a real-time kernel](/t/-/6658)        |
+| 2     | how-to-deploy-a-fips-compliant-kernel     | [Deploy a FIPS kernel](/t/-/7743)             |
+| 2     | how-to-set-up-air-gapped-maas             | [Set up air-gapped MAAS](/t/-/5212)           |
+| 2     | how-to-script-maas-with-python            | [Script MAAS with Python](/t/-/5404)          |
+| 2     | how-to-deploy-vms-on-ibm-z                | [Deploy VMs on IBM Z](/t/-/7885)              |
+| 1     | reference                                 | [Reference](/t/-/6143)                        |
+| 2     | release-notes-and-upgrade-instructions    | [Release notes](/t/-/5292)                    |
+| 2     |                                           | API reference                                 |
+| 3     | how-to-authenticate-to-the-maas-api       | [API login](/t/-/5060)                        |
+| 3     | profile                                   | [API profile](/t/-/11347)                     |
+| 3     | reference-api-documentation               | [API reference](/docs/api)                    |
+| 2     | cli-reference                             | [CLI reference](/t/-/11975)                   |
+| 3     | account                                   | [account](/t/-/3205)                          |
+| 3     | apikey                                    | [apikey](/t/-/11400)                          |
+| 3     | bcache                                    | [bcache](/t/-/6836)                           |
+| 3     | bcache-cache-set                          | [bcache-cache-set](/t/-/11401)                |
+| 3     | block-device                              | [block-device](/t/-/2357)                     |
+| 3     | boot-resource                             | [boot-resource](/t/-/11355)                   |
+| 3     | boot-source-selection                     | [boot-source-selection](/t/-/11402)           |
+| 3     | boot-source                               | [boot-source](/t/-/6850)                      |
+| 3     | changepassword                            | [changepassword](/t/-/11380)                  |
+| 3     | commissioning-scripts                     | [commissioning-scripts](/t/-/6605)            |
+| 3     | configauth                                | [configauth](/t/-/11378)                      |
+| 3     | config                                    | [config](/t/-/11403)                          |
+| 3     | config-tls                                | [config-tls](/t/-/11351)                      |
+| 3     | config-vault                              | [config-vault](/t/-/11348)                    |
+| 3     | createadmin                               | [createadmin](/t/-/11379)                     |
+| 3     | device                                    | [device](/t/-/11356)                          |
+| 3     | dhcp-snippet                              | [dhcp-snippet](/t/-/11357)                    |
+| 3     | discovery                                 | [discovery](/t/-/758)                         |
+| 3     | dnsresource-records                       | [dnsresource-records](/t/-/11404)             |
+| 3     | dnsresource                               | [dnsresource](/t/-/11352)                     |
+| 3     | domain                                    | [domain](/t/-/11405)                          |
+| 3     | events                                    | [events](/t/-/6373)                           |
+| 3     | fabric                                    | [fabric](/t/-/11359)                          |
+| 3     | file                                      | [file](/t/-/11360)                            |
+| 3     | init                                      | [init](/t/-/11350)                            |
+| 3     | interface                                 | [interface](/t/-/11364)                       |
+| 3     | ipaddresses                               | [ipaddresses](/t/-/761)                       |
+| 3     | iprange                                   | [iprange](/t/-/760)                           |
+| 3     | license-key                               | [license-key](/t/-/11362)                     |
+| 3     | list                                      | [list](/t/-/11406)                            |
+| 3     | login                                     | [login](/t/-/11345)                           |
+| 3     | logout                                    | [logout](/t/-/11407)                          |
+| 3     | maas                                      | [maas](/t/-/11408)                            |
+| 3     | machine                                   | [machine](/t/-/11365)                         |
+| 3     | migrate                                   | [migrate](/t/-/11381)                         |
+| 3     | network                                   | [network](/t/-/11409)                         |
+| 3     | node                                      | [node](/t/-/11431)                            |
+| 3     | node-device                               | [node-device](/t/-/11410)                     |
+| 3     | node-result                               | [node-result](/t/-/11411)                     |
+| 3     | node-script-result                        | [node-script-result](/t/-/11412)              |
+| 3     | node-script                               | [node-script](/t/-/11413)                     |
+| 3     | notification                              | [notification](/t/-/11366)                    |
+| 3     | package-repository                        | [package-repository](/t/-/814)                |
+| 3     | partition                                 | [partition](/t/-/11367)                       |
+| 3     | pod                                       | [pod](/t/-/823)                               |
+| 3     | cli-rack-controller                       | [rack-controller](/t/-/11415)                 |
+| 3     | raid                                      | [raid](/t/-/11369)                            |
+| 3     | refresh                                   | [refresh](/t/-/11414)                         |
+| 3     | cli-region-controller                     | [region-controller](/t/-/11344)               |
+| 3     | resource-pool                             | [resource-pool](/t/-/3089)                    |
+| 3     | space                                     | [space](/t/-/11370)                           |
+| 3     | sshkey                                    | [sshkey](/t/-/11371)                          |
+| 3     | sslkey                                    | [sslkey](/t/-/11342)                          |
+| 3     | static-route                              | [static-route](/t/-/11372)                    |
+| 3     | status                                    | [status](/t/-/11349)                          |
+| 3     | subnet                                    | [subnet](/t/-/766)                            |
+| 3     | tag                                       | [tag](/t/-/6941)                              |
+| 3     | user                                      | [user](/t/-/11374)                            |
+| 3     | version                                   | [version](/t/-/11341)                         |
+| 3     | vlan                                      | [vlan](/t/-/11375)                            |
+| 3     | vm-cluster                                | [vm-cluster](/t/-/11340)                      |
+| 3     | vmfs-datastores                           | [vmfs-datastores](/t/-/780)                   |
+| 3     | vm-host                                   | [vm-host](/t/-/11376)                         |
+| 3     | volume-group                              | [volume-group](/t/-/11339)                    |
+| 3     | zone                                      | [zone](/t/-/11377)                            |
+| 2     |                                           | Configuration guides                          |
+| 3     | installation-requirements                 | [Installation requirements](/t/-/6233)        |
+| 3     | how-to-use-cloud-init-with-maas           | [Cloud-init](/t/-/9122)                       |
+| 3     | configuration-reference                   | [Configuration tables](/t/-/8035)             |
+| 3     | reference-hardware-test-scripts           | [Hardware test scripts](/t/-/5392)            |
+| 3     | maas-logging-reference                    | [Logging](/t/-/10405)                         |
+| 3     | reference-maas-metrics                    | [Metrics](/t/-/7268)                          |
+| 3     | reference-power-drivers                   | [Power drivers](/t/-/7882)                    |
+| 3     | reference-maas-storage                    | [Storage](/t/-/7898)                          |
+| 3     | reference-terraform                       | [Terraform](/t/-/6327)                        |
+| 3     | maas-troubleshooting-guide                | [Troubleshooting](/t/-/5333)                  |
+| 1     | explanation                               | [Explanation](/t/-/6141)                      |
+| 2     | about-machine-basics                      | [Machine basics](/t/-/7917)                   |
+| 2     | about-the-machine-life-cycle              | [The machine life-cycle](/t/-/7847)           |
+| 2     | about-commissioning-machines              | [Commissioning machines](/t/-/7853)           |
+| 2     | reference-commissioning-scripts           | [Commissioning scripts](/t/-/11432)           |
+| 2     | about-machine-customization               | [Machine customization](/t/-/7902)            |
+| 2     | about-deploying-machines                  | [Deploying machines](/t/-/7901)               |
+| 2     | about-deploying-running-machines          | [Deploying running machines](/t/-/7903)       |
+| 2     | about-lxd-projects                        | [LXD projects](/t/-/7869)                     |
+| 2     | about-machine-groups                      | [Machine groups](/t/-/11160)                  |
+| 2     | about-maas-networking                     | [Networking](/t/-/9620)                       |
+| 2     | about-power-drivers                       | [Power drivers](/t/-/6843)                    |
+| 2     | about-controllers                         | [Controllers](/t/-/6690)                      |
+| 2     | about-images                              | [Images](/t/-/7904)                           |
+| 2     | about-maas-performance                    | [Performance](/t/-/6178)                      |
+| 2     | about-maas-events                         | [Events](/t/-/6510)                           |
+| 2     | about-maas-logging                        | [Logging](/t/-/5240)                          |
+| 2     | about-maas-security                       | [Security](/t/-/6719)                         |
+| 0     |                                           |                                               |
+|       | reference-maas-glossary                   | [MAAS glossary](/t/-/5416)                    |
+|       | how-to-engage-on-the-discourse-forum      | [Join our forum](/t/-/6802)                   |
+|       | how-to-contribute-to-maas-documentation   | [Improve our documentation](/t/-/6949)        |
+|       | how-to-request-features                   | [Request a feature](/t/-/4447)                |
+|       | how-to-report-and-review-bugs             | [Report a bug](/t/-/4446)                     |
+|       | how-to-contact-us                         | [Contact us](/t/-/5448)                       |
+|       | postgresql-deprecation-notices            | [PostgreSQL deprecation notices](/t/-/8089)   |
+|       | how-to-manage-block-devices               | [Manage block devices](/t/-/7893)             |
+|       | how-to-manage-partitions                  | [Manage partitions](/t/-/7894)                |
+|       | how-to-manage-vmfs-datastores             | [Manage VMFS datastores](/t/-/7895)           |
+|       | how-to-configure-storage-layouts          | [Configure storage](/t/-/5973)                |
+|       | how-to-create-custom-storage              | [Create custom storage](/t/-/7896)            |
+|       | reference-release-notes-maas-3-5          | [MAAS 3.5 release notes](/t/-/8086)           |
+|       | reference-release-notes-maas-3-4          | [MAAS 3.4 release notes](/t/-/7071)           |
+|       | reference-release-notes-maas-3-3          | [MAAS 3.3 release notes](/t/-/6346)           |
+|       | reference-release-notes-maas-3-2          | [MAAS 3.2 release notes](/t/-/5962)           |
+|       | reference-release-notes-maas-3-1          | [MAAS 3.1 release notes](/t/-/5964)           |
+|       | reference-release-notes-maas-3-0          | [MAAS 3.0 release notes](/t/-/5963)           |
+|       | reference-release-notes-maas-2-9          | [MAAS 2.9 release notes](/t/-/5961)           |
+|       | reference-release-notes-maas-2-8          | [MAAS 2.8 release notes](/t/-/5994)           |
+|       | reference-release-notes-maas-2-7          | [MAAS 2.7 release notes](/t/-/5993)           |
+|       | how-to-upgrade-from-postgresql-v14-to-v16 | [Upgrade to PostgreSQL v16](/t/-/11178)       |
+|       | how-to-upgrade-postgresql-v12-to-v14      | [Upgrade to PostgreSQL v14](/t/-/7203)        |
+|       | maas-documentation-style-guide            | [MAAS documentation style guide](/t/-/4186)   |
 [/details]
 
 ## Redirects
