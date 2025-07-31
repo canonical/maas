@@ -15,8 +15,9 @@ from jsonschema import validate, ValidationError
 import yaml
 
 from maascli.init import prompt_yes_no
-from maasserver.enum import MSM_STATUS
+from maascommon.enums.msm import MSMStatusEnum
 from maasserver.management.commands.base import BaseCommandWithConnection
+from maasserver.sqlalchemy import service_layer
 
 
 class Command(BaseCommandWithConnection):
@@ -53,26 +54,22 @@ class Command(BaseCommandWithConnection):
     }
 
     def _withdraw(self, options):
-        from maasserver.msm import msm_withdraw
-
-        msm_withdraw()
+        service_layer.services.msm.withdraw()
 
     def _status(self, options):
-        from maasserver.msm import msm_status
-
-        status = msm_status()
+        status = service_layer.services.msm.get_status()
         if not status:
             print("No enrolment is in progress")
             return
-        host = urlparse(status["sm-url"]).hostname
-        match status["running"]:
-            case MSM_STATUS.PENDING:
+        host = urlparse(status.sm_url).hostname
+        match status.running:
+            case MSMStatusEnum.PENDING:
                 print(
-                    f"Enrolment with {host} is pending approval as of {status['start-time']}"
+                    f"Enrolment with {host} is pending approval as of {status.start_time}"
                 )
-            case MSM_STATUS.CONNECTED:
-                print(f"Enroled with {host} as of {status['start-time']}")
-            case MSM_STATUS.NOT_CONNECTED:
+            case MSMStatusEnum.CONNECTED:
+                print(f"Enroled with {host} as of {status.start_time}")
+            case MSMStatusEnum.NOT_CONNECTED:
                 print(
                     f"This MAAS has been enroled with {host} but is no longer connected"
                 )
@@ -82,8 +79,6 @@ class Command(BaseCommandWithConnection):
 
     def _enrol(self, options):
         # We don't know exactly what to expect from these claims, so don't verify them
-        from maasserver.msm import msm_enrol, msm_status
-
         decode_opts = {
             "verify_signature": False,
             "verify_aud": False,
@@ -121,19 +116,22 @@ class Command(BaseCommandWithConnection):
 
         if not options["non_interactive"]:
             # check if we've previously been enroled
-            status = msm_status()
+            status = service_layer.services.msm.get_status()
             previous_url = ""
-            if status and status["running"] == MSM_STATUS.NOT_CONNECTED:
+            if status and status.running == MSMStatusEnum.NOT_CONNECTED:
                 # if the URL is different, warn user
-                if status["sm-url"] != base_url:
-                    previous_url = status["sm-url"]
+                if status.sm_url != base_url:
+                    previous_url = status.sm_url
             msg = get_cert_verify_msg(base_url, previous_url=previous_url)
             if not prompt_yes_no(msg):
                 return
 
         try:
-            name = msm_enrol(options["enrolment_token"], metainfo=config)
+            name = service_layer.services.msm.enrol(
+                options["enrolment_token"], metainfo=config
+            )
         except Exception as ex:
+            print(ex)
             raise CommandError(str(ex)) from None
         parsed = urlparse(base_url)
         print(

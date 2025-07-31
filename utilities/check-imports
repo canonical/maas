@@ -447,6 +447,7 @@ ServiceLayerRule = Rule(
     Allow("netaddr.**"),
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.security.**"),
+    Allow("provisioningserver.utils.env.**"),
     Allow("provisioningserver.utils.network.**"),
     Allow("provisioningserver.utils.version.**"),
     Allow("psycopg2|psycopg2.**"),

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 import uuid
 
-from temporalio.client import Client
+from temporalio.client import Client, WorkflowExecutionDescription
 
 from maasservicelayer.context import Context
 from maasservicelayer.services.base import Service, ServiceCache
@@ -35,6 +35,20 @@ class TemporalService(Service):
     @Service.from_cache_or_execute(attr="temporal_client")
     async def get_temporal_client(self) -> Client:
         return await get_temporal_client_async()
+
+    async def query_workflow(
+        self, workflow_id: str, query: str
+    ) -> tuple[Any, WorkflowExecutionDescription]:
+        client = await self.get_temporal_client()
+        handle = client.get_workflow_handle(workflow_id)
+        result = await handle.query(query)
+        description = await handle.describe()
+        return result, description
+
+    async def cancel_workflow(self, workflow_id: str) -> None:
+        client = await self.get_temporal_client()
+        handle = client.get_workflow_handle(workflow_id)
+        return await handle.cancel()
 
     async def post_commit(self) -> None:
         for key, arguments in self._post_commit_workflows.items():  # noqa: B007

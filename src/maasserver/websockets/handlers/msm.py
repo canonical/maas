@@ -3,8 +3,10 @@
 
 """The MAAS Site Manager handler for the WebSocket connection."""
 
-from maasserver.enum import MSM_STATUS
-from maasserver.msm import msm_status
+from dataclasses import asdict
+
+from maascommon.enums.msm import MSMStatusEnum
+from maasserver.sqlalchemy import service_layer
 from maasserver.websockets.base import Handler
 
 
@@ -15,11 +17,11 @@ class MAASSiteManagerHandler(Handler):
 
     def status(self, params):
         """Get the status of enrolment"""
-        status = msm_status()
+        status = service_layer.services.msm.get_status()
         if not status:
             return {
-                "sm-url": None,
-                "start-time": None,
-                "running": MSM_STATUS.NOT_CONNECTED,
+                "sm_url": None,
+                "start_time": None,
+                "running": MSMStatusEnum.NOT_CONNECTED,
             }
-        return status
+        return asdict(status)

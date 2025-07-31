@@ -37,6 +37,7 @@ from maascommon.constants import (
     BOOTLOADERS_DIR,
     IMPORT_RESOURCES_SERVICE_PERIOD,
 )
+from maascommon.enums.msm import MSMStatusEnum
 from maascommon.utils.fs import tempdir
 from maascommon.workflows.bootresource import (
     DOWNLOAD_TIMEOUT,
@@ -63,7 +64,6 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
     BOOT_RESOURCE_TYPE,
     COMPONENT,
-    MSM_STATUS,
 )
 from maasserver.eventloop import services
 from maasserver.import_images.download_descriptions import (
@@ -81,8 +81,8 @@ from maasserver.models import (
     Event,
     RegionController,
 )
-from maasserver.msm import msm_status
 from maasserver.release_notifications import ReleaseNotifications
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils import (
     absolute_reverse,
     get_maas_user_agent,
@@ -1009,14 +1009,14 @@ def _import_resources_internal(notify=None):
     set_simplestreams_env()
 
     sources = get_boot_sources()
-    msm = msm_status()
+    msm_status = service_layer.services.msm.get_status()
     # If we're enrolled with MSM, download everything
-    if msm.get("running") == MSM_STATUS.CONNECTED:
+    if msm_status and msm_status.running == MSMStatusEnum.CONNECTED:
         # there will only be one source if we're enrolled.
         # loop in case there is a race condition while sources are being
         # updated in the msm workflow
         for source in sources:
-            if source["url"].startswith(msm.get("sm-url")):
+            if source["url"].startswith(msm_status.sm_url):
                 ensure_all_images_selected(source)
 
     msg = f"Started importing of boot images from {len(sources)} source(s)."

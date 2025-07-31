@@ -7,9 +7,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from maasserver.enum import MSM_STATUS
+from maascommon.enums.msm import MSMStatusEnum
 from maasserver.testing.factory import factory
 from maasserver.websockets.handlers import msm
+from maasservicelayer.services.msm import MSMService, MSMStatus
 
 
 @pytest.mark.allow_transactions
@@ -17,12 +18,12 @@ from maasserver.websockets.handlers import msm
 class TestMSMHandler:
     def test_status_not_connected(self, mocker):
         owner, session = factory.make_User_with_session()
-        mocker.patch.object(msm, "msm_status", return_value={})
+        mocker.patch.object(MSMService, "get_status", return_value=None)
         handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
-        assert result["sm-url"] is None
-        assert result["start-time"] is None
-        assert result["running"] == MSM_STATUS.NOT_CONNECTED
+        assert result["sm_url"] is None
+        assert result["start_time"] is None
+        assert result["running"] == MSMStatusEnum.NOT_CONNECTED
 
     def test_status_waiting_for_approval(self, mocker):
         owner, session = factory.make_User_with_session()
@@ -31,19 +32,19 @@ class TestMSMHandler:
         )
         expected_url = "http://test-maas"
         mocker.patch.object(
-            msm,
-            "msm_status",
-            return_value={
-                "sm-url": expected_url,
-                "running": MSM_STATUS.PENDING,
-                "start-time": expected_started,
-            },
+            MSMService,
+            "get_status",
+            return_value=MSMStatus(
+                sm_url=expected_url,
+                running=MSMStatusEnum.PENDING,
+                start_time=expected_started,
+            ),
         )
         handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
-        assert result["sm-url"] == expected_url
-        assert result["start-time"] == expected_started
-        assert result["running"] == MSM_STATUS.PENDING
+        assert result["sm_url"] == expected_url
+        assert result["start_time"] == expected_started
+        assert result["running"] == MSMStatusEnum.PENDING
 
     def test_status_approved(self, mocker):
         owner, session = factory.make_User_with_session()
@@ -52,16 +53,16 @@ class TestMSMHandler:
         )
         expected_url = "http://test-maas"
         mocker.patch.object(
-            msm,
-            "msm_status",
-            return_value={
-                "sm-url": expected_url,
-                "running": MSM_STATUS.CONNECTED,
-                "start-time": expected_started,
-            },
+            MSMService,
+            "get_status",
+            return_value=MSMStatus(
+                sm_url=expected_url,
+                running=MSMStatusEnum.CONNECTED,
+                start_time=expected_started,
+            ),
         )
         handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
-        assert result["sm-url"] == expected_url
-        assert result["start-time"] == expected_started
-        assert result["running"] == MSM_STATUS.CONNECTED
+        assert result["sm_url"] == expected_url
+        assert result["start_time"] == expected_started
+        assert result["running"] == MSMStatusEnum.CONNECTED

@@ -136,6 +136,7 @@ from maasservicelayer.services.leases import LeasesService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.machines_v2 import MachinesV2Service
 from maasservicelayer.services.mdns import MDNSService
+from maasservicelayer.services.msm import MSMService
 from maasservicelayer.services.neighbours import NeighboursService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
@@ -230,6 +231,7 @@ class ServiceCollectionV3:
     machines: MachinesService
     machines_v2: MachinesV2Service
     mdns: MDNSService
+    msm: MSMService
     neighbours: NeighboursService
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
@@ -301,6 +303,12 @@ class ServiceCollectionV3:
             cache=cache.get(
                 TemporalService.__name__, TemporalService.build_cache_object
             ),
+        )
+        services.msm = MSMService(
+            context=context,
+            temporal_service=services.temporal,
+            config_service=services.configurations,
+            secrets_service=services.secrets,
         )
         services.notifications = NotificationsService(
             context=context, repository=NotificationsRepository(context)

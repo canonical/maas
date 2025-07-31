@@ -12,6 +12,7 @@ from maasserver import vault
 from maasserver.config import RegionConfiguration
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.secrets import SecretManager
+from maasserver.sqlalchemy import service_layer
 from maasserver.vault import (
     get_region_vault_client,
     get_region_vault_client_if_enabled,
@@ -102,3 +103,8 @@ def enable_rbac(maasdb):
     yield client.store
     rbac._store.client = None
     rbac.clear()
+
+
+@pytest.fixture
+def services():
+    yield service_layer.services

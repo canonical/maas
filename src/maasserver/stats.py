@@ -19,8 +19,9 @@ from django.db.models import Case, Count, F, Max, Q, When
 import requests
 from twisted.application.internet import TimerService
 
+from maascommon.enums.msm import MSMStatusEnum
 from maasserver.certificates import get_maas_certificate
-from maasserver.enum import IPADDRESS_TYPE, MSM_STATUS, NODE_STATUS, NODE_TYPE
+from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, NODE_TYPE
 from maasserver.models import (
     BMC,
     BootResourceFile,
@@ -40,7 +41,7 @@ from maasserver.models import (
 )
 from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.models.virtualmachine import get_vm_host_used_resources
-from maasserver.msm import msm_status
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
@@ -463,13 +464,13 @@ def get_tags_stats():
 
 
 def get_msm_stats():
-    status = msm_status()
+    status = service_layer.services.msm.get_status()
     if not status:
         return {
             "connected": False,
         }
     return {
-        "connected": status["running"] == MSM_STATUS.CONNECTED,
+        "connected": status.running == MSMStatusEnum.CONNECTED,
     }
 
 
