@@ -7,6 +7,7 @@ require (
 	github.com/canonical/microcluster/v2 v2.1.1-0.20250331093222-1e95efcf4f08
 	github.com/canonical/pebble v1.10.2
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/cilium/ebpf v0.18.0
 	github.com/google/gopacket v1.1.19
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/insomniacslk/dhcp v0.0.0-20250417080101-5f8cf70e8c5f
@@ -28,6 +29,7 @@ require (
 	go.temporal.io/sdk/contrib/opentelemetry v0.6.0
 	golang.org/x/net v0.39.0
 	golang.org/x/sync v0.13.0
+	golang.org/x/sys v0.32.0
 	golang.org/x/tools v0.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -85,7 +87,6 @@ require (
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.5.0 // indirect

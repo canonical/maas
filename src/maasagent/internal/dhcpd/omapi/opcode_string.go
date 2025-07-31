@@ -22,7 +22,7 @@ const _Opcode_name = "UNKNOWNOPENREFRESHUPDATENOTIFYSTATUSDELETE"
 var _Opcode_index = [...]uint8{0, 7, 11, 18, 24, 30, 36, 42}
 
 func (i Opcode) String() string {
-	if i < 0 || i >= Opcode(len(_Opcode_index)-1) {
+	if i >= Opcode(len(_Opcode_index)-1) {
 		return "Opcode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
 	return _Opcode_name[_Opcode_index[i]:_Opcode_index[i+1]]

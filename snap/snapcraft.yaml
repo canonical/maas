@@ -291,8 +291,13 @@ parts:
     plugin: make
     source: src/maasagent
     build-packages:
+      - clang
       - golang-go
+      - libbpf-dev
       - libdqlite1.17-dev
+      - linux-tools-common
+      - linux-tools-generic
+      - llvm
     organize:
       bin/maas-agent: usr/sbin/maas-agent
     prime:

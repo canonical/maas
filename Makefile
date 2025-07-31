@@ -214,8 +214,12 @@ lint-oapi: openapi.yaml
 	@tox -e oapi
 .PHONY: lint-oapi
 
+generate-go:
+	@$(MAKE) -C src/maasagent generate
+.PHONY: generate-go
+
 # Go fmt
-lint-go: $(BIN_DIR)/golangci-lint
+lint-go: $(BIN_DIR)/golangci-lint generate-go
 	@find src -maxdepth 3 -type f -name go.mod -execdir \
 		sh -c "go mod tidy \
 		&& git diff --exit-code -- go.mod go.sum \

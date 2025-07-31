@@ -9,6 +9,10 @@ VENDOR_DIR := vendor
 
 LDFLAGS := -ldflags '-linkmode=external -extldflags "-fPIC -static -luv -llz4 -ldqlite"'
 
+BPFTOOL := bpftool
+BTF_PATH := /sys/kernel/btf/vmlinux
+BPF_GENERATED_FILES := internal/dhcp/xdp/bpf_bpfel.go internal/dhcp/xdp/bpf_bpfel.o internal/dhcp/xdp/bpf_bpfeb.go internal/dhcp/xdp/bpf_bpfeb.o internal/dhcp/xdp/vmlinux.h
+
 # Explicitly set cache dirs to avoid situations where we can't mkdir under $HOME (e.g. Launchpad builds)
 export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
 export GOMODCACHE := $(shell [ -d $(HOME)/go ] && echo $(HOME)/go/pkg/mod || mktemp --tmpdir -d tmp.go-mod-cacheXXX)
@@ -20,8 +24,11 @@ $(BIN_DIR): ; mkdir -p $@
 
 ARTIFACTS := $(subst /,,$(subst cmd/,,$(wildcard cmd/*/)))
 
+internal/dhcp/xdp/vmlinux.h:
+	$(BPFTOOL) btf dump file $(BTF_PATH) format c > internal/dhcp/xdp/vmlinux.h
+
 .PHONY: build
-build: vendor
+build: vendor generate
 	$(MAKE) $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 $(BUILD_DIR)/%:
@@ -32,19 +39,19 @@ install: build
 	install -t $(DESTDIR)/bin -D $(BUILD_DIR)/*
 
 .PHONY: test
-test: vendor
+test: vendor generate
 	CGO_ENABLED=1 $(GO) test ./...
 
 .PHONY: test-race
-test-race: vendor
+test-race: vendor generate
 	CGO_ENABLED=1 $(GO) test -race ./...
 
 .PHONY: test-cover
-test-cover: vendor
+test-cover: vendor generate
 	CGO_ENABLED=1 $(GO) test -coverprofile=cover.out ./...
 
 .PHONY: generate
-generate:
+generate: vendor internal/dhcp/xdp/vmlinux.h
 	$(GO) generate ./...
 
 .PHONY: vendor
@@ -55,7 +62,7 @@ $(VENDOR_DIR)/modules.txt: go.mod
 
 .PHONY: clean
 clean:
-	rm -rf $(VENDOR_DIR) $(BIN_DIR) $(BUILD_DIR)
+	rm -rf $(VENDOR_DIR) $(BIN_DIR) $(BUILD_DIR) $(BPF_GENERATED_FILES)
 
 format:
 	@go fmt maas.io/core/src/maasagent/...
