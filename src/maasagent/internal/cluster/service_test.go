@@ -61,4 +61,6 @@ func TestConfigurationWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, batch.Results, 1)
 	assert.Equal(t, systemID, batch.Results[0].Rows[0][0])
+
+	svc.stop()
 }

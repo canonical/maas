@@ -37,6 +37,7 @@ type ClusterService struct {
 	fatal           chan error
 	dataPathFactory dataPathFactory
 	cluster         *microcluster.MicroCluster
+	cancel          context.CancelFunc
 	systemID        string
 }
 
@@ -135,7 +136,9 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 
 	// Use new context.Background here because Workflow context will be closed once
 	// workflow execution is completed.
-	cctx := context.Background()
+	var cctx context.Context
+
+	cctx, s.cancel = context.WithCancel(context.Background())
 
 	if err := workflow.RunAsLocalActivity(ctx, func(ctx context.Context) error {
 		go func() {
@@ -179,6 +182,10 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 	log.Info("Started cluster-service")
 
 	return nil
+}
+
+func (s *ClusterService) stop() {
+	s.cancel()
 }
 
 func (s *ClusterService) Error() error {
