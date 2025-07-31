@@ -1163,7 +1163,9 @@ class TestIntegrationImageSyncService:
         boot_source_caches = await fixture.get_typed(
             BootSourceCacheTable.name, BootSourceCache
         )
-        assert boot_source_caches == created_boot_sources
+        assert sorted(boot_source_caches, key=lambda x: x.id) == sorted(
+            created_boot_sources, key=lambda x: x.id
+        )
 
         await create_test_configuration(
             fixture, name=CommissioningOSystemConfig.name, value="ubuntu"
@@ -1284,7 +1286,9 @@ class TestIntegrationImageSyncService:
         boot_source_caches = await fixture.get_typed(
             BootSourceCacheTable.name, BootSourceCache
         )
-        assert boot_source_caches == created_boot_sources
+        assert sorted(boot_source_caches, key=lambda x: x.id) == sorted(
+            created_boot_sources, key=lambda x: x.id
+        )
 
         await create_test_configuration(
             fixture, name=CommissioningOSystemConfig.name, value="ubuntu"
