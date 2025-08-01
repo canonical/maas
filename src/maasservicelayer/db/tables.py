@@ -41,6 +41,42 @@ METADATA = MetaData()
 
 # Keep them in alphabetical order!
 
+AgentTable = Table(
+    "maasserver_agent",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("secret", String(64), unique=True, nullable=False),
+    Column(
+        "rack_id",
+        BigInteger,
+        ForeignKey("maasserver_rack.id"),
+        nullable=False,
+    ),
+    Column(
+        "rackcontroller_id",
+        BigInteger,
+        ForeignKey("maasserver_node.id"),
+        nullable=False,
+    ),
+)
+
+AgentCertificateTable = Table(
+    "maasserver_agentcertificate",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("certificate_fingerprint", String(64), unique=True, nullable=False),
+    Column("certificate", LargeBinary, unique=True, nullable=False),
+    Column("revoked", DateTime(timezone=True), nullable=True),
+    Column(
+        "agent_id",
+        BigInteger,
+        ForeignKey("maasserver_agent.id"),
+        nullable=False,
+    ),
+)
+
 BlockDeviceTable = Table(
     "maasserver_blockdevice",
     METADATA,
@@ -340,6 +376,22 @@ BootSourceSelectionTable = Table(
     Index(
         "maasserver_bootsourceselection_boot_source_id_b911aa0f",
         "boot_source_id",
+    ),
+)
+
+BootstrapTokenTable = Table(
+    "maasserver_bootstraptoken",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("expires", DateTime(timezone=True), nullable=False),
+    Column("secret", String(64), unique=True, nullable=False),
+    Column(
+        "rack_id",
+        BigInteger,
+        ForeignKey("maasserver_rack.id"),
+        nullable=False,
     ),
 )
 
@@ -1586,6 +1638,16 @@ PhysicalBlockDeviceTable = Table(
         "maasserver_physicalblockdevice_numa_node_id_8bd61f48", "numa_node_id"
     ),
 )
+
+RackTable = Table(
+    "maasserver_rack",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), unique=True, nullable=False),
+)
+
 RDNSTable = Table(
     "maasserver_rdns",
     METADATA,
