@@ -214,12 +214,9 @@ lint-oapi: openapi.yaml
 	@tox -e oapi
 .PHONY: lint-oapi
 
-generate-go:
-	@$(MAKE) -C src/maasagent generate
-.PHONY: generate-go
-
 # Go fmt
-lint-go: $(BIN_DIR)/golangci-lint generate-go
+lint-go: $(BIN_DIR)/golangci-lint
+	$(MAKE) -C src/maasagent/ vendor
 	@find src -maxdepth 3 -type f -name go.mod -execdir \
 		sh -c "go mod tidy \
 		&& git diff --exit-code -- go.mod go.sum \
@@ -320,6 +317,7 @@ clean-agent:
 
 
 clean: clean-ui clean-go-bins
+	@$(MAKE) -C src/maasagent clean
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)

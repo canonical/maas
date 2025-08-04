@@ -282,6 +282,8 @@ parts:
     source: src/maasagent
     build-packages:
       - golang-go
+    build-environment:
+      - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
     organize:
       bin/maas-netmon: usr/sbin/maas-netmon
     prime:
@@ -295,9 +297,9 @@ parts:
       - golang-go
       - libbpf-dev
       - libdqlite1.17-dev
-      - linux-tools-common
-      - linux-tools-generic
       - llvm
+    build-environment:
+      - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
     organize:
       bin/maas-agent: usr/sbin/maas-agent
     prime:

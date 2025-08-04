@@ -1,4 +1,3 @@
-### Go ###
 go.work
 
 # Binaries for programs and plugins
@@ -21,3 +20,7 @@ vendor/
 bin/
 
 build/
+
+*_bpfe[lb].o
+*_bpfe[lb].go
+*_bpfe[lb].go.d

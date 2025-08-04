@@ -24,9 +24,6 @@
 /release.macaroon
 /release.lp
 /snap/.snapcraft
-/src/maasagent/build
-/src/maasagent/vendor
-/src/maasagent/internal/dhcp/xdp/bpf_bpf*
 /src/maasui/build
 /src/maasui/tarballs
 /src/maasui/nodejs

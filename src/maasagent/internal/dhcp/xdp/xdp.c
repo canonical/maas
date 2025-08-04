@@ -105,7 +105,7 @@ static __always_inline int parse_dhcp_pkt(struct xdp_md *ctx, struct dhcp_data *
         if (dhcp_pkt + 1 > payload_end) {
             return 0;
         }
-        
+
         data->src_mac[0] = eth->h_source[0];
         data->src_mac[1] = eth->h_source[1];
         data->src_mac[2] = eth->h_source[2];
@@ -114,7 +114,7 @@ static __always_inline int parse_dhcp_pkt(struct xdp_md *ctx, struct dhcp_data *
         data->src_mac[5] = eth->h_source[5];
         data->src_ip6 = ip6->saddr;
         data->src_port = bpf_htons(udp->source);
-        
+
         for (int i = 0; dhcp_pkt + i < payload_end; i++) {
             if (i >= MAX_DHCP_PKT_SIZE) {
                 return 0;
@@ -122,10 +122,10 @@ static __always_inline int parse_dhcp_pkt(struct xdp_md *ctx, struct dhcp_data *
 
             data->dhcp_pkt[i] = *((u8*)(dhcp_pkt + i));
         }
-        
+
         return 1;
     }
-        
+
     return 0;
 }
 

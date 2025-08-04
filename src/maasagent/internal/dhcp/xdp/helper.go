@@ -20,7 +20,7 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -tags linux bpf xdp.c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -makebase "$MAKEDIR" -tags linux bpf xdp.c -- -I../../ebpf/include
 
 type BpfDHCPData struct {
 	bpfDhcpData

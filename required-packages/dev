@@ -5,10 +5,6 @@ curl
 dos2unix
 git
 libnss-wrapper
-linux-tools-common
-linux-cloud-tools-common
-linux-tools-generic
-linux-cloud-tools-generic
 psmisc
 python3-django-nose
 python3-dnspython
