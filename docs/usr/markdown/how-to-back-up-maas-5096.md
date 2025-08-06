@@ -105,7 +105,7 @@ Backs up PostgreSQL and key MAAS files.
    ```sh
    sudo -u postgres psql -f <backup-path>/<dump.sql> postgres
    ```
-4. Install [MAAS from packages](https://maas.io/docs/how-to-install-maas#p-9034-install-maas-snap-or-packages).
+4. Install [MAAS from packages](https://canonical.com/maas/docs/how-to-install-maas#p-9034-install-maas-snap-or-packages).
 5. Stop MAAS services:
    ```sh
    sudo systemctl stop maas-dhcpd.service maas-rackd.service maas-regiond.service

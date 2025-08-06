@@ -2,17 +2,17 @@ These release notes for MAAS summarize new features, bug fixes and backwards-inc
 
 ## Releases
 [Version 3.6](https://discourse.maas.io/t/release-notes-and-upgrade-instructions/5292?_ga=2.238555336.999421397.1744814112-1844343596.1742394996&_gl=1*j4r5fy*_ga*MTg0NDM0MzU5Ni4xNzQyMzk0OTk2*_ga_5LTL1CNEJM*czE3NDQ4OTc2MTkkbzcyJGcxJHQxNzQ0OTAwMTE5JGo0NCRsMCRoMA..#p-9229-version-36-release-notes-3)
-[Version 3.5](https://maas.io/docs/release-notes-and-upgrade-instructions#p-9229-version-35-release-notes)
-[Version 3.4](https://maas.io/docs/release-notes-and-upgrade-instructions#p-9229-version-34-release-notes)
+[Version 3.5](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions#p-9229-version-35-release-notes)
+[Version 3.4](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions#p-9229-version-34-release-notes)
 
 ### Older releases
- [MAAS 3.3 release notes](https://maas.io/docs/reference-release-notes-maas-3-3)
- [MAAS 3.2 release notes](https://maas.io/docs/reference-release-notes-maas-3-2)
- [MAAS 3.1 release notes](https://maas.io/docs/reference-release-notes-maas-3-1)
- [MAAS 3.0 release notes](https://maas.io/docs/reference-release-notes-maas-3-0)
- [MAAS 2.9 release notes](https://maas.io/docs/reference-release-notes-maas-2-9)
- [MAAS 2.8 release notes](https://maas.io/docs/reference-release-notes-maas-2-8)
- [MAAS 2.7 release notes](https://maas.io/docs/reference-release-notes-maas-2-7)
+ [MAAS 3.3 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-3)
+ [MAAS 3.2 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-2)
+ [MAAS 3.1 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-1)
+ [MAAS 3.0 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-0)
+ [MAAS 2.9 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-2-9)
+ [MAAS 2.8 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-2-8)
+ [MAAS 2.7 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-2-7)
 
 <!--
 ## Release policy and schedule

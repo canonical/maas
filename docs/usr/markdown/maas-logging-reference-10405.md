@@ -7,7 +7,7 @@ Pinpoint issues with four types of log files:
 
 You can also account for user activities with audit logs.
 
-> *See [How to use logging](https://maas.io/docs/how-to-use-logging) for usage instructions.*
+> *See [How to use logging](https://canonical.com/maas/docs/how-to-use-logging) for usage instructions.*
 
 ## Firewall logs
 

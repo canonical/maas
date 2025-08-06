@@ -1,4 +1,4 @@
-MAAS provides pre-configured [networks](https://maas.io/docs/about-maas-networking) for convenience and efficiency.  Reconfigure these networks to suit your environment.
+MAAS provides pre-configured [networks](https://canonical.com/maas/docs/about-maas-networking) for convenience and efficiency.  Reconfigure these networks to suit your environment.
 
 ## Manage interfaces 
 
@@ -29,7 +29,7 @@ Use key-value pairs to set interface properties like:
 - `mac_address=00:16:3e:01:2a:3b` – Required if not auto-detected
 - `enabled=true` – Whether the interface is active
 
-Consult the [CLI reference](https://maas.io/docs/interface#p-23244-create-a-physical-interface) for details on parameters and usage.
+Consult the [CLI reference](https://canonical.com/maas/docs/interface#p-23244-create-a-physical-interface) for details on parameters and usage.
 
 #### Create a VLAN interface
 
@@ -70,7 +70,7 @@ maas $PROFILE interfaces read $SYSTEM_ID
 
 Note that you *cannot* assign a VLAN directly to a physical interface, though once created, this interface can then be bonded, bridged, or assigned IPs just like a physical NIC.
 
-Consult the [CLI help page](https://maas.io/docs/interface#p-23244-create-a-vlan-interface) for more details.
+Consult the [CLI help page](https://canonical.com/maas/docs/interface#p-23244-create-a-vlan-interface) for more details.
 
 Some common mistakes often plague users when creating a VLAN interface:
 
@@ -93,7 +93,7 @@ Bonding creates interface redundancy and increased throughput on servers with mu
 - You are using Wi-Fi or virtual NICs
 - You do not control the network switch (and cannot configure LACP)
 
-Learn more about [bonds](https://maas.io/docs/about-maas-networking#p-20679-bonds), if needed.
+Learn more about [bonds](https://canonical.com/maas/docs/about-maas-networking#p-20679-bonds), if needed.
 
 ##### How to create a bond
 
@@ -109,7 +109,7 @@ Note that `parents` refer to the IDs of the physical interfaces you want to bond
 
 Every bond must have a mode, though `bonding_mode` is optional in this command. For MAAS, the default bonding mode is `balance_rr`, which transmits packets sequentially from the first available slave through the last. This mode is chosen as default because it provides load balancing and fault tolerance.
 
-Refer to the [interface CLI reference page](https://maas.io/docs/interface#p-23244-create-a-bond-interface) for detailed instruction on how to use the CLI command and other bonding mode choices.
+Refer to the [interface CLI reference page](https://canonical.com/maas/docs/interface#p-23244-create-a-bond-interface) for detailed instruction on how to use the CLI command and other bonding mode choices.
 
 ##### Troubleshooting bond creation
 
@@ -211,7 +211,7 @@ sudo netplan apply
 ### View and maintain interfaces
  Once created, MAAS interfaces can be listed, reviewed, updated, or deleted. The machine must be in the correct state (`Ready` or `Broken`) to allow most changes. Deployed machines can only be updated in limited ways (e.g., changing MAC addresses for replacement).
  
-See the [CLI reference](https://maas.io/docs/interface) for more details.
+See the [CLI reference](https://canonical.com/maas/docs/interface) for more details.
 
 #### List existing interfaces
 
@@ -253,7 +253,7 @@ maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID (key=value)...
 
 Use the appropriate parameter set for the interface type (physical, bridge, bond, VLAN, etc.).
 
-See [the CLI subcommand reference](https://maas.io/docs/interface#p-23244-update-an-interface) for key options.
+See [the CLI subcommand reference](https://canonical.com/maas/docs/interface#p-23244-update-an-interface) for key options.
 
 #### Delete an interface
 
@@ -298,7 +298,7 @@ maas $PROFILE interface link-subnet $SYSTEM_ID $INTERFACE_ID mode=<mode> subnet=
 - `ip_address` is optional unless using `STATIC` mode
 - You can link to managed or unmanaged subnets
 
-See [Link and interface to a subnet](https://maas.io/docs/interface#p-23244-link-interface-to-a-subnet) in the CLI reference for full options.
+See [Link and interface to a subnet](https://canonical.com/maas/docs/interface#p-23244-link-interface-to-a-subnet) in the CLI reference for full options.
 
 #### Unlink an interface from a subnet
 
