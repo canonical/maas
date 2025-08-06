@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable
 
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -38,17 +38,54 @@ from maasservicelayer.exceptions.catalog import (
 logger = structlog.getLogger(__name__)
 
 
+def _build_json_path(loc: list[Any]) -> str:
+    elements: list[str] = []
+    for elem in loc:
+        if isinstance(elem, int) and elements:
+            elements.append(f"{elements.pop()}[{elem}]")
+        else:
+            elements.append(str(elem))
+    return ".".join(elements)
+
+
 class ExceptionHandlers:
     @classmethod
     async def validation_exception_handler(
         cls, request: Request, exc: RequestValidationError
     ):
-        return ValidationErrorResponse(
-            details=[
-                BaseExceptionDetail(type=error["type"], message=error["msg"])
-                for error in exc.errors()
-            ]
-        )
+        """
+        FastAPI raises a RequestValidationError for any validation error that
+        occurs during the request processing, from JSON decoder errors to pydantic
+        field/model validation issues.
+
+        Each error in the `exc.errors()` is an instance of `pydantic_core.ErrorDetails`
+        that has the following attributes:
+            type: the name of the error
+            msg: the description of the error
+            loc: a tuple explaining where the failure happened. The first item
+              could be one of: path, query, header, cookie, body. The next items
+              specify the path of the wrong field. E.g. if the passed json is in
+              the form `{"foo": {"bar": [0, "wrong-field"]}}` the loc parameter
+              would be something like `(<location>, "foo", "bar", 1)`.
+            ctx: additional context regarding the input data.
+        """
+        details: list[BaseExceptionDetail] = []
+        for err in exc.errors():
+            d = BaseExceptionDetail(
+                type=err["type"],
+                message=err["msg"],
+                location=err["loc"][0],
+                field=_build_json_path(err["loc"][1:]),
+            )
+            if ctx := err.get("ctx", None):
+                if loc := ctx.get("loc", None):
+                    d.field = loc
+                if msg := ctx.get("reason", None):
+                    d.message = msg
+
+            details.append(d)
+
+        return ValidationErrorResponse(details=details)
 
 
 class ExceptionMiddleware(BaseHTTPMiddleware):

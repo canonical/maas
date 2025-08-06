@@ -24,5 +24,7 @@ class DiscoveriesIPAndMacFiltersParams(BaseModel):
         if bool(values["ip"]) ^ bool(values["mac"]):
             missing_field = "ip" if values["ip"] is None else "mac"
             message = f"Missing '{missing_field}' query parameter. You must specify both IP and MAC to delete a specific neighbour."
-            raise ValidationException.build_for_field(missing_field, message)
+            raise ValidationException.build_for_field(
+                missing_field, message, location="query"
+            )
         return values

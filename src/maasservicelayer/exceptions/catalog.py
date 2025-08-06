@@ -74,13 +74,16 @@ class ValidationException(BaseException):
         super().__init__("Invalid value.", details)
 
     @classmethod
-    def build_for_field(cls, field: str, message: str) -> Self:
+    def build_for_field(
+        cls, field: str, message: str, location: str = "body"
+    ) -> Self:
         return cls(
             details=[
                 BaseExceptionDetail(
                     type=INVALID_ARGUMENT_VIOLATION_TYPE,
                     field=field,
                     message=message,
+                    location=location,
                 )
             ]
         )

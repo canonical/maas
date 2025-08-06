@@ -67,12 +67,15 @@ class OrderByQueryFilter(BaseModel):
             field = cls._clean_field(elem)
             if field not in cls._order_by_columns:
                 raise ValidationException.build_for_field(
-                    "order_by", f"'{elem}' is not an allowed property."
+                    "order_by",
+                    f"'{elem}' is not an allowed property.",
+                    location="query",
                 )
             if field in seen_fields:
                 raise ValidationException.build_for_field(
                     "order_by",
                     f"'{field}' property was specified more than once.",
+                    location="query",
                 )
             seen_fields.add(field)
 
