@@ -68,7 +68,7 @@ AgentCertificateTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("certificate_fingerprint", String(64), unique=True, nullable=False),
     Column("certificate", LargeBinary, unique=True, nullable=False),
-    Column("revoked", DateTime(timezone=True), nullable=True),
+    Column("revoked_at", DateTime(timezone=True), nullable=True),
     Column(
         "agent_id",
         BigInteger,
@@ -385,7 +385,7 @@ BootstrapTokenTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("expires", DateTime(timezone=True), nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
     Column("secret", String(64), unique=True, nullable=False),
     Column(
         "rack_id",

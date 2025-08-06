@@ -6488,7 +6488,7 @@ CREATE TABLE public.maasserver_agentcertificate (
     id bigint NOT NULL,
     certificate_fingerprint character varying(64) NOT NULL,
     certificate bytea NOT NULL,
-    revoked timestamp with time zone,
+    revoked_at timestamp with time zone,
     agent_id bigint NOT NULL
 );
 
@@ -6894,7 +6894,7 @@ CREATE TABLE public.maasserver_bootstraptoken (
     id bigint NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    expires timestamp with time zone NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
     secret character varying(64) NOT NULL,
     rack_id bigint NOT NULL
 );
@@ -12277,7 +12277,7 @@ COPY public.maasserver_agent (id, created, updated, secret, rack_id, rackcontrol
 -- Data for Name: maasserver_agentcertificate; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_agentcertificate (id, certificate_fingerprint, certificate, revoked, agent_id) FROM stdin;
+COPY public.maasserver_agentcertificate (id, certificate_fingerprint, certificate, revoked_at, agent_id) FROM stdin;
 \.
 
 
@@ -12365,7 +12365,7 @@ COPY public.maasserver_bootsourceselection (id, created, updated, os, release, a
 -- Data for Name: maasserver_bootstraptoken; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bootstraptoken (id, created, updated, expires, secret, rack_id) FROM stdin;
+COPY public.maasserver_bootstraptoken (id, created, updated, expires_at, secret, rack_id) FROM stdin;
 \.
 
 

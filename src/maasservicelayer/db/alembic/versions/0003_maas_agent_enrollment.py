@@ -58,7 +58,7 @@ def upgrade() -> None:
         ),
         sa.Column("created", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("expires", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("secret", sa.String(length=64), nullable=False),
         sa.Column("rack_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(
@@ -77,7 +77,7 @@ def upgrade() -> None:
             "certificate_fingerprint", sa.String(length=64), nullable=False
         ),
         sa.Column("certificate", sa.LargeBinary(), nullable=False),
-        sa.Column("revoked", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("agent_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(
             ["agent_id"],
