@@ -25,10 +25,10 @@ from tests.maasapiserver.v3.api.public.handlers.base import (
 TEST_NOTIFICATION = Notification(
     id=1,
     ident="deprecation_MD5_users",
-    message="Foo is deprecated, please update",
+    message="Foo is deprecated, please update {variable}",
     users=True,
     admins=False,
-    context={},
+    context={"variable": "now"},
     user_id=None,
     category=NotificationCategoryEnum.WARNING,
     dismissable=True,
@@ -144,10 +144,10 @@ class TestNotificationsApi(ApiCommonTests):
         services_mock.notifications.create.return_value = TEST_NOTIFICATION
         notification_request = {
             "ident": "deprecation_MD5_users",
-            "message": "Foo is deprecated, please update",
+            "message": "Foo is deprecated, please update {variable}",
             "for_users": True,
             "for_admins": False,
-            "context": {},
+            "context": {"variable": "now"},
             "user_id": None,
             "category": NotificationCategoryEnum.WARNING,
             "dismissable": True,
@@ -159,6 +159,10 @@ class TestNotificationsApi(ApiCommonTests):
         notification_response = NotificationResponse(**response.json())
         assert notification_response.kind == "Notification"
         assert notification_response.ident == TEST_NOTIFICATION.ident
+        assert (
+            notification_response.message
+            == "Foo is deprecated, please update now"
+        )
 
     async def test_create_422(
         self,

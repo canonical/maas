@@ -204,6 +204,7 @@ APIServerRule = Rule(
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
+    Allow("markupsafe.Markup"),
     Allow("netaddr|netaddr.**"),
     Allow("prometheus_client|prometheus_client.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer

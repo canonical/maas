@@ -3,6 +3,8 @@
 
 from typing import Any, Optional, Self
 
+from markupsafe import Markup
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -28,12 +30,14 @@ class NotificationResponse(HalResponse[BaseHal]):
     def from_model(
         cls, notification: Notification, self_base_hyperlink: str
     ) -> Self:
+        markup = Markup(notification.message)
+        markup = markup.format(**notification.context)
         return cls(
             id=notification.id,
             ident=notification.ident,
             users=notification.users,
             admins=notification.admins,
-            message=notification.message,
+            message=str(markup),
             context=notification.context,
             user_id=notification.user_id,
             category=notification.category,
