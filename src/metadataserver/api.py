@@ -362,6 +362,12 @@ def store_node_power_parameters(node, request):
             **node.get_instance_power_parameters(),
             **power_parameters,
         }
+        # Keep only the redfish power parameters and drop the IPMI ones.
+        power_parameters = {
+            k: power_parameters[k]
+            for k in {"node_id", "power_address", "power_pass", "power_user"}
+            if k in power_parameters
+        }
     node.set_power_config(
         power_type, power_parameters, from_commissioning=True
     )
