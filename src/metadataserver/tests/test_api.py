@@ -52,7 +52,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.utils import sample_binary_data
 from metadataserver import api
 from metadataserver.api import (
@@ -4230,16 +4230,41 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         self.save.assert_has_calls([])
 
     def test_power_type_redfish(self):
-        power_parameters = {"foo": [1, 2, 3]}
+        power_parameters = {
+            "cipher_suite_id": "3",
+            "k_g": "",
+            "mac_address": "B8:CB:29:D1:76:71",
+            "power_address": "10.1.10.21",
+            "power_boot_type": "efi",
+            "power_driver": "LAN_2_0",
+            "power_pass": "VMeS6OhiW",
+            "power_type": "ipmi",
+            "power_user": "maas",
+        }
+
         self.request.POST = {
             "power_type": "ipmi",
             "power_parameters": json.dumps(power_parameters),
         }
-        self.node.set_power_config("redfish", {"node_id": "1"})
-        store_node_power_parameters(self.node, self.request)
+        with post_commit_hooks:
+            self.node.set_power_config(
+                "redfish",
+                {
+                    "power_address": "10.0.0.1",
+                    "power_user": "maas",
+                    "power_pass": "1nsecure!",
+                    "node_id": 1,
+                },
+            )
+            store_node_power_parameters(self.node, self.request)
         self.assertEqual("redfish", self.node.power_type)
         self.assertEqual(
-            {**power_parameters, **self.node.get_instance_power_parameters()},
+            {
+                "power_address": "10.1.10.21",
+                "power_pass": "VMeS6OhiW",
+                "power_user": "maas",
+                "node_id": 1,
+            },
             self.node.get_power_parameters(),
         )
         self.save.assert_has_calls([])
@@ -4256,17 +4281,32 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         self.save.assert_has_calls([])
 
     def test_power_type_redfish_update_parameters_from_ipmi(self):
-        self.node.set_power_config("redfish", {"foo": 1})
-        power_parameters = {"foo": 2, "bar": 3}
+        self.node.set_power_config("redfish", {"node_id": 100})
+        power_parameters = {
+            "cipher_suite_id": "3",
+            "k_g": "",
+            "mac_address": "B8:CB: 29:D1:76:71",
+            "power_address": "10.1.10.21",
+            "power_boot_type": "efi",
+            "power_driver": "LAN_2_0",
+            "power_pass": "VMeS6OhiW",
+            "power_type": "ipmi",
+            "power_user": "maas",
+        }
         self.request.POST = {
             "power_type": "ipmi",
             "power_parameters": json.dumps(power_parameters),
         }
-        store_node_power_parameters(self.node, self.request)
+        with post_commit_hooks:
+            store_node_power_parameters(self.node, self.request)
         self.assertEqual("redfish", self.node.power_type)
-        self.assertEqual(self.node.get_power_parameters(), power_parameters)
         self.assertEqual(
-            self.node.get_instance_power_parameters(),
+            {
+                "power_address": "10.1.10.21",
+                "power_pass": "VMeS6OhiW",
+                "power_user": "maas",
+                "node_id": 100,
+            },
             self.node.get_power_parameters(),
         )
         self.save.assert_called_once_with()
