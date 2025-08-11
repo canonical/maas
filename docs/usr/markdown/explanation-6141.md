@@ -17,11 +17,11 @@ Understand MAAS by exploring three core areas: machines, MAAS-managed infrastruc
 
 * **Networking overview**: [MAAS networking](https://canonical.com/maas/docs/about-maas-networking) -- Manage DHCP, DNS, NTP, network discovery, and the underlying infrastructure from one integrated platform.
 * **Controllers**: [Region and rack controllers](https://canonical.com/maas/docs/about-controllers) -- Deploy and operate region and rack controllers to coordinate all provisioning activity.
-* **Images**: [Standard and custom OS iamges](https://canonical.com/maas/docs/about-images) -- SElect from standard images or build custom ones to suit your operating environment.
+* **Images**: [Standard and custom OS images](https://canonical.com/maas/docs/about-images) -- Select from standard images or build custom ones to suit your operating environment.
 
 ## Reliability tools
 
 * **Performance overview**: [Performance tools](https://canonical.com/maas/docs/about-maas-performance) -- Monitor MAAS performance and identify areas for optimization.
-* **Event catalog**: [MAAS events](https://canonical.com/maas/docs/about-maas-events) -- Track every action and state chane for troubleshooting and auditing.
+* **Event catalog**: [MAAS events](https://canonical.com/maas/docs/about-maas-events) -- Track every action and state change for troubleshooting and auditing.
 * **Logging**: [Logs as troubleshooting tools](https://canonical.com/maas/docs/about-maas-logging) -- Review and filter MAAS logs to pinpoint issues quickly.
 * **Security**: [Security concepts](https://canonical.com/maas/docs/about-maas-security) -- Apply MAAS security tools to keep your deployment hardened.
