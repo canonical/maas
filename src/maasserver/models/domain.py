@@ -20,10 +20,12 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     AutoField,
     BooleanField,
+    Count,
     Manager,
     PositiveIntegerField,
     Q,
 )
+from django.db.models.aggregates import Coalesce
 from django.db.models.query import QuerySet
 from django.utils import timezone
 from netaddr import IPAddress
@@ -265,11 +267,21 @@ class Domain(CleanSave, TimestampedModel):
     @property
     def resource_record_count(self):
         """How many total Resource Records come from non-Nodes."""
-        count = 0
-        for resource in self.dnsresource_set.all():
-            count += len(resource.ip_addresses.all())
-            count += len(resource.dnsdata_set.all())
-        return count
+        # check if dnsresource_set has already been fetched
+        if hasattr(self, "dnsresource_set"):
+            count = 0
+            for resource in self.dnsresource_set.all():
+                count += len(resource.ip_addresses.all())
+                count += len(resource.dnsdata_set.all())
+            return count
+
+        return self.dnsresource_set.aggregate(
+            total_count=Coalesce(
+                Count("ip_addresses", distinct=True)
+                + Count("dnsdata", distinct=True),
+                0,
+            )
+        )["total_count"]
 
     @property
     def forward_dns_servers(self):
