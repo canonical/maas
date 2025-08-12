@@ -2,7 +2,7 @@ import asyncio
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv6Address
-from unittest.mock import AsyncMock, call
+from unittest.mock import AsyncMock, call, Mock
 
 import aiodns
 from netaddr import IPAddress, IPNetwork
@@ -11,6 +11,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity
+from temporalio.client import Client
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
@@ -71,7 +72,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         async with activities.start_transaction() as svc:
@@ -105,7 +109,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         _, result = await env.run(
@@ -143,7 +150,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         serial, result = await env.run(
@@ -286,7 +296,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         async with activities.start_transaction() as svc:
@@ -309,7 +322,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await env.run(
@@ -331,7 +347,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         ttl = activities._get_ttl(30, domain, dnsresource)
@@ -362,7 +381,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         async with activities.start_transaction() as svc:
@@ -412,7 +434,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         split = activities._split_large_subnet(network)
@@ -435,7 +460,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = activities._generate_glue_networks(
@@ -460,7 +488,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         glue = activities._find_glue_network(network, glue_nets)
@@ -476,7 +507,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         for idx, i in enumerate(in_vals):
@@ -509,7 +543,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         async with activities.start_transaction() as svc:
@@ -539,7 +576,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         mock_get_rndc_config_path = mocker.patch.object(
@@ -567,7 +607,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         mock_get_rndc_config_path = mocker.patch.object(
@@ -606,7 +649,10 @@ class TestDNSConfigActivity:
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         mock_get_zone_config_path = mocker.patch(
@@ -713,7 +759,10 @@ a 30 IN A 10.0.0.1
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         mock_get_zone_config_path = mocker.patch(
@@ -765,7 +814,10 @@ a 30 IN A 10.0.0.1
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await env.run(
@@ -800,7 +852,10 @@ a 30 IN A 10.0.0.1
         services_cache = CacheForServices()
 
         activities = DNSConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         mock_query = asyncio.Future()

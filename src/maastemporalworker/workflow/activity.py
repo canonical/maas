@@ -6,6 +6,7 @@ from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
+from temporalio.client import Client
 
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
@@ -23,12 +24,14 @@ class ActivityBase:
         self,
         db: Database,
         services_cache: CacheForServices,
+        temporal_client: Client,
         connection: AsyncConnection | None = None,
     ):
         self._db = db
         # if provided, will use the single connection and assume a transaction has begun
         self._conn = connection
         self.services_cache = services_cache
+        self.temporal_client = temporal_client
 
     @asynccontextmanager
     async def _start_transaction(self) -> AsyncIterator[AsyncConnection]:

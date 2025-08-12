@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the set LICENSE).
 
 from datetime import datetime
+import math
 from unittest.mock import Mock
 
 import pytest
@@ -20,6 +21,9 @@ from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
+)
+from maasservicelayer.services.bootresourcefilesync import (
+    BootResourceFileSyncService,
 )
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.simplestreams.models import (
@@ -67,6 +71,7 @@ class TestCommonBootResourceSetsService(ServiceCommonTests):
         return BootResourceSetsService(
             context=Context(),
             repository=Mock(BootResourceSetsRepository),
+            boot_resource_file_sync_service=Mock(BootResourceFileSyncService),
             boot_resource_files_service=Mock(BootResourceFilesService),
         )
 
@@ -82,17 +87,25 @@ class TestBootResourceSetsService:
         return Mock(BootResourceSetsRepository)
 
     @pytest.fixture
+    def mock_boot_resource_file_sync_service(self) -> Mock:
+        return Mock(BootResourceFileSyncService)
+
+    @pytest.fixture
     def mock_boot_resource_files_service(self) -> Mock:
         return Mock(BootResourceFilesService)
 
     @pytest.fixture
     def service(
-        self, mock_repository: Mock, mock_boot_resource_files_service: Mock
+        self,
+        mock_repository: Mock,
+        mock_boot_resource_files_service: Mock,
+        mock_boot_resource_file_sync_service: Mock,
     ) -> BootResourceSetsService:
         return BootResourceSetsService(
             context=Context(),
             repository=mock_repository,
             boot_resource_files_service=mock_boot_resource_files_service,
+            boot_resource_file_sync_service=mock_boot_resource_file_sync_service,
         )
 
     async def test_pre_delete_hook_deletes_files(
@@ -210,3 +223,52 @@ class TestBootResourceSetsService:
             ),
         )
         mock_repository.create.assert_not_awaited()
+
+    @pytest.mark.parametrize(
+        "synced_size, expected_progress, expected_complete",
+        [
+            (0, 0.0, False),
+            (300, 100.0, True),
+            (100, 33.333333333, False),
+            (270, 90.00, False),
+        ],
+    )
+    async def test_get_sync_progress(
+        self,
+        synced_size: int,
+        expected_progress: float,
+        expected_complete: bool,
+        mock_repository: Mock,
+        mock_boot_resource_files_service: Mock,
+        mock_boot_resource_file_sync_service: Mock,
+        service: BootResourceSetsService,
+    ) -> None:
+        mock_repository.get_by_id.return_value = Mock(BootResourceSet)
+        mock_boot_resource_file_sync_service.get_regions_count.return_value = 1
+        mock_boot_resource_files_service.get_files_in_resource_set.return_value = [
+            BootResourceFile(
+                id=i,
+                created=utcnow(),
+                updated=utcnow(),
+                filename="test",
+                filetype=BootResourceFileType.SQUASHFS_IMAGE,
+                extra={},
+                sha256="a" * 64,
+                size=100,
+                filename_on_disk="a" * 7,
+            )
+            for i in range(3)
+        ]
+        mock_boot_resource_file_sync_service.get_current_sync_size_for_files.return_value = synced_size
+        sync_progress = await service.get_sync_progress(1)
+        assert math.isclose(sync_progress, expected_progress)
+        sync_complete = await service.is_sync_complete(1)
+        assert sync_complete is expected_complete
+
+        mock_repository.get_by_id.assert_called_with(id=1)
+        mock_boot_resource_files_service.get_files_in_resource_set.assert_called_with(
+            1
+        )
+        mock_boot_resource_file_sync_service.get_current_sync_size_for_files.assert_called_with(
+            {0, 1, 2}
+        )

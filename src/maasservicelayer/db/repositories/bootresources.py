@@ -3,10 +3,15 @@
 
 from operator import eq
 
-from sqlalchemy import Table
+from sqlalchemy import case, Table
 
 from maascommon.enums.boot_resources import BootResourceType
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.filters import (
+    Clause,
+    ClauseFactory,
+    OrderByClause,
+    OrderByClauseFactory,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BootResourceTable
 from maasservicelayer.models.bootresources import BootResource
@@ -16,6 +21,10 @@ class BootResourceClauseFactory(ClauseFactory):
     @classmethod
     def with_name(cls, name: str) -> Clause:
         return Clause(condition=eq(BootResourceTable.c.name, name))
+
+    @classmethod
+    def with_names(cls, names: list[str]) -> Clause:
+        return Clause(condition=BootResourceTable.c.name.in_(names))
 
     @classmethod
     def with_architecture(cls, architecture: str) -> Clause:
@@ -40,6 +49,20 @@ class BootResourceClauseFactory(ClauseFactory):
     @classmethod
     def with_ids(cls, ids: set[int]) -> Clause:
         return Clause(condition=BootResourceTable.c.id.in_(ids))
+
+
+class BootResourceOrderByClauses(OrderByClauseFactory):
+    @staticmethod
+    def by_name_with_priority(lts_releases: list[str]) -> OrderByClause:
+        return OrderByClause(
+            column=case(
+                {
+                    release: priority
+                    for priority, release in enumerate(lts_releases)
+                },
+                value=BootResourceTable.c.name,
+            )
+        )
 
 
 class BootResourcesRepository(BaseRepository[BootResource]):

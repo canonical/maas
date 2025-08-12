@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
+from temporalio.client import Client
 from temporalio.testing import ActivityEnvironment
 
 from maascommon.enums.ipaddress import IpAddressType
@@ -72,7 +73,10 @@ class TestConfigureAgentActivity:
 
         services_cache = CacheForServices()
         configure_activities = ConfigureAgentActivity(
-            Mock(Database), services_cache, connection=Mock(AsyncConnection)
+            Mock(Database),
+            services_cache,
+            connection=Mock(AsyncConnection),
+            temporal_client=Mock(Client),
         )
 
         result = await configure_activities.get_rack_controller_vlans(
@@ -128,7 +132,10 @@ class TestConfigureAgentActivity:
 
         services_cache = CacheForServices()
         configure_activities = ConfigureAgentActivity(
-            Mock(Database), services_cache, connection=Mock(AsyncConnection)
+            Mock(Database),
+            services_cache,
+            connection=Mock(AsyncConnection),
+            temporal_client=Mock(Client),
         )
 
         result = await configure_activities.get_region_controller_endpoints()
@@ -164,7 +171,10 @@ class TestConfigureAgentActivity:
 
         services_cache = CacheForServices()
         activities = ConfigureAgentActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await env.run(
@@ -187,7 +197,10 @@ class TestConfigureAgentActivity:
 
         services_cache = CacheForServices()
         activities = ConfigureAgentActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await env.run(
@@ -247,7 +260,10 @@ class TestConfigureAgentActivity:
 
         services_cache = CacheForServices()
         activities = ConfigureAgentActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await env.run(

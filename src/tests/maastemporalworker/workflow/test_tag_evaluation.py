@@ -4,12 +4,14 @@
 from base64 import b64encode
 from datetime import datetime, timezone
 from typing import Any, NamedTuple
+from unittest.mock import Mock
 import uuid
 
 import pytest
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity
+from temporalio.client import Client
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
@@ -275,7 +277,10 @@ class TestTagEvaluationActivities:
         """
         services_cache = CacheForServices()
         tag_evaluation_activity = TagEvaluationActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
         tag = await create_test_tag_entry(
             fixture, name="tag_01", definition="//node"
@@ -326,7 +331,10 @@ class TestTagEvaluationActivities:
         """
         services_cache = CacheForServices()
         tag_evaluation_activity = TagEvaluationActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         machine_1, machine_2, _, _, machine_5 = (

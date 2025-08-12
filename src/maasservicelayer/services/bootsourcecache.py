@@ -60,3 +60,6 @@ class BootSourceCacheService(
         if existing:
             return await self._update_resource(existing, builder)
         return await self.create(builder)
+
+    async def get_available_lts_releases(self) -> list[str]:
+        return await self.repository.get_available_lts_releases()

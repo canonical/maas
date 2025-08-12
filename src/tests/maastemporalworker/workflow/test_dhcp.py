@@ -1,5 +1,8 @@
+from unittest.mock import Mock
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
+from temporalio.client import Client
 from temporalio.testing import ActivityEnvironment
 
 from maasservicelayer.db import Database
@@ -45,7 +48,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await activities._get_agents_for_vlans(
@@ -74,7 +80,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await activities._get_vlans_for_subnets(
@@ -100,7 +109,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await activities._get_vlans_for_ip_ranges(
@@ -131,7 +143,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await activities._get_vlans_for_static_ip_addrs(
@@ -157,7 +172,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await activities._get_vlans_for_reserved_ips(
@@ -189,7 +207,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await env.run(
@@ -223,7 +244,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await activities._get_hosts_for_static_ip_addresses(
@@ -252,7 +276,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await activities._get_hosts_for_reserved_ips(
@@ -287,7 +314,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await env.run(
@@ -325,7 +355,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await env.run(activities.get_omapi_key)
@@ -349,7 +382,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
 
         result = await env.run(
