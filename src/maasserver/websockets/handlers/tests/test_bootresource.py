@@ -3,7 +3,7 @@
 import base64
 import datetime
 import random
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 from django.utils import timezone
 from twisted.internet import reactor
@@ -28,6 +28,7 @@ from maasserver.models import (
 import maasserver.models.node as node_module
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import (
@@ -43,6 +44,8 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers import bootresource
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
+from maasservicelayer.models.bootsources import SourceAvailableImage
+from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.events import EVENT_TYPES
@@ -1365,12 +1368,12 @@ class TestBootResourceFetch(MAASServerTestCase):
     def test_makes_correct_calls_for_downloading_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        mock_set_env = self.patch(bootresource, "set_simplestreams_env")
 
+        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
         mock_download = self.patch(
-            bootresource, "download_all_image_descriptions"
+            service_layer.services.image_sync, "fetch_image_metadata"
         )
-        mock_download.return_value = BootImageMapping()
+        mock_download.return_value = []
         url = factory.make_url(
             scheme=random.choice(["http", "https"]),
             path="",
@@ -1390,24 +1393,27 @@ class TestBootResourceFetch(MAASServerTestCase):
             {"url": url, "keyring_data": keyring_data},
         )
         self.assertEqual("Mirror provides no Ubuntu images.", str(error))
-        mock_set_env.assert_called_once()
 
-        mock_download.assert_called_once_with([expected_source])
+        mock_download.assert_called_once_with(
+            source_url=expected_source["url"],
+            keyring_path=None,
+            keyring_data=expected_source["keyring_data"],
+        )
 
     def test_url_without_trailing_slash(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
+        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
         mock_download = self.patch(
-            bootresource, "download_all_image_descriptions"
+            service_layer.services.image_sync, "fetch_image_metadata"
         )
-        mock_download.return_value = BootImageMapping()
+        mock_download.return_value = []
         url = "http://example.com"
         keyring_data = "aGVsbG8gd29ybGQ="
         expected_source = {
             "url": url + "/",
             "keyring_data": base64.b64decode(keyring_data),
-            "selections": [],
         }
         error = self.assertRaises(
             HandlerError,
@@ -1416,15 +1422,19 @@ class TestBootResourceFetch(MAASServerTestCase):
         )
         self.assertEqual("Mirror provides no Ubuntu images.", str(error))
 
-        mock_download.assert_called_once_with([expected_source])
+        mock_download.assert_called_once_with(
+            source_url=expected_source["url"],
+            keyring_path=None,
+            keyring_data=expected_source["keyring_data"],
+        )
 
     def test_raises_error_on_downloading_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        self.patch(bootresource, "set_simplestreams_env")
 
+        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
         mock_download = self.patch(
-            bootresource, "download_all_image_descriptions"
+            service_layer.services.image_sync, "fetch_image_metadata"
         )
         exc = factory.make_exception()
         mock_download.side_effect = exc
@@ -1442,16 +1452,20 @@ class TestBootResourceFetch(MAASServerTestCase):
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
 
+        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
         mock_download = self.patch(
-            bootresource, "download_all_image_descriptions"
+            service_layer.services.image_sync, "fetch_image_metadata"
         )
 
         # Only centos image is present.
-        mapping = BootImageMapping()
-        not_ubuntu = make_image_spec(os="centos")
-        set_resource(mapping, not_ubuntu)
-
-        mock_download.return_value = mapping
+        mock_download.return_value = [
+            SourceAvailableImage(
+                os="centos",
+                release="9",
+                release_title="9",
+                architecture="amd64",
+            )
+        ]
         url = factory.make_url(scheme=random.choice(["http", "https"]))
         keyring_data = "aGVsbG8gd29ybGQ="
         error = self.assertRaises(
@@ -1477,24 +1491,22 @@ class TestBootResourceFetch(MAASServerTestCase):
     def test_returns_releases_and_arches(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        self.patch(bootresource, "set_simplestreams_env")
 
+        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
         mock_download = self.patch(
-            bootresource, "download_all_image_descriptions"
+            service_layer.services.image_sync, "fetch_image_metadata"
         )
 
         # Make releases and arches.
         mapping = BootImageMapping()
         releases = [factory.make_name("release") for _ in range(3)]
         arches = [factory.make_name("arch") for _ in range(3)]
-        image_specs = [
-            make_image_spec(os="ubuntu", arch=arch, release=release)
+        image_list = [
+            SourceAvailableImage(os="ubuntu", architecture=arch, release=release, release_title=release)
             for release, arch in zip(releases, arches)
         ]
-        for spec in image_specs:
-            set_resource(mapping, spec, {})
 
-        mock_download.return_value = mapping
+        mock_download.return_value = image_list
         url = factory.make_url(scheme=random.choice(["http", "https"]))
         keyring_data = "aGVsbG8gd29ybGQ="
         observed = handler.fetch({"url": url, "keyring_data": keyring_data})
@@ -1526,65 +1538,19 @@ class TestBootResourceFetch(MAASServerTestCase):
     def test_title_pulled_from_product(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        self.patch(bootresource, "set_simplestreams_env")
 
+        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
         mock_download = self.patch(
-            bootresource, "download_all_image_descriptions"
+            service_layer.services.image_sync, "fetch_image_metadata"
         )
 
         # Make releases and arches.
-        mapping = BootImageMapping()
         release = factory.make_name("release")
         title = factory.make_name("title")
         arch = factory.make_name("arch")
-        spec = make_image_spec(os="ubuntu", arch=arch, release=release)
-        set_resource(mapping, spec, {"release_title": title})
+        image_list = [SourceAvailableImage(os="ubuntu", architecture=arch, release=release, release_title=title)]
 
-        mock_download.return_value = mapping
-        url = factory.make_url(scheme=random.choice(["http", "https"]))
-        keyring_data = "aGVsbG8gd29ybGQ="
-        observed = handler.fetch({"url": url, "keyring_data": keyring_data})
-        self.assertCountEqual(
-            [
-                {
-                    "name": release,
-                    "title": title,
-                    "checked": False,
-                    "deleted": False,
-                }
-            ],
-            observed["releases"],
-        )
-        self.assertCountEqual(
-            [
-                {
-                    "name": arch,
-                    "title": arch,
-                    "checked": False,
-                    "deleted": False,
-                }
-            ],
-            observed["arches"],
-        )
-
-    def test_title_pulled_from_distro_info(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        self.patch(bootresource, "set_simplestreams_env")
-
-        mock_download = self.patch(
-            bootresource, "download_all_image_descriptions"
-        )
-
-        # Make releases and arches.
-        mapping = BootImageMapping()
-        release = "trusty"
-        title = "14.04 LTS"  # Known name for 'trusty' in distro_info.
-        arch = factory.make_name("arch")
-        spec = make_image_spec(os="ubuntu", arch=arch, release=release)
-        set_resource(mapping, spec, {})
-
-        mock_download.return_value = mapping
+        mock_download.return_value = image_list
         url = factory.make_url(scheme=random.choice(["http", "https"]))
         keyring_data = "aGVsbG8gd29ybGQ="
         observed = handler.fetch({"url": url, "keyring_data": keyring_data})

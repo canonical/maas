@@ -43,7 +43,10 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 )
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourcecache import BootSourceCache
-from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.models.bootsources import (
+    BootSource,
+    SourceAvailableImage,
+)
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.configurations import (
     BootImagesNoProxyConfig,
@@ -219,7 +222,7 @@ class ImageSyncService(Service):
         source_url: str,
         keyring_path: str | None = None,
         keyring_data: bytes | None = None,
-    ) -> list[SimpleStreamsProductList]:
+    ) -> list[SourceAvailableImage]:
         http_proxy = await self._get_http_proxy()
 
         async with self._get_keyring_file(
@@ -232,7 +235,12 @@ class ImageSyncService(Service):
             ) as client:
                 products_list = await client.get_all_products()
 
-        return products_list
+        return [
+            SourceAvailableImage.from_simplestreams_product(image)
+            for product_list in products_list
+            # we will have duplicates (lots of subarches)
+            for image in set(product_list.products)
+        ]
 
     async def fetch_images_metadata(
         self,

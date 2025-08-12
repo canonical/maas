@@ -19,20 +19,14 @@ from maasserver.bootresources import (
     is_import_resources_running,
     stop_import_resources,
 )
-from maasserver.bootsources import (
-    get_os_info_from_boot_sources,
-    set_simplestreams_env,
-)
+from maasserver.bootsources import get_os_info_from_boot_sources
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     ENDPOINT,
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.import_images.download_descriptions import (
-    download_all_image_descriptions,
-    image_passes_filter,
-)
+from maasserver.import_images.download_descriptions import image_passes_filter
 from maasserver.models import (
     BootResource,
     BootSource,
@@ -42,6 +36,7 @@ from maasserver.models import (
     Node,
 )
 from maasserver.models.bootresourcefile import BootResourceFile
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
 from maasserver.utils.osystems import (
@@ -937,46 +932,43 @@ class BootResourceHandler(Handler):
             boot_source.clean_fields()
         except ValidationError as error:
             raise HandlerValidationError(error)  # noqa: B904
-        source = boot_source.to_dict_without_selections()
 
-        # FIXME: This modifies the environment of the entire process, which is
-        # Not Cool. We should integrate with simplestreams in a more
-        # Pythonic manner.
-        set_simplestreams_env()
         try:
-            descriptions = download_all_image_descriptions([source])
+            image_list = (
+                service_layer.services.image_sync.fetch_image_metadata(
+                    source_url=str(boot_source.url),
+                    keyring_path=str(boot_source.keyring_filename) or None,
+                    keyring_data=boot_source.keyring_data or None,
+                )
+            )
         except Exception as error:
-            raise HandlerError(str(error))  # noqa: B904
-        items = list(descriptions.items())
+            raise HandlerError(str(error)) from error
         err_msg = "Mirror provides no Ubuntu images."
-        if not items:
+        if not image_list:
             raise HandlerError(err_msg)
-        releases = {}
-        arches = {}
-        for image_spec, product_info in items:
+        releases = []
+        arches = []
+        for image in image_list:
             # Only care about Ubuntu images.
-            if image_spec.os != "ubuntu":
+            if image.os != "ubuntu":
                 continue
-            releases[image_spec.release] = {
-                "name": image_spec.release,
-                "title": product_info.get(
-                    "release_title",
-                    format_ubuntu_distro_series(image_spec.release),
-                ),
+            releases.append({
+                "name": image.release,
+                "title": image.release_title,
                 "checked": False,
                 "deleted": False,
-            }
-            arches[image_spec.arch] = {
-                "name": image_spec.arch,
-                "title": image_spec.arch,
+            })
+            arches.append({
+                "name": image.architecture,
+                "title": image.architecture,
                 "checked": False,
                 "deleted": False,
-            }
+            })
         if not releases or not arches:
             raise HandlerError(err_msg)
         return {
-            "releases": list(releases.values()),
-            "arches": list(arches.values()),
+            "releases": releases,
+            "arches": arches,
         }
 
     def delete_image(self, params):
