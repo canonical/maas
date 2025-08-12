@@ -31,13 +31,13 @@ deps := $(addsuffix .d,$(generated))
 all: build
 
 .PHONY: build
-build: $(generated) $(deps)
+build:
 	$(GO) env
 	$(MAKE) $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 (BIN_DIR): ; mkdir -p $@
 
-$(BUILD_DIR)/%:
+$(BUILD_DIR)/%: $(generated) $(deps)
 	$(GO) build -o $(BUILD_DIR)/$* $(LDFLAGS) cmd/$*/*.go
 
 .PHONY: install
@@ -50,7 +50,7 @@ test: $(generated) $(deps)
 	$(GO) test ./...
 
 .PHONY: test-race
-test-race:
+test-race: $(generated) $(deps)
 	$(GO) test -race ./...
 
 .PHONY: test-cover
@@ -72,7 +72,7 @@ internal/ebpf/include/vmlinux.h:
 	$(BPFTOOL) btf dump file $(BTF_PATH) format c >> $@ || rm $@
 
 internal/dhcp/xdp/%_bpfel.go internal/dhcp/xdp/%_bpfeb.go internal/dhcp/xdp/%.go.d:
-	$(GO) generate -x -tags bpf ./internal/dhcp/xdp
+	$(GO) generate -x ./internal/dhcp/xdp
 
 .PHONY: clean
 clean:
