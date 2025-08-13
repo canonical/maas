@@ -15,6 +15,7 @@ from maasapiserver.v3.api.public.models.requests.subnets import SubnetRequest
 from maasapiserver.v3.api.public.models.requests.ui_subnets import (
     UISubnetFiltersParams,
     UISubnetOrderByQueryFilter,
+    UISubnetsFreeTextSearchQueryParam,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -30,7 +31,7 @@ from maasapiserver.v3.api.public.models.responses.ui_subnets import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX, V3_API_UI_PREFIX
 from maasservicelayer.auth.jwt import UserRole
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -323,15 +324,31 @@ class UISubnetsHandler(Handler):
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         filters: UISubnetFiltersParams = Depends(),  # noqa: B008
         order_by: UISubnetOrderByQueryFilter = Depends(),  # noqa: B008
+        free_text_search: UISubnetsFreeTextSearchQueryParam = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UISubnetsListResponse:
-        query = QuerySpec(
-            where=filters.to_clause(), order_by=order_by.to_clauses()
-        )
+        filters_clause = filters.to_clause()
+        free_text_search_clause = free_text_search.to_clause()
+        where_clause = None
+        if filters_clause and free_text_search_clause:
+            where_clause = ClauseFactory.and_clauses(
+                [filters_clause, free_text_search_clause]
+            )
+        elif filters_clause:
+            where_clause = filters_clause
+        elif free_text_search_clause:
+            where_clause = free_text_search_clause
+
+        query = QuerySpec(where=where_clause, order_by=order_by.to_clauses())
         subnets = await services.ui_subnets.list(
             page=pagination_params.page,
             size=pagination_params.size,
             query=query,
+        )
+        subnets.items = (
+            await services.ui_subnets.calculate_statistics_for_subnets(
+                subnets.items
+            )
         )
 
         next_link = None
@@ -339,6 +356,8 @@ class UISubnetsHandler(Handler):
             next_link = f"{V3_API_UI_PREFIX}/subnets?{pagination_params.to_next_href_format()}"
             if query_filters := filters.to_href_format():
                 next_link += f"&{query_filters}"
+            if free_text_search_filters := free_text_search.to_href_format():
+                next_link += f"&{free_text_search_filters}"
             if order_by_filters := order_by.to_href_format():
                 next_link += f"&{order_by_filters}"
 
@@ -380,6 +399,9 @@ class UISubnetsHandler(Handler):
         subnet = await services.ui_subnets.get_by_id(subnet_id)
         if not subnet:
             raise NotFoundException()
+        subnet = await services.ui_subnets.calculate_statistics_for_subnet(
+            subnet
+        )
 
         response.headers["ETag"] = subnet.etag()
         return UISubnetResponse.from_model(

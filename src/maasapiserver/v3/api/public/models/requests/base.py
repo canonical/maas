@@ -1,6 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from re import compile
 from typing import ClassVar, Optional
@@ -8,7 +9,11 @@ from typing import ClassVar, Optional
 from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
-from maasservicelayer.db.filters import OrderByClause, OrderByClauseFactory
+from maasservicelayer.db.filters import (
+    Clause,
+    OrderByClause,
+    OrderByClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import ValidationException
 
 # from src/maasserver/fields.py:31
@@ -104,3 +109,16 @@ class OrderByQueryFilter(BaseModel):
             return ""
         s = "&".join([f"order_by={field}" for field in self.order_by])
         return s
+
+
+class FreeTextSearchQueryParam(ABC, BaseModel):
+    q: str | None
+
+    @abstractmethod
+    def to_clause(self) -> Clause | None:
+        raise NotImplementedError()
+
+    def to_href_format(self) -> str:
+        if not self.q:
+            return ""
+        return f"q={self.q}"

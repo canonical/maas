@@ -267,9 +267,6 @@ class ServiceCollectionV3:
         cache: CacheForServices,
     ) -> Self:
         services = cls()
-        services.ui_subnets = UISubnetsService(
-            context=context, ui_subnets_repository=UISubnetsRepository(context)
-        )
         services.events = EventsService(
             context=context,
             events_repository=EventsRepository(context),
@@ -589,6 +586,11 @@ class ServiceCollectionV3:
             context=context,
             subnets_service=services.subnets,
             subnet_utilization_repository=SubnetUtilizationRepository(context),
+        )
+        services.ui_subnets = UISubnetsService(
+            context=context,
+            ui_subnets_repository=UISubnetsRepository(context),
+            subnets_utilization_service=services.v3subnet_utilization,
         )
         services.mdns = MDNSService(
             context=context, mdns_repository=MDNSRepository(context)

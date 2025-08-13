@@ -27,7 +27,7 @@ from django.db.models.query import QuerySet
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
 from maascommon.enums.dns import DnsUpdateAction
-from maascommon.utils.network import MAASIPSet
+from maascommon.utils.network import IPRangeStatistics, MAASIPSet
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -53,7 +53,6 @@ from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
 from maasserver.workflow import start_workflow
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
-    IPRangeStatistics,
     make_ipaddress,
     MaybeIPAddress,
     parse_integer,

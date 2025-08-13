@@ -430,3 +430,175 @@ def make_iprange(
             second = IPAddress(second)
     iprange = MAASIPRange(inet_ntop(first), inet_ntop(second), purpose=purpose)
     return iprange
+
+
+class IPRangeStatistics:
+    """Encapsulates statistics about a MAASIPSet.
+
+    This class calculates statistics about a `MAASIPSet`, which must be a
+    set returned from `MAASIPSet.get_full_range()`. That is, the set must
+    include a `MAASIPRange` to cover every possible IP address present in the
+    desired range.
+    """
+
+    def __init__(self, full_maasipset):
+        self.ranges = full_maasipset
+        self.first_address_value = self.ranges.first
+        self.last_address_value = self.ranges.last
+        self.ip_version = IPAddress(self.ranges.last).version
+        self.first_address = str(IPAddress(self.first_address_value))
+        self.last_address = str(IPAddress(self.last_address_value))
+        self.num_available = 0
+        self.num_unavailable = 0
+        self.largest_available = 0
+        self.suggested_gateway = None
+        self.suggested_dynamic_range = None
+        for range in full_maasipset.ranges:
+            if IPRANGE_PURPOSE.UNUSED in range.purpose:
+                self.num_available += range.num_addresses
+                if range.num_addresses > self.largest_available:
+                    self.largest_available = range.num_addresses
+            else:
+                self.num_unavailable += range.num_addresses
+        self.total_addresses = self.num_available + self.num_unavailable
+        if not self.ranges.includes_purpose(IPRANGE_PURPOSE.GATEWAY_IP):
+            self.suggested_gateway = self.get_recommended_gateway()
+        if not self.ranges.includes_purpose(IPRANGE_PURPOSE.DYNAMIC):
+            self.suggested_dynamic_range = self.get_recommended_dynamic_range()
+
+    def get_recommended_gateway(self):
+        """Returns a suggested gateway for the set of ranges in `self.ranges`.
+        Will attempt to choose the first IP address available, then the last IP
+        address available, then the first IP address in the first unused range,
+        in that order of preference.
+
+        Must be called after the range usage has been calculated.
+        """
+        suggested_gateway = None
+        first_address = self.first_address_value
+        last_address = self.last_address_value
+        if self.ip_version == 6 and self.total_addresses <= 2:
+            return None
+        if self.ip_version == 6:
+            # For IPv6 addresses, always return the subnet-router anycast
+            # address. (See RFC 4291 section 2.6.1 for more information.)
+            return str(IPAddress(first_address - 1))
+        if self.ranges.is_unused(first_address):
+            suggested_gateway = str(IPAddress(first_address))
+        elif self.ranges.is_unused(last_address):
+            suggested_gateway = str(IPAddress(last_address))
+        else:
+            first_unused = self.ranges.get_first_unused_ip()
+            if first_unused is not None:
+                suggested_gateway = str(IPAddress(first_unused))
+        return suggested_gateway
+
+    def get_recommended_dynamic_range(self):
+        """Returns a recommended dynamic range for the set of ranges in
+        `self.ranges`, or None if one could not be found.
+
+        Must be called after the recommended gateway is selected, the
+        range usage has been calculated, and the number of total and available
+        addresses have been determined.
+        """
+        largest_unused = self.ranges.get_largest_unused_block()
+        if largest_unused is None:
+            return None
+        if self.suggested_gateway is not None and largest_unused.size == 1:
+            # Can't suggest a range if we're also suggesting the only available
+            # IP address as the gateway.
+            return None
+        candidate = MAASIPRange(
+            largest_unused.first,
+            largest_unused.last,
+            purpose=IPRANGE_PURPOSE.PROPOSED_DYNAMIC,
+        )
+        # Adjust the largest unused block if it contains the suggested gateway.
+        if self.suggested_gateway is not None:
+            gateway_value = IPAddress(self.suggested_gateway).value
+            if gateway_value in candidate:  # pyright: ignore [reportOperatorIssue]
+                # The suggested gateway is going to be either the first
+                # or the last IP address in the range.
+                if gateway_value == candidate.first:
+                    candidate = MAASIPRange(
+                        candidate.first + 1,
+                        candidate.last,
+                        purpose=IPRANGE_PURPOSE.PROPOSED_DYNAMIC,
+                    )
+                else:
+                    # Must be the last address.
+                    candidate = MAASIPRange(
+                        candidate.first,
+                        candidate.last - 1,
+                        purpose=IPRANGE_PURPOSE.PROPOSED_DYNAMIC,
+                    )
+        if candidate is not None:
+            first = candidate.first
+            one_fourth_range = self.total_addresses >> 2
+            half_remaining_space = self.num_available >> 1
+            if candidate.size > one_fourth_range:
+                # Prevent the proposed range from taking up too much available
+                # space in the subnet.
+                first = candidate.last - one_fourth_range
+            elif candidate.size >= half_remaining_space:
+                # Prevent the proposed range from taking up the remainder of
+                # the available IP addresses. (take at most half.)
+                first = candidate.last - half_remaining_space + 1
+            if first >= candidate.last:
+                # Calculated an impossible range.
+                return None
+            candidate = MAASIPRange(
+                first, candidate.last, purpose=IPRANGE_PURPOSE.PROPOSED_DYNAMIC
+            )
+        return candidate
+
+    @property
+    def available_percentage(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:float"""
+        return float(self.num_available) / float(self.total_addresses)
+
+    @property
+    def available_percentage_string(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:unicode"""
+        return f"{self.available_percentage:.0%}"
+
+    @property
+    def usage_percentage(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:float"""
+        return float(self.num_unavailable) / float(self.total_addresses)
+
+    @property
+    def usage_percentage_string(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:unicode"""
+        return f"{self.usage_percentage:.0%}"
+
+    def render_json(self, include_ranges=False, include_suggestions=False):
+        """Returns a representation of the statistics suitable for rendering
+        into JSON format."""
+        data = {
+            "num_available": self.num_available,
+            "largest_available": self.largest_available,
+            "num_unavailable": self.num_unavailable,
+            "total_addresses": self.total_addresses,
+            "usage": self.usage_percentage,
+            "usage_string": self.usage_percentage_string,
+            "available_string": self.available_percentage_string,
+            "first_address": self.first_address,
+            "last_address": self.last_address,
+            "ip_version": self.ip_version,
+        }
+        if include_ranges:
+            data["ranges"] = self.ranges.render_json()
+        if include_suggestions:
+            data["suggested_gateway"] = self.suggested_gateway
+            suggested_dynamic_range = None
+            if self.suggested_dynamic_range is not None:
+                suggested_dynamic_range = (
+                    self.suggested_dynamic_range.render_json()
+                )
+            data["suggested_dynamic_range"] = suggested_dynamic_range
+        return data

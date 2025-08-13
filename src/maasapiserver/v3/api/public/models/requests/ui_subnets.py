@@ -6,7 +6,10 @@ from typing import Optional
 from fastapi import Query
 from pydantic import BaseModel, Field
 
-from maasapiserver.v3.api.public.models.requests.base import OrderByQueryFilter
+from maasapiserver.v3.api.public.models.requests.base import (
+    FreeTextSearchQueryParam,
+    OrderByQueryFilter,
+)
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.ui_subnets import (
     UISubnetsClauseFactory,
@@ -77,3 +80,17 @@ class UISubnetFiltersParams(BaseModel):
         if tokens:
             return "&".join(tokens)
         return ""
+
+
+class UISubnetsFreeTextSearchQueryParam(FreeTextSearchQueryParam):
+    def to_clause(self) -> Clause | None:
+        if self.q:
+            return UISubnetsClauseFactory.or_clauses(
+                [
+                    UISubnetsClauseFactory.with_fabric_name_like(self.q),
+                    UISubnetsClauseFactory.with_vlan_name_like(self.q),
+                    UISubnetsClauseFactory.with_space_name_like(self.q),
+                    UISubnetsClauseFactory.with_cidr_like(self.q),
+                ]
+            )
+        return None

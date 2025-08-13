@@ -31,7 +31,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.models.ui_subnets import UISubnet
+from maasservicelayer.models.ui_subnets import UISubnet, UISubnetStatistics
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.subnets import SubnetsService
@@ -79,6 +79,19 @@ TEST_SUBNET_2 = Subnet(
     vlan_id=1,
 )
 
+TEST_STATISTICS = UISubnetStatistics(
+    num_available=253,
+    largest_available=253,
+    num_unavailable=1,
+    total_addresses=254,
+    usage=0.003937007874015748,
+    usage_string="0%",
+    available_string="100%",
+    first_address="10.134.237.1",
+    last_address="10.134.237.254",
+    ip_version=4,
+)
+
 TEST_UI_SUBNET = UISubnet(
     id=2,
     created=utcnow(),
@@ -96,10 +109,15 @@ TEST_UI_SUBNET = UISubnet(
     disabled_boot_architectures=[],
     vlan_id=1,
     vlan_vid=0,
+    vlan_name="Default VLAN",
+    vlan_dhcp_on=True,
+    vlan_external_dhcp=None,
+    vlan_relay_vlan_id=None,
     fabric_id=1,
     fabric_name="fabric_name",
     space_id=1,
     space_name="space_name",
+    statistics=TEST_STATISTICS,
 )
 
 
@@ -367,6 +385,7 @@ class TestUISubnetApi(ApiCommonTests):
     def user_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
         ]
 
     @pytest.fixture
@@ -379,6 +398,9 @@ class TestUISubnetApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.ui_subnets = Mock(UISubnetsService)
+        services_mock.ui_subnets.calculate_statistics_for_subnets.return_value = [
+            TEST_UI_SUBNET
+        ]
         services_mock.ui_subnets.list.return_value = ListResult[UISubnet](
             items=[TEST_UI_SUBNET], total=1
         )
@@ -395,6 +417,9 @@ class TestUISubnetApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.ui_subnets = Mock(UISubnetsService)
+        services_mock.ui_subnets.calculate_statistics_for_subnets.return_value = [
+            TEST_UI_SUBNET
+        ]
         services_mock.ui_subnets.list.return_value = ListResult[UISubnet](
             items=[TEST_UI_SUBNET], total=2
         )
@@ -405,12 +430,56 @@ class TestUISubnetApi(ApiCommonTests):
         assert subnets_response.total == 2
         assert subnets_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
+    async def test_list_ui_with_filters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.ui_subnets = Mock(UISubnetsService)
+        services_mock.ui_subnets.calculate_statistics_for_subnets.return_value = [
+            TEST_UI_SUBNET
+        ]
+        services_mock.ui_subnets.list.return_value = ListResult[UISubnet](
+            items=[TEST_UI_SUBNET], total=2
+        )
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?size=1&q=foo&order_by=asc(cidr)&order_by=asc(fabric)&order_by=desc(space)&vlan_id=5001&fabric=fabric-0"
+        )
+        assert response.status_code == 200
+        subnets_response = UISubnetsListResponse(**response.json())
+        assert (
+            subnets_response.next
+            == f"{self.BASE_PATH}?page=2&size=1&vlan_id=5001&fabric=fabric-0&q=foo&order_by=asc(cidr)&order_by=asc(fabric)&order_by=desc(space)"
+        )
+
+    @pytest.mark.parametrize(
+        "wrong_filter",
+        [
+            "order_by=id",
+            "order_by=asc[cidr]",
+            "order_by=desc",
+            "vlan_id=foo",
+        ],
+    )
+    async def test_list_ui_with_filters_422(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+        wrong_filter: str,
+    ) -> None:
+        services_mock.ui_subnets = Mock(UISubnetsService)
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?size=1&{wrong_filter}"
+        )
+        assert response.status_code == 422
+
     async def test_ui_get(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.ui_subnets = Mock(SubnetsService)
+        services_mock.ui_subnets = Mock(UISubnetsService)
+        services_mock.ui_subnets.calculate_statistics_for_subnet.return_value = TEST_UI_SUBNET
         services_mock.ui_subnets.get_by_id.return_value = TEST_UI_SUBNET
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/{TEST_UI_SUBNET.id}"
@@ -423,7 +492,8 @@ class TestUISubnetApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.ui_subnets = Mock(SubnetsService)
+        services_mock.ui_subnets = Mock(UISubnetsService)
+        services_mock.ui_subnets.calculate_statistics_for_subnet.return_value = TEST_UI_SUBNET
         services_mock.ui_subnets.get_by_id.return_value = None
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404

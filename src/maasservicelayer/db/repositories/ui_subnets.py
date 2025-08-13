@@ -3,7 +3,7 @@
 
 from typing import Type
 
-from sqlalchemy import Table
+from sqlalchemy import cast, String, Table
 
 from maasservicelayer.db.filters import (
     Clause,
@@ -19,7 +19,7 @@ from maasservicelayer.models.ui_subnets import UISubnet
 class UISubnetsClauseFactory(ClauseFactory):
     @classmethod
     def with_cidrs(cls, cidrs: list[str]) -> Clause:
-        return Clause(condition=UISubnetView.c.cidr.in_(cidrs))
+        return Clause(condition=cast(UISubnetView.c.cidr, String).in_(cidrs))
 
     @classmethod
     def with_vlan_ids(cls, ids: list[int]) -> Clause:
@@ -32,6 +32,30 @@ class UISubnetsClauseFactory(ClauseFactory):
     @classmethod
     def with_space_names(cls, names: list[str]) -> Clause:
         return Clause(condition=UISubnetView.c.space_name.in_(names))
+
+    @classmethod
+    def with_fabric_name_like(cls, partial_name: str) -> Clause:
+        return Clause(
+            condition=UISubnetView.c.fabric_name.contains(partial_name)
+        )
+
+    @classmethod
+    def with_vlan_name_like(cls, partial_name: str) -> Clause:
+        return Clause(
+            condition=UISubnetView.c.vlan_name.contains(partial_name)
+        )
+
+    @classmethod
+    def with_space_name_like(cls, partial_name: str) -> Clause:
+        return Clause(
+            condition=UISubnetView.c.space_name.contains(partial_name)
+        )
+
+    @classmethod
+    def with_cidr_like(cls, partial_cidr: str) -> Clause:
+        return Clause(
+            condition=cast(UISubnetView.c.cidr, String).contains(partial_cidr)
+        )
 
 
 class UISubnetsOrderByClauses(OrderByClauseFactory):

@@ -2091,6 +2091,10 @@ UISubnetView = Table(
         nullable=False,
     ),
     Column("vlan_vid", Integer, nullable=False),
+    Column("vlan_name", String(256), nullable=True),
+    Column("vlan_dhcp_on", Boolean, nullable=False),
+    Column("vlan_external_dhcp", INET, nullable=True),
+    Column("vlan_relay_vlan_id", BigInteger, nullable=True),
     Column(
         "fabric_id",
         BigInteger,

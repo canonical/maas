@@ -3,11 +3,24 @@
 
 from typing import Optional
 
-from pydantic import IPvAnyAddress
+from pydantic import BaseModel, IPvAnyAddress
 
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.base import MaasTimestampedBaseModel
 from maasservicelayer.models.fields import IPv4v6Network
+
+
+class UISubnetStatistics(BaseModel):
+    num_available: int
+    largest_available: int
+    num_unavailable: int
+    total_addresses: int
+    usage: float
+    usage_string: str
+    available_string: str
+    first_address: str
+    last_address: str
+    ip_version: int
 
 
 class UISubnet(MaasTimestampedBaseModel):
@@ -24,8 +37,12 @@ class UISubnet(MaasTimestampedBaseModel):
     disabled_boot_architectures: list[str]
     vlan_id: int
     vlan_vid: int
+    vlan_name: Optional[str]
+    vlan_dhcp_on: bool
+    vlan_external_dhcp: Optional[IPvAnyAddress]
+    vlan_relay_vlan_id: Optional[int]
     fabric_id: int
     fabric_name: Optional[str]
     space_id: Optional[int]
     space_name: Optional[str]
-    # TODO: statistics
+    statistics: Optional[UISubnetStatistics] = None

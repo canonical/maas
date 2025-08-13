@@ -5,7 +5,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.ui_subnets import UISubnetsRepository
+from maasservicelayer.db.repositories.ui_subnets import (
+    UISubnetsClauseFactory,
+    UISubnetsRepository,
+)
 from maasservicelayer.models.ui_subnets import UISubnet
 from maasservicelayer.models.vlans import Vlan
 from tests.fixtures.factories.spaces import create_test_space_entry
@@ -15,6 +18,67 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import (
     ReadOnlyRepositoryCommonTests,
 )
+
+
+class TestUISubnetsClauseFactory:
+    def test_with_cidrs(self):
+        clause = UISubnetsClauseFactory.with_cidrs(
+            ["10.0.0.0/24", "192.168.1.0/24"]
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "CAST(maasserver_ui_subnet_view.cidr AS VARCHAR) IN ('10.0.0.0/24', '192.168.1.0/24')"
+        )
+
+    def test_with_vlan_ids(self):
+        clause = UISubnetsClauseFactory.with_vlan_ids([100, 200])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_ui_subnet_view.vlan_id IN (100, 200)")
+
+    def test_with_fabric_names(self):
+        clause = UISubnetsClauseFactory.with_fabric_names(["fab1", "fab2"])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_ui_subnet_view.fabric_name IN ('fab1', 'fab2')")
+
+    def test_with_space_names(self):
+        clause = UISubnetsClauseFactory.with_space_names(["spaceA", "spaceB"])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_ui_subnet_view.space_name IN ('spaceA', 'spaceB')")
+
+    def test_with_fabric_name_like(self):
+        clause = UISubnetsClauseFactory.with_fabric_name_like("fab")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_ui_subnet_view.fabric_name LIKE '%' || 'fab' || '%'")
+
+    def test_with_vlan_name_like(self):
+        clause = UISubnetsClauseFactory.with_vlan_name_like("vlan")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_ui_subnet_view.vlan_name LIKE '%' || 'vlan' || '%'")
+
+    def test_with_space_name_like(self):
+        clause = UISubnetsClauseFactory.with_space_name_like("space")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == (
+            "maasserver_ui_subnet_view.space_name LIKE '%' || 'space' || '%'"
+        )
+
+    def test_with_cidr_like(self):
+        clause = UISubnetsClauseFactory.with_cidr_like("192.168")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "CAST(maasserver_ui_subnet_view.cidr AS VARCHAR) LIKE '%' || '192.168' || '%'"
+        )
 
 
 class TestUISubnetsRepository(ReadOnlyRepositoryCommonTests[UISubnet]):

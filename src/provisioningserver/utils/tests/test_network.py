@@ -28,7 +28,13 @@ from twisted.names.error import (
     ResolverError,
 )
 
-from maascommon.utils.network import inet_ntop, MAASIPSet, make_iprange
+from maascommon.utils.network import (
+    inet_ntop,
+    IPRangeStatistics,
+    MAASIPRange,
+    MAASIPSet,
+    make_iprange,
+)
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.runtest import MAASTwistedRunTest
@@ -65,11 +71,9 @@ from provisioningserver.utils.network import (
     interface_children,
     intersect_iprange,
     ip_range_within_network,
-    IPRangeStatistics,
     is_loopback_address,
     is_mac,
     LOOPBACK_INTERFACE_INFO,
-    MAASIPRange,
     make_network,
     parse_integer,
     preferred_hostnames_sort_key,
