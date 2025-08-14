@@ -4,6 +4,10 @@
 from typing import Callable, Self
 
 from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.agentcertificates import (
+    AgentCertificatesRepository,
+)
+from maasservicelayer.db.repositories.agents import AgentsRepository
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFilesRepository,
 )
@@ -22,6 +26,9 @@ from maasservicelayer.db.repositories.bootsourcecache import (
 from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionsRepository,
+)
+from maasservicelayer.db.repositories.bootstraptokens import (
+    BootstrapTokensRepository,
 )
 from maasservicelayer.db.repositories.consumers import ConsumersRepository
 from maasservicelayer.db.repositories.database_configurations import (
@@ -61,6 +68,7 @@ from maasservicelayer.db.repositories.notifications import (
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.repositories.racks import RacksRepository
 from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.db.repositories.resource_pools import (
@@ -92,6 +100,7 @@ from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.db.repositories.zones import ZonesRepository
+from maasservicelayer.services.agentcertificates import AgentCertificateService
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
@@ -108,6 +117,7 @@ from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
+from maasservicelayer.services.bootstraptoken import BootstrapTokensService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
@@ -146,6 +156,7 @@ from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
+from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
@@ -202,6 +213,7 @@ class ServiceCollectionV3:
 
     # Keep them in alphabetical order, please
     agents: AgentsService
+    agentcertificates: AgentCertificateService
     auth: AuthService
     boot_resources: BootResourceService
     boot_resource_sets: BootResourceSetsService
@@ -210,6 +222,7 @@ class ServiceCollectionV3:
     boot_sources: BootSourcesService
     boot_source_cache: BootSourceCacheService
     boot_source_selections: BootSourceSelectionsService
+    bootstraptokens: BootstrapTokensService
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
     consumers: ConsumersService
@@ -237,6 +250,7 @@ class ServiceCollectionV3:
     nodes: NodesService
     notifications: NotificationsService
     package_repositories: PackageRepositoriesService
+    racks: RacksService
     rdns: RDNSService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
@@ -566,10 +580,16 @@ class ServiceCollectionV3:
                 ExternalAuthService.build_cache_object,
             ),  # type: ignore
         )
+        services.agentcertificates = AgentCertificateService(
+            context=context,
+            repository=AgentCertificatesRepository(context),
+        )
         services.agents = AgentsService(
             context=context,
+            repository=AgentsRepository(context),
             configurations_service=services.configurations,
             users_service=services.users,
+            agentcertificates_service=services.agentcertificates,
             cache=cache.get(
                 AgentsService.__name__, AgentsService.build_cache_object
             ),  # type: ignore
@@ -594,6 +614,16 @@ class ServiceCollectionV3:
         )
         services.mdns = MDNSService(
             context=context, mdns_repository=MDNSRepository(context)
+        )
+        services.bootstraptokens = BootstrapTokensService(
+            context=context,
+            repository=BootstrapTokensRepository(context),
+        )
+        services.racks = RacksService(
+            context=context,
+            repository=RacksRepository(context),
+            agents_service=services.agents,
+            bootstraptokens_service=services.bootstraptokens,
         )
         services.rdns = RDNSService(
             context=context, rdns_repository=RDNSRepository(context)

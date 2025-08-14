@@ -44,7 +44,7 @@ def upgrade() -> None:
         FROM ranked
         WHERE maasserver_bootsource.id = ranked.id
     """)
-    # - alter the column to be nullable
+    # - alter the column to be non-nullable
     op.alter_column("maasserver_bootsource", "priority", nullable=False)
 
     # Add skip_keyring_verification column

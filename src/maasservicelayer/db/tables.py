@@ -66,6 +66,8 @@ AgentCertificateTable = Table(
     "maasserver_agentcertificate",
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
     Column("certificate_fingerprint", String(64), unique=True, nullable=False),
     Column("certificate", LargeBinary, unique=True, nullable=False),
     Column("revoked_at", DateTime(timezone=True), nullable=True),
