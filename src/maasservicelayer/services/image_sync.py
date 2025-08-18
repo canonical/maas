@@ -2,13 +2,18 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from contextlib import asynccontextmanager
+import os
 import re
 from typing import AsyncIterator
 
 import aiofiles
 from structlog import get_logger
 
-from maascommon.constants import BOOTLOADERS_DIR
+from maascommon.constants import (
+    BOOTLOADERS_DIR,
+    DEFAULT_IMAGES_URL,
+    DEFAULT_KEYRINGS_PATH,
+)
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
@@ -16,8 +21,10 @@ from maascommon.enums.boot_resources import (
 from maascommon.enums.events import EventTypeEnum
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import NotificationCategoryEnum
+from maascommon.osystem.ubuntu import UbuntuOS
 from maascommon.workflows.bootresource import ResourceDownloadParam
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
+from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -37,6 +44,9 @@ from maasservicelayer.db.repositories.bootresourcesets import (
 )
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
 )
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
@@ -81,6 +91,7 @@ from maasservicelayer.simplestreams.models import (
     SimpleStreamsProductList,
     SingleFileProduct,
 )
+from provisioningserver.utils.arch import get_architecture
 
 logger = get_logger()
 
@@ -132,6 +143,65 @@ class ImageSyncService(Service):
         self.msm_service = msm_service
 
         super().__init__(context, cache)
+
+    async def ensure_boot_source_definition(self) -> bool:
+        """Ensure that at least a boot source exists.
+
+        If no boot source is defined, the default one will be created alongside
+        with a selection.
+
+        Originally defined in src/maasserver/bootsources.py
+        """
+        if not await self.boot_sources_service.exists(query=QuerySpec()):
+            bootsource_builder = BootSourceBuilder(
+                url=DEFAULT_IMAGES_URL,
+                keyring_filename=DEFAULT_KEYRINGS_PATH,
+                priority=1,
+                skip_keyring_verification=False,
+            )
+            boot_source = await self.boot_sources_service.create(
+                bootsource_builder
+            )
+            # Default is to import newest Ubuntu LTS release, for the current
+            # architecture.
+            arch = get_architecture()
+            # amd64 is the primary architecture for MAAS uses. Make sure its always
+            # selected. If MAAS is running on another architecture select that as
+            # well.
+            if arch in ("", "amd64"):
+                arches = ["amd64"]
+            else:
+                arches = [arch, "amd64"]
+
+            ubuntu = UbuntuOS()
+            selection_builder = BootSourceSelectionBuilder(
+                boot_source_id=boot_source.id,
+                os=ubuntu.name,
+                release=ubuntu.get_default_commissioning_release(),
+                arches=arches,
+                subarches=["*"],
+                labels=["*"],
+            )
+            await self.boot_source_selections_service.create(selection_builder)
+            return True
+        else:
+            # XXX ensure the default keyrings path in the database points to the
+            # right file when running in a snap. (see LP: #1890468) The
+            # DEFAULT_KEYRINGS_PATH points to the right file whether running from
+            # deb or snap, but the path stored in the DB might be wrong if a
+            # snap-to-deb transition happened with a script without the fix.
+            if os.environ.get("SNAP"):
+                await self.boot_sources_service.update_one(
+                    query=QuerySpec(
+                        where=BootSourcesClauseFactory.with_url(
+                            DEFAULT_IMAGES_URL
+                        )
+                    ),
+                    builder=BootSourceBuilder(
+                        keyring_filename=DEFAULT_KEYRINGS_PATH
+                    ),
+                )
+            return False
 
     async def sync_boot_source_selections_from_msm(
         self, boot_sources: list[BootSource]

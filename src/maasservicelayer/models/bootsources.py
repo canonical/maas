@@ -43,9 +43,7 @@ class SourceAvailableImage(BaseModel):
             release = product.release
             release_title = product.release_title
         else:
-            raise ValueError(
-                f"Unknown simplestreams product: {product}"
-            )
+            raise ValueError(f"Unknown simplestreams product: {product}")
 
         return cls(
             os=product.os,
@@ -53,4 +51,3 @@ class SourceAvailableImage(BaseModel):
             release_title=release_title,
             architecture=product.arch,
         )
-

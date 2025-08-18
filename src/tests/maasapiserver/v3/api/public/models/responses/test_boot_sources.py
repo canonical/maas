@@ -52,11 +52,16 @@ class TestBootSourceResponse:
 
 class TestSourceAvailableImageResponse:
     def test_from_model(self) -> None:
-        image = SourceAvailableImage(os="ubuntu", release="noble", architecture="amd64")
+        image = SourceAvailableImage(
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            architecture="amd64",
+        )
         image_response = SourceAvailableImageResponse.from_model(image)
 
         assert image_response.kind == "SourceAvailableImage"
         assert image_response.os == image.os
         assert image_response.release == image.release
+        assert image_response.release_title == image.release_title
         assert image_response.architecture == image.architecture
-

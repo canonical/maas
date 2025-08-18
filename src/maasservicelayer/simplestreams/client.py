@@ -108,7 +108,7 @@ class SimpleStreamsClient:
         _, stderr = await sh.communicate(input=content.encode())
         if sh.returncode != 0:
             raise SimpleStreamsClientException(
-                f"Failed to verify PGP signature: {stderr}"
+                f"Failed to verify PGP signature. Command '{' '.join(cmd)}' returned the following error: {stderr}"
             )
 
     async def _parse_response(self, content: str) -> dict:

@@ -20,6 +20,9 @@ SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME = "sync-remote-bootresources"
 SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME = "sync-local-bootresources"
 DELETE_BOOTRESOURCE_WORKFLOW_NAME = "delete-bootresource"
 MASTER_IMAGE_SYNC_WORKFLOW_NAME = "master-image-sync"
+FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME = (
+    "fetch-manifest-and-update-cache"
+)
 
 
 @dataclass

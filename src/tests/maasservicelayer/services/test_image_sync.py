@@ -6,7 +6,11 @@ from unittest.mock import ANY, AsyncMock, call, Mock
 
 import pytest
 
-from maascommon.constants import BOOTLOADERS_DIR
+from maascommon.constants import (
+    BOOTLOADERS_DIR,
+    DEFAULT_IMAGES_URL,
+    DEFAULT_KEYRINGS_PATH,
+)
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
@@ -20,6 +24,7 @@ from maascommon.workflows.bootresource import (
     ResourceDownloadParam,
     ResourceIdentifier,
 )
+from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -39,6 +44,9 @@ from maasservicelayer.db.repositories.bootresourcesets import (
 )
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
 )
 from maasservicelayer.db.tables import (
     BootResourceFileTable,
@@ -345,6 +353,120 @@ class TestImageSyncService:
             configurations_service=self.configurations_service,
             notifications_service=self.notifications_service,
         )
+
+    async def test_ensure_boot_source_definition_creates_default_source(
+        self, mocker
+    ):
+        self.boot_sources_service.exists.return_value = False
+        self.boot_sources_service.create.return_value = BootSource(
+            id=1,
+            url=DEFAULT_IMAGES_URL,
+            keyring_filename=DEFAULT_KEYRINGS_PATH,
+            keyring_data=None,
+            priority=1,
+            skip_keyring_verification=False,
+        )
+
+        arch = "test-arch"
+        mocker.patch(
+            "maasservicelayer.services.image_sync.get_architecture"
+        ).return_value = arch
+
+        created = await self.service.ensure_boot_source_definition()
+        assert created
+
+        self.boot_sources_service.create.assert_awaited_once_with(
+            BootSourceBuilder(
+                url=DEFAULT_IMAGES_URL,
+                keyring_filename=DEFAULT_KEYRINGS_PATH,
+                priority=1,
+                skip_keyring_verification=False,
+            )
+        )
+        self.boot_source_selections_service.create.assert_awaited_once_with(
+            BootSourceSelectionBuilder(
+                boot_source_id=1,
+                os="ubuntu",
+                release="noble",
+                arches=[arch, "amd64"],
+                subarches=["*"],
+                labels=["*"],
+            )
+        )
+
+    async def test_ensure_boot_source_definition_creates_with_default_arch(
+        self, mocker
+    ):
+        self.boot_sources_service.exists.return_value = False
+        self.boot_sources_service.create.return_value = BootSource(
+            id=1,
+            url=DEFAULT_IMAGES_URL,
+            keyring_filename=DEFAULT_KEYRINGS_PATH,
+            keyring_data=None,
+            priority=1,
+            skip_keyring_verification=False,
+        )
+
+        mocker.patch(
+            "maasservicelayer.services.image_sync.get_architecture"
+        ).return_value = ""
+
+        created = await self.service.ensure_boot_source_definition()
+
+        assert created
+        self.boot_sources_service.create.assert_awaited_once_with(
+            BootSourceBuilder(
+                url=DEFAULT_IMAGES_URL,
+                keyring_filename=DEFAULT_KEYRINGS_PATH,
+                priority=1,
+                skip_keyring_verification=False,
+            )
+        )
+        self.boot_source_selections_service.create.assert_awaited_once_with(
+            BootSourceSelectionBuilder(
+                boot_source_id=1,
+                os="ubuntu",
+                release="noble",
+                arches=["amd64"],
+                subarches=["*"],
+                labels=["*"],
+            )
+        )
+
+    async def test_ensure_boot_source_definition_updates_default_source_snap(
+        self, mocker, monkeypatch
+    ):
+        self.boot_sources_service.exists.return_value = True
+        mocker.patch(
+            "maasservicelayer.services.image_sync.DEFAULT_KEYRINGS_PATH",
+            "/some/other/path/keyring.gpg",
+        )
+        monkeypatch.setenv("SNAP", "/snap/maas/current")
+
+        created = await self.service.ensure_boot_source_definition()
+
+        assert not created
+        self.boot_sources_service.create.assert_not_awaited()
+        self.boot_sources_service.update_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootSourcesClauseFactory.with_url(DEFAULT_IMAGES_URL)
+            ),
+            builder=BootSourceBuilder(
+                keyring_filename="/some/other/path/keyring.gpg"
+            ),
+        )
+
+    async def test_ensure_boot_source_definition_skips_if_already_present(
+        self, monkeypatch
+    ):
+        self.boot_sources_service.exists.return_value = True
+        monkeypatch.delenv("SNAP", raising=False)
+
+        created = await self.service.ensure_boot_source_definition()
+
+        assert not created
+        self.boot_sources_service.create.assert_not_awaited()
+        self.boot_sources_service.update_one.assert_not_awaited()
 
     async def test_sync_boot_source_selections_from_msm(self) -> None:
         self.msm_service.get_status.return_value = MSMStatus(

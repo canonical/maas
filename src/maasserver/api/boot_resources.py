@@ -306,7 +306,6 @@ class BootResourcesHandler(OperationsHandler):
         @success (content) "success-content"
             Import of boot resources is being stopped.
         """
-        # FIXME not awaiting for Deferred
         stop_import_resources()
         return HttpResponse(
             "Import of boot resources is being stopped",

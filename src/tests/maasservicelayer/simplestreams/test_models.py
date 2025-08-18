@@ -61,6 +61,14 @@ class TestBootloaderProductList:
         for file in files:
             assert isinstance(file, BootloaderFile)
 
+    def test_serialize_deserialize(self):
+        bootloader_product_list = SimpleStreamsBootloaderProductList(
+            **BOOTLOADER_PRODUCTS
+        )
+        json_version = bootloader_product_list.dict()
+
+        SimpleStreamsBootloaderProductList(**json_version)
+
 
 class TestMultiFileProductList:
     def test_from_json(self):
@@ -78,6 +86,14 @@ class TestMultiFileProductList:
         for file in files:
             assert isinstance(file, ImageFile)
 
+    def test_serialize_deserialize(self):
+        ubuntu_product_list = SimpleStreamsMultiFileProductList(
+            **UBUNTU_PRODUCTS
+        )
+        json_version = ubuntu_product_list.dict()
+
+        SimpleStreamsMultiFileProductList(**json_version)
+
 
 class TestSingleFileProductList:
     def test_from_json(self):
@@ -94,6 +110,14 @@ class TestSingleFileProductList:
         assert len(files) == 1
         for file in files:
             assert isinstance(file, ImageFile)
+
+    def test_serialize_deserialize(self):
+        centos_product_list = SimpleStreamsSingleFileProductList(
+            **CENTOS_PRODUCTS
+        )
+        json_version = centos_product_list.dict()
+
+        SimpleStreamsSingleFileProductList(**json_version)
 
 
 class TestProductListFactory:

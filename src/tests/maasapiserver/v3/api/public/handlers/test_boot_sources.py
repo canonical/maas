@@ -19,8 +19,6 @@ from maasapiserver.v3.api.public.models.responses.boot_source_selections import 
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceResponse,
     BootSourcesListResponse,
-    SourceAvailableImageListResponse,
-    SourceAvailableImageResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
@@ -45,11 +43,6 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
 from maasservicelayer.services.image_sync import ImageSyncService
-from maasservicelayer.simplestreams.models import (
-    Datatype,
-    MultiFileProduct,
-    SimpleStreamsMultiFileProductList,
-)
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -321,7 +314,7 @@ class TestBootSourcesApi(ApiCommonTests):
 
         request = BootSourceFetchRequest(
             url="https://path/to/images/server",
-            keyring_path="/path/to/keyring"
+            keyring_path="/path/to/keyring",
         )
 
         response = await mocked_api_client_user.post(
@@ -335,7 +328,6 @@ class TestBootSourcesApi(ApiCommonTests):
             keyring_path=request.keyring_path,
             keyring_data=None,
         )
-
 
     async def test_fetch_encodes_keyring_data(
         self,

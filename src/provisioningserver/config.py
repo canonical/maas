@@ -123,6 +123,12 @@ from formencode.declarative import DeclarativeMeta
 from formencode.validators import Number, Set
 import yaml
 
+from maascommon.constants import (
+    DEFAULT_IMAGES_URL as COMMON_DEFAULT_IMAGES_URL,
+)
+from maascommon.constants import (
+    DEFAULT_KEYRINGS_PATH as COMMON_DEFAULT_KEYRINGS_PATH,
+)
 from provisioningserver.path import get_maas_data_path, get_tentative_data_path
 from provisioningserver.utils.config import (
     DirectoryString,
@@ -138,16 +144,9 @@ logger = logging.getLogger(__name__)
 UUID_NOT_SET = None
 
 # Default images URL can be overridden by the environment.
-DEFAULT_IMAGES_URL = os.getenv(
-    "MAAS_DEFAULT_IMAGES_URL", "http://images.maas.io/ephemeral-v3/stable/"
-)
-
+DEFAULT_IMAGES_URL = COMMON_DEFAULT_IMAGES_URL
 # Default images keyring filepath can be overridden by the environment.
-DEFAULT_KEYRINGS_PATH = os.getenv(
-    "MAAS_IMAGES_KEYRING_FILEPATH",
-    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
-)
-
+DEFAULT_KEYRINGS_PATH = COMMON_DEFAULT_KEYRINGS_PATH
 TFTP_MAX_BLKSIZE = 8192
 
 

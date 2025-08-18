@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import shutil
 from typing import Any, Coroutine
@@ -12,7 +12,7 @@ import structlog
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
-from temporalio.service import RPCError, RPCStatusCode
+from temporalio.service import RPCError
 from temporalio.workflow import (
     ActivityCancellationType,
     ParentClosePolicy,
@@ -29,6 +29,7 @@ from maascommon.workflows.bootresource import (
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
     DOWNLOAD_TIMEOUT,
     FETCH_IMAGE_METADATA_TIMEOUT,
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     GetFilesToDownloadReturnValue,
     HEARTBEAT_TIMEOUT,
     LocalSyncRequestParam,
@@ -44,7 +45,13 @@ from maascommon.workflows.bootresource import (
     SyncRequestParam,
 )
 from maasserver.utils.converters import human_readable_bytes
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.configurations import MAASUrlConfig
+from maasservicelayer.simplestreams.models import (
+    SimpleStreamsBootloaderProductList,
+    SimpleStreamsMultiFileProductList,
+    SimpleStreamsSingleFileProductList,
+)
 from maasservicelayer.utils.image_local_files import (
     get_bootresource_store_path,
     LocalBootResourceFile,
@@ -64,12 +71,29 @@ CHECK_DISK_SPACE_ACTIVITY_NAME = "check-disk-space"
 GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME = "get-bootresourcefile-endpoints"
 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME = "download-bootresourcefile"
 DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME = "delete-bootresourcefile"
+FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME = (
+    "fetch-manifest-and-update-cache"
+)
 GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME = "get-files-to-download"
 CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME = "cleanup-old-boot-resources"
 CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME = (
     "cancel-obsolete-download-workflows"
 )
 GET_SYNCED_REGIONS_ACTIVITY_NAME = "get-synced-regions"
+
+
+# can't be defined in maascommon due to service layer imports
+@dataclass
+class BootSourceProductsMapping:
+    boot_source: BootSource
+    # Ugly, but temporal needs concrete classes to convert json to python
+    products_list: list[
+        SimpleStreamsSingleFileProductList
+        | SimpleStreamsMultiFileProductList
+        | SimpleStreamsBootloaderProductList
+    ]
+
+
 SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME = "set-global-default-releases"
 
 logger = structlog.get_logger()
@@ -264,11 +288,14 @@ class BootResourcesActivity(ActivityBase):
             logger.info(f"file {file} deleted")
         return True
 
-    @activity_defn_with_context(name=GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME)
-    async def get_files_to_download(self) -> GetFilesToDownloadReturnValue:
-        resources_to_download: dict[str, ResourceDownloadParam] = {}
-        boot_resource_ids_to_keep: set[int] = set()
+    @activity_defn_with_context(
+        name=FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME
+    )
+    async def fetch_manifest_and_update_cache(
+        self,
+    ) -> list[BootSourceProductsMapping]:
         async with self.start_transaction() as services:
+            await services.image_sync.ensure_boot_source_definition()
             boot_source_products_mapping = (
                 await services.image_sync.fetch_images_metadata()
             )
@@ -285,13 +312,25 @@ class BootResourcesActivity(ActivityBase):
                 list(boot_source_products_mapping.keys())
             )
 
-            if not await services.image_sync.check_commissioning_series_selected():
-                raise ApplicationError(
-                    "Either the commissioning os or the commissioning series "
-                    "are not selected or are not available in the stream.",
-                    non_retryable=True,
+            # don't raise an exception, just create the notification
+            await services.image_sync.check_commissioning_series_selected()
+            return [
+                BootSourceProductsMapping(
+                    boot_source=source, products_list=products_list
                 )
+                for source, products_list in boot_source_products_mapping.items()
+            ]
 
+    @activity_defn_with_context(name=GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME)
+    async def get_files_to_download(
+        self, param: list[BootSourceProductsMapping]
+    ) -> GetFilesToDownloadReturnValue:
+        resources_to_download: dict[str, ResourceDownloadParam] = {}
+        boot_resource_ids_to_keep: set[int] = set()
+        async with self.start_transaction() as services:
+            boot_source_products_mapping = {
+                mapping.boot_source: mapping.products_list for mapping in param
+            }
             boot_source_products_mapping = (
                 await services.image_sync.filter_products(
                     boot_source_products_mapping
@@ -459,13 +498,10 @@ class SyncRemoteBootResourcesWorkflow:
                 MasterImageSyncWorkflow.file_completed_download,
                 input.resource.sha256,
             )
-        except RPCError as e:
-            if e.status == RPCStatusCode.NOT_FOUND:
-                # The workflow could try to send a signal to the master workflow
-                # when it's restarting.
-                pass
-            else:
-                raise e
+        except RPCError:
+            # The workflow could try to send a signal to the master workflow
+            # when it's restarting.
+            pass
         logger.info(f"Sync complete for file {input.resource.sha256}")
 
 
@@ -557,6 +593,19 @@ class DeleteBootResourceWorkflow:
             )
 
 
+@workflow.defn(
+    name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME, sandboxed=False
+)
+class FetchManifestWorkflow:
+    @workflow_run_with_context
+    async def run(self) -> list[BootSourceProductsMapping]:
+        return await workflow.execute_activity(
+            FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
+            start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
+            heartbeat_timeout=timedelta(seconds=30),
+        )
+
+
 @workflow.defn(name=MASTER_IMAGE_SYNC_WORKFLOW_NAME, sandboxed=False)
 class MasterImageSyncWorkflow:
     def __init__(self) -> None:
@@ -593,9 +642,25 @@ class MasterImageSyncWorkflow:
 
     @workflow_run_with_context
     async def run(self) -> None:
+        # XXX: the same workflow is triggered by a django signal defined in
+        # maasserver/models/signals/bootsources.py that is always triggered by
+        # the websocket handler in maasserver/websockets/handler/bootresource.py:get_bootsource
+        # So we'll always see two `fetch-manifest` workflows starting when
+        # triggering the image sync through the UI.
+        mapping: list[
+            BootSourceProductsMapping
+        ] = await workflow.execute_child_workflow(
+            FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            id="fetch-manifest",
+            run_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
+            task_queue=REGION_TASK_QUEUE,
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+        )
+
         result: GetFilesToDownloadReturnValue = (
             await workflow.execute_activity(
                 GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME,
+                arg=mapping,
                 start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
                 heartbeat_timeout=timedelta(seconds=30),
                 result_type=GetFilesToDownloadReturnValue,

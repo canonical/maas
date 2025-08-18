@@ -1,8 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
-from typing import Optional, Self, Tuple
+from typing import Optional, Self
 
 from pydantic import BaseModel
 
@@ -16,12 +15,6 @@ from maasservicelayer.models.bootsources import (
     BootSource,
     SourceAvailableImage,
 )
-from maasservicelayer.simplestreams.models import (
-    BootloaderProduct,
-    ImageProduct,
-    Product,
-)
-from maasservicelayer.utils.images.helpers import ImageSpec
 
 
 class BootSourceResponse(HalResponse[BaseHal]):
@@ -62,6 +55,7 @@ class SourceAvailableImageResponse(BaseModel):
     kind = "SourceAvailableImage"
     os: str
     release: str
+    release_title: str
     architecture: str
 
     @classmethod
@@ -72,6 +66,7 @@ class SourceAvailableImageResponse(BaseModel):
         return cls(
             os=source_image.os,
             release=source_image.release,
+            release_title=source_image.release_title,
             architecture=source_image.architecture,
         )
 

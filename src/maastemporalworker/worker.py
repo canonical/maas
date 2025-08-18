@@ -8,19 +8,26 @@ import os
 from typing import Any
 
 from google.protobuf.duration_pb2 import Duration
+from temporalio import workflow
 from temporalio.api.workflowservice.v1 import (
     DescribeNamespaceRequest,
     RegisterNamespaceRequest,
 )
 from temporalio.client import Client, TLSConfig
-import temporalio.converter
 from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker as TemporalWorker
+from temporalio.worker.workflow_sandbox import (
+    SandboxedWorkflowRunner,
+    SandboxRestrictions,
+)
 
 from maastemporalworker.encryptor import EncryptionCodec
 from maastemporalworker.workflow.utils import async_retry
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
+
+with workflow.unsafe.imports_passed_through():
+    from maastemporalworker.converter import pydantic_data_converter
 
 REGION_TASK_QUEUE = "region"
 TEMPORAL_HOST = "localhost"
@@ -46,7 +53,8 @@ async def get_client_async() -> Client:
         f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
         identity=f"{maas_id}@region:{pid}",
         data_converter=dataclasses.replace(
-            temporalio.converter.default(),
+            # TODO: Replace this when we switch to Pydantic 2.x
+            pydantic_data_converter,
             payload_codec=EncryptionCodec(MAAS_SHARED_SECRET.get().encode()),
         ),
         tls=TLSConfig(
@@ -55,6 +63,28 @@ async def get_client_async() -> Client:
             client_cert=cert,
             client_private_key=key,
         ),
+    )
+
+
+# See https://github.com/temporalio/samples-python/blob/3bd017d6048cef8da5dc2c95c37c759e7203a7ba/pydantic_converter_v1/worker.py
+# Due to known issues with Pydantic's use of issubclass and our inability to
+# override the check in sandbox, Pydantic will think datetime is actually date
+# in the sandbox. At the expense of protecting against datetime.now() use in
+# workflows, we're going to remove datetime module restrictions. See sdk-python
+# README's discussion of known sandbox issues for more details.
+def custom_sandbox_runner() -> SandboxedWorkflowRunner:
+    invalid_module_member_children = dict(
+        SandboxRestrictions.invalid_module_members_default.children
+    )
+    del invalid_module_member_children["datetime"]
+    return SandboxedWorkflowRunner(
+        restrictions=dataclasses.replace(
+            SandboxRestrictions.default,
+            invalid_module_members=dataclasses.replace(
+                SandboxRestrictions.invalid_module_members_default,
+                children=invalid_module_member_children,
+            ),
+        )
     )
 
 
@@ -104,6 +134,7 @@ class Worker:
             task_queue=self._task_queue,
             workflows=self._workflows,
             activities=self._activities,
+            workflow_runner=custom_sandbox_runner(),
         )
         await self._worker.run()
 

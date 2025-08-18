@@ -1,6 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from collections.abc import AsyncGenerator
 import hashlib
 from itertools import islice, repeat
 import os
@@ -50,14 +51,20 @@ from maasservicelayer.utils.image_local_files import (
     LocalStoreWriteBeyondEOF,
     MMapedLocalFile,
 )
+from maastemporalworker.worker import (
+    custom_sandbox_runner,
+    pydantic_data_converter,
+)
 from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
+    BootSourceProductsMapping,
     CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME,
     CHECK_DISK_SPACE_ACTIVITY_NAME,
     CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
     DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,
     DownloadBootResourceWorkflow,
+    FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
     GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,
     GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME,
     GET_SYNCED_REGIONS_ACTIVITY_NAME,
@@ -155,6 +162,7 @@ class TestCheckDiskSpace:
         self, boot_activities, image_store_dir
     ):
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = SpaceRequirementParam(total_resources_size=100)
         ok = await env.run(boot_activities.check_disk_space, param)
         assert ok
@@ -163,6 +171,7 @@ class TestCheckDiskSpace:
         self, boot_activities, image_store_dir, a_file
     ):
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = SpaceRequirementParam(total_resources_size=70)
         ok = await env.run(boot_activities.check_disk_space, param)
         assert ok
@@ -171,6 +180,7 @@ class TestCheckDiskSpace:
         self, boot_activities, image_store_dir
     ):
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = SpaceRequirementParam(total_resources_size=120)
         ok = await env.run(boot_activities.check_disk_space, param)
         assert not ok
@@ -179,6 +189,7 @@ class TestCheckDiskSpace:
         self, boot_activities, image_store_dir
     ):
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = SpaceRequirementParam(min_free_space=50)
         ok = await env.run(boot_activities.check_disk_space, param)
         assert ok
@@ -187,6 +198,7 @@ class TestCheckDiskSpace:
         self, boot_activities, image_store_dir
     ):
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = SpaceRequirementParam(min_free_space=500)
         ok = await env.run(boot_activities.check_disk_space, param)
         assert not ok
@@ -202,6 +214,7 @@ class TestGetSyncedRegionsForFilesActivity:
             BootResourceFileSyncService
         )
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         await env.run(boot_activities.get_synced_regions_for_file, 1)
         services_mock.boot_resource_file_sync.get_synced_regions_for_file.assert_awaited_once_with(
             1
@@ -229,6 +242,7 @@ class TestGetBootresourcefileEndpointsActivity:
             ]
         )
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         endpoints = await env.run(
             boot_activities.get_bootresourcefile_endpoints
         )
@@ -261,6 +275,7 @@ class TestGetBootresourcefileEndpointsActivity:
             ]
         )
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         with pytest.raises(ApplicationError) as err:
             await env.run(boot_activities.get_bootresourcefile_endpoints)
 
@@ -283,6 +298,7 @@ class TestDownloadBootresourcefileActivity:
 
         heartbeats = []
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         env.on_heartbeat = lambda *args: heartbeats.append(args[0])
         param = ResourceDownloadParam(
             rfile_ids=[1],
@@ -307,6 +323,7 @@ class TestDownloadBootresourcefileActivity:
         mock_local_file.avalid.return_value = True
 
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = ResourceDownloadParam(
             rfile_ids=[1],
             source_list=["http://maas-image-stream.io"],
@@ -336,6 +353,7 @@ class TestDownloadBootresourcefileActivity:
 
         heartbeats = []
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         env.on_heartbeat = lambda *args: heartbeats.append(args[0])
         param = ResourceDownloadParam(
             rfile_ids=[1],
@@ -388,6 +406,7 @@ class TestDownloadBootresourcefileActivity:
 
         heartbeats = []
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         env.on_heartbeat = lambda *args: heartbeats.append(args[0])
         param = ResourceDownloadParam(
             rfile_ids=[1],
@@ -452,6 +471,7 @@ class TestDownloadBootresourcefileActivity:
 
         heartbeats = []
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         env.on_heartbeat = lambda *args: heartbeats.append(args[0])
         param = ResourceDownloadParam(
             rfile_ids=[1],
@@ -495,6 +515,7 @@ class TestDownloadBootresourcefileActivity:
         exception.errno = 28
         mock_local_file.acquire_lock.side_effect = exception
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = ResourceDownloadParam(
             rfile_ids=[1],
             source_list=["http://maas-image-stream.io"],
@@ -529,6 +550,7 @@ class TestDownloadBootresourcefileActivity:
         # but we use it to avoid patching the rest of the function
         mock_local_file.acquire_lock.side_effect = exception
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = ResourceDownloadParam(
             rfile_ids=[1],
             source_list=["http://maas-image-stream.io"],
@@ -553,6 +575,7 @@ class TestDeleteBootresourcefileActivity:
 
         heartbeats = []
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         env.on_heartbeat = lambda *args: heartbeats.append(args[0])
         param = ResourceDeleteParam(
             files=[ResourceIdentifier("0" * 64, "0" * 7)]
@@ -570,6 +593,7 @@ class TestDeleteBootresourcefileActivity:
         mock_local_file.acquire_lock.return_value = True
 
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = ResourceDeleteParam(
             files=[ResourceIdentifier("0" * 64, "0" * 7)]
         )
@@ -580,7 +604,7 @@ class TestDeleteBootresourcefileActivity:
         mock_local_file.release_lock.assert_called_once()
 
 
-class TestGetFilesToDownloadActivity:
+class TestFetchManifestAndUpdateCacheActivity:
     async def test_calls_image_sync_service(
         self,
         boot_activities: BootResourcesActivity,
@@ -605,14 +629,51 @@ class TestGetFilesToDownloadActivity:
 
         heartbeats = []
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         env.on_heartbeat = lambda *args: heartbeats.append(args[0])
-        await env.run(boot_activities.get_files_to_download)
+        await env.run(boot_activities.fetch_manifest_and_update_cache)
 
         assert heartbeats == ["Downloaded images descriptions"]
+        services_mock.image_sync.ensure_boot_source_definition.assert_awaited_once()
         services_mock.image_sync.fetch_images_metadata.assert_awaited_once()
         services_mock.image_sync.cache_boot_source_from_simplestreams_products.assert_awaited_once()
         services_mock.image_sync.sync_boot_source_selections_from_msm.assert_awaited_once()
         services_mock.image_sync.check_commissioning_series_selected.assert_awaited_once()
+
+
+class TestGetFilesToDownloadActivity:
+    async def test_calls_image_sync_service(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+    ) -> None:
+        mock_boot_source = Mock(BootSource)
+        mock_boot_source.id = 1
+        mock_ss_products_list = Mock(SimpleStreamsProductList)
+        mock_ss_products_list.products = [Mock(BootloaderProduct)]
+        services_mock.image_sync = Mock(ImageSyncService)
+        services_mock.image_sync.filter_products.return_value = {
+            mock_boot_source: mock_ss_products_list
+        }
+        services_mock.image_sync.get_files_to_download_from_product_list.return_value = (
+            {},
+            {1},
+        )
+
+        heartbeats = []
+        env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
+        env.on_heartbeat = lambda *args: heartbeats.append(args[0])
+        await env.run(
+            boot_activities.get_files_to_download,
+            [
+                BootSourceProductsMapping(
+                    boot_source=mock_boot_source,
+                    products_list=mock_ss_products_list,
+                )
+            ],
+        )
+
         services_mock.image_sync.filter_products.assert_awaited_once()
         services_mock.image_sync.get_files_to_download_from_product_list.assert_awaited_once()
 
@@ -626,6 +687,7 @@ class TestGetGlobalDefaultReleaseActivity:
         services_mock.image_sync = Mock(ImageSyncService)
 
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         await env.run(boot_activities.set_global_default_releases)
         services_mock.image_sync.set_global_default_releases.assert_awaited_once()
 
@@ -639,6 +701,7 @@ class TestCleanupOldBootResourcesActivity:
         services_mock.image_sync = Mock(ImageSyncService)
 
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = CleanupOldBootResourceParam(
             boot_resource_ids_to_keep={1, 2, 3}
         )
@@ -675,10 +738,12 @@ class TestCancelObsoleteDownloadWorkflowsActivity:
             handle_wf2,
         ]
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         param = CancelObsoleteDownloadWorkflowsParam(sha_to_keep=shas)
 
         heartbeats = []
         env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
         env.on_heartbeat = lambda *args: heartbeats.append(args[0])
         await env.run(
             boot_activities.cancel_obsolete_download_workflows, param
@@ -698,6 +763,21 @@ class TestCancelObsoleteDownloadWorkflowsActivity:
 
         handle_wf1.cancel.assert_awaited_once()
         handle_wf2.cancel.assert_awaited_once()
+
+
+@pytest.fixture
+async def env() -> AsyncGenerator[WorkflowEnvironment, None]:
+    env = await WorkflowEnvironment.start_time_skipping()
+    yield env
+    await env.shutdown()
+
+
+@pytest.fixture
+async def client(env: WorkflowEnvironment) -> Client:
+    config = env.client.config()
+    config["data_converter"] = pydantic_data_converter
+    client = Client(**config)
+    return client
 
 
 class MockActivities:
@@ -722,6 +802,7 @@ class MockActivities:
             ],
             boot_resource_ids={1, 2, 3},
         )
+        self.fetch_manifest_and_update_cache_result = []
 
     @activity.defn(name=CHECK_DISK_SPACE_ACTIVITY_NAME)
     async def check_disk_space(self, param: SpaceRequirementParam) -> bool:
@@ -741,8 +822,16 @@ class MockActivities:
     async def get_synced_regions_for_file(self, file_id: int) -> list[str]:
         return self.synced_regions_result
 
+    @activity.defn(name=FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME)
+    async def fetch_manifest_and_update_cache(
+        self,
+    ) -> list[BootSourceProductsMapping]:
+        return self.fetch_manifest_and_update_cache_result
+
     @activity.defn(name=GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME)
-    async def get_files_to_download(self) -> GetFilesToDownloadReturnValue:
+    async def get_files_to_download(
+        self, param: list[BootSourceProductsMapping]
+    ) -> GetFilesToDownloadReturnValue:
         return self.files_to_download_result
 
     @activity.defn(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
@@ -828,317 +917,322 @@ def mock_activities():
 class TestSyncBootResourcesWorkflow:
     @pytest.mark.asyncio
     async def test_single_region_sync(
-        self, sample_sync_request_single, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_sync_request_single,
+        mock_activities: MockActivities,
     ):
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[SyncBootResourcesWorkflow],
-                activities=[
-                    mock_activities.get_synced_regions_for_file,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[SyncBootResourcesWorkflow],
+            activities=[
+                mock_activities.get_synced_regions_for_file,
+            ],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=True,
+                ) as mock_child,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ) as mock_child,
-                    patch("asyncio.gather") as mock_gather,
-                ):
-                    await env.client.execute_workflow(
-                        SyncBootResourcesWorkflow.run,
-                        sample_sync_request_single,
-                        id="test-sync-single",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncBootResourcesWorkflow.run,
+                    sample_sync_request_single,
+                    id="test-sync-single",
+                    task_queue="test-queue",
+                )
 
-                    # Should return early
-                    assert mock_child.call_count == 0
-                    mock_gather.assert_not_called()
+                # Should return early
+                assert mock_child.call_count == 0
 
     @pytest.mark.asyncio
     async def test_three_region_sync_with_missing_regions(
-        self, sample_sync_request_three, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_sync_request_three,
+        mock_activities: MockActivities,
     ):
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            # Only one synced region
-            mock_activities.synced_regions_result = ["abcdef"]
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[
-                    SyncBootResourcesWorkflow,
-                ],
-                activities=[
-                    mock_activities.get_synced_regions_for_file,
-                ],
+        # Only one synced region
+        mock_activities.synced_regions_result = ["abcdef"]
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[
+                SyncBootResourcesWorkflow,
+            ],
+            activities=[
+                mock_activities.get_synced_regions_for_file,
+            ],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=True,
+                ) as mock_child,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ) as mock_child,
-                ):
-                    await env.client.execute_workflow(
-                        SyncBootResourcesWorkflow.run,
-                        sample_sync_request_three,
-                        id="test-sync-three",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncBootResourcesWorkflow.run,
+                    sample_sync_request_three,
+                    id="test-sync-three",
+                    task_queue="test-queue",
+                )
 
-                    # one for each missing region
-                    assert mock_child.call_count == 2
+                # one for each missing region
+                assert mock_child.call_count == 2
 
     @pytest.mark.asyncio
     async def test_failed_sync_to_regions(
-        self, sample_sync_request_three, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_sync_request_three,
+        mock_activities: MockActivities,
     ):
         """Test workflow fails when sync to other regions fails"""
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            mock_activities.synced_regions_result = ["abcdef"]
-            mock_handle = AsyncMock()
+        mock_activities.synced_regions_result = ["abcdef"]
+        mock_handle = AsyncMock()
 
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[
-                    SyncBootResourcesWorkflow,
-                ],
-                activities=[
-                    mock_activities.download_bootresourcefile,
-                    mock_activities.get_synced_regions_for_file,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[
+                SyncBootResourcesWorkflow,
+            ],
+            activities=[
+                mock_activities.download_bootresourcefile,
+                mock_activities.get_synced_regions_for_file,
+            ],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=False,  # Sync fails
+                ) as mock_child,
+                patch(
+                    "temporalio.workflow.get_external_workflow_handle_for",
+                    return_value=mock_handle,
+                ),
+                pytest.raises(WorkflowFailureError) as exc_info,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=False,  # Sync fails
-                    ) as mock_child,
-                    patch(
-                        "temporalio.workflow.get_external_workflow_handle_for",
-                        return_value=mock_handle,
-                    ),
-                    pytest.raises(WorkflowFailureError) as exc_info,
-                ):
-                    await env.client.execute_workflow(
-                        SyncBootResourcesWorkflow.run,
-                        sample_sync_request_three,
-                        id="test-failed-sync",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncBootResourcesWorkflow.run,
+                    sample_sync_request_three,
+                    id="test-failed-sync",
+                    task_queue="test-queue",
+                )
 
-                    # one for each missing region
-                    assert mock_child.call_count == 2
-                    # The exception returned is WorkflowFailureError.
-                    # The ApplicationError we raise is available in the `cause` attribute.
-                    assert "could not be synced" in str(
-                        exc_info.value.cause.message
-                    )
-                    assert exc_info.value.cause.non_retryable
+                # one for each missing region
+                assert mock_child.call_count == 2
+                # The exception returned is WorkflowFailureError.
+                # The ApplicationError we raise is available in the `cause` attribute.
+                assert "could not be synced" in str(
+                    exc_info.value.cause.message
+                )
+                assert exc_info.value.cause.non_retryable
 
     @pytest.mark.asyncio
     async def test_no_synced_regions_available(
-        self, sample_sync_request_three, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_sync_request_three,
+        mock_activities: MockActivities,
     ):
         """Test workflow fails when no regions have the complete file"""
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            mock_activities.synced_regions_result = []  # No regions have the file
+        mock_activities.synced_regions_result = []  # No regions have the file
 
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[
-                    SyncRemoteBootResourcesWorkflow,
-                    SyncBootResourcesWorkflow,
-                    DownloadBootResourceWorkflow,
-                ],
-                activities=[
-                    mock_activities.download_bootresourcefile,
-                    mock_activities.get_synced_regions_for_file,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[
+                SyncRemoteBootResourcesWorkflow,
+                SyncBootResourcesWorkflow,
+                DownloadBootResourceWorkflow,
+            ],
+            activities=[
+                mock_activities.download_bootresourcefile,
+                mock_activities.get_synced_regions_for_file,
+            ],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=True,
+                ),
+                pytest.raises(WorkflowFailureError) as exc_info,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ),
-                    pytest.raises(WorkflowFailureError) as exc_info,
-                ):
-                    await env.client.execute_workflow(
-                        SyncBootResourcesWorkflow.run,
-                        sample_sync_request_three,
-                        id="test-no-synced-regions",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncBootResourcesWorkflow.run,
+                    sample_sync_request_three,
+                    id="test-no-synced-regions",
+                    task_queue="test-queue",
+                )
 
-                    # The exception returned is WorkflowFailureError.
-                    # The ApplicationError we raise is available in the `cause` attribute.
-                    assert "has no complete copy available" in str(
-                        exc_info.value.cause.message
-                    )
-                    assert not exc_info.value.cause.non_retryable
+                # The exception returned is WorkflowFailureError.
+                # The ApplicationError we raise is available in the `cause` attribute.
+                assert "has no complete copy available" in str(
+                    exc_info.value.cause.message
+                )
+                assert not exc_info.value.cause.non_retryable
 
 
 class TestSyncLocalBootResourcesWorkflow:
     @pytest.mark.asyncio
     async def test_single_region(
         self,
+        client: Client,
         sample_local_sync_request,
         mock_activities: MockActivities,
         sample_endpoints_single_region,
     ):
         mock_activities.endpoints_result = sample_endpoints_single_region
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[
-                    SyncLocalBootResourcesWorkflow,
-                    SyncBootResourcesWorkflow,
-                ],
-                activities=[
-                    mock_activities.get_bootresourcefile_endpoints,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[
+                SyncLocalBootResourcesWorkflow,
+                SyncBootResourcesWorkflow,
+            ],
+            activities=[
+                mock_activities.get_bootresourcefile_endpoints,
+            ],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=True,
+                ) as mock_child,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ) as mock_child,
-                ):
-                    await env.client.execute_workflow(
-                        SyncLocalBootResourcesWorkflow.run,
-                        sample_local_sync_request,
-                        id="test-sync-single",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncLocalBootResourcesWorkflow.run,
+                    sample_local_sync_request,
+                    id="test-sync-single",
+                    task_queue="test-queue",
+                )
 
-                    # one call for the check space, another one for the sync
-                    assert mock_child.call_count == 2
+                # one call for the check space, another one for the sync
+                assert mock_child.call_count == 2
 
     @pytest.mark.asyncio
     async def test_three_region(
         self,
+        client: Client,
         sample_local_sync_request,
         mock_activities: MockActivities,
         sample_endpoints_three_regions,
     ):
         mock_activities.endpoints_result = sample_endpoints_three_regions
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[
-                    SyncLocalBootResourcesWorkflow,
-                    SyncBootResourcesWorkflow,
-                ],
-                activities=[
-                    mock_activities.get_bootresourcefile_endpoints,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[
+                SyncLocalBootResourcesWorkflow,
+                SyncBootResourcesWorkflow,
+            ],
+            activities=[
+                mock_activities.get_bootresourcefile_endpoints,
+            ],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=True,
+                ) as mock_child,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ) as mock_child,
-                ):
-                    await env.client.execute_workflow(
-                        SyncLocalBootResourcesWorkflow.run,
-                        sample_local_sync_request,
-                        id="test-sync-three",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncLocalBootResourcesWorkflow.run,
+                    sample_local_sync_request,
+                    id="test-sync-three",
+                    task_queue="test-queue",
+                )
 
-                    # three calls for the check space, another one for the sync
-                    assert mock_child.call_count == 4
+                # three calls for the check space, another one for the sync
+                assert mock_child.call_count == 4
 
 
 class TestSyncRemoteBootResourcesWorkflow:
     @pytest.mark.asyncio
     async def test_remote_sync_signals_master(
-        self, sample_sync_request_single, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_sync_request_single,
+        mock_activities: MockActivities,
     ):
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            mock_handle = AsyncMock()
-            mock_handle.signal = AsyncMock()
+        mock_handle = AsyncMock()
+        mock_handle.signal = AsyncMock()
 
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[
-                    SyncRemoteBootResourcesWorkflow,
-                    SyncBootResourcesWorkflow,
-                    DownloadBootResourceWorkflow,
-                ],
-                activities=[
-                    mock_activities.download_bootresourcefile,
-                    mock_activities.get_synced_regions_for_file,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[
+                SyncRemoteBootResourcesWorkflow,
+            ],
+            activities=[
+                mock_activities.download_bootresourcefile,
+                mock_activities.get_synced_regions_for_file,
+            ],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=True,
+                ) as mock_child,
+                patch(
+                    "temporalio.workflow.get_external_workflow_handle_for",
+                    return_value=mock_handle,
+                ),
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ) as mock_child,
-                    patch(
-                        "temporalio.workflow.get_external_workflow_handle_for",
-                        return_value=mock_handle,
-                    ),
-                ):
-                    await env.client.execute_workflow(
-                        SyncRemoteBootResourcesWorkflow.run,
-                        sample_sync_request_single,
-                        id="test-sync-single",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncRemoteBootResourcesWorkflow.run,
+                    sample_sync_request_single,
+                    id="test-sync-single",
+                    task_queue="test-queue",
+                )
 
-                    # one call for the download, another one for the sync
-                    assert mock_child.call_count == 2
+                # one call for the download, another one for the sync
+                assert mock_child.call_count == 2
 
-                    mock_handle.signal.assert_called_once_with(
-                        MasterImageSyncWorkflow.file_completed_download,
-                        sample_sync_request_single.resource.sha256,
-                    )
+                mock_handle.signal.assert_called_once_with(
+                    MasterImageSyncWorkflow.file_completed_download,
+                    sample_sync_request_single.resource.sha256,
+                )
 
     @pytest.mark.asyncio
     async def test_failed_upstream_download(
-        self, sample_sync_request_single, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_sync_request_single,
+        mock_activities: MockActivities,
     ):
         """Test workflow fails when upstream download fails"""
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[
-                    SyncRemoteBootResourcesWorkflow,
-                    SyncBootResourcesWorkflow,
-                    DownloadBootResourceWorkflow,
-                ],
-                activities=[mock_activities.download_bootresourcefile],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[
+                SyncRemoteBootResourcesWorkflow,
+            ],
+            activities=[mock_activities.download_bootresourcefile],
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    return_value=False,
+                ) as mock_child,
+                pytest.raises(WorkflowFailureError) as exc_info,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=False,
-                    ) as mock_child,
-                    pytest.raises(WorkflowFailureError) as exc_info,
-                ):
-                    await env.client.execute_workflow(
-                        SyncRemoteBootResourcesWorkflow.run,
-                        sample_sync_request_single,
-                        id="test-failed-download",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    SyncRemoteBootResourcesWorkflow.run,
+                    sample_sync_request_single,
+                    id="test-failed-download",
+                    task_queue="test-queue",
+                )
 
-                    mock_child.assert_called_once()
-                    # The exception returned is WorkflowFailureError.
-                    # The ApplicationError we raise is available in the `cause` attribute.
-                    assert (
-                        "could not be downloaded"
-                        in exc_info.value.cause.message
-                    )
-                    assert exc_info.value.cause.non_retryable
+                mock_child.assert_called_once()
+                # The exception returned is WorkflowFailureError.
+                # The ApplicationError we raise is available in the `cause` attribute.
+                assert (
+                    "could not be downloaded" in exc_info.value.cause.message
+                )
+                assert exc_info.value.cause.non_retryable
 
 
 class TestMasterImageSyncWorkflow:
@@ -1146,174 +1240,199 @@ class TestMasterImageSyncWorkflow:
 
     @pytest.mark.asyncio
     async def test_single_region_master_workflow(
-        self, sample_endpoints_single_region, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_endpoints_single_region,
+        mock_activities: MockActivities,
     ):
         """Test master workflow with single region"""
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            mock_activities.endpoints_result = sample_endpoints_single_region
+        mock_activities.endpoints_result = sample_endpoints_single_region
 
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[MasterImageSyncWorkflow],
-                activities=[
-                    mock_activities.get_files_to_download,
-                    mock_activities.get_bootresourcefile_endpoints,
-                    mock_activities.check_disk_space,
-                    mock_activities.cancel_obsolete_download_workflows,
-                    mock_activities.set_global_default_releases,
-                    mock_activities.cleanup_old_boot_resources,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[MasterImageSyncWorkflow],
+            activities=[
+                mock_activities.get_files_to_download,
+                mock_activities.get_bootresourcefile_endpoints,
+                mock_activities.cancel_obsolete_download_workflows,
+                mock_activities.set_global_default_releases,
+                mock_activities.cleanup_old_boot_resources,
+            ],
+            workflow_runner=custom_sandbox_runner(),
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    side_effect=[
+                        mock_activities.fetch_manifest_and_update_cache_result,
+                        True,
+                    ],
+                ) as mock_execute_child,
+                patch(
+                    "temporalio.workflow.start_child_workflow"
+                ) as mock_start_child,
+                patch("temporalio.workflow.wait_condition") as mock_wait,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ) as mock_execute_child,
-                    patch(
-                        "temporalio.workflow.start_child_workflow"
-                    ) as mock_start_child,
-                    patch("temporalio.workflow.wait_condition") as mock_wait,
-                ):
-                    await env.client.execute_workflow(
-                        MasterImageSyncWorkflow.run,
-                        id="test-master-single",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    MasterImageSyncWorkflow.run,
+                    id="test-master-single",
+                    task_queue="test-queue",
+                )
 
-                    # Check disk space for single region
-                    assert mock_execute_child.call_count == 1
-                    mock_wait.assert_awaited_once()
-                    # Start remote sync workflow for one resource
-                    mock_start_child.assert_called_once()
+                # Fetch manifest + Check disk space for single region
+                assert mock_execute_child.call_count == 2
+                mock_wait.assert_awaited_once()
+                # Start remote sync workflow for one resource
+                mock_start_child.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_three_region_master_workflow(
-        self, sample_endpoints_three_regions, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_endpoints_three_regions,
+        mock_activities: MockActivities,
     ):
         """Test master workflow schedules sync for all regions"""
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            mock_activities.endpoints_result = sample_endpoints_three_regions
+        mock_activities.endpoints_result = sample_endpoints_three_regions
 
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[MasterImageSyncWorkflow],
-                activities=[
-                    mock_activities.get_files_to_download,
-                    mock_activities.get_bootresourcefile_endpoints,
-                    mock_activities.check_disk_space,
-                    mock_activities.cancel_obsolete_download_workflows,
-                    mock_activities.set_global_default_releases,
-                    mock_activities.cleanup_old_boot_resources,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[MasterImageSyncWorkflow],
+            activities=[
+                mock_activities.get_files_to_download,
+                mock_activities.get_bootresourcefile_endpoints,
+                mock_activities.cancel_obsolete_download_workflows,
+                mock_activities.set_global_default_releases,
+                mock_activities.cleanup_old_boot_resources,
+            ],
+            workflow_runner=custom_sandbox_runner(),
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    side_effect=[
+                        mock_activities.fetch_manifest_and_update_cache_result,
+                        True,
+                        True,
+                        True,
+                    ],
+                ) as mock_execute_child,
+                patch(
+                    "temporalio.workflow.start_child_workflow"
+                ) as mock_start_child,
+                patch("temporalio.workflow.wait_condition") as mock_wait,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
-                    ) as mock_execute_child,
-                    patch(
-                        "temporalio.workflow.start_child_workflow"
-                    ) as mock_start_child,
-                    patch("temporalio.workflow.wait_condition") as mock_wait,
-                ):
-                    await env.client.execute_workflow(
-                        MasterImageSyncWorkflow.run,
-                        id="test-master-three",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    MasterImageSyncWorkflow.run,
+                    id="test-master-three",
+                    task_queue="test-queue",
+                )
 
-                    # Check disk space for all 3 regions
-                    assert mock_execute_child.call_count == 3
-                    mock_wait.assert_awaited_once()
+                # Fetch manifest + Check disk space for all 3 regions
+                assert mock_execute_child.call_count == 4
+                mock_wait.assert_awaited_once()
 
-                    # Start remote sync workflow for one resource
-                    mock_start_child.assert_called_once()
+                # Start remote sync workflow for one resource
+                mock_start_child.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_insufficient_disk_space(
-        self, sample_endpoints_three_regions, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_endpoints_three_regions,
+        mock_activities: MockActivities,
     ):
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            mock_activities.endpoints_result = sample_endpoints_three_regions
-            # One region has insufficient space
-            mock_activities.disk_space_result = False
+        mock_activities.endpoints_result = sample_endpoints_three_regions
+        # One region has insufficient space
+        mock_activities.disk_space_result = False
 
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[MasterImageSyncWorkflow],
-                activities=[
-                    mock_activities.get_files_to_download,
-                    mock_activities.get_bootresourcefile_endpoints,
-                    mock_activities.check_disk_space,
-                    mock_activities.cancel_obsolete_download_workflows,
-                ],
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[MasterImageSyncWorkflow],
+            activities=[
+                mock_activities.fetch_manifest_and_update_cache,
+                mock_activities.get_files_to_download,
+                mock_activities.get_bootresourcefile_endpoints,
+                mock_activities.cancel_obsolete_download_workflows,
+            ],
+            workflow_runner=custom_sandbox_runner(),
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    side_effect=[
+                        mock_activities.fetch_manifest_and_update_cache_result,
+                        mock_activities.disk_space_result,
+                        mock_activities.disk_space_result,
+                        mock_activities.disk_space_result,
+                    ],
+                ) as mock_execute_child,
+                pytest.raises(WorkflowFailureError) as exc_info,
             ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=False,
-                    ) as mock_execute_child,
-                    pytest.raises(WorkflowFailureError) as exc_info,
-                ):
-                    await env.client.execute_workflow(
-                        MasterImageSyncWorkflow.run,
-                        id="test-insufficient-space",
-                        task_queue="test-queue",
-                    )
+                await client.execute_workflow(
+                    MasterImageSyncWorkflow.run,
+                    id="test-insufficient-space",
+                    task_queue="test-queue",
+                )
 
-                    assert mock_execute_child.call_count == 3
-                    assert "don't have enough disk space" in str(
-                        exc_info.value.cause.message
-                    )
-                    assert exc_info.value.cause.non_retryable
+                assert mock_execute_child.call_count == 4
+                assert "don't have enough disk space" in str(
+                    exc_info.value.cause.message
+                )
+                assert exc_info.value.cause.non_retryable
 
     @pytest.mark.asyncio
     async def test_already_started_workflow_handling(
-        self, sample_endpoints_single_region, mock_activities: MockActivities
+        self,
+        client: Client,
+        sample_endpoints_single_region,
+        mock_activities: MockActivities,
     ):
         """Test workflow handles already started child workflows gracefully"""
         mock_activities.endpoints_result = sample_endpoints_single_region
 
-        async with await WorkflowEnvironment.start_time_skipping() as env:
-            async with Worker(
-                env.client,
-                task_queue="test-queue",
-                workflows=[MasterImageSyncWorkflow],
-                activities=[
-                    mock_activities.get_files_to_download,
-                    mock_activities.get_bootresourcefile_endpoints,
-                    mock_activities.check_disk_space,
-                    mock_activities.cancel_obsolete_download_workflows,
-                    mock_activities.set_global_default_releases,
-                    mock_activities.cleanup_old_boot_resources,
-                ],
-            ):
-                with (
-                    patch(
-                        "temporalio.workflow.execute_child_workflow",
-                        return_value=True,
+        async with Worker(
+            client,
+            task_queue="test-queue",
+            workflows=[MasterImageSyncWorkflow],
+            activities=[
+                mock_activities.get_files_to_download,
+                mock_activities.get_bootresourcefile_endpoints,
+                mock_activities.cancel_obsolete_download_workflows,
+                mock_activities.set_global_default_releases,
+                mock_activities.cleanup_old_boot_resources,
+            ],
+            workflow_runner=custom_sandbox_runner(),
+        ):
+            with (
+                patch(
+                    "temporalio.workflow.execute_child_workflow",
+                    side_effect=[
+                        mock_activities.fetch_manifest_and_update_cache_result,
+                        True,
+                    ],
+                ),
+                patch(
+                    "temporalio.workflow.start_child_workflow",
+                    side_effect=WorkflowAlreadyStartedError(
+                        workflow_id="test-already-started",
+                        workflow_type=MASTER_IMAGE_SYNC_WORKFLOW_NAME,
                     ),
-                    patch(
-                        "temporalio.workflow.start_child_workflow",
-                        side_effect=WorkflowAlreadyStartedError(
-                            workflow_id="test-already-started",
-                            workflow_type=MASTER_IMAGE_SYNC_WORKFLOW_NAME,
-                        ),
-                    ) as mock_start,
-                    patch("temporalio.workflow.wait_condition"),
-                ):
-                    # Should not raise error
-                    await env.client.execute_workflow(
-                        MasterImageSyncWorkflow.run,
-                        id="test-already-started",
-                        task_queue="test-queue",
-                    )
+                ) as mock_start,
+                patch("temporalio.workflow.wait_condition"),
+            ):
+                # Should not raise error
+                await client.execute_workflow(
+                    MasterImageSyncWorkflow.run,
+                    id="test-already-started",
+                    task_queue="test-queue",
+                )
 
-                    # Verify start_child_workflow was called
-                    mock_start.assert_called_once()
+                # Verify start_child_workflow was called
+                mock_start.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_signal_handling_removes_files(self):

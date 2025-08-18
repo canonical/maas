@@ -24,6 +24,7 @@ from maastemporalworker.workflow.bootresource import (
     CheckBootResourcesStorageWorkflow,
     DeleteBootResourceWorkflow,
     DownloadBootResourceWorkflow,
+    FetchManifestWorkflow,
     MasterImageSyncWorkflow,
     SyncBootResourcesWorkflow,
     SyncLocalBootResourcesWorkflow,
@@ -169,6 +170,7 @@ async def main() -> None:
                 SyncRemoteBootResourcesWorkflow,
                 SyncBootResourcesWorkflow,
                 MasterImageSyncWorkflow,
+                FetchManifestWorkflow,
                 # Configuration workflows
                 ConfigureAgentWorkflow,
                 ConfigureDHCPWorkflow,
@@ -195,6 +197,7 @@ async def main() -> None:
             ],
             activities=[
                 # Boot resources activities
+                boot_res_activity.fetch_manifest_and_update_cache,
                 boot_res_activity.download_bootresourcefile,
                 boot_res_activity.get_bootresourcefile_endpoints,
                 boot_res_activity.get_files_to_download,

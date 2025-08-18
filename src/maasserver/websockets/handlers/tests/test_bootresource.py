@@ -3,21 +3,17 @@
 import base64
 import datetime
 import random
-from unittest.mock import ANY, Mock
+from unittest.mock import Mock
 
 from django.utils import timezone
-from twisted.internet import reactor
-from twisted.internet.defer import succeed
+from twisted.internet import defer
 
 from maasserver.audit import Event
+from maasserver.bootresources import import_resources
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
-)
-from maasserver.import_images.testing.factory import (
-    make_image_spec,
-    set_resource,
 )
 from maasserver.models import (
     BootResource,
@@ -43,10 +39,10 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers import bootresource
+import maasserver.websockets.handlers.bootresource as bootresource_module
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from maasservicelayer.models.bootsources import SourceAvailableImage
 from maasservicelayer.services.image_sync import ImageSyncService
-from maasservicelayer.utils.images.boot_image_mapping import BootImageMapping
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.events import EVENT_TYPES
 
@@ -71,10 +67,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         super().setUp()
         self.region = factory.make_RegionController()
 
-    def patch_is_import_resources_running(self):
-        mock_import = self.patch(bootresource, "is_import_resources_running")
-        mock_import.return_value = True
-        return mock_import
+        self.patch(
+            bootresource, "is_import_resources_running"
+        ).return_value = True
 
     def make_other_resource(
         self, os=None, arch=None, subarch=None, release=None, extra=None
@@ -679,7 +674,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.assertFalse(resource["complete"])
 
     def test_combined_subarch_resource_calculates_progress(self):
-        self.patch_is_import_resources_running()
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         name = f"ubuntu/{factory.make_name('series')}"
@@ -863,8 +857,11 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
 
 class TestBootResourceStopImport(MAASTransactionServerTestCase):
     def patch_stop_import_resources(self):
+        self.patch(
+            bootresource, "is_import_resources_running"
+        ).return_value = False
         mock_import = self.patch(bootresource, "stop_import_resources")
-        mock_import.return_value = succeed(None)
+        mock_import.return_value = None
         return mock_import
 
     def test_calls_stop_import_and_returns_poll(self):
@@ -885,35 +882,29 @@ class TestBootResourceSaveUbuntu(
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
 
-    def patch_stop_import_resources(self):
-        mock_import = self.patch(bootresource, "stop_import_resources")
-        mock_import.return_value = succeed(None)
-        return mock_import
+        d = defer.succeed(None)
+        self.patch(bootresource_module, "post_commit_do").return_value = d
 
-    def patch_import_resources(self):
-        mock_import = self.patch(bootresource, "import_resources")
-        mock_import.side_effect = lambda notify: reactor.callLater(
-            0, notify.callback, None
-        )
-        return mock_import
+        self.patch(
+            bootresource, "is_import_resources_running"
+        ).return_value = False
 
     def test_asserts_is_admin(self):
         owner = factory.make_User()
         handler = BootResourceHandler(owner, {}, None)
         self.assertRaises(AssertionError, handler.save_ubuntu, {})
 
-    def test_calls_stop_and_import_resources(self):
+    def test_calls_import_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         sources = [factory.make_BootSource()]
         self.patch_get_os_info_from_boot_sources(sources)
-        mock_stop_import = self.patch_stop_import_resources()
-        mock_import = self.patch_import_resources()
         handler.save_ubuntu(
             {"url": sources[0].url, "releases": [], "arches": []}
         )
-        mock_stop_import.assert_called_once_with()
-        mock_import.assert_called_once_with(notify=ANY)
+        bootresource_module.post_commit_do.assert_called_once_with(
+            import_resources
+        )
 
     def test_sets_release_selections(self):
         owner = factory.make_admin()
@@ -921,8 +912,6 @@ class TestBootResourceSaveUbuntu(
         source = factory.make_BootSource()
         releases = [factory.make_name("release") for _ in range(3)]
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_ubuntu(
             {
                 "url": source.url,
@@ -952,8 +941,6 @@ class TestBootResourceSaveUbuntu(
             for i in range(3)
         ]
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_ubuntu({"url": source.url, "osystems": osystems})
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertCountEqual(
@@ -982,8 +969,6 @@ class TestBootResourceSaveUbuntu(
             boot_source=source, os="ubuntu", release=release
         )
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_ubuntu(
             {
                 "url": source.url,
@@ -1009,8 +994,6 @@ class TestBootResourceSaveUbuntu(
             boot_source=source, os="ubuntu", release=release
         )
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_ubuntu(
             {
                 "url": source.url,
@@ -1041,8 +1024,6 @@ class TestBootResourceSaveUbuntu(
             boot_source=source, os="ubuntu", release=release
         )
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_ubuntu(
             {
                 "url": source.url,
@@ -1061,158 +1042,18 @@ class TestBootResourceSaveUbuntu(
         )
 
 
-class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
-    def setUp(self):
-        super().setUp()
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
-    def make_resource(self, arch="amd64"):
-        if arch is None:
-            arch = factory.make_name("arch")
-        architecture = "%s/generic" % arch
-        resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name="ubuntu-core/16-pc",
-            architecture=architecture,
-        )
-        return resource
-
-    def patch_stop_import_resources(self):
-        mock_import = self.patch(bootresource, "stop_import_resources")
-        mock_import.return_value = succeed(None)
-        return mock_import
-
-    def patch_import_resources(self):
-        mock_import = self.patch(bootresource, "import_resources")
-        mock_import.side_effect = lambda notify: reactor.callLater(
-            0, notify.callback, None
-        )
-        return mock_import
-
-    def test_asserts_is_admin(self):
-        owner = factory.make_User()
-        handler = BootResourceHandler(owner, {}, None)
-        self.assertRaises(AssertionError, handler.save_ubuntu_core, {})
-
-    def test_clears_all_ubuntu_core_selections(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        source = factory.make_BootSource()
-        ubuntu_selection = BootSourceSelection.objects.create(
-            boot_source=source, os="ubuntu"
-        )
-        ubuntu_core_selection = BootSourceSelection.objects.create(
-            boot_source=source, os="ubuntu-core"
-        )
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
-        handler.save_ubuntu_core({"images": []})
-        self.assertIsNotNone(reload_object(ubuntu_selection))
-        self.assertIsNone(reload_object(ubuntu_core_selection))
-
-    def test_clears_all_ubuntu_core_selections_creates_audit_event(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        source = factory.make_BootSource()
-        BootSourceSelection.objects.create(boot_source=source, os="ubuntu")
-        BootSourceSelection.objects.create(
-            boot_source=source, os="ubuntu-core"
-        )
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
-        handler.save_ubuntu_core({"images": []})
-        events = Event.objects.filter(
-            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
-        )
-        assert len(events) == 1
-        assert (
-            events[0].description
-            == "Deleted all boot source selection for ubuntu-core"
-        )
-
-    def test_creates_selection_with_multiple_arches(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        source = factory.make_BootSource()
-        arches = [factory.make_name("arch") for _ in range(3)]
-        images = []
-        for arch in arches:
-            factory.make_BootSourceCache(
-                boot_source=source,
-                os="ubuntu-core",
-                release="16-pc",
-                arch=arch,
-            )
-            images.append("ubuntu-core/%s/subarch/16-pc" % arch)
-            self.patch_stop_import_resources()
-        self.patch_import_resources()
-        handler.save_ubuntu_core({"images": images})
-
-        selection = get_one(
-            BootSourceSelection.objects.filter(
-                boot_source=source, os="ubuntu-core", release="16-pc"
-            )
-        )
-        self.assertIsNotNone(selection)
-        self.assertCountEqual(arches, selection.arches)
-
-    def test_creates_selection_with_multiple_arches_creates_audit_event(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        source = factory.make_BootSource()
-        arches = [factory.make_name("arch") for _ in range(3)]
-        images = []
-        BootSourceSelection.objects.create(
-            boot_source=source, os="ubuntu-core"
-        )
-        for arch in arches:
-            factory.make_BootSourceCache(
-                boot_source=source,
-                os="ubuntu-core",
-                release="16-pc",
-                arch=arch,
-            )
-            images.append("ubuntu-core/%s/subarch/16-pc" % arch)
-            self.patch_stop_import_resources()
-        self.patch_import_resources()
-        handler.save_ubuntu_core({"images": images})
-        selection = get_one(
-            BootSourceSelection.objects.filter(
-                boot_source=source, os="ubuntu-core", release="16-pc"
-            )
-        )
-
-        events = Event.objects.filter(
-            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
-        )
-        assert len(events) == 2
-        assert (
-            events[0].description
-            == "Deleted all boot source selection for ubuntu-core"
-        )
-        assert (
-            events[1].description
-            == f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {source.url}"
-        )
-
-    def test_calls_stop_and_import_resources(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        mock_stop_import = self.patch_stop_import_resources()
-        mock_import = self.patch_import_resources()
-        handler.save_ubuntu_core({"images": []})
-        mock_stop_import.assert_called_once_with()
-        mock_import.assert_called_once_with(notify=ANY)
-
-
 class TestBootResourceSaveOther(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
+        d = defer.succeed(None)
+        self.patch(bootresource_module, "post_commit_do").return_value = d
+
+        self.patch(
+            bootresource, "is_import_resources_running"
+        ).return_value = False
 
     def make_other_resource(
         self, os=None, arch=None, subarch=None, release=None
@@ -1234,18 +1075,6 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         )
         return resource
 
-    def patch_stop_import_resources(self):
-        mock_import = self.patch(bootresource, "stop_import_resources")
-        mock_import.return_value = succeed(None)
-        return mock_import
-
-    def patch_import_resources(self):
-        mock_import = self.patch(bootresource, "import_resources")
-        mock_import.side_effect = lambda notify: reactor.callLater(
-            0, notify.callback, None
-        )
-        return mock_import
-
     def test_asserts_is_admin(self):
         owner = factory.make_User()
         handler = BootResourceHandler(owner, {}, None)
@@ -1261,8 +1090,6 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         other_selection = BootSourceSelection.objects.create(
             boot_source=source, os=factory.make_name("os")
         )
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_other({"images": []})
         self.assertIsNotNone(reload_object(ubuntu_selection))
         self.assertIsNone(reload_object(other_selection))
@@ -1274,8 +1101,6 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         BootSourceSelection.objects.create(
             boot_source=source, os=factory.make_name("os")
         )
-        self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_other({"images": []})
         events = Event.objects.filter(
             type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
@@ -1299,8 +1124,6 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
                 boot_source=source, os=os, release=release, arch=arch
             )
             images.append(f"{os}/{arch}/subarch/{release}")
-            self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_other({"images": images})
 
         selection = get_one(
@@ -1327,8 +1150,6 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
                 boot_source=source, os=os, release=release, arch=arch
             )
             images.append(f"{os}/{arch}/subarch/{release}")
-            self.patch_stop_import_resources()
-        self.patch_import_resources()
         handler.save_other({"images": images})
 
         selection = get_one(
@@ -1349,14 +1170,13 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             == f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {source.url}"
         )
 
-    def test_calls_stop_and_import_resources(self):
+    def test_calls_import_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        mock_stop_import = self.patch_stop_import_resources()
-        mock_import = self.patch_import_resources()
         handler.save_other({"images": []})
-        mock_stop_import.assert_called_once_with()
-        mock_import.assert_called_once_with(notify=ANY)
+        bootresource_module.post_commit_do.assert_called_once_with(
+            import_resources
+        )
 
 
 class TestBootResourceFetch(MAASServerTestCase):
@@ -1369,7 +1189,9 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
+        self.patch(service_layer.services, "image_sync").return_value = Mock(
+            ImageSyncService
+        )
         mock_download = self.patch(
             service_layer.services.image_sync, "fetch_image_metadata"
         )
@@ -1404,7 +1226,9 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
+        self.patch(service_layer.services, "image_sync").return_value = Mock(
+            ImageSyncService
+        )
         mock_download = self.patch(
             service_layer.services.image_sync, "fetch_image_metadata"
         )
@@ -1432,7 +1256,9 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
+        self.patch(service_layer.services, "image_sync").return_value = Mock(
+            ImageSyncService
+        )
         mock_download = self.patch(
             service_layer.services.image_sync, "fetch_image_metadata"
         )
@@ -1452,7 +1278,9 @@ class TestBootResourceFetch(MAASServerTestCase):
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
+        self.patch(service_layer.services, "image_sync").return_value = Mock(
+            ImageSyncService
+        )
         mock_download = self.patch(
             service_layer.services.image_sync, "fetch_image_metadata"
         )
@@ -1492,17 +1320,23 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
+        self.patch(service_layer.services, "image_sync").return_value = Mock(
+            ImageSyncService
+        )
         mock_download = self.patch(
             service_layer.services.image_sync, "fetch_image_metadata"
         )
 
         # Make releases and arches.
-        mapping = BootImageMapping()
         releases = [factory.make_name("release") for _ in range(3)]
         arches = [factory.make_name("arch") for _ in range(3)]
         image_list = [
-            SourceAvailableImage(os="ubuntu", architecture=arch, release=release, release_title=release)
+            SourceAvailableImage(
+                os="ubuntu",
+                architecture=arch,
+                release=release,
+                release_title=release,
+            )
             for release, arch in zip(releases, arches)
         ]
 
@@ -1539,7 +1373,9 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(ImageSyncService)
+        self.patch(service_layer.services, "image_sync").return_value = Mock(
+            ImageSyncService
+        )
         mock_download = self.patch(
             service_layer.services.image_sync, "fetch_image_metadata"
         )
@@ -1548,7 +1384,14 @@ class TestBootResourceFetch(MAASServerTestCase):
         release = factory.make_name("release")
         title = factory.make_name("title")
         arch = factory.make_name("arch")
-        image_list = [SourceAvailableImage(os="ubuntu", architecture=arch, release=release, release_title=title)]
+        image_list = [
+            SourceAvailableImage(
+                os="ubuntu",
+                architecture=arch,
+                release=release,
+                release_title=title,
+            )
+        ]
 
         mock_download.return_value = image_list
         url = factory.make_url(scheme=random.choice(["http", "https"]))
@@ -1582,6 +1425,9 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.patch(bootresourcefile, "execute_workflow")
+        self.patch(
+            bootresource, "is_import_resources_running"
+        ).return_value = False
 
     def test_asserts_is_admin(self):
         owner = factory.make_User()
