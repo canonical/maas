@@ -79,8 +79,8 @@ type echoDHCPHandler struct {
 	s *Server
 }
 
-func (e *echoDHCPHandler) echo(ctx context.Context, msg Message, ipVersion int) error {
-	sock, err := e.s.GetSocketFor(ipVersion, int(msg.IfaceIdx))
+func (e *echoDHCPHandler) echo(ctx context.Context, msg Message, ipv IPVersion) error {
+	sock, err := e.s.GetSocketFor(ipv, int(msg.IfaceIdx))
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (e *echoDHCPHandler) echo(ctx context.Context, msg Message, ipVersion int) 
 	conn := sock.Conn()
 
 	var buf []byte
-	if ipVersion == 4 {
+	if ipv == IPv4 {
 		buf = msg.Pkt4.ToBytes()
 	} else {
 		buf = msg.Pkt6.ToBytes()

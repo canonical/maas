@@ -28,8 +28,6 @@ import (
 	"github.com/insomniacslk/dhcp/dhcpv4"
 	"github.com/insomniacslk/dhcp/dhcpv6"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
 	"golang.org/x/sync/semaphore"
 
 	"maas.io/core/src/maasagent/internal/dhcp/xdp"
@@ -47,7 +45,7 @@ var bufPool = &sync.Pool{
 
 var (
 	ErrInvalidBuffer = errors.New("invalid buffer received from pool")
-	ErrNoSocketFound = errors.New("no dhcp socket found for IP version and interface")
+	ErrNoSocketFound = errors.New("no DHCP socket found for IP version and interface")
 )
 
 type Handler4 interface {
@@ -56,50 +54,6 @@ type Handler4 interface {
 
 type Handler6 interface {
 	ServeDHCP6(context.Context, Message) error
-}
-
-type socket interface {
-	IfaceIdx() int
-	Conn() net.PacketConn
-	Close() error
-}
-
-type socket4 struct {
-	conn       net.PacketConn
-	pktConn    *ipv4.PacketConn
-	ifaceName  string
-	ifaceIndex int
-}
-
-func (s *socket4) IfaceIdx() int {
-	return s.ifaceIndex
-}
-
-func (s *socket4) Conn() net.PacketConn {
-	return s.conn
-}
-
-func (s *socket4) Close() error {
-	return s.pktConn.Close()
-}
-
-type socket6 struct {
-	conn       net.PacketConn
-	pktConn    *ipv6.PacketConn
-	ifaceName  string
-	ifaceIndex int
-}
-
-func (s *socket6) IfaceIdx() int {
-	return s.ifaceIndex
-}
-
-func (s *socket6) Conn() net.PacketConn {
-	return s.conn
-}
-
-func (s *socket6) Close() error {
-	return s.pktConn.Close()
 }
 
 type Message struct {
@@ -117,7 +71,7 @@ type Server struct {
 	xdpProg  *xdp.Program
 	inflight *semaphore.Weighted
 	links    []link.Link
-	sockets  []socket
+	sockets  []Socket
 	ifaces   []*net.Interface
 }
 
@@ -157,14 +111,10 @@ func NewServer(ifaces []string, xdpProg *xdp.Program, h4 Handler4, h6 Handler6) 
 	return s, nil
 }
 
-func (s *Server) GetSocketFor(ipVersion int, ifaceIdx int) (socket, error) {
+func (s *Server) GetSocketFor(ipv IPVersion, ifaceIdx int) (Socket, error) {
 	for _, sock := range s.sockets {
-		if sock.IfaceIdx() == ifaceIdx {
-			if _, ok := sock.(*socket4); ok && ipVersion == 4 {
-				return sock, nil
-			} else if _, ok := sock.(*socket6); ok && ipVersion == 6 {
-				return sock, nil
-			}
+		if sock != nil && sock.IfaceIdx() == ifaceIdx && sock.IPVersion() == ipv {
+			return sock, nil
 		}
 	}
 
@@ -177,12 +127,7 @@ func (s *Server) listen4(iface *net.Interface) error {
 		return err
 	}
 
-	s.sockets = append(s.sockets, &socket4{
-		ifaceIndex: iface.Index,
-		ifaceName:  iface.Name,
-		conn:       conn,
-		pktConn:    ipv4.NewPacketConn(conn), // TODO determine whether we need to join multicast groups
-	})
+	s.sockets = append(s.sockets, NewIPv4Socket(conn, iface.Name, iface.Index))
 
 	return nil
 }
@@ -193,12 +138,7 @@ func (s *Server) listen6(iface *net.Interface) error {
 		return err
 	}
 
-	s.sockets = append(s.sockets, &socket6{
-		ifaceIndex: iface.Index,
-		ifaceName:  iface.Name,
-		conn:       conn,
-		pktConn:    ipv6.NewPacketConn(conn),
-	})
+	s.sockets = append(s.sockets, NewIPv6Socket(conn, iface.Name, iface.Index))
 
 	return nil
 }
@@ -397,7 +337,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 	errChan := make(chan error)
 
 	for _, sock := range s.sockets {
-		go func(s socket) {
+		go func(s Socket) {
 			for {
 				select {
 				case <-ctx.Done():
@@ -429,7 +369,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 						msg.SrcPort = uint16(a.Port) //nolint:gosec // port number will not overflow uint16
 					}
 
-					if _, ok := s.(*socket4); ok {
+					if s.IPVersion() == IPv4 {
 						msg.Pkt4, err = dhcpv4.FromBytes(buf[:n])
 					} else {
 						msg.Pkt6, err = dhcpv6.FromBytes(buf[:n])
