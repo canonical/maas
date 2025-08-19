@@ -172,7 +172,7 @@ func (s *Server) GetSocketFor(ipVersion int, ifaceIdx int) (socket, error) {
 }
 
 func (s *Server) listen4(iface *net.Interface) error {
-	conn, err := newDHCP4Conn(iface, true)
+	conn, err := newDHCP4Conn(iface)
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (s *Server) listen4(iface *net.Interface) error {
 }
 
 func (s *Server) listen6(iface *net.Interface) error {
-	conn, err := newDHCP6Conn(iface, true)
+	conn, err := newDHCP6Conn(iface)
 	if err != nil {
 		return err
 	}
