@@ -11,7 +11,11 @@ from aiohttp.client_exceptions import ClientError
 import structlog
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
-from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
+from temporalio.exceptions import (
+    ApplicationError,
+    CancelledError,
+    WorkflowAlreadyStartedError,
+)
 from temporalio.service import RPCError
 from temporalio.workflow import (
     ActivityCancellationType,
@@ -80,6 +84,7 @@ CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME = (
     "cancel-obsolete-download-workflows"
 )
 GET_SYNCED_REGIONS_ACTIVITY_NAME = "get-synced-regions"
+SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME = "set-global-default-releases"
 
 
 # can't be defined in maascommon due to service layer imports
@@ -93,8 +98,6 @@ class BootSourceProductsMapping:
         | SimpleStreamsBootloaderProductList
     ]
 
-
-SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME = "set-global-default-releases"
 
 logger = structlog.get_logger()
 
@@ -265,6 +268,11 @@ class BootResourcesActivity(ActivityBase):
             raise ApplicationError(
                 str(ex), type=ex.__class__.__name__
             ) from None
+        except (asyncio.CancelledError, CancelledError) as ex:
+            lfile.unlink()
+            await self.report_progress(param.rfile_ids, 0)
+            # re-raise it as it is since temporal will propagate this to the parent wf
+            raise ex
         finally:
             lfile.release_lock()
 

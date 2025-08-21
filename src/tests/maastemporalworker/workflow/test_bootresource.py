@@ -1,6 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+import asyncio
 from collections.abc import AsyncGenerator
 import hashlib
 from itertools import islice, repeat
@@ -18,7 +19,11 @@ from temporalio.client import (
     WorkflowFailureError,
     WorkflowHandle,
 )
-from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
+from temporalio.exceptions import (
+    ApplicationError,
+    CancelledError,
+    WorkflowAlreadyStartedError,
+)
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
@@ -525,6 +530,36 @@ class TestDownloadBootresourcefileActivity:
         )
         res = await env.run(boot_activities.download_bootresourcefile, param)
         assert res is False
+        mock_local_file.unlink.assert_called_once()
+        boot_activities.report_progress.assert_awaited_once_with(
+            param.rfile_ids, 0
+        )
+        mock_local_file.release_lock.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "exception",
+        [CancelledError(), asyncio.CancelledError()],
+    )
+    async def test_local_file_gets_unlinked_when_activity_is_cancelled(
+        self,
+        mock_local_file: Mock,
+        boot_activities: BootResourcesActivity,
+        exception,
+    ) -> None:
+        # Acquire lock is not the responsible of raising all these exceptions,
+        # but we use it to avoid patching the rest of the function
+        mock_local_file.acquire_lock.side_effect = exception
+        env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
+        param = ResourceDownloadParam(
+            rfile_ids=[1],
+            source_list=["http://maas-image-stream.io"],
+            sha256="0" * 64,
+            filename_on_disk="0" * 7,
+            total_size=100,
+        )
+        with pytest.raises(type(exception)):
+            await env.run(boot_activities.download_bootresourcefile, param)
         mock_local_file.unlink.assert_called_once()
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, 0
