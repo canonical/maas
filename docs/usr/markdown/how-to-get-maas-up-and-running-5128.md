@@ -92,7 +92,7 @@ postgresql   RUNNING
    ```bash
    maas $PROFILE maas set-config name=upstream_dns value="8.8.8.8"
    ```
-3. Add an SSH key:
+3. Add an SSH key (`$SSH_KEY` must be set to a valid SSH key):
    ```bash
    maas $PROFILE sshkeys create "key=$SSH_KEY"
    ```
@@ -105,6 +105,21 @@ postgresql   RUNNING
 - Save and apply
 
 ### CLI
+Find the subnet CIDR and fabric you want using this expression:
+```bash
+maas $PROFILE subnets read | jq -r '
+  ["subnet", "|", "fabric ID", "|", "gateway IP"],          # header                                    
+  (.[] | [ .cidr, "|", (.vlan.fabric_id|tostring), "|", .gateway_ip ]) #rows
+  | @tsv
+' | column -t
+```
+
+Find the precise name of the primary rack controller with this expression, which always finds the primary rack, regardless of how many racks are active:
+```bash
+maas $PROFILE rack-controllers read | jq -r '.[] | .interface_set[] | .vlan?.primary_rack // empty'
+```
+
+Plug those values into the following commands to configure DHCP:
 ```bash
 maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True primary_rack=$PRIMARY_RACK_CONTROLLER
 maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY

@@ -1,6 +1,16 @@
 This guide explains how to back up and restore MAAS. You can either create a full backup (database + snap state) or a package-level backup (database + key files).
 
-## Prerequisites
+## Back up a POC database
+
+In many proof-of-concept (POC) environments, the `maas_test_db` ends up serving as the foundation for production. Backing it up protects the effort you’ve already invested in setup and configuration. Fortunately, the procedure is a simple one-line command:
+
+```bash
+pg_dump maasdb -U maas -h /var/snap/maas-test-db/common/postgres/sockets > dump.sql
+```
+
+Be sure to use a memorable label for the dump file.
+
+## Clean reset production backup
 
 - Administrator privileges on the MAAS host.
 - Access to the PostgreSQL service used by MAAS.
