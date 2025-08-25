@@ -1,6 +1,4 @@
-# Manage MAAS images and streams
 
-## Why this matters
 MAAS deploys machines from a repository of operating system images called a SimpleStreams source. There are two image streams:
 
 - Stable – fully tested, production-ready (default).
