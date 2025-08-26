@@ -83,16 +83,24 @@ sudo systemctl start maas-regiond
 ```
 Check logs for errors.
 
-### Enable HA PostgreSQL
+### Allow HA MAAS to access the database
 All region controllers share the same PostgreSQL DB.
 
-1. Allow the secondary API server:
+1. Allow each API server:
    ```shell
-   echo "host maasdb maas $SECONDARY_API_IP/32 md5" | sudo tee -a /etc/postgresql/9.5/main/pg_hba.conf
+   echo "host maasdb maas $API_IP/32 scram-sha-256" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf
    sudo systemctl restart postgresql
    ```
 
 2. Add the region controller:
+
+**Snap**
+   ```shell
+   sudo snap install maas
+   sudo maas init region
+   ```
+   
+**Debian packages**
    ```shell
    sudo apt install maas-region-api
    ```
@@ -119,20 +127,7 @@ Each worker requires 11 PostgreSQL connections. Recommended: one per CPU, max 8.
 Adding a second rack controller automatically balances BMC duties.
 
 ### DHCP HA
-Rack controllers replicate DHCP leases. Example configuration:
-```yaml
-failover peer "failover-partner" {
-     primary;
-     address dhcp-primary.example.com;
-     peer address dhcp-secondary.example.com;
-     split 255;
-}
-failover peer "failover-partner" {
-     secondary;
-     address dhcp-secondary.example.com;
-     peer address dhcp-primary.example.com;
-}
-```
+Rack controllers replicate DHCP leases. No user action is required.
 
 Enable via:
 - UI: *Subnets* > VLAN > *Reconfigure DHCP*
@@ -145,6 +140,7 @@ Enable via:
 
 ### Multiple region endpoints
 Define endpoints manually:
+
 - Snap: `/var/snap/maas/current/rackd.conf`
 - Package: `/etc/maas/rackd.conf`
 ```yaml
@@ -153,8 +149,10 @@ maas_url:
   - http://<ip2>:<port>/MAAS/
 ```
 
+These are the initial endpoints.  Once the rack successfully connect to a region, it receives the list of all region endpoints, and will connect to these other regions as well.
+
 ### Region controller HA
-- Requires PostgreSQL HA.
+- PostgreSQL HA is strongly recommended.
 - Each region controller may need 40 DB connections under load. Increase `max_connections` in PostgreSQL.
 
 ### Highly-available API with HAProxy
