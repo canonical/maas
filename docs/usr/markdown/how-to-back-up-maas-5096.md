@@ -1,121 +1,162 @@
-MAAS uses standard command-line utilities for simple, familiar backups.  The options described here allow you to either back up and restore everything MAAS-related, or just back up key packages and files.
+This guide explains how to back up and restore MAAS. You can either create a full backup (database + snap state) or a package-level backup (database + key files).
 
-## Clean reset backup
+## Prerequisites
 
-The method uses `pg_dumpall` the entire database and make a complete snapshot of MAAS.
+- Administrator privileges on the MAAS host.
+- Access to the PostgreSQL service used by MAAS.
+- Sufficient storage space in `<backup-path>` for database dumps and snapshots.
+- Installed utilities: `pg_dumpall`, `systemctl`, `snap`, `tar`.
 
-### Back up procedure
+## Option 1: Full backup and restore (snap + database)
 
-1. Find the PostgreSQL service:
-   ```sh
+This method creates a complete backup of MAAS, including the PostgreSQL database and the snap environment.
+
+### Back up MAAS
+
+1. Identify the PostgreSQL service:
+   ```bash
    sudo systemctl list-units --type=service | grep postgres
    ```
-2. Create backup directory:
-   ```sh
+
+2. Create a backup directory:
+   ```bash
    mkdir -p <backup-path>/$(date +%s)
    ```
-3. Dump database:
-   ```sh
+
+3. Dump the database:
+   ```bash
    sudo -u postgres pg_dumpall -c > "<backup-path>/$(date +%s)_dump.sql"
    ```
+
 4. Stop MAAS:
-   ```sh
+   ```bash
    sudo snap stop maas
    ```
+
 5. (Optional) Stop PostgreSQL:
-   ```sh
+   ```bash
    sudo systemctl stop postgresql.service
    ```
-6. Snap backup:
-   ```sh
+
+6. Save a snap backup:
+   ```bash
    sudo snap save maas
    ```
-7. Export snapshot:
-   ```sh
+
+7. Export the snapshot:
+   ```bash
    sudo snap export-snapshot <snapshot-id> <backup-path>/$(date +%s)_snapshot
    ```
+
 8. Restart services:
-   ```sh
+   ```bash
    sudo systemctl start postgresql.service
    sudo snap restart maas
    ```
 
-### Restore
+### Restore MAAS
 
-1. Stop MAAS & remove instance:
-   ```sh
+1. Stop and remove the MAAS snap:
+   ```bash
    sudo snap stop maas && sudo snap remove maas
    ```
-2. Restore database:
-   ```sh
+
+2. Restore the database:
+   ```bash
    sudo -u postgres psql -f <backup-path>/<dump.sql> postgres
    ```
-3. Import & restore snapshot:
-   ```sh
+
+3. Import and restore the snapshot:
+   ```bash
    sudo snap import-snapshot <backup-path>/<snapshot>
    sudo snap restore <snapshot-id>
    ```
+
 4. Restart services:
-   ```sh
+   ```bash
    sudo systemctl start postgresql.service
    sudo snap restart maas
    ```
 
-## Package backup
+**Verification:**
+- Run `maas status` to confirm services are running.
+- Log in to the MAAS web UI to confirm data integrity.
 
-Backs up PostgreSQL and key MAAS files.
+## Option 2: Package-level backup and restore
 
-### Backup
+This method backs up only the PostgreSQL database and key MAAS configuration/data files.
 
-1. Find PostgreSQL service:
-   ```sh
+### Back up MAAS
+
+1. Identify the PostgreSQL service:
+   ```bash
    sudo systemctl list-units --type=service | grep postgres
    ```
-2. Create backup directory:
-   ```sh
+
+2. Create a backup directory:
+   ```bash
    mkdir -p <backup-path>/$(date +%s)
    ```
-3. Dump database:
-   ```sh
+
+3. Dump the database:
+   ```bash
    sudo -u postgres pg_dumpall -c > "<backup-path>/$(date +%s)_dump.sql"
    ```
+
 4. Stop MAAS services:
-   ```sh
+   ```bash
    sudo systemctl stop maas-dhcpd.service maas-rackd.service maas-regiond.service
    ```
+
 5. (Optional) Stop PostgreSQL:
-   ```sh
+   ```bash
    sudo systemctl stop postgresql.service
    ```
+
 6. Archive MAAS files:
-   ```sh
-   sudo tar cvpzWf <backup-path>/$(date +%s)_maas_backup.tgz --exclude=/var/lib/maas/boot-resources /etc/maas /var/lib/maas
+   ```bash
+   sudo tar cvpzWf <backup-path>/$(date +%s)_maas_backup.tgz        --exclude=/var/lib/maas/boot-resources        /etc/maas /var/lib/maas
    ```
+
 7. Restart services:
-   ```sh
+   ```bash
    sudo systemctl start postgresql.service
    sudo snap restart maas
    ```
 
-### Restore
+### Restore MAAS
 
-1. Reinstall Ubuntu (if possible).
+1. Reinstall Ubuntu (if required).
 2. Ensure PostgreSQL is installed.
-3. Restore database:
-   ```sh
+3. Restore the database:
+   ```bash
    sudo -u postgres psql -f <backup-path>/<dump.sql> postgres
    ```
-4. Install [MAAS from packages](https://maas.io/docs/how-to-install-maas#p-9034-install-maas-snap-or-packages).
+
+4. Install [MAAS from packages](https://canonical.com/maas/docs/how-to-install-maas#p-9034-install-maas-snap-or-packages).
+
 5. Stop MAAS services:
-   ```sh
+   ```bash
    sudo systemctl stop maas-dhcpd.service maas-rackd.service maas-regiond.service
    ```
-6. Extract backup:
-   ```sh
+
+6. Extract the backup archive:
+   ```bash
    sudo tar xvzpf <backup-path>/<backup.tgz> -C /
    ```
+
 7. Restart services:
-   ```sh
+   ```bash
    sudo systemctl start postgresql.service
    sudo systemctl restart maas-dhcpd.service maas-rackd.service maas-regiond.service
    ```
+
+**Verification:**
+- Run `systemctl status maas-*` to confirm services are active.
+- Check that `/etc/maas` and `/var/lib/maas` contain the expected configuration and data.
+
+## Next steps
+
+- Discover how to [manage MAAS networks](https://canonical.com/maas/docs/how-to-manage-networks).
+- Learn more about [about controllers in MAAS](https://canonical.com/maas/docs/about-controllers).
+- Continue with the [provisioning ladder overview](https://canonical.com/maas/how-it-works) to understand the MAAS lifecycle.
