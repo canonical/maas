@@ -13,7 +13,7 @@ Currently, the library provides eight endpoints:
 - version
 - zones
 
-See the [API documentation](https://maas.io/docs/api) for more info.
+See the [API documentation](https://canonical.com/maas/docs/api) for more info.
 
 ## Using python-libmaas
 

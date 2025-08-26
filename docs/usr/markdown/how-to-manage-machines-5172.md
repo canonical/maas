@@ -186,7 +186,7 @@ Newly-created LXD VMs are automatically commissioned by default.
 
 #### Move VMs between LXD projects
 
-LXD VMs can be moved between [LXD projects](https://maas.io/docs/about-lxd).
+LXD VMs can be moved between [LXD projects](https://canonical.com/maas/docs/about-lxd).
 
 ```bash
     lxc move $VM_NAME $VM_NAME --project default --target-project $PROJECT_NAME
@@ -340,7 +340,7 @@ maas $PROFILE machine read $SYSTEM_ID
 
 ### Configure hardware sync interval
 
-Configure the sync interval in [MAAS settings](https://maas.io/docs/configuration-reference#p-17901-maas-behavior-settings).
+Configure the sync interval in [MAAS settings](https://canonical.com/maas/docs/configuration-reference#p-17901-maas-behavior-settings).
 
 ### Configure kernels
 
@@ -428,7 +428,7 @@ maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=flat
 
 The flat layout is ideal for general-purpose filesystems that support large files and volumes.  A flat layout supports a short list of options, including boot size, root size, and root device designation.
 
-[About the flat layout](https://maas.io/docs/about-machine-customization#p-17465-flat-storage-layout) | [Flat layout setup reference](https://maas.io/docs/reference-maas-storage#p-17455-flat-layout)
+[About the flat layout](https://canonical.com/maas/docs/about-machine-customization#p-17465-flat-storage-layout) | [Flat layout setup reference](https://canonical.com/maas/docs/reference-maas-storage#p-17455-flat-layout)
 
 #### LVM layout
 
@@ -444,7 +444,7 @@ maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=lvm
 
 LVM comes in handy when using multiple physical disks as a single, larger volume -- something that a flat layout will not support.  In addition to the `flat` configuration options, LVM also supports naming volume groups, as well as creating logical volumes with specific names and sizes.
 
-[About the LVM layout](https://maas.io/docs/about-machine-customization#p-17465-lvm-layout) | [LVM layout setup reference](https://maas.io/docs/reference-maas-storage#p-17455-lvm-layout)
+[About the LVM layout](https://canonical.com/maas/docs/about-machine-customization#p-17465-lvm-layout) | [LVM layout setup reference](https://canonical.com/maas/docs/reference-maas-storage#p-17455-lvm-layout)
 
 #### bcache layout
 
@@ -466,7 +466,7 @@ The `bcache` layout is useful and cost effective when you want to improve I/O pe
 
 `bcache` introduces new options: the physical block device to use for caching, and the size of cache partition (or "no partition" to use the whole block device).
 
-[About the bcache layout](https://maas.io/docs/about-machine-customization#p-17465-bcache-layout) | [bcache layout setup reference](https://maas.io/docs/reference-maas-storage#p-17455-bcache-layout)
+[About the bcache layout](https://canonical.com/maas/docs/about-machine-customization#p-17465-bcache-layout) | [bcache layout setup reference](https://canonical.com/maas/docs/reference-maas-storage#p-17455-bcache-layout)
 
 #### VMFS6/VMFS7 layouts
 
@@ -486,7 +486,7 @@ maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=vmfs7
 
 The choice of VMFS6 or VMFS7 depends on the VMWare version being deployed.  Both layouts allow you to specify the root device and root filesystem size. Note that the resultant filesystem layout should not be altered.
 
-[VMFS6/7 layout setup reference](https://maas.io/docs/reference-maas-storage#p-17455-vmfs6-layout)
+[VMFS6/7 layout setup reference](https://canonical.com/maas/docs/reference-maas-storage#p-17455-vmfs6-layout)
 
 #### Blank layout
 
@@ -678,7 +678,7 @@ maas $PROFILE machine deploy $SYSTEM_ID
 
 Deploy an ephemeral instance (into machine RAM, ignoring any disk drives).
 
-Learn more about [ephemeral deployment](https://maas.io/docs/about-deploying-machines#p-17464-deploying-ephemeral-os-instances-maas-35-and-higher)
+Learn more about [ephemeral deployment](https://canonical.com/maas/docs/about-deploying-machines#p-17464-deploying-ephemeral-os-instances-maas-35-and-higher)
 
 **UI**
 *Machines* > *[machine(s)]* > *Take action* > *Deploy* > *Deploy in memory* > *Deploy machine*

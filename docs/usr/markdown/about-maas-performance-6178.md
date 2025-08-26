@@ -25,7 +25,7 @@ These examples represent just a part of our comprehensive performance improvemen
 
 ## Help us with metrics
 
-Contribute by [tracking your MAAS metrics](https://maas.io/docs/how-to-monitor-maas) and sharing them with us. Your input on machine counts, network sizes, and performance experiences is valuable. Join the discussion on our [Discourse performance forum](https://discourse.maas.io/c/maas-performance/26).
+Contribute by [tracking your MAAS metrics](https://canonical.com/maas/docs/how-to-monitor-maas) and sharing them with us. Your input on machine counts, network sizes, and performance experiences is valuable. Join the discussion on our [Discourse performance forum](https://discourse.maas.io/c/maas-performance/26).
 
 ## Recent + upcoming
 

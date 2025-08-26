@@ -73,7 +73,7 @@ MAAS logs timestamped records of commissioning events for every machine.  If com
 
 Scripts log full results regardless of success or failure. For more details, choose the option to leave the machine on after commissioning. You can then connect to the machine and examine its logs. 
 
-If you've added your [SSH key](https://maas.io/docs/sshkey) to MAAS, you may connect with SSH to the machine's IP with a username of `ubuntu`. Enter `sudo -i` to get root access.
+If you've added your [SSH key](https://canonical.com/maas/docs/sshkey) to MAAS, you may connect with SSH to the machine's IP with a username of `ubuntu`. Enter `sudo -i` to get root access.
 
 ## Automatic selection 
 
@@ -168,7 +168,7 @@ You can test machine hardware using any available Linux utility. You can create 
 
 ## Interpreting logs 
 
-You can also examine log details on any particular tests or just review the raw log output. Help interpreting these logs can be found under the [Logging](https://maas.io/docs/about-maas-logging) section of this documentation.
+You can also examine log details on any particular tests or just review the raw log output. Help interpreting these logs can be found under the [Logging](https://canonical.com/maas/docs/about-maas-logging) section of this documentation.
 
 ## Testing networks 
 

@@ -1,4 +1,4 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/configuring-storage-layouts" target = "_blank">Let us know.</a>*
+> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://canonical.com/maas/docs/configuring-storage-layouts" target = "_blank">Let us know.</a>*
 
 MAAS supports multiple storage layouts, including options for non-UEFI-compatible systems.
 

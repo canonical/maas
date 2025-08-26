@@ -1,6 +1,6 @@
 Machine groups allow you to categorize machines for easy recognition and bulk action.
 
-[About machine groups](https://maas.io/docs/about-machine-groups).
+[About machine groups](https://canonical.com/maas/docs/about-machine-groups).
 
 ## Availability zones
 

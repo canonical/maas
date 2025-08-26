@@ -5,7 +5,7 @@ MAAS version 3.2 and higher provide the capability to customise deployed machine
 - add or remove PCI devices
 - add or remove USB devices
 
-While deploying a machine, you can configure that machine to periodically sync its [hardware configuration](https://maas.io/docs/about-deploying-running-machines#p-17466-hardware-sync).  Deployed machines will also  passively update changes to the BMC and tags for that machine, as these changes are made.
+While deploying a machine, you can configure that machine to periodically sync its [hardware configuration](https://canonical.com/maas/docs/about-deploying-running-machines#p-17466-hardware-sync).  Deployed machines will also  passively update changes to the BMC and tags for that machine, as these changes are made.
 
 ## Hardware sync 
 
