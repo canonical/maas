@@ -2,15 +2,15 @@ MAAS provides pre-configured [networks](https://canonical.com/maas/docs/about-ma
 
 This page shows you how to:
 
-- Manage subnets (the foundation of IP allocation).
+- Manage subnets.
 - Create and use VLANs.
 - Allocate and reserve IP addresses.
-- Configure and maintain interfaces (NICs, bonds, bridges).
+- Configure and maintain interfaces (NICs, bonds, bridges, VLANs).
 - Use network discovery to detect devices.
 - Apply advanced patterns such as dual NICs and loopbacks.
 
 
-## Quick reference: common networking commands
+## Cheat sheet: common networking commands
 
 Here are the most common MAAS networking commands at a glance. Use this cheat sheet if you just need the basics. The sections below provide full detail and context.
 
@@ -18,6 +18,7 @@ Here are the most common MAAS networking commands at a glance. Use this cheat sh
 # Subnets
 maas $PROFILE subnets read
 maas $PROFILE subnet update $SUBNET_CIDR managed=true
+maas $PROFILE subnets create cidr=$CIDR
 
 # VLANs
 maas $PROFILE vlans create $FABRIC_ID name=$VLAN_NAME vid=$VLAN_ID
@@ -27,14 +28,14 @@ maas $PROFILE interfaces create-vlan $SYSTEM_ID vlan=$VLAN_ID parent=$INTERFACE_
 maas $PROFILE ipaddresses reserve ip=$IP_ADDRESS
 maas $PROFILE ipranges create type=dynamic subnet=$SUBNET start_ip=$LOW end_ip=$HIGH
 
-# Interfaces
+# Interfaces (see section below for key-value pairs)
 maas $PROFILE interfaces read $SYSTEM_ID
 maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID key=value...
 
 # Routes
 maas $PROFILE interface link-subnet $SYSTEM_ID $INTERFACE_ID subnet=$SUBNET_ID mode=STATIC ip_address=10.0.0.101
 
-# Discovery
+# Discovery (see section below for additional flags that may be important to you)
 maas $PROFILE maas set-config name=network_discovery value=enabled
 ```
 
