@@ -31,3 +31,100 @@ class TestAgentCertificateService(ServiceCommonTests):
             agent_id=1,
             revoked_at=None,
         )
+
+    async def test_update_many(
+        self, service_instance, test_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_many(
+                service_instance, test_instance, builder_model
+            )
+
+    async def test_update_one(
+        self, service_instance, test_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_one(
+                service_instance, test_instance, builder_model
+            )
+
+    async def test_update_one_not_found(self, service_instance, builder_model):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_one_not_found(
+                service_instance, builder_model
+            )
+
+    async def test_update_one_etag_match(
+        self, service_instance, test_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_one_etag_match(
+                service_instance, test_instance, builder_model
+            )
+
+    async def test_update_one_etag_not_matching(
+        self, service_instance, test_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_one_etag_not_matching(
+                service_instance, test_instance, builder_model
+            )
+
+    async def test_update_by_id(
+        self, service_instance, test_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_by_id(
+                service_instance, test_instance, builder_model
+            )
+
+    async def test_update_by_id_not_found(
+        self, service_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_by_id_not_found(
+                service_instance, builder_model
+            )
+
+    async def test_update_by_id_etag_match(
+        self, service_instance, test_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_by_id_etag_match(
+                service_instance, test_instance, builder_model
+            )
+
+    async def test_update_by_id_etag_not_matching(
+        self, service_instance, test_instance, builder_model
+    ):
+        with pytest.raises(
+            NotImplementedError,
+            match="Update is not supported for agent certificates",
+        ):
+            await super().test_update_by_id_etag_not_matching(
+                service_instance, test_instance, builder_model
+            )

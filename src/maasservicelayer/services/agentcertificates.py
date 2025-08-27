@@ -21,3 +21,25 @@ class AgentCertificateService(
         repository: AgentCertificatesRepository,
     ):
         super().__init__(context, repository)
+
+    async def update_by_id(self, id, builder, etag_if_match=None):
+        raise NotImplementedError(
+            "Update is not supported for agent certificates"
+        )
+
+    async def update_many(self, query, builder):
+        raise NotImplementedError(
+            "Update is not supported for agent certificates"
+        )
+
+    async def update_one(self, query, builder, etag_if_match=None):
+        raise NotImplementedError(
+            "Update is not supported for agent certificates"
+        )
+
+    async def _update_resource(
+        self, existing_resource, builder, etag_if_match=None
+    ):
+        raise NotImplementedError(
+            "Update is not supported for agent certificates"
+        )
