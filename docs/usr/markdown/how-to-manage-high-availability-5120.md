@@ -19,7 +19,8 @@ sudo apt install maas-rack-controller
 sudo maas-rack register --url $MAAS_URL --secret $SECRET
 ```
 
-The `$SECRET` is stored at:
+The `$SECRET` is generated in the region controllers, and is stored at:
+
 - Snap: `/var/snap/maas/common/maas/secret`
 - Package: `/var/lib/maas/secret`
 
@@ -106,6 +107,16 @@ All region controllers share the same PostgreSQL DB.
    ```
 
 3. Configure it:
+
+**Snap**
+   ```shell
+   sudo snap install maas --channel=$MAAS_VERSION
+   sudo maas init region
+   # will prompt for DB conn string and     MAAS_URL
+   sudo maas createadmin # create admin account
+   ```
+   
+**Debian packages**
    ```shell
    sudo scp ubuntu@$PRIMARY_API:/etc/maas/regiond.conf /etc/maas/
    sudo maas-region local_config_set --database-host $PRIMARY_PG_SERVER
@@ -115,6 +126,15 @@ All region controllers share the same PostgreSQL DB.
 
 ### Boost region performance
 Increase workers in `/etc/maas/regiond.conf`:
+
+**Snap**
+```bash
+EDITOR=<name of editor>
+sudo $EDITOR /var/snap/maas/current/regiond.conf
+sudo snap restart maas
+```
+
+**Debian packages**
 ```yaml
 num_workers: 8
 ```
@@ -130,9 +150,9 @@ Adding a second rack controller automatically balances BMC duties.
 Rack controllers replicate DHCP leases. No user action is required.
 
 Enable via:
-- UI: *Subnets* > VLAN > *Reconfigure DHCP*
+- UI: *Subnets* > VLAN > *Configure DHCP*
 - CLI:
-  ```shell
+  ```shell 
   vid=$(maas maas subnets read | jq -r '.[] | select(.cidr == "10.0.0.0/24") | .vlan.vid')
   fabric_id=$(maas maas fabrics read | jq -r '.[] | select(.name == "fabric-1") | .id')
   maas maas vlan update $fabric_id $vid primary_rack=$(hostname) dhcp_on=true
