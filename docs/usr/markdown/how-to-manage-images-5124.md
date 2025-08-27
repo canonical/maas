@@ -51,12 +51,12 @@ maas $PROFILE boot-source delete $SOURCE_ID
 
 ### Update a boot source
 ```nohighlight
-maas $PROFILE boot-source update $SOURCE_ID     url=$URL keyring_filename=$KEYRING_FILE
+maas $PROFILE boot-source update $SOURCE_ID url=$URL keyring_filename=$KEYRING_FILE
 ```
 
 ### Add a new boot source
 ```nohighlight
-maas $PROFILE boot-sources create     url=$URL keyring_filename=$KEYRING_FILE
+maas $PROFILE boot-sources create url=$URL keyring_filename=$KEYRING_FILE
 ```
 💡 Use `/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg` if the new source mirrors the official streams.
 
