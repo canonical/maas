@@ -1,21 +1,42 @@
-Understanding MAAS events is crucial for debugging and verifying system functionality. These events represent changes in MAAS components like controllers, networks, or machines, triggered internally, by external factors, or through user actions such as machine commissioning.
 
-## Viewing events
+Events in MAAS record what’s happening inside the system — from machine state changes to user actions and configuration updates. Understanding them helps you:
 
-1. **MAAS Logs**: Offer raw, detailed data, accessible directly from the file system.
-2. **UI Event Log**: Provides a summarised view through a user-friendly interface.
-3. **CLI `events query` Command**: Quick, text-based overview of events.
+- Debug commissioning and deployment issues.
+- Verify that operations completed as expected.
+- Maintain an audit trail for compliance and governance.
 
-Each source varies in detail and perspective. Here's an example related to a node named "fun-zebra".
+Events can be triggered by:
+- Internal processes (e.g., a machine moving from commissioning to testing).
+- External conditions (e.g., a controller restarting).
+- User actions (e.g., acquiring or deleting a machine).
 
-## MAAS log sample
+
+## Ways to view events
+
+You can explore events in three different ways, depending on how much detail you need:
+
+- MAAS logs (raw detail)
+  Directly from the file system, with full context. Best for deep troubleshooting.
+
+- CLI `events query` command (structured JSON)
+  A quick way to filter and script against event data.
+
+- UI Event Log (summary view)
+  A user-friendly log of major events, easy to read at a glance.
+
+
+## Examples
+
+For a machine called `fun-zebra`:
+
+Log file (`maas.log`)
 
 ```nohighlight
 maas.log:2022-09-29T15:04:07.795515-05:00 neuromancer maas.node: [info] fun-zebra: Status transition from COMMISSIONING to TESTING
 maas.log:2022-09-29T15:04:17.288763-05:00 neuromancer maas.node: [info] fun-zebra: Status transition from TESTING to READY
 ```
 
-## CLI output
+CLI output (`events query`)
 
 ```nohighlight
 {
@@ -40,75 +61,80 @@ maas.log:2022-09-29T15:04:17.288763-05:00 neuromancer maas.node: [info] fun-zebr
 }
 ```
 
-## UI log
+UI event log
 
 | Time | Event |
-|---|---|
-|Thu, 29 Sep. 2022 20:04:17 | Node changed status - From 'Testing' to 'Ready' |
-|Thu, 29 Sep. 2022 20:04:07 | Node changed status - From 'Commissioning' to 'Testing' |
+|------|-------|
+| Thu, 29 Sep. 2022 20:04:17 | Node changed status – From *Testing* to *Ready* |
+| Thu, 29 Sep. 2022 20:04:07 | Node changed status – From *Commissioning* to *Testing* |
 
-These sources, while all reliable, offer different levels of detail. Choosing the right one can significantly streamline debugging and system checks.
 
 ## About audit events
 
-MAAS audit logs provide detailed records of changes in machines, users, and settings. The `AUDIT` level logs are particularly useful for tracing historical changes in a MAAS instance. They are crucial for system integrity, troubleshooting, compliance, and governance.
+In addition to standard events, MAAS generates audit events (`AUDIT` level) that focus on:
+
+- Machine lifecycle changes (commissioning, deployment, deletion).
+- User activity (logins, role changes, configuration edits).
+- System settings (DHCP snippets, scripts, and more).
+
+Audit logs are especially valuable for:
+- Compliance and governance.
+- Tracing historical changes.
+- Reconstructing the timeline of a problem.
+
+
+## Working with audit events
 
 ### Fetch audit events
 
-Use the `maas` CLI `events query` command to retrieve audit logs. Fetch all audit logs with:
-
-```nohighlight
+```bash
+# Get all audit logs
 maas $PROFILE events query level=AUDIT
-```
 
-For the latest 20 audit events:
-
-```nohighlight
+# Get the latest 20
 maas $PROFILE events query level=AUDIT limit=20 after=0
 ```
 
 ### Parse the output
 
-Audit logs are in JSON format, suitable for parsing with tools like `jq`. For example:
+Audit logs are JSON, so you can pipe into `jq`:
 
-```nohighlight
+```bash
 maas $PROFILE events query level=AUDIT | jq -r '.events[] | {username, node, description}'
 ```
 
-Alternatively, use text processing utilities like `grep`, `cut`, `sort`, and `sed` for analysis.
+For simpler parsing, standard UNIX text tools (`grep`, `cut`, `sort`, `sed`) also work.
 
-### Audit log structure
+### Typical structure
 
-Audit logs typically follow a verb/noun structure. Examples include:
+Audit events usually follow a verb–noun pattern:
 
 - `Started testing on 'example-node'`
 - `Marked 'old-node' broken`
 - `Deleted the machine 'retired-system'`
 
-### Node audit types
+### Filtering
 
-Audit logs detail node activities including commissioning phases, test results, deployment statuses, and actions like acquiring, rescuing, and deleting.
+Narrow results by hostname or username:
 
-### User audit types
-
-Audit logs also track user activities, account modifications, system configuration changes, and updates to scripts or DHCP snippets.
-
-### Filtering output
-
-Refine audits using filters in the `events query` command. For events related to a specific node:
-
-```nohighlight
+```bash
+# Show audit events for one machine
 maas $PROFILE events query hostname=my-node
-```
 
-For delete actions by a specific user:
-
-```nohighlight
+# Show delete actions by a user
 maas $PROFILE events query username=jane level=AUDIT | grep "Deleted "
 ```
 
-Combining filters yields more targeted audit records, aiding in tailored governance.
+Filters can be combined for precise queries.
 
-### Keeping track
 
-MAAS audit logs are essential for understanding system history. Effectively querying, filtering, and interpreting these logs are key skills for system troubleshooting, compliance, and oversight.
+## Summary
+
+- Events show what’s happening inside MAAS.
+- Audit events add accountability and history.
+- Logs, CLI, and UI each give a different perspective — pick the one that fits your need.
+- Filtering and parsing make large event sets manageable.
+
+## Next steps
+- Discover [how to use logging](https://canonical.com/maas/docs/how-to-use-logging)
+- Scan the [MAAS logging reference](https://canonical.com/maas/docs/maas-logging-reference) to discover the various types of logs available in MAAS
