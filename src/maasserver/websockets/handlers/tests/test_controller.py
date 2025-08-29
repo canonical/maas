@@ -6,6 +6,7 @@ from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
 from maasserver.models import Controller, ControllerInfo, VLAN
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
@@ -23,6 +24,10 @@ from provisioningserver.utils.snap import SnapVersionsInfo
 
 
 class TestControllerHandler(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_vlan_counts_list(self):
         owner = factory.make_admin()
         rack1 = factory.make_RackController(owner=owner)

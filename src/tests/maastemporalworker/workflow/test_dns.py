@@ -89,6 +89,9 @@ class TestDNSConfigActivity:
         env = ActivityEnvironment()
 
         domain = await create_test_domain_entry(fixture)
+        await create_test_subnet_entry(
+            fixture, cidr="10.0.0.0/24", allow_dns=True
+        )
         mock_file = AsyncMock()
         mock_file.__aiter__.return_value = ["           1   ; serial"]
         mock_open = mocker.patch("aiofiles.open")
@@ -121,6 +124,9 @@ class TestDNSConfigActivity:
                 ttl=30,
                 rectype="A",
                 answer=f"10.0.0.{i + 1}",
+                subnet="10.0.0.0/24",
+                rev_zone="0.0.10.in-addr.arpa",
+                ip=f"10.0.0.{i + 1}",
             )
             for i in range(5)
         ]
@@ -150,13 +156,16 @@ class TestDNSConfigActivity:
             activities.get_changes_since_current_serial,
         )
 
-        assert serial == -1
+        assert serial == 0
         assert result.force_reload
 
     async def test__dnspublication_to_dnsupdate(
         self, fixture: Fixture, db: Database, db_connection: AsyncConnection
     ) -> None:
         domain = await create_test_domain_entry(fixture, name="example.com")
+        await create_test_subnet_entry(
+            fixture, cidr="10.0.0.0/24", allow_dns=True
+        )
         iface = await create_test_interface_entry(fixture)
         await create_test_dnsresource_entry(
             fixture, name="test", domain=domain
@@ -187,6 +196,9 @@ class TestDNSConfigActivity:
                         rectype="A",
                         ttl=30,
                         answer="10.0.0.1",
+                        ip="10.0.0.1",
+                        subnet="10.0.0.0/24",
+                        rev_zone="0.0.10.in-addr.arpa",
                     )
                 ],
             ),
@@ -202,6 +214,9 @@ class TestDNSConfigActivity:
                         rectype="A",
                         ttl=None,
                         answer="10.0.0.1",
+                        ip="10.0.0.1",
+                        subnet="10.0.0.0/24",
+                        rev_zone="0.0.10.in-addr.arpa",
                     ),
                     DynamicDNSUpdate(
                         operation=DnsUpdateAction.INSERT,
@@ -210,6 +225,9 @@ class TestDNSConfigActivity:
                         rectype="A",
                         ttl=30,
                         answer="10.0.0.1",
+                        ip="10.0.0.1",
+                        subnet="10.0.0.0/24",
+                        rev_zone="0.0.10.in-addr.arpa",
                     ),
                 ],
             ),
@@ -225,6 +243,9 @@ class TestDNSConfigActivity:
                         rectype="A",
                         ttl=30,
                         answer="10.0.0.1",
+                        ip="10.0.0.1",
+                        subnet="10.0.0.0/24",
+                        rev_zone="0.0.10.in-addr.arpa",
                     )
                 ],
             ),
@@ -621,6 +642,10 @@ class TestDNSConfigActivity:
             activities, "_get_rndc_conf_path"
         )
         mock_get_rndc_config_path.return_value = "/tmp/rndc.conf"
+        mock_get_named_rndc_config_path = mocker.patch.object(
+            activities, "_get_named_rndc_conf_path"
+        )
+        mock_get_named_rndc_config_path.return_value = "/tmp/rndc.conf"
         mock_get_nsupdate_key_path = mocker.patch.object(
             activities, "_get_nsupdate_keys_path"
         )
@@ -681,6 +706,8 @@ $TTL 30
 a 30 IN A 10.0.0.1
 """
 
+        print(mock_file.write.mock_calls)
+
         assert call(expected_conf) in mock_file.write.mock_calls
         assert call(expected_zone_file) in mock_file.write.mock_calls
 
@@ -737,7 +764,10 @@ a 30 IN A 10.0.0.1
 
         domain = await create_test_domain_entry(fixture)
         subnet = await create_test_subnet_entry(
-            fixture, rdns_mode=RdnsMode.ENABLED, allow_dns=True
+            fixture,
+            rdns_mode=RdnsMode.ENABLED,
+            cidr="10.0.0.0/24",
+            allow_dns=True,
         )
         sip = (
             await create_test_staticipaddress_entry(fixture, subnet=subnet)
@@ -751,7 +781,7 @@ a 30 IN A 10.0.0.1
         async with activities.start_transaction() as svc:
             latest_serial = await svc.dnspublications.get_latest_serial()
 
-        assert len(mock_file.write.mock_calls) == 3
+        assert len(mock_file.write.mock_calls) == 5
         assert result.serial == latest_serial
 
     async def test_dynamic_update_dns_configuration(

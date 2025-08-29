@@ -134,6 +134,7 @@ class TestInterfacesService:
             label="testeth0.test-node",
             rtype="A",
             zone=domain.name,
+            answer="10.0.0.1",
         )
 
     async def test_remove_ip_creates_dnspublication(self):

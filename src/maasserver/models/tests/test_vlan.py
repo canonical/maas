@@ -11,6 +11,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
 )
 from maasserver.enum import INTERFACE_TYPE
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import vlan as vlan_module
 from maasserver.models.interface import PhysicalInterface, VLANInterface
 from maasserver.models.notification import Notification
@@ -126,6 +127,10 @@ class TestVLANManager(MAASServerTestCase):
 
 
 class TestVLAN(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_delete_relay_vlan_doesnt_delete_vlan(self):
         with post_commit_hooks:
             relay_vlan = factory.make_VLAN()

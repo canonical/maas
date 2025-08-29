@@ -99,6 +99,7 @@ from maasserver.models import (
     VolumeGroup,
 )
 from maasserver.models import bmc as bmc_module
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import node as node_module
 from maasserver.models.config import NetworkDiscoveryConfig
 import maasserver.models.interface as interface_module
@@ -1002,6 +1003,7 @@ class TestNode(MAASServerTestCase):
         self.patch_autospec(
             node_module, "get_temporal_task_queue_for_bmc"
         ).return_value = ""
+        self.patch(dnspublication_module, "post_commit_do")
 
     def disable_node_query(self):
         self.addCleanup(node_query.signals.enable)
@@ -6835,6 +6837,10 @@ class TestDecomposeMachineMixin:
 class TestDecomposeMachine(MAASServerTestCase, TestDecomposeMachineMixin):
     """Test that a machine in a composable pod is decomposed."""
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_does_nothing_unless_machine(self):
         pod = self.make_composable_pod()
         client = self.fake_rpc_client()
@@ -7799,6 +7805,10 @@ class TestNodeErase(MAASServerTestCase):
 
 
 class TestNodeParentRelationShip(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_children_field_returns_children(self):
         parent = factory.make_Node()
         # Create other node.
@@ -11352,6 +11362,10 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
 
 
 class TestRackController(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_add_chassis_issues_rpc_call(self):
         rackcontroller = factory.make_RackController()
 
@@ -11711,6 +11725,10 @@ class TestRackController(MAASTransactionServerTestCase):
 
 
 class TestRegionController(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_delete_prevented_when_running(self):
         region = factory.make_RegionController()
         factory.make_RegionControllerProcess(region=region)

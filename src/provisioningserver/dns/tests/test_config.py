@@ -729,7 +729,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer=ip_answer,
         )
@@ -740,7 +740,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet
@@ -755,7 +755,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer=str("10.1.1.5"),
         )
@@ -766,7 +766,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet
@@ -781,7 +781,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer="fc55:4c7c:a5ea:57b0:7cad:a076:a844:8001",
         )
@@ -792,7 +792,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet
@@ -807,7 +807,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer=str("10.1.1.161"),
         )
@@ -818,7 +818,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet

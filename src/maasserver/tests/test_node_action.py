@@ -31,6 +31,7 @@ from maasserver.models import (
     signals,
     StaticIPAddress,
 )
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import node as node_module
 from maasserver.models.signals.testing import SignalsDisabled
 import maasserver.node_action as node_action_module
@@ -303,6 +304,7 @@ class TestDeleteAction(MAASServerTestCase):
         self.assertTrue(action.is_permitted())
 
     def test_deletes_node(self):
+        self.patch(dnspublication_module, "post_commit_do")
         node = factory.make_Node()
         admin = factory.make_admin()
         request = factory.make_fake_request("/")

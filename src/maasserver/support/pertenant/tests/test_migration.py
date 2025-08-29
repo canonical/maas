@@ -7,6 +7,7 @@ from unittest.mock import call, sentinel
 
 from django.contrib.auth.models import User
 
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import Node, SSHKey
 from maasserver.support.pertenant import migration
 from maasserver.support.pertenant.migration import (
@@ -39,6 +40,10 @@ def get_ssh_key_string(num=0):
 
 
 class TestFunctions(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def find_legacy_user(self):
         return User.objects.filter(username=legacy_user_name)
 

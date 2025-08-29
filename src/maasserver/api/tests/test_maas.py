@@ -8,6 +8,7 @@ from django.conf import settings
 from django.urls import reverse
 from testtools.content import text_content
 
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
 from maasserver.testing.api import APITestCase
@@ -31,6 +32,10 @@ FORBIDDEN_NAMES = {
 
 
 class TestMAASHandlerAPI(APITestCase.ForUser):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_get_config_default_distro_series(self):
         default_distro_series = factory.make_name("distro_series")
         Config.objects.set_config(

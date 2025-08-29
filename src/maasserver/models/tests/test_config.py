@@ -8,6 +8,7 @@ from django.http import HttpRequest
 from fixtures import TestWithFixtures
 from twisted.internet import reactor
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.events import AUDIT
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -16,7 +17,7 @@ from maascommon.workflows.dhcp import (
 from maasserver import bootsources as bootsources_module
 from maasserver.bootsources import cache_boot_sources
 from maasserver.enum import ENDPOINT_CHOICES
-from maasserver.models import Config, Event, signals
+from maasserver.models import Config, DNSPublication, Event, signals
 import maasserver.models.config
 from maasserver.models.config import ensure_uuid_in_config
 from maasserver.models.vlan import VLAN
@@ -218,6 +219,16 @@ class TestSettingConfig(MAASServerTestCase):
         Config.objects.set_config("enable_http_proxy", False)
         post_commit_do.assert_called_once_with(
             reactor.callLater, 0, cache_boot_sources
+        )
+
+    def test_setting_dns_param_creates_dnspublication(self):
+        mock_create_for_config_update = self.patch(
+            DNSPublication.objects, "create_for_config_update"
+        )
+        Config.objects.set_config("upstream_dns", "127.0.0.1")
+        mock_create_for_config_update.assert_called_once_with(
+            source="configuration upstream_dns set to 127.0.0.1",
+            action=DnsUpdateAction.RELOAD,
         )
 
 

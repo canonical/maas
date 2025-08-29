@@ -127,6 +127,15 @@ class InterfacesService(
 
         if sip.ip:
             await self.dnsresource_service.add_ip(sip, dns_label, domain)
+            await self.dnspublication_service.create_for_config_update(
+                source=f"ip {sip.ip} connected to {node.hostname} on {interface.name}",
+                action=DnsUpdateAction.INSERT,
+                label=dns_label,
+                rtype="A",
+                zone=domain.name,
+                answer=str(sip.ip),
+            )
+
         else:
             try:
                 await self.dnsresource_service.remove_ip(
@@ -136,14 +145,6 @@ class InterfacesService(
                 NoDNSResourceException
             ):  # if a DNSResource doesn't exist, we can ignore this
                 pass
-
-        await self.dnspublication_service.create_for_config_update(
-            source=f"ip {sip.ip} connected to {node.hostname} on {interface.name}",
-            action=DnsUpdateAction.INSERT,
-            label=dns_label,
-            rtype="A",
-            zone=domain.name,
-        )
 
     async def remove_ip(
         self, interface: Interface, sip: StaticIPAddress

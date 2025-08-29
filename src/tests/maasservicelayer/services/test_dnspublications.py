@@ -69,7 +69,7 @@ class TestDNSPublicationsService(ServiceCommonTests):
 
         dnspublication_repository.create.assert_called_once_with(
             builder=DNSPublicationBuilder(
-                serial=2,
+                serial=1,
                 source="",
                 update=DnsUpdateAction.RELOAD,
                 created=now,
@@ -112,7 +112,7 @@ class TestDNSPublicationsService(ServiceCommonTests):
 
         dnspublication_repository.create.assert_called_once_with(
             builder=DNSPublicationBuilder(
-                serial=2,
+                serial=1,
                 source="",
                 update="INSERT example.com test A 30 1.1.1.1",
                 created=now,
