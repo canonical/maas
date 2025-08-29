@@ -41,6 +41,10 @@ class InterfaceClauseFactory(ClauseFactory):
     def with_vlan_id_in(cls, vlan_ids: list[int]) -> Clause:
         return Clause(condition=InterfaceTable.c.vlan_id.in_(vlan_ids))
 
+    @classmethod
+    def with_node_config_id(cls, config_id: int) -> Clause:
+        return Clause(condition=eq(InterfaceTable.c.node_config_id, config_id))
+
 
 def build_interface_links(
     interface: dict[str, list[dict[str, Any]]], reverse=True

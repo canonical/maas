@@ -77,6 +77,7 @@ from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
 from maascommon.constants import NODE_TIMEOUT
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.osystem import BOOT_IMAGE_PURPOSE
 from maascommon.utils.time import systemd_interval_to_seconds
 from maascommon.workflows.deploy import DEPLOY_MANY_WORKFLOW_NAME
@@ -125,6 +126,7 @@ from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.defaultresource import DefaultResource
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
@@ -3098,6 +3100,11 @@ class Node(CleanSave, TimestampedModel):
         delete_node_secrets = partial(
             SecretManager().delete_all_object_secrets,
             self.as_node(),
+        )
+
+        DNSPublication.objects.create_for_config_update(
+            source=f"node {self.hostname} deleted",
+            action=DnsUpdateAction.RELOAD,
         )
 
         bmc = self.bmc
@@ -7125,6 +7132,11 @@ class RackController(Controller):
                     )
                 )
 
+        DNSPublication.objects.create_for_config_update(
+            source=f"rack controller {self.hostname} disconnected",
+            action=DnsUpdateAction.RELOAD,
+        )
+
         # Disable and delete all services related to this node
         self.service_set.mark_dead(self, dead_rack=True)
         self.service_set.all().delete()
@@ -7176,6 +7188,14 @@ class RackController(Controller):
             # Not connected to any regions so the rackd is considered dead.
             Service.objects.mark_dead(self, dead_rack=True)
         else:
+            # First connection of the rack controller requires the DNS to
+            # be reloaded for the internal MAAS domain
+            if len(connections) == 1:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"rack controller {self.hostname} connected",
+                    action=DnsUpdateAction.RELOAD,
+                )
+
             connected_to_processes = {
                 conn.endpoint.process for conn in connections
             }

@@ -30,6 +30,7 @@ from maasserver.dns.zonegenerator import InternalDomainResourseRecord
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.listener import PostgresListenerService
 from maasserver.models import Config, Domain
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -294,6 +295,10 @@ class TestDNSServer(MAASServerTestCase):
 
 
 class TestDNSConfigModifications(TestDNSServer):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_dns_update_all_zones_loads_full_dns_config(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
@@ -504,6 +509,10 @@ class TestIPv6DNS(TestDNSServer):
 class TestGetUpstreamDNS(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_upstream_dns()"""
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_returns_empty_list_if_not_set(self):
         self.assertEqual([], get_upstream_dns())
 
@@ -523,6 +532,7 @@ class TestGetTrustedAcls(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
         self.useFixture(RegionConfigurationFixture())
 
     def test_returns_empty_string_if_no_networks(self):
@@ -578,6 +588,10 @@ class TestGetTrustedNetworks(MAASServerTestCase):
 
 class TestGetInternalDomain(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_internal_domain()"""
+
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
 
     def test_uses_maas_internal_domain_config(self):
         internal_domain = factory.make_name("internal")
@@ -759,6 +773,10 @@ class TestGetResourceNameForSubnet(MAASServerTestCase):
 
 
 class TestProcessDNSUpdateNotify(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_insert(self):
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
@@ -771,7 +789,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                     operation="INSERT",
                     zone=domain.name,
                     rev_zone=get_reverse_zone_for_answer(ip),
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     ttl=resource.address_ttl if resource.address_ttl else 60,
                     answer=ip,
                     rectype="A" if IPAddress(ip).version == 4 else "AAAA",
@@ -790,7 +808,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="DELETE",
                     zone=domain.name,
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     rectype="A",
                 )
             ],
@@ -808,7 +826,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="DELETE",
                     zone=domain.name,
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     answer=ip,
                     rectype="A" if IPAddress(ip).version == 4 else "AAAA",
                 )
@@ -828,7 +846,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                     operation="DELETE",
                     zone=domain.name,
                     rev_zone=get_reverse_zone_for_answer(ip),
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     answer=ip,
                     rectype="A" if IPAddress(ip).version == 4 else "AAAA",
                 ),
@@ -836,7 +854,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                     operation="INSERT",
                     zone=domain.name,
                     rev_zone=get_reverse_zone_for_answer(ip),
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     ttl=resource.address_ttl if resource.address_ttl else 60,
                     answer=ip,
                     rectype="A" if IPAddress(ip).version == 4 else "AAAA",
@@ -868,20 +886,20 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="DELETE",
                     zone=domain.name,
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     rectype="A",
                 ),
                 DynamicDNSUpdate(
                     operation="DELETE",
                     zone=domain.name,
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     rectype="AAAA",
                 ),
                 DynamicDNSUpdate(
                     operation="INSERT",
                     zone=domain.name,
                     rev_zone=get_reverse_zone_for_answer(ip2.ip),
-                    name=f"{resource.name}.{domain.name}",
+                    name=f"{resource.name}",
                     rectype="A" if IPAddress(ip2.ip).version == 4 else "AAAA",
                     answer=ip2.ip,
                 ),
@@ -903,20 +921,20 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="DELETE",
                     zone=domain.name,
-                    name=f"{node.hostname}.{domain.name}",
+                    name=f"{node.hostname}",
                     rectype="A",
                 ),
                 DynamicDNSUpdate(
                     operation="DELETE",
                     zone=domain.name,
-                    name=f"{node.hostname}.{domain.name}",
+                    name=f"{node.hostname}",
                     rectype="AAAA",
                 ),
                 DynamicDNSUpdate(
                     operation="INSERT",
                     zone=domain.name,
                     rev_zone=get_reverse_zone_for_answer(ip2.ip),
-                    name=f"{node.hostname}.{domain.name}",
+                    name=f"{node.hostname}",
                     rectype="A" if IPAddress(ip2.ip).version == 4 else "AAAA",
                     answer=ip2.ip,
                 ),

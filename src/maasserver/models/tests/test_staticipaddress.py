@@ -36,6 +36,7 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import staticipaddress as static_ip_address_module
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
@@ -355,6 +356,10 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
 
 
 class TestStaticIPAddressManagerMapping(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_get_hostname_ip_mapping_returns_mapping(self):
         domain = Domain.objects.get_default_domain()
         expected_mapping = {}

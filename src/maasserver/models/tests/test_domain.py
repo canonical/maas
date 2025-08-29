@@ -188,6 +188,7 @@ class TestDomain(MAASServerTestCase):
         )
 
     def test_setting_internal_name_allows_old_internal_domain_name(self):
+        self.patch(dnspublication_module, "post_commit_do")
         internal_domain_old = Config.objects.get_config("maas_internal_domain")
         internal_domain_new = factory.make_name("internal")
         Config.objects.set_config("maas_internal_domain", internal_domain_new)

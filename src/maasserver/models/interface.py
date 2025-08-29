@@ -36,6 +36,7 @@ from django.db.models.query import QuerySet
 from django.utils import timezone
 from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -56,6 +57,8 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import MAC_VALIDATOR
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.reservedip import ReservedIP
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -1256,6 +1259,17 @@ class Interface(CleanSave, TimestampedModel):
             static_ip.delete()
         return static_ip
 
+    def _get_dns_label(self) -> str:
+        if not self.node_config:
+            return ""
+
+        node = self.node_config.node
+
+        if node.boot_interface_id == self.id:
+            return node.hostname
+
+        return f"{self.name}.{node.hostname}"
+
     def unlink_ip_address(self, ip_address, clearing_config=False):
         """Remove the `IPAddress` link on interface.
 
@@ -1263,6 +1277,25 @@ class Interface(CleanSave, TimestampedModel):
             configuration for this interface is being cleared. This makes sure
             that the auto created link_up is not created.
         """
+
+        dns_label = self._get_dns_label()
+        node = self.node_config.node if self.node_config else None
+        domain = (
+            node.domain.name
+            if node and node.domain
+            else Config.objects.get_config("default_domain")
+        )
+
+        if dns_label and ip_address.ip:
+            DNSPublication.objects.create_for_config_update(
+                source=f"unlink ip {ip_address.ip} from interface {self.name} on node {node.hostname}",
+                action=DnsUpdateAction.DELETE,
+                label=dns_label,
+                rtype="A" if IPAddress(ip_address.ip).version == 4 else "AAAA",
+                zone=domain,
+                answer=ip_address.ip,
+            )
+
         mode = ip_address.get_interface_link_type()
         if mode == INTERFACE_LINK_TYPE.STATIC:
             self._unlink_static_ip(ip_address)
@@ -1301,6 +1334,14 @@ class Interface(CleanSave, TimestampedModel):
         elif mode in [INTERFACE_LINK_TYPE.LINK_UP, INTERFACE_LINK_TYPE.STATIC]:
             new_alloc_type = IPADDRESS_TYPE.STICKY
 
+        dns_label = self._get_dns_label()
+        node = self.node_config.node
+        domain = (
+            node.domain.name
+            if node and node.domain
+            else Config.objects.get_config("default_domain")
+        )
+
         current_mode = static_ip.get_interface_link_type()
         if current_mode == INTERFACE_LINK_TYPE.STATIC:
             if mode == INTERFACE_LINK_TYPE.STATIC:
@@ -1309,6 +1350,23 @@ class Interface(CleanSave, TimestampedModel):
                 ):
                     # Same subnet and IP address nothing to do.
                     return static_ip
+
+                if dns_label and static_ip.ip:
+                    DNSPublication.objects.create_for_config_update(
+                        source=f"ip {static_ip.ip} changed to {ip_address} on {self.name} on node {node.hostname}",
+                        action=DnsUpdateAction.DELETE,
+                        label=dns_label,
+                        zone=domain,
+                        answer=str(static_ip.ip),
+                    )
+                    DNSPublication.objects.create_for_config_update(
+                        source=f"ip {static_ip.ip} changed to {ip_address} on {self.name} on node {node.hostname}",
+                        action=DnsUpdateAction.INSERT,
+                        label=dns_label,
+                        zone=domain,
+                        answer=str(ip_address),
+                    )
+
                 # Update the subnet and IP address for the static assignment.
                 return self._swap_subnet(
                     static_ip, subnet, ip_address=ip_address
@@ -1322,6 +1380,21 @@ class Interface(CleanSave, TimestampedModel):
         elif mode == INTERFACE_LINK_TYPE.STATIC:
             # Linking to the subnet statically were the original was not a
             # static link. Swap the objects so the object keeps the same ID.
+            if dns_label and static_ip.ip:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"ip {static_ip.ip} changed to {ip_address} on {self.name} on {node.hostname}",
+                    action=DnsUpdateAction.DELETE,
+                    label=dns_label,
+                    zone=domain,
+                    answer=str(static_ip.ip),
+                )
+                DNSPublication.objects.create_for_config_update(
+                    source=f"ip {static_ip.ip} changed to {ip_address} on {self.name} on {node.hostname}",
+                    action=DnsUpdateAction.INSERT,
+                    label=dns_label,
+                    zone=domain,
+                    answer=str(ip_address),
+                )
             return self._link_subnet_static(
                 subnet, ip_address=ip_address, swap_static_ip=static_ip
             )
@@ -1400,8 +1473,21 @@ class Interface(CleanSave, TimestampedModel):
         auto_ips = list(
             self.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.AUTO)
         )
+
+        dns_label = self._get_dns_label()
+        node = self.node_config.node
+        domain = (
+            node.domain.name
+            if node and node.domain
+            else Config.objects.get_config("default_domain")
+        )
+
         for auto_ip in auto_ips:
+            update_ip = auto_ip
+
             if not auto_ip.ip:
+                assigned_ip = None
+
                 if (
                     reserved_ip_assigned is False
                     and auto_ip.subnet == reservedip.subnet
@@ -1423,9 +1509,23 @@ class Interface(CleanSave, TimestampedModel):
                         temp_expires_after=temp_expires_after,
                         exclude_addresses=exclude_addresses,
                     )
+
                 if assigned_ip is not None:
+                    update_ip = assigned_ip
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
+
+            if dns_label and update_ip.ip:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"ip {update_ip.ip} linked to {self.name} on node {node.hostname}",
+                    action=DnsUpdateAction.INSERT,
+                    label=dns_label,
+                    rtype="A"
+                    if IPAddress(update_ip.ip).version == 4
+                    else "AAAA",
+                    zone=domain,
+                    answer=str(update_ip.ip),
+                )
 
         # The interface might have a reserved ip but its configuration might be using a static ip or DHCP. For this reason
         # here we must fail only if we failed to allocate the auto ip with the reserved ip.
@@ -1491,14 +1591,35 @@ class Interface(CleanSave, TimestampedModel):
         address assigned."""
         affected_subnets = set()
         released_addresses = []
+        dns_label = self._get_dns_label()
+        node = self.node_config.node
+        domain = (
+            node.domain.name
+            if node and node.domain
+            else Config.objects.get_config("default_domain")
+        )
+
         for auto_ip in self.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO
         ):
             if auto_ip.ip:
+                assigned_ip = auto_ip.ip
                 subnet, released_ip = self._release_auto_ip(auto_ip)
                 if subnet is not None:
                     affected_subnets.add(subnet)
                 released_addresses.append(released_ip)
+
+                if dns_label and assigned_ip:
+                    DNSPublication.objects.create_for_config_update(
+                        source=f"released ip {assigned_ip} from {self.name} on node {node.hostname}",
+                        action=DnsUpdateAction.DELETE,
+                        label=dns_label,
+                        rtype="A"
+                        if IPAddress(assigned_ip).version == 4
+                        else "AAAA",
+                        zone=domain,
+                        answer=assigned_ip,
+                    )
         return released_addresses
 
     def _release_auto_ip(self, auto_ip):

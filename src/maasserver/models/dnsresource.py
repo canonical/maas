@@ -474,6 +474,7 @@ class DNSResource(CleanSave, TimestampedModel):
                 source=f"zone {self.domain.name} removed resource {self.name}",
                 action=DnsUpdateAction.DELETE,
                 label=self.name,
+                zone=self.domain.name,
                 rtype="A",
             )
 
@@ -487,7 +488,7 @@ class DNSResource(CleanSave, TimestampedModel):
                     action=DnsUpdateAction.INSERT_NAME,
                     label=self.name,
                     rtype="A",
-                    zone=self.domain,
+                    zone=self.domain.name,
                 )
             else:
                 if (
@@ -514,7 +515,7 @@ class DNSResource(CleanSave, TimestampedModel):
                             action=DnsUpdateAction.INSERT_NAME,
                             label=self.name,
                             rtype="A",
-                            zone=self.domain,
+                            zone=self.domain.name,
                         )
                 else:
                     if (
@@ -525,6 +526,7 @@ class DNSResource(CleanSave, TimestampedModel):
                             source=f"zone {self.domain.name} removed resource {self._previous_name}",
                             action=DnsUpdateAction.DELETE,
                             label=self._previous_name,
+                            zone=self.domain.name,
                             rtype="A",
                         )
                         DNSPublication.objects.create_for_config_update(
@@ -532,6 +534,7 @@ class DNSResource(CleanSave, TimestampedModel):
                             action=DnsUpdateAction.INSERT_NAME,
                             label=self.name,
                             rtype="A",
+                            zone=self.domain.name,
                             ttl=self.address_ttl,
                         )
                     else:
@@ -540,6 +543,7 @@ class DNSResource(CleanSave, TimestampedModel):
                             action=DnsUpdateAction.UPDATE,
                             label=self.name,
                             rtype="A",
+                            zone=self.domain.name,
                             ttl=self.address_ttl,
                         )
         return super().save(*args, **kwargs)

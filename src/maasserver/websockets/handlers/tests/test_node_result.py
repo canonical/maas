@@ -6,6 +6,7 @@
 import random
 from unittest.mock import sentinel
 
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -26,6 +27,10 @@ from metadataserver.enum import (
 
 
 class TestNodeResultHandler(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def dehydrate_script_result(self, script_result, handler):
         results = script_result.read_results().get("results", {})
         data = {

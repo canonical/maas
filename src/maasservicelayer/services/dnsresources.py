@@ -167,6 +167,7 @@ class DNSResourcesService(
                     source=f"zone {default_domain.name} removed resource {dnsrr.name}",
                     action=DnsUpdateAction.DELETE,
                     label=dnsrr.name,
+                    zone=default_domain.name,
                     rtype="AAAA" if ip.ip.version == 6 else "A",
                 )
             else:
@@ -176,6 +177,7 @@ class DNSResourcesService(
                     label=dnsrr.name,
                     rtype="AAAA" if ip.ip.version == 6 else "A",
                     ttl=self._get_ttl(dnsrr, default_domain),
+                    zone=default_domain.name,
                     answer=str(ip.ip),
                 )
 

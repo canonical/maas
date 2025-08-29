@@ -11,6 +11,7 @@ from maasserver.enum import (
     NODE_TYPE,
     NODE_TYPE_CHOICES,
 )
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import Node, RackController, StaticIPAddress
 from maasserver.models.nodekey import NodeKey
 from maasserver.models.service import RACK_SERVICES, REGION_SERVICES, Service
@@ -26,6 +27,7 @@ class TestNodeDeletion(MAASServerTestCase):
     def test_deleting_node_updates_event_node_hostname(self):
         """Test that event's `node_hostname` is set when the node is going to be
         deleted."""
+        self.patch(dnspublication_module, "post_commit_do")
         node = factory.make_Node()
         node_hostname = node.hostname
         events = [factory.make_Event(node=node) for _ in range(3)]
@@ -34,6 +36,7 @@ class TestNodeDeletion(MAASServerTestCase):
             self.assertEqual(event.node_hostname, node_hostname)
 
     def test_deleting_node_sets_node_to_null(self):
+        self.patch(dnspublication_module, "post_commit_do")
         node = factory.make_Node()
         events = [factory.make_Event(node=node) for _ in range(3)]
         node.delete()

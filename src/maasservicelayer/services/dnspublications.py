@@ -52,8 +52,6 @@ class DNSPublicationsService(
         answer: Optional[str] = None,
         timestamp: Optional[datetime] = None,
     ) -> DNSPublication:
-        latest_serial = await self.repository.get_latest_serial()
-
         update = None
         if action == DnsUpdateAction.RELOAD:
             update = DnsUpdateAction.RELOAD
@@ -64,11 +62,7 @@ class DNSPublicationsService(
             if answer:
                 update += f" {answer}"
 
-        next_serial = None
-        if latest_serial < (2**63) - 1:
-            next_serial = latest_serial + 1
-        else:
-            raise MaxSerialException("next serial exceeds max int value")
+        next_serial = await self.repository.get_next_serial()
 
         if not timestamp:
             timestamp = utcnow()

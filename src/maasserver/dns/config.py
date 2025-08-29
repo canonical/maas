@@ -325,7 +325,7 @@ def process_dns_update_notify(message):
         answer = dns_data.rrdata
     else:
         zone = update_list[1]
-        name = f"{update_list[2]}.{zone}"
+        name = f"{update_list[2]}"
         rectype = update_list[3]
         if op == "INSERT" or op == "UPDATE":
             ttl = int(update_list[-2]) if update_list[-2] else None

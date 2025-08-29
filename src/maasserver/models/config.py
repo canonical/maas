@@ -8,6 +8,7 @@ import uuid
 
 from django.db.models import CharField, JSONField, Manager, Model
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -41,6 +42,15 @@ ACTIVE_DISCOVERY_INTERVAL_CHOICES = [
     (ActiveDiscoveryIntervalEnum.EVERY_30_MINUTES.value, "Every 30 minutes"),
     (ActiveDiscoveryIntervalEnum.EVERY_10_MINUTES.value, "Every 10 minutes"),
 ]
+
+DNS_CONFIG_PARAMS = (
+    "upstream_dns",
+    "dnssec_validation",
+    "dns_trusted_acl",
+    "default_dns_ttl",
+    "windows_kms_host",
+    "maas_internal_domain",
+)
 
 # Encapsulates the possible states for network discovery
 NetworkDiscoveryConfig = namedtuple(
@@ -88,10 +98,18 @@ class ConfigManager(Manager):
         :type request: HttpRequest object.
         """
         from maasserver.audit import create_audit_event
+        from maasserver.models import DNSPublication
 
         service_layer.services.configurations.set(name, value)
 
         self._handle_config_value_changed(name, value)
+
+        if name in DNS_CONFIG_PARAMS:
+            DNSPublication.objects.create_for_config_update(
+                source=f"configuration {name} set to {value}",
+                action=DnsUpdateAction.RELOAD,
+            )
+
         notify_action("config", "update", name)
         if endpoint is not None and request is not None:
             create_audit_event(
