@@ -650,6 +650,8 @@ include "/tmp/key.conf.maas";
 # Authoritative Zone declarations.
 zone "test.com" {
     type master;
+    # Disable forwarding for authoritive zones, lp:2118833
+    forwarders { };
     file "/tmp/zone.test.com";
     allow-update {
         key maas.;
