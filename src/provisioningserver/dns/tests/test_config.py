@@ -617,6 +617,42 @@ class TestDNSConfig(MAASTestCase):
             f'include "{config_dir}/{DNSConfig.target_file_name}"', snippet
         )
 
+    def test_write_config_with_authoritive_zones(self):
+        domain = factory.make_name("domain")
+        network = IPNetwork("192.168.0.3/24")
+
+        reverse_zone = DNSReverseZoneConfig(domain, network=network)
+        reverse_zone.zone_info = [
+            type(
+                "ZoneInfo",
+                (),
+                {"zone_name": domain, "target_path": f"zone.{domain}"},
+            )()
+        ]
+        target_dir = patch_dns_config_path(self)
+        DNSConfig(zones=[reverse_zone]).write_config()
+
+        config_path = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
+        expected_content = dedent(
+            f"""
+        zone "{domain}" {{
+            type master;
+            # Disable forwarding for authoritative zones, lp:2118833
+            forwarders {{ }};
+            file "zone.{domain}";
+            allow-update {{
+                key maas.;
+            }};
+        }};
+        """
+        )
+        config = read_isc_file(config_path)
+        expected = parse_isc_string(expected_content)
+
+        self.assertEqual(
+            expected[f'zone "{domain}"'], config[f'zone "{domain}"']
+        )
+
 
 class TestDynamicDNSUpdate(MAASTestCase):
     def test_create_from_trigger_v4(self):
