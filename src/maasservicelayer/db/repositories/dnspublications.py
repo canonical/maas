@@ -19,18 +19,8 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
     def get_model_factory(self) -> Type[DNSPublication]:
         return DNSPublication
 
-    async def _create_serial_seq_if_not_exist(self) -> None:
-        stmt = text(f"""
-        CREATE SEQUENCE IF NOT EXISTS maasserver_zone_serial_seq
-            INCREMENT BY 1 MINVALUE 1 MAXVALUE {MAX_SERIAL} CYCLE
-            OWNED BY maasserver_dnspublication.serial;
-        """)
-        await self.execute_stmt(stmt)
-
     async def get_next_serial(self) -> int:
         stmt = text("SELECT nextval('maasserver_zone_serial_seq');")
-
-        await self._create_serial_seq_if_not_exist()
         return (await self.execute_stmt(stmt)).one()[0]
 
     async def get_latest_serial(self) -> int:
