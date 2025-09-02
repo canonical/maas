@@ -401,6 +401,7 @@ RegionControllerWorkerRule = Rule(
     Allow("aiohttp|aiohttp.**"),
     Allow("cryptography.hazmat.primitives.ciphers.aead.AESGCM"),
     Allow("google.protobuf|google.protobuf.**"),  # for Temporal
+    Allow("httpx|httpx.**"),
     Allow("jose|jose.**"),
     Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
