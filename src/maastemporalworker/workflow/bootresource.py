@@ -237,23 +237,23 @@ class BootResourcesActivity(ActivityBase):
                 return True
 
             async with (
-                self.apiclient.session.get(
-                    url,
-                    verify_ssl=False,
-                    chunked=True,
-                    proxy=param.http_proxy,
+                self.apiclient.make_client(param.http_proxy).stream(
+                    "GET", url
                 ) as response,
                 lfile.astore(autocommit=False) as store,
             ):
                 response.raise_for_status()
                 last_update = datetime.now(timezone.utc)
-                async for data, _ in response.content.iter_chunks():
+
+                async for chunk in response.aiter_bytes(
+                    chunk_size=5 * 1024 * 1024
+                ):  # 5MB chunks
                     activity.heartbeat()
                     dt_now = datetime.now(timezone.utc)
                     if dt_now > (last_update + REPORT_INTERVAL):
                         await self.report_progress(param.rfile_ids, lfile.size)
                         last_update = dt_now
-                    store.write(data)
+                    store.write(chunk)
 
             activity.logger.debug("Download done, doing checksum")
             activity.heartbeat()
