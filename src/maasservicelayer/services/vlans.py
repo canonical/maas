@@ -53,9 +53,36 @@ class VlansService(BaseService[Vlan, VlansRepository, VlanBuilder]):
     async def post_update_hook(
         self, old_resource: Vlan, updated_resource: Vlan
     ) -> None:
+        # if the updated_resource has rack_ids, these will be found in the workflow, but removed ones will not
+        system_ids = []
+        if (
+            old_resource.primary_rack_id
+            and old_resource.primary_rack_id
+            != updated_resource.primary_rack_id
+        ):
+            primary_rack = await self.nodes_service.get_by_id(
+                old_resource.primary_rack_id
+            )
+
+            if primary_rack:
+                system_ids.append(primary_rack.system_id)
+        if (
+            old_resource.secondary_rack_id
+            and old_resource.secondary_rack_id
+            != updated_resource.secondary_rack_id
+        ):
+            secondary_rack = await self.nodes_service.get_by_id(
+                old_resource.secondary_rack_id
+            )
+
+            if secondary_rack:
+                system_ids.append(secondary_rack.system_id)
+
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(vlan_ids=[updated_resource.id]),
+            ConfigureDHCPParam(
+                system_ids=system_ids, vlan_ids=[updated_resource.id]
+            ),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
