@@ -353,6 +353,7 @@ RegionControllerRule = Rule(
     Allow("django|django.**"),
     Allow("formencode|formencode.**"),
     Allow("google.protobuf|google.protobuf.**"),  # for Temporal
+    Allow("httpx|httpx.**"),
     Allow("hvac|hvac.**"),
     Allow("jose|jose.**"),
     Allow("jsonschema|jsonschema.**"),
