@@ -480,6 +480,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         return (
             self.alloc_type == IPADDRESS_TYPE.USER_RESERVED
             and self.interface_set.count() == 0
+            # There might be multiple DNS records pointing to the same IP. In this case, it should not be deleted
+            and self.dnsresource_set.count() == 1
         )
 
     def get_ip(self):
