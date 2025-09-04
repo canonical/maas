@@ -17,340 +17,475 @@ package dhcp
 
 import (
 	"context"
+	"fmt"
 	"net"
-	"sync"
+	"syscall"
 	"testing"
 	"time"
 
-	"github.com/insomniacslk/dhcp/dhcpv4"
-	"github.com/insomniacslk/dhcp/dhcpv6"
+	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/ringbuf"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 	"maas.io/core/src/maasagent/internal/dhcp/xdp"
 )
 
-type dhcpTestClient struct {
-	ipVersion int
+// wrapConn adapts a stream-oriented net.Conn (from net.Pipe)
+// to look like a packet-oriented net.PacketConn for testing purpose
+type wrapConn struct {
+	c net.Conn
+}
+
+func (w wrapConn) ReadFrom(p []byte) (int, net.Addr, error) {
+	n, err := w.c.Read(p)
+	return n, nil, err
+}
+
+func (w wrapConn) WriteTo(p []byte, _ net.Addr) (int, error) {
+	return w.c.Write(p)
+}
+
+func (w wrapConn) Close() error {
+	return w.c.Close()
+}
+
+func (w wrapConn) LocalAddr() net.Addr {
+	return w.c.LocalAddr()
+}
+
+func (w wrapConn) RemoteAddr() net.Addr {
+	return w.c.RemoteAddr()
+}
+
+func (w wrapConn) SetDeadline(t time.Time) error {
+	return w.c.SetDeadline(t)
+}
+
+func (w wrapConn) SetReadDeadline(t time.Time) error {
+	return w.c.SetReadDeadline(t)
+}
+
+func (w wrapConn) SetWriteDeadline(t time.Time) error {
+	return w.c.SetWriteDeadline(t)
+}
+
+var _ net.PacketConn = wrapConn{}
+
+// pipe returns a pair of connected PacketConns backed by net.Pipe
+func pipe() (net.PacketConn, net.PacketConn) {
+	a, b := net.Pipe()
+	return wrapConn{a}, wrapConn{b}
+}
+
+// fakeSocket is returned by fakeSocketFactory and stored by the Server because
+// using real sockets in unit-tests is problematic.
+type fakeSocket struct {
+	family    AddressFamily
+	iface     *net.Interface
+	writeOnly bool
 	conn      net.PacketConn
 }
 
-func newDHCPTestClient(network string, addr string) (*dhcpTestClient, error) {
-	conn, err := net.ListenPacket(network, addr)
-	if err != nil {
-		return nil, err
-	}
-
-	ipVersion := 4
-	if network == "udp6" {
-		ipVersion = 6
-	}
-
-	return &dhcpTestClient{
-		conn:      conn,
-		ipVersion: ipVersion,
-	}, nil
+func (fs fakeSocket) AddressFamily() AddressFamily {
+	return fs.family
 }
 
-func (d *dhcpTestClient) Roundtrip(ctx context.Context, buf []byte) error {
-	_, err := d.conn.WriteTo(buf, &net.UDPAddr{ //nolint:staticcheck // _ is being marked as unusred
-		IP:   net.ParseIP("127.0.0.1"),
-		Port: 67,
-	})
-
-	resp := make([]byte, len(buf))
-
-	_, _, err = d.conn.ReadFrom(resp)
-	if err != nil {
-		return err
-	}
-
-	if d.ipVersion == 4 {
-		_, err = dhcpv4.FromBytes(resp)
-	} else {
-		_, err = dhcpv6.FromBytes(resp)
-	}
-
-	return err
+func (fs fakeSocket) Iface() *net.Interface {
+	return fs.iface
 }
 
-func (d *dhcpTestClient) Close() error {
-	return d.conn.Close()
+func (fs fakeSocket) IsWriteOnly() bool {
+	return fs.writeOnly
 }
 
-type echoDHCPHandler struct {
-	s *Server
+func (fs fakeSocket) Conn() net.PacketConn {
+	return fs.conn
 }
 
-func (e *echoDHCPHandler) echo(ctx context.Context, msg Message, ipv IPVersion) error {
-	sock, err := e.s.GetSocketFor(ipv, int(msg.IfaceIdx))
-	if err != nil {
-		return err
-	}
-
-	conn := sock.Conn()
-
-	var buf []byte
-	if ipv == IPv4 {
-		buf = msg.Pkt4.ToBytes()
-	} else {
-		buf = msg.Pkt6.ToBytes()
-	}
-
-	_, err = conn.WriteTo(buf, &net.UDPAddr{IP: msg.SrcIP, Port: int(msg.SrcPort)})
-
-	return err
+func (fs fakeSocket) Close() error {
+	return fs.conn.Close()
 }
 
-func (e *echoDHCPHandler) ServeDHCP4(ctx context.Context, msg Message) error {
-	return e.echo(ctx, msg, 4)
+// fakeSocketFactory used to override how Server creates required sockets
+// Using real sockets would require real interfaces and privileged access to
+// set unix.SO_BROADCAST and read real broadcast datagrams, so we have to fake
+type fakeSocketFactory struct {
+	ifaceIdx       int
+	connV4, connV6 net.PacketConn
+	errV4, errV6   error
 }
 
-func (e *echoDHCPHandler) ServeDHCP6(ctx context.Context, msg Message) error {
-	return e.echo(ctx, msg, 6)
+func (f fakeSocketFactory) NewIPv4Socket(iface *net.Interface,
+	writeOnly bool) (Socket, error) {
+	return fakeSocket{
+		iface:     &net.Interface{Index: f.ifaceIdx},
+		family:    AddressFamily(unix.AF_INET),
+		conn:      f.connV4,
+		writeOnly: writeOnly}, f.errV4
+}
+func (f fakeSocketFactory) NewIPv6Socket(iface *net.Interface,
+	writeOnly bool) (Socket, error) {
+	return fakeSocket{
+		iface:     &net.Interface{Index: f.ifaceIdx},
+		family:    AddressFamily(unix.AF_INET6),
+		conn:      f.connV6,
+		writeOnly: writeOnly}, f.errV6
 }
 
-func BenchmarkXdpDhcpServer(b *testing.B) {
+// fakeRecordReader pretends to be a ringbuf.Reader that returns a configured
+// ringbuf.Record (normally Reader would read the XDP BPF map)
+type fakeRecordReader struct {
+	readRecord chan ringbuf.Record
+	readErr    chan error
+	closeErr   error
+}
+
+func (f *fakeRecordReader) Read() (ringbuf.Record, error) {
+	return <-f.readRecord, <-f.readErr
+}
+
+func (f *fakeRecordReader) Close() error {
+	f.readRecord <- ringbuf.Record{}
+
+	f.readErr <- ringbuf.ErrClosed
+
+	return f.closeErr
+}
+
+type fakeXDPFactory struct {
+	xdpProgram   *xdp.Program
+	recordReader RecordReader
+	attacher     XDPAttacher
+	newErr       error
+}
+
+func (f fakeXDPFactory) New(s *Server) (XDPAttacher, error) {
+	s.recordReader = f.recordReader
+	s.xdpProgram = f.xdpProgram
+
+	return f.attacher, f.newErr
+}
+
+// fakeHandler is a fake implementation of DHCPvX handler
+type fakeHandler struct {
+	fn func(context.Context, Message) (Response, error)
+}
+
+func (h fakeHandler) ServeDHCP(ctx context.Context, m Message) (Response, error) {
+	return h.fn(ctx, m)
+}
+
+// fakeLink because we need a controlled Close() method for testing
+type fakeLink struct {
+	link.Link
+	closeErr error
+}
+
+type fakeSyscaller struct {
+	recordedP  chan []byte
+	recordedTo syscall.Sockaddr
+}
+
+func (f *fakeSyscaller) Close(fd int) error {
+	return nil
+}
+
+func (f *fakeSyscaller) Sendto(fd int, p []byte, flags int, to syscall.Sockaddr) error {
+	f.recordedP <- p
+
+	f.recordedTo = to
+
+	return nil
+}
+
+func (f *fakeSyscaller) SetsockoptInt(fd, level, opt int, value int) error {
+	return nil
+}
+
+func (f *fakeSyscaller) Socket(domain, typ, proto int) (int, error) {
+	return 0, nil
+}
+
+func (f fakeLink) Close() error { return f.closeErr }
+
+// TestServerEcho_IPv4Socket is a simple test that is using bunch of fakes.
+// It is testing the flow when DHCP is received over the IPv4 socket and
+// response is returned over the same socket.
+func TestServerEcho_IPv4Socket(t *testing.T) {
+	data := []byte(t.Name())
+
+	inV4, outV4 := pipe()
+	// Create a Server that for any interface will create a socket (fake one)
+	// with the piped net.PacketConn being used to send/receive data
+	s, err := NewServer(
+		// A fake interface, for which a fake socket will be created
+		[]*net.Interface{{Index: 1}},
+		WithV4Handler(fakeHandler{
+			fn: func(ctx context.Context, m Message) (Response, error) {
+				return Response{Payload: m.Payload}, nil
+			},
+		}),
+		WithSocketFactory(fakeSocketFactory{
+			ifaceIdx: 1, connV4: inV4, errV6: fmt.Errorf("no IPv6"),
+		}),
+		WithXDPFactory(fakeXDPFactory{
+			newErr: fmt.Errorf("test without XDP"),
+		}),
+	)
+
+	require.NoError(t, err)
+
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	b.Cleanup(func() {
-		cancel()
-	})
+	errs := make(chan error)
 
-	xdpProg := xdp.New()
+	go func() {
+		errs <- s.Serve(ctx)
+	}()
 
-	err := xdpProg.Load()
-	if err != nil {
-		b.Fatal(err)
-	}
+	_, err = outV4.WriteTo(data, &net.UDPAddr{})
+	require.NoError(t, err)
 
-	handler := &echoDHCPHandler{}
+	buf := make([]byte, len(data))
+	_, _, err = outV4.ReadFrom(buf)
 
-	server, err := NewServer([]string{"lo"}, xdpProg, handler, handler)
-	if err != nil {
-		b.Fatal(err)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, data, buf)
 
-	handler.s = server
+	cancel()
 
-	go server.Serve(ctx)
-	defer server.Close()
-
-	var (
-		client *dhcpTestClient
-		pkt    []byte
-	)
-
-	client, err = newDHCPTestClient("udp4", "127.0.0.1:68")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	msg, err := dhcpv4.New(
-		dhcpv4.WithClientIP(net.ParseIP("127.0.0.1")),
-	)
-	if err != nil {
-		b.Error(err)
-	}
-
-	msg.OpCode = dhcpv4.OpcodeBootRequest
-	pkt = msg.ToBytes()
-
-	defer client.Close()
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		err = client.Roundtrip(ctx, pkt)
-		if err != nil {
-			b.Fatal(err)
-		}
+	if err := <-errs; err != nil {
+		require.NoError(t, err)
 	}
 }
 
-func BenchmarkRawSocketDhcpServer(b *testing.B) {
+// TestServerEcho_IPv4Socket_L2 is a simple test that is using bunch of fakes.
+// It is testing the flow when DHCP message is received over IPv4 socket and
+// response should be a raw Ethernet frame.
+func TestServerEcho_IPv4Socket_L2(t *testing.T) {
+	data := []byte(t.Name())
+
+	//nolint:govet // false positive shadow
+	fakeSyscaller := fakeSyscaller{recordedP: make(chan []byte)}
+	inV4, outV4 := pipe()
+	// Create a Server that for any interface will create a socket (fake one)
+	// with the piped net.PacketConn being used to send/receive data
+	s, err := NewServer(
+		// A fake interface, for which a fake socket will be created
+		[]*net.Interface{{Index: 1, HardwareAddr: net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22}}},
+		WithV4Handler(fakeHandler{
+			fn: func(ctx context.Context, m Message) (Response, error) {
+				return Response{
+					IfaceIdx:   1,
+					Mode:       SendL2,
+					DstMAC:     net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+					SrcAddress: net.UDPAddr{IP: net.IPv4zero},
+					DstAddress: net.UDPAddr{IP: net.IPv4zero},
+					Payload:    m.Payload,
+				}, nil
+			},
+		}),
+		WithSocketFactory(fakeSocketFactory{
+			ifaceIdx: 1, connV4: inV4, errV6: fmt.Errorf("no IPv6"),
+		}),
+		WithXDPFactory(fakeXDPFactory{
+			newErr: fmt.Errorf("test without XDP"),
+		}),
+		WithSyscaller(&fakeSyscaller),
+	)
+
+	require.NoError(t, err)
+
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	b.Cleanup(func() {
-		cancel()
-	})
+	errs := make(chan error)
 
-	handler := &echoDHCPHandler{}
+	go func() {
+		errs <- s.Serve(ctx)
+	}()
 
-	server, err := NewServer([]string{"lo"}, nil, handler, handler)
-	if err != nil {
-		b.Fatal(err)
-	}
+	_, err = outV4.WriteTo(data, &net.UDPAddr{})
+	require.NoError(t, err)
 
-	handler.s = server
+	frame := <-fakeSyscaller.recordedP
 
-	go server.Serve(ctx)
-	defer server.Close()
+	// Decode the full Ethernet frame and compare the UDP payload
+	// For testing it doesn't matter if thats a valid DHCP or not.
+	packet := gopacket.NewPacket(frame, layers.LayerTypeEthernet, gopacket.Default)
+	result := packet.Layer(layers.LayerTypeUDP).LayerPayload()
+	assert.Equal(t, data, result)
 
-	var (
-		client *dhcpTestClient
-		pkt    []byte
-	)
+	cancel()
 
-	client, err = newDHCPTestClient("udp4", "127.0.0.1:68")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	msg, err := dhcpv4.New(
-		dhcpv4.WithClientIP(net.ParseIP("127.0.0.1")),
-	)
-	if err != nil {
-		b.Error(err)
-	}
-
-	msg.OpCode = dhcpv4.OpcodeBootRequest
-	pkt = msg.ToBytes()
-
-	defer client.Close()
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		err = client.Roundtrip(ctx, pkt)
-		if err != nil {
-			b.Fatal(err)
-		}
+	if err := <-errs; err != nil {
+		require.NoError(t, err)
 	}
 }
 
-func BenchmarkXdpDhcpServerThroughput(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	b.Cleanup(func() {
-		cancel()
-	})
-
-	xdpProg := xdp.New()
-
-	err := xdpProg.Load()
-	if err != nil {
-		b.Fatal(err)
+// TestServerEcho_XDP tests data being read from a ring buffer and then send
+// over using a socket bound to a proper interface.
+func TestServerEcho_XDP(t *testing.T) {
+	msg := Message{
+		SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+		SrcIP:    net.IPv4zero,
+		IfaceIdx: 1,
+		Family:   AddressFamily(unix.AF_INET),
+		SrcPort:  1337,
+		Payload:  []byte(t.Name()),
 	}
 
-	handler := &echoDHCPHandler{}
+	data, err := msg.MarshalBinary()
+	require.NoError(t, err)
 
-	server, err := NewServer([]string{"lo"}, xdpProg, handler, handler)
-	if err != nil {
-		b.Fatal(err)
+	fakeRecordReader := &fakeRecordReader{
+		readRecord: make(chan ringbuf.Record),
+		readErr:    make(chan error),
 	}
 
-	handler.s = server
-
-	go server.Serve(ctx)
-	defer server.Close()
-
-	var pkt []byte
-
-	numClients := 100
-	clients := make([]*dhcpTestClient, numClients)
-
-	for i := 0; i < numClients; i++ {
-		clients[i], err = newDHCPTestClient("udp4", "127.0.0.1:0")
-		if err != nil {
-			b.Fatal(err)
-		}
-
-		defer clients[i].Close()
-	}
-
-	msg, err := dhcpv4.New(
-		dhcpv4.WithClientIP(net.ParseIP("127.0.0.1")),
+	inV4, outV4 := pipe()
+	// Create a Server that for any interface will create a socket (fake one)
+	// with the piped net.PacketConn being used to send/receive data
+	s, err := NewServer(
+		// A fake interface, for which a fake socket will be created
+		[]*net.Interface{{Index: 1, HardwareAddr: net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22}}},
+		WithV4Handler(fakeHandler{
+			fn: func(ctx context.Context, m Message) (Response, error) {
+				return Response{Payload: m.Payload}, nil
+			},
+		}),
+		WithSocketFactory(fakeSocketFactory{
+			ifaceIdx: 1, connV4: inV4, errV6: fmt.Errorf("no IPv6"),
+		}),
+		WithXDPFactory(fakeXDPFactory{
+			xdpProgram: xdp.New(),
+			attacher: func(ifaceIdx int) (link.Link, error) {
+				return fakeLink{}, nil
+			},
+			recordReader: fakeRecordReader,
+		}),
 	)
-	if err != nil {
-		b.Error(err)
+
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errs := make(chan error)
+
+	go func() {
+		errs <- s.Serve(ctx)
+	}()
+
+	fakeRecordReader.readRecord <- ringbuf.Record{
+		RawSample: data,
+		Remaining: 0,
 	}
 
-	msg.OpCode = dhcpv4.OpcodeBootRequest
-	pkt = msg.ToBytes()
+	fakeRecordReader.readErr <- nil
 
-	b.ResetTimer()
+	buf := make([]byte, len(msg.Payload))
+	_, _, err = outV4.ReadFrom(buf)
 
-	for i := 0; i < b.N; i++ {
-		wg := &sync.WaitGroup{}
-		wg.Add(len(clients))
+	assert.NoError(t, err)
+	assert.Equal(t, msg.Payload, buf)
 
-		for _, client := range clients {
-			go func(c *dhcpTestClient) {
-				defer wg.Done()
+	cancel()
 
-				c.conn.SetDeadline(time.Now().Add(time.Second))
-
-				err = c.Roundtrip(ctx, pkt)
-				if err != nil {
-					b.Log(err)
-				}
-			}(client)
-		}
-
-		wg.Wait()
+	if err := <-errs; err != nil {
+		require.NoError(t, err)
 	}
 }
 
-func BenchmarkRawSocketDhcpServerThroughput(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
+// TestServerEcho_XDP_L2 tests data being read from a ring buffer and then send
+// over using a socket bound to a proper interface.
+func TestServerEcho_XDP_L2(t *testing.T) {
+	expected := []byte(t.Name())
 
-	b.Cleanup(func() {
-		cancel()
-	})
-
-	handler := &echoDHCPHandler{}
-
-	server, err := NewServer([]string{"lo"}, nil, handler, handler)
-	if err != nil {
-		b.Fatal(err)
+	msg := Message{
+		SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+		SrcIP:    net.IPv4zero,
+		IfaceIdx: 1,
+		Family:   AddressFamily(unix.AF_INET),
+		SrcPort:  1337,
+		Payload:  expected,
 	}
 
-	handler.s = server
+	data, err := msg.MarshalBinary()
+	require.NoError(t, err)
 
-	go server.Serve(ctx)
-	defer server.Close()
-
-	var pkt []byte
-
-	numClients := 100
-	clients := make([]*dhcpTestClient, numClients)
-
-	for i := 0; i < numClients; i++ {
-		clients[i], err = newDHCPTestClient("udp4", "127.0.0.1:0")
-		if err != nil {
-			b.Fatal(err)
-		}
-
-		defer clients[i].Close()
+	fakeRecordReader := &fakeRecordReader{
+		readRecord: make(chan ringbuf.Record),
+		readErr:    make(chan error),
 	}
 
-	msg, err := dhcpv4.New(
-		dhcpv4.WithClientIP(net.ParseIP("127.0.0.1")),
+	//nolint:govet // false positive shadow
+	fakeSyscaller := fakeSyscaller{recordedP: make(chan []byte)}
+
+	inV4, _ := pipe()
+	// Create a Server that for any interface will create a socket (fake one)
+	// with the piped net.PacketConn being used to send/receive data
+	s, err := NewServer(
+		// A fake interface, for which a fake socket will be created
+		[]*net.Interface{{Index: 1, HardwareAddr: net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22}}},
+		WithV4Handler(fakeHandler{
+			fn: func(ctx context.Context, m Message) (Response, error) {
+				return Response{
+					IfaceIdx:   1,
+					Mode:       SendL2,
+					DstMAC:     net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+					SrcAddress: net.UDPAddr{IP: net.IPv4zero},
+					DstAddress: net.UDPAddr{IP: net.IPv4zero},
+					Payload:    m.Payload,
+				}, nil
+			},
+		}),
+		WithSocketFactory(fakeSocketFactory{
+			ifaceIdx: 1, connV4: inV4, errV6: fmt.Errorf("no IPv6"),
+		}),
+		WithXDPFactory(fakeXDPFactory{
+			xdpProgram: xdp.New(),
+			attacher: func(ifaceIdx int) (link.Link, error) {
+				return fakeLink{}, nil
+			},
+			recordReader: fakeRecordReader,
+		}),
+		WithSyscaller(&fakeSyscaller),
 	)
-	if err != nil {
-		b.Error(err)
+
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errs := make(chan error)
+
+	go func() {
+		errs <- s.Serve(ctx)
+	}()
+
+	fakeRecordReader.readRecord <- ringbuf.Record{
+		RawSample: data,
+		Remaining: 0,
 	}
 
-	msg.OpCode = dhcpv4.OpcodeBootRequest
-	pkt = msg.ToBytes()
+	fakeRecordReader.readErr <- nil
 
-	b.ResetTimer()
+	frame := <-fakeSyscaller.recordedP
 
-	for i := 0; i < b.N; i++ {
-		wg := &sync.WaitGroup{}
-		wg.Add(len(clients))
+	// Decode the full Ethernet frame and compare the UDP payload
+	// For testing it doesn't matter if thats a valid DHCP or not.
+	packet := gopacket.NewPacket(frame, layers.LayerTypeEthernet, gopacket.Default)
+	result := packet.Layer(layers.LayerTypeUDP).LayerPayload()
+	assert.Equal(t, expected, result)
 
-		for _, client := range clients {
-			go func(c *dhcpTestClient) {
-				defer wg.Done()
+	cancel()
 
-				c.conn.SetDeadline(time.Now().Add(time.Second))
-
-				err = c.Roundtrip(ctx, pkt)
-				if err != nil {
-					b.Log(err)
-				}
-			}(client)
-		}
-
-		wg.Wait()
+	if err := <-errs; err != nil {
+		require.NoError(t, err)
 	}
 }
