@@ -1,0 +1,49 @@
+---
+title: Master Image Sync Workflow
+---
+flowchart TD
+    A[MasterImageSyncWorkflow Starts with TERMINATE_IF_RUNNING policy] --> B[Execute FetchManifestWorkflow]
+    B --> C[Get Files to Download Activity]
+    C --> D[Get Region Endpoints Activity]
+    D --> |Calculate Required Disk Space| E["Check Disk Space on All Regions (CheckBootResourcesStorageWorkflow)"]
+
+    E --> G{All Regions Have Space?}
+    G -->|Yes| I[Cancel Obsolete Download Workflows:<br/>Cancel SyncRemote workflows for SHA256s no longer needed]
+    G --> |No| H[Throw ApplicationError]
+
+    I --> J[Create Download & Sync Jobs for Each Resource]
+    J --> K{Any Jobs to Execute?}
+    K -->|No| M[Set Global Default Releases]
+    K -->|Yes| L{Is child workflow already running?}
+    L -->|No| V
+    L -->|Yes| L1[Do nothing]
+    
+    M --> N[Cleanup Old Boot Resources Activity]
+    N --> O1{All images would be deleted?}
+    O1 -->|No| P[Workflow Success - Discard Error Notifications]
+    O1 --> |Yes| O2[Throw ApplicationError]
+
+    B -.->|Error| Q[Activity/Workflow Error Handler]
+    C -.->|Error| Q
+    D -.->|Error| Q
+    I -.->|Error| Q
+    H -.->|Error| Q
+    M -.->|Error| Q
+    O2 -.->|Error| Q
+    
+    Q --> R[Register Error Notification Activity]
+    R --> S[Workflow Ends with Error Notification]
+    
+    P --> T[Workflow Complete Successfully]
+    
+    subgraph "Child Workflow"
+        V[SyncRemoteBootResourcesWorkflow with ABANDON policy]
+        V --> |One region runs| W[DownloadBootResourceWorkflow]
+        W --> |The remaining regions get synced through| X[SyncBootResourcesWorkflow]
+        X --> Y[Send Signal: file_completed_download]
+    end
+    
+    Y -.->|Signal| Z1[Update _files_to_download workflow variable]
+    Z1 --> Z2[Wait for all the SyncRemoteBootResourcesWorkflow to be finished]
+    Z2 --> M
+
