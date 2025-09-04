@@ -7,6 +7,7 @@ import random
 
 from django.core.exceptions import ValidationError
 
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
@@ -18,6 +19,10 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestRegionRackRPCConnection(MAASServerTestCase):
     """Tests for the `RegionRackRPCConnection` model."""
+
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
 
     def test_endpoint_rack_controller_are_unique(self):
         region = factory.make_RegionController()

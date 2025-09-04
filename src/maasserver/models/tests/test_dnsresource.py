@@ -334,6 +334,27 @@ class TestDNSResource(MAASServerTestCase):
         assert StaticIPAddress.objects.filter(ip=sip1.get_ip()).exists()
         assert not StaticIPAddress.objects.filter(ip=sip2.get_ip()).exists()
 
+    def test_delete_dnsresource_does_not_delete_ip(self):
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=factory.make_name(), domain=domain)
+        dnsresource2 = DNSResource(name=factory.make_name(), domain=domain)
+
+        with post_commit_hooks:
+            dnsresource.save()
+            dnsresource2.save()
+
+        sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED
+        )
+
+        with post_commit_hooks:
+            dnsresource.ip_addresses.add(sip)
+            dnsresource2.ip_addresses.add(sip)
+            dnsresource.delete()
+
+        assert StaticIPAddress.objects.filter(ip=sip.get_ip()).exists()
+        assert DNSResource.objects.filter(id=dnsresource2.id).exists()
+
     def test_save_calls_dns_workflow_on_create(self):
         domain = factory.make_Domain(authoritative=True)
         dnsresource = DNSResource(name=factory.make_name(), domain=domain)

@@ -25,6 +25,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import PodProblem
 from maasserver.models import bmc as bmc_module
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import (
     BMC,
@@ -908,6 +909,10 @@ class PodTestMixin:
 
 
 class TestPod(MAASServerTestCase, PodTestMixin):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_name_project_cluster_uniqueness(self):
         user = factory.make_User()
         cluster = factory.make_VMCluster(pods=0)

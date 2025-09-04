@@ -5,6 +5,7 @@
 
 from netaddr import IPNetwork
 
+from maascommon.utils.network import IPRangeStatistics
 from maasserver.forms.subnet import SubnetForm
 from maasserver.models import Discovery, RackController, StaticRoute, Subnet
 from maasserver.models.subnet import get_allocated_ips
@@ -13,7 +14,6 @@ from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.network import IPRangeStatistics
 
 maaslog = get_maas_logger("subnet")
 

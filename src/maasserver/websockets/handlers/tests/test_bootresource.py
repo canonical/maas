@@ -21,6 +21,7 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
 )
+import maasserver.models.dnspublication as dnspublication_module
 import maasserver.models.node as node_module
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
@@ -66,6 +67,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def setUp(self):
         super().setUp()
         self.region = factory.make_RegionController()
+        self.patch(dnspublication_module, "post_commit_do")
 
         self.patch(
             bootresource, "is_import_resources_running"

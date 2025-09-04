@@ -6,13 +6,13 @@
 from formencode.validators import StringBool
 from piston3.utils import rc
 
+from maascommon.utils.network import IPRangeStatistics
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.subnet import SubnetForm
 from maasserver.models import Space, Subnet
 from maasserver.permissions import NodePermission
-from provisioningserver.utils.network import IPRangeStatistics
 
 DISPLAYED_SUBNET_FIELDS = (
     "id",

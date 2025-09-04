@@ -7,6 +7,7 @@ from unittest.mock import sentinel
 from fixtures import FakeLogger
 from netaddr import IPNetwork
 
+from maascommon.utils.network import IPRangeStatistics
 from maasserver.api import discoveries as discoveries_module
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.subnet import Subnet
@@ -16,7 +17,6 @@ from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maastesting.djangotestcase import count_queries
-from provisioningserver.utils.network import IPRangeStatistics
 
 
 class TestSubnetHandler(MAASServerTestCase):

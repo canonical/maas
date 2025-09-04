@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import shutil
 from typing import Any, Coroutine
 
-from aiohttp.client_exceptions import ClientError
+import httpx
 import structlog
 from temporalio import activity, workflow
 from temporalio.client import WorkflowFailureError
@@ -229,23 +229,23 @@ class BootResourcesActivity(ActivityBase):
                 return True
 
             async with (
-                self.apiclient.session.get(
-                    url,
-                    verify_ssl=False,
-                    chunked=True,
-                    proxy=param.http_proxy,
+                self.apiclient.make_client(param.http_proxy).stream(
+                    "GET", url
                 ) as response,
                 lfile.astore(autocommit=False) as store,
             ):
                 response.raise_for_status()
                 last_update = datetime.now(timezone.utc)
-                async for data, _ in response.content.iter_chunks():
+
+                async for chunk in response.aiter_bytes(
+                    chunk_size=5 * 1024 * 1024
+                ):  # 5MB chunks
                     activity.heartbeat("Downloaded chunk")
-                    store.write(data)
                     dt_now = datetime.now(timezone.utc)
                     if dt_now > (last_update + REPORT_INTERVAL):
                         await self.report_progress(param.rfile_ids, lfile.size)
                         last_update = dt_now
+                    store.write(chunk)
 
             logger.debug("Download done, doing checksum")
             activity.heartbeat("Finished download, doing checksum")
@@ -276,7 +276,7 @@ class BootResourcesActivity(ActivityBase):
                 ex.strerror, type=ex.__class__.__name__
             ) from None
         except (
-            ClientError,
+            httpx.HTTPError,
             LocalStoreInvalidHash,
             LocalStoreWriteBeyondEOF,
         ) as ex:

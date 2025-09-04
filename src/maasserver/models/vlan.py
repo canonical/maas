@@ -364,10 +364,24 @@ class VLAN(CleanSave, TimestampedModel):
             return
 
         elif created or self._needs_dhcp_update():
+            from maasserver.models import RackController
+
+            param = ConfigureDHCPParam(system_ids=[], vlan_ids=[self.id])
+            if self._previous_primary_rack_id:
+                prev_primary = RackController.objects.get(
+                    id=self._previous_primary_rack_id
+                )
+                param.system_ids.append(prev_primary.system_id)
+            if self._previous_secondary_rack_id:
+                prev_secondary = RackController.objects.get(
+                    id=self._previous_secondary_rack_id
+                )
+                param.system_ids.append(prev_secondary.system_id)
+
             post_commit_do(
                 start_workflow,
                 workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=ConfigureDHCPParam(vlan_ids=[self.id]),
+                param=param,
                 task_queue="region",
             )
 

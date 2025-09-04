@@ -1,55 +1,95 @@
-MAAS bug reports appear in Launchpad. Here are some tips for submitting usable bugs.
+Bugs are inevitable in complex systems. A well-written bug report makes it faster for developers and support engineers to reproduce, diagnose, and fix your issue.
 
-## Ready your info
+This page shows you how to prepare bug information, gather logs, and submit a Launchpad report that others can review and act on.
 
-Preparation is key. Have these details ready: 
+## Step 1 – Prepare your information
 
-1. **Bug summary**: Be concise. Think: 
-   - "MAAS PXE boot fails on IBM LPAR as KVM host" 
-2. **Version and build**: 
-   - Snap users: `snap list maas`
-   - Debian package users: `apt list maas`
-3. **Interface used**: UI? CLI? API? Specify.
-4. **What happened**: Describe the unexpected behaviour. Keep it crisp.
-5. **Steps to reproduce**: Step-by-step actions leading to the problem.
-6. **Screenshots**: Only if they clarify.
-7. **Log files**: see bellow
+Before you open Launchpad, collect the essentials:
 
-Use a text editor. Keep these details at hand.
+* Bug summary – One line, specific.
+  Example: `MAAS PXE boot fails on IBM LPAR as KVM host`
+* Version and build –
 
-### Gathering logs for version 3.5 and forward
+  * Snap: `snap list maas`
+  * Debian package: `apt list maas`
+* Interface – Did the issue occur in the UI, CLI, or API?
+* What happened – Brief description of the unexpected behavior.
+* Steps to reproduce – Clear, step-by-step sequence.
+* Screenshots – Only if they clarify.
+* Logs – See below.
 
-Starting with MAAS 3.5 the logs are sent to the system journal (`journald`). The utility used to query and display logs from the journal is called `journalctl`, and it's a powerful tool. For a bug report, it's enough to run the following command line:
+Keep these details in a text editor so you can paste them quickly into the bug form.
 
-`journalctl --since "1 hour ago" -o json | xz > maas-log.json.xz`
 
-You can combine `--since` and `--until` parameters to extract the logs from the correct time window. You can use any valid date and time format specified in the [systemd.time](https://manpages.ubuntu.com/manpages/noble/en/man7/systemd.time.7.html) manual. Please always export logs starting some time before the issue manifested.
+## Step 2 – Gather logs
 
-### Gathering logs for prior versions
+### MAAS 3.5 and later (journald)
 
-Older MAAS versions keep logs in files in the local disk. In most cases,  `maas.log`, `regiond.log` and `rackd.log` are enough to start investigating the issue. The location of these files depends on your installation:
+Logs are stored in `systemd`’s journal. Export them like this:
 
-   - Snap: `/var/snap/maas/common/log/`
-   - Debian Package: `/var/log/maas/`
+```bash
+journalctl --since "1 hour ago" -o json | xz > maas-log.json.xz
+```
 
-### Using `sos` to collect logs (and more)
+Tips:
 
-`sos`  is  a  diagnostic  data  collection  utility,  used by system administrators, support representatives, and the like to assist in troubleshooting issues with a system  or  group of systems. It can be used to automate the collection of logs.
+* Adjust `--since` and `--until` to cover the event.
+* Use `man systemd.time` for valid date/time formats.
+* Always capture some time before the issue starts.
 
-*`sosreport`  version 4.8.0 or better is required to produce an useful report for MAAS.*
+### MAAS 3.4 and earlier (log files)
 
-In order to produce a report, you can run the following command:
+Logs are stored on disk. Collect:
 
-`sudo sos report -o maas --all-logs`
+* `maas.log`
+* `regiond.log`
+* `rackd.log`
 
-It's advised to review the generated report for confidential/sensitive data before attaching it to a public Bug Report.
+Default locations:
 
-## Submit the bug
+* Snap: `/var/snap/maas/common/log/`
+* Debian package: `/var/log/maas/`
 
-1. **Start here**: [Launchpad bug report page](https://bugs.launchpad.net/maas/+filebug)
-2. **Summary**: Input your concise summary.
-3. **Details**: Paste the prepared info into "Further information".
-4. **Attachments**: Add screenshots and log files. Describe them.
-5. **Submit**: Click "Submit Bug Report".
+### Using `sosreport`
 
-For clarity, you can view this [sample bug](https://bugs.launchpad.net/maas/+bug/1923516).
+`sos` can gather MAAS logs and system data in one package. Requires sosreport 4.8.0 or newer.
+
+```bash
+sudo sos report -o maas --all-logs
+```
+
+⚠️ Check for sensitive data before attaching to a public bug.
+
+
+## Step 3 – Submit the bug
+
+1. Open the [Launchpad MAAS bug page](https://bugs.launchpad.net/maas/+filebug).
+2. Fill out:
+
+   * Summary – Paste your concise title.
+   * Details – Add your prepared info.
+   * Attachments – Upload screenshots and logs, with short descriptions.
+3. Click Submit Bug Report.
+
+Example: see [sample bug report](https://bugs.launchpad.net/maas/+bugs/).
+
+
+## Step 4 – Review and respond
+
+Once submitted:
+
+* Check if developers ask for clarification or more logs.
+* Update your report instead of creating duplicates.
+* Mark duplicates if you find similar reports.
+
+
+## Safety nets
+
+* Missing logs? Reproduce the issue and rerun the log collection step.
+* Confidential data? Strip or redact before posting.
+* Can’t access Launchpad? Contact Canonical support if you have a subscription.
+
+
+## Next steps
+
+* [Troubleshooting MAAS](https://canonical.com/maas/docs/maas-troubleshooting-guide)

@@ -356,7 +356,7 @@ This update should make it much simpler to use custom-built Windows images with 
 
 ### Shifting the MAAS API documentation to OpenAPI standards
 
-MAAS API User want to experience the MAAS API in a more standard way, along the lines of the OpenAPI definition. MAAS 3.3 begins this process by providing most of the MAAS API functionality in a discover-able form. You should now be able to easily retrieve human-readable service documentation and API definitions using standard methods. Consult [the API documentation](https://maas.io/docs/api) for details.
+MAAS API User want to experience the MAAS API in a more standard way, along the lines of the OpenAPI definition. MAAS 3.3 begins this process by providing most of the MAAS API functionality in a discover-able form. You should now be able to easily retrieve human-readable service documentation and API definitions using standard methods. Consult [the API documentation](https://canonical.com/maas/docs/api) for details.
 
 ### MAAS configuration settings reference
 

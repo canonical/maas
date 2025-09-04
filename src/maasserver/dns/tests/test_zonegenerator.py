@@ -30,6 +30,7 @@ from maasserver.dns.zonegenerator import (
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import Config, Domain, Subnet
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -228,6 +229,10 @@ class TestLazyDict(TestCase):
 class TestGetHostnameMapping(MAASServerTestCase):
     """Test for `get_hostname_ip_mapping`."""
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_get_hostname_ip_mapping_containts_both_static_and_dynamic(self):
         node1 = factory.make_Node(interface=True)
         node1_interface = node1.get_boot_interface()
@@ -308,6 +313,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(RegionConfigurationFixture())
+        self.patch(dnspublication_module, "post_commit_do")
 
     def test_empty_yields_nothing(self):
         self.assertEqual(
@@ -742,6 +748,10 @@ class TestZoneGenerator(MAASServerTestCase):
 
 class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
     """Tests for TTL in :class:ZoneGenerator`."""
+
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
 
     @transactional
     def test_domain_ttl_overrides_global(self):

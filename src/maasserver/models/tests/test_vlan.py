@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
+from unittest.mock import call
 
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
@@ -11,6 +12,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
 )
 from maasserver.enum import INTERFACE_TYPE
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import vlan as vlan_module
 from maasserver.models.interface import PhysicalInterface, VLANInterface
 from maasserver.models.notification import Notification
@@ -120,12 +122,16 @@ class TestVLANManager(MAASServerTestCase):
             )
         start_workflow.assert_called_once_with(
             workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            param=ConfigureDHCPParam(system_ids=[], vlan_ids=[vlan.id]),
             task_queue="region",
         )
 
 
 class TestVLAN(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_delete_relay_vlan_doesnt_delete_vlan(self):
         with post_commit_hooks:
             relay_vlan = factory.make_VLAN()
@@ -278,8 +284,32 @@ class TestVLAN(MAASServerTestCase):
             vlan.save()
         start_workflow.assert_called_once_with(
             workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            param=ConfigureDHCPParam(system_ids=[], vlan_ids=[vlan.id]),
             task_queue="region",
+        )
+
+    def test_disabling_dhcp_includes_previous_rack_ids(self):
+        start_workflow = self.patch(vlan_module, "start_workflow")
+        rack1 = factory.make_RackController()
+        rack2 = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=rack1, secondary_rack=rack2
+        )
+        vlan.dhcp_on = False
+        vlan.primary_rack_id = None
+        vlan.secondary_rack_id = None
+        with post_commit_hooks:
+            vlan.save()
+        self.assertIn(
+            call(
+                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+                param=ConfigureDHCPParam(
+                    system_ids=[rack1.system_id, rack2.system_id],
+                    vlan_ids=[vlan.id],
+                ),
+                task_queue="region",
+            ),
+            start_workflow.mock_calls,
         )
 
     def test_delete_calls_configure_dhcp_workflow(self):

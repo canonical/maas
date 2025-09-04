@@ -610,6 +610,42 @@ class TestDNSConfig(MAASTestCase):
             f'include "{config_dir}/{DNSConfig.target_file_name}"', snippet
         )
 
+    def test_write_config_with_authoritive_zones(self):
+        domain = factory.make_name("domain")
+        network = IPNetwork("192.168.0.3/24")
+
+        reverse_zone = DNSReverseZoneConfig(domain, network=network)
+        reverse_zone.zone_info = [
+            type(
+                "ZoneInfo",
+                (),
+                {"zone_name": domain, "target_path": f"zone.{domain}"},
+            )()
+        ]
+        target_dir = patch_dns_config_path(self)
+        DNSConfig(zones=[reverse_zone]).write_config()
+
+        config_path = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
+        expected_content = dedent(
+            f"""
+        zone "{domain}" {{
+            type master;
+            # Disable forwarding for authoritative zones, lp:2118833
+            forwarders {{ }};
+            file "zone.{domain}";
+            allow-update {{
+                key maas.;
+            }};
+        }};
+        """
+        )
+        config = read_isc_file(config_path)
+        expected = parse_isc_string(expected_content)
+
+        self.assertEqual(
+            expected[f'zone "{domain}"'], config[f'zone "{domain}"']
+        )
+
 
 class TestDynamicDNSUpdate(MAASTestCase):
     def test_create_from_trigger_v4(self):
@@ -693,7 +729,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer=ip_answer,
         )
@@ -704,7 +740,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet
@@ -719,7 +755,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer=str("10.1.1.5"),
         )
@@ -730,7 +766,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet
@@ -745,7 +781,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer="fc55:4c7c:a5ea:57b0:7cad:a076:a844:8001",
         )
@@ -756,7 +792,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet
@@ -771,7 +807,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name=f"{factory.make_name()}.{domain}",
+            name=f"{factory.make_name()}",
             rectype="A",
             answer=str("10.1.1.161"),
         )
@@ -782,7 +818,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{domain}",
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
             fwd_update, subnet

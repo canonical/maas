@@ -369,6 +369,7 @@ class TestDNSResourcesService:
             action=DnsUpdateAction.DELETE,
             label=dnsresource.name,
             rtype="A",
+            zone="test_domain",
         )
 
     async def test_update_dynamic_hostname(self) -> None:

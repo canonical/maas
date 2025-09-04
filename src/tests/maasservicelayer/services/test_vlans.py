@@ -189,7 +189,78 @@ class TestVlansService:
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            ConfigureDHCPParam(system_ids=[], vlan_ids=[vlan.id]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+
+    async def test_update_disable_dhcp(self):
+        now = utcnow()
+        node = Node(
+            id=1,
+            system_id="abc",
+            hostname="primary_rack",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.RACK_CONTROLLER,
+            power_state=PowerState.ON,
+        )
+        vlan = Vlan(
+            id=1,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=1500,
+            dhcp_on=True,
+            primary_rack_id=node.id,
+            fabric_id=1,
+            created=now,
+            updated=now,
+        )
+
+        nodes_service_mock = Mock(NodesService)
+        nodes_service_mock.get_by_id.return_value = node
+        vlans_repository_mock = Mock(VlansRepository)
+        vlans_repository_mock.get_by_id.return_value = vlan
+        vlans_repository_mock.update_by_id.return_value = Vlan(
+            id=1,
+            vid=0,
+            name="test",
+            description="descr",
+            mtu=1500,
+            dhcp_on=False,
+            fabric_id=1,
+            created=now,
+            updated=now,
+        )
+
+        mock_temporal = Mock(TemporalService)
+
+        vlans_service = VlansService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            nodes_service=nodes_service_mock,
+            vlans_repository=vlans_repository_mock,
+        )
+
+        builder = VlanBuilder(
+            vid=vlan.vid,
+            name=vlan.name,
+            description=vlan.description,
+            mtu=vlan.mtu,
+            dhcp_on=False,
+            primary_rack_id=None,
+            fabric_id=vlan.fabric_id,
+        )
+        await vlans_service.update_by_id(vlan.id, builder)
+
+        vlans_repository_mock.update_by_id.assert_called_once_with(
+            id=vlan.id, builder=builder
+        )
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(
+                system_ids=[node.system_id], vlan_ids=[vlan.id]
+            ),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )

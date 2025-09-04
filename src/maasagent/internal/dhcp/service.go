@@ -568,16 +568,18 @@ func (s *DHCPService) restartService(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	if runningV6 {
-		err := s.controllerV6.Restart(ctx)
+	} else {
+		err := s.controllerV4.Stop(ctx) // ensure disabled server is stopped
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
+	if runningV6 {
+		return s.controllerV6.Restart(ctx)
+	}
+
+	return s.controllerV6.Stop(ctx) // ensure disabled server is stopped
 }
 
 // getConfig retrieves the DHCP configuration from the Region Controller by

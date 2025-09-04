@@ -20,6 +20,7 @@ import requests
 from twisted.application.internet import TimerService
 
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.utils.network import IPRANGE_PURPOSE, IPRangeStatistics
 from maasserver.certificates import get_maas_certificate
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, NODE_TYPE
 from maasserver.models import (
@@ -51,7 +52,6 @@ from provisioningserver.path import get_maas_data_path
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
-from provisioningserver.utils.network import IPRANGE_PURPOSE, IPRangeStatistics
 
 log = LegacyLogger()
 

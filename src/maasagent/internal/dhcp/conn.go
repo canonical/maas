@@ -23,78 +23,61 @@ import (
 )
 
 const (
-	dhcpPort = 67
+	dhcp4Port = 67
+	dhcp6Port = 547
 )
 
-// newDHCP4Conn creates a net.PacketConn for DHCP use. While given MAAS' reference architecture,
-// having the DHCP server only listen on unicast and then only using relays on broadcast, is unusual, this
-// is a common enough practice in the general case to make broadcast optional
-func newDHCP4Conn(iface *net.Interface, broadcast bool) (net.PacketConn, error) {
-	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM, unix.IPPROTO_UDP)
-	if err != nil {
-		return nil, err
-	}
-
-	f := os.NewFile(uintptr(fd), "")
-
-	// net.FilePacketConn duplicates the FD, so we can close this one when we're done with it
-	defer f.Close() //nolint:errcheck // ignoring deferred close error
-
-	if broadcast {
-		err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_BROADCAST, 1)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	err = unix.BindToDevice(fd, iface.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	saddr := unix.SockaddrInet4{
-		Port: dhcpPort,
-	}
-
-	err = unix.Bind(fd, &saddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return net.FilePacketConn(f)
+func newDHCP4Conn(iface *net.Interface) (net.PacketConn, error) {
+	return newDHCPConn(
+		iface,
+		unix.AF_INET,
+		&unix.SockaddrInet4{Port: dhcp4Port},
+		func(fd int) error {
+			// SO_BROADCAST allows broadcast datagrams to be sent from this socket
+			return unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_BROADCAST, 1)
+		},
+	)
 }
 
-// newDHCP6Conn creates a net.PacketConn for DHCP6 use. Like newDHCP4Conn, broadcast is optional
-// in the event only relays will handle broadcast.
-func newDHCP6Conn(iface *net.Interface, broadcast bool) (net.PacketConn, error) {
-	fd, err := unix.Socket(unix.AF_INET6, unix.SOCK_DGRAM, unix.IPPROTO_UDP)
+func newDHCP6Conn(iface *net.Interface) (net.PacketConn, error) {
+	return newDHCPConn(
+		iface,
+		unix.AF_INET6,
+		&unix.SockaddrInet6{Port: dhcp6Port},
+		func(fd int) error {
+			// Restrict socket to IPv6 traffic only
+			return unix.SetsockoptInt(fd, unix.IPPROTO_IPV6, unix.IPV6_V6ONLY, 1)
+		},
+	)
+}
+
+// newDHCPConn creates a bound UDP socket on the given interface
+func newDHCPConn(iface *net.Interface, af int, sockaddr unix.Sockaddr,
+	fn func(fd int) error,
+) (net.PacketConn, error) {
+	fd, err := unix.Socket(af, unix.SOCK_DGRAM, unix.IPPROTO_UDP)
 	if err != nil {
 		return nil, err
 	}
 
 	f := os.NewFile(uintptr(fd), "")
 
-	// net.FilePacketConn duplicates the FD, so we can close this one when we're done with it
+	// newDHCPConn returns net.FilePacketConn which duplicates the file:
+	// > FilePacketConn returns a copy of the packet network connection
+	// > corresponding to the open file f.so
 	defer f.Close() //nolint:errcheck // ignoring deferred close error
 
-	if broadcast {
-		err = unix.SetsockoptInt(fd, unix.IPPROTO_IPV6, unix.IPV6_V6ONLY, 1)
-		if err != nil {
+	if fn != nil {
+		if err := fn(fd); err != nil {
 			return nil, err
 		}
 	}
 
-	err = unix.BindToDevice(fd, iface.Name)
-	if err != nil {
+	if err := unix.BindToDevice(fd, iface.Name); err != nil {
 		return nil, err
 	}
 
-	saddr := unix.SockaddrInet6{
-		Port: dhcpPort,
-	}
-
-	err = unix.Bind(fd, &saddr)
-	if err != nil {
+	if err := unix.Bind(fd, sockaddr); err != nil {
 		return nil, err
 	}
 

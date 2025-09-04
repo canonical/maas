@@ -18,6 +18,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import Event, Node, NodeKey, Pod
 from maasserver.models import node as node_module
 from maasserver.models.signals.testing import SignalsDisabled
@@ -370,6 +371,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         )
 
     def test_process_message_returns_false_when_node_deleted(self):
+        self.patch(dnspublication_module, "post_commit_do")
         node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         node1.delete()
         payload = {

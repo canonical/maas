@@ -96,7 +96,7 @@ class DynamicDNSUpdate:
             zone=zone or fwd_update.zone,
             subnet=str(subnet.cidr),
             ttl=fwd_update.ttl,
-            answer=fwd_update.name,
+            answer=f"{fwd_update.name}.{fwd_update.zone}",
             rectype="PTR",
             ip=fwd_update.answer,
         )

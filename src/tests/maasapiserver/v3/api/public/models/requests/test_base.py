@@ -1,12 +1,18 @@
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from operator import eq
+
 import pytest
-from sqlalchemy import desc, text
+from sqlalchemy import BigInteger, Column, desc, MetaData, String, Table
 
 from maasapiserver.v3.api.public.models.requests.base import (
+    FreeTextSearchQueryParam,
     NamedBaseModel,
     OptionalNamedBaseModel,
     OrderByQueryFilter,
 )
-from maasservicelayer.db.filters import OrderByClause
+from maasservicelayer.db.filters import Clause, OrderByClause
 from maasservicelayer.exceptions.catalog import ValidationException
 
 VALID_NAMES = [
@@ -57,10 +63,17 @@ class TestOptionalNamedBaseModel:
         assert model.name is None
 
 
+METADATA = MetaData()
+
+DummyTable = Table(
+    "dummy_table", METADATA, Column("id", BigInteger), Column("name", String)
+)
+
+
 class OrderByQueryTestClass(OrderByQueryFilter):
     _order_by_columns = {
-        "id": OrderByClause(column=text("table.id")),
-        "name": OrderByClause(column=text("table.name")),
+        "id": OrderByClause(column=DummyTable.c.id),
+        "name": OrderByClause(column=DummyTable.c.name),
     }
 
 
@@ -92,13 +105,35 @@ class TestOrderByQueryFilter:
 
     def test_to_clauses(self) -> None:
         q = OrderByQueryTestClass(order_by=["desc(id)"])
-        c1 = q.to_clauses()[0]
-        c2 = OrderByClause(column=desc(text("table.id")))
-        print(c1.column.compare(c2.column))
-        assert q.to_clauses() == [OrderByClause(column=desc(text("table.id")))]
+        assert q.to_clauses() == [OrderByClause(column=desc(DummyTable.c.id))]
 
     def test_to_href_format(self) -> None:
         q = OrderByQueryTestClass(order_by=["desc(id)"])
         assert q.to_href_format() == "order_by=desc(id)"
         q = OrderByQueryTestClass(order_by=["desc(id)", "asc(name)"])
         assert q.to_href_format() == "order_by=desc(id)&order_by=asc(name)"
+
+
+class FreeTextSearchQueryParamTestClass(FreeTextSearchQueryParam):
+    def to_clause(self) -> Clause | None:
+        if not self.q:
+            return None
+        return Clause(condition=eq(DummyTable.c.name, self.q))
+
+
+class TestFreeTextSearchQueryParam:
+    def test_to_href(self) -> None:
+        freetext_query = FreeTextSearchQueryParamTestClass(q=None)
+        assert freetext_query.to_href_format() == ""
+
+        freetext_query = FreeTextSearchQueryParamTestClass(q="foo")
+        assert freetext_query.to_href_format() == "q=foo"
+
+    def test_to_clause(self) -> None:
+        freetext_query = FreeTextSearchQueryParamTestClass(q=None)
+        assert freetext_query.to_clause() is None
+
+        freetext_query = FreeTextSearchQueryParamTestClass(q="foo")
+        assert freetext_query.to_clause() == Clause(
+            condition=eq(DummyTable.c.name, "foo")
+        )

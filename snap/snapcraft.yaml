@@ -137,6 +137,7 @@ parts:
       - python3-fastapi
       - python3-formencode
       - python3-httplib2
+      - python3-httpx
       - python3-hvac
       - python3-idna # for macaroonbakery
       - python3-jose

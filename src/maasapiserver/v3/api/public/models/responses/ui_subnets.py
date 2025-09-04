@@ -1,9 +1,9 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Optional, Self, TypedDict
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -15,11 +15,24 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.fields import IPv4v6Network
-from maasservicelayer.models.ui_subnets import UISubnet
+from maasservicelayer.models.ui_subnets import UISubnet, UISubnetStatistics
 
 
 class VlanHref(BaseHrefWithId):
     vid: str
+    dhcp_on: bool
+    external_dhcp: Optional[str]
+    relay_vlan_id: Optional[str]
+
+
+UISubnetEmbeddedType = TypedDict(
+    "UISubnetEmbeddedType",
+    {
+        "fabric": BaseHrefWithId,
+        "space": BaseHrefWithId | None,
+        "vlan": VlanHref,
+    },
+)
 
 
 class UISubnetResponse(HalResponse[BaseHal]):
@@ -36,6 +49,8 @@ class UISubnetResponse(HalResponse[BaseHal]):
     active_discovery: bool
     managed: bool
     disabled_boot_architectures: list[str]
+    statistics: UISubnetStatistics
+    hal_embedded: UISubnetEmbeddedType = Field(alias="_embedded")  # pyright: ignore [reportIncompatibleVariableOverride, reportGeneralTypeIssues]
 
     @classmethod
     def from_model(cls, subnet: UISubnet, self_base_hyperlink: str) -> Self:
@@ -52,6 +67,7 @@ class UISubnetResponse(HalResponse[BaseHal]):
             active_discovery=subnet.active_discovery,
             managed=subnet.managed,
             disabled_boot_architectures=subnet.disabled_boot_architectures,
+            statistics=subnet.statistics,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{subnet.id}"
@@ -67,6 +83,14 @@ class UISubnetResponse(HalResponse[BaseHal]):
                     href=f"{V3_API_PREFIX}/fabrics/{subnet.fabric_id}/vlans/{subnet.vlan_id}",
                     id=str(subnet.vlan_id),
                     vid=str(subnet.vlan_vid),
+                    name=subnet.vlan_name,
+                    dhcp_on=subnet.vlan_dhcp_on,
+                    external_dhcp=str(subnet.vlan_external_dhcp)
+                    if subnet.vlan_external_dhcp
+                    else None,
+                    relay_vlan_id=str(subnet.vlan_relay_vlan_id)
+                    if subnet.vlan_relay_vlan_id
+                    else None,
                 ),
                 "space": BaseHrefWithId(
                     href=f"{V3_API_PREFIX}/spaces/{subnet.space_id}",
@@ -74,7 +98,7 @@ class UISubnetResponse(HalResponse[BaseHal]):
                     name=subnet.space_name,
                 )
                 if subnet.space_id is not None
-                else {},
+                else None,
             },
         )
 

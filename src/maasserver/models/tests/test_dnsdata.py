@@ -408,6 +408,8 @@ class TestDNSDataMapping(MAASServerTestCase):
         self.assertEqual(expected_parent, actual_parent)
 
     def test_get_hostname_dnsdata_mapping_handles_ttl(self):
+        self.patch(dnspublication_module, "post_commit_do")
+
         # We create 2 domains, one with a ttl, one withoout.
         # Within each domain, create an RRset with and without ttl.
         global_ttl = random.randint(1, 99)
@@ -430,6 +432,8 @@ class TestDNSDataMapping(MAASServerTestCase):
             self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_returns_raw_ttl(self):
+        self.patch(dnspublication_module, "post_commit_do")
+
         # We create 2 domains, one with a ttl, one withoout.
         # Within each domain, create an RRset with and without ttl.
         # We then query with raw_ttl=True, and confirm that nothing is

@@ -16,7 +16,9 @@ import aiodns
 import aiofiles
 import aiofiles.os as aiofiles_os
 from netaddr import AddrFormatError, IPAddress, IPNetwork
+import structlog
 from temporalio import activity, workflow
+from temporalio.exceptions import ActivityError
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.node import NodeTypeEnum
@@ -27,22 +29,28 @@ from maascommon.workflows.dns import (
     InvalidDNSUpdateError,
 )
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dnsdata import DNSDataClauseFactory
 from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceClauseFactory,
 )
 from maasservicelayer.db.repositories.domains import DomainsClauseFactory
+from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.models.dnsdata import DNSData
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.utils import (
+    activity_defn_with_context,
+    workflow_run_with_context,
+)
 from provisioningserver.dns.config import (
     DynamicDNSUpdate,
     get_dns_config_dir,
+    get_named_rndc_conf_path,
     get_nsupdate_key_path,
     get_rndc_conf_path,
     get_zone_file_config_dir,
@@ -65,6 +73,12 @@ DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME = "dynamic-update-dns-configuration"
 CHECK_SERIAL_UPDATE_NAME = "check-serial-update"
 
 zone_serial_regexp = re.compile(r"\s*([0-9]+)\s*\;\s*serial")
+
+logger = structlog.getLogger()
+
+
+class RNDCException(Exception):
+    pass
 
 
 @dataclass
@@ -161,6 +175,7 @@ class DNSConfigActivity(ActivityBase):
         else:
             op, zone_name, rec_name, rtype = ("", "", "", "")
 
+        ip = None
         if len(update_content) > 4:
             if len(update_content) > 5:
                 ttl = int(update_content[4])
@@ -185,6 +200,23 @@ class DNSConfigActivity(ActivityBase):
                     )
                 ]
             case DnsUpdateAction.INSERT:
+                if ip:
+                    subnet = await svc.subnets.find_best_subnet_for_ip(ip)
+                    return [
+                        DynamicDNSUpdate(
+                            operation=op,
+                            zone=zone_name,
+                            rev_zone=self._get_rev_zone_name(
+                                IPNetwork(str(subnet.cidr))
+                            ),
+                            name=rec_name,
+                            rectype=rtype,
+                            ttl=ttl,
+                            answer=answer,
+                            ip=str(ip),
+                            subnet=str(subnet.cidr),
+                        )
+                    ]
                 return [
                     DynamicDNSUpdate(
                         operation=op,
@@ -196,6 +228,35 @@ class DNSConfigActivity(ActivityBase):
                     )
                 ]
             case DnsUpdateAction.UPDATE:
+                if ip:
+                    subnet = await svc.subnets.find_best_subnet_for_ip(ip)
+                    return [
+                        DynamicDNSUpdate(
+                            operation=DnsUpdateAction.DELETE,
+                            zone=zone_name,
+                            rev_zone=self._get_rev_zone_name(
+                                IPNetwork(str(subnet.cidr))
+                            ),
+                            name=rec_name,
+                            rectype=rtype,
+                            answer=answer,
+                            ip=str(ip),
+                            subnet=str(subnet.cidr),
+                        ),
+                        DynamicDNSUpdate(
+                            operation=DnsUpdateAction.INSERT,
+                            zone=zone_name,
+                            rev_zone=self._get_rev_zone_name(
+                                IPNetwork(str(subnet.cidr))
+                            ),
+                            name=rec_name,
+                            rectype=rtype,
+                            ttl=ttl,
+                            answer=answer,
+                            ip=str(ip),
+                            subnet=str(subnet.cidr),
+                        ),
+                    ]
                 return [
                     DynamicDNSUpdate(
                         operation=DnsUpdateAction.DELETE,
@@ -224,6 +285,13 @@ class DNSConfigActivity(ActivityBase):
                     update.ttl = ttl
                 if answer:
                     update.answer = answer
+                if ip:
+                    subnet = await svc.subnets.find_best_subnet_for_ip(ip)
+                    update.ip = str(ip)
+                    update.subnet = str(subnet.cidr)
+                    update.rev_zone = self._get_rev_zone_name(
+                        IPNetwork(update.subnet)
+                    )
                 return [update]
             case DnsUpdateAction.DELETE_IP:
                 updates = [
@@ -274,10 +342,14 @@ class DNSConfigActivity(ActivityBase):
                 )
 
                 for ip in remaining_ips:
+                    subnet = await svc.subnets.find_best_subnet_for_ip(ip.ip)
                     updates.append(
                         DynamicDNSUpdate(
                             operation=DnsUpdateAction.INSERT,
                             zone=zone_name,
+                            rev_zone=self._get_rev_zone_name(
+                                IPNetwork(str(subnet.cidr))
+                            ),
                             name=rec_name,
                             rectype=(
                                 "A"
@@ -286,6 +358,8 @@ class DNSConfigActivity(ActivityBase):
                             ),
                             ttl=ttl,
                             answer=str(ip.ip),
+                            ip=ip.ip,
+                            subnet=str(subnet.cidr),
                         )
                     )
                 return updates
@@ -325,10 +399,16 @@ class DNSConfigActivity(ActivityBase):
 
                 if ips:
                     for ip in ips:
+                        subnet = await svc.subnets.find_best_subnet_for_ip(
+                            ip.ip
+                        )
                         updates.append(
                             DynamicDNSUpdate(
                                 operation=DnsUpdateAction.INSERT,
                                 zone=zone_name,
+                                rev_zone=self._get_rev_zone_name(
+                                    IPNetwork(str(subnet.cidr))
+                                ),
                                 name=rec_name,
                                 rectype=(
                                     "A"
@@ -337,23 +417,29 @@ class DNSConfigActivity(ActivityBase):
                                 ),
                                 ttl=ttl,
                                 answer=str(ip.ip),
+                                ip=ip.ip,
+                                subnet=str(subnet.cidr),
                             )
                         )
                 return updates
 
-    @activity.defn(name=GET_CHANGES_SINCE_CURRENT_SERIAL_NAME)
+    @activity_defn_with_context(name=GET_CHANGES_SINCE_CURRENT_SERIAL_NAME)
     async def get_changes_since_current_serial(
         self,
     ) -> (int, SerialChangesResult | None):
         async with self.start_transaction() as svc:
             current_serial = await self._get_current_serial_from_file(svc)
+
+            logger.debug(f"current serial: {current_serial}")
+
             if not current_serial:
-                return -1, SerialChangesResult(updates=[], force_reload=True)
+                return 0, SerialChangesResult(updates=[], force_reload=True)
             dnspublications = (
                 await svc.dnspublications.get_publications_since_serial(
                     current_serial
                 )
             )
+
             default_ttl = await svc.configurations.get("default_dns_ttl")
 
             updates = []
@@ -367,6 +453,11 @@ class DNSConfigActivity(ActivityBase):
             latest_serial = (
                 dnspublications[-1].serial if dnspublications else None
             )
+
+            logger.debug(f"latest serial: {latest_serial}")
+
+            if latest_serial == current_serial:
+                return -1, None
 
             return latest_serial, SerialChangesResult(
                 updates=updates, force_reload=False
@@ -411,12 +502,131 @@ class DNSConfigActivity(ActivityBase):
             return domain.ttl
         return default_ttl
 
+    async def _get_dns_ip_address(
+        self, svc: ServiceCollectionV3
+    ) -> list[StaticIPAddress] | None:
+        controllers = await svc.nodes.get_many(
+            query=QuerySpec(
+                where=NodeClauseFactory.or_clauses(
+                    [
+                        NodeClauseFactory.with_type(
+                            NodeTypeEnum.RACK_CONTROLLER
+                        ),
+                        NodeClauseFactory.with_type(
+                            NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                        ),
+                        NodeClauseFactory.with_type(
+                            NodeTypeEnum.REGION_CONTROLLER
+                        ),
+                    ]
+                )
+            )
+        )
+
+        ips = []
+
+        for controller in controllers:
+            ifaces = await svc.interfaces.get_many(
+                query=QuerySpec(
+                    where=InterfaceClauseFactory.with_node_config_id(
+                        controller.current_config_id
+                    )
+                )
+            )
+            sips = await svc.staticipaddress.get_for_interfaces(
+                [iface.id for iface in ifaces]
+            )
+            ips += [sip.ip for sip in sips]
+
+        if ips:
+            return str(min(ips))
+        return None
+
+    async def _get_internal_domain(
+        self, svc: ServiceCollectionV3, default_ttl: int
+    ) -> dict[str, dict[tuple[str, str], list[tuple[str, int]]]]:
+        internal_domain = await svc.configurations.get("maas_internal_domain")
+        controllers = await svc.nodes.get_many(
+            query=QuerySpec(
+                where=NodeClauseFactory.or_clauses(
+                    [
+                        NodeClauseFactory.with_type(
+                            NodeTypeEnum.RACK_CONTROLLER
+                        ),
+                        NodeClauseFactory.with_type(
+                            NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                        ),
+                    ]
+                )
+            )
+        )
+
+        records = defaultdict(list)
+
+        for controller in controllers:
+            ifaces = await svc.interfaces.get_many(
+                query=QuerySpec(
+                    where=InterfaceClauseFactory.with_node_config_id(
+                        controller.current_config_id
+                    )
+                )
+            )
+            sips = await svc.staticipaddress.get_for_interfaces(
+                [iface.id for iface in ifaces]
+            )
+            for sip in sips:
+                subnet = await svc.subnets.get_by_id(id=sip.subnet_id)
+                resource_name = (
+                    str(subnet.cidr)
+                    .replace("/", "--")
+                    .replace(":", "-")
+                    .replace(".", "-")
+                )
+                if isinstance(sip.ip, IPv4Address):
+                    records[(resource_name, "A")].append(
+                        (str(sip.ip), default_ttl)
+                    )
+                else:
+                    records[(resource_name, "AAAA")].append(
+                        (str(sip.ip), default_ttl)
+                    )
+
+        return {internal_domain: records}
+
     async def _get_fwd_records(
         self, svc: ServiceCollectionV3, domains: list[Domain], default_ttl: int
     ) -> dict[str, dict[tuple[str, str], list[tuple[str, int]]]]:
         fwd_records = defaultdict(lambda: defaultdict(list))
 
+        dns_ip = await self._get_dns_ip_address(svc)
+        default_domain = await svc.domains.get_default_domain()
+
         for domain in domains:
+            mappings = await svc.domains.get_hostname_ip_mapping(
+                domain.id,
+            )
+            for name, mapping in mappings.items():
+                label = name.replace(f".{domain.name}", "")
+                fwd_records[domain.name][(label, "A")] = [
+                    (str(ip), mapping.ttl)
+                    for ip in mapping.ips
+                    if isinstance(ip, IPv4Address)
+                ]
+                fwd_records[domain.name][(label, "AAAA")] = [
+                    (str(ip), mapping.ttl)
+                    for ip in mapping.ips
+                    if isinstance(ip, IPv6Address)
+                ]
+
+            dnsdata_mappings = await svc.domains.get_hostname_dnsdata_mapping(
+                domain.id
+            )
+            for name, mapping in dnsdata_mappings.items():
+                update = defaultdict(list)
+                for rr in mapping.rrset:
+                    update[(name, rr[1])].append((rr[2], rr[0]))
+                fwd_records[domain.name].update(update)
+
             dnsrrs = await svc.dnsresources.get_many(
                 query=QuerySpec(
                     where=DNSResourceClauseFactory().with_domain_id(domain.id),
@@ -424,14 +634,6 @@ class DNSConfigActivity(ActivityBase):
             )
             for dnsrr in dnsrrs:
                 ips = await svc.dnsresources.get_ips_for_dnsresource(dnsrr.id)
-                dns_data = await svc.dnsdata.get_many(
-                    query=QuerySpec(
-                        where=DNSDataClauseFactory.with_dnsresource_id(
-                            dnsrr.id
-                        )
-                    )
-                )
-
                 a_answers = [
                     (str(ip.ip), self._get_ttl(default_ttl, domain, dnsrr))
                     for ip in ips
@@ -451,15 +653,21 @@ class DNSConfigActivity(ActivityBase):
                         aaaa_answers
                     )
 
-                for dd in dns_data:
-                    fwd_records[domain.name][(dnsrr.name, dd.rrtype)].append(
-                        (
-                            dd.rrdata,
-                            self._get_ttl(
-                                default_ttl, domain, dnsrr, dnsdata=dd
-                            ),
-                        )
-                    )
+            if dns_ip and domain.id == default_domain.id:
+                if IPAddress(dns_ip).version == 4:
+                    fwd_records[domain.name][("@", "A")] = [
+                        (dns_ip, default_ttl)
+                    ]
+                else:
+                    fwd_records[domain.name][("@", "AAAA")] = [
+                        (dns_ip, default_ttl)
+                    ]
+
+            if not fwd_records[domain.name]:
+                fwd_records[domain.name] = {}
+
+        internal_records = await self._get_internal_domain(svc, default_ttl)
+        fwd_records.update(internal_records)
 
         return fwd_records
 
@@ -649,7 +857,9 @@ class DNSConfigActivity(ActivityBase):
                             for answer in answers:
                                 ip = IPAddress(answer[0])
                                 ptr_answer = (
-                                    ".".join([rec_name, domain_name]),
+                                    ".".join([rec_name, domain_name])
+                                    if rec_name != "@"
+                                    else domain_name,
                                     answer[1],
                                 )
                                 if ip in net:
@@ -674,11 +884,19 @@ class DNSConfigActivity(ActivityBase):
                                                 (
                                                     ".".join(
                                                         [rec_name, domain_name]
-                                                    ),
+                                                    )
+                                                    if rec_name != "@"
+                                                    else domain_name,
                                                     answer[1],
                                                 )
                                             )
+                rev_name = self._get_rev_zone_name(net)
+                if not rev_records[rev_name]:
+                    rev_records[rev_name] = {}
         return rev_records
+
+    def _get_named_rndc_conf_path(self) -> str:
+        return get_named_rndc_conf_path()
 
     def _get_rndc_conf_path(self) -> str:
         return get_rndc_conf_path()
@@ -696,10 +914,10 @@ class DNSConfigActivity(ActivityBase):
         if additional:
             cmd += additional
 
-        freeze = await asyncio.create_subprocess_exec(*cmd)
-        ret = await freeze.wait()
+        cmd = await asyncio.create_subprocess_exec(*cmd)
+        ret = await cmd.wait()
         if ret != 0:
-            raise Exception()  # TODO
+            raise RNDCException()
 
     @asynccontextmanager
     async def _freeze(
@@ -741,7 +959,7 @@ class DNSConfigActivity(ActivityBase):
                     "named.conf.workflow.template",
                     cfg,
                     zones=zones,
-                    named_rndc_conf_path=self._get_rndc_conf_path(),
+                    named_rndc_conf_path=self._get_named_rndc_conf_path(),
                     nsupdate_keys_conf_path=self._get_nsupdate_keys_path(),
                     forwarded_zones=kwargs.get("forwarded_zones", []),
                     trusted_networks=kwargs.get("trusted_networks", []),
@@ -775,8 +993,9 @@ class DNSConfigActivity(ActivityBase):
                 await aiofiles_os.rename(
                     f"{zone_file_path}.tmp", zone_file_path
                 )
+        await self._rndc_cmd(["reload"])
 
-    @activity.defn(name=FULL_RELOAD_DNS_CONFIGURATION_NAME)
+    @activity_defn_with_context(name=FULL_RELOAD_DNS_CONFIGURATION_NAME)
     async def full_reload_dns_configuration(self) -> DNSUpdateResult:
         async with self.start_transaction() as svc:
             domains = await svc.domains.get_many(
@@ -834,7 +1053,7 @@ class DNSConfigActivity(ActivityBase):
             await self._write_bind_files(
                 records,
                 serial,
-                fowarded_zones=[
+                forwarded_zones=[
                     (
                         domain.name,
                         (srvr.ip_address, srvr.port),
@@ -856,23 +1075,29 @@ class DNSConfigActivity(ActivityBase):
         domains: list[Domain],
         subnets: list[Subnet],
         serial: int,
+        internal_domain: str,
         server_address: Optional[str] = None,
         default_ttl: Optional[int] = 30,
     ) -> None:
-        stdin = []
+        stdin = [
+            f"zone {internal_domain}",
+            f"update add {internal_domain} {default_ttl} SOA {internal_domain}. nobody.example.com. {serial} 600 1800 604800 {default_ttl}",
+            "send\n",
+        ]
 
         def _fwd_updates(domain: Domain) -> list[str]:
             ttl = domain.ttl if domain.ttl else default_ttl
             return (
                 [f"zone {domain.name}"]
                 + [
-                    self._format_update(update)
+                    self._format_update(update, True)
                     for update in updates
                     if update.zone == domain.name
                 ]
                 + [
                     f"update add {domain.name} {ttl} SOA {domain.name}. nobody.example.com. {serial} 600 1800 604800 {ttl}"
                 ]
+                + ["send\n"]
             )
 
         def _rev_updates(subnet: Subnet) -> list[str]:
@@ -881,13 +1106,19 @@ class DNSConfigActivity(ActivityBase):
             return (
                 [f"zone {zone_name}"]
                 + [
-                    self._format_update(DynamicDNSUpdate.as_rev_record(update))
+                    self._format_update(
+                        DynamicDNSUpdate.as_reverse_record_update(
+                            update, network
+                        ),
+                        False,
+                    )
                     for update in updates
                     if update.ip and update.ip in network
                 ]
                 + [
                     f"update add {zone_name} {default_ttl} SOA {zone_name}. nobody.example.com. {serial} 600 1800 604800 {default_ttl}"
                 ]
+                + ["send\n"]
             )
 
         for domain in domains:
@@ -896,10 +1127,13 @@ class DNSConfigActivity(ActivityBase):
         for subnet in subnets:
             stdin += _rev_updates(subnet)
 
-        stdin += ["send\n"]
-
         if server_address:
-            stdin = [f"server {server_address}"] + stdin
+            stdin = [f"server {server_address} 53"] + stdin
+        else:
+            loopback = await asyncio.to_thread(
+                socket.gethostbyname, "localhost"
+            )
+            stdin = [f"server {loopback} 53"] + stdin
 
         cmd = ["nsupdate", "-k", self._get_nsupdate_keys_path()]
         if len(updates) > 1:
@@ -908,19 +1142,24 @@ class DNSConfigActivity(ActivityBase):
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdin=asyncio.subprocess.PIPE
         )
+
         await proc.communicate(input="\n".join(stdin).encode("ascii"))
 
-    def _format_update(self, update):
+    def _format_update(self, update: DynamicDNSUpdate, fwd: bool):
         if update.operation == "DELETE":
-            if update.answer:
+            if not fwd:
                 return f"update delete {update.name} {update.rectype} {update.answer}"
-            return f"update delete {update.name} {update.rectype}"
+            if update.answer:
+                return f"update delete {update.name}.{update.zone} {update.rectype} {update.answer}"
+            return (
+                f"update delete {update.name}.{update.zone} {update.rectype}"
+            )
         ttl = update.ttl
-        return (
-            f"update add {update.name} {ttl} {update.rectype} {update.answer}"
-        )
+        if not fwd:
+            return f"update add {update.name} {ttl} {update.rectype} {update.answer}"
+        return f"update add {update.name}.{update.zone} {ttl} {update.rectype} {update.answer}"
 
-    @activity.defn(name=DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME)
+    @activity_defn_with_context(name=DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME)
     async def dynamic_update_dns_configuration(
         self, updates: DynamicUpdateParam
     ) -> DNSUpdateResult:
@@ -939,12 +1178,18 @@ class DNSConfigActivity(ActivityBase):
             )
             default_ttl = await svc.configurations.get("default_dns_ttl")
 
+            # only events that update this are full reloads, but still need to update serial
+            internal_domain = await svc.configurations.get(
+                "maas_internal_domain"
+            )
+
             await self._nsupdate(
                 updates.updates,
                 domains,
                 subnets,
                 updates.new_serial,
-                default_ttl,
+                internal_domain,
+                default_ttl=default_ttl,
             )
 
         return DNSUpdateResult(serial=updates.new_serial)
@@ -954,7 +1199,7 @@ class DNSConfigActivity(ActivityBase):
         loopback = await asyncio.to_thread(socket.gethostbyname, "localhost")
         return aiodns.DNSResolver(loop=loop, nameservers=[loopback])
 
-    @activity.defn(name=CHECK_SERIAL_UPDATE_NAME)
+    @activity_defn_with_context(name=CHECK_SERIAL_UPDATE_NAME)
     async def check_serial_update(
         self, serial: CheckSerialUpdateParam
     ) -> None:
@@ -972,7 +1217,7 @@ class DNSConfigActivity(ActivityBase):
 
 @workflow.defn(name=CONFIGURE_DNS_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDNSWorkflow:
-    @workflow.run
+    @workflow_run_with_context
     async def run(self, param: ConfigureDNSParam) -> None:
         updates = None
         need_full_reload = param.need_full_reload
@@ -982,7 +1227,7 @@ class ConfigureDNSWorkflow:
                 GET_CHANGES_SINCE_CURRENT_SERIAL_NAME,
                 start_to_close_timeout=GET_CHANGES_SINCE_CURRENT_SERIAL_TIMEOUT,
             )
-            if latest_serial is None:  # up-to-date
+            if latest_serial is None or latest_serial == 0:  # up-to-date
                 return
 
             if updates["force_reload"]:
@@ -1002,6 +1247,9 @@ class ConfigureDNSWorkflow:
         ]:
             new_serial = None
             if need_full_reload:
+                logger.debug(
+                    f"full DNS reload for host: {region_controller_system_id}"
+                )
                 new_serial = await workflow.execute_activity(
                     FULL_RELOAD_DNS_CONFIGURATION_NAME,
                     start_to_close_timeout=FULL_RELOAD_DNS_CONFIGURATION_TIMEOUT,
@@ -1011,11 +1259,17 @@ class ConfigureDNSWorkflow:
                 )
 
             elif updates["updates"]:
+                logger.debug(
+                    f"dynamic DNS update for host: {region_controller_system_id}"
+                )
                 new_serial = await workflow.execute_activity(
                     DYNAMIC_UPDATE_DNS_CONFIGURATION_NAME,
                     DynamicUpdateParam(
                         new_serial=latest_serial,
-                        updates=[DynamicDNSUpdate(**updates["updates"][-1])],
+                        updates=[
+                            DynamicDNSUpdate(**update)
+                            for update in updates["updates"]
+                        ],
                     ),
                     start_to_close_timeout=DYNAMIC_UPDATE_DNS_CONFIGURATION_TIMEOUT,
                     task_queue=get_task_queue_for_update(
@@ -1024,11 +1278,29 @@ class ConfigureDNSWorkflow:
                 )
 
             if new_serial:
-                await workflow.execute_activity(
-                    CHECK_SERIAL_UPDATE_NAME,
-                    CheckSerialUpdateParam(serial=new_serial["serial"]),
-                    start_to_close_timeout=CHECK_SERIAL_UPDATE_TIMEOUT,
-                    task_queue=get_task_queue_for_update(
-                        region_controller_system_id
-                    ),
-                )
+                try:
+                    await workflow.execute_activity(
+                        CHECK_SERIAL_UPDATE_NAME,
+                        CheckSerialUpdateParam(serial=new_serial["serial"]),
+                        start_to_close_timeout=CHECK_SERIAL_UPDATE_TIMEOUT,
+                        task_queue=get_task_queue_for_update(
+                            region_controller_system_id
+                        ),
+                    )
+                except ActivityError as e:
+                    logger.info(f"failed to find new serial: {e}")
+                    new_serial = await workflow.execute_activity(
+                        FULL_RELOAD_DNS_CONFIGURATION_NAME,
+                        start_to_close_timeout=FULL_RELOAD_DNS_CONFIGURATION_TIMEOUT,
+                        task_queue=get_task_queue_for_update(
+                            region_controller_system_id
+                        ),
+                    )
+                    await workflow.execute_activity(
+                        CHECK_SERIAL_UPDATE_NAME,
+                        CheckSerialUpdateParam(serial=new_serial["serial"]),
+                        start_to_close_timeout=CHECK_SERIAL_UPDATE_TIMEOUT,
+                        task_queue=get_task_queue_for_update(
+                            region_controller_system_id
+                        ),
+                    )

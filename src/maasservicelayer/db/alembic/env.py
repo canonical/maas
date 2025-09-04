@@ -64,11 +64,18 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-# Ignore tables not in SQLAlchemy metadata
+# Ignore tables not in SQLAlchemy metadata and exclude views
 def include_object(object, name, type_, reflected, compare_to):
-    # Only include tables that are in the SQLAlchemy metadata
+    # Exclude database views from autogeneration
+    VIEW_NAMES = {
+        "maasserver_discovery",
+        "maasserver_routable_pairs",
+        "maasserver_podhost",
+        "maasserver_ui_subnet_view",
+    }
+
     if type_ == "table":
-        return name in target_metadata.tables
+        return (name not in VIEW_NAMES) and (name in target_metadata.tables)
     return True
 
 

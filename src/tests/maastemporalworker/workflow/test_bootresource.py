@@ -10,7 +10,7 @@ from pathlib import Path
 import shutil
 from unittest.mock import AsyncMock, call, Mock, patch
 
-from aiohttp import ClientError, ClientResponse
+import httpx
 import pytest
 from temporalio import activity
 from temporalio.client import (
@@ -128,6 +128,8 @@ def image_store_dir(maas_data_dir, mocker):
 def mock_apiclient():
     m = Mock(MAASAPIClient)
     m.url = "http://test:5240"
+    m._mocked_client = Mock(httpx.AsyncClient)
+    m.make_client = Mock(return_value=m._mocked_client)
     yield m
 
 
@@ -358,7 +360,7 @@ class TestDownloadBootresourcefileActivity:
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, mock_local_file.size
         )
-        mock_apiclient.session.get.assert_not_called()
+        mock_apiclient.make_client.assert_not_called()
         mock_local_file.release_lock.assert_called_once()
 
     async def test_extract_file_emits_heartbeat(
@@ -395,7 +397,7 @@ class TestDownloadBootresourcefileActivity:
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, mock_local_file.size
         )
-        mock_apiclient.session.get.assert_not_called()
+        mock_apiclient.make_client.assert_not_called()
         mock_local_file.release_lock.assert_called_once()
 
     async def test_download_file_if_not_valid(
@@ -406,18 +408,14 @@ class TestDownloadBootresourcefileActivity:
     ) -> None:
         mock_local_file.acquire_lock.return_value = True
         mock_local_file.avalid.side_effect = [False, True]
-        chunked_data = [
-            (b"foo", True),
-            (b"bar", True),
-            (b"", False),
-        ]
+        chunked_data = [b"foo", b"bar", b""]
 
-        mock_http_response = Mock(ClientResponse)
-        mock_http_response.content.iter_chunks.return_value = (
-            AsyncIteratorMock(chunked_data)
+        mock_http_response = Mock(httpx.Response)
+        mock_http_response.aiter_bytes.return_value = AsyncIteratorMock(
+            chunked_data
         )
-        mock_apiclient.session.get.return_value = AsyncContextManagerMock(
-            mock_http_response
+        mock_apiclient._mocked_client.stream.return_value = (
+            AsyncContextManagerMock(mock_http_response)
         )
         mock_store = Mock(MMapedLocalFile)
         mock_local_file.astore.return_value = AsyncContextManagerMock(
@@ -456,11 +454,10 @@ class TestDownloadBootresourcefileActivity:
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, mock_local_file.size
         )
-        mock_apiclient.session.get.assert_called_once_with(
+        mock_apiclient.make_client.assert_called_once_with(None)
+        mock_apiclient._mocked_client.stream.assert_called_once_with(
+            "GET",
             "http://maas-image-stream.io",
-            verify_ssl=False,
-            chunked=True,
-            proxy=None,
         )
         mock_local_file.release_lock.assert_called_once()
 
@@ -472,18 +469,14 @@ class TestDownloadBootresourcefileActivity:
     ) -> None:
         mock_local_file.acquire_lock.return_value = True
         mock_local_file.avalid.side_effect = [False, False]
-        chunked_data = [
-            (b"foo", True),
-            (b"bar", True),
-            (b"", False),
-        ]
+        chunked_data = [b"foo", b"bar", b""]
 
-        mock_http_response = Mock(ClientResponse)
-        mock_http_response.content.iter_chunks.return_value = (
-            AsyncIteratorMock(chunked_data)
+        mock_http_response = Mock(httpx.Response)
+        mock_http_response.aiter_bytes.return_value = AsyncIteratorMock(
+            chunked_data
         )
-        mock_apiclient.session.get.return_value = AsyncContextManagerMock(
-            mock_http_response
+        mock_apiclient._mocked_client.stream.return_value = (
+            AsyncContextManagerMock(mock_http_response)
         )
         mock_local_file.astore.return_value = AsyncContextManagerMock(
             Mock(MMapedLocalFile)
@@ -516,11 +509,9 @@ class TestDownloadBootresourcefileActivity:
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, 0
         )
-        mock_apiclient.session.get.assert_called_once_with(
+        mock_apiclient._mocked_client.stream.assert_called_once_with(
+            "GET",
             "http://maas-image-stream.io",
-            verify_ssl=False,
-            chunked=True,
-            proxy=None,
         )
         mock_local_file.release_lock.assert_called_once()
 
@@ -585,7 +576,7 @@ class TestDownloadBootresourcefileActivity:
         "exception",
         [
             IOError(),
-            ClientError(),
+            httpx.HTTPError("Error"),
             LocalStoreInvalidHash(),
             LocalStoreWriteBeyondEOF(),
         ],

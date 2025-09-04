@@ -12,6 +12,7 @@ from twisted.internet.defer import succeed
 
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.node import Device, Node
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.vlan import VLAN
@@ -164,6 +165,10 @@ class FakeNodesHandlerMixin:
 
 
 class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_full_dehydrate_only_includes_allowed_fields(self):
         handler = self.make_nodes_handler(fields=["hostname", "cpu_count"])
         node = factory.make_Node()

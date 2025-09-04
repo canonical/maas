@@ -6,6 +6,8 @@ include "{{nsupdate_keys_conf_path}}";
 {{for zoneinfo in zone.zone_info}}
 zone "{{zoneinfo.zone_name}}" {
     type master;
+    # Disable forwarding for authoritive zones, lp:2118833
+    forwarders { };
     file "{{zoneinfo.target_path}}";
     allow-update {
         key maas.;
@@ -19,11 +21,13 @@ zone "{{zoneinfo.zone_name}}" {
 zone "{{forwarded_zone[0]}}" {
     type forward;
     forward only;
+    {{if forwarded_zone[1]}}
     forwarders {
     {{for forward_server in forwarded_zone[1]}}
         {{forward_server[0]}} port {{ forward_server[1] if forward_server[1] else 53 }};
     {{endfor}}
     };
+    {{endif}}
 };
 {{endfor}}
 

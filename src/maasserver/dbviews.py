@@ -210,6 +210,10 @@ maasserver_ui_subnet_view = dedent("""\
             subnet.disabled_boot_architectures,
             subnet.vlan_id,
             vlan.vid as vlan_vid,
+            vlan.name as vlan_name,
+            vlan.dhcp_on as vlan_dhcp_on,
+            vlan.external_dhcp as vlan_external_dhcp,
+            vlan.relay_vlan_id as vlan_relay_vlan_id,
             space.id as space_id,
             space.name as space_name,
             fabric.id as fabric_id,
@@ -223,6 +227,8 @@ maasserver_ui_subnet_view = dedent("""\
         ON vlan.space_id = space.id
     """)
 
+# When adding or removing views, ensure the view names are also updated in
+# alembic/env.py:VIEW_NAMES to keep migrations consistent.
 _ALL_VIEWS = {
     "maasserver_discovery": maasserver_discovery,
     "maasserver_routable_pairs": maasserver_routable_pairs,
