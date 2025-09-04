@@ -205,6 +205,8 @@ async def main() -> None:
                 boot_res_activity.cancel_obsolete_download_workflows,
                 boot_res_activity.set_global_default_releases,
                 boot_res_activity.cleanup_old_boot_resources,
+                boot_res_activity.register_error_notification,
+                boot_res_activity.discard_error_notification,
                 # Configuration activities
                 configure_activity.get_rack_controller_vlans,
                 configure_activity.get_region_controller_endpoints,

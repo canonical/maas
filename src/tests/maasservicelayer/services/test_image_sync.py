@@ -48,6 +48,9 @@ from maasservicelayer.db.repositories.bootsourcecache import (
 from maasservicelayer.db.repositories.bootsources import (
     BootSourcesClauseFactory,
 )
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsClauseFactory,
+)
 from maasservicelayer.db.tables import (
     BootResourceFileTable,
     BootResourceSetTable,
@@ -437,6 +440,14 @@ class TestImageSyncService:
         self, mocker, monkeypatch
     ):
         self.boot_sources_service.exists.return_value = True
+        self.boot_sources_service.get_one.return_value = BootSource(
+            id=1,
+            url=DEFAULT_IMAGES_URL,
+            keyring_filename=DEFAULT_KEYRINGS_PATH,
+            keyring_data=None,
+            priority=1,
+            skip_keyring_verification=False,
+        )
         mocker.patch(
             "maasservicelayer.services.image_sync.DEFAULT_KEYRINGS_PATH",
             "/some/other/path/keyring.gpg",
@@ -447,10 +458,13 @@ class TestImageSyncService:
 
         assert not created
         self.boot_sources_service.create.assert_not_awaited()
-        self.boot_sources_service.update_one.assert_awaited_once_with(
+        self.boot_sources_service.get_one.assert_awaited_once_with(
             query=QuerySpec(
                 where=BootSourcesClauseFactory.with_url(DEFAULT_IMAGES_URL)
-            ),
+            )
+        )
+        self.boot_sources_service.update_by_id.assert_awaited_once_with(
+            id=1,
             builder=BootSourceBuilder(
                 keyring_filename="/some/other/path/keyring.gpg"
             ),
@@ -466,7 +480,20 @@ class TestImageSyncService:
 
         assert not created
         self.boot_sources_service.create.assert_not_awaited()
-        self.boot_sources_service.update_one.assert_not_awaited()
+        self.boot_sources_service.update_by_id.assert_not_awaited()
+
+    async def test_ensure_boot_source_definition_does_nothing_if_default_source_not_present(
+        self, monkeypatch
+    ):
+        self.boot_sources_service.exists.return_value = True
+        self.boot_sources_service.get_one.return_value = None
+        monkeypatch.setenv("SNAP", "/snap/maas/current")
+
+        created = await self.service.ensure_boot_source_definition()
+
+        assert not created
+        self.boot_sources_service.create.assert_not_awaited()
+        self.boot_sources_service.update_by_id.assert_not_awaited()
 
     async def test_sync_boot_source_selections_from_msm(self) -> None:
         self.msm_service.get_status.return_value = MSMStatus(
@@ -627,6 +654,17 @@ class TestImageSyncService:
         mock_file.write.assert_called_once_with(BOOT_SOURCE_2.keyring_data)
         ss_client_mock.get_all_products.assert_has_awaits([call(), call()])
 
+        # both the sources have an empty list of images, two events should be recorded
+        self.events_service.record_event.assert_has_awaits(
+            [
+                call(
+                    event_type=EventTypeEnum.REGION_IMPORT_WARNING,
+                    event_description=f"Unable to import boot images from {boot_source.url}. No image descriptions available.",
+                )
+                for boot_source in [BOOT_SOURCE_1, BOOT_SOURCE_2]
+            ]
+        )
+
     async def test_cache_boot_sources_from_simplestreams_product(self) -> None:
         self.boot_source_cache_service.create_or_update.return_value = (
             BootSourceCache(
@@ -690,8 +728,13 @@ class TestImageSyncService:
 
         await self.service.check_commissioning_series_selected()
 
-        self.notifications_service.create.assert_awaited_once_with(
-            NotificationBuilder(
+        self.notifications_service.get_or_create.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    "commissioning_series_unselected"
+                )
+            ),
+            builder=NotificationBuilder(
                 ident="commissioning_series_unselected",
                 users=True,
                 admins=True,
@@ -701,7 +744,7 @@ class TestImageSyncService:
                 user_id=None,
                 category=NotificationCategoryEnum.ERROR,
                 dismissable=True,
-            )
+            ),
         )
 
     async def test_check_commissioning_series_selected__no_cache(self) -> None:
@@ -711,8 +754,13 @@ class TestImageSyncService:
 
         await self.service.check_commissioning_series_selected()
 
-        self.notifications_service.create.assert_awaited_once_with(
-            NotificationBuilder(
+        self.notifications_service.get_or_create.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    "commissioning_series_unavailable"
+                )
+            ),
+            builder=NotificationBuilder(
                 ident="commissioning_series_unavailable",
                 users=True,
                 admins=True,
@@ -723,7 +771,7 @@ class TestImageSyncService:
                 user_id=None,
                 category=NotificationCategoryEnum.ERROR,
                 dismissable=True,
-            )
+            ),
         )
 
     async def test_check_commissioning_series_selected__no_notifications(
@@ -939,10 +987,7 @@ class TestImageSyncService:
         ]
 
         self.boot_resources_service.create_or_update_from_simplestreams_product.return_value = boot_resource
-        self.boot_resource_sets_service.get_or_create_from_simplestreams_product.return_value = (
-            boot_resource_set,
-            True,
-        )
+        self.boot_resource_sets_service.create_or_update_from_simplestreams_product.return_value = boot_resource_set
         self.boot_resource_files_service.get_or_create_from_simplestreams_file.side_effect = resource_files
         # mark all the files as not complete
         self.boot_resource_files_service.is_sync_complete.return_value = False
@@ -976,7 +1021,7 @@ class TestImageSyncService:
         self.boot_resources_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product
         )
-        self.boot_resource_sets_service.get_or_create_from_simplestreams_product.assert_awaited_once_with(
+        self.boot_resource_sets_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product, boot_resource.id
         )
         self.boot_resource_files_service.delete_many.assert_awaited_once_with(
@@ -1032,10 +1077,7 @@ class TestImageSyncService:
         resource_files = [file_grub2_signed, file_shim_signed]
 
         self.boot_resources_service.create_or_update_from_simplestreams_product.return_value = boot_resource
-        self.boot_resource_sets_service.get_or_create_from_simplestreams_product.return_value = (
-            boot_resource_set,
-            True,
-        )
+        self.boot_resource_sets_service.create_or_update_from_simplestreams_product.return_value = boot_resource_set
         self.boot_resource_files_service.get_or_create_from_simplestreams_file.side_effect = resource_files
         # mark all the files as not complete
         self.boot_resource_files_service.is_sync_complete.return_value = False
@@ -1070,7 +1112,7 @@ class TestImageSyncService:
         self.boot_resources_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product
         )
-        self.boot_resource_sets_service.get_or_create_from_simplestreams_product.assert_awaited_once_with(
+        self.boot_resource_sets_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product, boot_resource.id
         )
         self.boot_resource_files_service.delete_many.assert_not_awaited()
@@ -1184,9 +1226,6 @@ class TestImageSyncService:
             query=QuerySpec(
                 where=BootResourceClauseFactory.and_clauses(
                     [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_ids({100})
-                        ),
                         BootResourceClauseFactory.with_rtype(
                             BootResourceType.SYNCED
                         ),
@@ -1209,7 +1248,8 @@ class TestImageSyncService:
 
     async def test_delete_old_boot_resources__deletes_image(self) -> None:
         self.boot_resources_service.get_many.return_value = [
-            BOOT_RESOURCE_ORACULAR
+            BOOT_RESOURCE_NOBLE,
+            BOOT_RESOURCE_ORACULAR,
         ]
         self.boot_resource_sets_service.get_latest_for_boot_resource.return_value = BOOT_RESOURCE_SET_ORACULAR
         self.service._boot_resource_is_selected = AsyncMock(return_value=False)
@@ -1217,15 +1257,12 @@ class TestImageSyncService:
             return_value=False
         )
 
-        await self.service.delete_old_boot_resources({100})
+        await self.service.delete_old_boot_resources({BOOT_RESOURCE_NOBLE.id})
 
         self.boot_resources_service.get_many.assert_awaited_once_with(
             query=QuerySpec(
                 where=BootResourceClauseFactory.and_clauses(
                     [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_ids({100})
-                        ),
                         BootResourceClauseFactory.with_rtype(
                             BootResourceType.SYNCED
                         ),
@@ -1244,6 +1281,40 @@ class TestImageSyncService:
                 )
             )
         )
+
+    async def test_delete_old_boot_resources_records_event(self) -> None:
+        # only one resource
+        self.boot_resources_service.get_many.return_value = [
+            BOOT_RESOURCE_ORACULAR
+        ]
+        self.boot_resource_sets_service.get_latest_for_boot_resource.return_value = BOOT_RESOURCE_SET_ORACULAR
+        self.service._boot_resource_is_selected = AsyncMock(return_value=False)
+        self.service._boot_resource_is_duplicated = AsyncMock(
+            return_value=False
+        )
+
+        await self.service.delete_old_boot_resources({100})
+
+        self.boot_resources_service.get_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.SYNCED
+                        ),
+                    ]
+                )
+            )
+        )
+        self.boot_resource_sets_service.get_latest_for_boot_resource.assert_awaited_once_with(
+            BOOT_RESOURCE_ORACULAR.id
+        )
+        self.events_service.record_event.assert_awaited_once_with(
+            event_type=EventTypeEnum.REGION_IMPORT_ERROR,
+            event_description="Finalization of image synchronization aborted "
+            "or all 1 synced images would be deleted.",
+        )
+        self.boot_resources_service.delete_many.assert_not_awaited()
 
     async def test_delete_old_boot_resource_sets(self) -> None:
         self.boot_resources_service.get_many.return_value = [

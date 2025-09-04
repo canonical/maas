@@ -51,6 +51,9 @@ from maasservicelayer.db.repositories.bootsources import (
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsClauseFactory,
+)
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import (
@@ -94,8 +97,6 @@ from maasservicelayer.simplestreams.models import (
 from provisioningserver.utils.arch import get_architecture
 
 logger = get_logger()
-
-# duplicated from src/maassservicelayer/utils/images/repo_dumper
 
 # Compile a regex to validate Ubuntu product names. This only allows V2 and V3
 # Ubuntu images. "v3+platform" is intended for platform-optimised kernels.
@@ -191,16 +192,22 @@ class ImageSyncService(Service):
             # deb or snap, but the path stored in the DB might be wrong if a
             # snap-to-deb transition happened with a script without the fix.
             if os.environ.get("SNAP"):
-                await self.boot_sources_service.update_one(
-                    query=QuerySpec(
-                        where=BootSourcesClauseFactory.with_url(
-                            DEFAULT_IMAGES_URL
+                if (
+                    default_boot_source
+                    := await self.boot_sources_service.get_one(
+                        query=QuerySpec(
+                            where=BootSourcesClauseFactory.with_url(
+                                DEFAULT_IMAGES_URL
+                            )
                         )
-                    ),
-                    builder=BootSourceBuilder(
-                        keyring_filename=DEFAULT_KEYRINGS_PATH
-                    ),
-                )
+                    )
+                ):
+                    await self.boot_sources_service.update_by_id(
+                        id=default_boot_source.id,
+                        builder=BootSourceBuilder(
+                            keyring_filename=DEFAULT_KEYRINGS_PATH
+                        ),
+                    )
             return False
 
     async def sync_boot_source_selections_from_msm(
@@ -345,6 +352,13 @@ class ImageSyncService(Service):
                         boot_source
                     ] = await client.get_all_products()
 
+            if not boot_source_products_mapping[boot_source]:
+                await self.events_service.record_event(
+                    event_type=EventTypeEnum.REGION_IMPORT_WARNING,
+                    event_description=f"Unable to import boot images from {boot_source.url}. "
+                    "No image descriptions available.",
+                )
+
         return boot_source_products_mapping
 
     async def cache_boot_source_from_simplestreams_products(
@@ -432,8 +446,13 @@ class ImageSyncService(Service):
             )
         ):
             no_error = False
-            await self.notifications_service.create(
-                NotificationBuilder(
+            await self.notifications_service.get_or_create(
+                query=QuerySpec(
+                    where=NotificationsClauseFactory.with_ident(
+                        "commissioning_series_unselected"
+                    )
+                ),
+                builder=NotificationBuilder(
                     ident="commissioning_series_unselected",
                     users=True,
                     admins=True,
@@ -443,7 +462,7 @@ class ImageSyncService(Service):
                     user_id=None,
                     category=NotificationCategoryEnum.ERROR,
                     dismissable=True,
-                )
+                ),
             )
         if not await self.boot_source_cache_service.exists(
             query=QuerySpec(
@@ -458,8 +477,13 @@ class ImageSyncService(Service):
             )
         ):
             no_error = False
-            await self.notifications_service.create(
-                NotificationBuilder(
+            await self.notifications_service.get_or_create(
+                query=QuerySpec(
+                    where=NotificationsClauseFactory.with_ident(
+                        "commissioning_series_unavailable"
+                    )
+                ),
+                builder=NotificationBuilder(
                     ident="commissioning_series_unavailable",
                     users=True,
                     admins=True,
@@ -470,7 +494,7 @@ class ImageSyncService(Service):
                     user_id=None,
                     category=NotificationCategoryEnum.ERROR,
                     dismissable=True,
-                )
+                ),
             )
         return no_error
 
@@ -667,10 +691,7 @@ class ImageSyncService(Service):
             product
         )
 
-        (
-            boot_resource_set,
-            _,
-        ) = await self.boot_resource_sets_service.get_or_create_from_simplestreams_product(
+        boot_resource_set = await self.boot_resource_sets_service.create_or_update_from_simplestreams_product(
             product, boot_resource.id
         )
 
@@ -906,7 +927,7 @@ class ImageSyncService(Service):
 
     async def delete_old_boot_resources(
         self, boot_resource_ids_to_keep: set[int]
-    ) -> None:
+    ) -> bool:
         """Deletes the no more necessary boot resources.
 
         Deletes all the boot resources which:
@@ -921,16 +942,13 @@ class ImageSyncService(Service):
         Args:
             - boot_resource_ids_to_keep: a set of ids of boot resources that
               must not be deleted. This is coming from `get_files_to_download_from_product_list`
+        Returns:
+            - returns False if the method would delete all the boot resources, True otherwise.
         """
-        boot_resources_to_delete = await self.boot_resources_service.get_many(
+        all_boot_resources = await self.boot_resources_service.get_many(
             query=QuerySpec(
                 where=BootResourceClauseFactory.and_clauses(
                     [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_ids(
-                                boot_resource_ids_to_keep
-                            )
-                        ),
                         BootResourceClauseFactory.with_rtype(
                             BootResourceType.SYNCED
                         ),
@@ -938,8 +956,13 @@ class ImageSyncService(Service):
                 )
             )
         )
+        boot_resources_to_delete = [
+            br
+            for br in all_boot_resources
+            if br.id not in boot_resource_ids_to_keep
+        ]
         if not boot_resources_to_delete:
-            return
+            return True
 
         boot_resources_to_delete_ids = {
             br.id for br in boot_resources_to_delete
@@ -970,6 +993,21 @@ class ImageSyncService(Service):
                 )
                 boot_resources_to_delete_ids.remove(boot_resource.id)
 
+        # We have to remove the bootloaders from the total since they will always
+        # be downloaded.
+        bootloaders_count = len(
+            [br for br in all_boot_resources if br.bootloader_type is not None]
+        )
+        if len(all_boot_resources) - bootloaders_count == len(
+            boot_resources_to_delete_ids
+        ):
+            await self.events_service.record_event(
+                event_type=EventTypeEnum.REGION_IMPORT_ERROR,
+                event_description=f"Finalization of image synchronization aborted "
+                f"or all {len(all_boot_resources) - bootloaders_count} synced images would be deleted.",
+            )
+            return False
+
         await self.boot_resources_service.delete_many(
             query=QuerySpec(
                 where=BootResourceClauseFactory.with_ids(
@@ -977,6 +1015,7 @@ class ImageSyncService(Service):
                 )
             )
         )
+        return True
 
     async def delete_old_boot_resource_sets(self) -> None:
         """Deletes the old boot resource sets.

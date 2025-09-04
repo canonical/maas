@@ -10,8 +10,10 @@ from typing import Any, Coroutine
 from aiohttp.client_exceptions import ClientError
 import structlog
 from temporalio import activity, workflow
+from temporalio.client import WorkflowFailureError
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import (
+    ActivityError,
     ApplicationError,
     CancelledError,
     WorkflowAlreadyStartedError,
@@ -23,6 +25,11 @@ from temporalio.workflow import (
     random,
 )
 
+from maascommon.enums.events import EventTypeEnum
+from maascommon.enums.notifications import (
+    NotificationCategoryEnum,
+    NotificationComponent,
+)
 from maascommon.workflows.bootresource import (
     CancelObsoleteDownloadWorkflowsParam,
     CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME,
@@ -49,6 +56,12 @@ from maascommon.workflows.bootresource import (
     SyncRequestParam,
 )
 from maasserver.utils.converters import human_readable_bytes
+from maasservicelayer.builders.notifications import NotificationBuilder
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsClauseFactory,
+)
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.configurations import MAASUrlConfig
 from maasservicelayer.simplestreams.models import (
@@ -85,6 +98,8 @@ CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME = (
 )
 GET_SYNCED_REGIONS_ACTIVITY_NAME = "get-synced-regions"
 SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME = "set-global-default-releases"
+REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME = "register-error-notification"
+DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME = "discard-error-notification"
 
 
 # can't be defined in maascommon due to service layer imports
@@ -336,6 +351,10 @@ class BootResourcesActivity(ActivityBase):
         resources_to_download: dict[str, ResourceDownloadParam] = {}
         boot_resource_ids_to_keep: set[int] = set()
         async with self.start_transaction() as services:
+            await services.events.record_event(
+                event_type=EventTypeEnum.REGION_IMPORT_INFO,
+                event_description=f"Started importing boot images from {len(param)} source(s).",
+            )
             boot_source_products_mapping = {
                 mapping.boot_source: mapping.products_list for mapping in param
             }
@@ -372,10 +391,16 @@ class BootResourcesActivity(ActivityBase):
         self, param: CleanupOldBootResourceParam
     ) -> None:
         async with self.start_transaction() as services:
-            await services.image_sync.delete_old_boot_resources(
+            if not await services.image_sync.delete_old_boot_resources(
                 param.boot_resource_ids_to_keep
-            )
+            ):
+                raise ApplicationError(
+                    message="Finalization of image synchronization aborted or all the synced images would be deleted.",
+                    non_retryable=True,
+                )
             await services.image_sync.delete_old_boot_resource_sets()
+            # Deletion of files is handled by the temporal service, so we have to manually call post_commit
+            await services.temporal.post_commit()
 
     @activity_defn_with_context(
         name=CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME
@@ -393,6 +418,41 @@ class BootResourcesActivity(ActivityBase):
                 handle = self.temporal_client.get_workflow_handle(wf.id)
                 await handle.cancel()
                 activity.heartbeat("Obsolete workflow cancelled")
+
+    @activity_defn_with_context(name=REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME)
+    async def register_error_notification(self, err_msg: str) -> None:
+        async with self.start_transaction() as services:
+            await services.notifications.get_or_create(
+                query=QuerySpec(
+                    where=NotificationsClauseFactory.with_ident(
+                        NotificationComponent.REGION_IMAGE_SYNC
+                    )
+                ),
+                builder=NotificationBuilder(
+                    ident=NotificationComponent.REGION_IMAGE_SYNC,
+                    users=True,
+                    admins=True,
+                    message=f"Failed to synchronize boot resources: {err_msg}",
+                    context={},
+                    user_id=None,
+                    category=NotificationCategoryEnum.ERROR,
+                    dismissable=False,
+                ),
+            )
+
+    @activity_defn_with_context(name=DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME)
+    async def discard_error_notification(self) -> None:
+        async with self.start_transaction() as services:
+            try:
+                await services.notifications.delete_one(
+                    query=QuerySpec(
+                        where=NotificationsClauseFactory.with_ident(
+                            NotificationComponent.REGION_IMAGE_SYNC
+                        )
+                    ),
+                )
+            except NotFoundException:
+                pass
 
 
 @workflow.defn(name=DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, sandboxed=False)
@@ -655,94 +715,111 @@ class MasterImageSyncWorkflow:
         # the websocket handler in maasserver/websockets/handler/bootresource.py:get_bootsource
         # So we'll always see two `fetch-manifest` workflows starting when
         # triggering the image sync through the UI.
-        mapping: list[
-            BootSourceProductsMapping
-        ] = await workflow.execute_child_workflow(
-            FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-            id="fetch-manifest",
-            run_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
-            task_queue=REGION_TASK_QUEUE,
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
+        try:
+            mapping: list[
+                BootSourceProductsMapping
+            ] = await workflow.execute_child_workflow(
+                FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+                id="fetch-manifest",
+                run_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
+                task_queue=REGION_TASK_QUEUE,
+                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            )
 
-        result: GetFilesToDownloadReturnValue = (
+            result: GetFilesToDownloadReturnValue = (
+                await workflow.execute_activity(
+                    GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME,
+                    arg=mapping,
+                    start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
+                    heartbeat_timeout=timedelta(seconds=30),
+                    result_type=GetFilesToDownloadReturnValue,
+                )
+            )
+
+            resources_to_download = result.resources
+            boot_resource_ids_to_keep = result.boot_resource_ids
+
+            required_disk_space_for_files = sum(
+                [r.total_size for r in resources_to_download],
+                start=100 * 2**20,  # space to uncompress the bootloaders
+            )
+            # get regions and endpoints
+            endpoints = await workflow.execute_activity(
+                GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+            regions: frozenset[str] = frozenset(endpoints.keys())
+
+            self._files_to_download = set(
+                res.sha256 for res in resources_to_download
+            )
+
+            # check disk space
+            check_space_jobs = [
+                self._schedule_disk_check(
+                    SpaceRequirementParam(
+                        total_resources_size=required_disk_space_for_files
+                    ),
+                    region,
+                )
+                for region in regions
+            ]
+            has_space: list[bool] = await asyncio.gather(*check_space_jobs)
+            if not all(has_space):
+                raise ApplicationError(
+                    "some region controllers don't have enough disk space",
+                    non_retryable=True,
+                )
+
+            # cancel obsolete download workflows that are running
             await workflow.execute_activity(
-                GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME,
-                arg=mapping,
-                start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
-                heartbeat_timeout=timedelta(seconds=30),
-                result_type=GetFilesToDownloadReturnValue,
-            )
-        )
-
-        resources_to_download = result.resources
-        boot_resource_ids_to_keep = result.boot_resource_ids
-
-        required_disk_space_for_files = sum(
-            [r.total_size for r in resources_to_download],
-            start=100 * 2**20,  # space to uncompress the bootloaders
-        )
-        # get regions and endpoints
-        endpoints = await workflow.execute_activity(
-            GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,
-            start_to_close_timeout=timedelta(seconds=30),
-        )
-        regions: frozenset[str] = frozenset(endpoints.keys())
-
-        self._files_to_download = set(
-            res.sha256 for res in resources_to_download
-        )
-
-        # check disk space
-        check_space_jobs = [
-            self._schedule_disk_check(
-                SpaceRequirementParam(
-                    total_resources_size=required_disk_space_for_files
+                CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME,
+                arg=CancelObsoleteDownloadWorkflowsParam(
+                    self._files_to_download
                 ),
-                region,
-            )
-            for region in regions
-        ]
-        has_space: list[bool] = await asyncio.gather(*check_space_jobs)
-        if not all(has_space):
-            raise ApplicationError(
-                "some region controllers don't have enough disk space",
-                non_retryable=True,
+                start_to_close_timeout=timedelta(seconds=60),
+                heartbeat_timeout=timedelta(seconds=15),
             )
 
-        # cancel obsolete download workflows that are running
-        await workflow.execute_activity(
-            CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME,
-            arg=CancelObsoleteDownloadWorkflowsParam(self._files_to_download),
-            start_to_close_timeout=timedelta(seconds=60),
-            heartbeat_timeout=timedelta(seconds=15),
-        )
+            # _download_and_sync_resource is a coroutine that will handle the `WorfklowAlreadyStartedError`
+            download_and_sync_jobs = [
+                self._download_and_sync_resource(
+                    SyncRequestParam(resource=res, region_endpoints=endpoints)
+                )
+                for res in resources_to_download
+            ]
 
-        # _download_and_sync_resource is a coroutine that will handle the `WorfklowAlreadyStartedError`
-        download_and_sync_jobs = [
-            self._download_and_sync_resource(
-                SyncRequestParam(resource=res, region_endpoints=endpoints)
+            if download_and_sync_jobs:
+                logger.info(
+                    f"Syncing {len(download_and_sync_jobs)} resources from upstream"
+                )
+                await asyncio.gather(*download_and_sync_jobs)
+
+            await workflow.wait_condition(
+                lambda: self._files_to_download == set()
             )
-            for res in resources_to_download
-        ]
 
-        if download_and_sync_jobs:
-            logger.info(
-                f"Syncing {len(download_and_sync_jobs)} resources from upstream"
+            await workflow.execute_activity(
+                SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME,
+                start_to_close_timeout=timedelta(seconds=30),
             )
-            await asyncio.gather(*download_and_sync_jobs)
-
-        await workflow.wait_condition(lambda: self._files_to_download == set())
-
-        await workflow.execute_activity(
-            SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME,
-            start_to_close_timeout=timedelta(seconds=30),
-        )
-        await workflow.execute_activity(
-            CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
-            arg=CleanupOldBootResourceParam(boot_resource_ids_to_keep),
-            start_to_close_timeout=CLEANUP_TIMEOUT,
-        )
+            await workflow.execute_activity(
+                CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
+                arg=CleanupOldBootResourceParam(boot_resource_ids_to_keep),
+                start_to_close_timeout=CLEANUP_TIMEOUT,
+            )
+        except (ActivityError, WorkflowFailureError) as ex:
+            # catch any error from activities/child workflows and report that to the user
+            await workflow.execute_activity(
+                REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
+                arg=str(ex.cause),
+                start_to_close_timeout=timedelta(seconds=10),
+            )
+        else:
+            await workflow.execute_activity(
+                DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME,
+                start_to_close_timeout=timedelta(seconds=10),
+            )
 
     @workflow.signal
     async def file_completed_download(self, sha256: str) -> None:

@@ -27,6 +27,11 @@ from temporalio.exceptions import (
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
+from maascommon.enums.events import EventTypeEnum
+from maascommon.enums.notifications import (
+    NotificationCategoryEnum,
+    NotificationComponent,
+)
 from maascommon.workflows.bootresource import (
     CancelObsoleteDownloadWorkflowsParam,
     CleanupOldBootResourceParam,
@@ -39,13 +44,21 @@ from maascommon.workflows.bootresource import (
     SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
+from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.db import Database
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsClauseFactory,
+)
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.bootresourcefilesync import (
     BootResourceFileSyncService,
 )
+from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.image_sync import ImageSyncService
+from maasservicelayer.services.notifications import NotificationsService
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
     SimpleStreamsProductList,
@@ -67,6 +80,7 @@ from maastemporalworker.workflow.bootresource import (
     CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME,
     CHECK_DISK_SPACE_ACTIVITY_NAME,
     CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
+    DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME,
     DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,
     DownloadBootResourceWorkflow,
     FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
@@ -74,6 +88,7 @@ from maastemporalworker.workflow.bootresource import (
     GET_FILES_TO_DOWNLOAD_ACTIVITY_NAME,
     GET_SYNCED_REGIONS_ACTIVITY_NAME,
     MasterImageSyncWorkflow,
+    REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
     SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME,
     SpaceRequirementParam,
     SyncBootResourcesWorkflow,
@@ -657,10 +672,6 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.image_sync.filter_products.return_value = {
             mock_boot_source: mock_ss_products_list
         }
-        services_mock.image_sync.get_files_to_download_from_product_list.return_value = (
-            {},
-            {1},
-        )
 
         heartbeats = []
         env = ActivityEnvironment()
@@ -686,6 +697,7 @@ class TestGetFilesToDownloadActivity:
         mock_boot_source.id = 1
         mock_ss_products_list = Mock(SimpleStreamsProductList)
         mock_ss_products_list.products = [Mock(BootloaderProduct)]
+        services_mock.events = Mock(EventsService)
         services_mock.image_sync = Mock(ImageSyncService)
         services_mock.image_sync.filter_products.return_value = {
             mock_boot_source: mock_ss_products_list
@@ -709,6 +721,10 @@ class TestGetFilesToDownloadActivity:
             ],
         )
 
+        services_mock.events.record_event.assert_awaited_once_with(
+            event_type=EventTypeEnum.REGION_IMPORT_INFO,
+            event_description="Started importing boot images from 1 source(s).",
+        )
         services_mock.image_sync.filter_products.assert_awaited_once()
         services_mock.image_sync.get_files_to_download_from_product_list.assert_awaited_once()
 
@@ -734,6 +750,7 @@ class TestCleanupOldBootResourcesActivity:
         services_mock: ServiceCollectionV3,
     ) -> None:
         services_mock.image_sync = Mock(ImageSyncService)
+        services_mock.temporal = Mock(TemporalService)
 
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
@@ -745,6 +762,7 @@ class TestCleanupOldBootResourcesActivity:
             {1, 2, 3}
         )
         services_mock.image_sync.delete_old_boot_resource_sets.assert_awaited_once()
+        services_mock.temporal.post_commit.assert_awaited_once()
 
 
 class TestCancelObsoleteDownloadWorkflowsActivity:
@@ -772,8 +790,6 @@ class TestCancelObsoleteDownloadWorkflowsActivity:
             handle_wf1,
             handle_wf2,
         ]
-        env = ActivityEnvironment()
-        env.payload_converter = pydantic_data_converter
         param = CancelObsoleteDownloadWorkflowsParam(sha_to_keep=shas)
 
         heartbeats = []
@@ -798,6 +814,60 @@ class TestCancelObsoleteDownloadWorkflowsActivity:
 
         handle_wf1.cancel.assert_awaited_once()
         handle_wf2.cancel.assert_awaited_once()
+
+
+class TestRegisterNotificationErrorActivity:
+    async def test_calls_service(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: Mock,
+    ) -> None:
+        services_mock.notifications = Mock(NotificationsService)
+        env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
+
+        await env.run(
+            boot_activities.register_error_notification, "error message"
+        )
+
+        services_mock.notifications.get_or_create.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.REGION_IMAGE_SYNC
+                )
+            ),
+            builder=NotificationBuilder(
+                ident=NotificationComponent.REGION_IMAGE_SYNC,
+                users=True,
+                admins=True,
+                message="Failed to synchronize boot resources: error message",
+                context={},
+                user_id=None,
+                category=NotificationCategoryEnum.ERROR,
+                dismissable=False,
+            ),
+        )
+
+
+class TestDiscardNotificationErrorActivity:
+    async def test_calls_service(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: Mock,
+    ) -> None:
+        services_mock.notifications = Mock(NotificationsService)
+        env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
+
+        await env.run(boot_activities.discard_error_notification)
+
+        services_mock.notifications.delete_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.REGION_IMAGE_SYNC
+                )
+            ),
+        )
 
 
 @pytest.fixture
@@ -883,6 +953,14 @@ class MockActivities:
 
     @activity.defn(name=SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME)
     async def set_global_default_releases(self) -> None:
+        pass
+
+    @activity.defn(name=REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME)
+    async def register_error_notification(self, err_msg: str) -> None:
+        pass
+
+    @activity.defn(name=DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME)
+    async def discard_error_notification(self) -> None:
         pass
 
 
@@ -1293,6 +1371,8 @@ class TestMasterImageSyncWorkflow:
                 mock_activities.cancel_obsolete_download_workflows,
                 mock_activities.set_global_default_releases,
                 mock_activities.cleanup_old_boot_resources,
+                mock_activities.register_error_notification,
+                mock_activities.discard_error_notification,
             ],
             workflow_runner=custom_sandbox_runner(),
         ):
@@ -1341,6 +1421,8 @@ class TestMasterImageSyncWorkflow:
                 mock_activities.cancel_obsolete_download_workflows,
                 mock_activities.set_global_default_releases,
                 mock_activities.cleanup_old_boot_resources,
+                mock_activities.register_error_notification,
+                mock_activities.discard_error_notification,
             ],
             workflow_runner=custom_sandbox_runner(),
         ):
@@ -1392,6 +1474,8 @@ class TestMasterImageSyncWorkflow:
                 mock_activities.get_files_to_download,
                 mock_activities.get_bootresourcefile_endpoints,
                 mock_activities.cancel_obsolete_download_workflows,
+                mock_activities.register_error_notification,
+                mock_activities.discard_error_notification,
             ],
             workflow_runner=custom_sandbox_runner(),
         ):
@@ -1439,6 +1523,8 @@ class TestMasterImageSyncWorkflow:
                 mock_activities.cancel_obsolete_download_workflows,
                 mock_activities.set_global_default_releases,
                 mock_activities.cleanup_old_boot_resources,
+                mock_activities.register_error_notification,
+                mock_activities.discard_error_notification,
             ],
             workflow_runner=custom_sandbox_runner(),
         ):

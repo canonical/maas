@@ -41,6 +41,17 @@ class TestNotificationClauseFactory:
             == "maasserver_notification.user_id = 1"
         )
 
+    def test_with_ident(self) -> None:
+        clause = NotificationsClauseFactory.with_ident("identifier")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_notification.ident = 'identifier'"
+        )
+
 
 class TestCommonNotificationRepository(RepositoryCommonTests[Notification]):
     @pytest.fixture

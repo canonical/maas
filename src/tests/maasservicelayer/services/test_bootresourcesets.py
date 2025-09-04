@@ -155,7 +155,7 @@ class TestBootResourceSetsService:
             1
         )
 
-    async def test_get_or_create_from_simplestreams_product__create(
+    async def test_create_or_update_from_simplestreams_product__create(
         self,
         mock_repository: Mock,
         service: BootResourceSetsService,
@@ -175,7 +175,7 @@ class TestBootResourceSetsService:
                 "versions": [BootloaderVersion(version_name="foo")],
             }
         )
-        await service.get_or_create_from_simplestreams_product(product, 1)
+        await service.create_or_update_from_simplestreams_product(product, 1)
 
         mock_repository.get_one.assert_awaited_once_with(
             query=QuerySpec(
@@ -183,14 +183,14 @@ class TestBootResourceSetsService:
                     [
                         BootResourceSetClauseFactory.with_resource_id(1),
                         BootResourceSetClauseFactory.with_version("foo"),
-                        BootResourceSetClauseFactory.with_label("stable"),
                     ]
                 )
             ),
         )
         mock_repository.create.assert_awaited_once()
+        mock_repository.update_by_id.assert_not_awaited()
 
-    async def test_get_or_create_from_simplestreams_product__get(
+    async def test_create_or_update_from_simplestreams_product__update(
         self,
         mock_repository: Mock,
         service: BootResourceSetsService,
@@ -209,7 +209,7 @@ class TestBootResourceSetsService:
                 "versions": [BootloaderVersion(version_name="foo")],
             }
         )
-        await service.get_or_create_from_simplestreams_product(product, 1)
+        await service.create_or_update_from_simplestreams_product(product, 1)
 
         mock_repository.get_one.assert_awaited_once_with(
             query=QuerySpec(
@@ -217,12 +217,12 @@ class TestBootResourceSetsService:
                     [
                         BootResourceSetClauseFactory.with_resource_id(1),
                         BootResourceSetClauseFactory.with_version("foo"),
-                        BootResourceSetClauseFactory.with_label("stable"),
                     ]
                 )
             ),
         )
         mock_repository.create.assert_not_awaited()
+        mock_repository.update_by_id.assert_awaited_once()
 
     @pytest.mark.parametrize(
         "synced_size, expected_progress, expected_complete",
