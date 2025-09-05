@@ -397,7 +397,8 @@ func (s *Server) serveXDP(ctx context.Context) error {
 			} else {
 				sock := s.socketFor(int(msg.IfaceIdx), msg.Family)
 
-				_, err = sock.Conn().WriteTo(resp.Payload, &resp.DstAddress)
+				_, err = sock.Conn().WriteTo(resp.Payload,
+					&net.UDPAddr{IP: resp.DstAddress, Port: 68})
 				if err != nil {
 					log.Err(err).Msg("Failed to send DHCP response")
 				}
@@ -498,7 +499,8 @@ func (s *Server) serveSocket(ctx context.Context, sock Socket) error {
 						log.Err(err).Msg("Failed to send DHCP response")
 					}
 				} else {
-					n, err = conn.WriteTo(resp.Payload, &resp.DstAddress)
+					n, err = conn.WriteTo(resp.Payload,
+						&net.UDPAddr{IP: resp.DstAddress, Port: 68})
 					if err != nil {
 						log.Err(err).Msg("Failed to send DHCP response")
 					}
@@ -533,8 +535,8 @@ func (s *Server) WriteToEthernet(r Response) error {
 	ip := &layers.IPv4{
 		Version:  4,
 		TTL:      64,
-		SrcIP:    r.SrcAddress.IP,
-		DstIP:    r.DstAddress.IP,
+		SrcIP:    r.SrcAddress,
+		DstIP:    r.DstAddress,
 		Protocol: layers.IPProtocolUDP,
 		Flags:    layers.IPv4DontFragment,
 	}

@@ -283,8 +283,8 @@ func TestServerEcho_IPv4Socket_L2(t *testing.T) {
 					IfaceIdx:   1,
 					Mode:       SendL2,
 					DstMAC:     net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-					SrcAddress: net.UDPAddr{IP: net.IPv4zero},
-					DstAddress: net.UDPAddr{IP: net.IPv4zero},
+					SrcAddress: net.IPv4zero,
+					DstAddress: net.IPv4zero,
 					Payload:    m.Payload,
 				}, nil
 			},
@@ -438,8 +438,8 @@ func TestServerEcho_XDP_L2(t *testing.T) {
 					IfaceIdx:   1,
 					Mode:       SendL2,
 					DstMAC:     net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-					SrcAddress: net.UDPAddr{IP: net.IPv4zero},
-					DstAddress: net.UDPAddr{IP: net.IPv4zero},
+					SrcAddress: net.IPv4zero,
+					DstAddress: net.IPv4zero,
 					Payload:    m.Payload,
 				}, nil
 			},

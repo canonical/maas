@@ -128,8 +128,8 @@ func (m *Message) UnmarshalBinary(data []byte) error {
 }
 
 type Response struct {
-	SrcAddress net.UDPAddr
-	DstAddress net.UDPAddr
+	SrcAddress net.IP
+	DstAddress net.IP
 	DstMAC     net.HardwareAddr
 	Payload    []byte
 	Mode       SendMode

@@ -20,17 +20,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
-	"sync"
-	"syscall"
 
 	"github.com/canonical/microcluster/v2/state"
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/insomniacslk/dhcp/dhcpv4"
 	"github.com/rs/zerolog/log"
 )
@@ -47,7 +41,6 @@ var (
 
 var (
 	optionMarshalers = map[uint16]func(string) ([]byte, error){
-		uint16(dhcpv4.OptionSubnetMask): hex.DecodeString,
 		uint16(dhcpv4.OptionIPAddressLeaseTime): func(s string) ([]byte, error) {
 			n, err := strconv.Atoi(s)
 			if err != nil {
@@ -59,24 +52,11 @@ var (
 			return buf, nil
 		},
 		uint16(dhcpv4.OptionRouter):           ipOptionMarshal,
+		uint16(dhcpv4.OptionSubnetMask):       ipOptionMarshal,
 		uint16(dhcpv4.OptionTimeServer):       ipOptionMarshal,
 		uint16(dhcpv4.OptionNameServer):       ipOptionMarshal,
 		uint16(dhcpv4.OptionDomainNameServer): ipOptionMarshal,
-		uint16(dhcpv4.OptionInterfaceMTU): func(s string) ([]byte, error) {
-			mtu, err := strconv.Atoi(s)
-			if err != nil {
-				return nil, err
-			}
-
-			buf := make([]byte, 4)
-			binary.BigEndian.PutUint32(buf, uint32(mtu))
-
-			return buf, nil
-		},
 	}
-
-	anyIP4     = net.ParseIP("0.0.0.0").To4()
-	broadcast4 = net.ParseIP("255.255.255.255").To4()
 )
 
 func ipOptionMarshal(s string) ([]byte, error) {
@@ -92,152 +72,48 @@ func ipOptionMarshal(s string) ([]byte, error) {
 	return ip, nil
 }
 
-type DORAHandler struct {
-	allocator             Allocator4
-	stateLock             *sync.RWMutex
-	clusterState          state.State
-	server                *Server
-	discoverReplyOverride func(context.Context, int, *dhcpv4.DHCPv4) error
-	requestReplyOverride  func(context.Context, *dhcpv4.DHCPv4) error
-	informReplyOverride   func(context.Context, *dhcpv4.DHCPv4) error
+type DHCPv4Handler struct {
+	allocator    Allocator4
+	clusterState state.State
 }
 
-func NewDORAHandler(a Allocator4) *DORAHandler {
-	return &DORAHandler{
-		allocator: a,
-		stateLock: &sync.RWMutex{},
+func NewDHCPv4Handler(a Allocator4, clusterState state.State) *DHCPv4Handler {
+	return &DHCPv4Handler{
+		allocator:    a,
+		clusterState: clusterState,
 	}
 }
 
-func (d *DORAHandler) SetClusterState(s state.State) {
-	d.stateLock.Lock()
-	defer d.stateLock.Unlock()
-
-	d.clusterState = s
+type dhcpV4Message struct {
+	Message
+	Packet *dhcpv4.DHCPv4
 }
 
-func (d *DORAHandler) ServeDHCPv4(ctx context.Context, msg Message) error {
-	if msg.Pkt4 == nil {
-		return ErrNotDHCPv4
+func (h *DHCPv4Handler) ServeDHCP(ctx context.Context, msg Message) (Response, error) {
+	p, err := dhcpv4.FromBytes(msg.Payload)
+	if err != nil {
+		return Response{}, ErrNotDHCPv4
 	}
 
-	d.stateLock.RLock()
-	defer d.stateLock.RUnlock()
+	dhcp := dhcpV4Message{Message: msg, Packet: p}
 
-	switch msg.Pkt4.MessageType() {
+	switch p.MessageType() {
 	case dhcpv4.MessageTypeDiscover:
-		return d.handleDiscover(ctx, msg)
+		return h.handleDiscover(ctx, dhcp)
 	case dhcpv4.MessageTypeRequest:
-		return d.handleRequest(ctx, msg)
+		return h.handleRequest(ctx, dhcp)
 	case dhcpv4.MessageTypeDecline:
-		return d.handleDecline(ctx, msg)
+		h.handleDecline(ctx, dhcp)
 	case dhcpv4.MessageTypeRelease:
-		return d.handleRelease(ctx, msg)
+		h.handleRelease(ctx, dhcp)
 	case dhcpv4.MessageTypeInform:
-		return d.handleInform(ctx, msg)
+		return h.handleInform(ctx, dhcp)
 	}
 
-	return ErrInvalidMessageType
+	return Response{}, ErrInvalidMessageType
 }
 
-func (d *DORAHandler) reply(ctx context.Context, ifaceIdx int, addr net.Addr, reply *dhcpv4.DHCPv4) error {
-	sock, err := d.server.GetSocketFor(4, ifaceIdx)
-	if err != nil {
-		return err
-	}
-
-	conn := sock.Conn()
-
-	buf := reply.ToBytes()
-
-	_, err = conn.WriteTo(buf, addr)
-
-	return err
-}
-
-func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.HardwareAddr, reply *dhcpv4.DHCPv4) error {
-	buf := reply.ToBytes()
-
-	iface, err := net.InterfaceByIndex(ifaceIdx)
-	if err != nil {
-		return fmt.Errorf("error fetching reply interface: %w", err)
-	}
-
-	eth := layers.Ethernet{
-		SrcMAC:       iface.HardwareAddr,
-		DstMAC:       mac,
-		EthernetType: layers.EthernetTypeIPv4,
-	}
-
-	ipPkt := layers.IPv4{
-		Version:  4,
-		TTL:      64,
-		SrcIP:    reply.ServerIPAddr,
-		DstIP:    reply.YourIPAddr,
-		Protocol: layers.IPProtocolUDP,
-		Flags:    layers.IPv4DontFragment,
-	}
-
-	udpPkt := layers.UDP{
-		SrcPort: dhcp4Port,
-		DstPort: 68,
-	}
-
-	packet := gopacket.NewPacket(buf, layers.LayerTypeDHCPv4, gopacket.NoCopy)
-	dhcpLayer := packet.Layer(layers.LayerTypeDHCPv4)
-
-	pktBuf := gopacket.NewSerializeBuffer()
-
-	dhcpPkt, ok := dhcpLayer.(gopacket.SerializableLayer)
-	if !ok {
-		return fmt.Errorf("%w: packet is type %s", ErrPacketNotSerializable, dhcpLayer.LayerType().String())
-	}
-
-	err = gopacket.SerializeLayers(
-		pktBuf,
-		gopacket.SerializeOptions{
-			ComputeChecksums: true,
-			FixLengths:       true,
-		},
-		&eth,
-		&ipPkt,
-		&udpPkt,
-		dhcpPkt,
-	)
-
-	data := pktBuf.Bytes()
-
-	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, 0)
-	if err != nil {
-		return fmt.Errorf("error opening raw reply socket: %w", err)
-	}
-
-	defer syscall.Close(fd)
-
-	err = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-	if err != nil {
-		return fmt.Errorf("error setting raw socket options: %w", err)
-	}
-
-	dstMac := make([]byte, 8)
-	copy(dstMac[0:6], reply.ClientHWAddr[0:6])
-
-	ethAddr := syscall.SockaddrLinklayer{
-		Protocol: 0,
-		Ifindex:  ifaceIdx,
-		Halen:    6,
-		Addr:     [8]byte(dstMac),
-	}
-
-	err = syscall.Sendto(fd, data, 0, &ethAddr)
-	if err != nil {
-		return fmt.Errorf("error writing raw frame: %w", err)
-	}
-
-	return nil
-}
-
-func getServerAddr(msg Message) (net.IP, error) {
+func getServerAddr(msg dhcpV4Message) (net.IP, error) {
 	iface, err := net.InterfaceByIndex(int(msg.IfaceIdx))
 	if err != nil {
 		return nil, err
@@ -265,39 +141,35 @@ func getServerAddr(msg Message) (net.IP, error) {
 	return serverIP, nil
 }
 
-func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
+func (h *DHCPv4Handler) handleDiscover(ctx context.Context, msg dhcpV4Message) (Response, error) {
 	var (
 		offer *Offer
 		err   error
 	)
 
-	log.Info().Msgf("DISCOVER: %+v", msg)
-
-	err = d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		offer, err = d.allocator.GetOfferFromDiscover(ctx, tx, msg.Pkt4, int(msg.IfaceIdx), msg.SrcMAC)
+	err = h.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		offer, err = h.allocator.GetOfferFromDiscover(ctx, tx, msg.Packet, int(msg.IfaceIdx), msg.SrcMAC)
 
 		return err
 	})
 	if err != nil {
-		return err
+		return Response{}, err
 	}
-
-	log.Info().Msgf("OFFER: %+v", offer)
 
 	serverIP, err := getServerAddr(msg)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	reply, err := dhcpv4.New(
-		dhcpv4.WithReply(msg.Pkt4),
+		dhcpv4.WithReply(msg.Packet),
 		dhcpv4.WithMessageType(dhcpv4.MessageTypeOffer),
 		dhcpv4.WithServerIP(serverIP),
-		dhcpv4.WithClientIP(msg.Pkt4.ClientIPAddr),
+		dhcpv4.WithClientIP(msg.Packet.ClientIPAddr),
 		dhcpv4.WithYourIP(offer.IP),
 	)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	for optCode, optValue := range offer.Options {
@@ -306,7 +178,7 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		if marshaler, ok := optionMarshalers[optCode]; ok {
 			value, err = marshaler(optValue)
 			if err != nil {
-				return err
+				return Response{}, err
 			}
 		}
 
@@ -317,31 +189,32 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		}
 	}
 
-	log.Info().Msgf("REPLY: %+v", reply)
-
-	if d.discoverReplyOverride != nil {
-		return d.discoverReplyOverride(ctx, int(msg.IfaceIdx), reply)
-	}
-
-	return d.replyEth(ctx, int(msg.IfaceIdx), msg.SrcMAC, reply)
+	return Response{
+		SrcAddress: reply.ServerIPAddr,
+		DstAddress: reply.YourIPAddr,
+		DstMAC:     msg.SrcMAC,
+		Payload:    reply.ToBytes(),
+		Mode:       SendL2,
+		IfaceIdx:   int(msg.IfaceIdx),
+	}, nil
 }
 
-func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
+func (h *DHCPv4Handler) handleRequest(ctx context.Context, msg dhcpV4Message) (Response, error) {
 	var (
 		reply *dhcpv4.DHCPv4
 		lease *Lease
 		err   error
 	)
 
-	requestedIPBytes, ok := msg.Pkt4.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
+	requestedIPBytes, ok := msg.Packet.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
 	if !ok || (len(requestedIPBytes) != 4 && len(requestedIPBytes) != 16) {
-		return ErrNoIPRequested
+		return Response{}, ErrNoIPRequested
 	}
 
 	requestedIP := net.IP(requestedIPBytes).To4()
 
-	err = d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		lease, err = d.allocator.ACKLease(ctx, tx, requestedIP, msg.Pkt4.ClientHWAddr)
+	err = h.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		lease, err = h.allocator.ACKLease(ctx, tx, requestedIP, msg.Packet.ClientHWAddr)
 		if err != nil {
 			log.Err(err).Send()
 
@@ -349,13 +222,13 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 				return err
 			}
 
-			err = d.allocator.NACKLease(ctx, tx, msg.Pkt4.YourIPAddr, msg.Pkt4.ClientHWAddr)
+			err = h.allocator.NACKLease(ctx, tx, msg.Packet.YourIPAddr, msg.Packet.ClientHWAddr)
 			if err != nil {
 				return err
 			}
 
 			reply, err = dhcpv4.New(
-				dhcpv4.WithReply(msg.Pkt4),
+				dhcpv4.WithReply(msg.Packet),
 				dhcpv4.WithMessageType(dhcpv4.MessageTypeNak),
 			)
 
@@ -367,10 +240,10 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 			}
 
 			reply, err = dhcpv4.New(
-				dhcpv4.WithReply(msg.Pkt4),
+				dhcpv4.WithReply(msg.Packet),
 				dhcpv4.WithMessageType(dhcpv4.MessageTypeAck),
 				dhcpv4.WithServerIP(serverIP.To4()),
-				dhcpv4.WithClientIP(msg.Pkt4.ClientIPAddr),
+				dhcpv4.WithClientIP(msg.Packet.ClientIPAddr),
 				dhcpv4.WithYourIP(lease.IP.To4()),
 			)
 
@@ -378,7 +251,7 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		}
 	})
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	for optCode, optValue := range lease.Options {
@@ -387,7 +260,7 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		if marshaler, ok := optionMarshalers[optCode]; ok {
 			value, err = marshaler(optValue)
 			if err != nil {
-				return err
+				return Response{}, err
 			}
 		}
 
@@ -398,29 +271,31 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		}
 	}
 
-	if d.requestReplyOverride != nil {
-		return d.requestReplyOverride(ctx, reply)
+	response := Response{
+		SrcAddress: reply.ServerIPAddr,
+		DstAddress: reply.YourIPAddr,
+		DstMAC:     msg.SrcMAC,
+		Payload:    reply.ToBytes(),
+		IfaceIdx:   int(msg.IfaceIdx),
 	}
 
-	if bytes.Equal(reply.ClientIPAddr.To4(), anyIP4) {
-		return d.replyEth(ctx, int(msg.IfaceIdx), msg.SrcMAC, reply)
+	if bytes.Equal(reply.ClientIPAddr.To4(), net.IPv4zero) {
+		response.Mode = SendL2
+		return response, nil
 	}
 
-	addr := &net.UDPAddr{
-		IP:   reply.ClientIPAddr,
-		Port: 68,
-	}
+	response.DstAddress = reply.ClientIPAddr
 
-	return d.reply(ctx, int(msg.IfaceIdx), addr, reply)
+	return response, nil
 }
 
-func (d *DORAHandler) handleDecline(ctx context.Context, msg Message) error {
+func (h *DHCPv4Handler) handleDecline(ctx context.Context, msg dhcpV4Message) error {
 	// given a decline should remove the offered lease, we can actually
 	// reuse the logic from allocator.Release() here, so long as it can delete
 	// the lease on VLAN + MAC, if we were to release only on IP and MAC, that cannot
 	// apply here as DECLINE will not have a client IP in the message
-	return d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		err := d.allocator.Release(ctx, tx, int(msg.IfaceIdx), msg.Pkt4.ClientHWAddr)
+	return h.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		err := h.allocator.Release(ctx, tx, int(msg.IfaceIdx), msg.Packet.ClientHWAddr)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil
@@ -429,56 +304,56 @@ func (d *DORAHandler) handleDecline(ctx context.Context, msg Message) error {
 			return err
 		}
 
-		conflictedIPBytes, ok := msg.Pkt4.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
+		conflictedIPBytes, ok := msg.Packet.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
 		if !ok || (len(conflictedIPBytes) != 4 && len(conflictedIPBytes) != 16) {
 			return ErrNoIPRequested
 		}
 
-		return d.allocator.MarkConflicted(ctx, tx, net.IP(conflictedIPBytes))
+		return h.allocator.MarkConflicted(ctx, tx, net.IP(conflictedIPBytes))
 	})
 }
 
-func (d *DORAHandler) handleRelease(ctx context.Context, msg Message) error {
-	return d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return d.allocator.Release(ctx, tx, int(msg.IfaceIdx), msg.Pkt4.ClientHWAddr)
+func (h *DHCPv4Handler) handleRelease(ctx context.Context, msg dhcpV4Message) error {
+	return h.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		return h.allocator.Release(ctx, tx, int(msg.IfaceIdx), msg.Packet.ClientHWAddr)
 	})
 }
 
-func (d *DORAHandler) handleInform(ctx context.Context, msg Message) error {
-	requestedIPBytes, ok := msg.Pkt4.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
+func (h *DHCPv4Handler) handleInform(ctx context.Context, msg dhcpV4Message) (Response, error) {
+	requestedIPBytes, ok := msg.Packet.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
 	if !ok || (len(requestedIPBytes) != 4 && len(requestedIPBytes) != 16) {
-		return ErrNoIPRequested
+		return Response{}, ErrNoIPRequested
 	}
 
 	requestedIP := net.IP(requestedIPBytes).To4()
 
 	var lease *Lease
 
-	err := d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+	err := h.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 
-		lease, err = d.allocator.ACKLease(ctx, tx, requestedIP, msg.SrcMAC)
+		lease, err = h.allocator.ACKLease(ctx, tx, requestedIP, msg.SrcMAC)
 
 		return err
 	})
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	serverIP, err := getServerAddr(msg)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	reply, err := dhcpv4.New(
-		dhcpv4.WithReply(msg.Pkt4),
+		dhcpv4.WithReply(msg.Packet),
 		dhcpv4.WithMessageType(dhcpv4.MessageTypeAck),
 		dhcpv4.WithServerIP(serverIP.To4()),
-		dhcpv4.WithClientIP(msg.Pkt4.ClientIPAddr),
+		dhcpv4.WithClientIP(msg.Packet.ClientIPAddr),
 		dhcpv4.WithYourIP(lease.IP.To4()),
 	)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	for optCode, optValue := range lease.Options {
@@ -487,7 +362,7 @@ func (d *DORAHandler) handleInform(ctx context.Context, msg Message) error {
 		if marshaler, ok := optionMarshalers[optCode]; ok {
 			value, err = marshaler(optValue)
 			if err != nil {
-				return err
+				return Response{}, err
 			}
 		}
 
@@ -498,18 +373,20 @@ func (d *DORAHandler) handleInform(ctx context.Context, msg Message) error {
 		}
 	}
 
-	if d.requestReplyOverride != nil {
-		return d.requestReplyOverride(ctx, reply)
+	response := Response{
+		SrcAddress: reply.ServerIPAddr,
+		DstAddress: reply.YourIPAddr,
+		DstMAC:     msg.SrcMAC,
+		Payload:    reply.ToBytes(),
+		IfaceIdx:   int(msg.IfaceIdx),
 	}
 
-	if bytes.Equal(reply.ClientIPAddr.To4(), anyIP4) {
-		return d.replyEth(ctx, int(msg.IfaceIdx), msg.SrcMAC, reply)
+	if bytes.Equal(reply.ClientIPAddr.To4(), net.IPv4zero) {
+		response.Mode = SendL2
+		return response, nil
 	}
 
-	addr := &net.UDPAddr{
-		IP:   reply.ClientIPAddr,
-		Port: 68,
-	}
+	response.DstAddress = reply.ClientIPAddr
 
-	return d.reply(ctx, int(msg.IfaceIdx), addr, reply)
+	return response, nil
 }

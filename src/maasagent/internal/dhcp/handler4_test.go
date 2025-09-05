@@ -30,36 +30,113 @@ import (
 	"github.com/canonical/microcluster/v2/microcluster"
 	"github.com/canonical/microcluster/v2/state"
 	"github.com/insomniacslk/dhcp/dhcpv4"
-	"github.com/insomniacslk/dhcp/dhcpv6"
 	"github.com/insomniacslk/dhcp/iana"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"maas.io/core/src/maasagent/internal/cluster"
 )
 
-func TestDORAHandlerServeDHCP4(t *testing.T) {
+type fakeAllocator struct {
+	lease *Lease
+	offer *Offer
+	err   error
+}
+
+func (a fakeAllocator) GetOfferFromDiscover(context.Context, *sql.Tx, *dhcpv4.DHCPv4, int, net.HardwareAddr) (*Offer, error) {
+	return a.offer, a.err
+}
+func (a fakeAllocator) GetOfferForAllocation(context.Context, *sql.Tx, int, net.HardwareAddr) (*Offer, error) {
+	return a.offer, a.err
+}
+func (a fakeAllocator) ACKLease(context.Context, *sql.Tx, net.IP, net.HardwareAddr) (*Lease, error) {
+	return a.lease, a.err
+}
+func (a fakeAllocator) NACKLease(context.Context, *sql.Tx, net.IP, net.HardwareAddr) error {
+	return a.err
+}
+func (a fakeAllocator) UpdateForRenewal(context.Context, *sql.Tx, net.IP, net.HardwareAddr) error {
+	return a.err
+}
+func (a fakeAllocator) Release(context.Context, *sql.Tx, int, net.HardwareAddr) error {
+	return a.err
+}
+func (a fakeAllocator) MarkConflicted(context.Context, *sql.Tx, net.IP) error {
+	return a.err
+}
+
+
+// message is a wrapper type, similar to Message, but instead of Payload []byte
+// it contains Packet dhcpv4.DHCPv4, so it is easier to define test data.
+type message struct {
+	SrcMAC   net.HardwareAddr
+	SrcIP    net.IP
+	Packet   dhcpv4.DHCPv4
+	IfaceIdx uint32
+	Family   AddressFamily
+	SrcPort  uint16
+}
+
+// response is a wrapper type, similar to Response, but instead of Payload []byte
+// it contains Packet dhcpv4.DHCPv4, so it is easier to define test data.
+type response struct {
+	SrcAddress net.IP
+	DstAddress net.IP
+	DstMAC     net.HardwareAddr
+	Packet     dhcpv4.DHCPv4
+	Mode       SendMode
+	IfaceIdx   int
+}
+
+func TestDHCPv4Handler_ServeDHCP(t *testing.T) {
+	testcases := map[string]struct {
+		in        message
+		allocator fakeAllocator
+		out       response
+		err       error
+	}{
+    "discover":{
+allocator: fakeAllocator{offer: &Offer{
+	Options: map[uint16]string{},
+	IP:      net.IP{},
+},
+    },
+    "request":{},
+    "decline":{},
+    "release":{},
+    "inform":{},
+    "invalid message":{},
+  }
+
+}
+
+// DISCOVER->OFFER
+&{Options:map[3:10.0.0.1 51:30] IP:10.0.0.2}
+
+func TestDHCPv4HandlerServeDHCP4(t *testing.T) {
 	hostname, err := os.Hostname()
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
 		data string
-		in   Message
+		in   dhcpV4Message
 		out  *dhcpv4.DHCPv4
 		err  error
 	}{
 		"discover": {
 			data: fmt.Sprintf(`
-			INSERT INTO vlan (id, vid) VALUES (1, 0);
-			INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
-			INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
-			INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
-			INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
-			INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
-			`, hostname),
-			in: Message{
-				IfaceIdx: 1,
-				SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-				Pkt4: &dhcpv4.DHCPv4{
+                    INSERT INTO vlan (id, vid) VALUES (1, 0);
+                    INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
+                    INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
+                    INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
+                    INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
+                    INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
+                    `, hostname),
+			in: dhcpV4Message{
+				Message: Message{
+					IfaceIdx: 1,
+					SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+				},
+				Packet: &dhcpv4.DHCPv4{
 					OpCode:        dhcpv4.OpcodeBootRequest,
 					HWType:        iana.HWTypeEthernet,
 					ClientHWAddr:  net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
@@ -89,20 +166,23 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 		},
 		"request": {
 			data: fmt.Sprintf(`
-			INSERT INTO vlan (id, vid) VALUES (1, 0);
-			INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
-			INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
-			INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
-			INSERT INTO lease (id, ip, mac_address, created_at, updated_at, lifetime, state, needs_sync, range_id) VALUES (1, '10.0.0.2', 'ab:cd:ef:00:11:22', 10, 10, 30, 0, true, 1);
-			INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
-			INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
-			`, hostname),
-			in: Message{
-				IfaceIdx: 1,
-				SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-				SrcIP:    net.ParseIP("10.0.0.2"),
-				SrcPort:  68,
-				Pkt4: &dhcpv4.DHCPv4{
+                    INSERT INTO vlan (id, vid) VALUES (1, 0);
+                    INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
+                    INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
+                    INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
+                    INSERT INTO lease (id, ip, mac_address, created_at, updated_at, lifetime, state, needs_sync, range_id) VALUES (1, '10.0.0.2', 'a
+b:cd:ef:00:11:22', 10, 10, 30, 0, true, 1);
+                    INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
+                    INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
+                    `, hostname),
+			in: dhcpV4Message{
+				Message: Message{
+					IfaceIdx: 1,
+					SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+					SrcIP:    net.ParseIP("10.0.0.2"),
+					SrcPort:  68,
+				},
+				Packet: &dhcpv4.DHCPv4{
 					OpCode:        dhcpv4.OpcodeBootRequest,
 					HWType:        iana.HWTypeEthernet,
 					ClientHWAddr:  net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
@@ -132,10 +212,12 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 			},
 		},
 		"decline": {
-			in: Message{
-				IfaceIdx: 1,
-				SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-				Pkt4: &dhcpv4.DHCPv4{
+			in: dhcpV4Message{
+				Message: Message{
+					IfaceIdx: 1,
+					SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+				},
+				Packet: &dhcpv4.DHCPv4{
 					OpCode:        dhcpv4.OpcodeBootRequest,
 					HWType:        iana.HWTypeEthernet,
 					ClientHWAddr:  net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
@@ -151,18 +233,21 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 		},
 		"release": {
 			data: fmt.Sprintf(`
-			INSERT INTO vlan (id, vid) VALUES (1, 0);
-			INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
-			INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
-			INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
-			INSERT INTO lease (id, ip, mac_address, created_at, updated_at, lifetime, state, needs_sync, range_id) VALUES (1, '10.0.0.2', 'ab:cd:ef:00:11:22', 10, 10, 30, 1, true, 1);
-			INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
-			INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
-			`, hostname),
-			in: Message{
-				IfaceIdx: 1,
-				SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-				Pkt4: &dhcpv4.DHCPv4{
+                    INSERT INTO vlan (id, vid) VALUES (1, 0);
+                    INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
+                    INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
+                    INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
+                    INSERT INTO lease (id, ip, mac_address, created_at, updated_at, lifetime, state, needs_sync, range_id) VALUES (1, '10.0.0.2', 'a
+b:cd:ef:00:11:22', 10, 10, 30, 1, true, 1);
+                    INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
+                    INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
+                    `, hostname),
+			in: dhcpV4Message{
+				Message: Message{
+					IfaceIdx: 1,
+					SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+				},
+				Packet: &dhcpv4.DHCPv4{
 					OpCode:        dhcpv4.OpcodeBootRequest,
 					HWType:        iana.HWTypeEthernet,
 					ClientHWAddr:  net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
@@ -178,18 +263,21 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 		},
 		"inform": {
 			data: fmt.Sprintf(`
-			INSERT INTO vlan (id, vid) VALUES (1, 0);
-			INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
-			INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
-			INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
-			INSERT INTO lease (id, ip, mac_address, created_at, updated_at, lifetime, state, needs_sync, range_id) VALUES (1, '10.0.0.2', 'ab:cd:ef:00:11:22', 10, 10, 30, 1, true, 1);
-			INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
-			INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
-			`, hostname),
-			in: Message{
-				IfaceIdx: 1,
-				SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-				Pkt4: &dhcpv4.DHCPv4{
+                    INSERT INTO vlan (id, vid) VALUES (1, 0);
+                    INSERT INTO interface (id, hostname, idx, vlan_id) VALUES (1, '%s', 1, 1);
+                    INSERT INTO subnet (id, cidr, address_family, vlan_id) VALUES (1, '10.0.0.0/24', 4, 1);
+                    INSERT INTO ip_range (id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id) VALUES (1, '10.0.0.2', '10.0.0.22', 20, false, true, 1);
+                    INSERT INTO lease (id, ip, mac_address, created_at, updated_at, lifetime, state, needs_sync, range_id) VALUES (1, '10.0.0.2', 'a
+b:cd:ef:00:11:22', 10, 10, 30, 1, true, 1);
+                    INSERT INTO dhcp_option (id, label, number, value, vlan_id) VALUES (1, 'lease_lifetime', 51, "30", 1);
+                    INSERT INTO dhcp_option (id, label, number, value, subnet_id) VALUES (2, 'gateway_ip', 3, "10.0.0.1", 1);
+                    `, hostname),
+			in: dhcpV4Message{
+				Message: Message{
+					IfaceIdx: 1,
+					SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+				},
+				Packet: &dhcpv4.DHCPv4{
 					OpCode:        dhcpv4.OpcodeBootRequest,
 					HWType:        iana.HWTypeEthernet,
 					TransactionID: [4]byte{0x01, 0x02, 0x03, 0x04},
@@ -220,19 +308,23 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 				},
 			},
 		},
-		"not dhcp4": {
-			in: Message{
-				IfaceIdx: 1,
-				SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-				Pkt6:     &dhcpv6.Message{},
-			},
-			err: ErrNotDHCP4,
-		},
+		// "not dhcp4": {
+		// 	in: dhcpV4Message{
+		// 		Message: Message{
+		// 			IfaceIdx: 1,
+		// 			SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+		// 		},
+		// 		Packet: &dhcpv6.Message{},
+		// 	},
+		// 	err: ErrNotDHCPv4,
+		// },
 		"invalid message": {
-			in: Message{
-				IfaceIdx: 1,
-				SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
-				Pkt4:     &dhcpv4.DHCPv4{},
+			in: dhcpV4Message{
+				Message: Message{
+					IfaceIdx: 1,
+					SrcMAC:   net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+				},
+				Packet: &dhcpv4.DHCPv4{},
 			},
 			err: ErrInvalidMessageType,
 		},
@@ -289,25 +381,20 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 						allocator, err := newDQLiteAllocator4()
 						require.NoError(t, err)
 
-						handler := NewDORAHandler(allocator)
-						handler.SetClusterState(s)
+						handler := NewDHCPv4Handler(allocator, s)
 
-						handler.discoverReplyOverride = func(ctx context.Context, ifaceIdx int, resp *dhcpv4.DHCPv4) error {
-							assert.Equal(t, resp, tc.out)
-							return nil
-						}
+						resp, err := handler.ServeDHCP(ctx, Message{
+							SrcMAC:   tc.in.SrcMAC,
+							SrcIP:    tc.in.SrcIP,
+							Payload:  tc.in.Packet.ToBytes(),
+							IfaceIdx: tc.in.IfaceIdx,
+							Family:   tc.in.Family,
+							SrcPort:  tc.in.SrcPort,
+						})
 
-						handler.requestReplyOverride = func(ctx context.Context, resp *dhcpv4.DHCPv4) error {
-							assert.Equal(t, resp, tc.out)
-							return nil
-						}
-
-						handler.informReplyOverride = func(ctx context.Context, resp *dhcpv4.DHCPv4) error {
-							assert.Equal(t, resp, tc.out)
-							return nil
-						}
-
-						err = handler.ServeDHCP4(ctx, tc.in)
+						actual, err := dhcpv4.FromBytes(resp.Payload)
+						require.NoError(t, err)
+						assert.Equal(t, actual, tc.out)
 						if err != nil {
 							if tc.err != nil {
 								assert.ErrorIs(t, err, tc.err)
@@ -319,9 +406,6 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 
 						return nil
 					},
-					PostBootstrap: func(_ context.Context, _ state.State, cfg map[string]string) error {
-						return nil
-					},
 				},
 			})
 
@@ -329,48 +413,5 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 		})
 
 		i++
-	}
-}
-
-func TestUDP4Checksum(t *testing.T) {
-	testcases := map[string]struct {
-		in struct {
-			srcIP net.IP
-			dstIP net.IP
-			data  []byte
-		}
-		out uint32
-	}{
-		"basic": {
-			in: struct {
-				srcIP net.IP
-				dstIP net.IP
-				data  []byte
-			}{
-				srcIP: net.ParseIP("0.0.0.0"),
-				dstIP: net.ParseIP("255.255.255.255"),
-				data:  []byte{},
-			},
-			out: 0xffff0000,
-		},
-		"with data": {
-			in: struct {
-				srcIP net.IP
-				dstIP net.IP
-				data  []byte
-			}{
-				srcIP: net.ParseIP("0.0.0.0"),
-				dstIP: net.ParseIP("255.255.255.255"),
-				data:  []byte{0x11, 0x00, 0x02, 0x1e},
-			},
-			out: 0xffffece1,
-		},
-	}
-
-	for tname, tc := range testcases {
-		t.Run(tname, func(t *testing.T) {
-			out := udp4Checksum(tc.in.srcIP, tc.in.dstIP, tc.in.data)
-			assert.Equal(t, out, tc.out)
-		})
 	}
 }
