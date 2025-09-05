@@ -237,9 +237,19 @@ class BootResourcesActivity(ActivityBase):
                 response.raise_for_status()
                 last_update = datetime.now(timezone.utc)
 
-                async for chunk in response.aiter_bytes(
-                    chunk_size=5 * 1024 * 1024
-                ):  # 5MB chunks
+                # Let's assume the network is fast, and we can get 5MB chunks within 10 seconds (the heartbeat timeout).
+                # If we fail the activity, then we shrink the chunk size. The more we fail, the more we shrink so to deal with
+                # slow networks.
+                BASE_CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB
+                MIN_CHUNK_SIZE = 256 * 1024  # 256 KB
+
+                attempt = activity.info().attempt
+                chunk_size = BASE_CHUNK_SIZE // (
+                    2 ** (attempt - 1)
+                )  # halves each attempt
+                chunk_size = max(chunk_size, MIN_CHUNK_SIZE)
+
+                async for chunk in response.aiter_bytes(chunk_size=chunk_size):
                     activity.heartbeat("Downloaded chunk")
                     dt_now = datetime.now(timezone.utc)
                     if dt_now > (last_update + REPORT_INTERVAL):
