@@ -47,14 +47,22 @@ from pydantic import (
 
 
 def updated_validator(v: str | None) -> datetime | None:
-    if v is not None:
-        return datetime.strptime(v, "%a, %d %b %Y %H:%M:%S %z")
+    if v is not None and not isinstance(v, datetime):
+        try:
+            return datetime.strptime(v, "%a, %d %b %Y %H:%M:%S %z")
+        except ValueError:
+            # when serializing the object, the date will be in ISO format.
+            return datetime.fromisoformat(v)
     return v
 
 
 def support_eol_validator(v: str | None) -> datetime | None:
-    if v is not None:
-        return datetime.strptime(v, "%Y-%m-%d")
+    if v is not None and not isinstance(v, datetime):
+        try:
+            return datetime.strptime(v, "%Y-%m-%d")
+        except ValueError:
+            # when serializing the object, the date will be in ISO format.
+            return datetime.fromisoformat(v)
     return v
 
 
@@ -141,6 +149,15 @@ class Version(BaseModel, ABC):
         self,
     ) -> list[DownloadableFile]:
         pass
+
+    @override
+    def dict(self, **kwargs):
+        """This is needed when serializing and de-serializing the object.
+
+        TODO: remove when we switch to Pydantic 2.x and use validation_alias instead of alias
+        """
+        kwargs["by_alias"] = True
+        return super().dict(**kwargs)
 
 
 class BootloaderVersion(Version):
@@ -236,6 +253,15 @@ class Product(BaseModel, ABC):
             if v.name == name:
                 return v
         return None
+
+    @override
+    def dict(self, **kwargs):
+        """This is needed when serializing and de-serializing the object.
+
+        TODO: remove when we switch to Pydantic 2.x and use validation_alias instead of alias
+        """
+        kwargs["by_alias"] = True
+        return super().dict(**kwargs)
 
 
 class BootloaderProduct(Product):

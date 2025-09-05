@@ -67,7 +67,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
                 os=product.os,
                 arch=product.arch,
                 subarch="generic",
-                release=product.os,
+                release=product.bootloader_type,
                 label=product.label,
                 bootloader_type=product.bootloader_type,
                 boot_source_id=boot_source_id,

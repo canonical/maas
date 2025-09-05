@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from maasserver import bootresources
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
@@ -231,6 +232,9 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertCountEqual(updated_data["tags"], new_tag_ids)
 
     def test_check_images(self):
+        self.patch(
+            bootresources, "is_import_resources_running"
+        ).return_value = False
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {}, None)
         node1 = factory.make_RackController(owner=owner)

@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import math
 from unittest.mock import call, Mock
 
 import pytest
@@ -23,6 +24,9 @@ from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
     SHORTSHA256_MIN_PREFIX_LEN,
+)
+from maasservicelayer.services.bootresourcefilesync import (
+    BootResourceFileSyncService,
 )
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.simplestreams.models import ImageFile
@@ -63,6 +67,7 @@ class TestCommonBootResourceFilesService(ServiceCommonTests):
         return BootResourceFilesService(
             context=Context(),
             repository=Mock(BootResourceFilesRepository),
+            boot_resource_file_sync_service=Mock(BootResourceFileSyncService),
             temporal_service=Mock(TemporalService),
         )
 
@@ -89,6 +94,10 @@ class TestBootResourceFilesService:
         return Mock(BootResourceFilesRepository)
 
     @pytest.fixture
+    def mock_boot_resource_file_sync_service(self) -> Mock:
+        return Mock(BootResourceFileSyncService)
+
+    @pytest.fixture
     def mock_temporal_service(self) -> Mock:
         return Mock(TemporalService)
 
@@ -96,37 +105,39 @@ class TestBootResourceFilesService:
     def service(
         self,
         mock_repository: Mock,
+        mock_boot_resource_file_sync_service: Mock,
         mock_temporal_service: Mock,
     ) -> BootResourceFilesService:
         return BootResourceFilesService(
             context=Context(),
             repository=mock_repository,
+            boot_resource_file_sync_service=mock_boot_resource_file_sync_service,
             temporal_service=mock_temporal_service,
         )
 
     @pytest.mark.parametrize(
-        "matching_resource, collisions, sha, expected_filename",
+        "matching_resources, collisions, sha, expected_filename",
         [
             (
-                TEST_BOOT_RESOURCE_FILE,
+                [TEST_BOOT_RESOURCE_FILE],
                 [],
                 TEST_BOOT_RESOURCE_FILE.sha256,
                 TEST_BOOT_RESOURCE_FILE.filename_on_disk,
             ),  # file with the same sha exists
             (
-                None,
+                [],
                 [],
                 "a" * 64,
                 "a" * SHORTSHA256_MIN_PREFIX_LEN,
-            ),  # No matching resource, no collisions
+            ),  # No matching resources, no collisions
             (
-                None,
+                [],
                 [TEST_BOOT_RESOURCE_FILE],
                 "abcdef0" + "0" * 47,
                 "abcdef00",
             ),  # collision, use the next char
             (
-                None,
+                [],
                 [TEST_BOOT_RESOURCE_FILE, TEST_BOOT_RESOURCE_FILE_FULL_SHA],
                 TEST_BOOT_RESOURCE_FILE_FULL_SHA.sha256[:-1] + "a",
                 TEST_BOOT_RESOURCE_FILE_FULL_SHA.sha256[:-1] + "a",
@@ -135,15 +146,14 @@ class TestBootResourceFilesService:
     )
     async def test_calculate_filename_on_disk(
         self,
-        matching_resource: BootResourceFile | None,
+        matching_resources: list[BootResourceFile],
         collisions: list[BootResourceFile],
         sha: str,
         expected_filename: str,
         mock_repository: Mock,
         service: BootResourceFilesService,
     ) -> None:
-        mock_repository.get_one.return_value = matching_resource
-        mock_repository.get_many.return_value = collisions
+        mock_repository.get_many.side_effect = [matching_resources, collisions]
         filename = await service.calculate_filename_on_disk(sha)
         assert filename == expected_filename
 
@@ -236,7 +246,7 @@ class TestBootResourceFilesService:
     ) -> None:
         mock_repository.get_one.return_value = TEST_BOOT_RESOURCE_FILE
         # for calculate_filename_on_disk
-        mock_repository.get_many.return_value = []
+        mock_repository.get_many.return_value = [TEST_BOOT_RESOURCE_FILE]
 
         file = ImageFile(
             ftype="boot-initrd",
@@ -248,30 +258,22 @@ class TestBootResourceFilesService:
 
         await service.get_or_create_from_simplestreams_file(file, 1)
 
-        mock_repository.get_one.assert_has_awaits(
-            [
-                call(
-                    query=QuerySpec(
-                        where=BootResourceFileClauseFactory.with_sha256(
-                            file.sha256
-                        )
-                    )
-                ),
-                call(
-                    query=QuerySpec(
-                        where=BootResourceFileClauseFactory.and_clauses(
-                            [
-                                BootResourceFileClauseFactory.with_resource_set_id(
-                                    1
-                                ),
-                                BootResourceFileClauseFactory.with_filename(
-                                    "boot-initrd"
-                                ),
-                            ]
-                        )
-                    )
-                ),
-            ]
+        mock_repository.get_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceFileClauseFactory.with_sha256(file.sha256)
+            )
+        )
+        mock_repository.get_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceFileClauseFactory.and_clauses(
+                    [
+                        BootResourceFileClauseFactory.with_resource_set_id(1),
+                        BootResourceFileClauseFactory.with_filename(
+                            "boot-initrd"
+                        ),
+                    ]
+                )
+            )
         )
         mock_repository.create.assert_not_awaited()
         mock_repository.delete_by_id.assert_not_awaited()
@@ -297,7 +299,7 @@ class TestBootResourceFilesService:
 
         await service.get_or_create_from_simplestreams_file(file, 1)
 
-        mock_repository.get_one.assert_has_awaits(
+        mock_repository.get_many.assert_has_awaits(
             [
                 call(
                     query=QuerySpec(
@@ -308,19 +310,24 @@ class TestBootResourceFilesService:
                 ),
                 call(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.and_clauses(
-                            [
-                                BootResourceFileClauseFactory.with_resource_set_id(
-                                    1
-                                ),
-                                BootResourceFileClauseFactory.with_filename(
-                                    "boot-initrd"
-                                ),
-                            ]
+                        where=BootResourceFileClauseFactory.with_sha256_starting_with(
+                            file.sha256[:SHORTSHA256_MIN_PREFIX_LEN]
                         )
                     )
                 ),
             ]
+        )
+        mock_repository.get_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceFileClauseFactory.and_clauses(
+                    [
+                        BootResourceFileClauseFactory.with_resource_set_id(1),
+                        BootResourceFileClauseFactory.with_filename(
+                            "boot-initrd"
+                        ),
+                    ]
+                )
+            )
         )
         mock_repository.create.assert_awaited_once_with(builder=builder)
         mock_repository.delete_by_id.assert_not_awaited()
@@ -330,7 +337,7 @@ class TestBootResourceFilesService:
         mock_repository: Mock,
         service: BootResourceFilesService,
     ) -> None:
-        mock_repository.get_one.side_effect = [None, TEST_BOOT_RESOURCE_FILE]
+        mock_repository.get_one.return_value = TEST_BOOT_RESOURCE_FILE
         # for calculate_filename_on_disk
         mock_repository.get_many.return_value = []
 
@@ -346,7 +353,7 @@ class TestBootResourceFilesService:
 
         await service.get_or_create_from_simplestreams_file(file, 1)
 
-        mock_repository.get_one.assert_has_awaits(
+        mock_repository.get_many.assert_has_awaits(
             [
                 call(
                     query=QuerySpec(
@@ -357,21 +364,66 @@ class TestBootResourceFilesService:
                 ),
                 call(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.and_clauses(
-                            [
-                                BootResourceFileClauseFactory.with_resource_set_id(
-                                    1
-                                ),
-                                BootResourceFileClauseFactory.with_filename(
-                                    "boot-initrd"
-                                ),
-                            ]
+                        where=BootResourceFileClauseFactory.with_sha256_starting_with(
+                            file.sha256[:SHORTSHA256_MIN_PREFIX_LEN]
                         )
                     )
                 ),
             ]
         )
+        mock_repository.get_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceFileClauseFactory.and_clauses(
+                    [
+                        BootResourceFileClauseFactory.with_resource_set_id(1),
+                        BootResourceFileClauseFactory.with_filename(
+                            "boot-initrd"
+                        ),
+                    ]
+                )
+            )
+        )
         mock_repository.delete_by_id.assert_awaited_once_with(
             id=TEST_BOOT_RESOURCE_FILE.id
         )
         mock_repository.create.assert_awaited_once_with(builder=builder)
+
+    @pytest.mark.parametrize(
+        "synced_size, expected_progress, expected_complete",
+        [
+            (0, 0.0, False),
+            (100, 100.0, True),
+            (50, 50.0, False),
+        ],
+    )
+    async def test_get_sync_progress(
+        self,
+        synced_size: int,
+        expected_progress: float,
+        expected_complete: bool,
+        mock_repository: Mock,
+        mock_boot_resource_file_sync_service: Mock,
+        service: BootResourceFilesService,
+    ) -> None:
+        mock_boot_resource_file_sync_service.get_regions_count.return_value = 1
+        mock_repository.get_by_id.return_value = BootResourceFile(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            filename="test",
+            filetype=BootResourceFileType.SQUASHFS_IMAGE,
+            extra={},
+            sha256="a" * 64,
+            size=100,
+            filename_on_disk="a" * 7,
+        )
+        mock_boot_resource_file_sync_service.get_current_sync_size_for_files.return_value = synced_size
+        sync_progress = await service.get_sync_progress(1)
+        assert math.isclose(sync_progress, expected_progress)
+        sync_complete = await service.is_sync_complete(1)
+        assert sync_complete is expected_complete
+
+        mock_repository.get_by_id.assert_called_with(id=1)
+        mock_boot_resource_file_sync_service.get_current_sync_size_for_files.assert_called_with(
+            {1}
+        )

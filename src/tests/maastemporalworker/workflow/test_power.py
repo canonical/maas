@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity
+from temporalio.client import Client
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
@@ -270,7 +271,10 @@ class TestPowerActivity:
         env = ActivityEnvironment()
         services_cache = CacheForServices()
         power_activity = PowerActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
         now = utcnow()
         await env.run(

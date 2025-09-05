@@ -15,6 +15,7 @@ from aiohttp import ClientSession, ClientTimeout, FormData, TCPConnector
 from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
 from temporalio import workflow
+from temporalio.client import Client
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
@@ -86,9 +87,10 @@ class MSMConnectorActivity(ActivityBase):
         self,
         db: Database,
         services_cache: CacheForServices,
+        temporal_client: Client,
         connection: AsyncConnection | None = None,
     ):
-        super().__init__(db, services_cache, connection)
+        super().__init__(db, services_cache, temporal_client, connection)
         self._session = self._create_session()
 
     def _create_session(self) -> ClientSession:

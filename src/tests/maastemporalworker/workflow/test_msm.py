@@ -11,6 +11,7 @@ from aiohttp import ClientResponse, ClientSession, FormData
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity
+from temporalio.client import Client
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
@@ -75,7 +76,7 @@ async def msm_act(mocker, db: Database, db_connection: AsyncConnection):
         MSMConnectorActivity, "_create_session", return_value=mock_session
     )
     services_cache = CacheForServices()
-    act = MSMConnectorActivity(db, services_cache, db_connection)
+    act = MSMConnectorActivity(db, services_cache, Mock(Client), db_connection)
     return act
 
 

@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import math
 
 from maascommon.workflows.bootresource import (
     DELETE_BOOTRESOURCE_WORKFLOW_NAME,
@@ -15,8 +16,15 @@ from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFileClauseFactory,
     BootResourceFilesRepository,
 )
+from maasservicelayer.db.repositories.bootresourcefilesync import (
+    BootResourceFileSyncClauseFactory,
+)
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.services.base import BaseService, ServiceCache
+from maasservicelayer.services.bootresourcefilesync import (
+    BootResourceFileSyncService,
+)
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.simplestreams.models import DownloadableFile
 
@@ -32,20 +40,23 @@ class BootResourceFilesService(
         self,
         context: Context,
         repository: BootResourceFilesRepository,
+        boot_resource_file_sync_service: BootResourceFileSyncService,
         temporal_service: TemporalService,
         cache: ServiceCache | None = None,
     ):
         super().__init__(context, repository, cache)
+        self.boot_resource_file_sync_service = boot_resource_file_sync_service
         self.temporal_service = temporal_service
 
     async def calculate_filename_on_disk(self, sha256: str) -> str:
-        matching_resource = await self.get_one(
+        # there can be multiple files with the same sha256, so we can't use get_one
+        matching_resources = await self.get_many(
             query=QuerySpec(
                 where=BootResourceFileClauseFactory.with_sha256(sha256)
             )
         )
-        if matching_resource:
-            return matching_resource.filename_on_disk
+        if matching_resources:
+            return matching_resources[0].filename_on_disk
         collisions = await self.get_many(
             query=QuerySpec(
                 where=BootResourceFileClauseFactory.with_sha256_starting_with(
@@ -162,3 +173,51 @@ class BootResourceFilesService(
             await self._delete_resource(resource_file)
             resource_file = await self.create(builder)
         return resource_file
+
+    async def pre_delete_hook(
+        self, resource_to_be_deleted: BootResourceFile
+    ) -> None:
+        await self.boot_resource_file_sync_service.delete_many(
+            query=QuerySpec(
+                where=BootResourceFileSyncClauseFactory.with_file_id(
+                    resource_to_be_deleted.id
+                )
+            )
+        )
+
+    async def pre_delete_many_hook(
+        self, resources: list[BootResourceFile]
+    ) -> None:
+        await self.boot_resource_file_sync_service.delete_many(
+            query=QuerySpec(
+                where=BootResourceFileSyncClauseFactory.with_file_ids(
+                    {file.id for file in resources}
+                )
+            )
+        )
+
+    async def get_sync_progress(self, file_id: int) -> float:
+        """Calculate the sync progress for a file.
+
+        The process is the following:
+            - get the size of the file
+            - calculate the current size that is already synced
+            - return the percentage of completion
+        """
+        file = await self.get_by_id(file_id)
+        if file is None:
+            raise NotFoundException()
+
+        n_regions = (
+            await self.boot_resource_file_sync_service.get_regions_count()
+        )
+
+        sync_size = await self.boot_resource_file_sync_service.get_current_sync_size_for_files(
+            {file.id}
+        )
+
+        return 100.0 * sync_size / (file.size * n_regions)
+
+    async def is_sync_complete(self, file_id: int) -> bool:
+        sync_progress = await self.get_sync_progress(file_id)
+        return math.isclose(sync_progress, 100.0)

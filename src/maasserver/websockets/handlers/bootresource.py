@@ -10,7 +10,6 @@ from datetime import datetime
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from twisted.internet.defer import Deferred
 
 from maascommon.osystem import OperatingSystemRegistry
 from maasserver.audit import create_audit_event
@@ -19,19 +18,12 @@ from maasserver.bootresources import (
     is_import_resources_running,
     stop_import_resources,
 )
-from maasserver.bootsources import (
-    get_os_info_from_boot_sources,
-    set_simplestreams_env,
-)
+from maasserver.bootsources import get_os_info_from_boot_sources
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     ENDPOINT,
     NODE_STATUS,
     NODE_TYPE,
-)
-from maasserver.import_images.download_descriptions import (
-    download_all_image_descriptions,
-    image_passes_filter,
 )
 from maasserver.models import (
     BootResource,
@@ -42,13 +34,13 @@ from maasserver.models import (
     Node,
 )
 from maasserver.models.bootresourcefile import BootResourceFile
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.converters import human_readable_bytes
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import post_commit_do
 from maasserver.utils.osystems import (
     list_all_usable_osystems,
     release_a_newer_than_b,
 )
-from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     DATETIME_FORMAT,
     Handler,
@@ -58,9 +50,55 @@ from maasserver.websockets.base import (
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
 
 log = LegacyLogger()
+
+
+def value_passes_filter_list(filter_list, property_value):
+    """Does the given property of a boot image pass the given filter list?
+
+    The value passes if either it matches one of the entries in the list of
+    filter values, or one of the filter values is an asterisk (`*`).
+    """
+    return "*" in filter_list or property_value in filter_list
+
+
+def value_passes_filter(filter_value, property_value):
+    """Does the given property of a boot image pass the given filter?
+
+    The value passes the filter if either the filter value is an asterisk
+    (`*`) or the value is equal to the filter value.
+    """
+    return filter_value in ("*", property_value)
+
+
+def image_passes_filter(filters, os, arch, subarch, release, label):
+    """Filter a boot image against configured import filters.
+
+    :param filters: A list of dicts describing the filters, as in `boot_merge`.
+        If the list is empty, or `None`, any image matches.  Any entry in a
+        filter may be a string containing just an asterisk (`*`) to denote that
+        the entry will match any value.
+    :param os: The given boot image's operating system.
+    :param arch: The given boot image's architecture.
+    :param subarch: The given boot image's subarchitecture.
+    :param release: The given boot image's OS release.
+    :param label: The given boot image's label.
+    :return: Whether the image matches any of the dicts in `filters`.
+    """
+    if filters is None or len(filters) == 0:
+        return True
+    for filter_dict in filters:
+        item_matches = (
+            value_passes_filter(filter_dict["os"], os)
+            and value_passes_filter(filter_dict["release"], release)
+            and value_passes_filter_list(filter_dict["arches"], arch)
+            and value_passes_filter_list(filter_dict["subarches"], subarch)
+            and value_passes_filter_list(filter_dict["labels"], label)
+        )
+        if item_matches:
+            return True
+    return False
 
 
 def get_distro_series_info_row(series):
@@ -91,7 +129,6 @@ class BootResourceHandler(Handler):
             "poll",
             "stop_import",
             "save_ubuntu",
-            "save_ubuntu_core",
             "save_other",
             "fetch",
             "delete_image",
@@ -720,211 +757,114 @@ class BootResourceHandler(Handler):
                 keyring_data=keyring_data,
             )
 
-    @asynchronous(timeout=FOREVER)
     def stop_import(self, params):
         """Called to stop the current import process."""
-        d = stop_import_resources()
-        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
-        d.addErrback(log.err, "Failed to stop the image import process.")
-        return d
+        stop_import_resources()
+        return self.poll({})
 
-    @asynchronous(timeout=FOREVER)
     def save_ubuntu(self, params):
         """Called to save the Ubuntu section of the websocket."""
         # Must be administrator.
         assert self.user.is_superuser, "Permission denied."
 
-        @transactional
-        def update_source(params):
-            boot_source = self.get_bootsource(params, from_db=True)
+        boot_source = self.get_bootsource(params, from_db=True)
 
-            releases = set()
-            for osystem in params.get("osystems", []):
-                release = osystem.get("release")
-                if release:
-                    releases.add(release)
-                else:
-                    continue
-                selection, created = BootSourceSelection.objects.get_or_create(
-                    boot_source=boot_source, os="ubuntu", release=release
+        releases = set()
+        for osystem in params.get("osystems", []):
+            release = osystem.get("release")
+            if release:
+                releases.add(release)
+            else:
+                continue
+            selection, created = BootSourceSelection.objects.get_or_create(
+                boot_source=boot_source, os="ubuntu", release=release
+            )
+            selection.arches = osystem.get("arches", ["*"])
+            selection.subarches = ["*"]
+            selection.labels = ["*"]
+            selection.save()
+            action = "Created" if created else "Updated"
+            create_audit_event(
+                event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                endpoint=ENDPOINT.UI,
+                request=self.request,
+                description=f"{action} boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {boot_source.url}",
+            )
+
+        if releases:
+            # Remove all selections, that are not of release.
+            n_deleted, _ = (
+                BootSourceSelection.objects.filter(
+                    boot_source=boot_source, os="ubuntu"
                 )
-                selection.arches = osystem.get("arches", ["*"])
-                selection.subarches = ["*"]
-                selection.labels = ["*"]
-                selection.save()
-                action = "Created" if created else "Updated"
-                create_audit_event(
-                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
-                    endpoint=ENDPOINT.UI,
-                    request=self.request,
-                    description=f"{action} boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {boot_source.url}",
-                )
-
-            if releases:
-                # Remove all selections, that are not of release.
-                n_deleted, _ = (
-                    BootSourceSelection.objects.filter(
-                        boot_source=boot_source, os="ubuntu"
-                    )
-                    .exclude(release__in=releases)
-                    .delete()
-                )
-                if n_deleted > 0:
-                    create_audit_event(
-                        event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
-                        endpoint=ENDPOINT.UI,
-                        request=self.request,
-                        description="Deleted boot source selection for all other ubuntu releases",
-                    )
-
-        notify = Deferred()
-        d = stop_import_resources()
-        d.addCallback(lambda _: deferToDatabase(update_source, params))
-        d.addCallback(callOut, import_resources, notify=notify)
-        d.addCallback(lambda _: notify)
-        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
-        d.addErrback(
-            log.err,
-            "Failed to start the image import. Unable to save the Ubuntu "
-            "image(s) source information.",
-        )
-        return d
-
-    @asynchronous(timeout=FOREVER)
-    def save_ubuntu_core(self, params):
-        """Update `BootSourceSelection`'s to only include the selected
-        images."""
-        # Must be administrator.
-        assert self.user.is_superuser, "Permission denied."
-
-        @transactional
-        def update_selections(params):
-            # Remove all Ubuntu Core selections.
-            n_deleted, _ = BootSourceSelection.objects.filter(
-                os="ubuntu-core"
-            ).delete()
+                .exclude(release__in=releases)
+                .delete()
+            )
             if n_deleted > 0:
                 create_audit_event(
                     event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
                     endpoint=ENDPOINT.UI,
                     request=self.request,
-                    description="Deleted all boot source selection for ubuntu-core",
+                    description="Deleted boot source selection for all other ubuntu releases",
                 )
 
-            # Break down the images into os/release with multiple arches.
-            selections = defaultdict(list)
-            for image in params["images"]:
-                os, arch, _, release = image.split("/", 4)
-                name = f"{os}/{release}"
-                selections[name].append(arch)
+        post_commit_do(import_resources)
+        return self.poll({})
 
-            # Create each selection for the source.
-            for name, arches in selections.items():
-                os, release = name.split("/")
-                cache = BootSourceCache.objects.filter(
-                    os=os, arch=arch, release=release
-                ).first()
-                if cache is None:
-                    # It is possible the cache changed while waiting for the
-                    # user to perform an action. Ignore the selection as its
-                    # no longer available.
-                    continue
-                # Create the selection for the source.
-                selection = BootSourceSelection.objects.create(
-                    boot_source=cache.boot_source,
-                    os=os,
-                    release=release,
-                    arches=arches,
-                    subarches=["*"],
-                    labels=["*"],
-                )
-                create_audit_event(
-                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
-                    endpoint=ENDPOINT.UI,
-                    request=self.request,
-                    description=f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {cache.boot_source.url}",
-                )
-
-        notify = Deferred()
-        d = stop_import_resources()
-        d.addCallback(lambda _: deferToDatabase(update_selections, params))
-        d.addCallback(callOut, import_resources, notify=notify)
-        d.addCallback(lambda _: notify)
-        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
-        d.addErrback(
-            log.err,
-            "Failed to start the image import. Unable to save the Ubuntu Core "
-            "image(s) source information",
-        )
-        return d
-
-    @asynchronous(timeout=FOREVER)
     def save_other(self, params):
         """Update `BootSourceSelection`'s to only include the selected
         images."""
         # Must be administrator.
         assert self.user.is_superuser, "Permission denied."
 
-        @transactional
-        def update_selections(params):
-            # Remove all selections that are not Ubuntu.
-            n_deleted, _ = BootSourceSelection.objects.exclude(
-                Q(os="ubuntu") | Q(os="ubuntu-core")
-            ).delete()
-            if n_deleted > 0:
-                create_audit_event(
-                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
-                    endpoint=ENDPOINT.UI,
-                    request=self.request,
-                    description="Deleted all boot source selection for os different than 'ubuntu' or 'ubuntu-core'",
-                )
+        # Remove all selections that are not Ubuntu.
+        n_deleted, _ = BootSourceSelection.objects.exclude(
+            Q(os="ubuntu") | Q(os="ubuntu-core")
+        ).delete()
+        if n_deleted > 0:
+            create_audit_event(
+                event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                endpoint=ENDPOINT.UI,
+                request=self.request,
+                description="Deleted all boot source selection for os different than 'ubuntu' or 'ubuntu-core'",
+            )
 
-            # Break down the images into os/release with multiple arches.
-            selections = defaultdict(list)
-            for image in params["images"]:
-                os, arch, _, release = image.split("/", 4)
-                name = f"{os}/{release}"
-                selections[name].append(arch)
+        # Break down the images into os/release with multiple arches.
+        selections = defaultdict(list)
+        for image in params["images"]:
+            os, arch, _, release = image.split("/", 4)
+            name = f"{os}/{release}"
+            selections[name].append(arch)
 
-            # Create each selection for the source.
-            for name, arches in selections.items():
-                os, release = name.split("/")
-                cache = BootSourceCache.objects.filter(
-                    os=os, arch=arch, release=release
-                ).first()
-                if cache is None:
-                    # It is possible the cache changed while waiting for the
-                    # user to perform an action. Ignore the selection as its
-                    # no longer available.
-                    continue
-                # Create the selection for the source.
-                selection = BootSourceSelection.objects.create(
-                    boot_source=cache.boot_source,
-                    os=os,
-                    release=release,
-                    arches=arches,
-                    subarches=["*"],
-                    labels=["*"],
-                )
-                create_audit_event(
-                    event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
-                    endpoint=ENDPOINT.UI,
-                    request=self.request,
-                    description=f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {cache.boot_source.url}",
-                )
+        # Create each selection for the source.
+        for name, arches in selections.items():
+            os, release = name.split("/")
+            cache = BootSourceCache.objects.filter(
+                os=os, arch=arch, release=release
+            ).first()
+            if cache is None:
+                # It is possible the cache changed while waiting for the
+                # user to perform an action. Ignore the selection as its
+                # no longer available.
+                continue
+            # Create the selection for the source.
+            selection = BootSourceSelection.objects.create(
+                boot_source=cache.boot_source,
+                os=os,
+                release=release,
+                arches=arches,
+                subarches=["*"],
+                labels=["*"],
+            )
+            create_audit_event(
+                event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                endpoint=ENDPOINT.UI,
+                request=self.request,
+                description=f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {cache.boot_source.url}",
+            )
 
-        notify = Deferred()
-        d = stop_import_resources()
-        d.addCallback(lambda _: deferToDatabase(update_selections, params))
-        d.addCallback(callOut, import_resources, notify=notify)
-        d.addCallback(lambda _: notify)
-        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
-        d.addErrback(
-            log.err,
-            "Failed to start the image import. Unable to save the non-Ubuntu "
-            "image(s) source information",
-        )
-        return d
+        post_commit_do(import_resources)
+        return self.poll({})
 
     def fetch(self, params):
         """Fetch the releases and the arches from the provided source."""
@@ -937,46 +877,47 @@ class BootResourceHandler(Handler):
             boot_source.clean_fields()
         except ValidationError as error:
             raise HandlerValidationError(error)  # noqa: B904
-        source = boot_source.to_dict_without_selections()
 
-        # FIXME: This modifies the environment of the entire process, which is
-        # Not Cool. We should integrate with simplestreams in a more
-        # Pythonic manner.
-        set_simplestreams_env()
         try:
-            descriptions = download_all_image_descriptions([source])
+            image_list = (
+                service_layer.services.image_sync.fetch_image_metadata(
+                    source_url=str(boot_source.url),
+                    keyring_path=str(boot_source.keyring_filename) or None,
+                    keyring_data=boot_source.keyring_data or None,
+                )
+            )
         except Exception as error:
-            raise HandlerError(str(error))  # noqa: B904
-        items = list(descriptions.items())
+            raise HandlerError(str(error)) from error
         err_msg = "Mirror provides no Ubuntu images."
-        if not items:
+        if not image_list:
             raise HandlerError(err_msg)
-        releases = {}
-        arches = {}
-        for image_spec, product_info in items:
+        releases = []
+        arches = []
+        for image in image_list:
             # Only care about Ubuntu images.
-            if image_spec.os != "ubuntu":
+            if image.os != "ubuntu":
                 continue
-            releases[image_spec.release] = {
-                "name": image_spec.release,
-                "title": product_info.get(
-                    "release_title",
-                    format_ubuntu_distro_series(image_spec.release),
-                ),
-                "checked": False,
-                "deleted": False,
-            }
-            arches[image_spec.arch] = {
-                "name": image_spec.arch,
-                "title": image_spec.arch,
-                "checked": False,
-                "deleted": False,
-            }
+            releases.append(
+                {
+                    "name": image.release,
+                    "title": image.release_title,
+                    "checked": False,
+                    "deleted": False,
+                }
+            )
+            arches.append(
+                {
+                    "name": image.architecture,
+                    "title": image.architecture,
+                    "checked": False,
+                    "deleted": False,
+                }
+            )
         if not releases or not arches:
             raise HandlerError(err_msg)
         return {
-            "releases": list(releases.values()),
-            "arches": list(arches.values()),
+            "releases": releases,
+            "arches": arches,
         }
 
     def delete_image(self, params):

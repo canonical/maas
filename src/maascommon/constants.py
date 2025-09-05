@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
+import os
 
 SYSTEM_CA_FILE = "/etc/ssl/certs/ca-certificates.crt"
 
@@ -20,3 +21,14 @@ MAAS_USER_EMAIL = "maas@localhost"
 
 
 BOOTLOADERS_DIR = "bootloaders"
+
+# Default images URL can be overridden by the environment.
+DEFAULT_IMAGES_URL = os.getenv(
+    "MAAS_DEFAULT_IMAGES_URL", "http://images.maas.io/ephemeral-v3/stable/"
+)
+
+# Default images keyring filepath can be overridden by the environment.
+DEFAULT_KEYRINGS_PATH = os.getenv(
+    "MAAS_IMAGES_KEYRING_FILEPATH",
+    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
+)

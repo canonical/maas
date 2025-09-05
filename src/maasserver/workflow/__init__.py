@@ -50,13 +50,21 @@ async def _call_workflow(
         workflow_id = str(uuid.uuid4())
     if "execution_timeout" not in kwargs:
         kwargs["execution_timeout"] = timedelta(minutes=60)
-    result = await workflow_fn(
-        workflow_name,
-        param,
-        id=workflow_id,
-        task_queue=task_queue,
-        **kwargs,
-    )
+    if param:
+        result = await workflow_fn(
+            workflow_name,
+            param,
+            id=workflow_id,
+            task_queue=task_queue,
+            **kwargs,
+        )
+    else:
+        result = await workflow_fn(
+            workflow_name,
+            id=workflow_id,
+            task_queue=task_queue,
+            **kwargs,
+        )
     return result
 
 
@@ -109,6 +117,16 @@ async def cancel_workflow(workflow_id: str) -> bool:
         return True
     except RPCError:
         return False
+
+
+@temporal_wrapper
+async def cancel_workflows_of_type(workflow_type: str):
+    temporal_client = await get_client_async()
+    async for wf in temporal_client.list_workflows(
+        query=f"WorkflowType='{workflow_type}' AND ExecutionStatus='Running'"
+    ):
+        hdl = temporal_client.get_workflow_handle(workflow_id=wf.id)
+        await hdl.cancel()
 
 
 @temporal_wrapper

@@ -26,10 +26,10 @@ from maasapiserver.v3.api.public.models.responses.boot_source_selections import 
     BootSourceSelectionResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
-    BootSourceFetchListResponse,
-    BootSourceFetchResponse,
     BootSourceResponse,
     BootSourcesListResponse,
+    SourceAvailableImageListResponse,
+    SourceAvailableImageResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -217,7 +217,7 @@ class BootSourcesHandler(Handler):
         tags=TAGS,
         responses={
             200: {
-                "model": BootSourceFetchListResponse,
+                "model": SourceAvailableImageListResponse,
             },
         },
         status_code=200,
@@ -226,30 +226,28 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def fetch_boot_sources(
+    async def fetch_boot_sources_available_images(
         self,
         request: BootSourceFetchRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceFetchListResponse:
+    ) -> SourceAvailableImageListResponse:
         # Base64 decode keyring data (if present) so we can write the bytes to file later.
         keyring_data_bytes = None
         if request.keyring_data:
             keyring_data_bytes = b64decode(request.keyring_data)
 
-        boot_source_mapping = await services.boot_sources.fetch(
-            request.url,
+        images = await services.image_sync.fetch_image_metadata(
+            source_url=request.url,
             keyring_path=request.keyring_path,
             keyring_data=keyring_data_bytes,
-            validate_products=request.validate_products,
         )
-
         # The fetch method isn't paginated, so we return all items
         # in a single response.
-        return BootSourceFetchListResponse(
+        return SourceAvailableImageListResponse(
             items=[
-                BootSourceFetchResponse.from_model(boot_source)
-                for boot_source in boot_source_mapping.items()
-            ],
+                SourceAvailableImageResponse.from_model(image)
+                for image in images
+            ]
         )
 
     @handler(

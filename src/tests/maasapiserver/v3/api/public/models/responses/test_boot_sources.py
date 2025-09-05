@@ -5,9 +5,13 @@ import base64
 
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceResponse,
+    SourceAvailableImageResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.models.bootsources import (
+    BootSource,
+    SourceAvailableImage,
+)
 from maasservicelayer.utils.date import utcnow
 
 
@@ -44,3 +48,20 @@ class TestBootSourceResponse:
             boot_source.skip_keyring_verification
             == bootsource_response.skip_keyring_verification
         )
+
+
+class TestSourceAvailableImageResponse:
+    def test_from_model(self) -> None:
+        image = SourceAvailableImage(
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            architecture="amd64",
+        )
+        image_response = SourceAvailableImageResponse.from_model(image)
+
+        assert image_response.kind == "SourceAvailableImage"
+        assert image_response.os == image.os
+        assert image_response.release == image.release
+        assert image_response.release_title == image.release_title
+        assert image_response.architecture == image.architecture

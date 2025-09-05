@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any
+from unittest.mock import Mock
 import uuid
 
 import pytest
@@ -9,7 +10,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 from temporalio import activity
-from temporalio.client import WorkflowExecutionStatus
+from temporalio.client import Client, WorkflowExecutionStatus
 from temporalio.service import RPCError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
@@ -98,7 +99,10 @@ class TestDeployActivity:
         env = ActivityEnvironment()
         services_cache = CacheForServices()
         activities = DeployActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
         await env.run(
             activities.set_node_status,
@@ -143,7 +147,10 @@ class TestDeployActivity:
         other_disk = await create_test_blockdevice_entry(fixture, node=machine)
         services_cache = CacheForServices()
         activities = DeployActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
         env = ActivityEnvironment()
         boot_order = await env.run(
@@ -187,7 +194,10 @@ class TestDeployActivity:
         other_disk = await create_test_blockdevice_entry(fixture, node=machine)
         services_cache = CacheForServices()
         activities = DeployActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
         )
         env = ActivityEnvironment()
         boot_order = await env.run(

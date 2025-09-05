@@ -28,6 +28,7 @@ from tests.fixtures.factories.bootresources import (
 from tests.fixtures.factories.bootresourcesets import (
     create_test_bootresourceset_entry,
 )
+from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -130,3 +131,87 @@ class TestBootResourceFileSyncRepository(
             await repository_instance.get_current_sync_size_for_files(file_ids)
         )
         assert current_size == 0
+
+    async def test_get_synced_regions_for_file(
+        self,
+        repository_instance: BootResourceFileSyncRepository,
+        fixture: Fixture,
+    ) -> None:
+        regions = [
+            await create_test_region_controller_entry(fixture)
+            for _ in range(3)
+        ]
+        boot_resource = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+        )
+        resource_set = await create_test_bootresourceset_entry(
+            fixture,
+            version="20250618",
+            label="stable",
+            resource_id=boot_resource.id,
+        )
+        files = []
+        for i in range(3):
+            files.append(
+                await create_test_bootresourcefile_entry(
+                    fixture,
+                    filename=f"filename-{i}",
+                    filetype=BootResourceFileType.SQUASHFS_IMAGE,
+                    sha256=f"abcdef{i}",
+                    filename_on_disk=f"abcdef{i}",
+                    size=100,
+                    resource_set_id=resource_set.id,
+                )
+            )
+
+        for i in range(3):
+            # first file is fully synced among all the regions
+            await create_test_bootresourcefilesync_entry(
+                fixture,
+                size=100,
+                file_id=files[0].id,
+                region_id=regions[i]["id"],
+            )
+
+        for i in range(2):
+            # second file: only the first two regions are synced
+            await create_test_bootresourcefilesync_entry(
+                fixture,
+                size=100,
+                file_id=files[1].id,
+                region_id=regions[i]["id"],
+            )
+
+        await create_test_bootresourcefilesync_entry(
+            # third file: only the first region is synced
+            fixture,
+            size=100,
+            file_id=files[2].id,
+            region_id=regions[0]["id"],
+        )
+
+        synced_regions_first_file = (
+            await repository_instance.get_synced_regions_for_file(files[0].id)
+        )
+        assert set(synced_regions_first_file) == {
+            r["system_id"] for r in regions
+        }
+        # remove the last region
+        regions.pop()
+        synced_regions_second_file = (
+            await repository_instance.get_synced_regions_for_file(files[1].id)
+        )
+        assert set(synced_regions_second_file) == {
+            r["system_id"] for r in regions
+        }
+        # remove the last region
+        regions.pop()
+        synced_regions_third_file = (
+            await repository_instance.get_synced_regions_for_file(files[2].id)
+        )
+        assert set(synced_regions_third_file) == {
+            r["system_id"] for r in regions
+        }

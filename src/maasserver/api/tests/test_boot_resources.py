@@ -11,6 +11,9 @@ from typing import Iterable
 
 from django.urls import reverse
 
+from maascommon.workflows.bootresource import (
+    SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+)
 from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
@@ -137,9 +140,9 @@ class TestHelpers(APITestCase.ForUser):
         filestore_add_file(bootres_file)
         exec_mock.assert_called()
         workflow, wid, params = exec_mock.call_args.args
-        self.assertEqual(workflow, "sync-bootresources")
-        self.assertEqual(wid, f"sync-boot-resources:upload:{bootres_file.id}")
-        self.assertCountEqual(params.resources[0].rfile_ids, [bootres_file.id])
+        self.assertEqual(workflow, SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME)
+        self.assertEqual(wid, f"sync-local-bootresource:{bootres_file.id}")
+        self.assertCountEqual(params.resource.rfile_ids, [bootres_file.id])
         self.assertEqual(
             exec_mock.call_args.kwargs["task_queue"], REGION_TASK_QUEUE
         )

@@ -172,7 +172,10 @@ class TestSimpleStreamsClient:
             with pytest.raises(SimpleStreamsClientException) as e:
                 await client._validate_pgp_signature("test")
 
-        assert str(e.value) == f"Failed to verify PGP signature: {err_msg}"
+        assert (
+            str(e.value)
+            == f"Failed to verify PGP signature. Command 'gpgv --keyring=/path/to/keyring -' returned the following error: {err_msg}"
+        )
 
     @pytest.mark.parametrize(
         "response, skip_verification",

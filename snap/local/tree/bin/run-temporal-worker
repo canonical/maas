@@ -11,5 +11,6 @@ export MAAS_HTTP_SOCKET_WORKER_BASE_PATH="$SNAP_DATA/maas-regiond-webapp.sock"
 export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
 export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_ZONE_FILE_CONFIG_DIR="$SNAP_DATA/bind"
+export MAAS_IMAGES_KEYRING_FILEPATH="/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 
 exec "$SNAP/bin/maas-temporal-worker"

@@ -97,11 +97,6 @@ def create_app_with_mocks(
 
 
 @pytest.fixture
-def services_mock():
-    yield Mock(ServiceCollectionV3)
-
-
-@pytest.fixture
 def app_with_mocked_services(services_mock: ServiceCollectionV3):
     yield create_app_with_mocks(services_mock)
 

@@ -60,6 +60,7 @@ from maascommon.enums.node import (
     NodeTypeEnum,
     SimplifiedNodeStatusEnum,
 )
+from maascommon.enums.notifications import NotificationComponent
 from maascommon.enums.sshkeys import SshKeysProtocolType
 from maascommon.enums.subnet import RdnsMode
 from maascommon.node import NODE_STATUS_LABELS
@@ -69,12 +70,12 @@ from provisioningserver.enum import enum_choices
 class COMPONENT:
     """Major moving parts of the application that may have failure states."""
 
-    PSERV = "provisioning server"
-    IMPORT_PXE_FILES = "maas-import-pxe-files script"
-    RACK_CONTROLLERS = "clusters"
-    REGION_IMAGE_IMPORT = "Image importer"
-    REGION_IMAGE_SYNC = "Image synchronization"
-    REGION_IMAGE_DB_EXPORT = "bootresources_export_from_db"
+    PSERV = NotificationComponent.PSERV
+    IMPORT_PXE_FILES = NotificationComponent.IMPORT_PXE_FILES
+    RACK_CONTROLLERS = NotificationComponent.RACK_CONTROLLERS
+    REGION_IMAGE_IMPORT = NotificationComponent.REGION_IMAGE_IMPORT
+    REGION_IMAGE_SYNC = NotificationComponent.REGION_IMAGE_SYNC
+    REGION_IMAGE_DB_EXPORT = NotificationComponent.REGION_IMAGE_DB_EXPORT
 
 
 class NODE_STATUS:

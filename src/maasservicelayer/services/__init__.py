@@ -189,6 +189,9 @@ class CacheForServices:
     def __init__(self):
         self.cache: dict[str, ServiceCache] = {}
 
+    def set(self, name: str, value: ServiceCache) -> None:
+        self.cache[name] = value
+
     def get(self, name: str, fn: Callable) -> ServiceCache:
         """Get the ServiceCache for service named *name*.
         Params:
@@ -199,7 +202,7 @@ class CacheForServices:
         """
         if name in self.cache:
             return self.cache[name]
-        self.cache[name] = fn()
+        self.set(name, fn())
         return self.cache[name]
 
     async def close(self) -> None:
@@ -359,27 +362,27 @@ class ServiceCollectionV3:
             configuration_service=services.configurations,
             events_service=services.events,
         )
+        services.boot_resource_file_sync = BootResourceFileSyncService(
+            context=context,
+            repository=BootResourceFileSyncRepository(context),
+            nodes_service=services.nodes,
+        )
         services.boot_resource_files = BootResourceFilesService(
             context=context,
             repository=BootResourceFilesRepository(context),
+            boot_resource_file_sync_service=services.boot_resource_file_sync,
             temporal_service=services.temporal,
         )
         services.boot_resource_sets = BootResourceSetsService(
             context=context,
             repository=BootResourceSetsRepository(context),
             boot_resource_files_service=services.boot_resource_files,
+            boot_resource_file_sync_service=services.boot_resource_file_sync,
         )
         services.boot_resources = BootResourceService(
             context=context,
             repository=BootResourcesRepository(context),
             boot_resource_sets_service=services.boot_resource_sets,
-        )
-        services.boot_resource_file_sync = BootResourceFileSyncService(
-            context=context,
-            repository=BootResourceFileSyncRepository(context),
-            nodes_service=services.nodes,
-            bootresourcesets_service=services.boot_resource_sets,
-            bootresourcefiles_service=services.boot_resource_files,
         )
         services.image_sync = ImageSyncService(
             context=context,
@@ -389,10 +392,10 @@ class ServiceCollectionV3:
             boot_resources_service=services.boot_resources,
             boot_resource_sets_service=services.boot_resource_sets,
             boot_resource_files_service=services.boot_resource_files,
-            boot_resource_file_sync_service=services.boot_resource_file_sync,
             events_service=services.events,
             configurations_service=services.configurations,
             notifications_service=services.notifications,
+            msm_service=services.msm,
         )
         services.vmclusters = VmClustersService(
             context=context, vmcluster_repository=VmClustersRepository(context)

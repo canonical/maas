@@ -16,6 +16,10 @@ class BootSourcesClauseFactory(ClauseFactory):
     def with_id(cls, id: int) -> Clause:
         return Clause(condition=eq(BootSourceTable.c.id, id))
 
+    @classmethod
+    def with_url(cls, url: str) -> Clause:
+        return Clause(condition=eq(BootSourceTable.c.url, url))
+
 
 class BootSourcesRepository(BaseRepository[BootSource]):
     def get_repository_table(self) -> Table:

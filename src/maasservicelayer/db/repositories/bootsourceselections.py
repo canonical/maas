@@ -34,6 +34,20 @@ class BootSourceSelectionClauseFactory(ClauseFactory):
             condition=eq(BootSourceSelectionTable.c.release, release)
         )
 
+    @classmethod
+    def with_all_arches(cls) -> Clause:
+        return Clause(condition=eq(BootSourceSelectionTable.c.arches, ["*"]))
+
+    @classmethod
+    def with_all_subarches(cls) -> Clause:
+        return Clause(
+            condition=eq(BootSourceSelectionTable.c.subarches, ["*"])
+        )
+
+    @classmethod
+    def with_all_labels(cls) -> Clause:
+        return Clause(condition=eq(BootSourceSelectionTable.c.labels, ["*"]))
+
 
 class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
     def get_repository_table(self) -> Table:

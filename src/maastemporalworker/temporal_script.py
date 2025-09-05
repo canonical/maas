@@ -13,14 +13,22 @@ from maasservicelayer.db import Database
 from maasservicelayer.db.locks import wait_for_startup
 from maasservicelayer.logging.configure import configure_logging
 from maasservicelayer.services import CacheForServices
-from maastemporalworker.worker import REGION_TASK_QUEUE
+from maasservicelayer.services.temporal import (
+    TemporalService,
+    TemporalServiceCache,
+)
+from maastemporalworker.worker import get_client_async, REGION_TASK_QUEUE
 from maastemporalworker.worker import Worker as TemporalWorker
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     CheckBootResourcesStorageWorkflow,
     DeleteBootResourceWorkflow,
     DownloadBootResourceWorkflow,
+    FetchManifestWorkflow,
+    MasterImageSyncWorkflow,
     SyncBootResourcesWorkflow,
+    SyncLocalBootResourcesWorkflow,
+    SyncRemoteBootResourcesWorkflow,
 )
 from maastemporalworker.workflow.commission import CommissionNWorkflow
 from maastemporalworker.workflow.configure import (
@@ -119,21 +127,36 @@ async def main() -> None:
     log.debug("connecting to Temporal server")
 
     maas_id = await get_maas_id()
-    services_cache = CacheForServices()
 
-    boot_res_activity = BootResourcesActivity(db, services_cache)
+    temporal_client = await get_client_async()
+
+    services_cache = CacheForServices()
+    # use the same temporal client across all services
+    services_cache.set(
+        TemporalService.__name__,
+        TemporalServiceCache(temporal_client=temporal_client),
+    )
+
+    boot_res_activity = BootResourcesActivity(
+        db, services_cache, temporal_client
+    )
     await boot_res_activity.init(region_id=maas_id)
-    configure_activity = ConfigureAgentActivity(db, services_cache)
-    msm_activity = MSMConnectorActivity(db, services_cache)
-    tag_evaluation_activity = TagEvaluationActivity(db, services_cache)
-    deploy_activity = DeployActivity(db, services_cache)
-    dhcp_activity = DHCPConfigActivity(db, services_cache)
-    dns_activity = DNSConfigActivity(db, services_cache)
-    power_activity = PowerActivity(db, services_cache)
+    configure_activity = ConfigureAgentActivity(
+        db, services_cache, temporal_client
+    )
+    msm_activity = MSMConnectorActivity(db, services_cache, temporal_client)
+    tag_evaluation_activity = TagEvaluationActivity(
+        db, services_cache, temporal_client
+    )
+    deploy_activity = DeployActivity(db, services_cache, temporal_client)
+    dhcp_activity = DHCPConfigActivity(db, services_cache, temporal_client)
+    dns_activity = DNSConfigActivity(db, services_cache, temporal_client)
+    power_activity = PowerActivity(db, services_cache, temporal_client)
 
     temporal_workers = [
         # All regions listen to a shared task queue. The first to pick up a task will execute it.
         TemporalWorker(
+            client=temporal_client,
             task_queue=REGION_TASK_QUEUE,
             workflows=[
                 # Boot resources workflows
@@ -143,7 +166,11 @@ async def main() -> None:
                 # the image on its own storage. Then, DownloadBootResourceWorkflow is scheduled on the task queues of the
                 # other regions if the HA is being used.
                 DownloadBootResourceWorkflow,
+                SyncLocalBootResourcesWorkflow,
+                SyncRemoteBootResourcesWorkflow,
                 SyncBootResourcesWorkflow,
+                MasterImageSyncWorkflow,
+                FetchManifestWorkflow,
                 # Configuration workflows
                 ConfigureAgentWorkflow,
                 ConfigureDHCPWorkflow,
@@ -170,9 +197,16 @@ async def main() -> None:
             ],
             activities=[
                 # Boot resources activities
+                boot_res_activity.fetch_manifest_and_update_cache,
                 boot_res_activity.download_bootresourcefile,
                 boot_res_activity.get_bootresourcefile_endpoints,
-                boot_res_activity.get_bootresourcefile_sync_status,
+                boot_res_activity.get_files_to_download,
+                boot_res_activity.get_synced_regions_for_file,
+                boot_res_activity.cancel_obsolete_download_workflows,
+                boot_res_activity.set_global_default_releases,
+                boot_res_activity.cleanup_old_boot_resources,
+                boot_res_activity.register_error_notification,
+                boot_res_activity.discard_error_notification,
                 # Configuration activities
                 configure_activity.get_rack_controller_vlans,
                 configure_activity.get_region_controller_endpoints,
@@ -208,6 +242,7 @@ async def main() -> None:
         ),
         # Individual region controller worker
         TemporalWorker(
+            client=temporal_client,
             task_queue=f"region:{maas_id}",
             workflows=[
                 # Boot resources workflows

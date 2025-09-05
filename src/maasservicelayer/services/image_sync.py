@@ -2,21 +2,32 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from contextlib import asynccontextmanager
+import os
 import re
 from typing import AsyncIterator
 
 import aiofiles
 from structlog import get_logger
 
-from maascommon.constants import BOOTLOADERS_DIR
+from maascommon.constants import (
+    BOOTLOADERS_DIR,
+    DEFAULT_IMAGES_URL,
+    DEFAULT_KEYRINGS_PATH,
+)
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
 from maascommon.enums.events import EventTypeEnum
+from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import NotificationCategoryEnum
+from maascommon.osystem.ubuntu import UbuntuOS
 from maascommon.workflows.bootresource import ResourceDownloadParam
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
+from maasservicelayer.builders.bootsources import BootSourceBuilder
+from maasservicelayer.builders.bootsourceselections import (
+    BootSourceSelectionBuilder,
+)
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import OrderByClauseFactory, QuerySpec
@@ -25,6 +36,7 @@ from maasservicelayer.db.repositories.bootresourcefiles import (
 )
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
+    BootResourceOrderByClauses,
 )
 from maasservicelayer.db.repositories.bootresourcesets import (
     BootResourceSetClauseFactory,
@@ -33,17 +45,28 @@ from maasservicelayer.db.repositories.bootresourcesets import (
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
 )
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsClauseFactory,
+)
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourcecache import BootSourceCache
-from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.models.bootsources import (
+    BootSource,
+    SourceAvailableImage,
+)
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.configurations import (
     BootImagesNoProxyConfig,
     CommissioningDistroSeriesConfig,
     CommissioningOSystemConfig,
+    DefaultDistroSeriesConfig,
+    DefaultOSystemConfig,
     EnableHttpProxyConfig,
     HttpProxyConfig,
 )
@@ -51,9 +74,6 @@ from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
-)
-from maasservicelayer.services.bootresourcefilesync import (
-    BootResourceFileSyncService,
 )
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
@@ -63,6 +83,7 @@ from maasservicelayer.services.bootsourceselections import (
 )
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.events import EventsService
+from maasservicelayer.services.msm import MSMService
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.simplestreams.client import SimpleStreamsClient
 from maasservicelayer.simplestreams.models import (
@@ -73,10 +94,9 @@ from maasservicelayer.simplestreams.models import (
     SimpleStreamsProductList,
     SingleFileProduct,
 )
+from provisioningserver.utils.arch import get_architecture
 
 logger = get_logger()
-
-# duplicated from src/maassservicelayer/utils/images/repo_dumper
 
 # Compile a regex to validate Ubuntu product names. This only allows V2 and V3
 # Ubuntu images. "v3+platform" is intended for platform-optimised kernels.
@@ -106,10 +126,10 @@ class ImageSyncService(Service):
         boot_resources_service: BootResourceService,
         boot_resource_sets_service: BootResourceSetsService,
         boot_resource_files_service: BootResourceFilesService,
-        boot_resource_file_sync_service: BootResourceFileSyncService,
         events_service: EventsService,
         configurations_service: ConfigurationsService,
         notifications_service: NotificationsService,
+        msm_service: MSMService,
         cache: ServiceCache | None = None,
     ):
         self.boot_sources_service = boot_sources_service
@@ -118,16 +138,124 @@ class ImageSyncService(Service):
         self.boot_resources_service = boot_resources_service
         self.boot_resource_sets_service = boot_resource_sets_service
         self.boot_resource_files_service = boot_resource_files_service
-        self.boot_resource_file_sync_service = boot_resource_file_sync_service
         self.events_service = events_service
         self.configurations_service = configurations_service
         self.notifications_service = notifications_service
+        self.msm_service = msm_service
 
         super().__init__(context, cache)
 
-    async def sync_boot_source_selections_from_msm(self):
-        # TODO
-        raise NotImplementedError()
+    async def ensure_boot_source_definition(self) -> bool:
+        """Ensure that at least a boot source exists.
+
+        If no boot source is defined, the default one will be created alongside
+        with a selection.
+
+        Originally defined in src/maasserver/bootsources.py
+        """
+        if not await self.boot_sources_service.exists(query=QuerySpec()):
+            bootsource_builder = BootSourceBuilder(
+                url=DEFAULT_IMAGES_URL,
+                keyring_filename=DEFAULT_KEYRINGS_PATH,
+                priority=1,
+                skip_keyring_verification=False,
+            )
+            boot_source = await self.boot_sources_service.create(
+                bootsource_builder
+            )
+            # Default is to import newest Ubuntu LTS release, for the current
+            # architecture.
+            arch = get_architecture()
+            # amd64 is the primary architecture for MAAS uses. Make sure its always
+            # selected. If MAAS is running on another architecture select that as
+            # well.
+            if arch in ("", "amd64"):
+                arches = ["amd64"]
+            else:
+                arches = [arch, "amd64"]
+
+            ubuntu = UbuntuOS()
+            selection_builder = BootSourceSelectionBuilder(
+                boot_source_id=boot_source.id,
+                os=ubuntu.name,
+                release=ubuntu.get_default_commissioning_release(),
+                arches=arches,
+                subarches=["*"],
+                labels=["*"],
+            )
+            await self.boot_source_selections_service.create(selection_builder)
+            return True
+        else:
+            # XXX ensure the default keyrings path in the database points to the
+            # right file when running in a snap. (see LP: #1890468) The
+            # DEFAULT_KEYRINGS_PATH points to the right file whether running from
+            # deb or snap, but the path stored in the DB might be wrong if a
+            # snap-to-deb transition happened with a script without the fix.
+            if os.environ.get("SNAP"):
+                if (
+                    default_boot_source
+                    := await self.boot_sources_service.get_one(
+                        query=QuerySpec(
+                            where=BootSourcesClauseFactory.with_url(
+                                DEFAULT_IMAGES_URL
+                            )
+                        )
+                    )
+                ):
+                    await self.boot_sources_service.update_by_id(
+                        id=default_boot_source.id,
+                        builder=BootSourceBuilder(
+                            keyring_filename=DEFAULT_KEYRINGS_PATH
+                        ),
+                    )
+            return False
+
+    async def sync_boot_source_selections_from_msm(
+        self, boot_sources: list[BootSource]
+    ):
+        msm_status = await self.msm_service.get_status()
+        if not msm_status or not msm_status.running == MSMStatusEnum.CONNECTED:
+            return
+
+        for boot_source in boot_sources:
+            if boot_source.url.startswith(msm_status.sm_url):
+                for cache in await self.boot_source_cache_service.get_many(
+                    query=QuerySpec(
+                        where=BootSourceCacheClauseFactory.with_boot_source_id(
+                            boot_source.id
+                        )
+                    )
+                ):
+                    if not await self.boot_source_selections_service.exists(
+                        query=QuerySpec(
+                            where=BootSourceSelectionClauseFactory.and_clauses(
+                                [
+                                    BootSourceSelectionClauseFactory.with_boot_source_id(
+                                        boot_source.id
+                                    ),
+                                    BootSourceSelectionClauseFactory.with_os(
+                                        cache.os
+                                    ),
+                                    BootSourceSelectionClauseFactory.with_release(
+                                        cache.release
+                                    ),
+                                    BootSourceSelectionClauseFactory.with_all_arches(),
+                                    BootSourceSelectionClauseFactory.with_all_subarches(),
+                                    BootSourceSelectionClauseFactory.with_all_labels(),
+                                ]
+                            )
+                        )
+                    ):
+                        await self.boot_source_selections_service.create(
+                            BootSourceSelectionBuilder(
+                                os=cache.os,
+                                release=cache.release,
+                                boot_source_id=boot_source.id,
+                                arches=["*"],
+                                subarches=["*"],
+                                labels=["*"],
+                            )
+                        )
 
     async def _get_http_proxy(self) -> str | None:
         """Returns the http proxy to be used to download images metadata."""
@@ -171,7 +299,7 @@ class ImageSyncService(Service):
         source_url: str,
         keyring_path: str | None = None,
         keyring_data: bytes | None = None,
-    ) -> list[SimpleStreamsProductList]:
+    ) -> list[SourceAvailableImage]:
         http_proxy = await self._get_http_proxy()
 
         async with self._get_keyring_file(
@@ -184,7 +312,12 @@ class ImageSyncService(Service):
             ) as client:
                 products_list = await client.get_all_products()
 
-        return products_list
+        return [
+            SourceAvailableImage.from_simplestreams_product(image)
+            for product_list in products_list
+            # we will have duplicates (lots of subarches)
+            for image in set(product_list.products)
+        ]
 
     async def fetch_images_metadata(
         self,
@@ -218,6 +351,13 @@ class ImageSyncService(Service):
                     boot_source_products_mapping[
                         boot_source
                     ] = await client.get_all_products()
+
+            if not boot_source_products_mapping[boot_source]:
+                await self.events_service.record_event(
+                    event_type=EventTypeEnum.REGION_IMPORT_WARNING,
+                    event_description=f"Unable to import boot images from {boot_source.url}. "
+                    "No image descriptions available.",
+                )
 
         return boot_source_products_mapping
 
@@ -280,7 +420,7 @@ class ImageSyncService(Service):
         )
         return boot_source_caches
 
-    async def check_commissioning_series_selected(self) -> None:
+    async def check_commissioning_series_selected(self) -> bool:
         """Creates an error notification if the commissioning os and the commissioning
         series are not in the selections or in the boot source cache.
         """
@@ -290,6 +430,7 @@ class ImageSyncService(Service):
         commissioning_series = await self.configurations_service.get(
             CommissioningDistroSeriesConfig.name
         )
+        no_error = True
         if not await self.boot_source_selections_service.exists(
             query=QuerySpec(
                 where=BootSourceSelectionClauseFactory.and_clauses(
@@ -304,8 +445,14 @@ class ImageSyncService(Service):
                 )
             )
         ):
-            await self.notifications_service.create(
-                NotificationBuilder(
+            no_error = False
+            await self.notifications_service.get_or_create(
+                query=QuerySpec(
+                    where=NotificationsClauseFactory.with_ident(
+                        "commissioning_series_unselected"
+                    )
+                ),
+                builder=NotificationBuilder(
                     ident="commissioning_series_unselected",
                     users=True,
                     admins=True,
@@ -315,7 +462,7 @@ class ImageSyncService(Service):
                     user_id=None,
                     category=NotificationCategoryEnum.ERROR,
                     dismissable=True,
-                )
+                ),
             )
         if not await self.boot_source_cache_service.exists(
             query=QuerySpec(
@@ -329,8 +476,14 @@ class ImageSyncService(Service):
                 )
             )
         ):
-            await self.notifications_service.create(
-                NotificationBuilder(
+            no_error = False
+            await self.notifications_service.get_or_create(
+                query=QuerySpec(
+                    where=NotificationsClauseFactory.with_ident(
+                        "commissioning_series_unavailable"
+                    )
+                ),
+                builder=NotificationBuilder(
                     ident="commissioning_series_unavailable",
                     users=True,
                     admins=True,
@@ -341,8 +494,9 @@ class ImageSyncService(Service):
                     user_id=None,
                     category=NotificationCategoryEnum.ERROR,
                     dismissable=True,
-                )
+                ),
             )
+        return no_error
 
     def _bootloader_matches_selections(
         self, product: BootloaderProduct
@@ -537,10 +691,7 @@ class ImageSyncService(Service):
             product
         )
 
-        (
-            boot_resource_set,
-            _,
-        ) = await self.boot_resource_sets_service.get_or_create_from_simplestreams_product(
+        boot_resource_set = await self.boot_resource_sets_service.create_or_update_from_simplestreams_product(
             product, boot_resource.id
         )
 
@@ -582,7 +733,7 @@ class ImageSyncService(Service):
 
             if (
                 local_file.complete
-                and await self.boot_resource_file_sync_service.file_sync_complete(
+                and await self.boot_resource_files_service.is_sync_complete(
                     resource_file.id
                 )
             ):
@@ -620,6 +771,90 @@ class ImageSyncService(Service):
             resources_to_download,
             boot_resource.id,
         )
+
+    async def get_latest_support_commissioning_boot_resource(
+        self,
+    ) -> BootResource | None:
+        """Return the Ubuntu boot resource that can be used for commissioning.
+
+        Only returns an LTS release that have been fully imported.
+        """
+        lts_releases = (
+            await self.boot_source_cache_service.get_available_lts_releases()
+        )
+        lts_releases = [f"ubuntu/{release}" for release in lts_releases]
+
+        for boot_resource in await self.boot_resources_service.get_many(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.SYNCED
+                        ),
+                        BootResourceClauseFactory.with_names(lts_releases),
+                    ]
+                ),
+                order_by=[
+                    BootResourceOrderByClauses.by_name_with_priority(
+                        lts_releases
+                    )
+                ],
+            )
+        ):
+            resource_set = await self.boot_resource_sets_service.get_latest_for_boot_resource(
+                boot_resource.id
+            )
+            if (
+                resource_set
+                and await self.boot_resource_sets_service.is_sync_complete(
+                    resource_set.id
+                )
+                and await self.boot_resource_sets_service.is_usable(
+                    resource_set.id
+                )
+            ):
+                return boot_resource
+
+        return None
+
+    async def set_global_default_releases(self):
+        """Sets the global configuration options for the deployment and
+        commissioning images."""
+        # Set the commissioning option to the latest LTS available.
+        default_resource = None
+        configs = await self.configurations_service.get_many(
+            {
+                CommissioningDistroSeriesConfig.name,
+                DefaultDistroSeriesConfig.name,
+            }
+        )
+        if not configs[CommissioningDistroSeriesConfig.name]:
+            default_resource = (
+                await self.get_latest_support_commissioning_boot_resource()
+            )
+            if default_resource:
+                osystem, release = default_resource.name.split("/")
+                await self.configurations_service.set(
+                    CommissioningOSystemConfig.name, osystem
+                )
+                await self.configurations_service.set(
+                    CommissioningDistroSeriesConfig.name, release
+                )
+
+        # Set the default deploy option to the same as the commissioning option.
+        if not configs[DefaultDistroSeriesConfig.name]:
+            default_resource = (
+                default_resource
+                or await self.get_latest_support_commissioning_boot_resource()
+            )
+            if default_resource:
+                osystem, release = default_resource.name.split("/")
+                await self.configurations_service.set(
+                    DefaultOSystemConfig.name, osystem
+                )
+                await self.configurations_service.set(
+                    DefaultDistroSeriesConfig.name, release
+                )
 
     async def _boot_resource_is_duplicated(
         self,
@@ -692,7 +927,7 @@ class ImageSyncService(Service):
 
     async def delete_old_boot_resources(
         self, boot_resource_ids_to_keep: set[int]
-    ) -> None:
+    ) -> bool:
         """Deletes the no more necessary boot resources.
 
         Deletes all the boot resources which:
@@ -707,16 +942,13 @@ class ImageSyncService(Service):
         Args:
             - boot_resource_ids_to_keep: a set of ids of boot resources that
               must not be deleted. This is coming from `get_files_to_download_from_product_list`
+        Returns:
+            - returns False if the method would delete all the boot resources, True otherwise.
         """
-        boot_resources_to_delete = await self.boot_resources_service.get_many(
+        all_boot_resources = await self.boot_resources_service.get_many(
             query=QuerySpec(
                 where=BootResourceClauseFactory.and_clauses(
                     [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_ids(
-                                boot_resource_ids_to_keep
-                            )
-                        ),
                         BootResourceClauseFactory.with_rtype(
                             BootResourceType.SYNCED
                         ),
@@ -724,8 +956,13 @@ class ImageSyncService(Service):
                 )
             )
         )
+        boot_resources_to_delete = [
+            br
+            for br in all_boot_resources
+            if br.id not in boot_resource_ids_to_keep
+        ]
         if not boot_resources_to_delete:
-            return
+            return True
 
         boot_resources_to_delete_ids = {
             br.id for br in boot_resources_to_delete
@@ -756,6 +993,21 @@ class ImageSyncService(Service):
                 )
                 boot_resources_to_delete_ids.remove(boot_resource.id)
 
+        # We have to remove the bootloaders from the total since they will always
+        # be downloaded.
+        bootloaders_count = len(
+            [br for br in all_boot_resources if br.bootloader_type is not None]
+        )
+        if len(all_boot_resources) - bootloaders_count == len(
+            boot_resources_to_delete_ids
+        ):
+            await self.events_service.record_event(
+                event_type=EventTypeEnum.REGION_IMPORT_ERROR,
+                event_description=f"Finalization of image synchronization aborted "
+                f"or all {len(all_boot_resources) - bootloaders_count} synced images would be deleted.",
+            )
+            return False
+
         await self.boot_resources_service.delete_many(
             query=QuerySpec(
                 where=BootResourceClauseFactory.with_ids(
@@ -763,6 +1015,7 @@ class ImageSyncService(Service):
                 )
             )
         )
+        return True
 
     async def delete_old_boot_resource_sets(self) -> None:
         """Deletes the old boot resource sets.
@@ -796,7 +1049,7 @@ class ImageSyncService(Service):
             for resource_set in resource_sets:
                 if (
                     found_first_complete_set
-                    or not await self.boot_resource_file_sync_service.resource_set_sync_complete(
+                    or not await self.boot_resource_sets_service.is_sync_complete(
                         resource_set.id
                     )
                 ):

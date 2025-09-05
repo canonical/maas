@@ -21,6 +21,10 @@ from piston3.handler import typemapper
 from piston3.utils import rc
 from temporalio.common import WorkflowIDReusePolicy
 
+from maascommon.workflows.bootresource import (
+    LocalSyncRequestParam,
+    SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+)
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.bootresources import (
@@ -50,8 +54,6 @@ from maastemporalworker.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
     SpaceRequirementParam,
-    SYNC_BOOTRESOURCES_WORKFLOW_NAME,
-    SyncRequestParam,
 )
 
 TYPE_MAPPING = {
@@ -136,22 +138,20 @@ def json_object(obj, request):
 
 
 def filestore_add_file(rfile: BootResourceFile):
-    params = SyncRequestParam(
-        resources=[
-            ResourceDownloadParam(
-                rfile_ids=[rfile.id],
-                source_list=[],
-                sha256=rfile.sha256,
-                filename_on_disk=rfile.filename_on_disk,
-                total_size=rfile.size,
-            )
-        ],
-        requirement=SpaceRequirementParam(min_free_space=rfile.size),
+    param = LocalSyncRequestParam(
+        resource=ResourceDownloadParam(
+            rfile_ids=[rfile.id],
+            source_list=[],
+            sha256=rfile.sha256,
+            filename_on_disk=rfile.filename_on_disk,
+            total_size=rfile.size,
+        ),
+        space_requirement=SpaceRequirementParam(min_free_space=rfile.size),
     )
     return execute_workflow(
-        SYNC_BOOTRESOURCES_WORKFLOW_NAME,
-        f"sync-boot-resources:upload:{rfile.id}",
-        params,
+        SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+        f"sync-local-bootresource:{rfile.id}",
+        param,
         task_queue=REGION_TASK_QUEUE,
         execution_timeout=DOWNLOAD_TIMEOUT,
         run_timeout=DOWNLOAD_TIMEOUT,
@@ -306,7 +306,6 @@ class BootResourcesHandler(OperationsHandler):
         @success (content) "success-content"
             Import of boot resources is being stopped.
         """
-        # FIXME not awaiting for Deferred
         stop_import_resources()
         return HttpResponse(
             "Import of boot resources is being stopped",

@@ -1,6 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import date
+
 import pytest
 
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
@@ -112,7 +114,9 @@ class TestBootSourceCacheClauseFactory:
         )
 
 
-class TestBootSourceCacheRepository(RepositoryCommonTests[BootSourceCache]):
+class TestCommonBootSourceCacheRepository(
+    RepositoryCommonTests[BootSourceCache]
+):
     @pytest.fixture
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
@@ -176,3 +180,57 @@ class TestBootSourceCacheRepository(RepositoryCommonTests[BootSourceCache]):
         self, repository_instance, instance_builder
     ):
         raise NotImplementedError()
+
+
+class TestBootSourceCacheRepository:
+    @pytest.fixture
+    def repository(
+        self, db_connection: AsyncConnection
+    ) -> BootSourceCacheRepository:
+        return BootSourceCacheRepository(Context(connection=db_connection))
+
+    async def test_get_available_lts_releases(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="jammy",
+            release_title="22.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2027, month=4, day=21),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="plucky",
+            release_title="25.04",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2026, month=1, day=15),
+        )
+        releases = await repository.get_available_lts_releases()
+        assert releases == ["noble", "jammy", "focal"]

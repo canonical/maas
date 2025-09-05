@@ -3,7 +3,7 @@
 
 from operator import eq
 
-from sqlalchemy import Table
+from sqlalchemy import not_, select, Table
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
@@ -53,3 +53,26 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
 
     def get_model_factory(self) -> type[BootSourceCache]:
         return BootSourceCache
+
+    async def get_available_lts_releases(self) -> list[str]:
+        """Get the LTS release names that are available in the boot source cache.
+
+        Results are returned in descending order based on their "support_eol" date - latest first.
+
+        Returns:
+            A list of LTS release names, e.g. ["noble", "jammy"]
+        """
+        stmt = (
+            select(
+                BootSourceCacheTable.c.release,
+                BootSourceCacheTable.c.support_eol,
+            )
+            .distinct()
+            .select_from(BootSourceCacheTable)
+            .where(not_(eq(BootSourceCacheTable.c.support_eol, None)))
+            .where(BootSourceCacheTable.c.release_title.endswith("LTS"))
+            .order_by(BootSourceCacheTable.c.support_eol.desc())
+        )
+        result = (await self.execute_stmt(stmt)).all()
+        # keep only the releases
+        return [row[0] for row in result]

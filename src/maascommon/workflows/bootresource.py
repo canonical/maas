@@ -9,12 +9,20 @@ REPORT_INTERVAL = timedelta(seconds=10)
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
 DISK_TIMEOUT = timedelta(minutes=15)
 DOWNLOAD_TIMEOUT = timedelta(hours=2)
+FETCH_IMAGE_METADATA_TIMEOUT = timedelta(minutes=10)
+CLEANUP_TIMEOUT = timedelta(minutes=1)
 MAX_SOURCES = 5
 
 DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME = "download-bootresource"
 CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME = "check-bootresources-storage"
 SYNC_BOOTRESOURCES_WORKFLOW_NAME = "sync-bootresources"
+SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME = "sync-remote-bootresources"
+SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME = "sync-local-bootresources"
 DELETE_BOOTRESOURCE_WORKFLOW_NAME = "delete-bootresource"
+MASTER_IMAGE_SYNC_WORKFLOW_NAME = "master-image-sync"
+FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME = (
+    "fetch-manifest-and-update-cache"
+)
 
 
 @dataclass
@@ -50,9 +58,14 @@ class SpaceRequirementParam:
 
 @dataclass
 class SyncRequestParam:
-    resources: Sequence[ResourceDownloadParam]
-    requirement: SpaceRequirementParam
-    http_proxy: str | None = None
+    resource: ResourceDownloadParam
+    region_endpoints: dict[str, list[str]]
+
+
+@dataclass
+class LocalSyncRequestParam:
+    resource: ResourceDownloadParam
+    space_requirement: SpaceRequirementParam
 
 
 @dataclass
@@ -67,8 +80,19 @@ class ResourceDeleteParam:
 
 
 @dataclass
-class ResourceCleanupParam:
-    expected_files: Sequence[str]
+class GetFilesToDownloadReturnValue:
+    resources: list[ResourceDownloadParam]
+    boot_resource_ids: set[int]
+
+
+@dataclass
+class CleanupOldBootResourceParam:
+    boot_resource_ids_to_keep: set[int]
+
+
+@dataclass
+class CancelObsoleteDownloadWorkflowsParam:
+    sha_to_keep: set[str]
 
 
 def merge_resource_delete_param(

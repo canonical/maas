@@ -1,3 +1,4 @@
+from ..fixtures import services_mock
 from .fixtures.app import (
     api_app,
     api_client,
@@ -21,7 +22,6 @@ from .fixtures.app import (
     mocked_api_client_session_id,
     mocked_api_client_user,
     mocked_api_client_user_rbac,
-    services_mock,
     user_session_id,
 )
 from .fixtures.db import (

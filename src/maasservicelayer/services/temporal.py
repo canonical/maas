@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 import uuid
 
-from temporalio.client import Client, WorkflowExecutionDescription
+from temporalio.client import (
+    Client,
+    WorkflowExecutionDescription,
+    WorkflowExecutionStatus,
+)
+from temporalio.service import RPCError
 
 from maasservicelayer.context import Context
 from maasservicelayer.services.base import Service, ServiceCache
@@ -49,6 +54,16 @@ class TemporalService(Service):
         client = await self.get_temporal_client()
         handle = client.get_workflow_handle(workflow_id)
         return await handle.cancel()
+
+    async def workflow_status(
+        self, workflow_id: str
+    ) -> WorkflowExecutionStatus | None:
+        client = await self.get_temporal_client()
+        hdl = client.get_workflow_handle(workflow_id=workflow_id)
+        try:
+            return (await hdl.describe()).status
+        except RPCError:
+            return None
 
     async def post_commit(self) -> None:
         for key, arguments in self._post_commit_workflows.items():  # noqa: B007
