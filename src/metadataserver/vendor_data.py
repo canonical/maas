@@ -253,15 +253,17 @@ def generate_kvm_pod_configuration(node):
         yield (
             "runcmd",
             [
-                # uninstall only if the package has been installed
+                # Remove existing LXD packages, since they were installed by default
+                # until bionic.
                 "apt-get autoremove --purge --yes lxd || true",
                 "apt-get autoremove --purge --yes lxd-client || true",
                 "apt-get autoremove --purge --yes lxcfs || true",
-                # install LXD
-                "snap install lxd --channel=5.21/stable",
-                # Wait for LXD to become ready (timeout after 5 minutes)
-                "timeout 300 bash -c 'until lxc info >/dev/null 2>&1; do sleep 1; done'",
+                # Retry snap installation due to bug https://bugs.launchpad.net/snapd/+bug/2104066.
+                "timeout 600 bash -c 'until snap install lxd --channel=5.21/stable; do sleep 10; done'",
+                # In case lxd was already installed, we need to refresh in order to have
+                # it point to the right channel.
                 "snap refresh lxd --channel=5.21/stable",
+                "lxd waitready -t 300",
                 "lxd init --auto --network-address=[::]",
                 f"lxc project create {maas_project}",
                 f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
