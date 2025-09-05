@@ -3,6 +3,9 @@
 
 from maasapiserver.common.api.base import API
 from maasapiserver.v3.api.public.handlers.auth import AuthHandler
+from maasapiserver.v3.api.public.handlers.boot_resources import (
+    BootResourcesHandler,
+)
 from maasapiserver.v3.api.public.handlers.boot_sources import (
     BootSourcesHandler,
 )
@@ -49,6 +52,7 @@ APIv3 = API(
     prefix=V3_API_PREFIX,
     handlers=[
         AuthHandler(),
+        BootResourcesHandler(),
         BootSourcesHandler(),
         ConfigurationsHandler(),
         EventsHandler(),
