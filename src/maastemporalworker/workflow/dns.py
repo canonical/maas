@@ -39,7 +39,6 @@ from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.models.dnsdata import DNSData
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
-from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 from maastemporalworker.workflow.activity import ActivityBase
@@ -502,9 +501,9 @@ class DNSConfigActivity(ActivityBase):
             return domain.ttl
         return default_ttl
 
-    async def _get_dns_ip_address(
+    async def _get_dns_ip_addresses(
         self, svc: ServiceCollectionV3
-    ) -> list[StaticIPAddress] | None:
+    ) -> list[IPAddress] | None:
         controllers = await svc.nodes.get_many(
             query=QuerySpec(
                 where=NodeClauseFactory.or_clauses(
@@ -524,6 +523,7 @@ class DNSConfigActivity(ActivityBase):
         )
 
         ips = []
+        loopback_ips = []
 
         for controller in controllers:
             ifaces = await svc.interfaces.get_many(
@@ -536,10 +536,20 @@ class DNSConfigActivity(ActivityBase):
             sips = await svc.staticipaddress.get_for_interfaces(
                 [iface.id for iface in ifaces]
             )
-            ips += [sip.ip for sip in sips]
+            nonloopback_ips = [
+                sip.ip for sip in sips if not sip.ip.is_loopback
+            ]
+            loopback_ips += [sip.ip for sip in sips if sip.ip.is_loopback]
+
+            for ip in nonloopback_ips:
+                subnet = await svc.subnets.find_best_subnet_for_ip(ip)
+                if subnet and subnet.allow_dns:
+                    ips.append(ip)
 
         if ips:
-            return str(min(ips))
+            return ips
+        elif loopback_ips:
+            return loopback_ips
         return None
 
     async def _get_internal_domain(
@@ -598,8 +608,7 @@ class DNSConfigActivity(ActivityBase):
     ) -> dict[str, dict[tuple[str, str], list[tuple[str, int]]]]:
         fwd_records = defaultdict(lambda: defaultdict(list))
 
-        dns_ip = await self._get_dns_ip_address(svc)
-        default_domain = await svc.domains.get_default_domain()
+        dns_ips = await self._get_dns_ip_addresses(svc)
 
         for domain in domains:
             mappings = await svc.domains.get_hostname_ip_mapping(
@@ -653,15 +662,16 @@ class DNSConfigActivity(ActivityBase):
                         aaaa_answers
                     )
 
-            if dns_ip and domain.id == default_domain.id:
-                if IPAddress(dns_ip).version == 4:
-                    fwd_records[domain.name][("@", "A")] = [
-                        (dns_ip, default_ttl)
-                    ]
-                else:
-                    fwd_records[domain.name][("@", "AAAA")] = [
-                        (dns_ip, default_ttl)
-                    ]
+            if dns_ips:
+                for dns_ip in dns_ips:
+                    if dns_ip.version == 4:
+                        fwd_records[domain.name][("@", "A")] += [
+                            (str(dns_ip), default_ttl)
+                        ]
+                    else:
+                        fwd_records[domain.name][("@", "AAAA")] += [
+                            (str(dns_ip), default_ttl)
+                        ]
 
             if not fwd_records[domain.name]:
                 fwd_records[domain.name] = {}
