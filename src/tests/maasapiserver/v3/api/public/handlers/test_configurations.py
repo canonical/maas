@@ -115,14 +115,24 @@ class TestConfigurationsApi:
         configs_response = ErrorBodyResponse(**response.json())
         assert configs_response.kind == "Error"
 
-    async def test_get_configuration(
+    async def test_get_configuration_forbidden_for_users(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ):
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/theme")
+        assert response.status_code == 403
+        config_response = ErrorBodyResponse(**response.json())
+        assert config_response.kind == "Error"
+
+    async def test_get_configuration(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = "test"
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/theme")
+        response = await mocked_api_client_admin.get(f"{self.BASE_PATH}/theme")
         assert response.status_code == 200
         config_response = ConfigurationResponse(**response.json())
         assert config_response.kind == "Configuration"
@@ -132,11 +142,11 @@ class TestConfigurationsApi:
     async def test_get_unexisting_config(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_admin: AsyncClient,
     ):
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = None
-        response = await mocked_api_client_user.get(
+        response = await mocked_api_client_admin.get(
             f"{self.BASE_PATH}/unexisting"
         )
         assert response.status_code == 422
@@ -155,12 +165,14 @@ class TestConfigurationsApi:
     async def test_get_private_config(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_admin: AsyncClient,
         name: str,
     ):
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/{name}")
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}/{name}"
+        )
         assert response.status_code == 422
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"

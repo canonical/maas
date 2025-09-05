@@ -80,7 +80,7 @@ class ConfigurationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
     async def get_configuration(
