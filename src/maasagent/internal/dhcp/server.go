@@ -287,8 +287,6 @@ func (s *Server) bind(iface *net.Interface, writeOnly bool) error {
 }
 
 // Close would close all the sockets, links and BPF program
-// s.recordReader closing is not required as it seems to be closed
-// when the xdpProgram is closed.
 func (s *Server) Close() error {
 	var errs []error
 

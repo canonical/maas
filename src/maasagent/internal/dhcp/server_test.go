@@ -141,6 +141,7 @@ type fakeRecordReader struct {
 	readRecord chan ringbuf.Record
 	readErr    chan error
 	closeErr   error
+	closed     bool
 }
 
 func (f *fakeRecordReader) Read() (ringbuf.Record, error) {
@@ -151,6 +152,7 @@ func (f *fakeRecordReader) Close() error {
 	f.readRecord <- ringbuf.Record{}
 
 	f.readErr <- ringbuf.ErrClosed
+	f.closed = true
 
 	return f.closeErr
 }
@@ -488,4 +490,6 @@ func TestServerEcho_XDP_L2(t *testing.T) {
 	if err := <-errs; err != nil {
 		require.NoError(t, err)
 	}
+
+	assert.True(t, fakeRecordReader.closed)
 }
