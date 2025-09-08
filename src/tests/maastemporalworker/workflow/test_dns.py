@@ -45,7 +45,10 @@ from tests.fixtures.factories.dnspublication import (
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
 from tests.fixtures.factories.interface import create_test_interface_entry
-from tests.fixtures.factories.node import create_test_region_controller_entry
+from tests.fixtures.factories.node import (
+    create_test_rack_and_region_controller_entry,
+    create_test_region_controller_entry,
+)
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
@@ -341,6 +344,56 @@ class TestDNSConfigActivity:
             r["system_id"] for r in region_controllers
         ] == result.region_controller_system_ids
 
+    async def test__get_dns_ip_addresses(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        subnets = [
+            await create_test_subnet_entry(fixture, allow_dns=True)
+            for _ in range(3)
+        ]
+        sips = [
+            [
+                (
+                    await create_test_staticipaddress_entry(
+                        fixture, subnet=subnet
+                    )
+                )[0]
+                for subnet in subnets
+            ]
+            for _ in range(3)
+        ]
+        [
+            (await create_test_staticipaddress_entry(fixture, subnet=subnet))[
+                0
+            ]
+            for subnet in subnets
+        ]  # additional IPs that should be excluded
+        controllers = [
+            await create_test_rack_and_region_controller_entry(fixture)
+            for _ in range(3)
+        ]
+        [
+            await create_test_interface_entry(
+                fixture, node=controllers[i], ips=[sip]
+            )
+            for i, ctrlr_sips in enumerate(sips)
+            for sip in ctrlr_sips
+        ]
+
+        services_cache = CacheForServices()
+
+        activities = DNSConfigActivity(
+            db,
+            services_cache,
+            connection=db_connection,
+        )
+
+        async with activities.start_transaction() as svc:
+            ips = await activities._get_dns_ip_addresses(svc)
+            assert set([str(ip) for ip in ips]) == {
+                str(ip["ip"]) for ctrlr_sips in sips for ip in ctrlr_sips
+            }
+
     async def test__get_ttl(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
@@ -363,13 +416,28 @@ class TestDNSConfigActivity:
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
         domains = [await create_test_domain_entry(fixture) for _ in range(3)]
-        subnet = await create_test_subnet_entry(fixture)
+        subnet1 = await create_test_subnet_entry(fixture, allow_dns=True)
+        subnet2 = await create_test_subnet_entry(fixture, allow_dns=True)
         sips = [
-            (await create_test_staticipaddress_entry(fixture, subnet=subnet))[
+            (await create_test_staticipaddress_entry(fixture, subnet=subnet1))[
                 0
             ]
             for _ in range(3)
         ]
+        ctrlr_sips = [
+            (
+                await create_test_staticipaddress_entry(
+                    fixture, subnet=subnet1 if i % 2 == 0 else subnet2
+                )
+            )[0]
+            for i in range(3)
+        ]
+        controller = await create_test_rack_and_region_controller_entry(
+            fixture
+        )
+        await create_test_interface_entry(
+            fixture, node=controller, ips=ctrlr_sips
+        )
         dnsresources = [
             await create_test_dnsresource_entry(fixture, domain=d, ip=sips[i])
             for d in domains
@@ -391,6 +459,16 @@ class TestDNSConfigActivity:
 
         expected = defaultdict(lambda: defaultdict(list))
         for domain in domains:
+            for ip in ctrlr_sips:
+                if isinstance(ip["ip"], IPv4Address):
+                    expected[domain.name][("@", "A")].append(
+                        (str(ip["ip"]), domain.ttl)
+                    )
+                if isinstance(ip["ip"], IPv6Address):
+                    expected[domain.name][("@", "AAAA")].append(
+                        (str(ip["ip"]), domain.ttl)
+                    )
+
             for i, dnsrr in enumerate(dnsresources):
                 if dnsrr.domain_id == domain.id:
                     ip = sips[i % 3]
