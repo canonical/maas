@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/canonical/microcluster/v2/microcluster"
+	"github.com/canonical/microcluster/v2/state"
 	"github.com/rs/zerolog"
 
 	lxdutil "github.com/canonical/lxd/lxd/util"
@@ -38,6 +39,7 @@ type ClusterService struct {
 	dataPathFactory dataPathFactory
 	cluster         *microcluster.MicroCluster
 	cancel          context.CancelFunc
+	clusterHooks    *state.Hooks
 	systemID        string
 }
 
@@ -71,6 +73,12 @@ func NewClusterService(systemID string,
 func WithDataPathFactory(factory dataPathFactory) ClusterServiceOption {
 	return func(s *ClusterService) {
 		s.dataPathFactory = factory
+	}
+}
+
+func WithClusterHooks(hooks *state.Hooks) ClusterServiceOption {
+	return func(s *ClusterService) {
+		s.clusterHooks = hooks
 	}
 }
 
@@ -149,6 +157,7 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 				// than zerolog of MAAS Agent.
 				Debug:            zerolog.GlobalLevel() == zerolog.DebugLevel,
 				ExtensionsSchema: schemaExtensions,
+				Hooks:            s.clusterHooks,
 			})
 			if err != nil {
 				log.Error("Failed to start Microcluster", "err", err)

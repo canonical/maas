@@ -49,11 +49,11 @@ var (
 )
 
 type Handler4 interface {
-	ServeDHCP4(context.Context, Message) error
+	ServeDHCPv4(context.Context, Message) error
 }
 
 type Handler6 interface {
-	ServeDHCP6(context.Context, Message) error
+	ServeDHCPv6(context.Context, Message) error
 }
 
 type Message struct {
@@ -312,9 +312,9 @@ func (s *Server) serveXDP(ctx context.Context) error {
 				}
 
 				if msg.Pkt4 != nil {
-					err = s.handler4.ServeDHCP4(ctx, msg)
+					err = s.handler4.ServeDHCPv4(ctx, msg)
 				} else {
-					err = s.handler6.ServeDHCP6(ctx, msg)
+					err = s.handler6.ServeDHCPv6(ctx, msg)
 				}
 
 				if err != nil {
@@ -350,6 +350,8 @@ func (s *Server) serveSockets(ctx context.Context) error {
 						errChan <- ErrInvalidBuffer
 						return
 					}
+
+					defer bufPool.Put(buf[:0]) //nolint:staticcheck // slice is being marked as non-pointer
 
 					n, addr, err := conn.ReadFrom(buf)
 					if err != nil {
@@ -400,7 +402,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 				go func() {
 					defer s.inflight.Release(1)
 
-					err := s.handler4.ServeDHCP4(ctx, msg)
+					err := s.handler4.ServeDHCPv4(ctx, msg)
 					if err != nil {
 						log.Err(err).Send()
 					}
@@ -409,7 +411,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 				go func() {
 					defer s.inflight.Release(1)
 
-					err := s.handler6.ServeDHCP6(ctx, msg)
+					err := s.handler6.ServeDHCPv6(ctx, msg)
 					if err != nil {
 						log.Err(err).Send()
 					}

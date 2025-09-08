@@ -81,6 +81,11 @@ WHERE EXISTS (
 	WHERE ir.id = l.range_id AND v.id = $1 AND l.mac_address = $2
 );
 `
+	createLeaseForConflict = `
+INSERT INTO lease (
+	ip, state, created_at, updated_at, lifetime, needs_sync, range_id
+) VALUES ($1, 1, $2, $3, 30, false, 0);
+`
 )
 
 var (
@@ -97,80 +102,31 @@ type Offer struct {
 }
 
 type Allocator4 interface {
-	GetOfferFromDiscover(context.Context, *dhcpv4.DHCPv4, int, net.HardwareAddr) (*Offer, error)
-	GetOfferForAllocation(context.Context, int, net.HardwareAddr) (*Offer, error)
-	ACKLease(context.Context, net.IP, net.HardwareAddr) (*Lease, error)
-	NACKLease(context.Context, net.IP, net.HardwareAddr) error
-	UpdateForRenewal(context.Context, net.IP, net.HardwareAddr) error
-	Release(context.Context, int, net.HardwareAddr) error
-}
-
-type txWrapper struct {
-	tx     *sql.Tx
-	commit bool
-}
-
-func newTxWrapper(tx *sql.Tx, commit bool) *txWrapper {
-	return &txWrapper{
-		tx:     tx,
-		commit: commit,
-	}
-}
-
-func (t *txWrapper) Close(err error) {
-	var txErr error
-
-	if t.commit {
-		if err != nil {
-			txErr = t.tx.Rollback()
-		} else {
-			txErr = t.tx.Commit()
-		}
-	}
-
-	if txErr != nil {
-		log.Err(txErr).Send()
-	}
-}
-
-func (t *txWrapper) Tx() *sql.Tx {
-	return t.tx
+	GetOfferFromDiscover(context.Context, *sql.Tx, *dhcpv4.DHCPv4, int, net.HardwareAddr) (*Offer, error)
+	GetOfferForAllocation(context.Context, *sql.Tx, int, net.HardwareAddr) (*Offer, error)
+	ACKLease(context.Context, *sql.Tx, net.IP, net.HardwareAddr) (*Lease, error)
+	NACKLease(context.Context, *sql.Tx, net.IP, net.HardwareAddr) error
+	UpdateForRenewal(context.Context, *sql.Tx, net.IP, net.HardwareAddr) error
+	Release(context.Context, *sql.Tx, int, net.HardwareAddr) error
+	MarkConflicted(context.Context, *sql.Tx, net.IP) error
 }
 
 type dqliteAllocator4 struct {
-	db       *sql.DB
-	tx       *sql.Tx // should only be used in tests to override regular transaction behavior
-	hostname string  // attached to the allocator to avoid calling os.Hostname() on every DISCOVER
+	hostname string // attached to the allocator to avoid calling os.Hostname() on every DISCOVER
 }
 
-func newDQLiteAllocator4(db *sql.DB) (*dqliteAllocator4, error) {
+func newDQLiteAllocator4() (*dqliteAllocator4, error) {
 	hn, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
 
 	return &dqliteAllocator4{
-		db:       db,
 		hostname: hn,
 	}, nil
 }
 
-func (d *dqliteAllocator4) beginTx(ctx context.Context) (*txWrapper, error) {
-	if d.tx != nil {
-		return newTxWrapper(d.tx, false), nil
-	}
-
-	tx, err := d.db.BeginTx(ctx, &sql.TxOptions{
-		ReadOnly: false,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return newTxWrapper(tx, true), nil
-}
-
-func (d *dqliteAllocator4) GetOfferFromDiscover(ctx context.Context, discover *dhcpv4.DHCPv4, ifaceIdx int, mac net.HardwareAddr) (*Offer, error) {
+func (d *dqliteAllocator4) GetOfferFromDiscover(ctx context.Context, tx *sql.Tx, discover *dhcpv4.DHCPv4, ifaceIdx int, mac net.HardwareAddr) (*Offer, error) {
 	if discover.MessageType() != dhcpv4.MessageTypeDiscover {
 		return nil, fmt.Errorf("did not receive a DISCOVER: %w", ErrInvalidDHCP4State)
 	}
@@ -184,15 +140,6 @@ func (d *dqliteAllocator4) GetOfferFromDiscover(ctx context.Context, discover *d
 	if relayOptions != nil { //nolint:staticcheck // ignore TODO's
 		// TODO fetch relay info
 	}
-
-	txWrapper, err := d.beginTx(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	defer txWrapper.Close(err)
-
-	tx := txWrapper.Tx()
 
 	vlan, err := d.getVLANForAllocation(ctx, tx, ifaceIdx)
 	if err != nil {
@@ -272,7 +219,7 @@ func (d *dqliteAllocator4) GetOfferFromDiscover(ctx context.Context, discover *d
 	return offer, nil
 }
 
-func (d *dqliteAllocator4) GetOfferForAllocation(ctx context.Context, subnetID int, mac net.HardwareAddr) (*Offer, error) {
+func (d *dqliteAllocator4) GetOfferForAllocation(ctx context.Context, tx *sql.Tx, subnetID int, mac net.HardwareAddr) (*Offer, error) {
 	// TODO to be called from temporal activity to allocate for AUTO assignment
 	return nil, nil //nolint:nilnil // ignore TODO's
 }
@@ -493,20 +440,11 @@ func (d *dqliteAllocator4) createOfferedLease(ctx context.Context, tx *sql.Tx, o
 	return lease, nil
 }
 
-func (d *dqliteAllocator4) ACKLease(ctx context.Context, ip net.IP, mac net.HardwareAddr) (*Lease, error) {
-	txWrapper, err := d.beginTx(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	defer txWrapper.Close(err)
-
-	tx := txWrapper.Tx()
-
+func (d *dqliteAllocator4) ACKLease(ctx context.Context, tx *sql.Tx, ip net.IP, mac net.HardwareAddr) (*Lease, error) {
 	row := tx.QueryRowContext(ctx, getLeaseForIPAndMACStmt, ip.String(), mac.String())
 	lease := &Lease{}
 
-	err = lease.ScanRow(row)
+	err := lease.ScanRow(row)
 	if err != nil {
 		return nil, err
 	}
@@ -520,34 +458,16 @@ func (d *dqliteAllocator4) ACKLease(ctx context.Context, ip net.IP, mac net.Hard
 
 	lease.UpdatedAt = int(now)
 
-	return lease, nil
+	return lease, lease.LoadOptions(ctx, tx)
 }
 
-func (d *dqliteAllocator4) NACKLease(ctx context.Context, ip net.IP, mac net.HardwareAddr) error {
-	txWrapper, err := d.beginTx(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer txWrapper.Close(err)
-
-	tx := txWrapper.Tx()
-
-	_, err = tx.ExecContext(ctx, deleteLeaseForIPAndMACStmt, ip.String(), mac.String())
+func (d *dqliteAllocator4) NACKLease(ctx context.Context, tx *sql.Tx, ip net.IP, mac net.HardwareAddr) error {
+	_, err := tx.ExecContext(ctx, deleteLeaseForIPAndMACStmt, ip.String(), mac.String())
 
 	return err
 }
 
-func (d *dqliteAllocator4) UpdateForRenewal(ctx context.Context, ip net.IP, mac net.HardwareAddr) error {
-	txWrapper, err := d.beginTx(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer txWrapper.Close(err)
-
-	tx := txWrapper.Tx()
-
+func (d *dqliteAllocator4) UpdateForRenewal(ctx context.Context, tx *sql.Tx, ip net.IP, mac net.HardwareAddr) error {
 	now := time.Now().Unix()
 
 	result, err := tx.ExecContext(
@@ -573,20 +493,11 @@ func (d *dqliteAllocator4) UpdateForRenewal(ctx context.Context, ip net.IP, mac 
 	return nil
 }
 
-func (d *dqliteAllocator4) Release(ctx context.Context, ifaceIdx int, mac net.HardwareAddr) error {
-	txWrapper, err := d.beginTx(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer txWrapper.Close(err)
-
-	tx := txWrapper.Tx()
-
+func (d *dqliteAllocator4) Release(ctx context.Context, tx *sql.Tx, ifaceIdx int, mac net.HardwareAddr) error {
 	row := tx.QueryRowContext(ctx, getVLANForInterfaceIdxStmt, d.hostname, ifaceIdx)
 	vlan := &Vlan{}
 
-	err = vlan.ScanRow(row)
+	err := vlan.ScanRow(row)
 	if err != nil {
 		return err
 	}
@@ -601,12 +512,24 @@ func (d *dqliteAllocator4) Release(ctx context.Context, ifaceIdx int, mac net.Ha
 
 	now := time.Now().Unix()
 
-	_, err = tx.ExecContext(ctx, createExpirationStmt, lease.IP.String(), lease.MACAddress.String(), nil, now)
-	if err != nil {
-		return err
+	if lease.State == LeaseStateAcked {
+		_, err = tx.ExecContext(ctx, createExpirationStmt, lease.IP.String(), lease.MACAddress.String(), nil, now)
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err = tx.ExecContext(ctx, deleteLeaseForMACInVLANStmt, vlan.ID, mac.String())
+
+	return err
+}
+
+// MarkConflicted creates a lease for a conflicting IP from a client's decline message. This temporarily
+// marks the IP in use by an unknown entity, disallowing it to be allocated for a lease, for some time.
+// This lease does not get reported back to the region and only serves to be used in allocation.
+func (d *dqliteAllocator4) MarkConflicted(ctx context.Context, tx *sql.Tx, ip net.IP) error {
+	now := time.Now().Unix()
+	_, err := tx.ExecContext(ctx, createLeaseForConflict, ip.String(), now, now)
 
 	return err
 }

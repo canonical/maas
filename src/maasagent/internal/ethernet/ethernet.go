@@ -165,3 +165,22 @@ func (e *EthernetFrame) UnmarshalBinary(buf []byte) error {
 
 	return nil
 }
+
+func (e *EthernetFrame) MarshalBinary() ([]byte, error) {
+	buf := make([]byte, 14)
+
+	copy(buf, e.DstMAC)
+	copy(buf[6:], e.SrcMAC)
+
+	if e.EthernetType == EthernetTypeLLC {
+		if e.Len <= 0 {
+			return nil, ErrMalformedFrame
+		}
+
+		binary.BigEndian.PutUint16(buf[12:], e.Len)
+	} else {
+		binary.BigEndian.PutUint16(buf[12:], uint16(e.EthernetType))
+	}
+
+	return buf, nil
+}

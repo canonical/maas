@@ -99,11 +99,11 @@ func (e *echoDHCPHandler) echo(ctx context.Context, msg Message, ipv IPVersion) 
 	return err
 }
 
-func (e *echoDHCPHandler) ServeDHCP4(ctx context.Context, msg Message) error {
+func (e *echoDHCPHandler) ServeDHCPv4(ctx context.Context, msg Message) error {
 	return e.echo(ctx, msg, 4)
 }
 
-func (e *echoDHCPHandler) ServeDHCP6(ctx context.Context, msg Message) error {
+func (e *echoDHCPHandler) ServeDHCPv6(ctx context.Context, msg Message) error {
 	return e.echo(ctx, msg, 6)
 }
 
