@@ -170,3 +170,13 @@ class TestBootSourceSelectionsService(ServiceCommonTests):
         await super().test_update_by_id_etag_match(
             service_instance, test_instance, builder
         )
+
+    async def test_create_without_boot_source_cache(
+        self, service_instance, builder_model
+    ) -> None:
+        await service_instance.create_without_boot_source_cache(
+            builder_model()
+        )
+        service_instance.repository.create.assert_awaited_once_with(
+            builder_model()
+        )

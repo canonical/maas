@@ -157,6 +157,7 @@ class ImageSyncService(Service):
             bootsource_builder = BootSourceBuilder(
                 url=DEFAULT_IMAGES_URL,
                 keyring_filename=DEFAULT_KEYRINGS_PATH,
+                keyring_data=b"",
                 priority=1,
                 skip_keyring_verification=False,
             )
@@ -183,7 +184,9 @@ class ImageSyncService(Service):
                 subarches=["*"],
                 labels=["*"],
             )
-            await self.boot_source_selections_service.create(selection_builder)
+            await self.boot_source_selections_service.create_without_boot_source_cache(
+                selection_builder
+            )
             return True
         else:
             # XXX ensure the default keyrings path in the database points to the

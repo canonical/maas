@@ -365,7 +365,7 @@ class TestImageSyncService:
             id=1,
             url=DEFAULT_IMAGES_URL,
             keyring_filename=DEFAULT_KEYRINGS_PATH,
-            keyring_data=None,
+            keyring_data=b"",
             priority=1,
             skip_keyring_verification=False,
         )
@@ -382,11 +382,12 @@ class TestImageSyncService:
             BootSourceBuilder(
                 url=DEFAULT_IMAGES_URL,
                 keyring_filename=DEFAULT_KEYRINGS_PATH,
+                keyring_data=b"",
                 priority=1,
                 skip_keyring_verification=False,
             )
         )
-        self.boot_source_selections_service.create.assert_awaited_once_with(
+        self.boot_source_selections_service.create_without_boot_source_cache.assert_awaited_once_with(
             BootSourceSelectionBuilder(
                 boot_source_id=1,
                 os="ubuntu",
@@ -405,7 +406,7 @@ class TestImageSyncService:
             id=1,
             url=DEFAULT_IMAGES_URL,
             keyring_filename=DEFAULT_KEYRINGS_PATH,
-            keyring_data=None,
+            keyring_data=b"",
             priority=1,
             skip_keyring_verification=False,
         )
@@ -421,11 +422,12 @@ class TestImageSyncService:
             BootSourceBuilder(
                 url=DEFAULT_IMAGES_URL,
                 keyring_filename=DEFAULT_KEYRINGS_PATH,
+                keyring_data=b"",
                 priority=1,
                 skip_keyring_verification=False,
             )
         )
-        self.boot_source_selections_service.create.assert_awaited_once_with(
+        self.boot_source_selections_service.create_without_boot_source_cache.assert_awaited_once_with(
             BootSourceSelectionBuilder(
                 boot_source_id=1,
                 os="ubuntu",
@@ -444,7 +446,7 @@ class TestImageSyncService:
             id=1,
             url=DEFAULT_IMAGES_URL,
             keyring_filename=DEFAULT_KEYRINGS_PATH,
-            keyring_data=None,
+            keyring_data=b"",
             priority=1,
             skip_keyring_verification=False,
         )

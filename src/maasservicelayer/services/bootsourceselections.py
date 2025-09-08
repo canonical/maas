@@ -121,6 +121,20 @@ class BootSourceSelectionsService(
                 ]
             )
 
+    async def create_without_boot_source_cache(
+        self, builder: BootSourceSelectionBuilder
+    ) -> BootSourceSelection:
+        """Create a selection without checking if the boot source cache exists.
+
+        NOTE: Only to use in the ImageSyncService. That is because when we create
+        the boot source for the first time, we also want to add the selection for
+        the commissioning release, but at this point we don't have anything in
+        the boot source cache yet.
+
+        See `ensure_boot_source_definition` in the ImageSyncService for the details.
+        """
+        return await self.repository.create(builder)
+
     async def post_update_hook(
         self,
         old_resource: BootSourceSelection,
