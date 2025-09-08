@@ -559,15 +559,6 @@ class ServiceCollectionV3:
             interface_service=services.interfaces,
             iprange_service=services.ipranges,
         )
-        services.leases = LeasesService(
-            context=context,
-            dnsresource_service=services.dnsresources,
-            node_service=services.nodes,
-            staticipaddress_service=services.staticipaddress,
-            subnet_service=services.subnets,
-            interface_service=services.interfaces,
-            iprange_service=services.ipranges,
-        )
         services.auth = AuthService(
             context=context,
             secrets_service=services.secrets,
