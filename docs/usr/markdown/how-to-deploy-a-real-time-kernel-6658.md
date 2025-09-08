@@ -1,83 +1,91 @@
-This page walks you through the steps to deploy an Ubuntu machine with a [real-time (RT) kernel](https://ubuntu.com/blog/real-time-linux-qa). The RT kernel comes with all [Ubuntu Pro](https://ubuntu.com/pro) subscriptions for Ubuntu 22.04 LTS.
+Real-time (RT) kernels reduce latency for workloads where timing is critical, such as telecom, financial services, and robotics. MAAS can deploy RT kernels by combining Ubuntu Pro with cloud-init.
 
-> The RT kernel is currently in Beta. General availability is coming soon.
+The RT kernel is currently in Beta for Ubuntu 22.04 LTS (Jammy). General availability is coming soon.
 
-## RT kernel install
+## Prerequisites
 
-The RT kernel isn't directly integrated into MAAS. Instead, cloud-init is used to first deploy a generic kernel. Then cloud-init installs the RT kernel and reboots the machine to enable it. Be aware that after MAAS marks the machine as DEPLOYED, there will be a delay while cloud-init completes and the machine reboots.
+Before you begin, make sure you have:
 
-## Sequence of events
+* A valid Ubuntu Pro subscription (the RT kernel is enabled through Ubuntu Pro).
+   Find your token in the [Ubuntu Pro dashboard](https://ubuntu.com/pro/dashboard).
+* MAAS 3.2 or later with Ubuntu 22.04 LTS images available.
+* A machine that is already enlisted and commissioned in MAAS.
+* Internet access (offline installation is not supported).
 
-1. Machine deploys with Ubuntu 22.04 LTS and a generic kernel.
-2. Machine reboots.
-3. Bootloader instructed to boot from disk.
-4. Host requests MAAS for configuration.
-5. MAAS sends cloud-init config to host.
-6. Cloud-init activates Ubuntu Pro.
-7. Ubuntu Pro agent installs the RT kernel.
-8. Another reboot to enable the new kernel.
-9. System is ready for use.
+> If you are not familiar with Ubuntu Pro in MAAS, see [How to enable Ubuntu Pro on a deployed machine](https://canonical.com/maas/docs/how-to-enable-ubuntu-pro).
 
-## What you'll need
+## How it works
 
-1. Valid Ubuntu Pro token (find yours at [Ubuntu Pro Dashboard](https://ubuntu.com/pro/dashboard)^^*^^).
-2. MAAS 3.2 or later with Ubuntu 22.04 LTS images.
-3. A host compatible with Ubuntu RT kernel.
-4. Internet connection.
+The RT kernel is not built into MAAS images. Instead:
 
+1. MAAS deploys the machine with a generic Ubuntu kernel.
+2. cloud-init attaches the machine to Ubuntu Pro and enables the RT kernel.
+3. The machine reboots, and the new RT kernel is activated.
 
-Offline installation of the RT kernel is not supported currently.
+## Steps to deploy
 
+1. Select the machine in the MAAS UI
 
-## RT kernel deployment
+   * Enlist and commission as usual if you haven’t already.
+   * Choose *Deploy*.
 
-Perform these steps in the MAAS UI:
+2. Choose operating system
 
-1. **Enlist and commission the host**: Do this as you normally would.
-  
-2. **Initiate deployment**: Select the host and click `Deploy`.
-  
-3. **Choose OS and release**: Opt for `Ubuntu` and `Ubuntu 22.04 LTS "Jammy Jellyfish"`.
-  
-4. **Configure cloud-init**: Select `Cloud-init user-data` and use the following templates. Replace `<ubuntu_pro_token>` with your valid token.
+   * Select Ubuntu 22.04 LTS (Jammy Jellyfish).
 
-    1. `cloud-init` >= 23.4 
+3. Add cloud-init user-data
+
+   * Under *Cloud-init user-data*, paste one of the following snippets (depending on your cloud-init version).
+
+For `cloud-init` ≥ 23.4:
 
 ```yaml
-    #cloud-config
-    ubuntu_advantage:
-      token: <ubuntu_pro_token>
-      enable:
-      - realtime-kernel
+#cloud-config
+ubuntu_advantage:
+  token: <ubuntu_pro_token>
+  enable:
+    - realtime-kernel
 ```
 
-    2. `cloud-init` < 23.4
+For `cloud-init` < 23.4:
 
 ```yaml
-    #cloud-config
-    package_update: true
-    package_upgrade: true
-    
-    runcmd:
-    - pro attach <ubuntu_pro_token>
-    - yes | pro enable realtime-kernel
+#cloud-config
+package_update: true
+package_upgrade: true
+
+runcmd:
+  - pro attach <ubuntu_pro_token>
+  - yes | pro enable realtime-kernel
 ```
 
-5. **Start deployment**: Click `Start deployment for machine`.
+Replace `<ubuntu_pro_token>` with your actual token.
 
-## Verifying deployment
+4. Start deployment
 
-After deployment, execute these commands on the host to confirm RT kernel activation:
+   * Click *Start deployment*.
+   * Be aware: MAAS may show the machine as *Deployed* before cloud-init finishes the kernel change and the reboot.
 
-1. Check Pro status
-```text
-    sudo pro status
+## Verify deployment
+
+After the machine finishes rebooting, verify the RT kernel is active:
+
+1. Check Ubuntu Pro status:
+
+```bash
+sudo pro status
 ```
-    You should see `realtime-kernel` as enabled.
-  
-2. Confirm kernel version
-```nohighlight
-    uname -a
+
+Look for `realtime-kernel` in the list of enabled services.
+
+2. Check kernel version:
+
+```bash
+uname -a
 ```
 
-Your machine should now be up and running with an RT kernel.
+The kernel string should confirm that the RT kernel is running.
+
+Your machine is now deployed with a real-time kernel and ready for latency-sensitive workloads.
+
+
