@@ -15,6 +15,7 @@ import maasserver.dhcp as dhcp_module
 from maasserver.dhcp import _get_dhcp_rackcontrollers, get_default_dns_servers
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import Config, DHCPSnippet, Domain
+from maasserver.models import dnspublication as dnspublications_module
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -2901,6 +2902,10 @@ class TestGetDHCPConfiguration(MAASServerTestCase):
 
 
 class TestGetDHCPRackcontroller(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
+
     def create_dhcp_vlan(self, primary_address, secondary_adress=None):
         dhcp_vlan = factory.make_VLAN()
         dhcp_subnet = factory.make_Subnet(

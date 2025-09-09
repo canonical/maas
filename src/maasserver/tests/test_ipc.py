@@ -20,6 +20,7 @@ from maasserver.ipc import (
     IPCMasterService,
     IPCWorkerService,
 )
+from maasserver.models import dnspublication as dnspublications_module
 from maasserver.models import timestampedmodel
 from maasserver.models.node import RegionController
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
@@ -80,6 +81,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         self.patch(ipaddr, "get_ip_addr").return_value = {}
         self.patch(ipc, "get_all_interface_addresses")
         self.patch(ipc, "get_all_interface_source_addresses")
+        self.patch(dnspublications_module, "post_commit_do")
 
     def make_IPCMasterService(self, workers=None, run_loop=False):
         master = IPCMasterService(

@@ -33,6 +33,7 @@ from maasserver.models import (
     Tag,
     VLAN,
 )
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.storage_custom import ConfigError
@@ -1923,6 +1924,10 @@ class TestUpdateFruidMetadata(MAASServerTestCase):
 
 
 class TestProcessLXDResultsTransactional(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_gateway_ipv4_is_reset(self):
         vlan = factory.make_VLAN("oam")
         subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
@@ -4636,6 +4641,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         "eth2": "00:00:00:00:00:03",
     }
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def assert_expected_interfaces_and_macs_exist_for_node(
         self, node, expected_interfaces=EXPECTED_INTERFACES
     ):
@@ -5512,6 +5521,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
         super().setUp()
         self.hook = NODE_INFO_SCRIPTS[KERNEL_CMDLINE_OUTPUT_NAME]["hook"]
         self.node = factory.make_Node(with_boot_disk=False)
+        self.patch(dnspublication_module, "post_commit_do")
 
     def test_sets_boot_interface_bootif(self):
         Interface.objects.filter(node_config=self.node.current_config).delete()

@@ -6,6 +6,7 @@ from datetime import datetime
 from django.http import Http404
 from twisted.internet.defer import succeed
 
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import Pod
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -19,6 +20,10 @@ wait_for_reactor = wait_for()
 
 
 class TestVMClusterHandler(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def make_cluster_group(self):
         cluster_group = []
         pool = factory.make_ResourcePool()

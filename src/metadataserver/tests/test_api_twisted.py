@@ -1192,6 +1192,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         self.mock_discover_and_sync = self.patch(
             api_twisted_module, "discover_and_sync_vmhost"
         )
+        self.patch(dnspublication_module, "post_commit_do")
 
     def test_marks_failed_if_no_creds_install_kvm(self):
         node = factory.make_Node(

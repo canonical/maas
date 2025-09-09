@@ -6,6 +6,7 @@
 import random
 
 from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.service import (
     DEAD_STATUSES,
     RACK_SERVICES,
@@ -18,6 +19,10 @@ from maasserver.utils.orm import reload_object
 
 
 class TestServiceManager(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_create_services_for_machine(self):
         machine = factory.make_Node()
         Service.objects.create_services_for(machine)

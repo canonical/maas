@@ -6,6 +6,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import PciDevice, UsbDevice
+from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.scriptresult import ScriptResultsService
@@ -17,6 +18,7 @@ class MachinesService(NodesService):
         self,
         context: Context,
         secrets_service: SecretsService,
+        dnspublications_service: DNSPublicationsService,
         events_service: EventsService,
         scriptresults_service: ScriptResultsService,
         machines_repository: MachinesRepository,
@@ -26,6 +28,7 @@ class MachinesService(NodesService):
             secrets_service,
             events_service,
             scriptresults_service,
+            dnspublications_service,
             machines_repository,
         )
         self.machines_repository = machines_repository

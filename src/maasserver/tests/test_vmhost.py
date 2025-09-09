@@ -11,6 +11,7 @@ from twisted.internet.defer import succeed
 from maasserver import vmhost as vmhost_module
 from maasserver.enum import BMC_TYPE
 from maasserver.exceptions import PodProblem
+from maasserver.models import dnspublication as dnspublications_module
 from maasserver.models import NodeKey, Pod, PodHints, VMCluster
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -208,6 +209,10 @@ class TestDiscoverAndSyncVMHost(MAASServerTestCase):
 class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
     wait_for_reactor = wait_for()
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
+
     @wait_for_reactor
     async def test_sync_details(self):
         discovered_pod, discovered_racks, failed_racks = await deferToDatabase(
@@ -310,6 +315,10 @@ class TestCleanPowerAddress(MAASServerTestCase):
 
 
 class TestSyncVMCluster(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
+
     def test_sync_vmcluster_creates_cluster(self):
         (
             discovered_cluster,
@@ -701,6 +710,10 @@ class TestSyncVMCluster(MAASServerTestCase):
 
 class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
     wait_for_reactor = wait_for()
+
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
 
     @wait_for_reactor
     async def test_sync_vmcluster_async_creates_cluster(self):

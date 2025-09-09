@@ -1362,6 +1362,8 @@ class Node(CleanSave, TimestampedModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._previous_hostname = None
+        self._previous_boot_interface_id = None
+        self._previous_domain_id = None
         self._updated = False
 
     def __setattr__(self, name, value):
@@ -2150,6 +2152,10 @@ class Node(CleanSave, TimestampedModel):
             and self._previous_hostname != self.hostname
             and self._previous_hostname
         ):
+            DNSPublication.objects.create_for_config_update(
+                action=DnsUpdateAction.RELOAD,  # can effect numerous records
+                source=f"node {self._previous_hostname} renamed to {self.hostname}",
+            )
             post_commit_do(
                 start_workflow,
                 workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -2163,6 +2169,29 @@ class Node(CleanSave, TimestampedModel):
                     ),
                 ),
                 task_queue="region",
+            )
+
+        if (
+            self._updated
+            and self._previous_domain_id is not None
+            and self._previous_domain_id != self.domain_id
+        ):
+            DNSPublication.objects.create_for_config_update(
+                action=DnsUpdateAction.RELOAD,
+                source=f"node {self.hostname} moved to zone {self.domain.name}"
+                if self.domain
+                else f"node {self.hostname} moved to default zone",
+            )
+
+        if (
+            self._updated
+            and self._previous_boot_interface_id != self.boot_interface_id
+        ):
+            DNSPublication.objects.create_for_config_update(
+                action=DnsUpdateAction.RELOAD,
+                source=f"node {self.hostname} changed boot interface to {self.boot_interface.name}"
+                if self.boot_interface
+                else f"node {self.hostname} changed boot interface",
             )
 
     def _remove_orphaned_bmcs(self):

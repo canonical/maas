@@ -5,6 +5,7 @@ from unittest.mock import call, Mock
 
 import pytest
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.events import EventTypeEnum
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
@@ -22,6 +23,7 @@ from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import (
+    DNSPublicationsService,
     EventsService,
     NodesService,
     ScriptResultsService,
@@ -39,6 +41,7 @@ class TestCommonNodesService(ServiceCommonTests):
             context=Context(),
             secrets_service=Mock(SecretsService),
             nodes_repository=Mock(NodesRepository),
+            dnspublications_service=Mock(DNSPublicationsService),
             events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
@@ -70,6 +73,10 @@ class TestNodesService:
         return Mock(EventsService)
 
     @pytest.fixture
+    def dnspublications_service_mock(self) -> DNSPublicationsService:
+        return Mock(DNSPublicationsService)
+
+    @pytest.fixture
     def scriptresults_service_mock(self) -> ScriptResultsService:
         return Mock(ScriptResultsService)
 
@@ -78,6 +85,7 @@ class TestNodesService:
         self,
         secrets_service_mock,
         nodes_repository_mock,
+        dnspublications_service_mock,
         events_service_mock,
         scriptresults_service_mock,
     ) -> NodesService:
@@ -85,6 +93,7 @@ class TestNodesService:
             context=Context(),
             secrets_service=secrets_service_mock,
             nodes_repository=nodes_repository_mock,
+            dnspublications_service=dnspublications_service_mock,
             events_service=events_service_mock,
             scriptresults_service=scriptresults_service_mock,
         )
@@ -189,4 +198,135 @@ class TestNodesService:
                 status=NodeStatus.FAILED_DEPLOYMENT,
                 error_description=error_msg,
             ),
+        )
+
+    async def test_update_hostname_creates_dnspublication(
+        self,
+        nodes_service,
+        nodes_repository_mock,
+        dnspublications_service_mock,
+    ):
+        node = Node(
+            id=1,
+            system_id="abc",
+            hostname="orig",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.MACHINE,
+            power_state=PowerState.ON,
+        )
+
+        nodes_repository_mock.update_by_id.return_value = Node(
+            id=1,
+            system_id="abc",
+            hostname="new",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.MACHINE,
+            power_state=PowerState.ON,
+        )
+        nodes_repository_mock.get_by_id.return_value = node
+
+        old_hostname = node.hostname
+        builder = Mock(ResourceBuilder)
+
+        result = await nodes_service.update_by_id(node.id, builder)
+
+        dnspublications_service_mock.create_for_config_update.assert_called_once_with(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {old_hostname} renamed to {result.hostname}",
+        )
+
+    async def test_update_boot_interface_creates_dnspublication(
+        self,
+        nodes_service,
+        nodes_repository_mock,
+        dnspublications_service_mock,
+    ):
+        node = Node(
+            id=1,
+            system_id="abc",
+            hostname="orig",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.MACHINE,
+            power_state=PowerState.ON,
+            boot_interface_id=2,
+        )
+
+        nodes_repository_mock.update_by_id.return_value = Node(
+            id=1,
+            system_id="abc",
+            hostname="orig",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.MACHINE,
+            power_state=PowerState.ON,
+            boot_interface_id=3,
+        )
+        nodes_repository_mock.get_by_id.return_value = node
+
+        builder = Mock(ResourceBuilder)
+
+        await nodes_service.update_by_id(node.id, builder)
+
+        dnspublications_service_mock.create_for_config_update.assert_called_once_with(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {node.hostname} changed boot interface",
+        )
+
+    async def test_update_domain_creates_dnspublication(
+        self,
+        nodes_service,
+        nodes_repository_mock,
+        dnspublications_service_mock,
+    ):
+        node = Node(
+            id=1,
+            system_id="abc",
+            hostname="orig",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.MACHINE,
+            power_state=PowerState.ON,
+            domain_id=2,
+        )
+
+        nodes_repository_mock.update_by_id.return_value = Node(
+            id=1,
+            system_id="abc",
+            hostname="orig",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.MACHINE,
+            power_state=PowerState.ON,
+            domain_id=3,
+        )
+        nodes_repository_mock.get_by_id.return_value = node
+
+        builder = Mock(ResourceBuilder)
+
+        await nodes_service.update_by_id(node.id, builder)
+
+        dnspublications_service_mock.create_for_config_update.assert_called_once_with(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {node.hostname} changed zone",
+        )
+
+    async def test_delete_creates_dnspublication(
+        self,
+        nodes_service,
+        nodes_repository_mock,
+        dnspublications_service_mock,
+    ):
+        node = Node(
+            id=1,
+            system_id="abc",
+            hostname="orig",
+            status=NodeStatus.DEPLOYED,
+            node_type=NodeTypeEnum.MACHINE,
+            power_state=PowerState.ON,
+        )
+        nodes_repository_mock.get_by_id.return_value = node
+        nodes_repository_mock.delete_by_id.return_value = node
+
+        await nodes_service.delete_by_id(node.id)
+
+        dnspublications_service_mock.create_for_config_update.assert_called_once_with(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {node.hostname} deleted",
         )

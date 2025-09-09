@@ -11,6 +11,7 @@ from twisted.internet.threads import deferToThread
 from maasserver import vmhost
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import pods
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import Pod, PodStoragePool
 from maasserver.models.virtualmachine import MB, VirtualMachineInterface
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
@@ -40,6 +41,10 @@ wait_for_reactor = wait_for()
 
 
 class TestPodHandler(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def make_pod_info(self):
         # Use virsh pod type as the required fields are specific to the
         # type of pod being created.

@@ -666,7 +666,9 @@ class Factory(maastesting.factory.Factory):
             )
         else:
             node.last_image_sync = last_image_sync
-        node.save()
+
+        with post_commit_hooks:
+            node.save()
         return node
 
     def make_RegionController(self, *args, **kwargs):
@@ -1171,7 +1173,9 @@ class Factory(maastesting.factory.Factory):
             link_speed=link_speed,
         )
         node.boot_interface = boot_interface
-        node.save()
+
+        with post_commit_hooks:
+            node.save()
 
         self.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED,

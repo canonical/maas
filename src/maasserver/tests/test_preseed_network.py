@@ -19,6 +19,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
 )
+from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import Domain, Node
 from maasserver.preseed_network import (
     compose_curtin_network_config,
@@ -577,6 +578,10 @@ class TestBridgeNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
 
 class TestNetplan(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def _render_netplan_dict(self, node, source_routing=False):
         return NodeNetworkConfiguration(
             node, version=2, source_routing=source_routing

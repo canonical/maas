@@ -31,6 +31,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import MissingBootImage
 from maasserver.models import BootResource, Config, NodeKey, PackageRepository
+from maasserver.models import dnspublication as dnspublications_module
 from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.preseed import (
     compose_curtin_archive_config,
@@ -641,6 +642,10 @@ class TestNodeDeprecatedPreseedContext(
 ):
     """Test for `get_node_deprecated_preseed_context`."""
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
+
     def test_get_node_deprecated_preseed_context_contains_keys(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rack_controller
@@ -740,6 +745,10 @@ class TestRenderPreseed(BootImageHelperMixin, MAASServerTestCase):
         if not value.startswith("enlist")
     ]
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
+
     def test_render_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rack_controller
@@ -838,6 +847,10 @@ def _simulate_proxy(request, original_host, upstream_host, upstream_port):
 
 
 class TestComposeCurtinMAASReporter(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
+
     def load_reporter(self, preseeds):
         [reporter_yaml] = preseeds
         return yaml.safe_load(reporter_yaml)
@@ -950,6 +963,10 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
 
 
 class TestComposeCurtinCloudConfig(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
+
     def test_returns_curtin_cloud_config(self):
         preseeds = compose_curtin_cloud_config(
             make_HttpRequest(), factory.make_Node_with_Interface_on_Subnet()
@@ -1424,6 +1441,10 @@ class TestGetCurtinUserDataOS(BootImageHelperMixin, MAASServerTestCase):
 
 class TestCurtinUtilities(BootImageHelperMixin, MAASServerTestCase):
     """Tests for the curtin-related utilities."""
+
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
 
     def assertAptConfig(self, config, archive=None):
         if archive is None:
@@ -2210,6 +2231,10 @@ class TestPreseedMethods(BootImageHelperMixin, MAASTransactionServerTestCase):
 
     These tests check that the preseed templates render and 'look right'.
     """
+
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublications_module, "post_commit_do")
 
     def assertSystemInfo(self, config):
         system_info = config.get("system_info")
