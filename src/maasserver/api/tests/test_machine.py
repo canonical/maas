@@ -125,6 +125,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(node_module.Node, "_pc_power_control_node")
         self.patch(node_module.Node, "_temporal_deploy")
         self.patch(staticipaddress_module, "post_commit_do")
+        self.patch(dnspublication_module, "post_commit_do")
 
     def test_handler_path(self):
         self.assertEqual(

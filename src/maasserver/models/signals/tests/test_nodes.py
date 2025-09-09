@@ -164,6 +164,10 @@ class TestNodeCreateServices(MAASServerTestCase):
     or node_type changes.
     """
 
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_doesnt_create_services_for_machine(self):
         machine = factory.make_Node()
         services = Service.objects.filter(node=machine)

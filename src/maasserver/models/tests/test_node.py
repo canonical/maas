@@ -28,6 +28,7 @@ from twisted.internet.defer import succeed
 from twisted.internet.error import ConnectionDone
 import yaml
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.utils.network import inet_ntop
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -71,6 +72,7 @@ from maasserver.models import (
     Config,
     Controller,
     Device,
+    DNSPublication,
     Domain,
     Event,
     EventType,
@@ -857,6 +859,7 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         node_module.gethostname.return_value = hostname
         self.patch_autospec(node_module, "get_mac_addresses")
         node_module.get_mac_addresses.return_value = []
+        self.patch(dnspublication_module, "post_commit_do")
 
     def set_hostname_to_match(self, node):
         node_module.gethostname.return_value = node.hostname
@@ -6154,6 +6157,54 @@ class TestNode(MAASServerTestCase):
             task_queue="region",
         )
 
+    def test_save_creates_dnspublication_if_hostname_changes(self):
+        mock_create_for_config_update = self.patch(
+            DNSPublication.objects, "create_for_config_update"
+        )
+        node = factory.make_Node()
+        old_hostname = node.hostname
+        node.hostname = factory.make_name()
+
+        with post_commit_hooks:
+            node.save()
+
+        mock_create_for_config_update.assert_called_once_with(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {old_hostname} renamed to {node.hostname}",
+        )
+
+    def test_save_creates_dnspublication_if_boot_interface_changes(self):
+        mock_create_for_config_update = self.patch(
+            DNSPublication.objects, "create_for_config_update"
+        )
+        node = factory.make_Node()
+        interface = factory.make_Interface(node=node)
+        node.boot_interface = interface
+
+        with post_commit_hooks:
+            node.save()
+
+        mock_create_for_config_update.assert_called_once_with(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {node.hostname} changed boot interface to {interface.name}",
+        )
+
+    def test_save_creates_dnspublication_if_domain_changes(self):
+        node = factory.make_Node()
+        domain = factory.make_Domain()
+        node.domain = domain
+        mock_create_for_config_update = self.patch(
+            DNSPublication.objects, "create_for_config_update"
+        )
+
+        with post_commit_hooks:
+            node.save()
+
+        mock_create_for_config_update.assert_called_once_with(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {node.hostname} moved to zone {domain.name}",
+        )
+
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):
@@ -8590,6 +8641,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
 
 
 class TestGetGatewaysByPriority(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def assertGatewayPriorities(self, expected, actual):
         """Verifies the IPv4 and IPv6 gateways are in the correct order."""
         for expected_gw in expected:
@@ -9327,6 +9382,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.patch_autospec(
             node_module, "get_temporal_task_queue_for_bmc"
         ).return_value = ""
+        self.patch(dnspublication_module, "post_commit_do")
 
     def make_acquired_node_with_interface(
         self,
@@ -10475,6 +10531,7 @@ class TestNode_Stop(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
+        self.patch(dnspublication_module, "post_commit_do")
 
     def make_acquired_node_with_interface(
         self, user, bmc_connected_to=None, power_type="virsh"
@@ -10646,6 +10703,10 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
 
 class TestNode_PowerCycle(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def make_acquired_node_with_interface(
         self, user, bmc_connected_to=None, power_type="virsh"
     ):
@@ -11163,6 +11224,10 @@ class TestNode_Delete_With_Transactional_Events(MAASTransactionServerTestCase):
 
 
 class TestController(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_should_be_dynamically_deleted_false(self):
         rack = factory.make_RackController(status=NODE_STATUS.DEPLOYED)
         rack.bmc = factory.make_BMC()
@@ -11178,6 +11243,10 @@ class TestController(MAASServerTestCase):
 
 
 class TestControllerUpdateDiscoveryState(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(dnspublication_module, "post_commit_do")
+
     def test_calls_update_discovery_state_per_interface(self):
         controller = factory.make_RegionRackController()
         eth1 = factory.make_Interface(

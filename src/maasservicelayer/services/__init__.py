@@ -261,11 +261,17 @@ class ServiceCollectionV3:
             context=context,
             scriptresults_repository=ScriptResultsRepository(context),
         )
+        services.dnspublications = DNSPublicationsService(
+            context=context,
+            temporal_service=services.temporal,
+            dnspublication_repository=DNSPublicationRepository(context),
+        )
         services.nodes = NodesService(
             context=context,
             secrets_service=services.secrets,
             events_service=services.events,
             scriptresults_service=services.scriptresults,
+            dnspublications_service=services.dnspublications,
             nodes_repository=NodesRepository(context),
         )
         services.vmclusters = VmClustersService(
@@ -289,14 +295,10 @@ class ServiceCollectionV3:
             secrets_service=services.secrets,
             events_service=services.events,
             scriptresults_service=services.scriptresults,
+            dnspublications_service=services.dnspublications,
             machines_repository=MachinesRepository(context),
         )
         services.machines_v2 = MachinesV2Service(context=context)
-        services.dnspublications = DNSPublicationsService(
-            context=context,
-            temporal_service=services.temporal,
-            dnspublication_repository=DNSPublicationRepository(context),
-        )
         services.staticipaddress = StaticIPAddressService(
             context=context,
             temporal_service=services.temporal,

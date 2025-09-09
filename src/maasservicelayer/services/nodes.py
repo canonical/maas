@@ -1,6 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.events import EventTypeEnum
 from maascommon.enums.scriptresult import ScriptStatus
 from maascommon.node import (
@@ -18,6 +19,7 @@ from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.secrets import BMCPowerParametersSecret
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.secrets import SecretsService
@@ -30,12 +32,14 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
         secrets_service: SecretsService,
         events_service: EventsService,
         scriptresults_service: ScriptResultsService,
+        dnspublications_service: DNSPublicationsService,
         nodes_repository: AbstractNodesRepository,
     ):
         super().__init__(context, nodes_repository)
         self.secrets_service = secrets_service
         self.events_service = events_service
         self.scriptresults_service = scriptresults_service
+        self.dnspublications_service = dnspublications_service
 
     async def update_by_system_id(
         self, system_id: str, builder: NodeBuilder
@@ -116,3 +120,33 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
                 )
 
         return node
+
+    async def post_update_hook(
+        self, old_resource: Node, updated_resource: Node
+    ) -> None:
+        if old_resource.hostname != updated_resource.hostname:
+            await self.dnspublications_service.create_for_config_update(
+                action=DnsUpdateAction.RELOAD,
+                source=f"node {old_resource.hostname} renamed to {updated_resource.hostname}",
+            )
+
+        if (
+            old_resource.boot_interface_id
+            != updated_resource.boot_interface_id
+        ):
+            await self.dnspublications_service.create_for_config_update(
+                action=DnsUpdateAction.RELOAD,
+                source=f"node {updated_resource.hostname} changed boot interface",
+            )
+
+        if old_resource.domain_id != updated_resource.domain_id:
+            await self.dnspublications_service.create_for_config_update(
+                action=DnsUpdateAction.RELOAD,
+                source=f"node {updated_resource.hostname} changed zone",
+            )
+
+    async def post_delete_hook(self, resource: Node) -> None:
+        await self.dnspublications_service.create_for_config_update(
+            action=DnsUpdateAction.RELOAD,
+            source=f"node {resource.hostname} deleted",
+        )

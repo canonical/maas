@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult, MaasBaseModel
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.scriptresult import ScriptResultsService
@@ -30,6 +31,7 @@ class TestCommonMachinesService(ServiceCommonTests):
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=Mock(MachinesRepository),
+            dnspublications_service=Mock(DNSPublicationsService),
             events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
@@ -71,6 +73,7 @@ class TestMachinesService:
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
+            dnspublications_service=Mock(DNSPublicationsService),
             events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
@@ -92,6 +95,7 @@ class TestMachinesService:
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
+            dnspublications_service=Mock(DNSPublicationsService),
             events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
@@ -114,6 +118,7 @@ class TestMachinesService:
             context=Context(connection=Mock(AsyncConnection)),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
+            dnspublications_service=Mock(DNSPublicationsService),
             events_service=Mock(EventsService),
             scriptresults_service=Mock(ScriptResultsService),
         )
