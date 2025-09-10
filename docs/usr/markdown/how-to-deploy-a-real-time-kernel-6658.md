@@ -1,6 +1,6 @@
 Real-time (RT) kernels reduce latency for workloads where timing is critical, such as telecom, financial services, and robotics. MAAS can deploy RT kernels by combining Ubuntu Pro with cloud-init.
 
-The RT kernel is currently in Beta for Ubuntu 22.04 LTS (Jammy). General availability is coming soon.
+Learn more about [the Ubuntu RT kernel](https://documentation.ubuntu.com/real-time/latest/reference/releases/).
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ Before you begin, make sure you have:
 
 * A valid Ubuntu Pro subscription (the RT kernel is enabled through Ubuntu Pro).
    Find your token in the [Ubuntu Pro dashboard](https://ubuntu.com/pro/dashboard).
-* MAAS 3.2 or later with Ubuntu 22.04 LTS images available.
+* MAAS 3.2 or later with [one of these releases](https://documentation.ubuntu.com/real-time/latest/reference/releases/).
 * A machine that is already enlisted and commissioned in MAAS.
 * Internet access (offline installation is not supported).
 
@@ -31,11 +31,17 @@ The RT kernel is not built into MAAS images. Instead:
 
 2. Choose operating system
 
-   * Select Ubuntu 22.04 LTS (Jammy Jellyfish).
+   * Select [one of the valid kernels](https://documentation.ubuntu.com/real-time/latest/reference/releases/).
 
 3. Add cloud-init user-data
 
-   * Under *Cloud-init user-data*, paste one of the following snippets (depending on your cloud-init version).
+   * Under *Cloud-init user-data*, paste one of the following snippets (depending on your cloud-init version). 
+
+To check your `cloud-init` version:
+
+```bash
+cloud-init --version
+```
 
 For `cloud-init` ≥ 23.4:
 
