@@ -1,16 +1,16 @@
 MAAS supports custom images built with [Packer](https://developer.hashicorp.com/packer). These images allow you to deploy operating systems beyond the default Ubuntu set, and to customize Ubuntu images for your own environment.
 
-You can build images for a wide variety of operating systems, including Linux distributions, VMware ESXi, and Windows. The official [Packer MAAS repository](https://github.com/canonical/packer-maas) contains the authoritative templates, build instructions, and upload commands.
+You can build images for a wide variety of operating systems, including Linux distributions, VMware ESXi, and Windows. The [Packer MAAS repository](https://github.com/canonical/packer-maas) contains templates, build instructions, and upload commands.
 
 ## Supported operating systems
 
 The following operating systems already have working or in-progress templates in the [Packer MAAS repository](https://github.com/canonical/packer-maas#existing-templates):
 
-| Family        | Versions                   | Notes                   |
-|-------------------|--------------------------------|-----------------------------|
+| Family        | Versions                       | Notes                       |
+|---------------|--------------------------------|-----------------------------|
 | Ubuntu        | All current releases           | Stable templates available  |
 | RHEL          | 7, 8, 9, 10                    | Varying stability           |
-| Rocky         | 8, 9                           | Community-supported         |
+| Rocky         | 8, 9                           |                             |
 | SLES          | 12, 15, 16                     |                             |
 | Oracle Linux  | 8, 9                           | Alpha-stage support         |
 | CentOS        | 6, 7, 8, Stream 8/9            | Many versions now EOL       |
@@ -18,6 +18,8 @@ The following operating systems already have working or in-progress templates in
 | Fedora Server | 41, 42                         |                             |
 | VMware ESXi   | 6, 7, 8, 9                     |                             |
 | Windows       | 2016, 2019, 2022, 2025, 10, 11 | Evaluation ISOs recommended |
+
+All templates are community supported.
 
 > ⚠️ Note: Templates marked as *EOL* are for operating systems that no longer receive upstream support. They are not recommended for new deployments.
 
