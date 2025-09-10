@@ -2185,6 +2185,7 @@ class Node(CleanSave, TimestampedModel):
 
         if (
             self._updated
+            and self._previous_boot_interface_id is not None
             and self._previous_boot_interface_id != self.boot_interface_id
         ):
             DNSPublication.objects.create_for_config_update(
