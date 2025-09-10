@@ -292,6 +292,7 @@ class ImageSyncService(Service):
                 aiofiles.tempfile.NamedTemporaryFile() as tmp_keyring_file
             ):
                 await tmp_keyring_file.write(keyring_data)
+                await tmp_keyring_file.flush()
                 yield str(tmp_keyring_file.name)
         else:
             assert keyring_path is not None

@@ -4,6 +4,7 @@
 import json
 from unittest.mock import ANY, AsyncMock, call, Mock
 
+import aiofiles
 import pytest
 
 from maascommon.constants import (
@@ -587,15 +588,14 @@ class TestImageSyncService:
         assert proxy == expected
 
     async def test_get_keyring_file_writes_data(self, mocker) -> None:
-        # return a mocked file to assert that data has been written
-        mock_file = AsyncMock()
-        mocker.patch(
-            "aiofiles.tempfile._temporary_file"
-        ).return_value = mock_file
         async with self.service._get_keyring_file(
             keyring_path=None, keyring_data=b"abc123"
-        ):
-            mock_file.write.assert_called_once_with(b"abc123")
+        ) as keyring_path:
+            async with aiofiles.open(
+                keyring_path, "rb"
+            ) as written_keyring_file:
+                written_contents = await written_keyring_file.read()
+                assert written_contents == b"abc123"
 
     async def test_get_keyring_file_yields_keyring_path(self, mocker) -> None:
         mock_file = AsyncMock()
