@@ -321,6 +321,7 @@ maas $PROFILE tag update $TAG_NAME comment="$TAG_COMMENT"
 **CLI**
 ```
 # $PROFILE = your admin profile name
+#
 maas $PROFILE tags read | jq -r '(["tag_name","tag_comment"]
 |(.,map(length*"-"))),(.[]|[.name,.comment]) | @tsv' | column -t
 ```
@@ -367,7 +368,6 @@ maas $PROFILE vmhosts read | jq -r '(["vm_host_name","id"]
 #
 maas $PROFILE vmhost add-tag $VMHOST_ID tag=$TAG_NAME
 
-
 maas $PROFILE vmhost remove-tag $VMHOST_ID tag=$TAG_NAME
 
 maas $PROFILE vmhost read $VMHOST_ID | jq -r '(["name","id","tags"]
@@ -384,6 +384,8 @@ Filter will gradually winnow down to only those machines carrying the tags you p
 **CLI**
 ```
 # $PROFILE = your admin profile name
+# $TAG_NAME = name of tag to match
+#
 maas $PROFILE machines read | jq -r '.[] | select(.tags[]? == "TAG_NAME") | [.hostname,.system_id] | @tsv'
 ```
 
@@ -402,6 +404,9 @@ Notes are longer, persistent descriptions attached to a machine. They remain wit
 **CLI**
 ```
 # $PROFILE = your admin profile name
+# $SYSTEM_ID = system ID of machine to modify
+# $NOTE = updated note content
+#
 maas $PROFILE machines read | jq -r '(["hostname","system_id"]
 |(.,map(length*"-"))),(.[]|[.hostname,.system_id]) | @tsv' | column -t
 
@@ -416,6 +421,8 @@ maas $PROFILE machine update $SYSTEM_ID description="$NOTE"
 **CLI**
 ```
 # $PROFILE = your admin profile name
+# $SYSTEM_ID = system ID of machine to modify
+#
 maas $PROFILE machine update $SYSTEM_ID description=""
 ```
 
@@ -424,6 +431,7 @@ maas $PROFILE machine update $SYSTEM_ID description=""
 **CLI**
 ```
 # $PROFILE = your admin profile name
+#
 maas $PROFILE machines read | jq -r '.[] | select(.description != null and .description != "") | [.hostname,.system_id,.description] | @tsv'
 ```
 
@@ -438,6 +446,7 @@ Dynamic annotations are ephemeral, key–value metadata attached to machines. Th
 **CLI only**
 ```
 # $PROFILE = your admin profile name
+# 
 maas $PROFILE machines read | jq -r '(["hostname","system_id","status"]
 |(.,map(length*"-"))),(.[]|[.hostname,.system_id,.status_name]) | @tsv' | column -t
 ```
@@ -447,6 +456,8 @@ maas $PROFILE machines read | jq -r '(["hostname","system_id","status"]
 **CLI only**
 ```
 # $PROFILE = your admin profile name
+# $SYSTEM_ID = system ID of machine to be set
+# 
 maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=VALUE
 ```
 
@@ -455,7 +466,10 @@ maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=VALUE
 **CLI only**
 ```
 # $PROFILE = your admin profile name
-maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=NEW_VALUE
+# $SYSTEM_ID = system ID of machine to be updated
+# $NEW_VALUE = new text to update the annotation
+# 
+maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=$NEW_VALUE
 ```
 
 ### Remove an annotation
@@ -463,6 +477,8 @@ maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=NEW_VALUE
 **CLI only**
 ```
 # $PROFILE = your admin profile name
+# $SYSTEM_ID = system ID of machine to be updated
+#
 maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=""
 ```
 
@@ -471,6 +487,7 @@ maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=""
 **CLI only**
 ```
 # $PROFILE = your admin profile name
+#
 maas $PROFILE machines read | jq -r '(["hostname","system_id","owner_data"]
 |(.,map(length*"-"))),(.[]|[.hostname,.system_id,.owner_data]) | @tsv'
 ```
@@ -480,7 +497,9 @@ maas $PROFILE machines read | jq -r '(["hostname","system_id","owner_data"]
 **CLI only**
 ```
 # $PROFILE = your admin profile name
-maas $PROFILE machines read | jq -r '.[] | select(.owner_data.KEY == "VALUE") | [.hostname,.system_id] | @tsv'
+# $VALUE = search snippet to be located
+#
+maas $PROFILE machines read | jq -r '.[] | select(.owner_data.KEY == "$VALUE") | [.hostname,.system_id] | @tsv'
 ```
 
 ## Best practices: Choosing the right grouping tool
