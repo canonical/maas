@@ -1,14 +1,11 @@
-# How to deploy a FIPS-compliant kernel
+FIPS (Federal Information Processing Standards) compliance is required in many regulated industries, such as finance, government, and healthcare. Deploying a FIPS-enabled machine with MAAS allows you to run workloads that meet these strict security requirements.
 
-FIPS (Federal Information Processing Standards) compliance is required in many regulated industries, such as finance, government, and healthcare. Deploying a FIPS kernel through MAAS allows you to run workloads that meet these strict security requirements.
-
-This guide walks you through the steps to deploy an Ubuntu machine with a FIPS-compliant kernel.  
-The FIPS kernel comes with all [Ubuntu Pro](https://ubuntu.com/pro) subscriptions for Ubuntu 22.04 LTS.  
-There is also a [tutorial](https://ubuntu.com/tutorials/ubuntu-fips) on how to get access to the Ubuntu FIPS-compliant kernel.
+This guide walks you through the steps to deploy a FIPS-compliant Ubuntu machine.  
+FIPS packages come with all [Ubuntu Pro](https://ubuntu.com/pro) subscriptions for Ubuntu 22.04 LTS. You can check the [FIPS certification status](https://ubuntu.com/security/certifications/docs) for other versions of Ubuntu. There is also a [tutorial](https://ubuntu.com/tutorials/ubuntu-fips) on how to get access to the FIPS-compliant Ubuntu packages.
 
 ## How FIPS deployment works
 
-The FIPS kernel isn’t directly integrated into MAAS. Instead:
+This is the sequence of steps required to enable FIPS during deployment:
 
 1. MAAS deploys a machine with Ubuntu 22.04 LTS and a generic kernel.  
 2. The machine reboots.  
@@ -16,7 +13,7 @@ The FIPS kernel isn’t directly integrated into MAAS. Instead:
 4. The host requests configuration data from MAAS.  
 5. MAAS sends a cloud-init configuration to the host.  
 6. Cloud-init activates Ubuntu Pro.  
-7. The Ubuntu Pro agent installs the FIPS kernel.  
+7. The Ubuntu Pro agent installs the FIPS boot assets, kernel and other packages. 
 8. Another reboot enables the new kernel.  
 9. The system is ready for use.  
 
@@ -29,7 +26,7 @@ Be aware that after MAAS marks the machine as DEPLOYED, there will be a short de
 - A host compatible with the Ubuntu FIPS-compliant kernel.  
 - An internet connection (offline installation is not supported).  
 
-## Deploy a FIPS kernel
+## Deploy a FIPS-enabled machine
 
 Perform these steps in the MAAS UI:
 
@@ -40,7 +37,14 @@ Perform these steps in the MAAS UI:
    Select *Cloud-init user-data* and use one of the following templates.  
    Replace `<ubuntu_pro_token>` with your valid token.  
 
-### For `cloud-init` >= 24.1
+### Configure cloud-init
+
+You can confirm the version of `cloud-init` supported by your machine with this command:
+```bash
+cloud-init --version
+```
+
+#### For `cloud-init` >= 24.1
 ```yaml
 #cloud-config
 ubuntu_pro:
@@ -49,7 +53,7 @@ enable:
 - fips-updates
 ```
 
-### For `cloud-init` < 24.1
+#### For `cloud-init` < 24.1
 
 ```yaml
 #cloud-config
