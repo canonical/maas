@@ -132,6 +132,7 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
 
         if (
             old_resource.boot_interface_id
+            and old_resource.boot_interface_id
             != updated_resource.boot_interface_id
         ):
             await self.dnspublications_service.create_for_config_update(

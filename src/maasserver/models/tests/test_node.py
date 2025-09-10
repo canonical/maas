@@ -6174,19 +6174,28 @@ class TestNode(MAASServerTestCase):
         )
 
     def test_save_creates_dnspublication_if_boot_interface_changes(self):
+        node = factory.make_Node()
+        interface1 = factory.make_Interface(node=node)
+        interface2 = factory.make_Interface(node=node)
+        node.boot_interface = interface1
+
         mock_create_for_config_update = self.patch(
             DNSPublication.objects, "create_for_config_update"
         )
-        node = factory.make_Node()
-        interface = factory.make_Interface(node=node)
-        node.boot_interface = interface
+
+        with post_commit_hooks:
+            node.save()
+
+        mock_create_for_config_update.assert_not_called()
+
+        node.boot_interface = interface2
 
         with post_commit_hooks:
             node.save()
 
         mock_create_for_config_update.assert_called_once_with(
             action=DnsUpdateAction.RELOAD,
-            source=f"node {node.hostname} changed boot interface to {interface.name}",
+            source=f"node {node.hostname} changed boot interface to {interface2.name}",
         )
 
     def test_save_creates_dnspublication_if_domain_changes(self):
