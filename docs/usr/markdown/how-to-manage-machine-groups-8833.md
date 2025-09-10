@@ -11,6 +11,10 @@ Availability zones (AZs) help you group machines for any desired purposes that d
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+# $ZONE_NAME = name of the zone to create
+# $ZONE_DESCRIPTION = description of the new zone
+#
 maas $PROFILE zones create name=$ZONE_NAME description=$ZONE_DESCRIPTION
 ```
 
@@ -21,6 +25,10 @@ maas $PROFILE zones create name=$ZONE_NAME description=$ZONE_DESCRIPTION
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+# $OLD_ZONE_NAME = current name of zone to be updated
+# $NEW_ZONE_NAME = updated zone name, if applicable
+# $ZONE_DESCRIPTION = updated zone description, if applicable
 maas $PROFILE zone update $OLD_ZONE_NAME name=$NEW_ZONE_NAME \
 description=$ZONE_DESCRIPTION
 ```
@@ -32,6 +40,9 @@ description=$ZONE_DESCRIPTION
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+# $ZONE_NAME = name of zone to delete
+#
 maas $PROFILE zone delete $ZONE_NAME
 ```
 
@@ -42,6 +53,8 @@ maas $PROFILE zone delete $ZONE_NAME
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+#
 maas $PROFILE zones read \
 | jq -r '(["ZONE","NAME","DESCRIPTION"]
 | (., map(length*"-"))), (.[] | [.id, .name, .description])
@@ -71,12 +84,18 @@ ZONE  NAME         DESCRIPTION
 
 First, find the machine's system ID:
 ```sh
+# $PROFILE = your admin profile name
+# 
 maas $PROFILE machines read | jq '.[] | .hostname, .system_id'
 ```
 
 Then assign it to a zone:
 ```sh
-maas admin machine update $SYSTEM_ID zone=$ZONE_NAME
+# $PROFILE = your admin profile name
+# $SYSTEM_ID = system ID of machine to assign
+# $ZONE_NAME = zone to which machine should be assigned
+# 
+maas $PROFILE machine update $SYSTEM_ID zone=$ZONE_NAME
 ```
 
 ### Find machines that belong to an availability zone
@@ -88,7 +107,10 @@ Use the filter at the top of the table to select the desired Zone. The list upda
 
 **CLI**
 ```sh
-maas $PROFILE machines read | jq -r '.[] | select(.zone == "ZONE_NAME") | [.hostname, .system_id] | @tsv'
+# $PROFILE = your admin profile name
+# $ZONE_NAME = desired zone you want to view
+#
+maas $PROFILE machines read zone=$ZONE_NAME
 ```
 
 This returns a list of all machines currently assigned to that availability zone.
@@ -106,6 +128,10 @@ Resource pools allow you to group machines for access control and organizational
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+# $POOL_NAME = name of new resource pool
+# $POOL_DESCRIPTION = description of new pool
+#
 maas $PROFILE resource-pools create name=$POOL_NAME description=$POOL_DESCRIPTION
 ```
 
@@ -116,6 +142,11 @@ Select *Pools* > [pool to edit] > *Edit* > update *Name* and/or *Description* > 
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+# $POOL_ID = ID of pool to update
+# $NEW_NAME = updated name of pool
+# $NEW_DESCRIPTION = updated description of this pool 
+#
 maas $PROFILE resource-pool update $POOL_ID name=$NEW_NAME description=$NEW_DESCRIPTION
 ```
 
@@ -126,6 +157,9 @@ maas $PROFILE resource-pool update $POOL_ID name=$NEW_NAME description=$NEW_DESC
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+# $POOL_ID = ID of pool to delete
+#
 maas $PROFILE resource-pool delete $POOL_ID
 ```
 
@@ -136,6 +170,8 @@ maas $PROFILE resource-pool delete $POOL_ID
 
 **CLI**
 ```sh
+# $PROFILE = your admin profile name
+#
 maas $PROFILE resource-pools read \
 | jq -r '(["ID","NAME","DESCRIPTION"]
 | (., map(length*"-"))), (.[] | [.id, .name, .description])
@@ -160,12 +196,18 @@ ID  NAME        DESCRIPTION
 First, find the machine’s system ID:
 
 ```sh
+# $PROFILE = your admin profile name
+#
 maas $PROFILE machines read | jq '.[] | .hostname, .system_id'
 ```
 
 Then assign it to a pool:
 
 ```sh
+# $PROFILE = your admin profile name
+# $SYSTEM_ID = system ID of machine being assigned
+# $POOL_ID = pool to which to assign the machine
+#
 maas $PROFILE machine update $SYSTEM_ID pool=$POOL_ID
 ```
 
@@ -175,11 +217,14 @@ maas $PROFILE machine update $SYSTEM_ID pool=$POOL_ID
 
 From the main menu, select *Machines*.
 
-Use the filter at the top of the table to select the desired Pool.  The list updates to show only machines in matching pools..
+Use the filter at the top of the table to select the desired Pool.  The list updates to show only machines in matching pools.
 
 **CLI**
 ```sh
-maas $PROFILE machines read | jq -r '.[] | select(.pool.id == POOL_ID) | [.hostname, .system_id] | @tsv'
+# $PROFILE = your admin profile name
+# $POOL_NAME = desired pool you want to view
+#
+maas $PROFILE machines read pool=$POOL_NAME
 ```
 
 ## Manage tags in MAAS
@@ -199,6 +244,10 @@ Tags are persistent labels that remain associated with machines until you remove
 
 **Cli**
 ```
+# $PROFILE = your admin profile name
+# $TAG_NAME = name of the newly-created tag
+# $TAG_COMMENT = comment to associate with the tag
+#
 maas $PROFILE tags create name=$TAG_NAME comment="$TAG_COMMENT"
 ```
 
@@ -209,6 +258,11 @@ maas $PROFILE tags create name=$TAG_NAME comment="$TAG_COMMENT"
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
+# $TAG_NAME = name for new kernel option tag
+# $TAG_COMMENT = comment to associate with the tag
+# $KERNEL_OPTIONS = kernel options for the tag to carry to machines with this tag
+#
 maas $PROFILE tags create name="$TAG_NAME"     comment="$TAG_COMMENT" kernel_opts="$KERNEL_OPTIONS"
 ```
 
@@ -222,6 +276,10 @@ maas $PROFILE tags create name="$TAG_NAME"     comment="$TAG_COMMENT" kernel_opt
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
+# $SYSTEM_ID = machine to which tag should be assigned
+# $TAG_NAME = tag to be assigned
+#
 maas $PROFILE machines read | jq '.[] | .hostname, .system_id'
 maas $PROFILE machine update $SYSTEM_ID tags=$TAG_NAME
 ```
@@ -235,6 +293,9 @@ maas $PROFILE machine update $SYSTEM_ID tags=$TAG_NAME
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
+# $TAG_NAME = name of tag to be removed
+#
 maas $PROFILE tag delete $TAG_NAME
 ```
 
@@ -245,6 +306,10 @@ maas $PROFILE tag delete $TAG_NAME
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
+# $TAG_NAME = tag to be updated
+# $TAG_COMMENT = updated tag comment
+#
 maas $PROFILE tag update $TAG_NAME comment="$TAG_COMMENT"
 ```
 
@@ -255,6 +320,7 @@ maas $PROFILE tag update $TAG_NAME comment="$TAG_COMMENT"
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE tags read | jq -r '(["tag_name","tag_comment"]
 |(.,map(length*"-"))),(.[]|[.name,.comment]) | @tsv' | column -t
 ```
@@ -263,6 +329,9 @@ maas $PROFILE tags read | jq -r '(["tag_name","tag_comment"]
 
 **CLI only**
 ```
+# $PROFILE = your admin profile name
+# $TAG_NAME = tag to be rebuilt
+#
 maas $PROFILE tag rebuild $TAG_NAME
 ```
 
@@ -288,10 +357,17 @@ maas $PROFILE tag rebuild $TAG_NAME
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
+#
 maas $PROFILE vmhosts read | jq -r '(["vm_host_name","id"]
 |(.,map(length*"-"))),(.[]|[.name,.id]) | @tsv' | column -t
 
+# $VMHOST_ID = ID of VM host to which tag is added
+# $TAG_NAME = tag to be added
+#
 maas $PROFILE vmhost add-tag $VMHOST_ID tag=$TAG_NAME
+
+
 maas $PROFILE vmhost remove-tag $VMHOST_ID tag=$TAG_NAME
 
 maas $PROFILE vmhost read $VMHOST_ID | jq -r '(["name","id","tags"]
@@ -307,6 +383,7 @@ Filter will gradually winnow down to only those machines carrying the tags you p
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE machines read | jq -r '.[] | select(.tags[]? == "TAG_NAME") | [.hostname,.system_id] | @tsv'
 ```
 
@@ -324,6 +401,7 @@ Notes are longer, persistent descriptions attached to a machine. They remain wit
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE machines read | jq -r '(["hostname","system_id"]
 |(.,map(length*"-"))),(.[]|[.hostname,.system_id]) | @tsv' | column -t
 
@@ -337,6 +415,7 @@ maas $PROFILE machine update $SYSTEM_ID description="$NOTE"
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE machine update $SYSTEM_ID description=""
 ```
 
@@ -344,6 +423,7 @@ maas $PROFILE machine update $SYSTEM_ID description=""
 
 **CLI**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE machines read | jq -r '.[] | select(.description != null and .description != "") | [.hostname,.system_id,.description] | @tsv'
 ```
 
@@ -357,6 +437,7 @@ Dynamic annotations are ephemeral, key–value metadata attached to machines. Th
 
 **CLI only**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE machines read | jq -r '(["hostname","system_id","status"]
 |(.,map(length*"-"))),(.[]|[.hostname,.system_id,.status_name]) | @tsv' | column -t
 ```
@@ -365,27 +446,31 @@ maas $PROFILE machines read | jq -r '(["hostname","system_id","status"]
 
 **CLI only**
 ```
-maas $PROFILE machine set-owner-data $SYSTEM_ID KEY=VALUE
+# $PROFILE = your admin profile name
+maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=VALUE
 ```
 
 ### Update an annotation
 
 **CLI only**
 ```
-maas $PROFILE machine set-owner-data $SYSTEM_ID KEY=NEW_VALUE
+# $PROFILE = your admin profile name
+maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=NEW_VALUE
 ```
 
 ### Remove an annotation
 
 **CLI only**
 ```
-maas $PROFILE machine set-owner-data $SYSTEM_ID KEY=""
+# $PROFILE = your admin profile name
+maas $PROFILE machine set-workload-annotations $SYSTEM_ID KEY=""
 ```
 
 ### List annotations
 
 **CLI only**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE machines read | jq -r '(["hostname","system_id","owner_data"]
 |(.,map(length*"-"))),(.[]|[.hostname,.system_id,.owner_data]) | @tsv'
 ```
@@ -394,6 +479,7 @@ maas $PROFILE machines read | jq -r '(["hostname","system_id","owner_data"]
 
 **CLI only**
 ```
+# $PROFILE = your admin profile name
 maas $PROFILE machines read | jq -r '.[] | select(.owner_data.KEY == "VALUE") | [.hostname,.system_id] | @tsv'
 ```
 
