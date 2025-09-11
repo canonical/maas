@@ -3,8 +3,8 @@
 
 """Add columns to bootsource
 
-Revision ID: 0002
-Revises: 0001
+Revision ID: 0005
+Revises: 0004
 Create Date: 2025-06-24 11:16:07.410600+00:00
 
 """
@@ -15,8 +15,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision: str = "0002"
-down_revision: str | None = "0001"
+revision: str = "0005"
+down_revision: str | None = "0004"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

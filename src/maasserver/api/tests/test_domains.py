@@ -78,7 +78,6 @@ class TestDomainsAPI(APITestCase.ForUser):
         )
 
     def test_can_set_serial(self):
-        zone_serial.create_if_not_exists()
         self.become_admin()
         uri = get_domains_uri()
         serial = random.randint(1, INT_MAX)
@@ -93,7 +92,6 @@ class TestDomainsAPI(APITestCase.ForUser):
         self.assertEqual(serial + 1, next(zone_serial))
 
     def test_set_serial_rejects_serials_less_than_1(self):
-        zone_serial.create_if_not_exists()
         self.become_admin()
         uri = get_domains_uri()
         # A serial of 1 is fine.
@@ -108,7 +106,6 @@ class TestDomainsAPI(APITestCase.ForUser):
         )
 
     def test_set_serial_rejects_serials_greater_than_4294967295(self):
-        zone_serial.create_if_not_exists()
         self.become_admin()
         uri = get_domains_uri()
         # A serial of 4294967295 is fine.

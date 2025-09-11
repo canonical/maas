@@ -71,51 +71,6 @@ $$;
 
 
 --
--- Name: config_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.config_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('config_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: config_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.config_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('config_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: config_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.config_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('config_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: consumer_token_update_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -155,17 +110,25 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -188,17 +151,25 @@ BEGIN
   WHERE id = OLD.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -221,17 +192,25 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -634,15 +613,17 @@ BEGIN
   FOR node IN (
     SELECT DISTINCT ON (maasserver_node.id)
       system_id, node_type, parent_id
-    FROM
-      maasserver_node,
-      maasserver_fabric,
-      maasserver_interface,
-      maasserver_vlan
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_interface
+      ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+    JOIN maasserver_vlan
+      ON maasserver_vlan.id = maasserver_interface.vlan_id
+    JOIN maasserver_fabric
+      ON maasserver_vlan.fabric_id = maasserver_fabric.id
     WHERE maasserver_fabric.id = NEW.id
-    AND maasserver_vlan.fabric_id = maasserver_fabric.id
-    AND maasserver_node.id = maasserver_interface.node_id
-    AND maasserver_vlan.id = maasserver_interface.vlan_id)
+  )
   LOOP
     IF node.node_type = 0 THEN
       PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -678,6 +659,22 @@ $$;
 
 
 --
+-- Name: gen_random_prefix(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.gen_random_prefix() RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    result text;
+BEGIN
+    result := md5(random()::text);
+    RETURN result;
+END;
+$$;
+
+
+--
 -- Name: interface_pod_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -685,38 +682,56 @@ CREATE FUNCTION public.interface_pod_notify() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    _pod_id integer;
+    _node_id BIGINT;
+    _pod_id BIGINT;
 BEGIN
     IF TG_OP = 'INSERT' then
-        SELECT INTO _pod_id pod_id FROM maasserver_podhost
-            WHERE NEW.node_id = node_id;
+        SELECT INTO _pod_id pod_id
+        FROM maasserver_podhost
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+        WHERE maasserver_nodeconfig.id = NEW.node_config_id;
+
         IF _pod_id IS NOT NULL then
-            PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-         END IF;
+          PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+        END IF;
     ELSIF TG_OP = 'UPDATE' then
         IF OLD.vlan_id IS NOT DISTINCT FROM NEW.vlan_id
-            AND OLD.node_id IS NOT DISTINCT FROM NEW.node_id then
+            AND OLD.node_config_id IS NOT DISTINCT FROM NEW.node_config_id then
             -- Nothing relevant changed during interface update.
             RETURN NULL;
         END IF;
-        SELECT INTO _pod_id pod_id FROM maasserver_podhost
-            WHERE NEW.node_id = node_id;
+
+        SELECT INTO _pod_id pod_id
+        FROM maasserver_podhost
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+        WHERE maasserver_nodeconfig.id = NEW.node_config_id;
+
         IF _pod_id IS NOT NULL then
+          PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+        END IF;
+        IF OLD.node_config_id != NEW.node_config_id then
+          SELECT INTO _pod_id pod_id
+          FROM maasserver_podhost
+          JOIN maasserver_nodeconfig
+            ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+          WHERE maasserver_nodeconfig.id = OLD.node_config_id;
+
+          IF _pod_id IS NOT NULL then
             PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-         END IF;
-        IF OLD.node_id != NEW.node_id then
-            SELECT INTO _pod_id pod_id FROM maasserver_podhost
-                WHERE OLD.node_id = node_id;
-            IF _pod_id IS NOT NULL then
-                PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-            END IF;
+          END IF;
         END IF;
     ELSE
-        SELECT INTO _pod_id pod_id FROM maasserver_podhost
-            WHERE OLD.node_id = node_id;
+        SELECT INTO _pod_id pod_id
+        FROM maasserver_podhost
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+        WHERE maasserver_nodeconfig.id = OLD.node_config_id;
+
         IF _pod_id IS NOT NULL then
-            PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-         END IF;
+          PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+        END IF;
     END IF;
     RETURN NULL;
 END;
@@ -739,10 +754,12 @@ BEGIN
     FROM maasserver_staticipaddress AS staticipaddress
     LEFT JOIN (
       maasserver_interface_ip_addresses AS iia
-      JOIN maasserver_interface AS interface ON
-        iia.interface_id = interface.id
-      JOIN maasserver_node AS node ON
-        node.id = interface.node_id) ON
+      JOIN maasserver_interface AS interface
+        ON iia.interface_id = interface.id
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.id = interface.node_config_id
+      JOIN maasserver_node AS node
+        ON node.id = maasserver_nodeconfig.node_id) ON
       iia.staticipaddress_id = staticipaddress.id
     LEFT JOIN (
       maasserver_dnsresource_ip_addresses AS dia
@@ -776,10 +793,12 @@ BEGIN
     FROM maasserver_staticipaddress AS staticipaddress
     LEFT JOIN (
       maasserver_interface_ip_addresses AS iia
-      JOIN maasserver_interface AS interface ON
-        iia.interface_id = interface.id
-      JOIN maasserver_node AS node ON
-        node.id = interface.node_id) ON
+      JOIN maasserver_interface AS interface
+        ON iia.interface_id = interface.id
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.id = interface.node_config_id
+      JOIN maasserver_node AS node
+        ON node.id = maasserver_nodeconfig.node_id) ON
       iia.staticipaddress_id = staticipaddress.id
     LEFT JOIN (
       maasserver_dnsresource_ip_addresses AS dia
@@ -816,10 +835,12 @@ BEGIN
       FROM maasserver_staticipaddress AS staticipaddress
       LEFT JOIN (
         maasserver_interface_ip_addresses AS iia
-        JOIN maasserver_interface AS interface ON
-          iia.interface_id = interface.id
-        JOIN maasserver_node AS node ON
-          node.id = interface.node_id) ON
+        JOIN maasserver_interface AS interface
+          ON iia.interface_id = interface.id
+        JOIN maasserver_nodeconfig AS nodeconfig
+          ON interface.node_config_id = nodeconfig.id
+        JOIN maasserver_node AS node
+          ON node.id = nodeconfig.node_id) ON
         iia.staticipaddress_id = staticipaddress.id
       LEFT JOIN (
         maasserver_dnsresource_ip_addresses AS dia
@@ -852,13 +873,15 @@ BEGIN
   FOR node IN (
     SELECT DISTINCT ON (maasserver_node.id)
       system_id, node_type, parent_id
-    FROM
-      maasserver_node,
-      maasserver_interface,
-      maasserver_interface_ip_addresses AS ip_link
-    WHERE ip_link.staticipaddress_id = NEW.id
-    AND ip_link.interface_id = maasserver_interface.id
-    AND maasserver_node.id = maasserver_interface.node_id)
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_interface
+      ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+    JOIN maasserver_interface_ip_addresses
+      ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id
+    WHERE maasserver_interface_ip_addresses.staticipaddress_id = NEW.id
+  )
   LOOP
     IF node.node_type = 0 THEN
       PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1121,17 +1144,18 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('controller_update', CAST(node.system_id AS text));
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(pnode.system_id AS text));
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('device_update', CAST(node.system_id AS text));
   END IF;
+  PERFORM pg_notify('tag_update', CAST(NEW.tag_id AS text));
   RETURN NEW;
 END;
 $$;
@@ -1153,17 +1177,18 @@ BEGIN
   WHERE id = OLD.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('controller_update', CAST(node.system_id AS text));
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(pnode.system_id AS text));
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('device_update', CAST(node.system_id AS text));
   END IF;
+  PERFORM pg_notify('tag_update', CAST(OLD.tag_id AS text));
   RETURN NEW;
 END;
 $$;
@@ -1197,7 +1222,9 @@ DECLARE
 BEGIN
   SELECT system_id, node_type, parent_id INTO node
   FROM maasserver_node
-  WHERE id = NEW.node_id;
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  WHERE maasserver_nodeconfig.id = NEW.node_config_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1230,7 +1257,9 @@ DECLARE
 BEGIN
   SELECT system_id, node_type, parent_id INTO node
   FROM maasserver_node
-  WHERE id = OLD.node_id;
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  WHERE maasserver_nodeconfig.id = OLD.node_config_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1263,7 +1292,9 @@ DECLARE
 BEGIN
   SELECT system_id, node_type, parent_id INTO node
   FROM maasserver_node
-  WHERE id = NEW.node_id;
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  WHERE maasserver_nodeconfig.id = NEW.node_config_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1294,20 +1325,21 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partition,
-       maasserver_partitiontable,
-       maasserver_filesystem
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id =
-      maasserver_partition.partition_table_id
-  AND maasserver_partition.id = maasserver_filesystem.partition_id
-  AND maasserver_filesystem.cache_set_id = NEW.id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  JOIN maasserver_partition
+    ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+  JOIN maasserver_filesystem
+    ON maasserver_filesystem.partition_id = maasserver_partition.id
+  WHERE maasserver_filesystem.cache_set_id = NEW.id;
 
   IF node.node_type = 0 THEN
-      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1325,20 +1357,21 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partition,
-       maasserver_partitiontable,
-       maasserver_filesystem
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id =
-      maasserver_partition.partition_table_id
-  AND maasserver_partition.id = maasserver_filesystem.partition_id
-  AND maasserver_filesystem.cache_set_id = OLD.id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  JOIN maasserver_partition
+    ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+  JOIN maasserver_filesystem
+    ON maasserver_filesystem.partition_id = maasserver_partition.id
+  WHERE maasserver_filesystem.cache_set_id = OLD.id;
 
   IF node.node_type = 0 THEN
-      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1356,20 +1389,21 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partition,
-       maasserver_partitiontable,
-       maasserver_filesystem
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id =
-      maasserver_partition.partition_table_id
-  AND maasserver_partition.id = maasserver_filesystem.partition_id
-  AND maasserver_filesystem.cache_set_id = NEW.id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  JOIN maasserver_partition
+    ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+  JOIN maasserver_filesystem
+    ON maasserver_filesystem.partition_id = maasserver_partition.id
+  WHERE maasserver_filesystem.cache_set_id = NEW.id;
 
   IF node.node_type = 0 THEN
-      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1389,28 +1423,31 @@ BEGIN
   IF NEW.block_device_id IS NOT NULL
   THEN
     SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice
-     WHERE maasserver_node.id = maasserver_blockdevice.node_id
-       AND maasserver_blockdevice.id = NEW.block_device_id;
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_blockdevice
+      ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+    WHERE maasserver_blockdevice.id = NEW.block_device_id;
   ELSIF NEW.partition_id IS NOT NULL
   THEN
     SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice,
-           maasserver_partition,
-           maasserver_partitiontable
-     WHERE maasserver_node.id = maasserver_blockdevice.node_id
-       AND maasserver_blockdevice.id =
-           maasserver_partitiontable.block_device_id
-       AND maasserver_partitiontable.id =
-           maasserver_partition.partition_table_id
-       AND maasserver_partition.id = NEW.partition_id;
-  ELSIF NEW.node_id IS NOT NULL
-  THEN
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_blockdevice
+      ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+    JOIN maasserver_partitiontable
+      ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+    JOIN maasserver_partition
+      ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+    WHERE maasserver_partition.id = NEW.partition_id;
+  ELSE
     SELECT system_id, node_type INTO node
-      FROM maasserver_node
-     WHERE maasserver_node.id = NEW.node_id;
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    WHERE NEW.node_config_id = maasserver_nodeconfig.id;
   END IF;
 
   IF node.node_type = 0 THEN
@@ -1435,28 +1472,31 @@ BEGIN
   IF OLD.block_device_id IS NOT NULL
   THEN
     SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice
-     WHERE maasserver_node.id = maasserver_blockdevice.node_id
-       AND maasserver_blockdevice.id = OLD.block_device_id;
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_blockdevice
+      ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+    WHERE maasserver_blockdevice.id = OLD.block_device_id;
   ELSIF OLD.partition_id IS NOT NULL
   THEN
     SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice,
-           maasserver_partition,
-           maasserver_partitiontable
-     WHERE maasserver_node.id = maasserver_blockdevice.node_id
-       AND maasserver_blockdevice.id =
-           maasserver_partitiontable.block_device_id
-       AND maasserver_partitiontable.id =
-           maasserver_partition.partition_table_id
-       AND maasserver_partition.id = OLD.partition_id;
-  ELSIF OLD.node_id IS NOT NULL
-  THEN
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_blockdevice
+      ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+    JOIN maasserver_partitiontable
+      ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+    JOIN maasserver_partition
+      ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+    WHERE maasserver_partition.id = OLD.partition_id;
+  ELSE
     SELECT system_id, node_type INTO node
-      FROM maasserver_node
-     WHERE maasserver_node.id = OLD.node_id;
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    WHERE OLD.node_config_id = maasserver_nodeconfig.id;
   END IF;
 
   IF node.node_type = 0 THEN
@@ -1481,28 +1521,31 @@ BEGIN
   IF NEW.block_device_id IS NOT NULL
   THEN
     SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice
-     WHERE maasserver_node.id = maasserver_blockdevice.node_id
-       AND maasserver_blockdevice.id = NEW.block_device_id;
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_blockdevice
+      ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+    WHERE maasserver_blockdevice.id = NEW.block_device_id;
   ELSIF NEW.partition_id IS NOT NULL
   THEN
     SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice,
-           maasserver_partition,
-           maasserver_partitiontable
-     WHERE maasserver_node.id = maasserver_blockdevice.node_id
-       AND maasserver_blockdevice.id =
-           maasserver_partitiontable.block_device_id
-       AND maasserver_partitiontable.id =
-           maasserver_partition.partition_table_id
-       AND maasserver_partition.id = NEW.partition_id;
-  ELSIF NEW.node_id IS NOT NULL
-  THEN
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_blockdevice
+      ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+    JOIN maasserver_partitiontable
+      ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+    JOIN maasserver_partition
+      ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+    WHERE maasserver_partition.id = NEW.partition_id;
+  ELSE
     SELECT system_id, node_type INTO node
-      FROM maasserver_node
-     WHERE maasserver_node.id = NEW.node_id;
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    WHERE NEW.node_config_id = maasserver_nodeconfig.id;
   END IF;
 
   IF node.node_type = 0 THEN
@@ -1525,21 +1568,22 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partition,
-       maasserver_partitiontable,
-       maasserver_filesystem
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id =
-      maasserver_partition.partition_table_id
-  AND maasserver_partition.id = maasserver_filesystem.partition_id
-  AND (maasserver_filesystem.filesystem_group_id = NEW.id
-      OR maasserver_filesystem.cache_set_id = NEW.cache_set_id);
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  JOIN maasserver_partition
+    ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+  JOIN maasserver_filesystem
+    ON maasserver_filesystem.partition_id = maasserver_partition.id
+  WHERE maasserver_filesystem.filesystem_group_id = NEW.id
+    OR maasserver_filesystem.cache_set_id = NEW.cache_set_id;
 
   IF node.node_type = 0 THEN
-      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1557,21 +1601,22 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partition,
-       maasserver_partitiontable,
-       maasserver_filesystem
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id =
-      maasserver_partition.partition_table_id
-  AND maasserver_partition.id = maasserver_filesystem.partition_id
-  AND (maasserver_filesystem.filesystem_group_id = OLD.id
-      OR maasserver_filesystem.cache_set_id = OLD.cache_set_id);
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  JOIN maasserver_partition
+    ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+  JOIN maasserver_filesystem
+    ON maasserver_filesystem.partition_id = maasserver_partition.id
+  WHERE maasserver_filesystem.filesystem_group_id = OLD.id
+    OR maasserver_filesystem.cache_set_id = OLD.cache_set_id;
 
   IF node.node_type = 0 THEN
-      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1589,21 +1634,22 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partition,
-       maasserver_partitiontable,
-       maasserver_filesystem
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id =
-      maasserver_partition.partition_table_id
-  AND maasserver_partition.id = maasserver_filesystem.partition_id
-  AND (maasserver_filesystem.filesystem_group_id = NEW.id
-      OR maasserver_filesystem.cache_set_id = NEW.cache_set_id);
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  JOIN maasserver_partition
+    ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+  JOIN maasserver_filesystem
+    ON maasserver_filesystem.partition_id = maasserver_partition.id
+  WHERE maasserver_filesystem.filesystem_group_id = NEW.id
+    OR maasserver_filesystem.cache_set_id = NEW.cache_set_id;
 
   IF node.node_type = 0 THEN
-      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1623,7 +1669,9 @@ DECLARE
 BEGIN
   SELECT system_id, node_type, parent_id INTO node
   FROM maasserver_node
-  WHERE id = NEW.node_id;
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  WHERE maasserver_nodeconfig.id = NEW.node_config_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1656,7 +1704,9 @@ DECLARE
 BEGIN
   SELECT system_id, node_type, parent_id INTO node
   FROM maasserver_node
-  WHERE id = OLD.node_id;
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  WHERE maasserver_nodeconfig.id = OLD.node_config_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1687,10 +1737,12 @@ DECLARE
   node RECORD;
   pnode RECORD;
 BEGIN
-  IF OLD.node_id != NEW.node_id THEN
+  IF OLD.node_config_id != NEW.node_config_id THEN
     SELECT system_id, node_type, parent_id INTO node
     FROM maasserver_node
-    WHERE id = OLD.node_id;
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    WHERE maasserver_nodeconfig.id = OLD.node_config_id;
 
     IF node.node_type = 0 THEN
       PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1708,7 +1760,9 @@ BEGIN
 
   SELECT system_id, node_type, parent_id INTO node
   FROM maasserver_node
-  WHERE id = NEW.node_id;
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  WHERE maasserver_nodeconfig.id = NEW.node_config_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1738,15 +1792,17 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partitiontable
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id = NEW.partition_table_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  WHERE maasserver_partitiontable.id = NEW.partition_table_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1764,15 +1820,17 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partitiontable
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id = OLD.partition_table_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  WHERE maasserver_partitiontable.id = OLD.partition_table_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1790,15 +1848,17 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node,
-       maasserver_blockdevice,
-       maasserver_partitiontable
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-  AND maasserver_partitiontable.id = NEW.partition_table_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  JOIN maasserver_partitiontable
+    ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+  WHERE maasserver_partitiontable.id = NEW.partition_table_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1816,12 +1876,15 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node, maasserver_blockdevice
-    WHERE maasserver_node.id = maasserver_blockdevice.node_id
-    AND maasserver_blockdevice.id = NEW.block_device_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  WHERE maasserver_blockdevice.id = NEW.block_device_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1839,12 +1902,15 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node, maasserver_blockdevice
-    WHERE maasserver_node.id = maasserver_blockdevice.node_id
-    AND maasserver_blockdevice.id = OLD.block_device_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  WHERE maasserver_blockdevice.id = OLD.block_device_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1862,12 +1928,15 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node, maasserver_blockdevice
-    WHERE maasserver_node.id = maasserver_blockdevice.node_id
-    AND maasserver_blockdevice.id = NEW.block_device_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  WHERE maasserver_blockdevice.id = NEW.block_device_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1885,12 +1954,15 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node, maasserver_blockdevice
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = NEW.blockdevice_ptr_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  WHERE maasserver_blockdevice.id = NEW.blockdevice_ptr_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -1911,7 +1983,7 @@ BEGIN
     system_id, node_type INTO node
   FROM
     maasserver_node AS nodet,
-    metadataserver_scriptset AS scriptset
+    maasserver_scriptset AS scriptset
   WHERE
     scriptset.id = NEW.script_set_id AND
     scriptset.node_id = nodet.id;
@@ -1942,7 +2014,7 @@ BEGIN
     system_id, node_type INTO node
   FROM
     maasserver_node AS nodet,
-    metadataserver_scriptset AS scriptset
+    maasserver_scriptset AS scriptset
   WHERE
     scriptset.id = OLD.script_set_id AND
     scriptset.node_id = nodet.id;
@@ -1973,7 +2045,7 @@ BEGIN
     system_id, node_type INTO node
   FROM
     maasserver_node AS nodet,
-    metadataserver_scriptset AS scriptset
+    maasserver_scriptset AS scriptset
   WHERE
     scriptset.id = NEW.script_set_id AND
     scriptset.node_id = nodet.id;
@@ -2006,17 +2078,25 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -2039,17 +2119,25 @@ BEGIN
   WHERE id = OLD.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -2067,10 +2155,14 @@ DECLARE
   domain RECORD;
 BEGIN
   SELECT maasserver_domain.id INTO domain
-  FROM maasserver_node, maasserver_interface, maasserver_domain
-  WHERE maasserver_node.id = maasserver_interface.node_id
-  AND maasserver_domain.id = maasserver_node.domain_id
-  AND maasserver_interface.id = NEW.interface_id;
+  FROM maasserver_interface
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.id = maasserver_interface.node_config_id
+  JOIN maasserver_node
+    ON maasserver_node.id = maasserver_nodeconfig.node_id
+  JOIN maasserver_domain
+    ON maasserver_domain.id = maasserver_node.domain_id
+  WHERE maasserver_interface.id = NEW.interface_id;
 
   IF domain.id IS NOT NULL THEN
     PERFORM pg_notify('domain_update',CAST(domain.id AS text));
@@ -2091,10 +2183,14 @@ DECLARE
   domain RECORD;
 BEGIN
   SELECT maasserver_domain.id INTO domain
-  FROM maasserver_node, maasserver_interface, maasserver_domain
-  WHERE maasserver_node.id = maasserver_interface.node_id
-  AND maasserver_domain.id = maasserver_node.domain_id
-  AND maasserver_interface.id = OLD.interface_id;
+  FROM maasserver_interface
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.id = maasserver_interface.node_config_id
+  JOIN maasserver_node
+    ON maasserver_node.id = maasserver_nodeconfig.node_id
+  JOIN maasserver_domain
+    ON maasserver_domain.id = maasserver_node.domain_id
+  WHERE maasserver_interface.id = OLD.interface_id;
 
   IF domain.id IS NOT NULL THEN
     PERFORM pg_notify('domain_update',CAST(domain.id AS text));
@@ -2116,9 +2212,12 @@ DECLARE
   pnode RECORD;
 BEGIN
   SELECT system_id, node_type, parent_id INTO node
-  FROM maasserver_node, maasserver_interface
-  WHERE maasserver_node.id = maasserver_interface.node_id
-  AND maasserver_interface.id = NEW.interface_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_interface
+    ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+  WHERE maasserver_interface.id = NEW.interface_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -2149,9 +2248,12 @@ DECLARE
   pnode RECORD;
 BEGIN
   SELECT system_id, node_type, parent_id INTO node
-  FROM maasserver_node, maasserver_interface
-  WHERE maasserver_node.id = maasserver_interface.node_id
-  AND maasserver_interface.id = OLD.interface_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_interface
+    ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+  WHERE maasserver_interface.id = OLD.interface_id;
 
   IF node.node_type = 0 THEN
     PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -2181,12 +2283,15 @@ DECLARE
   node RECORD;
 BEGIN
   SELECT system_id, node_type INTO node
-  FROM maasserver_node, maasserver_blockdevice
-  WHERE maasserver_node.id = maasserver_blockdevice.node_id
-  AND maasserver_blockdevice.id = NEW.blockdevice_ptr_id;
+  FROM maasserver_node
+  JOIN maasserver_nodeconfig
+    ON maasserver_nodeconfig.node_id = maasserver_node.id
+  JOIN maasserver_blockdevice
+    ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+  WHERE maasserver_blockdevice.id = NEW.blockdevice_ptr_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
   END IF;
   RETURN NEW;
 END;
@@ -2312,41 +2417,6 @@ $$;
 
 
 --
--- Name: node_resourcepool_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.node_resourcepool_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.pool_id != NEW.pool_id THEN
-    IF OLD.pool_id IS NOT NULL THEN
-      PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
-    END IF;
-    IF NEW.pool_id IS NOT NULL THEN
-      PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
-    END IF;
-  ELSIF OLD.node_type != NEW.node_type THEN
-    -- NODE_TYPE.MACHINE = 0
-    IF OLD.node_type = 0 OR NEW.node_type = 0 THEN
-      IF NEW.pool_id IS NOT NULL THEN
-        PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
-      ELSIF OLD.pool_id IS NOT NULL THEN
-        PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
-      END IF;
-    END IF;
-  ELSIF OLD.status != NEW.status THEN
-    -- NODE_STATUS.READY = 4
-    IF OLD.status = 4 OR NEW.status = 4 THEN
-      PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: node_type_change_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2355,11 +2425,9 @@ CREATE FUNCTION public.node_type_change_notify() RETURNS trigger
     AS $$
 BEGIN
   IF (OLD.node_type != NEW.node_type AND NOT (
-      (
-        OLD.node_type IN (2, 3, 4)
-      ) AND (
-        NEW.node_type IN (2, 3, 4)
-      ))) THEN
+      (OLD.node_type IN (2, 3, 4)) AND
+      (NEW.node_type IN (2, 3, 4))
+     )) THEN
     CASE OLD.node_type
       WHEN 0 THEN
         PERFORM pg_notify('machine_delete',CAST(
@@ -2479,13 +2547,9 @@ BEGIN
       SELECT * INTO old_bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
       IF new_bmc.bmc_type = bmc_type THEN
         SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
-      ELSE
-        new_hints = NULL;
       END IF;
       IF old_bmc.bmc_type = bmc_type THEN
         SELECT * INTO old_hints FROM maasserver_podhints WHERE pod_id = old_bmc.id;
-      ELSE
-        old_hints = NULL;
       END IF;
       IF old_hints IS NOT NULL THEN
         IF old_hints.cluster_id IS NOT NULL THEN
@@ -2589,17 +2653,25 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -2622,17 +2694,25 @@ BEGIN
   WHERE id = OLD.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -2655,17 +2735,25 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -2750,17 +2838,25 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -2783,17 +2879,25 @@ BEGIN
   WHERE id = OLD.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -2816,17 +2920,25 @@ BEGIN
   WHERE id = NEW.node_id;
 
   IF node.node_type = 0 THEN
-    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'machine_update', CAST(node.system_id AS text)
+    );
   ELSIF node.node_type IN (2, 3, 4) THEN
-    PERFORM pg_notify('controller_update',CAST(
-      node.system_id AS text));
+    PERFORM pg_notify(
+      'controller_update', CAST(node.system_id AS text)
+    );
   ELSIF node.parent_id IS NOT NULL THEN
     SELECT system_id INTO pnode
     FROM maasserver_node
     WHERE id = node.parent_id;
-    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+    PERFORM pg_notify(
+      'machine_update', CAST(pnode.system_id AS text)
+    );
   ELSE
-    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    PERFORM pg_notify(
+      'device_update', CAST(node.system_id AS text)
+    );
   END IF;
   RETURN NEW;
 END;
@@ -3068,83 +3180,6 @@ $$;
 
 
 --
--- Name: resourcepool_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.resourcepool_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('resourcepool_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: resourcepool_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.resourcepool_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('resourcepool_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: resourcepool_link_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.resourcepool_link_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.pool_id IS NOT NULL THEN
-    PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS TEXT));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: resourcepool_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.resourcepool_unlink_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.pool_id IS NOT NULL THEN
-    PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS TEXT));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: resourcepool_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.resourcepool_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('resourcepool_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: rrset_sipaddress_link_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3369,21 +3404,23 @@ BEGIN
   FOR node IN (
     SELECT DISTINCT ON (maasserver_node.id)
       system_id, node_type, parent_id
-    FROM
-      maasserver_node,
-      maasserver_space,
-      maasserver_subnet,
-      maasserver_vlan,
-      maasserver_interface,
-      maasserver_interface_ip_addresses AS ip_link,
-      maasserver_staticipaddress
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_interface
+      ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+    JOIN maasserver_interface_ip_addresses
+      ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id
+    JOIN maasserver_staticipaddress
+      ON maasserver_staticipaddress.id = maasserver_interface_ip_addresses.staticipaddress_id
+    JOIN maasserver_subnet
+      ON maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+    JOIN maasserver_vlan
+      ON maasserver_vlan.id = maasserver_subnet.vlan_id
+    JOIN maasserver_space
+      ON maasserver_vlan.space_id IS NOT DISTINCT FROM maasserver_space.id
     WHERE maasserver_space.id = NEW.id
-    AND maasserver_subnet.vlan_id = maasserver_vlan.id
-    AND maasserver_vlan.space_id IS NOT DISTINCT FROM maasserver_space.id
-    AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-    AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-    AND ip_link.interface_id = maasserver_interface.id
-    AND maasserver_node.id = maasserver_interface.node_id)
+  )
   LOOP
     IF node.node_type = 0 THEN
       PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -3413,96 +3450,6 @@ CREATE FUNCTION public.space_update_notify() RETURNS trigger
 DECLARE
 BEGIN
   PERFORM pg_notify('space_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sshkey_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sshkey_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('sshkey_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sshkey_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sshkey_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('sshkey_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sshkey_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sshkey_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('sshkey_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sslkey_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sslkey_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('sslkey_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sslkey_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sslkey_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('sslkey_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sslkey_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sslkey_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('sslkey_update',CAST(NEW.id AS text));
   RETURN NEW;
 END;
 $$;
@@ -3597,17 +3544,17 @@ BEGIN
   FOR node IN (
     SELECT DISTINCT ON (maasserver_node.id)
       system_id, node_type, parent_id
-    FROM
-      maasserver_node,
-      maasserver_subnet,
-      maasserver_interface,
-      maasserver_interface_ip_addresses AS ip_link,
-      maasserver_staticipaddress
-    WHERE maasserver_subnet.id = NEW.id
-    AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-    AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-    AND ip_link.interface_id = maasserver_interface.id
-    AND maasserver_node.id = maasserver_interface.node_id)
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_interface
+      ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+    JOIN maasserver_interface_ip_addresses
+      ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id
+    JOIN maasserver_staticipaddress
+      ON maasserver_staticipaddress.id = maasserver_interface_ip_addresses.staticipaddress_id
+    WHERE maasserver_staticipaddress.subnet_id = NEW.id
+  )
   LOOP
     IF node.node_type = 0 THEN
       PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -3711,7 +3658,7 @@ CREATE TABLE public.maasserver_node (
     owner_id integer,
     parent_id bigint,
     zone_id bigint NOT NULL,
-    boot_disk_id integer,
+    boot_disk_id bigint,
     node_type integer NOT NULL,
     domain_id integer,
     dns_process_id bigint,
@@ -3887,12 +3834,6 @@ BEGIN
     END IF;
   END IF;
 
-  -- No connections of the rack controller requires the DNS to be
-  -- reloaded for the internal MAAS domain.
-  IF sys_core_get_num_conn(rack_controller) = 0 THEN
-    PERFORM sys_dns_publish_update(
-      'rack controller ' || rack_controller.hostname || ' disconnected');
-  END IF;
   RETURN NEW;
 END;
 $$;
@@ -3960,12 +3901,6 @@ BEGIN
     END IF;
   END IF;
 
-  -- First connection of the rack controller requires the DNS to be
-  -- reloaded for the internal MAAS domain.
-  IF sys_core_get_num_conn(rack_controller) = 1 THEN
-    PERFORM sys_dns_publish_update(
-      'rack controller ' || rack_controller.hostname || ' connected');
-  END IF;
   RETURN NEW;
 END;
 $$;
@@ -3991,1467 +3926,6 @@ BEGIN
     CONCAT('sys_core_', region_process.id),
     CONCAT('watch_', CAST(rack.id AS text)));
   RETURN;
-END;
-$$;
-
-
---
--- Name: maasserver_vlan; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_vlan (
-    id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(256),
-    vid integer NOT NULL,
-    mtu integer NOT NULL,
-    fabric_id bigint NOT NULL,
-    dhcp_on boolean NOT NULL,
-    primary_rack_id bigint,
-    secondary_rack_id bigint,
-    external_dhcp inet,
-    description text NOT NULL,
-    relay_vlan_id bigint,
-    space_id bigint
-);
-
-
---
--- Name: sys_dhcp_alert(public.maasserver_vlan); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_alert(vlan public.maasserver_vlan) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  relay_vlan maasserver_vlan;
-BEGIN
-  IF vlan.dhcp_on THEN
-    PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.primary_rack_id), '');
-    IF vlan.secondary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.secondary_rack_id), '');
-    END IF;
-  END IF;
-  IF vlan.relay_vlan_id IS NOT NULL THEN
-    SELECT maasserver_vlan.* INTO relay_vlan
-    FROM maasserver_vlan
-    WHERE maasserver_vlan.id = vlan.relay_vlan_id;
-    IF relay_vlan.dhcp_on THEN
-      PERFORM pg_notify(CONCAT(
-        'sys_dhcp_', relay_vlan.primary_rack_id), '');
-      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-        PERFORM pg_notify(CONCAT(
-          'sys_dhcp_', relay_vlan.secondary_rack_id), '');
-      END IF;
-    END IF;
-  END IF;
-  RETURN;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_config_ntp_servers_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_config_ntp_servers_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.name IN ('ntp_servers', 'ntp_external_only') THEN
-    PERFORM sys_dhcp_update_all_vlans();
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_config_ntp_servers_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_config_ntp_servers_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.name = 'ntp_servers' THEN
-    PERFORM sys_dhcp_update_all_vlans();
-  ELSIF NEW.name = 'ntp_external_only' THEN
-    PERFORM sys_dhcp_update_all_vlans();
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_config_ntp_servers_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_config_ntp_servers_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.name IN ('ntp_servers', 'ntp_external_only')
-  OR NEW.name IN ('ntp_servers', 'ntp_external_only') THEN
-    IF OLD.value != NEW.value THEN
-      PERFORM sys_dhcp_update_all_vlans();
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_interface_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_interface_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if DHCP is enabled and the interface name or MAC
-  -- address has changed.
-  IF OLD.name != NEW.name OR OLD.mac_address != NEW.mac_address THEN
-    FOR vlan IN (
-      SELECT DISTINCT ON (maasserver_vlan.id)
-        maasserver_vlan.*
-      FROM
-        maasserver_vlan,
-        maasserver_subnet,
-        maasserver_staticipaddress,
-        maasserver_interface_ip_addresses AS ip_link
-      WHERE maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-      AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-      AND ip_link.interface_id = NEW.id
-      AND maasserver_staticipaddress.alloc_type != 6
-      AND maasserver_staticipaddress.ip IS NOT NULL
-      AND maasserver_staticipaddress.temp_expires_on IS NULL
-      AND host(maasserver_staticipaddress.ip) != ''
-      AND maasserver_vlan.id = maasserver_subnet.vlan_id)
-    LOOP
-      PERFORM sys_dhcp_alert(vlan);
-    END LOOP;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_iprange_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_iprange_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if DHCP is enabled and was dynamic range.
-  IF OLD.type = 'dynamic' THEN
-    SELECT maasserver_vlan.* INTO vlan
-    FROM maasserver_vlan, maasserver_subnet
-    WHERE maasserver_subnet.id = OLD.subnet_id AND
-      maasserver_subnet.vlan_id = maasserver_vlan.id;
-    PERFORM sys_dhcp_alert(vlan);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_iprange_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_iprange_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if DHCP is enabled and a dynamic range.
-  IF NEW.type = 'dynamic' THEN
-    SELECT maasserver_vlan.* INTO vlan
-    FROM maasserver_vlan, maasserver_subnet
-    WHERE maasserver_subnet.id = NEW.subnet_id AND
-      maasserver_subnet.vlan_id = maasserver_vlan.id;
-    PERFORM sys_dhcp_alert(vlan);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_iprange_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_iprange_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if DHCP is enabled and was or is now a dynamic range.
-  IF OLD.type = 'dynamic' OR NEW.type = 'dynamic' THEN
-    SELECT maasserver_vlan.* INTO vlan
-    FROM maasserver_vlan, maasserver_subnet
-    WHERE maasserver_subnet.id = NEW.subnet_id AND
-      maasserver_subnet.vlan_id = maasserver_vlan.id;
-    PERFORM sys_dhcp_alert(vlan);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_node_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_node_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if on every interface on the node that is managed when
-  -- the node hostname is changed.
-  IF OLD.hostname != NEW.hostname THEN
-    FOR vlan IN (
-      SELECT DISTINCT ON (maasserver_vlan.id)
-        maasserver_vlan.*
-      FROM
-        maasserver_vlan,
-        maasserver_staticipaddress,
-        maasserver_subnet,
-        maasserver_interface,
-        maasserver_interface_ip_addresses AS ip_link
-      WHERE maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-      AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-      AND ip_link.interface_id = maasserver_interface.id
-      AND maasserver_interface.node_id = NEW.id
-      AND maasserver_staticipaddress.alloc_type != 6
-      AND maasserver_staticipaddress.ip IS NOT NULL
-      AND maasserver_staticipaddress.temp_expires_on IS NULL
-      AND host(maasserver_staticipaddress.ip) != ''
-      AND maasserver_vlan.id = maasserver_subnet.vlan_id)
-    LOOP
-      PERFORM sys_dhcp_alert(vlan);
-    END LOOP;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_snippet_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_snippet_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.enabled THEN
-    PERFORM sys_dhcp_snippet_update_value(OLD);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_snippet_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_snippet_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.enabled THEN
-    PERFORM sys_dhcp_snippet_update_value(NEW);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_snippet_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_snippet_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.enabled = NEW.enabled AND NEW.enabled IS FALSE THEN
-    -- If the DHCP snippet is disabled don't fire any alerts
-    RETURN NEW;
-  ELSIF ((OLD.value_id != NEW.value_id) OR
-      (OLD.enabled != NEW.enabled) OR
-      (OLD.description != NEW.description)) THEN
-    PERFORM sys_dhcp_snippet_update_value(NEW);
-  ELSIF ((OLD.subnet_id IS NULL AND NEW.subnet_id IS NOT NULL) OR
-      (OLD.subnet_id IS NOT NULL AND NEW.subnet_id IS NULL) OR
-      (OLD.subnet_id != NEW.subnet_id)) THEN
-    IF NEW.subnet_id IS NOT NULL THEN
-      PERFORM sys_dhcp_snippet_update_subnet(NEW.subnet_id);
-    END IF;
-    IF OLD.subnet_id IS NOT NULL THEN
-      PERFORM sys_dhcp_snippet_update_subnet(OLD.subnet_id);
-    END IF;
-  ELSIF ((OLD.node_id IS NULL AND NEW.node_id IS NOT NULL) OR
-      (OLD.node_id IS NOT NULL AND NEW.node_id IS NULL) OR
-      (OLD.node_id != NEW.node_id)) THEN
-    IF NEW.node_id IS NOT NULL THEN
-      PERFORM sys_dhcp_snippet_update_node(NEW.node_id);
-    END IF;
-    IF OLD.node_id IS NOT NULL THEN
-      PERFORM sys_dhcp_snippet_update_node(OLD.node_id);
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_snippet_update_node(integer); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_snippet_update_node(_node_id integer) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  rack INTEGER;
-BEGIN
-  FOR rack IN (
-    WITH racks AS (
-      SELECT primary_rack_id, secondary_rack_id
-      FROM maasserver_vlan, maasserver_interface
-      WHERE maasserver_interface.node_id = _node_id
-        AND maasserver_interface.vlan_id = maasserver_vlan.id
-      AND (maasserver_vlan.dhcp_on = true
-        OR maasserver_vlan.relay_vlan_id IS NOT NULL))
-    SELECT primary_rack_id FROM racks
-    WHERE primary_rack_id IS NOT NULL
-    UNION
-    SELECT secondary_rack_id FROM racks
-    WHERE secondary_rack_id IS NOT NULL)
-  LOOP
-    PERFORM pg_notify(CONCAT('sys_dhcp_', rack), '');
-  END LOOP;
-  RETURN;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_snippet_update_subnet(integer); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_snippet_update_subnet(_subnet_id integer) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  FOR vlan IN (
-    SELECT
-      maasserver_vlan.*
-    FROM
-      maasserver_vlan,
-      maasserver_subnet
-    WHERE maasserver_subnet.id = _subnet_id
-      AND maasserver_vlan.id = maasserver_subnet.vlan_id
-      AND (maasserver_vlan.dhcp_on = true
-        OR maasserver_vlan.relay_vlan_id IS NOT NULL))
-    LOOP
-      PERFORM sys_dhcp_alert(vlan);
-    END LOOP;
-  RETURN;
-END;
-$$;
-
-
---
--- Name: maasserver_dhcpsnippet; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_dhcpsnippet (
-    id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    description text NOT NULL,
-    enabled boolean NOT NULL,
-    node_id bigint,
-    subnet_id bigint,
-    value_id bigint NOT NULL,
-    iprange_id bigint
-);
-
-
---
--- Name: sys_dhcp_snippet_update_value(public.maasserver_dhcpsnippet); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_snippet_update_value(_dhcp_snippet public.maasserver_dhcpsnippet) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF _dhcp_snippet.subnet_id IS NOT NULL THEN
-    PERFORM sys_dhcp_snippet_update_subnet(_dhcp_snippet.subnet_id);
-  ELSIF _dhcp_snippet.node_id is NOT NULL THEN
-    PERFORM sys_dhcp_snippet_update_node(_dhcp_snippet.node_id);
-  ELSE
-    -- This is a global snippet, everyone has to update. This should only
-    -- be triggered when neither subnet_id or node_id are set. We verify
-    -- that only subnet_id xor node_id are set in DHCPSnippet.clean()
-    PERFORM sys_dhcp_update_all_vlans();
-  END IF;
-  RETURN;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_staticipaddress_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_staticipaddress_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if DHCP is enabled and has an IP address.
-  IF host(OLD.ip) != '' AND OLD.temp_expires_on IS NULL THEN
-    SELECT maasserver_vlan.* INTO vlan
-    FROM maasserver_vlan, maasserver_subnet
-    WHERE maasserver_subnet.id = OLD.subnet_id AND
-      maasserver_subnet.vlan_id = maasserver_vlan.id;
-    PERFORM sys_dhcp_alert(vlan);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_staticipaddress_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_staticipaddress_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if DHCP is enabled, IP is set and not DISCOVERED.
-  IF NEW.alloc_type != 6 AND NEW.ip IS NOT NULL AND host(NEW.ip) != '' AND
-    NEW.temp_expires_on IS NULL THEN
-    SELECT maasserver_vlan.* INTO vlan
-    FROM maasserver_vlan, maasserver_subnet
-    WHERE maasserver_subnet.id = NEW.subnet_id AND
-      maasserver_subnet.vlan_id = maasserver_vlan.id;
-    PERFORM sys_dhcp_alert(vlan);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_staticipaddress_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_staticipaddress_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  old_vlan maasserver_vlan;
-  new_vlan maasserver_vlan;
-BEGIN
-  -- Ignore DISCOVERED IP addresses.
-  IF NEW.alloc_type != 6 THEN
-    IF OLD.subnet_id != NEW.subnet_id THEN
-      -- Subnet has changed; update each VLAN if different.
-      SELECT maasserver_vlan.* INTO old_vlan
-      FROM maasserver_vlan, maasserver_subnet
-      WHERE maasserver_subnet.id = OLD.subnet_id AND
-        maasserver_subnet.vlan_id = maasserver_vlan.id;
-      SELECT maasserver_vlan.* INTO new_vlan
-      FROM maasserver_vlan, maasserver_subnet
-      WHERE maasserver_subnet.id = NEW.subnet_id AND
-        maasserver_subnet.vlan_id = maasserver_vlan.id;
-      IF old_vlan.id != new_vlan.id THEN
-        -- Different VLAN's; update each if DHCP enabled.
-        PERFORM sys_dhcp_alert(old_vlan);
-        PERFORM sys_dhcp_alert(new_vlan);
-      ELSE
-        -- Same VLAN so only need to update once.
-        PERFORM sys_dhcp_alert(new_vlan);
-      END IF;
-    ELSIF (OLD.ip IS NULL AND NEW.ip IS NOT NULL) OR
-      (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
-      (OLD.temp_expires_on IS NULL AND NEW.temp_expires_on IS NOT NULL) OR
-      (OLD.temp_expires_on IS NOT NULL AND NEW.temp_expires_on IS NULL) OR
-      (host(OLD.ip) != host(NEW.ip)) THEN
-      -- Assigned IP address has changed.
-      SELECT maasserver_vlan.* INTO new_vlan
-      FROM maasserver_vlan, maasserver_subnet
-      WHERE maasserver_subnet.id = NEW.subnet_id AND
-        maasserver_subnet.vlan_id = maasserver_vlan.id;
-      PERFORM sys_dhcp_alert(new_vlan);
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_subnet_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_subnet_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Update VLAN if DHCP is enabled.
-  SELECT * INTO vlan
-  FROM maasserver_vlan WHERE id = OLD.vlan_id;
-  PERFORM sys_dhcp_alert(vlan);
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_subnet_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_subnet_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  vlan maasserver_vlan;
-BEGIN
-  -- Subnet was moved to a new VLAN.
-  IF OLD.vlan_id != NEW.vlan_id THEN
-    -- Update old VLAN if DHCP is enabled.
-    SELECT * INTO vlan
-    FROM maasserver_vlan WHERE id = OLD.vlan_id;
-    PERFORM sys_dhcp_alert(vlan);
-    -- Update the new VLAN if DHCP is enabled.
-    SELECT * INTO vlan
-    FROM maasserver_vlan WHERE id = NEW.vlan_id;
-    PERFORM sys_dhcp_alert(vlan);
-  -- Related fields of subnet where changed.
-  ELSIF OLD.cidr != NEW.cidr OR
-    (OLD.gateway_ip IS NULL AND NEW.gateway_ip IS NOT NULL) OR
-    (OLD.gateway_ip IS NOT NULL AND NEW.gateway_ip IS NULL) OR
-    host(OLD.gateway_ip) != host(NEW.gateway_ip) OR
-    OLD.dns_servers != NEW.dns_servers OR
-    OLD.allow_dns != NEW.allow_dns OR
-    OLD.disabled_boot_architectures != NEW.disabled_boot_architectures THEN
-    -- Network has changed update alert DHCP if enabled.
-    SELECT * INTO vlan
-    FROM maasserver_vlan WHERE id = NEW.vlan_id;
-    PERFORM sys_dhcp_alert(vlan);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_update_all_vlans(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_update_all_vlans() RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  rack INTEGER;
-BEGIN
-  FOR rack IN (
-    WITH racks AS (
-      SELECT primary_rack_id, secondary_rack_id FROM maasserver_vlan
-      WHERE maasserver_vlan.dhcp_on = true
-    )
-    SELECT primary_rack_id FROM racks
-    WHERE primary_rack_id IS NOT NULL
-    UNION
-    SELECT secondary_rack_id FROM racks
-    WHERE secondary_rack_id IS NOT NULL)
-  LOOP
-    PERFORM pg_notify(CONCAT('sys_dhcp_', rack), '');
-  END LOOP;
-  RETURN;
-END;
-$$;
-
-
---
--- Name: sys_dhcp_vlan_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dhcp_vlan_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  relay_vlan maasserver_vlan;
-BEGIN
-  -- DHCP was turned off.
-  IF OLD.dhcp_on AND NOT NEW.dhcp_on THEN
-    PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
-    IF OLD.secondary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
-    END IF;
-  -- DHCP was turned on.
-  ELSIF NOT OLD.dhcp_on AND NEW.dhcp_on THEN
-    PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
-    IF NEW.secondary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
-    END IF;
-  -- MTU was changed.
-  ELSIF OLD.mtu != NEW.mtu THEN
-    PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
-    IF OLD.secondary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
-    END IF;
-  -- DHCP state was not changed but the rack controllers might have been.
-  ELSIF NEW.dhcp_on AND (
-     OLD.primary_rack_id != NEW.primary_rack_id OR (
-       OLD.secondary_rack_id IS NULL AND
-       NEW.secondary_rack_id IS NOT NULL) OR (
-       OLD.secondary_rack_id IS NOT NULL AND
-       NEW.secondary_rack_id IS NULL) OR
-     OLD.secondary_rack_id != NEW.secondary_rack_id) THEN
-    -- Send the message to the old primary if no longer the primary.
-    IF OLD.primary_rack_id != NEW.primary_rack_id THEN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
-    END IF;
-    -- Always send the message to the primary as it has to be set.
-    PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
-    -- Send message to both old and new secondary rack controller if set.
-    IF OLD.secondary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
-    END IF;
-    IF NEW.secondary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
-    END IF;
-  END IF;
-
-  -- Relay VLAN was set when it was previously unset, or
-  -- the MTU has changed for a VLAN with DHCP relay enabled.
-  IF (OLD.relay_vlan_id IS NULL AND NEW.relay_vlan_id IS NOT NULL)
-     OR (OLD.mtu != NEW.mtu AND NEW.relay_vlan_id IS NOT NULL) THEN
-    SELECT maasserver_vlan.* INTO relay_vlan
-    FROM maasserver_vlan
-    WHERE maasserver_vlan.id = NEW.relay_vlan_id;
-    IF relay_vlan.primary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(
-        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-        PERFORM pg_notify(
-          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-      END IF;
-    END IF;
-  -- Relay VLAN was unset when it was previously set.
-  ELSIF OLD.relay_vlan_id IS NOT NULL AND NEW.relay_vlan_id IS NULL THEN
-    SELECT maasserver_vlan.* INTO relay_vlan
-    FROM maasserver_vlan
-    WHERE maasserver_vlan.id = OLD.relay_vlan_id;
-    IF relay_vlan.primary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(
-        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-        PERFORM pg_notify(
-          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-      END IF;
-    END IF;
-  -- Relay VLAN has changed on the VLAN.
-  ELSIF OLD.relay_vlan_id != NEW.relay_vlan_id THEN
-    -- Alert old VLAN if required.
-    SELECT maasserver_vlan.* INTO relay_vlan
-    FROM maasserver_vlan
-    WHERE maasserver_vlan.id = OLD.relay_vlan_id;
-    IF relay_vlan.primary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(
-        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-        PERFORM pg_notify(
-          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-      END IF;
-    END IF;
-    -- Alert new VLAN if required.
-    SELECT maasserver_vlan.* INTO relay_vlan
-    FROM maasserver_vlan
-    WHERE maasserver_vlan.id = NEW.relay_vlan_id;
-    IF relay_vlan.primary_rack_id IS NOT NULL THEN
-      PERFORM pg_notify(
-        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
-      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
-        PERFORM pg_notify(
-          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
-      END IF;
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_config_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_config_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  -- Only care about the
-  IF (NEW.name = 'upstream_dns' OR
-      NEW.name = 'dnssec_validation' OR
-      NEW.name = 'dns_trusted_acl' OR
-      NEW.name = 'default_dns_ttl' OR
-      NEW.name = 'windows_kms_host' OR
-      NEW.name = 'maas_internal_domain')
-  THEN
-    PERFORM sys_dns_publish_update(
-      'configuration ' || NEW.name || ' set to ' ||
-      COALESCE(NEW.value, 'NULL'));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_config_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_config_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  -- Only care about the upstream_dns, default_dns_ttl,
-  -- dns_trusted_acl and windows_kms_host.
-  IF (OLD.value != NEW.value AND (
-      NEW.name = 'upstream_dns' OR
-      NEW.name = 'dnssec_validation' OR
-      NEW.name = 'dns_trusted_acl' OR
-      NEW.name = 'default_dns_ttl' OR
-      NEW.name = 'windows_kms_host' OR
-      NEW.name = 'maas_internal_domain'))
-  THEN
-    PERFORM sys_dns_publish_update(
-      'configuration ' || NEW.name || ' changed to ' || NEW.value);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsdata_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsdata_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  resource maasserver_dnsresource;
-  domain maasserver_domain;
-BEGIN
-  SELECT maasserver_dnsresource.* INTO resource
-  FROM maasserver_dnsresource
-  WHERE maasserver_dnsresource.id = OLD.dnsresource_id;
-  SELECT maasserver_domain.* INTO domain
-  FROM maasserver_domain
-  WHERE maasserver_domain.id = resource.domain_id;
-  PERFORM sys_dns_publish_update(
-    'removed ' || OLD.rrtype || ' from resource ' || resource.name ||
-    ' on zone ' || domain.name);
-  RETURN OLD;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsdata_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsdata_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  resource maasserver_dnsresource;
-  domain maasserver_domain;
-BEGIN
-  SELECT maasserver_dnsresource.* INTO resource
-  FROM maasserver_dnsresource
-  WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
-  SELECT maasserver_domain.* INTO domain
-  FROM maasserver_domain
-  WHERE maasserver_domain.id = resource.domain_id;
-  PERFORM sys_dns_publish_update(
-    'added ' || NEW.rrtype || ' to resource ' || resource.name ||
-    ' on zone ' || domain.name);
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsdata_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsdata_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  resource maasserver_dnsresource;
-  domain maasserver_domain;
-BEGIN
-  SELECT maasserver_dnsresource.* INTO resource
-  FROM maasserver_dnsresource
-  WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
-  SELECT maasserver_domain.* INTO domain
-  FROM maasserver_domain
-  WHERE maasserver_domain.id = resource.domain_id;
-  PERFORM sys_dns_publish_update(
-    'updated ' || NEW.rrtype || ' in resource ' || resource.name ||
-    ' on zone ' || domain.name);
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsresource_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsresource_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  domain maasserver_domain;
-BEGIN
-  SELECT maasserver_domain.* INTO domain
-  FROM maasserver_domain
-  WHERE maasserver_domain.id = OLD.domain_id;
-  PERFORM sys_dns_publish_update(
-    'zone ' || domain.name || ' removed resource ' ||
-    COALESCE(OLD.name, 'NULL'));
-  RETURN OLD;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsresource_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsresource_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  domain maasserver_domain;
-BEGIN
-  SELECT maasserver_domain.* INTO domain
-  FROM maasserver_domain
-  WHERE maasserver_domain.id = NEW.domain_id;
-  PERFORM sys_dns_publish_update(
-    'zone ' || domain.name || ' added resource ' ||
-    COALESCE(NEW.name, 'NULL'));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsresource_ip_link(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsresource_ip_link() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  sip maasserver_staticipaddress;
-  resource maasserver_dnsresource;
-  domain maasserver_domain;
-BEGIN
-  SELECT maasserver_staticipaddress.* INTO sip
-  FROM maasserver_staticipaddress
-  WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
-  SELECT maasserver_dnsresource.* INTO resource
-  FROM maasserver_dnsresource
-  WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
-  SELECT maasserver_domain.* INTO domain
-  FROM maasserver_domain
-  WHERE maasserver_domain.id = resource.domain_id;
-  IF sip.ip IS NOT NULL THEN
-      PERFORM sys_dns_publish_update(
-        'ip ' || host(sip.ip) || ' linked to resource ' ||
-        COALESCE(resource.name, 'NULL') || ' on zone ' || domain.name);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsresource_ip_unlink(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsresource_ip_unlink() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  sip maasserver_staticipaddress;
-  resource maasserver_dnsresource;
-  domain maasserver_domain;
-BEGIN
-  SELECT maasserver_staticipaddress.* INTO sip
-  FROM maasserver_staticipaddress
-  WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
-  SELECT maasserver_dnsresource.* INTO resource
-  FROM maasserver_dnsresource
-  WHERE maasserver_dnsresource.id = OLD.dnsresource_id;
-  SELECT maasserver_domain.* INTO domain
-  FROM maasserver_domain
-  WHERE maasserver_domain.id = resource.domain_id;
-  IF sip.ip IS NOT NULL THEN
-      PERFORM sys_dns_publish_update(
-        'ip ' || host(sip.ip) || ' unlinked from resource ' ||
-        COALESCE(resource.name, 'NULL') || ' on zone ' || domain.name);
-  END IF;
-  RETURN OLD;
-END;
-$$;
-
-
---
--- Name: sys_dns_dnsresource_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_dnsresource_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  domain maasserver_domain;
-BEGIN
-  IF OLD.domain_id != NEW.domain_id THEN
-    SELECT maasserver_domain.* INTO domain
-    FROM maasserver_domain
-    WHERE maasserver_domain.id = OLD.domain_id;
-    PERFORM sys_dns_publish_update(
-      'zone ' || domain.name || ' removed resource ' ||
-      COALESCE(NEW.name, 'NULL'));
-    SELECT maasserver_domain.* INTO domain
-    FROM maasserver_domain
-    WHERE maasserver_domain.id = NEW.domain_id;
-    PERFORM sys_dns_publish_update(
-      'zone ' || domain.name || ' added resource ' ||
-      COALESCE(NEW.name, 'NULL'));
-  ELSIF ((OLD.name IS NULL AND NEW.name IS NOT NULL) OR
-      (OLD.name IS NOT NULL AND NEW.name IS NULL) OR
-      (OLD.name != NEW.name) OR
-      (OLD.address_ttl IS NULL AND NEW.address_ttl IS NOT NULL) OR
-      (OLD.address_ttl IS NOT NULL AND NEW.address_ttl IS NULL) OR
-      (OLD.address_ttl != NEW.address_ttl)) THEN
-    SELECT maasserver_domain.* INTO domain
-    FROM maasserver_domain
-    WHERE maasserver_domain.id = NEW.domain_id;
-    PERFORM sys_dns_publish_update(
-      'zone ' || domain.name || ' updated resource ' ||
-      COALESCE(NEW.name, 'NULL'));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_domain_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_domain_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.authoritative THEN
-    PERFORM sys_dns_publish_update(
-        'removed zone ' || OLD.name);
-  END IF;
-  RETURN OLD;
-END;
-$$;
-
-
---
--- Name: sys_dns_domain_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_domain_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.authoritative THEN
-      PERFORM sys_dns_publish_update(
-        'added zone ' || NEW.name);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_domain_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_domain_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  changes text[];
-BEGIN
-  IF OLD.authoritative AND NOT NEW.authoritative THEN
-    PERFORM sys_dns_publish_update(
-        'removed zone ' || NEW.name);
-  ELSIF NOT OLD.authoritative AND NEW.authoritative THEN
-    PERFORM sys_dns_publish_update(
-        'added zone ' || NEW.name);
-  ELSIF OLD.authoritative and NEW.authoritative THEN
-    IF OLD.name != NEW.name THEN
-        changes := changes || ('renamed to ' || NEW.name);
-    END IF;
-    IF ((OLD.ttl IS NULL AND NEW.ttl IS NOT NULL) OR
-        (OLD.ttl IS NOT NULL and NEW.ttl IS NULL) OR
-        (OLD.ttl != NEW.ttl)) THEN
-        changes := changes || (
-          'ttl changed to ' || COALESCE(text(NEW.ttl), 'default'));
-    END IF;
-    IF array_length(changes, 1) != 0 THEN
-      PERFORM sys_dns_publish_update(
-        'zone ' || OLD.name || ' ' || array_to_string(changes, ' and '));
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_interface_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_interface_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  node maasserver_node;
-  changes text[];
-BEGIN
-  IF OLD.name != NEW.name AND OLD.node_id = NEW.node_id THEN
-    IF NEW.node_id IS NOT NULL THEN
-        SELECT maasserver_node.* INTO node
-        FROM maasserver_node
-        WHERE maasserver_node.id = NEW.node_id;
-        IF EXISTS(
-            SELECT maasserver_domain.id
-            FROM maasserver_domain
-            WHERE
-              maasserver_domain.authoritative = TRUE AND
-              maasserver_domain.id = node.domain_id) THEN
-          PERFORM sys_dns_publish_update(
-            'node ' || node.hostname || ' renamed interface ' ||
-            OLD.name || ' to ' || NEW.name);
-        END IF;
-    END IF;
-  ELSIF OLD.node_id IS NULL and NEW.node_id IS NOT NULL THEN
-    SELECT maasserver_node.* INTO node
-    FROM maasserver_node
-    WHERE maasserver_node.id = NEW.node_id;
-    IF EXISTS(
-        SELECT maasserver_domain.id
-        FROM maasserver_domain
-        WHERE
-          maasserver_domain.authoritative = TRUE AND
-          maasserver_domain.id = node.domain_id) THEN
-      PERFORM sys_dns_publish_update(
-        'node ' || node.hostname || ' added interface ' || NEW.name);
-    END IF;
-  ELSIF OLD.node_id IS NOT NULL and NEW.node_id IS NULL THEN
-    SELECT maasserver_node.* INTO node
-    FROM maasserver_node
-    WHERE maasserver_node.id = OLD.node_id;
-    IF EXISTS(
-        SELECT maasserver_domain.id
-        FROM maasserver_domain
-        WHERE
-          maasserver_domain.authoritative = TRUE AND
-          maasserver_domain.id = node.domain_id) THEN
-      PERFORM sys_dns_publish_update(
-        'node ' || node.hostname || ' removed interface ' || NEW.name);
-    END IF;
-  ELSIF OLD.node_id != NEW.node_id THEN
-    SELECT maasserver_node.* INTO node
-    FROM maasserver_node
-    WHERE maasserver_node.id = OLD.node_id;
-    IF EXISTS(
-        SELECT maasserver_domain.id
-        FROM maasserver_domain
-        WHERE
-          maasserver_domain.authoritative = TRUE AND
-          maasserver_domain.id = node.domain_id) THEN
-      PERFORM sys_dns_publish_update(
-        'node ' || node.hostname || ' removed interface ' || NEW.name);
-    END IF;
-    SELECT maasserver_node.* INTO node
-    FROM maasserver_node
-    WHERE maasserver_node.id = NEW.node_id;
-    IF EXISTS(
-        SELECT maasserver_domain.id
-        FROM maasserver_domain
-        WHERE
-          maasserver_domain.authoritative = TRUE AND
-          maasserver_domain.id = node.domain_id) THEN
-      PERFORM sys_dns_publish_update(
-        'node ' || node.hostname || ' added interface ' || NEW.name);
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_nic_ip_link(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_nic_ip_link() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  node maasserver_node;
-  nic maasserver_interface;
-  ip maasserver_staticipaddress;
-BEGIN
-  SELECT maasserver_interface.* INTO nic
-  FROM maasserver_interface
-  WHERE maasserver_interface.id = NEW.interface_id;
-  SELECT maasserver_node.* INTO node
-  FROM maasserver_node
-  WHERE maasserver_node.id = nic.node_id;
-  SELECT maasserver_staticipaddress.* INTO ip
-  FROM maasserver_staticipaddress
-  WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
-  IF (ip.ip IS NOT NULL AND ip.temp_expires_on IS NULL AND
-      host(ip.ip) != '' AND EXISTS (
-        SELECT maasserver_domain.id
-        FROM maasserver_domain
-        WHERE
-          maasserver_domain.id = node.domain_id AND
-          maasserver_domain.authoritative = TRUE))
-  THEN
-    PERFORM sys_dns_publish_update(
-      'ip ' || host(ip.ip) || ' connected to ' || node.hostname ||
-      ' on ' || nic.name);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_nic_ip_unlink(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_nic_ip_unlink() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  node maasserver_node;
-  nic maasserver_interface;
-  ip maasserver_staticipaddress;
-  changes text[];
-BEGIN
-  SELECT maasserver_interface.* INTO nic
-  FROM maasserver_interface
-  WHERE maasserver_interface.id = OLD.interface_id;
-  SELECT maasserver_node.* INTO node
-  FROM maasserver_node
-  WHERE maasserver_node.id = nic.node_id;
-  SELECT maasserver_staticipaddress.* INTO ip
-  FROM maasserver_staticipaddress
-  WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
-  IF (ip.ip IS NOT NULL AND ip.temp_expires_on IS NULL AND EXISTS (
-        SELECT maasserver_domain.id
-        FROM maasserver_domain
-        WHERE
-          maasserver_domain.id = node.domain_id AND
-          maasserver_domain.authoritative = TRUE))
-  THEN
-    PERFORM sys_dns_publish_update(
-      'ip ' || host(ip.ip) || ' disconnected from ' || node.hostname ||
-      ' on ' || nic.name);
-  END IF;
-  RETURN OLD;
-END;
-$$;
-
-
---
--- Name: sys_dns_node_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_node_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  domain maasserver_domain;
-  new_domain maasserver_domain;
-  changes text[];
-BEGIN
-  IF EXISTS(
-      SELECT maasserver_domain.id
-      FROM maasserver_domain
-      WHERE
-        maasserver_domain.authoritative = TRUE AND
-        maasserver_domain.id = OLD.domain_id) THEN
-    PERFORM sys_dns_publish_update(
-      'removed node ' || OLD.hostname);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_node_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_node_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  domain maasserver_domain;
-  new_domain maasserver_domain;
-  changes text[];
-BEGIN
-  IF OLD.hostname != NEW.hostname AND OLD.domain_id = NEW.domain_id THEN
-    IF EXISTS(
-        SELECT maasserver_domain.id
-        FROM maasserver_domain
-        WHERE
-          maasserver_domain.authoritative = TRUE AND
-          maasserver_domain.id = NEW.domain_id) THEN
-      PERFORM sys_dns_publish_update(
-        'node ' || OLD.hostname || ' changed hostname to ' ||
-        NEW.hostname);
-    END IF;
-  ELSIF OLD.domain_id != NEW.domain_id THEN
-    -- Domains have changed. If either one is authoritative then DNS
-    -- needs to be updated.
-    SELECT maasserver_domain.* INTO domain
-    FROM maasserver_domain
-    WHERE maasserver_domain.id = OLD.domain_id;
-    SELECT maasserver_domain.* INTO new_domain
-    FROM maasserver_domain
-    WHERE maasserver_domain.id = NEW.domain_id;
-    IF domain.authoritative = TRUE OR new_domain.authoritative = TRUE THEN
-        PERFORM sys_dns_publish_update(
-          'node ' || NEW.hostname || ' changed zone to ' ||
-          new_domain.name);
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_publish(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_publish() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  PERFORM pg_notify('sys_dns', '');
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_publish_update(text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_publish_update(reason text) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  INSERT INTO maasserver_dnspublication
-    (serial, created, source)
-  VALUES
-    (nextval('maasserver_zone_serial_seq'), now(),
-     substring(reason FOR 255));
-END;
-$$;
-
-
---
--- Name: sys_dns_staticipaddress_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_staticipaddress_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF ((OLD.ip IS NULL and NEW.ip IS NOT NULL) OR
-      (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
-      (OLD.temp_expires_on IS NULL AND NEW.temp_expires_on IS NOT NULL) OR
-      (OLD.temp_expires_on IS NOT NULL AND NEW.temp_expires_on IS NULL) OR
-      (OLD.ip != NEW.ip)) OR
-      (OLD.alloc_type != NEW.alloc_type) THEN
-    IF EXISTS (
-        SELECT
-          domain.id
-        FROM maasserver_staticipaddress AS staticipaddress
-        LEFT JOIN (
-          maasserver_interface_ip_addresses AS iia
-          JOIN maasserver_interface AS interface ON
-            iia.interface_id = interface.id
-          JOIN maasserver_node AS node ON
-            node.id = interface.node_id) ON
-          iia.staticipaddress_id = staticipaddress.id
-        LEFT JOIN (
-          maasserver_dnsresource_ip_addresses AS dia
-          JOIN maasserver_dnsresource AS dnsresource ON
-            dia.dnsresource_id = dnsresource.id) ON
-          dia.staticipaddress_id = staticipaddress.id
-        JOIN maasserver_domain AS domain ON
-          domain.id = node.domain_id OR domain.id = dnsresource.domain_id
-        WHERE
-          domain.authoritative = TRUE AND
-          (staticipaddress.id = OLD.id OR
-           staticipaddress.id = NEW.id))
-    THEN
-      IF OLD.ip IS NULL and NEW.ip IS NOT NULL and
-        NEW.temp_expires_on IS NULL THEN
-        PERFORM sys_dns_publish_update(
-          'ip ' || host(NEW.ip) || ' allocated');
-        RETURN NEW;
-      ELSIF OLD.ip IS NOT NULL and NEW.ip IS NULL and
-        NEW.temp_expires_on IS NULL THEN
-        PERFORM sys_dns_publish_update(
-          'ip ' || host(OLD.ip) || ' released');
-        RETURN NEW;
-      ELSIF OLD.ip != NEW.ip and NEW.temp_expires_on IS NULL THEN
-        PERFORM sys_dns_publish_update(
-          'ip ' || host(OLD.ip) || ' changed to ' || host(NEW.ip));
-        RETURN NEW;
-      ELSIF OLD.ip = NEW.ip and OLD.temp_expires_on IS NOT NULL and
-        NEW.temp_expires_on IS NULL THEN
-        PERFORM sys_dns_publish_update(
-          'ip ' || host(NEW.ip) || ' allocated');
-        RETURN NEW;
-      ELSIF OLD.ip = NEW.ip and OLD.temp_expires_on IS NULL and
-        NEW.temp_expires_on IS NOT NULL THEN
-        PERFORM sys_dns_publish_update(
-          'ip ' || host(NEW.ip) || ' released');
-        RETURN NEW;
-      END IF;
-
-      -- Made it this far then only alloc_type has changed. Only send
-      -- a notification is the IP address is assigned.
-      IF NEW.ip IS NOT NULL and NEW.temp_expires_on IS NULL THEN
-        PERFORM sys_dns_publish_update(
-          'ip ' || host(OLD.ip) || ' alloc_type changed to ' ||
-          NEW.alloc_type);
-      END IF;
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_subnet_delete(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_subnet_delete() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  changes text[];
-BEGIN
-  IF OLD.rdns_mode != 0 THEN
-    PERFORM sys_dns_publish_update('removed subnet ' || text(OLD.cidr));
-  END IF;
-  RETURN OLD;
-END;
-$$;
-
-
---
--- Name: sys_dns_subnet_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_subnet_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  changes text[];
-BEGIN
-  IF NEW.rdns_mode != 0 THEN
-    PERFORM sys_dns_publish_update('added subnet ' || text(NEW.cidr));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_dns_subnet_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_dns_subnet_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.cidr != NEW.cidr THEN
-    PERFORM sys_dns_publish_update(
-        'subnet ' || text(OLD.cidr) || ' changed to ' || text(NEW.CIDR));
-    RETURN NEW;
-  END IF;
-  IF OLD.rdns_mode != NEW.rdns_mode THEN
-    PERFORM sys_dns_publish_update(
-        'subnet ' || text(NEW.cidr) || ' rdns changed to ' ||
-        NEW.rdns_mode);
-  END IF;
-  IF OLD.allow_dns != NEW.allow_dns THEN
-    PERFORM sys_dns_publish_update(
-        'subnet ' || text(NEW.cidr) || ' allow_dns changed to ' ||
-        NEW.allow_dns);
-  END IF;
-  RETURN NEW;
 END;
 $$;
 
@@ -5534,48 +4008,6 @@ CREATE FUNCTION public.sys_proxy_subnet_update() RETURNS trigger
 BEGIN
   IF OLD.cidr != NEW.cidr OR OLD.allow_proxy != NEW.allow_proxy THEN
     PERFORM pg_notify('sys_proxy', '');
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_rbac_config_insert(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_rbac_config_insert() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF (NEW.name = 'external_auth_url' OR
-      NEW.name = 'external_auth_user' OR
-      NEW.name = 'external_auth_key' OR
-      NEW.name = 'rbac_url') THEN
-    PERFORM sys_rbac_sync_update(
-      'configuration ' || NEW.name || ' set to ' ||
-      COALESCE(NEW.value, 'NULL'));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sys_rbac_config_update(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sys_rbac_config_update() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF (OLD.value != NEW.value AND (
-      NEW.name = 'external_auth_url' OR
-      NEW.name = 'external_auth_user' OR
-      NEW.name = 'external_auth_key' OR
-      NEW.name = 'rbac_url')) THEN
-    PERFORM sys_rbac_sync_update(
-      'configuration ' || NEW.name || ' changed to ' || NEW.value);
   END IF;
   RETURN NEW;
 END;
@@ -5779,141 +4211,6 @@ $$;
 
 
 --
--- Name: user_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_sshkey_link_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_sshkey_link_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_update',CAST(NEW.user_id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_sshkey_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_sshkey_unlink_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_update',CAST(OLD.user_id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_sslkey_link_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_sslkey_link_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_update',CAST(NEW.user_id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_sslkey_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_sslkey_unlink_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_update',CAST(OLD.user_id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_token_link_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_token_link_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_update',CAST(NEW.user_id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_token_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_token_unlink_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_update',CAST(OLD.user_id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: user_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.user_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('user_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: vlan_create_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5957,10 +4254,13 @@ BEGIN
   FOR node IN (
     SELECT DISTINCT ON (maasserver_node.id)
       system_id, node_type, parent_id
-    FROM maasserver_node, maasserver_interface, maasserver_vlan
-    WHERE maasserver_vlan.id = NEW.id
-    AND maasserver_node.id = maasserver_interface.node_id
-    AND maasserver_vlan.id = maasserver_interface.vlan_id)
+    FROM maasserver_node
+    JOIN maasserver_nodeconfig
+      ON maasserver_nodeconfig.node_id = maasserver_node.id
+    JOIN maasserver_interface
+      ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+    WHERE maasserver_interface.vlan_id = NEW.id
+  )
   LOOP
     IF node.node_type = 0 THEN
       PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -6060,51 +4360,6 @@ $$;
 
 
 --
--- Name: zone_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.zone_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('zone_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: zone_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.zone_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('zone_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: zone_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.zone_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('zone_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: convert_ts(character varying); Type: FUNCTION; Schema: temporal_visibility; Owner: -
 --
 
@@ -6140,20 +4395,14 @@ CREATE TABLE public.auth_group (
 -- Name: auth_group_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.auth_group_id_seq
-    AS integer
+ALTER TABLE public.auth_group ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_group_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: auth_group_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.auth_group_id_seq OWNED BY public.auth_group.id;
+    CACHE 1
+);
 
 
 --
@@ -6161,7 +4410,7 @@ ALTER SEQUENCE public.auth_group_id_seq OWNED BY public.auth_group.id;
 --
 
 CREATE TABLE public.auth_group_permissions (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     group_id integer NOT NULL,
     permission_id integer NOT NULL
 );
@@ -6171,20 +4420,14 @@ CREATE TABLE public.auth_group_permissions (
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.auth_group_permissions_id_seq
-    AS integer
+ALTER TABLE public.auth_group_permissions ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_group_permissions_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: auth_group_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.auth_group_permissions_id_seq OWNED BY public.auth_group_permissions.id;
+    CACHE 1
+);
 
 
 --
@@ -6203,20 +4446,14 @@ CREATE TABLE public.auth_permission (
 -- Name: auth_permission_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.auth_permission_id_seq
-    AS integer
+ALTER TABLE public.auth_permission ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_permission_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: auth_permission_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.auth_permission_id_seq OWNED BY public.auth_permission.id;
+    CACHE 1
+);
 
 
 --
@@ -6243,7 +4480,7 @@ CREATE TABLE public.auth_user (
 --
 
 CREATE TABLE public.auth_user_groups (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     user_id integer NOT NULL,
     group_id integer NOT NULL
 );
@@ -6253,40 +4490,28 @@ CREATE TABLE public.auth_user_groups (
 -- Name: auth_user_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.auth_user_groups_id_seq
-    AS integer
+ALTER TABLE public.auth_user_groups ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_user_groups_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: auth_user_groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.auth_user_groups_id_seq OWNED BY public.auth_user_groups.id;
+    CACHE 1
+);
 
 
 --
 -- Name: auth_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.auth_user_id_seq
-    AS integer
+ALTER TABLE public.auth_user ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_user_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: auth_user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.auth_user_id_seq OWNED BY public.auth_user.id;
+    CACHE 1
+);
 
 
 --
@@ -6294,7 +4519,7 @@ ALTER SEQUENCE public.auth_user_id_seq OWNED BY public.auth_user.id;
 --
 
 CREATE TABLE public.auth_user_user_permissions (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     user_id integer NOT NULL,
     permission_id integer NOT NULL
 );
@@ -6304,20 +4529,14 @@ CREATE TABLE public.auth_user_user_permissions (
 -- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.auth_user_user_permissions_id_seq
-    AS integer
+ALTER TABLE public.auth_user_user_permissions ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_user_user_permissions_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.auth_user_user_permissions_id_seq OWNED BY public.auth_user_user_permissions.id;
+    CACHE 1
+);
 
 
 --
@@ -6335,20 +4554,14 @@ CREATE TABLE public.django_content_type (
 -- Name: django_content_type_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.django_content_type_id_seq
-    AS integer
+ALTER TABLE public.django_content_type ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_content_type_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: django_content_type_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.django_content_type_id_seq OWNED BY public.django_content_type.id;
+    CACHE 1
+);
 
 
 --
@@ -6356,7 +4569,7 @@ ALTER SEQUENCE public.django_content_type_id_seq OWNED BY public.django_content_
 --
 
 CREATE TABLE public.django_migrations (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     app character varying(255) NOT NULL,
     name character varying(255) NOT NULL,
     applied timestamp with time zone NOT NULL
@@ -6367,20 +4580,14 @@ CREATE TABLE public.django_migrations (
 -- Name: django_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.django_migrations_id_seq
-    AS integer
+ALTER TABLE public.django_migrations ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_migrations_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: django_migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.django_migrations_id_seq OWNED BY public.django_migrations.id;
+    CACHE 1
+);
 
 
 --
@@ -6409,47 +4616,14 @@ CREATE TABLE public.django_site (
 -- Name: django_site_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.django_site_id_seq
-    AS integer
+ALTER TABLE public.django_site ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_site_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: django_site_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.django_site_id_seq OWNED BY public.django_site.id;
-
-
---
--- Name: maasserver_sshkey; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_sshkey (
-    id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    key text NOT NULL,
-    user_id integer NOT NULL,
-    auth_id character varying(255),
-    protocol character varying(64)
+    CACHE 1
 );
-
-
---
--- Name: maas_support__ssh_keys__by_user; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__ssh_keys__by_user AS
- SELECT u.username,
-    sshkey.key
-   FROM (public.auth_user u
-     LEFT JOIN public.maasserver_sshkey sshkey ON ((u.id = sshkey.user_id)))
-  ORDER BY u.username, sshkey.key;
 
 
 --
@@ -6489,7 +4663,9 @@ CREATE TABLE public.maasserver_agentcertificate (
     certificate_fingerprint character varying(64) NOT NULL,
     certificate bytea NOT NULL,
     revoked_at timestamp with time zone,
-    agent_id bigint NOT NULL
+    agent_id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL
 );
 
 
@@ -6528,19 +4704,14 @@ CREATE TABLE public.maasserver_blockdevice (
 -- Name: maasserver_blockdevice_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_blockdevice_id_seq
+ALTER TABLE public.maasserver_blockdevice ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_blockdevice_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_blockdevice_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_blockdevice_id_seq OWNED BY public.maasserver_blockdevice.id;
+    CACHE 1
+);
 
 
 --
@@ -6581,19 +4752,14 @@ CREATE TABLE public.maasserver_bmc (
 -- Name: maasserver_bmc_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bmc_id_seq
+ALTER TABLE public.maasserver_bmc ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bmc_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bmc_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bmc_id_seq OWNED BY public.maasserver_bmc.id;
+    CACHE 1
+);
 
 
 --
@@ -6614,19 +4780,14 @@ CREATE TABLE public.maasserver_bmcroutablerackcontrollerrelationship (
 -- Name: maasserver_bmcroutablerackcontrollerrelationship_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bmcroutablerackcontrollerrelationship_id_seq
+ALTER TABLE public.maasserver_bmcroutablerackcontrollerrelationship ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bmcroutablerackcontrollerrelationship_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bmcroutablerackcontrollerrelationship_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bmcroutablerackcontrollerrelationship_id_seq OWNED BY public.maasserver_bmcroutablerackcontrollerrelationship.id;
+    CACHE 1
+);
 
 
 --
@@ -6654,19 +4815,14 @@ CREATE TABLE public.maasserver_bootresource (
 -- Name: maasserver_bootresource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bootresource_id_seq
+ALTER TABLE public.maasserver_bootresource ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bootresource_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootresource_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootresource_id_seq OWNED BY public.maasserver_bootresource.id;
+    CACHE 1
+);
 
 
 --
@@ -6692,19 +4848,14 @@ CREATE TABLE public.maasserver_bootresourcefile (
 -- Name: maasserver_bootresourcefile_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bootresourcefile_id_seq
+ALTER TABLE public.maasserver_bootresourcefile ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bootresourcefile_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootresourcefile_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootresourcefile_id_seq OWNED BY public.maasserver_bootresourcefile.id;
+    CACHE 1
+);
 
 
 --
@@ -6725,19 +4876,14 @@ CREATE TABLE public.maasserver_bootresourcefilesync (
 -- Name: maasserver_bootresourcefilesync_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bootresourcefilesync_id_seq
+ALTER TABLE public.maasserver_bootresourcefilesync ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bootresourcefilesync_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootresourcefilesync_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootresourcefilesync_id_seq OWNED BY public.maasserver_bootresourcefilesync.id;
+    CACHE 1
+);
 
 
 --
@@ -6758,19 +4904,14 @@ CREATE TABLE public.maasserver_bootresourceset (
 -- Name: maasserver_bootresourceset_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bootresourceset_id_seq
+ALTER TABLE public.maasserver_bootresourceset ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bootresourceset_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootresourceset_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootresourceset_id_seq OWNED BY public.maasserver_bootresourceset.id;
+    CACHE 1
+);
 
 
 --
@@ -6793,19 +4934,14 @@ CREATE TABLE public.maasserver_bootsource (
 -- Name: maasserver_bootsource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bootsource_id_seq
+ALTER TABLE public.maasserver_bootsource ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bootsource_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootsource_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootsource_id_seq OWNED BY public.maasserver_bootsource.id;
+    CACHE 1
+);
 
 
 --
@@ -6835,19 +4971,14 @@ CREATE TABLE public.maasserver_bootsourcecache (
 -- Name: maasserver_bootsourcecache_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bootsourcecache_id_seq
+ALTER TABLE public.maasserver_bootsourcecache ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bootsourcecache_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootsourcecache_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootsourcecache_id_seq OWNED BY public.maasserver_bootsourcecache.id;
+    CACHE 1
+);
 
 
 --
@@ -6871,19 +5002,14 @@ CREATE TABLE public.maasserver_bootsourceselection (
 -- Name: maasserver_bootsourceselection_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_bootsourceselection_id_seq
+ALTER TABLE public.maasserver_bootsourceselection ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_bootsourceselection_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootsourceselection_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootsourceselection_id_seq OWNED BY public.maasserver_bootsourceselection.id;
+    CACHE 1
+);
 
 
 --
@@ -6929,19 +5055,14 @@ CREATE TABLE public.maasserver_cacheset (
 -- Name: maasserver_cacheset_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_cacheset_id_seq
+ALTER TABLE public.maasserver_cacheset ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_cacheset_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_cacheset_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_cacheset_id_seq OWNED BY public.maasserver_cacheset.id;
+    CACHE 1
+);
 
 
 --
@@ -6959,19 +5080,14 @@ CREATE TABLE public.maasserver_config (
 -- Name: maasserver_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_config_id_seq
+ALTER TABLE public.maasserver_config ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_config_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_config_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_config_id_seq OWNED BY public.maasserver_config.id;
+    CACHE 1
+);
 
 
 --
@@ -7010,38 +5126,46 @@ CREATE TABLE public.maasserver_defaultresource (
 -- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_defaultresource_id_seq
+ALTER TABLE public.maasserver_defaultresource ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_defaultresource_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
+    CACHE 1
+);
 
 
 --
--- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: maasserver_dhcpsnippet; Type: TABLE; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.maasserver_defaultresource_id_seq OWNED BY public.maasserver_defaultresource.id;
+CREATE TABLE public.maasserver_dhcpsnippet (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(255) NOT NULL,
+    description text NOT NULL,
+    enabled boolean NOT NULL,
+    node_id bigint,
+    subnet_id bigint,
+    value_id bigint NOT NULL,
+    iprange_id bigint
+);
 
 
 --
 -- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_dhcpsnippet_id_seq
+ALTER TABLE public.maasserver_dhcpsnippet ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_dhcpsnippet_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_dhcpsnippet_id_seq OWNED BY public.maasserver_dhcpsnippet.id;
+    CACHE 1
+);
 
 
 --
@@ -7049,7 +5173,7 @@ ALTER SEQUENCE public.maasserver_dhcpsnippet_id_seq OWNED BY public.maasserver_d
 --
 
 CREATE TABLE public.maasserver_fabric (
-    id bigint NOT NULL,
+    id integer NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
     name character varying(256),
@@ -7162,6 +5286,28 @@ CREATE TABLE public.maasserver_subnet (
 
 
 --
+-- Name: maasserver_vlan; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_vlan (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(256),
+    vid integer NOT NULL,
+    mtu integer NOT NULL,
+    fabric_id integer NOT NULL,
+    dhcp_on boolean NOT NULL,
+    primary_rack_id bigint,
+    secondary_rack_id bigint,
+    external_dhcp inet,
+    description text NOT NULL,
+    relay_vlan_id bigint,
+    space_id bigint
+);
+
+
+--
 -- Name: maasserver_discovery; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -7222,19 +5368,14 @@ CREATE TABLE public.maasserver_dnsdata (
 -- Name: maasserver_dnsdata_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_dnsdata_id_seq
+ALTER TABLE public.maasserver_dnsdata ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_dnsdata_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_dnsdata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_dnsdata_id_seq OWNED BY public.maasserver_dnsdata.id;
+    CACHE 1
+);
 
 
 --
@@ -7254,19 +5395,14 @@ CREATE TABLE public.maasserver_dnspublication (
 -- Name: maasserver_dnspublication_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_dnspublication_id_seq
+ALTER TABLE public.maasserver_dnspublication ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_dnspublication_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_dnspublication_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_dnspublication_id_seq OWNED BY public.maasserver_dnspublication.id;
+    CACHE 1
+);
 
 
 --
@@ -7288,19 +5424,14 @@ CREATE TABLE public.maasserver_dnsresource (
 -- Name: maasserver_dnsresource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_dnsresource_id_seq
+ALTER TABLE public.maasserver_dnsresource ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_dnsresource_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_dnsresource_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_dnsresource_id_seq OWNED BY public.maasserver_dnsresource.id;
+    CACHE 1
+);
 
 
 --
@@ -7308,7 +5439,7 @@ ALTER SEQUENCE public.maasserver_dnsresource_id_seq OWNED BY public.maasserver_d
 --
 
 CREATE TABLE public.maasserver_dnsresource_ip_addresses (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     dnsresource_id bigint NOT NULL,
     staticipaddress_id bigint NOT NULL
 );
@@ -7318,20 +5449,14 @@ CREATE TABLE public.maasserver_dnsresource_ip_addresses (
 -- Name: maasserver_dnsresource_ip_addresses_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_dnsresource_ip_addresses_id_seq
-    AS integer
+ALTER TABLE public.maasserver_dnsresource_ip_addresses ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_dnsresource_ip_addresses_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_dnsresource_ip_addresses_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_dnsresource_ip_addresses_id_seq OWNED BY public.maasserver_dnsresource_ip_addresses.id;
+    CACHE 1
+);
 
 
 --
@@ -7353,20 +5478,14 @@ CREATE TABLE public.maasserver_domain (
 -- Name: maasserver_domain_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_domain_id_seq
-    AS integer
+ALTER TABLE public.maasserver_domain ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_domain_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_domain_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_domain_id_seq OWNED BY public.maasserver_domain.id;
+    CACHE 1
+);
 
 
 --
@@ -7395,19 +5514,14 @@ CREATE TABLE public.maasserver_event (
 -- Name: maasserver_event_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_event_id_seq
+ALTER TABLE public.maasserver_event ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_event_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_event_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_event_id_seq OWNED BY public.maasserver_event.id;
+    CACHE 1
+);
 
 
 --
@@ -7428,38 +5542,28 @@ CREATE TABLE public.maasserver_eventtype (
 -- Name: maasserver_eventtype_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_eventtype_id_seq
+ALTER TABLE public.maasserver_eventtype ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_eventtype_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_eventtype_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_eventtype_id_seq OWNED BY public.maasserver_eventtype.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_fabric_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_fabric_id_seq
+ALTER TABLE public.maasserver_fabric ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_fabric_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_fabric_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_fabric_id_seq OWNED BY public.maasserver_fabric.id;
+    CACHE 1
+);
 
 
 --
@@ -7479,19 +5583,14 @@ CREATE TABLE public.maasserver_filestorage (
 -- Name: maasserver_filestorage_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_filestorage_id_seq
+ALTER TABLE public.maasserver_filestorage ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_filestorage_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_filestorage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_filestorage_id_seq OWNED BY public.maasserver_filestorage.id;
+    CACHE 1
+);
 
 
 --
@@ -7521,19 +5620,14 @@ CREATE TABLE public.maasserver_filesystem (
 -- Name: maasserver_filesystem_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_filesystem_id_seq
+ALTER TABLE public.maasserver_filesystem ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_filesystem_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_filesystem_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_filesystem_id_seq OWNED BY public.maasserver_filesystem.id;
+    CACHE 1
+);
 
 
 --
@@ -7557,19 +5651,14 @@ CREATE TABLE public.maasserver_filesystemgroup (
 -- Name: maasserver_filesystemgroup_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_filesystemgroup_id_seq
+ALTER TABLE public.maasserver_filesystemgroup ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_filesystemgroup_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_filesystemgroup_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_filesystemgroup_id_seq OWNED BY public.maasserver_filesystemgroup.id;
+    CACHE 1
+);
 
 
 --
@@ -7590,7 +5679,7 @@ CREATE TABLE public.maasserver_forwarddnsserver (
 --
 
 CREATE TABLE public.maasserver_forwarddnsserver_domains (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     forwarddnsserver_id bigint NOT NULL,
     domain_id integer NOT NULL
 );
@@ -7600,39 +5689,28 @@ CREATE TABLE public.maasserver_forwarddnsserver_domains (
 -- Name: maasserver_forwarddnsserver_domains_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_forwarddnsserver_domains_id_seq
-    AS integer
+ALTER TABLE public.maasserver_forwarddnsserver_domains ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_forwarddnsserver_domains_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_forwarddnsserver_domains_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_forwarddnsserver_domains_id_seq OWNED BY public.maasserver_forwarddnsserver_domains.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_forwarddnsserver_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_forwarddnsserver_id_seq
+ALTER TABLE public.maasserver_forwarddnsserver ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_forwarddnsserver_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_forwarddnsserver_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_forwarddnsserver_id_seq OWNED BY public.maasserver_forwarddnsserver.id;
+    CACHE 1
+);
 
 
 --
@@ -7651,39 +5729,28 @@ CREATE TABLE public.maasserver_globaldefault (
 -- Name: maasserver_globaldefault_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_globaldefault_id_seq
-    AS integer
+ALTER TABLE public.maasserver_globaldefault ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_globaldefault_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_globaldefault_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_globaldefault_id_seq OWNED BY public.maasserver_globaldefault.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_interface_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_interface_id_seq
+ALTER TABLE public.maasserver_interface ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_interface_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_interface_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_interface_id_seq OWNED BY public.maasserver_interface.id;
+    CACHE 1
+);
 
 
 --
@@ -7691,7 +5758,7 @@ ALTER SEQUENCE public.maasserver_interface_id_seq OWNED BY public.maasserver_int
 --
 
 CREATE TABLE public.maasserver_interface_ip_addresses (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     interface_id bigint NOT NULL,
     staticipaddress_id bigint NOT NULL
 );
@@ -7701,20 +5768,14 @@ CREATE TABLE public.maasserver_interface_ip_addresses (
 -- Name: maasserver_interface_ip_addresses_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_interface_ip_addresses_id_seq
-    AS integer
+ALTER TABLE public.maasserver_interface_ip_addresses ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_interface_ip_addresses_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_interface_ip_addresses_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_interface_ip_addresses_id_seq OWNED BY public.maasserver_interface_ip_addresses.id;
+    CACHE 1
+);
 
 
 --
@@ -7734,19 +5795,14 @@ CREATE TABLE public.maasserver_interfacerelationship (
 -- Name: maasserver_interfacerelationship_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_interfacerelationship_id_seq
+ALTER TABLE public.maasserver_interfacerelationship ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_interfacerelationship_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_interfacerelationship_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_interfacerelationship_id_seq OWNED BY public.maasserver_interfacerelationship.id;
+    CACHE 1
+);
 
 
 --
@@ -7770,19 +5826,14 @@ CREATE TABLE public.maasserver_iprange (
 -- Name: maasserver_iprange_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_iprange_id_seq
+ALTER TABLE public.maasserver_iprange ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_iprange_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_iprange_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_iprange_id_seq OWNED BY public.maasserver_iprange.id;
+    CACHE 1
+);
 
 
 --
@@ -7804,19 +5855,14 @@ CREATE TABLE public.maasserver_largefile (
 -- Name: maasserver_largefile_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_largefile_id_seq
+ALTER TABLE public.maasserver_largefile ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_largefile_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_largefile_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_largefile_id_seq OWNED BY public.maasserver_largefile.id;
+    CACHE 1
+);
 
 
 --
@@ -7837,76 +5883,56 @@ CREATE TABLE public.maasserver_licensekey (
 -- Name: maasserver_licensekey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_licensekey_id_seq
+ALTER TABLE public.maasserver_licensekey ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_licensekey_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_licensekey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_licensekey_id_seq OWNED BY public.maasserver_licensekey.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_mdns_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_mdns_id_seq
+ALTER TABLE public.maasserver_mdns ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_mdns_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_mdns_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_mdns_id_seq OWNED BY public.maasserver_mdns.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_neighbour_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_neighbour_id_seq
+ALTER TABLE public.maasserver_neighbour ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_neighbour_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_neighbour_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_neighbour_id_seq OWNED BY public.maasserver_neighbour.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_node_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_node_id_seq
+ALTER TABLE public.maasserver_node ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_node_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_node_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_node_id_seq OWNED BY public.maasserver_node.id;
+    CACHE 1
+);
 
 
 --
@@ -7914,7 +5940,7 @@ ALTER SEQUENCE public.maasserver_node_id_seq OWNED BY public.maasserver_node.id;
 --
 
 CREATE TABLE public.maasserver_node_tags (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     node_id bigint NOT NULL,
     tag_id bigint NOT NULL
 );
@@ -7924,20 +5950,14 @@ CREATE TABLE public.maasserver_node_tags (
 -- Name: maasserver_node_tags_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_node_tags_id_seq
-    AS integer
+ALTER TABLE public.maasserver_node_tags ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_node_tags_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_node_tags_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_node_tags_id_seq OWNED BY public.maasserver_node_tags.id;
+    CACHE 1
+);
 
 
 --
@@ -7957,19 +5977,14 @@ CREATE TABLE public.maasserver_nodeconfig (
 -- Name: maasserver_nodeconfig_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_nodeconfig_id_seq
+ALTER TABLE public.maasserver_nodeconfig ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_nodeconfig_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_nodeconfig_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_nodeconfig_id_seq OWNED BY public.maasserver_nodeconfig.id;
+    CACHE 1
+);
 
 
 --
@@ -7991,7 +6006,7 @@ CREATE TABLE public.maasserver_nodedevice (
     device_number integer NOT NULL,
     pci_address character varying(64),
     numa_node_id bigint NOT NULL,
-    physical_blockdevice_id integer,
+    physical_blockdevice_id bigint,
     physical_interface_id bigint,
     node_config_id bigint NOT NULL,
     CONSTRAINT maasserver_nodedevice_bus_number_check CHECK ((bus_number >= 0)),
@@ -8003,19 +6018,14 @@ CREATE TABLE public.maasserver_nodedevice (
 -- Name: maasserver_nodedevice_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_nodedevice_id_seq
+ALTER TABLE public.maasserver_nodedevice ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_nodedevice_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_nodedevice_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_nodedevice_id_seq OWNED BY public.maasserver_nodedevice.id;
+    CACHE 1
+);
 
 
 --
@@ -8034,19 +6044,14 @@ CREATE TABLE public.maasserver_nodedevicevpd (
 -- Name: maasserver_nodedevicevpd_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_nodedevicevpd_id_seq
+ALTER TABLE public.maasserver_nodedevicevpd ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_nodedevicevpd_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_nodedevicevpd_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_nodedevicevpd_id_seq OWNED BY public.maasserver_nodedevicevpd.id;
+    CACHE 1
+);
 
 
 --
@@ -8064,19 +6069,14 @@ CREATE TABLE public.maasserver_nodegrouptorackcontroller (
 -- Name: maasserver_nodegrouptorackcontroller_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_nodegrouptorackcontroller_id_seq
+ALTER TABLE public.maasserver_nodegrouptorackcontroller ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_nodegrouptorackcontroller_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_nodegrouptorackcontroller_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_nodegrouptorackcontroller_id_seq OWNED BY public.maasserver_nodegrouptorackcontroller.id;
+    CACHE 1
+);
 
 
 --
@@ -8088,25 +6088,6 @@ CREATE TABLE public.maasserver_nodekey (
     node_id bigint NOT NULL,
     token_id bigint NOT NULL
 );
-
-
---
--- Name: maasserver_nodekey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_nodekey_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_nodekey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_nodekey_id_seq OWNED BY public.maasserver_nodekey.id;
 
 
 --
@@ -8127,19 +6108,14 @@ CREATE TABLE public.maasserver_nodemetadata (
 -- Name: maasserver_nodemetadata_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_nodemetadata_id_seq
+ALTER TABLE public.maasserver_nodemetadata ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_nodemetadata_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_nodemetadata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_nodemetadata_id_seq OWNED BY public.maasserver_nodemetadata.id;
+    CACHE 1
+);
 
 
 --
@@ -8151,25 +6127,6 @@ CREATE TABLE public.maasserver_nodeuserdata (
     data text NOT NULL,
     node_id bigint NOT NULL
 );
-
-
---
--- Name: maasserver_nodeuserdata_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_nodeuserdata_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_nodeuserdata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_nodeuserdata_id_seq OWNED BY public.maasserver_nodeuserdata.id;
 
 
 --
@@ -8195,19 +6152,14 @@ CREATE TABLE public.maasserver_notification (
 -- Name: maasserver_notification_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_notification_id_seq
+ALTER TABLE public.maasserver_notification ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_notification_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_notification_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_notification_id_seq OWNED BY public.maasserver_notification.id;
+    CACHE 1
+);
 
 
 --
@@ -8227,19 +6179,14 @@ CREATE TABLE public.maasserver_notificationdismissal (
 -- Name: maasserver_notificationdismissal_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_notificationdismissal_id_seq
+ALTER TABLE public.maasserver_notificationdismissal ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_notificationdismissal_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_notificationdismissal_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_notificationdismissal_id_seq OWNED BY public.maasserver_notificationdismissal.id;
+    CACHE 1
+);
 
 
 --
@@ -8261,19 +6208,14 @@ CREATE TABLE public.maasserver_numanode (
 -- Name: maasserver_numanode_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_numanode_id_seq
+ALTER TABLE public.maasserver_numanode ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_numanode_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_numanode_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_numanode_id_seq OWNED BY public.maasserver_numanode.id;
+    CACHE 1
+);
 
 
 --
@@ -8294,19 +6236,14 @@ CREATE TABLE public.maasserver_numanodehugepages (
 -- Name: maasserver_numanodehugepages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_numanodehugepages_id_seq
+ALTER TABLE public.maasserver_numanodehugepages ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_numanodehugepages_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_numanodehugepages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_numanodehugepages_id_seq OWNED BY public.maasserver_numanodehugepages.id;
+    CACHE 1
+);
 
 
 --
@@ -8325,19 +6262,14 @@ CREATE TABLE public.maasserver_ownerdata (
 -- Name: maasserver_ownerdata_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_ownerdata_id_seq
+ALTER TABLE public.maasserver_ownerdata ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_ownerdata_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_ownerdata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_ownerdata_id_seq OWNED BY public.maasserver_ownerdata.id;
+    CACHE 1
+);
 
 
 --
@@ -8366,19 +6298,14 @@ CREATE TABLE public.maasserver_packagerepository (
 -- Name: maasserver_packagerepository_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_packagerepository_id_seq
+ALTER TABLE public.maasserver_packagerepository ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_packagerepository_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_packagerepository_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_packagerepository_id_seq OWNED BY public.maasserver_packagerepository.id;
+    CACHE 1
+);
 
 
 --
@@ -8402,19 +6329,14 @@ CREATE TABLE public.maasserver_partition (
 -- Name: maasserver_partition_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_partition_id_seq
+ALTER TABLE public.maasserver_partition ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_partition_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_partition_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_partition_id_seq OWNED BY public.maasserver_partition.id;
+    CACHE 1
+);
 
 
 --
@@ -8434,19 +6356,14 @@ CREATE TABLE public.maasserver_partitiontable (
 -- Name: maasserver_partitiontable_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_partitiontable_id_seq
+ALTER TABLE public.maasserver_partitiontable ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_partitiontable_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_partitiontable_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_partitiontable_id_seq OWNED BY public.maasserver_partitiontable.id;
+    CACHE 1
+);
 
 
 --
@@ -8481,19 +6398,14 @@ CREATE TABLE public.maasserver_podhints (
 -- Name: maasserver_podhints_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_podhints_id_seq
+ALTER TABLE public.maasserver_podhints ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_podhints_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_podhints_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_podhints_id_seq OWNED BY public.maasserver_podhints.id;
+    CACHE 1
+);
 
 
 --
@@ -8501,7 +6413,7 @@ ALTER SEQUENCE public.maasserver_podhints_id_seq OWNED BY public.maasserver_podh
 --
 
 CREATE TABLE public.maasserver_podhints_nodes (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     podhints_id bigint NOT NULL,
     node_id bigint NOT NULL
 );
@@ -8511,20 +6423,14 @@ CREATE TABLE public.maasserver_podhints_nodes (
 -- Name: maasserver_podhints_nodes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_podhints_nodes_id_seq
-    AS integer
+ALTER TABLE public.maasserver_podhints_nodes ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_podhints_nodes_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_podhints_nodes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_podhints_nodes_id_seq OWNED BY public.maasserver_podhints_nodes.id;
+    CACHE 1
+);
 
 
 --
@@ -8586,19 +6492,14 @@ CREATE TABLE public.maasserver_podstoragepool (
 -- Name: maasserver_podstoragepool_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_podstoragepool_id_seq
+ALTER TABLE public.maasserver_podstoragepool ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_podstoragepool_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_podstoragepool_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_podstoragepool_id_seq OWNED BY public.maasserver_podstoragepool.id;
+    CACHE 1
+);
 
 
 --
@@ -8642,19 +6543,14 @@ CREATE TABLE public.maasserver_rbaclastsync (
 -- Name: maasserver_rbaclastsync_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_rbaclastsync_id_seq
+ALTER TABLE public.maasserver_rbaclastsync ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_rbaclastsync_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_rbaclastsync_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_rbaclastsync_id_seq OWNED BY public.maasserver_rbaclastsync.id;
+    CACHE 1
+);
 
 
 --
@@ -8676,57 +6572,42 @@ CREATE TABLE public.maasserver_rbacsync (
 -- Name: maasserver_rbacsync_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_rbacsync_id_seq
+ALTER TABLE public.maasserver_rbacsync ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_rbacsync_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_rbacsync_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_rbacsync_id_seq OWNED BY public.maasserver_rbacsync.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_rdns_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_rdns_id_seq
+ALTER TABLE public.maasserver_rdns ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_rdns_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_rdns_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_rdns_id_seq OWNED BY public.maasserver_rdns.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_regioncontrollerprocess_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_regioncontrollerprocess_id_seq
+ALTER TABLE public.maasserver_regioncontrollerprocess ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_regioncontrollerprocess_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_regioncontrollerprocess_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_regioncontrollerprocess_id_seq OWNED BY public.maasserver_regioncontrollerprocess.id;
+    CACHE 1
+);
 
 
 --
@@ -8747,19 +6628,14 @@ CREATE TABLE public.maasserver_regioncontrollerprocessendpoint (
 -- Name: maasserver_regioncontrollerprocessendpoint_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_regioncontrollerprocessendpoint_id_seq
+ALTER TABLE public.maasserver_regioncontrollerprocessendpoint ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_regioncontrollerprocessendpoint_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_regioncontrollerprocessendpoint_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_regioncontrollerprocessendpoint_id_seq OWNED BY public.maasserver_regioncontrollerprocessendpoint.id;
+    CACHE 1
+);
 
 
 --
@@ -8779,19 +6655,14 @@ CREATE TABLE public.maasserver_regionrackrpcconnection (
 -- Name: maasserver_regionrackrpcconnection_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_regionrackrpcconnection_id_seq
+ALTER TABLE public.maasserver_regionrackrpcconnection ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_regionrackrpcconnection_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_regionrackrpcconnection_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_regionrackrpcconnection_id_seq OWNED BY public.maasserver_regionrackrpcconnection.id;
+    CACHE 1
+);
 
 
 --
@@ -8813,19 +6684,14 @@ CREATE TABLE public.maasserver_reservedip (
 -- Name: maasserver_reservedip_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_reservedip_id_seq
+ALTER TABLE public.maasserver_reservedip ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_reservedip_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_reservedip_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_reservedip_id_seq OWNED BY public.maasserver_reservedip.id;
+    CACHE 1
+);
 
 
 --
@@ -8845,20 +6711,14 @@ CREATE TABLE public.maasserver_resourcepool (
 -- Name: maasserver_resourcepool_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_resourcepool_id_seq
-    AS integer
+ALTER TABLE public.maasserver_resourcepool ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_resourcepool_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_resourcepool_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_resourcepool_id_seq OWNED BY public.maasserver_resourcepool.id;
+    CACHE 1
+);
 
 
 --
@@ -8877,19 +6737,14 @@ CREATE TABLE public.maasserver_rootkey (
 -- Name: maasserver_rootkey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_rootkey_id_seq
+ALTER TABLE public.maasserver_rootkey ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_rootkey_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_rootkey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_rootkey_id_seq OWNED BY public.maasserver_rootkey.id;
+    CACHE 1
+);
 
 
 --
@@ -8960,25 +6815,6 @@ CREATE TABLE public.maasserver_script (
 
 
 --
--- Name: maasserver_script_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_script_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_script_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_script_id_seq OWNED BY public.maasserver_script.id;
-
-
---
 -- Name: maasserver_scriptresult; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8999,29 +6835,10 @@ CREATE TABLE public.maasserver_scriptresult (
     ended timestamp with time zone,
     started timestamp with time zone,
     parameters jsonb NOT NULL,
-    physical_blockdevice_id integer,
+    physical_blockdevice_id bigint,
     suppressed boolean NOT NULL,
     interface_id bigint
 );
-
-
---
--- Name: maasserver_scriptresult_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_scriptresult_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_scriptresult_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_scriptresult_id_seq OWNED BY public.maasserver_scriptresult.id;
 
 
 --
@@ -9036,25 +6853,6 @@ CREATE TABLE public.maasserver_scriptset (
     power_state_before_transition character varying(10) NOT NULL,
     tags text[]
 );
-
-
---
--- Name: maasserver_scriptset_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_scriptset_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_scriptset_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_scriptset_id_seq OWNED BY public.maasserver_scriptset.id;
 
 
 --
@@ -9088,19 +6886,14 @@ CREATE TABLE public.maasserver_service (
 -- Name: maasserver_service_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_service_id_seq
+ALTER TABLE public.maasserver_service ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_service_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_service_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_service_id_seq OWNED BY public.maasserver_service.id;
+    CACHE 1
+);
 
 
 --
@@ -9120,38 +6913,43 @@ CREATE TABLE public.maasserver_space (
 -- Name: maasserver_space_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_space_id_seq
+ALTER TABLE public.maasserver_space ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_space_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
+    CACHE 1
+);
 
 
 --
--- Name: maasserver_space_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: maasserver_sshkey; Type: TABLE; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.maasserver_space_id_seq OWNED BY public.maasserver_space.id;
+CREATE TABLE public.maasserver_sshkey (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    key text NOT NULL,
+    user_id integer NOT NULL,
+    auth_id character varying(255),
+    protocol character varying(64)
+);
 
 
 --
 -- Name: maasserver_sshkey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_sshkey_id_seq
+ALTER TABLE public.maasserver_sshkey ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_sshkey_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_sshkey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_sshkey_id_seq OWNED BY public.maasserver_sshkey.id;
+    CACHE 1
+);
 
 
 --
@@ -9171,38 +6969,28 @@ CREATE TABLE public.maasserver_sslkey (
 -- Name: maasserver_sslkey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_sslkey_id_seq
+ALTER TABLE public.maasserver_sslkey ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_sslkey_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_sslkey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_sslkey_id_seq OWNED BY public.maasserver_sslkey.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_staticipaddress_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_staticipaddress_id_seq
+ALTER TABLE public.maasserver_staticipaddress ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_staticipaddress_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_staticipaddress_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_staticipaddress_id_seq OWNED BY public.maasserver_staticipaddress.id;
+    CACHE 1
+);
 
 
 --
@@ -9225,38 +7013,28 @@ CREATE TABLE public.maasserver_staticroute (
 -- Name: maasserver_staticroute_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_staticroute_id_seq
+ALTER TABLE public.maasserver_staticroute ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_staticroute_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_staticroute_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_staticroute_id_seq OWNED BY public.maasserver_staticroute.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_subnet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_subnet_id_seq
+ALTER TABLE public.maasserver_subnet ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_subnet_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_subnet_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_subnet_id_seq OWNED BY public.maasserver_subnet.id;
+    CACHE 1
+);
 
 
 --
@@ -9278,19 +7056,14 @@ CREATE TABLE public.maasserver_tag (
 -- Name: maasserver_tag_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_tag_id_seq
+ALTER TABLE public.maasserver_tag ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_tag_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_tag_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_tag_id_seq OWNED BY public.maasserver_tag.id;
+    CACHE 1
+);
 
 
 --
@@ -9311,19 +7084,14 @@ CREATE TABLE public.maasserver_template (
 -- Name: maasserver_template_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_template_id_seq
+ALTER TABLE public.maasserver_template ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_template_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_template_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_template_id_seq OWNED BY public.maasserver_template.id;
+    CACHE 1
+);
 
 
 --
@@ -9347,6 +7115,10 @@ CREATE VIEW public.maasserver_ui_subnet_view AS
     subnet.disabled_boot_architectures,
     subnet.vlan_id,
     vlan.vid AS vlan_vid,
+    vlan.name AS vlan_name,
+    vlan.dhcp_on AS vlan_dhcp_on,
+    vlan.external_dhcp AS vlan_external_dhcp,
+    vlan.relay_vlan_id AS vlan_relay_vlan_id,
     space.id AS space_id,
     space.name AS space_name,
     fabric.id AS fabric_id,
@@ -9374,19 +7146,14 @@ CREATE TABLE public.maasserver_userprofile (
 -- Name: maasserver_userprofile_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_userprofile_id_seq
+ALTER TABLE public.maasserver_userprofile ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_userprofile_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_userprofile_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_userprofile_id_seq OWNED BY public.maasserver_userprofile.id;
+    CACHE 1
+);
 
 
 --
@@ -9417,19 +7184,14 @@ CREATE TABLE public.maasserver_versionedtextfile (
 -- Name: maasserver_versionedtextfile_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_versionedtextfile_id_seq
+ALTER TABLE public.maasserver_versionedtextfile ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_versionedtextfile_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_versionedtextfile_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_versionedtextfile_id_seq OWNED BY public.maasserver_versionedtextfile.id;
+    CACHE 1
+);
 
 
 --
@@ -9466,19 +7228,14 @@ CREATE TABLE public.maasserver_virtualmachine (
 -- Name: maasserver_virtualmachine_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_virtualmachine_id_seq
+ALTER TABLE public.maasserver_virtualmachine ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_virtualmachine_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_virtualmachine_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_virtualmachine_id_seq OWNED BY public.maasserver_virtualmachine.id;
+    CACHE 1
+);
 
 
 --
@@ -9501,19 +7258,14 @@ CREATE TABLE public.maasserver_virtualmachinedisk (
 -- Name: maasserver_virtualmachinedisk_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_virtualmachinedisk_id_seq
+ALTER TABLE public.maasserver_virtualmachinedisk ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_virtualmachinedisk_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_virtualmachinedisk_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_virtualmachinedisk_id_seq OWNED BY public.maasserver_virtualmachinedisk.id;
+    CACHE 1
+);
 
 
 --
@@ -9535,38 +7287,28 @@ CREATE TABLE public.maasserver_virtualmachineinterface (
 -- Name: maasserver_virtualmachineinterface_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_virtualmachineinterface_id_seq
+ALTER TABLE public.maasserver_virtualmachineinterface ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_virtualmachineinterface_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_virtualmachineinterface_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_virtualmachineinterface_id_seq OWNED BY public.maasserver_virtualmachineinterface.id;
+    CACHE 1
+);
 
 
 --
 -- Name: maasserver_vlan_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_vlan_id_seq
+ALTER TABLE public.maasserver_vlan ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_vlan_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_vlan_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_vlan_id_seq OWNED BY public.maasserver_vlan.id;
+    CACHE 1
+);
 
 
 --
@@ -9588,19 +7330,14 @@ CREATE TABLE public.maasserver_vmcluster (
 -- Name: maasserver_vmcluster_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_vmcluster_id_seq
+ALTER TABLE public.maasserver_vmcluster ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_vmcluster_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_vmcluster_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_vmcluster_id_seq OWNED BY public.maasserver_vmcluster.id;
+    CACHE 1
+);
 
 
 --
@@ -9620,19 +7357,14 @@ CREATE TABLE public.maasserver_zone (
 -- Name: maasserver_zone_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.maasserver_zone_id_seq
+ALTER TABLE public.maasserver_zone ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.maasserver_zone_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_zone_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_zone_id_seq OWNED BY public.maasserver_zone.id;
+    CACHE 1
+);
 
 
 --
@@ -9656,134 +7388,73 @@ ALTER SEQUENCE public.maasserver_zone_serial_seq OWNED BY public.maasserver_dnsp
 
 
 --
--- Name: maastesting_perftestbuild; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maastesting_perftestbuild (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    start_ts timestamp with time zone NOT NULL,
-    end_ts timestamp with time zone,
-    git_branch text NOT NULL,
-    git_hash text NOT NULL,
-    release text
-);
-
-
---
--- Name: maastesting_perftestbuild_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maastesting_perftestbuild_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maastesting_perftestbuild_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maastesting_perftestbuild_id_seq OWNED BY public.maastesting_perftestbuild.id;
-
-
---
 -- Name: metadataserver_nodekey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.metadataserver_nodekey_id_seq
+ALTER TABLE public.maasserver_nodekey ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.metadataserver_nodekey_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: metadataserver_nodekey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.metadataserver_nodekey_id_seq OWNED BY public.maasserver_nodekey.id;
+    CACHE 1
+);
 
 
 --
 -- Name: metadataserver_nodeuserdata_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.metadataserver_nodeuserdata_id_seq
+ALTER TABLE public.maasserver_nodeuserdata ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.metadataserver_nodeuserdata_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: metadataserver_nodeuserdata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.metadataserver_nodeuserdata_id_seq OWNED BY public.maasserver_nodeuserdata.id;
+    CACHE 1
+);
 
 
 --
 -- Name: metadataserver_script_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.metadataserver_script_id_seq
+ALTER TABLE public.maasserver_script ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.metadataserver_script_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: metadataserver_script_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.metadataserver_script_id_seq OWNED BY public.maasserver_script.id;
+    CACHE 1
+);
 
 
 --
 -- Name: metadataserver_scriptresult_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.metadataserver_scriptresult_id_seq
+ALTER TABLE public.maasserver_scriptresult ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.metadataserver_scriptresult_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: metadataserver_scriptresult_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.metadataserver_scriptresult_id_seq OWNED BY public.maasserver_scriptresult.id;
+    CACHE 1
+);
 
 
 --
 -- Name: metadataserver_scriptset_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.metadataserver_scriptset_id_seq
+ALTER TABLE public.maasserver_scriptset ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.metadataserver_scriptset_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: metadataserver_scriptset_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.metadataserver_scriptset_id_seq OWNED BY public.maasserver_scriptset.id;
+    CACHE 1
+);
 
 
 --
@@ -9805,19 +7476,14 @@ CREATE TABLE public.piston3_consumer (
 -- Name: piston3_consumer_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.piston3_consumer_id_seq
+ALTER TABLE public.piston3_consumer ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.piston3_consumer_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: piston3_consumer_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.piston3_consumer_id_seq OWNED BY public.piston3_consumer.id;
+    CACHE 1
+);
 
 
 --
@@ -9836,19 +7502,14 @@ CREATE TABLE public.piston3_nonce (
 -- Name: piston3_nonce_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.piston3_nonce_id_seq
+ALTER TABLE public.piston3_nonce ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.piston3_nonce_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: piston3_nonce_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.piston3_nonce_id_seq OWNED BY public.piston3_nonce.id;
+    CACHE 1
+);
 
 
 --
@@ -9874,19 +7535,14 @@ CREATE TABLE public.piston3_token (
 -- Name: piston3_token_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.piston3_token_id_seq
+ALTER TABLE public.piston3_token ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.piston3_token_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: piston3_token_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.piston3_token_id_seq OWNED BY public.piston3_token.id;
+    CACHE 1
+);
 
 
 --
@@ -10489,692 +8145,6 @@ CREATE TABLE temporal_visibility.schema_version (
 
 
 --
--- Name: auth_group id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auth_group ALTER COLUMN id SET DEFAULT nextval('public.auth_group_id_seq'::regclass);
-
-
---
--- Name: auth_group_permissions id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auth_group_permissions ALTER COLUMN id SET DEFAULT nextval('public.auth_group_permissions_id_seq'::regclass);
-
-
---
--- Name: auth_permission id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auth_permission ALTER COLUMN id SET DEFAULT nextval('public.auth_permission_id_seq'::regclass);
-
-
---
--- Name: auth_user id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auth_user ALTER COLUMN id SET DEFAULT nextval('public.auth_user_id_seq'::regclass);
-
-
---
--- Name: auth_user_groups id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auth_user_groups ALTER COLUMN id SET DEFAULT nextval('public.auth_user_groups_id_seq'::regclass);
-
-
---
--- Name: auth_user_user_permissions id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auth_user_user_permissions ALTER COLUMN id SET DEFAULT nextval('public.auth_user_user_permissions_id_seq'::regclass);
-
-
---
--- Name: django_content_type id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.django_content_type ALTER COLUMN id SET DEFAULT nextval('public.django_content_type_id_seq'::regclass);
-
-
---
--- Name: django_migrations id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.django_migrations ALTER COLUMN id SET DEFAULT nextval('public.django_migrations_id_seq'::regclass);
-
-
---
--- Name: django_site id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.django_site ALTER COLUMN id SET DEFAULT nextval('public.django_site_id_seq'::regclass);
-
-
---
--- Name: maasserver_blockdevice id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_blockdevice ALTER COLUMN id SET DEFAULT nextval('public.maasserver_blockdevice_id_seq'::regclass);
-
-
---
--- Name: maasserver_bmc id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bmc ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bmc_id_seq'::regclass);
-
-
---
--- Name: maasserver_bmcroutablerackcontrollerrelationship id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bmcroutablerackcontrollerrelationship ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bmcroutablerackcontrollerrelationship_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootresource id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootresource ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootresource_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootresourcefile id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootresourcefile ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootresourcefile_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootresourcefilesync id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootresourcefilesync ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootresourcefilesync_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootresourceset id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootresourceset ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootresourceset_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootsource id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootsource ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootsource_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootsourcecache id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootsourcecache ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootsourcecache_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootsourceselection id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootsourceselection ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootsourceselection_id_seq'::regclass);
-
-
---
--- Name: maasserver_cacheset id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_cacheset ALTER COLUMN id SET DEFAULT nextval('public.maasserver_cacheset_id_seq'::regclass);
-
-
---
--- Name: maasserver_config id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_config ALTER COLUMN id SET DEFAULT nextval('public.maasserver_config_id_seq'::regclass);
-
-
---
--- Name: maasserver_defaultresource id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_defaultresource ALTER COLUMN id SET DEFAULT nextval('public.maasserver_defaultresource_id_seq'::regclass);
-
-
---
--- Name: maasserver_dhcpsnippet id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet ALTER COLUMN id SET DEFAULT nextval('public.maasserver_dhcpsnippet_id_seq'::regclass);
-
-
---
--- Name: maasserver_dnsdata id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dnsdata ALTER COLUMN id SET DEFAULT nextval('public.maasserver_dnsdata_id_seq'::regclass);
-
-
---
--- Name: maasserver_dnspublication id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dnspublication ALTER COLUMN id SET DEFAULT nextval('public.maasserver_dnspublication_id_seq'::regclass);
-
-
---
--- Name: maasserver_dnsresource id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dnsresource ALTER COLUMN id SET DEFAULT nextval('public.maasserver_dnsresource_id_seq'::regclass);
-
-
---
--- Name: maasserver_dnsresource_ip_addresses id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dnsresource_ip_addresses ALTER COLUMN id SET DEFAULT nextval('public.maasserver_dnsresource_ip_addresses_id_seq'::regclass);
-
-
---
--- Name: maasserver_domain id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_domain ALTER COLUMN id SET DEFAULT nextval('public.maasserver_domain_id_seq'::regclass);
-
-
---
--- Name: maasserver_event id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_event ALTER COLUMN id SET DEFAULT nextval('public.maasserver_event_id_seq'::regclass);
-
-
---
--- Name: maasserver_eventtype id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_eventtype ALTER COLUMN id SET DEFAULT nextval('public.maasserver_eventtype_id_seq'::regclass);
-
-
---
--- Name: maasserver_fabric id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_fabric ALTER COLUMN id SET DEFAULT nextval('public.maasserver_fabric_id_seq'::regclass);
-
-
---
--- Name: maasserver_filestorage id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_filestorage ALTER COLUMN id SET DEFAULT nextval('public.maasserver_filestorage_id_seq'::regclass);
-
-
---
--- Name: maasserver_filesystem id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_filesystem ALTER COLUMN id SET DEFAULT nextval('public.maasserver_filesystem_id_seq'::regclass);
-
-
---
--- Name: maasserver_filesystemgroup id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_filesystemgroup ALTER COLUMN id SET DEFAULT nextval('public.maasserver_filesystemgroup_id_seq'::regclass);
-
-
---
--- Name: maasserver_forwarddnsserver id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_forwarddnsserver ALTER COLUMN id SET DEFAULT nextval('public.maasserver_forwarddnsserver_id_seq'::regclass);
-
-
---
--- Name: maasserver_forwarddnsserver_domains id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_forwarddnsserver_domains ALTER COLUMN id SET DEFAULT nextval('public.maasserver_forwarddnsserver_domains_id_seq'::regclass);
-
-
---
--- Name: maasserver_globaldefault id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_globaldefault ALTER COLUMN id SET DEFAULT nextval('public.maasserver_globaldefault_id_seq'::regclass);
-
-
---
--- Name: maasserver_interface id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_interface ALTER COLUMN id SET DEFAULT nextval('public.maasserver_interface_id_seq'::regclass);
-
-
---
--- Name: maasserver_interface_ip_addresses id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_interface_ip_addresses ALTER COLUMN id SET DEFAULT nextval('public.maasserver_interface_ip_addresses_id_seq'::regclass);
-
-
---
--- Name: maasserver_interfacerelationship id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_interfacerelationship ALTER COLUMN id SET DEFAULT nextval('public.maasserver_interfacerelationship_id_seq'::regclass);
-
-
---
--- Name: maasserver_iprange id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_iprange ALTER COLUMN id SET DEFAULT nextval('public.maasserver_iprange_id_seq'::regclass);
-
-
---
--- Name: maasserver_largefile id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_largefile ALTER COLUMN id SET DEFAULT nextval('public.maasserver_largefile_id_seq'::regclass);
-
-
---
--- Name: maasserver_licensekey id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_licensekey ALTER COLUMN id SET DEFAULT nextval('public.maasserver_licensekey_id_seq'::regclass);
-
-
---
--- Name: maasserver_mdns id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_mdns ALTER COLUMN id SET DEFAULT nextval('public.maasserver_mdns_id_seq'::regclass);
-
-
---
--- Name: maasserver_neighbour id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_neighbour ALTER COLUMN id SET DEFAULT nextval('public.maasserver_neighbour_id_seq'::regclass);
-
-
---
--- Name: maasserver_node id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_node ALTER COLUMN id SET DEFAULT nextval('public.maasserver_node_id_seq'::regclass);
-
-
---
--- Name: maasserver_node_tags id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_node_tags ALTER COLUMN id SET DEFAULT nextval('public.maasserver_node_tags_id_seq'::regclass);
-
-
---
--- Name: maasserver_nodeconfig id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodeconfig ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodeconfig_id_seq'::regclass);
-
-
---
--- Name: maasserver_nodedevice id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodedevice ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodedevice_id_seq'::regclass);
-
-
---
--- Name: maasserver_nodedevicevpd id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodedevicevpd ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodedevicevpd_id_seq'::regclass);
-
-
---
--- Name: maasserver_nodegrouptorackcontroller id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodegrouptorackcontroller ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodegrouptorackcontroller_id_seq'::regclass);
-
-
---
--- Name: maasserver_nodekey id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodekey ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodekey_id_seq'::regclass);
-
-
---
--- Name: maasserver_nodemetadata id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodemetadata ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodemetadata_id_seq'::regclass);
-
-
---
--- Name: maasserver_nodeuserdata id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodeuserdata ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodeuserdata_id_seq'::regclass);
-
-
---
--- Name: maasserver_notification id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_notification ALTER COLUMN id SET DEFAULT nextval('public.maasserver_notification_id_seq'::regclass);
-
-
---
--- Name: maasserver_notificationdismissal id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_notificationdismissal ALTER COLUMN id SET DEFAULT nextval('public.maasserver_notificationdismissal_id_seq'::regclass);
-
-
---
--- Name: maasserver_numanode id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_numanode ALTER COLUMN id SET DEFAULT nextval('public.maasserver_numanode_id_seq'::regclass);
-
-
---
--- Name: maasserver_numanodehugepages id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_numanodehugepages ALTER COLUMN id SET DEFAULT nextval('public.maasserver_numanodehugepages_id_seq'::regclass);
-
-
---
--- Name: maasserver_ownerdata id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_ownerdata ALTER COLUMN id SET DEFAULT nextval('public.maasserver_ownerdata_id_seq'::regclass);
-
-
---
--- Name: maasserver_packagerepository id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_packagerepository ALTER COLUMN id SET DEFAULT nextval('public.maasserver_packagerepository_id_seq'::regclass);
-
-
---
--- Name: maasserver_partition id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_partition ALTER COLUMN id SET DEFAULT nextval('public.maasserver_partition_id_seq'::regclass);
-
-
---
--- Name: maasserver_partitiontable id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_partitiontable ALTER COLUMN id SET DEFAULT nextval('public.maasserver_partitiontable_id_seq'::regclass);
-
-
---
--- Name: maasserver_podhints id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_podhints ALTER COLUMN id SET DEFAULT nextval('public.maasserver_podhints_id_seq'::regclass);
-
-
---
--- Name: maasserver_podhints_nodes id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_podhints_nodes ALTER COLUMN id SET DEFAULT nextval('public.maasserver_podhints_nodes_id_seq'::regclass);
-
-
---
--- Name: maasserver_podstoragepool id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_podstoragepool ALTER COLUMN id SET DEFAULT nextval('public.maasserver_podstoragepool_id_seq'::regclass);
-
-
---
--- Name: maasserver_rbaclastsync id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_rbaclastsync ALTER COLUMN id SET DEFAULT nextval('public.maasserver_rbaclastsync_id_seq'::regclass);
-
-
---
--- Name: maasserver_rbacsync id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_rbacsync ALTER COLUMN id SET DEFAULT nextval('public.maasserver_rbacsync_id_seq'::regclass);
-
-
---
--- Name: maasserver_rdns id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_rdns ALTER COLUMN id SET DEFAULT nextval('public.maasserver_rdns_id_seq'::regclass);
-
-
---
--- Name: maasserver_regioncontrollerprocess id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_regioncontrollerprocess ALTER COLUMN id SET DEFAULT nextval('public.maasserver_regioncontrollerprocess_id_seq'::regclass);
-
-
---
--- Name: maasserver_regioncontrollerprocessendpoint id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_regioncontrollerprocessendpoint ALTER COLUMN id SET DEFAULT nextval('public.maasserver_regioncontrollerprocessendpoint_id_seq'::regclass);
-
-
---
--- Name: maasserver_regionrackrpcconnection id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_regionrackrpcconnection ALTER COLUMN id SET DEFAULT nextval('public.maasserver_regionrackrpcconnection_id_seq'::regclass);
-
-
---
--- Name: maasserver_reservedip id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_reservedip ALTER COLUMN id SET DEFAULT nextval('public.maasserver_reservedip_id_seq'::regclass);
-
-
---
--- Name: maasserver_resourcepool id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_resourcepool ALTER COLUMN id SET DEFAULT nextval('public.maasserver_resourcepool_id_seq'::regclass);
-
-
---
--- Name: maasserver_rootkey id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_rootkey ALTER COLUMN id SET DEFAULT nextval('public.maasserver_rootkey_id_seq'::regclass);
-
-
---
--- Name: maasserver_script id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_script ALTER COLUMN id SET DEFAULT nextval('public.maasserver_script_id_seq'::regclass);
-
-
---
--- Name: maasserver_scriptresult id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_scriptresult ALTER COLUMN id SET DEFAULT nextval('public.maasserver_scriptresult_id_seq'::regclass);
-
-
---
--- Name: maasserver_scriptset id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_scriptset ALTER COLUMN id SET DEFAULT nextval('public.maasserver_scriptset_id_seq'::regclass);
-
-
---
--- Name: maasserver_service id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_service ALTER COLUMN id SET DEFAULT nextval('public.maasserver_service_id_seq'::regclass);
-
-
---
--- Name: maasserver_space id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_space ALTER COLUMN id SET DEFAULT nextval('public.maasserver_space_id_seq'::regclass);
-
-
---
--- Name: maasserver_sshkey id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_sshkey ALTER COLUMN id SET DEFAULT nextval('public.maasserver_sshkey_id_seq'::regclass);
-
-
---
--- Name: maasserver_sslkey id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_sslkey ALTER COLUMN id SET DEFAULT nextval('public.maasserver_sslkey_id_seq'::regclass);
-
-
---
--- Name: maasserver_staticipaddress id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_staticipaddress ALTER COLUMN id SET DEFAULT nextval('public.maasserver_staticipaddress_id_seq'::regclass);
-
-
---
--- Name: maasserver_staticroute id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_staticroute ALTER COLUMN id SET DEFAULT nextval('public.maasserver_staticroute_id_seq'::regclass);
-
-
---
--- Name: maasserver_subnet id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_subnet ALTER COLUMN id SET DEFAULT nextval('public.maasserver_subnet_id_seq'::regclass);
-
-
---
--- Name: maasserver_tag id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_tag ALTER COLUMN id SET DEFAULT nextval('public.maasserver_tag_id_seq'::regclass);
-
-
---
--- Name: maasserver_template id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_template ALTER COLUMN id SET DEFAULT nextval('public.maasserver_template_id_seq'::regclass);
-
-
---
--- Name: maasserver_userprofile id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_userprofile ALTER COLUMN id SET DEFAULT nextval('public.maasserver_userprofile_id_seq'::regclass);
-
-
---
--- Name: maasserver_versionedtextfile id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_versionedtextfile ALTER COLUMN id SET DEFAULT nextval('public.maasserver_versionedtextfile_id_seq'::regclass);
-
-
---
--- Name: maasserver_virtualmachine id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_virtualmachine ALTER COLUMN id SET DEFAULT nextval('public.maasserver_virtualmachine_id_seq'::regclass);
-
-
---
--- Name: maasserver_virtualmachinedisk id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_virtualmachinedisk ALTER COLUMN id SET DEFAULT nextval('public.maasserver_virtualmachinedisk_id_seq'::regclass);
-
-
---
--- Name: maasserver_virtualmachineinterface id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_virtualmachineinterface ALTER COLUMN id SET DEFAULT nextval('public.maasserver_virtualmachineinterface_id_seq'::regclass);
-
-
---
--- Name: maasserver_vlan id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_vlan ALTER COLUMN id SET DEFAULT nextval('public.maasserver_vlan_id_seq'::regclass);
-
-
---
--- Name: maasserver_vmcluster id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_vmcluster ALTER COLUMN id SET DEFAULT nextval('public.maasserver_vmcluster_id_seq'::regclass);
-
-
---
--- Name: maasserver_zone id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_zone ALTER COLUMN id SET DEFAULT nextval('public.maasserver_zone_id_seq'::regclass);
-
-
---
--- Name: maastesting_perftestbuild id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maastesting_perftestbuild ALTER COLUMN id SET DEFAULT nextval('public.maastesting_perftestbuild_id_seq'::regclass);
-
-
---
--- Name: piston3_consumer id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.piston3_consumer ALTER COLUMN id SET DEFAULT nextval('public.piston3_consumer_id_seq'::regclass);
-
-
---
--- Name: piston3_nonce id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.piston3_nonce ALTER COLUMN id SET DEFAULT nextval('public.piston3_nonce_id_seq'::regclass);
-
-
---
--- Name: piston3_token id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.piston3_token ALTER COLUMN id SET DEFAULT nextval('public.piston3_token_id_seq'::regclass);
-
-
---
 -- Name: buffered_events id; Type: DEFAULT; Schema: temporal; Owner: -
 --
 
@@ -11186,7 +8156,7 @@ ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('t
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0003
+0007
 \.
 
 
@@ -11283,410 +8253,378 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 70	Can change Fabric	18	change_fabric
 71	Can delete Fabric	18	delete_fabric
 72	Can view Fabric	18	view_fabric
-73	Can add Fan Network	19	add_fannetwork
-74	Can change Fan Network	19	change_fannetwork
-75	Can delete Fan Network	19	delete_fannetwork
-76	Can view Fan Network	19	view_fannetwork
-77	Can add file storage	20	add_filestorage
-78	Can change file storage	20	change_filestorage
-79	Can delete file storage	20	delete_filestorage
-80	Can view file storage	20	view_filestorage
-81	Can add filesystem	21	add_filesystem
-82	Can change filesystem	21	change_filesystem
-83	Can delete filesystem	21	delete_filesystem
-84	Can view filesystem	21	view_filesystem
-85	Can add filesystem group	22	add_filesystemgroup
-86	Can change filesystem group	22	change_filesystemgroup
-87	Can delete filesystem group	22	delete_filesystemgroup
-88	Can view filesystem group	22	view_filesystemgroup
-89	Can add Interface	23	add_interface
-90	Can change Interface	23	change_interface
-91	Can delete Interface	23	delete_interface
-92	Can view Interface	23	view_interface
-93	Can add interface relationship	24	add_interfacerelationship
-94	Can change interface relationship	24	change_interfacerelationship
-95	Can delete interface relationship	24	delete_interfacerelationship
-96	Can view interface relationship	24	view_interfacerelationship
-97	Can add large file	25	add_largefile
-98	Can change large file	25	change_largefile
-99	Can delete large file	25	delete_largefile
-100	Can view large file	25	view_largefile
-101	Can add license key	26	add_licensekey
-102	Can change license key	26	change_licensekey
-103	Can delete license key	26	delete_licensekey
-104	Can view license key	26	view_licensekey
-105	Can add node	27	add_node
-106	Can change node	27	change_node
-107	Can delete node	27	delete_node
-108	Can view node	27	view_node
-109	Can add partition	28	add_partition
-110	Can change partition	28	change_partition
-111	Can delete partition	28	delete_partition
-112	Can view partition	28	view_partition
-113	Can add partition table	29	add_partitiontable
-114	Can change partition table	29	change_partitiontable
-115	Can delete partition table	29	delete_partitiontable
-116	Can view partition table	29	view_partitiontable
-117	Can add Space	30	add_space
-118	Can change Space	30	change_space
-119	Can delete Space	30	delete_space
-120	Can view Space	30	view_space
-121	Can add SSH key	31	add_sshkey
-122	Can change SSH key	31	change_sshkey
-123	Can delete SSH key	31	delete_sshkey
-124	Can view SSH key	31	view_sshkey
-125	Can add SSL key	32	add_sslkey
-126	Can change SSL key	32	change_sslkey
-127	Can delete SSL key	32	delete_sslkey
-128	Can view SSL key	32	view_sslkey
-129	Can add Static IP Address	33	add_staticipaddress
-130	Can change Static IP Address	33	change_staticipaddress
-131	Can delete Static IP Address	33	delete_staticipaddress
-132	Can view Static IP Address	33	view_staticipaddress
-133	Can add subnet	34	add_subnet
-134	Can change subnet	34	change_subnet
-135	Can delete subnet	34	delete_subnet
-136	Can view subnet	34	view_subnet
-137	Can add tag	35	add_tag
-138	Can change tag	35	change_tag
-139	Can delete tag	35	delete_tag
-140	Can view tag	35	view_tag
-141	Can add user profile	36	add_userprofile
-142	Can change user profile	36	change_userprofile
-143	Can delete user profile	36	delete_userprofile
-144	Can view user profile	36	view_userprofile
-145	Can add VLAN	37	add_vlan
-146	Can change VLAN	37	change_vlan
-147	Can delete VLAN	37	delete_vlan
-148	Can view VLAN	37	view_vlan
-149	Can add Physical zone	38	add_zone
-150	Can change Physical zone	38	change_zone
-151	Can delete Physical zone	38	delete_zone
-152	Can view Physical zone	38	view_zone
-153	Can add physical block device	39	add_physicalblockdevice
-154	Can change physical block device	39	change_physicalblockdevice
-155	Can delete physical block device	39	delete_physicalblockdevice
-156	Can view physical block device	39	view_physicalblockdevice
-157	Can add virtual block device	40	add_virtualblockdevice
-158	Can change virtual block device	40	change_virtualblockdevice
-159	Can delete virtual block device	40	delete_virtualblockdevice
-160	Can view virtual block device	40	view_virtualblockdevice
-161	Can add bcache	41	add_bcache
-162	Can change bcache	41	change_bcache
-163	Can delete bcache	41	delete_bcache
-164	Can view bcache	41	view_bcache
-165	Can add Bond	42	add_bondinterface
-166	Can change Bond	42	change_bondinterface
-167	Can delete Bond	42	delete_bondinterface
-168	Can view Bond	42	view_bondinterface
-169	Can add device	43	add_device
-170	Can change device	43	change_device
-171	Can delete device	43	delete_device
-172	Can view device	43	view_device
-173	Can add Physical interface	44	add_physicalinterface
-174	Can change Physical interface	44	change_physicalinterface
-175	Can delete Physical interface	44	delete_physicalinterface
-176	Can view Physical interface	44	view_physicalinterface
-177	Can add raid	45	add_raid
-178	Can change raid	45	change_raid
-179	Can delete raid	45	delete_raid
-180	Can view raid	45	view_raid
-181	Can add Unknown interface	46	add_unknowninterface
-182	Can change Unknown interface	46	change_unknowninterface
-183	Can delete Unknown interface	46	delete_unknowninterface
-184	Can view Unknown interface	46	view_unknowninterface
-185	Can add VLAN interface	47	add_vlaninterface
-186	Can change VLAN interface	47	change_vlaninterface
-187	Can delete VLAN interface	47	delete_vlaninterface
-188	Can view VLAN interface	47	view_vlaninterface
-189	Can add volume group	48	add_volumegroup
-190	Can change volume group	48	change_volumegroup
-191	Can delete volume group	48	delete_volumegroup
-192	Can view volume group	48	view_volumegroup
-193	Can add machine	49	add_machine
-194	Can change machine	49	change_machine
-195	Can delete machine	49	delete_machine
-196	Can view machine	49	view_machine
-197	Can add rack controller	50	add_rackcontroller
-198	Can change rack controller	50	change_rackcontroller
-199	Can delete rack controller	50	delete_rackcontroller
-200	Can view rack controller	50	view_rackcontroller
-201	Can add DNSResource	51	add_dnsresource
-202	Can change DNSResource	51	change_dnsresource
-203	Can delete DNSResource	51	delete_dnsresource
-204	Can view DNSResource	51	view_dnsresource
-205	Can add Domain	52	add_domain
-206	Can change Domain	52	change_domain
-207	Can delete Domain	52	delete_domain
-208	Can view Domain	52	view_domain
-209	Can add region controller process	53	add_regioncontrollerprocess
-210	Can change region controller process	53	change_regioncontrollerprocess
-211	Can delete region controller process	53	delete_regioncontrollerprocess
-212	Can view region controller process	53	view_regioncontrollerprocess
-213	Can add region controller process endpoint	54	add_regioncontrollerprocessendpoint
-214	Can change region controller process endpoint	54	change_regioncontrollerprocessendpoint
-215	Can delete region controller process endpoint	54	delete_regioncontrollerprocessendpoint
-216	Can view region controller process endpoint	54	view_regioncontrollerprocessendpoint
-217	Can add region controller	55	add_regioncontroller
-218	Can change region controller	55	change_regioncontroller
-219	Can delete region controller	55	delete_regioncontroller
-220	Can view region controller	55	view_regioncontroller
-221	Can add bmc	56	add_bmc
-222	Can change bmc	56	change_bmc
-223	Can delete bmc	56	delete_bmc
-224	Can view bmc	56	view_bmc
-225	Can add DNSData	57	add_dnsdata
-226	Can change DNSData	57	change_dnsdata
-227	Can delete DNSData	57	delete_dnsdata
-228	Can view DNSData	57	view_dnsdata
-229	Can add ip range	58	add_iprange
-230	Can change ip range	58	change_iprange
-231	Can delete ip range	58	delete_iprange
-232	Can view ip range	58	view_iprange
-233	Can add node group to rack controller	59	add_nodegrouptorackcontroller
-234	Can change node group to rack controller	59	change_nodegrouptorackcontroller
-235	Can delete node group to rack controller	59	delete_nodegrouptorackcontroller
-236	Can view node group to rack controller	59	view_nodegrouptorackcontroller
-237	Can add region rack rpc connection	60	add_regionrackrpcconnection
-238	Can change region rack rpc connection	60	change_regionrackrpcconnection
-239	Can delete region rack rpc connection	60	delete_regionrackrpcconnection
-240	Can view region rack rpc connection	60	view_regionrackrpcconnection
-241	Can add service	61	add_service
-242	Can change service	61	change_service
-243	Can delete service	61	delete_service
-244	Can view service	61	view_service
-245	Can add Template	62	add_template
-246	Can change Template	62	change_template
-247	Can delete Template	62	delete_template
-248	Can view Template	62	view_template
-249	Can add VersionedTextFile	63	add_versionedtextfile
-250	Can change VersionedTextFile	63	change_versionedtextfile
-251	Can delete VersionedTextFile	63	delete_versionedtextfile
-252	Can view VersionedTextFile	63	view_versionedtextfile
-253	Can add bmc routable rack controller relationship	64	add_bmcroutablerackcontrollerrelationship
-254	Can change bmc routable rack controller relationship	64	change_bmcroutablerackcontrollerrelationship
-255	Can delete bmc routable rack controller relationship	64	delete_bmcroutablerackcontrollerrelationship
-256	Can view bmc routable rack controller relationship	64	view_bmcroutablerackcontrollerrelationship
-257	Can add dhcp snippet	65	add_dhcpsnippet
-258	Can change dhcp snippet	65	change_dhcpsnippet
-259	Can delete dhcp snippet	65	delete_dhcpsnippet
-260	Can view dhcp snippet	65	view_dhcpsnippet
-261	Can add child interface	66	add_childinterface
-262	Can change child interface	66	change_childinterface
-263	Can delete child interface	66	delete_childinterface
-264	Can view child interface	66	view_childinterface
-265	Can add Bridge	67	add_bridgeinterface
-266	Can change Bridge	67	change_bridgeinterface
-267	Can delete Bridge	67	delete_bridgeinterface
-268	Can view Bridge	67	view_bridgeinterface
-269	Can add owner data	68	add_ownerdata
-270	Can change owner data	68	change_ownerdata
-271	Can delete owner data	68	delete_ownerdata
-272	Can view owner data	68	view_ownerdata
-273	Can add controller	69	add_controller
-274	Can change controller	69	change_controller
-275	Can delete controller	69	delete_controller
-276	Can view controller	69	view_controller
-277	Can add dns publication	70	add_dnspublication
-278	Can change dns publication	70	change_dnspublication
-279	Can delete dns publication	70	delete_dnspublication
-280	Can view dns publication	70	view_dnspublication
-281	Can add package repository	71	add_packagerepository
-282	Can change package repository	71	change_packagerepository
-283	Can delete package repository	71	delete_packagerepository
-284	Can view package repository	71	view_packagerepository
-285	Can add mDNS binding	72	add_mdns
-286	Can change mDNS binding	72	change_mdns
-287	Can delete mDNS binding	72	delete_mdns
-288	Can view mDNS binding	72	view_mdns
-289	Can add Neighbour	73	add_neighbour
-290	Can change Neighbour	73	change_neighbour
-291	Can delete Neighbour	73	delete_neighbour
-292	Can view Neighbour	73	view_neighbour
-293	Can add static route	74	add_staticroute
-294	Can change static route	74	change_staticroute
-295	Can delete static route	74	delete_staticroute
-296	Can view static route	74	view_staticroute
-297	Can add Key Source	75	add_keysource
-298	Can change Key Source	75	change_keysource
-299	Can delete Key Source	75	delete_keysource
-300	Can view Key Source	75	view_keysource
-301	Can add Discovery	76	add_discovery
-302	Can change Discovery	76	change_discovery
-303	Can delete Discovery	76	delete_discovery
-304	Can view Discovery	76	view_discovery
-305	Can add Reverse-DNS entry	77	add_rdns
-306	Can change Reverse-DNS entry	77	change_rdns
-307	Can delete Reverse-DNS entry	77	delete_rdns
-308	Can view Reverse-DNS entry	77	view_rdns
-309	Can add notification	78	add_notification
-310	Can change notification	78	change_notification
-311	Can delete notification	78	delete_notification
-312	Can view notification	78	view_notification
-313	Can add notification dismissal	79	add_notificationdismissal
-314	Can change notification dismissal	79	change_notificationdismissal
-315	Can delete notification dismissal	79	delete_notificationdismissal
-316	Can view notification dismissal	79	view_notificationdismissal
-317	Can add pod hints	80	add_podhints
-318	Can change pod hints	80	change_podhints
-319	Can delete pod hints	80	delete_podhints
-320	Can view pod hints	80	view_podhints
-321	Can add pod	81	add_pod
-322	Can change pod	81	change_pod
-323	Can delete pod	81	delete_pod
-324	Can view pod	81	view_pod
-325	Can add ControllerInfo	82	add_controllerinfo
-326	Can change ControllerInfo	82	change_controllerinfo
-327	Can delete ControllerInfo	82	delete_controllerinfo
-328	Can view ControllerInfo	82	view_controllerinfo
-329	Can add NodeMetadata	83	add_nodemetadata
-330	Can change NodeMetadata	83	change_nodemetadata
-331	Can delete NodeMetadata	83	delete_nodemetadata
-332	Can view NodeMetadata	83	view_nodemetadata
-333	Can add resource pool	84	add_resourcepool
-334	Can change resource pool	84	change_resourcepool
-335	Can delete resource pool	84	delete_resourcepool
-336	Can view resource pool	84	view_resourcepool
-337	Can add root key	85	add_rootkey
-338	Can change root key	85	change_rootkey
-339	Can delete root key	85	delete_rootkey
-340	Can view root key	85	view_rootkey
-341	Can add global default	86	add_globaldefault
-342	Can change global default	86	change_globaldefault
-343	Can delete global default	86	delete_globaldefault
-344	Can view global default	86	view_globaldefault
-345	Can add pod storage pool	87	add_podstoragepool
-346	Can change pod storage pool	87	change_podstoragepool
-347	Can delete pod storage pool	87	delete_podstoragepool
-348	Can view pod storage pool	87	view_podstoragepool
-349	Can add rbac sync	88	add_rbacsync
-350	Can change rbac sync	88	change_rbacsync
-351	Can delete rbac sync	88	delete_rbacsync
-352	Can view rbac sync	88	view_rbacsync
-353	Can add rbac last sync	89	add_rbaclastsync
-354	Can change rbac last sync	89	change_rbaclastsync
-355	Can delete rbac last sync	89	delete_rbaclastsync
-356	Can view rbac last sync	89	view_rbaclastsync
-357	Can add vmfs	90	add_vmfs
-358	Can change vmfs	90	change_vmfs
-359	Can delete vmfs	90	delete_vmfs
-360	Can view vmfs	90	view_vmfs
-361	Can add numa node	91	add_numanode
-362	Can change numa node	91	change_numanode
-363	Can delete numa node	91	delete_numanode
-364	Can view numa node	91	view_numanode
-365	Can add virtual machine	92	add_virtualmachine
-366	Can change virtual machine	92	change_virtualmachine
-367	Can delete virtual machine	92	delete_virtualmachine
-368	Can view virtual machine	92	view_virtualmachine
-369	Can add numa node hugepages	93	add_numanodehugepages
-370	Can change numa node hugepages	93	change_numanodehugepages
-371	Can delete numa node hugepages	93	delete_numanodehugepages
-372	Can view numa node hugepages	93	view_numanodehugepages
-373	Can add virtual machine interface	94	add_virtualmachineinterface
-374	Can change virtual machine interface	94	change_virtualmachineinterface
-375	Can delete virtual machine interface	94	delete_virtualmachineinterface
-376	Can view virtual machine interface	94	view_virtualmachineinterface
-377	Can add node device	95	add_nodedevice
-378	Can change node device	95	change_nodedevice
-379	Can delete node device	95	delete_nodedevice
-380	Can view node device	95	view_nodedevice
-381	Can add virtual machine disk	96	add_virtualmachinedisk
-382	Can change virtual machine disk	96	change_virtualmachinedisk
-383	Can delete virtual machine disk	96	delete_virtualmachinedisk
-384	Can view virtual machine disk	96	view_virtualmachinedisk
-385	Can add forward dns server	97	add_forwarddnsserver
-386	Can change forward dns server	97	change_forwarddnsserver
-387	Can delete forward dns server	97	delete_forwarddnsserver
-388	Can view forward dns server	97	view_forwarddnsserver
-389	Can add vm cluster	98	add_vmcluster
-390	Can change vm cluster	98	change_vmcluster
-391	Can delete vm cluster	98	delete_vmcluster
-392	Can view vm cluster	98	view_vmcluster
-393	Can add node key	99	add_nodekey
-394	Can change node key	99	change_nodekey
-395	Can delete node key	99	delete_nodekey
-396	Can view node key	99	view_nodekey
-397	Can add node user data	100	add_nodeuserdata
-398	Can change node user data	100	change_nodeuserdata
-399	Can delete node user data	100	delete_nodeuserdata
-400	Can view node user data	100	view_nodeuserdata
-401	Can add script	101	add_script
-402	Can change script	101	change_script
-403	Can delete script	101	delete_script
-404	Can view script	101	view_script
-405	Can add script result	102	add_scriptresult
-406	Can change script result	102	change_scriptresult
-407	Can delete script result	102	delete_scriptresult
-408	Can view script result	102	view_scriptresult
-409	Can add script set	103	add_scriptset
-410	Can change script set	103	change_scriptset
-411	Can delete script set	103	delete_scriptset
-412	Can view script set	103	view_scriptset
-413	Can add consumer	104	add_consumer
-414	Can change consumer	104	change_consumer
-415	Can delete consumer	104	delete_consumer
-416	Can view consumer	104	view_consumer
-417	Can add nonce	105	add_nonce
-418	Can change nonce	105	change_nonce
-419	Can delete nonce	105	delete_nonce
-420	Can view nonce	105	view_nonce
-421	Can add token	106	add_token
-422	Can change token	106	change_token
-423	Can delete token	106	delete_token
-424	Can view token	106	view_token
-425	Can add node config	107	add_nodeconfig
-426	Can change node config	107	change_nodeconfig
-427	Can delete node config	107	delete_nodeconfig
-428	Can view node config	107	view_nodeconfig
-429	Can add perf test build	108	add_perftestbuild
-430	Can change perf test build	108	change_perftestbuild
-431	Can delete perf test build	108	delete_perftestbuild
-432	Can view perf test build	108	view_perftestbuild
-433	Can add NodeDeviceVPD	109	add_nodedevicevpd
-434	Can change NodeDeviceVPD	109	change_nodedevicevpd
-435	Can delete NodeDeviceVPD	109	delete_nodedevicevpd
-436	Can view NodeDeviceVPD	109	view_nodedevicevpd
-437	Can add secret	110	add_secret
-438	Can change secret	110	change_secret
-439	Can delete secret	110	delete_secret
-440	Can view secret	110	view_secret
-441	Can add vault secret	111	add_vaultsecret
-442	Can change vault secret	111	change_vaultsecret
-443	Can delete vault secret	111	delete_vaultsecret
-444	Can view vault secret	111	view_vaultsecret
-445	Can add node key	112	add_nodekey
-446	Can change node key	112	change_nodekey
-447	Can delete node key	112	delete_nodekey
-448	Can view node key	112	view_nodekey
-449	Can add node user data	113	add_nodeuserdata
-450	Can change node user data	113	change_nodeuserdata
-451	Can delete node user data	113	delete_nodeuserdata
-452	Can view node user data	113	view_nodeuserdata
-453	Can add script set	114	add_scriptset
-454	Can change script set	114	change_scriptset
-455	Can delete script set	114	delete_scriptset
-456	Can view script set	114	view_scriptset
-457	Can add script	115	add_script
-458	Can change script	115	change_script
-459	Can delete script	115	delete_script
-460	Can view script	115	view_script
-461	Can add script result	116	add_scriptresult
-462	Can change script result	116	change_scriptresult
-463	Can delete script result	116	delete_scriptresult
-464	Can view script result	116	view_scriptresult
-465	Can add boot resource file sync	117	add_bootresourcefilesync
-466	Can change boot resource file sync	117	change_bootresourcefilesync
-467	Can delete boot resource file sync	117	delete_bootresourcefilesync
-468	Can view boot resource file sync	117	view_bootresourcefilesync
-469	Can add default resource	118	add_defaultresource
-470	Can change default resource	118	change_defaultresource
-471	Can delete default resource	118	delete_defaultresource
-472	Can view default resource	118	view_defaultresource
-473	Can add Reserved IP	119	add_reservedip
-474	Can change Reserved IP	119	change_reservedip
-475	Can delete Reserved IP	119	delete_reservedip
-476	Can view Reserved IP	119	view_reservedip
+73	Can add file storage	19	add_filestorage
+74	Can change file storage	19	change_filestorage
+75	Can delete file storage	19	delete_filestorage
+76	Can view file storage	19	view_filestorage
+77	Can add filesystem	20	add_filesystem
+78	Can change filesystem	20	change_filesystem
+79	Can delete filesystem	20	delete_filesystem
+80	Can view filesystem	20	view_filesystem
+81	Can add filesystem group	21	add_filesystemgroup
+82	Can change filesystem group	21	change_filesystemgroup
+83	Can delete filesystem group	21	delete_filesystemgroup
+84	Can view filesystem group	21	view_filesystemgroup
+85	Can add Interface	22	add_interface
+86	Can change Interface	22	change_interface
+87	Can delete Interface	22	delete_interface
+88	Can view Interface	22	view_interface
+89	Can add interface relationship	23	add_interfacerelationship
+90	Can change interface relationship	23	change_interfacerelationship
+91	Can delete interface relationship	23	delete_interfacerelationship
+92	Can view interface relationship	23	view_interfacerelationship
+93	Can add large file	24	add_largefile
+94	Can change large file	24	change_largefile
+95	Can delete large file	24	delete_largefile
+96	Can view large file	24	view_largefile
+97	Can add license key	25	add_licensekey
+98	Can change license key	25	change_licensekey
+99	Can delete license key	25	delete_licensekey
+100	Can view license key	25	view_licensekey
+101	Can add node	26	add_node
+102	Can change node	26	change_node
+103	Can delete node	26	delete_node
+104	Can view node	26	view_node
+105	Can add partition	27	add_partition
+106	Can change partition	27	change_partition
+107	Can delete partition	27	delete_partition
+108	Can view partition	27	view_partition
+109	Can add partition table	28	add_partitiontable
+110	Can change partition table	28	change_partitiontable
+111	Can delete partition table	28	delete_partitiontable
+112	Can view partition table	28	view_partitiontable
+113	Can add Space	29	add_space
+114	Can change Space	29	change_space
+115	Can delete Space	29	delete_space
+116	Can view Space	29	view_space
+117	Can add SSH key	30	add_sshkey
+118	Can change SSH key	30	change_sshkey
+119	Can delete SSH key	30	delete_sshkey
+120	Can view SSH key	30	view_sshkey
+121	Can add SSL key	31	add_sslkey
+122	Can change SSL key	31	change_sslkey
+123	Can delete SSL key	31	delete_sslkey
+124	Can view SSL key	31	view_sslkey
+125	Can add Static IP Address	32	add_staticipaddress
+126	Can change Static IP Address	32	change_staticipaddress
+127	Can delete Static IP Address	32	delete_staticipaddress
+128	Can view Static IP Address	32	view_staticipaddress
+129	Can add subnet	33	add_subnet
+130	Can change subnet	33	change_subnet
+131	Can delete subnet	33	delete_subnet
+132	Can view subnet	33	view_subnet
+133	Can add tag	34	add_tag
+134	Can change tag	34	change_tag
+135	Can delete tag	34	delete_tag
+136	Can view tag	34	view_tag
+137	Can add user profile	35	add_userprofile
+138	Can change user profile	35	change_userprofile
+139	Can delete user profile	35	delete_userprofile
+140	Can view user profile	35	view_userprofile
+141	Can add VLAN	36	add_vlan
+142	Can change VLAN	36	change_vlan
+143	Can delete VLAN	36	delete_vlan
+144	Can view VLAN	36	view_vlan
+145	Can add Physical zone	37	add_zone
+146	Can change Physical zone	37	change_zone
+147	Can delete Physical zone	37	delete_zone
+148	Can view Physical zone	37	view_zone
+149	Can add physical block device	38	add_physicalblockdevice
+150	Can change physical block device	38	change_physicalblockdevice
+151	Can delete physical block device	38	delete_physicalblockdevice
+152	Can view physical block device	38	view_physicalblockdevice
+153	Can add virtual block device	39	add_virtualblockdevice
+154	Can change virtual block device	39	change_virtualblockdevice
+155	Can delete virtual block device	39	delete_virtualblockdevice
+156	Can view virtual block device	39	view_virtualblockdevice
+157	Can add bcache	40	add_bcache
+158	Can change bcache	40	change_bcache
+159	Can delete bcache	40	delete_bcache
+160	Can view bcache	40	view_bcache
+161	Can add Bond	41	add_bondinterface
+162	Can change Bond	41	change_bondinterface
+163	Can delete Bond	41	delete_bondinterface
+164	Can view Bond	41	view_bondinterface
+165	Can add device	42	add_device
+166	Can change device	42	change_device
+167	Can delete device	42	delete_device
+168	Can view device	42	view_device
+169	Can add Physical interface	43	add_physicalinterface
+170	Can change Physical interface	43	change_physicalinterface
+171	Can delete Physical interface	43	delete_physicalinterface
+172	Can view Physical interface	43	view_physicalinterface
+173	Can add raid	44	add_raid
+174	Can change raid	44	change_raid
+175	Can delete raid	44	delete_raid
+176	Can view raid	44	view_raid
+177	Can add Unknown interface	45	add_unknowninterface
+178	Can change Unknown interface	45	change_unknowninterface
+179	Can delete Unknown interface	45	delete_unknowninterface
+180	Can view Unknown interface	45	view_unknowninterface
+181	Can add VLAN interface	46	add_vlaninterface
+182	Can change VLAN interface	46	change_vlaninterface
+183	Can delete VLAN interface	46	delete_vlaninterface
+184	Can view VLAN interface	46	view_vlaninterface
+185	Can add volume group	47	add_volumegroup
+186	Can change volume group	47	change_volumegroup
+187	Can delete volume group	47	delete_volumegroup
+188	Can view volume group	47	view_volumegroup
+189	Can add machine	48	add_machine
+190	Can change machine	48	change_machine
+191	Can delete machine	48	delete_machine
+192	Can view machine	48	view_machine
+193	Can add rack controller	49	add_rackcontroller
+194	Can change rack controller	49	change_rackcontroller
+195	Can delete rack controller	49	delete_rackcontroller
+196	Can view rack controller	49	view_rackcontroller
+197	Can add DNSResource	50	add_dnsresource
+198	Can change DNSResource	50	change_dnsresource
+199	Can delete DNSResource	50	delete_dnsresource
+200	Can view DNSResource	50	view_dnsresource
+201	Can add domain	51	add_domain
+202	Can change domain	51	change_domain
+203	Can delete domain	51	delete_domain
+204	Can view domain	51	view_domain
+205	Can add region controller process	52	add_regioncontrollerprocess
+206	Can change region controller process	52	change_regioncontrollerprocess
+207	Can delete region controller process	52	delete_regioncontrollerprocess
+208	Can view region controller process	52	view_regioncontrollerprocess
+209	Can add region controller process endpoint	53	add_regioncontrollerprocessendpoint
+210	Can change region controller process endpoint	53	change_regioncontrollerprocessendpoint
+211	Can delete region controller process endpoint	53	delete_regioncontrollerprocessendpoint
+212	Can view region controller process endpoint	53	view_regioncontrollerprocessendpoint
+213	Can add region controller	54	add_regioncontroller
+214	Can change region controller	54	change_regioncontroller
+215	Can delete region controller	54	delete_regioncontroller
+216	Can view region controller	54	view_regioncontroller
+217	Can add bmc	55	add_bmc
+218	Can change bmc	55	change_bmc
+219	Can delete bmc	55	delete_bmc
+220	Can view bmc	55	view_bmc
+221	Can add DNSData	56	add_dnsdata
+222	Can change DNSData	56	change_dnsdata
+223	Can delete DNSData	56	delete_dnsdata
+224	Can view DNSData	56	view_dnsdata
+225	Can add ip range	57	add_iprange
+226	Can change ip range	57	change_iprange
+227	Can delete ip range	57	delete_iprange
+228	Can view ip range	57	view_iprange
+229	Can add node group to rack controller	58	add_nodegrouptorackcontroller
+230	Can change node group to rack controller	58	change_nodegrouptorackcontroller
+231	Can delete node group to rack controller	58	delete_nodegrouptorackcontroller
+232	Can view node group to rack controller	58	view_nodegrouptorackcontroller
+233	Can add region rack rpc connection	59	add_regionrackrpcconnection
+234	Can change region rack rpc connection	59	change_regionrackrpcconnection
+235	Can delete region rack rpc connection	59	delete_regionrackrpcconnection
+236	Can view region rack rpc connection	59	view_regionrackrpcconnection
+237	Can add service	60	add_service
+238	Can change service	60	change_service
+239	Can delete service	60	delete_service
+240	Can view service	60	view_service
+241	Can add Template	61	add_template
+242	Can change Template	61	change_template
+243	Can delete Template	61	delete_template
+244	Can view Template	61	view_template
+245	Can add VersionedTextFile	62	add_versionedtextfile
+246	Can change VersionedTextFile	62	change_versionedtextfile
+247	Can delete VersionedTextFile	62	delete_versionedtextfile
+248	Can view VersionedTextFile	62	view_versionedtextfile
+249	Can add bmc routable rack controller relationship	63	add_bmcroutablerackcontrollerrelationship
+250	Can change bmc routable rack controller relationship	63	change_bmcroutablerackcontrollerrelationship
+251	Can delete bmc routable rack controller relationship	63	delete_bmcroutablerackcontrollerrelationship
+252	Can view bmc routable rack controller relationship	63	view_bmcroutablerackcontrollerrelationship
+253	Can add dhcp snippet	64	add_dhcpsnippet
+254	Can change dhcp snippet	64	change_dhcpsnippet
+255	Can delete dhcp snippet	64	delete_dhcpsnippet
+256	Can view dhcp snippet	64	view_dhcpsnippet
+257	Can add child interface	65	add_childinterface
+258	Can change child interface	65	change_childinterface
+259	Can delete child interface	65	delete_childinterface
+260	Can view child interface	65	view_childinterface
+261	Can add Bridge	66	add_bridgeinterface
+262	Can change Bridge	66	change_bridgeinterface
+263	Can delete Bridge	66	delete_bridgeinterface
+264	Can view Bridge	66	view_bridgeinterface
+265	Can add owner data	67	add_ownerdata
+266	Can change owner data	67	change_ownerdata
+267	Can delete owner data	67	delete_ownerdata
+268	Can view owner data	67	view_ownerdata
+269	Can add controller	68	add_controller
+270	Can change controller	68	change_controller
+271	Can delete controller	68	delete_controller
+272	Can view controller	68	view_controller
+273	Can add dns publication	69	add_dnspublication
+274	Can change dns publication	69	change_dnspublication
+275	Can delete dns publication	69	delete_dnspublication
+276	Can view dns publication	69	view_dnspublication
+277	Can add package repository	70	add_packagerepository
+278	Can change package repository	70	change_packagerepository
+279	Can delete package repository	70	delete_packagerepository
+280	Can view package repository	70	view_packagerepository
+281	Can add mDNS binding	71	add_mdns
+282	Can change mDNS binding	71	change_mdns
+283	Can delete mDNS binding	71	delete_mdns
+284	Can view mDNS binding	71	view_mdns
+285	Can add Neighbour	72	add_neighbour
+286	Can change Neighbour	72	change_neighbour
+287	Can delete Neighbour	72	delete_neighbour
+288	Can view Neighbour	72	view_neighbour
+289	Can add static route	73	add_staticroute
+290	Can change static route	73	change_staticroute
+291	Can delete static route	73	delete_staticroute
+292	Can view static route	73	view_staticroute
+293	Can add Discovery	74	add_discovery
+294	Can change Discovery	74	change_discovery
+295	Can delete Discovery	74	delete_discovery
+296	Can view Discovery	74	view_discovery
+297	Can add Reverse-DNS entry	75	add_rdns
+298	Can change Reverse-DNS entry	75	change_rdns
+299	Can delete Reverse-DNS entry	75	delete_rdns
+300	Can view Reverse-DNS entry	75	view_rdns
+301	Can add notification	76	add_notification
+302	Can change notification	76	change_notification
+303	Can delete notification	76	delete_notification
+304	Can view notification	76	view_notification
+305	Can add notification dismissal	77	add_notificationdismissal
+306	Can change notification dismissal	77	change_notificationdismissal
+307	Can delete notification dismissal	77	delete_notificationdismissal
+308	Can view notification dismissal	77	view_notificationdismissal
+309	Can add pod hints	78	add_podhints
+310	Can change pod hints	78	change_podhints
+311	Can delete pod hints	78	delete_podhints
+312	Can view pod hints	78	view_podhints
+313	Can add pod	79	add_pod
+314	Can change pod	79	change_pod
+315	Can delete pod	79	delete_pod
+316	Can view pod	79	view_pod
+317	Can add ControllerInfo	80	add_controllerinfo
+318	Can change ControllerInfo	80	change_controllerinfo
+319	Can delete ControllerInfo	80	delete_controllerinfo
+320	Can view ControllerInfo	80	view_controllerinfo
+321	Can add NodeMetadata	81	add_nodemetadata
+322	Can change NodeMetadata	81	change_nodemetadata
+323	Can delete NodeMetadata	81	delete_nodemetadata
+324	Can view NodeMetadata	81	view_nodemetadata
+325	Can add resource pool	82	add_resourcepool
+326	Can change resource pool	82	change_resourcepool
+327	Can delete resource pool	82	delete_resourcepool
+328	Can view resource pool	82	view_resourcepool
+329	Can add root key	83	add_rootkey
+330	Can change root key	83	change_rootkey
+331	Can delete root key	83	delete_rootkey
+332	Can view root key	83	view_rootkey
+333	Can add global default	84	add_globaldefault
+334	Can change global default	84	change_globaldefault
+335	Can delete global default	84	delete_globaldefault
+336	Can view global default	84	view_globaldefault
+337	Can add pod storage pool	85	add_podstoragepool
+338	Can change pod storage pool	85	change_podstoragepool
+339	Can delete pod storage pool	85	delete_podstoragepool
+340	Can view pod storage pool	85	view_podstoragepool
+341	Can add rbac sync	86	add_rbacsync
+342	Can change rbac sync	86	change_rbacsync
+343	Can delete rbac sync	86	delete_rbacsync
+344	Can view rbac sync	86	view_rbacsync
+345	Can add rbac last sync	87	add_rbaclastsync
+346	Can change rbac last sync	87	change_rbaclastsync
+347	Can delete rbac last sync	87	delete_rbaclastsync
+348	Can view rbac last sync	87	view_rbaclastsync
+349	Can add vmfs	88	add_vmfs
+350	Can change vmfs	88	change_vmfs
+351	Can delete vmfs	88	delete_vmfs
+352	Can view vmfs	88	view_vmfs
+353	Can add numa node	89	add_numanode
+354	Can change numa node	89	change_numanode
+355	Can delete numa node	89	delete_numanode
+356	Can view numa node	89	view_numanode
+357	Can add virtual machine	90	add_virtualmachine
+358	Can change virtual machine	90	change_virtualmachine
+359	Can delete virtual machine	90	delete_virtualmachine
+360	Can view virtual machine	90	view_virtualmachine
+361	Can add numa node hugepages	91	add_numanodehugepages
+362	Can change numa node hugepages	91	change_numanodehugepages
+363	Can delete numa node hugepages	91	delete_numanodehugepages
+364	Can view numa node hugepages	91	view_numanodehugepages
+365	Can add virtual machine interface	92	add_virtualmachineinterface
+366	Can change virtual machine interface	92	change_virtualmachineinterface
+367	Can delete virtual machine interface	92	delete_virtualmachineinterface
+368	Can view virtual machine interface	92	view_virtualmachineinterface
+369	Can add node device	93	add_nodedevice
+370	Can change node device	93	change_nodedevice
+371	Can delete node device	93	delete_nodedevice
+372	Can view node device	93	view_nodedevice
+373	Can add virtual machine disk	94	add_virtualmachinedisk
+374	Can change virtual machine disk	94	change_virtualmachinedisk
+375	Can delete virtual machine disk	94	delete_virtualmachinedisk
+376	Can view virtual machine disk	94	view_virtualmachinedisk
+377	Can add forward dns server	95	add_forwarddnsserver
+378	Can change forward dns server	95	change_forwarddnsserver
+379	Can delete forward dns server	95	delete_forwarddnsserver
+380	Can view forward dns server	95	view_forwarddnsserver
+381	Can add vm cluster	96	add_vmcluster
+382	Can change vm cluster	96	change_vmcluster
+383	Can delete vm cluster	96	delete_vmcluster
+384	Can view vm cluster	96	view_vmcluster
+385	Can add node config	97	add_nodeconfig
+386	Can change node config	97	change_nodeconfig
+387	Can delete node config	97	delete_nodeconfig
+388	Can view node config	97	view_nodeconfig
+389	Can add NodeDeviceVPD	98	add_nodedevicevpd
+390	Can change NodeDeviceVPD	98	change_nodedevicevpd
+391	Can delete NodeDeviceVPD	98	delete_nodedevicevpd
+392	Can view NodeDeviceVPD	98	view_nodedevicevpd
+393	Can add secret	99	add_secret
+394	Can change secret	99	change_secret
+395	Can delete secret	99	delete_secret
+396	Can view secret	99	view_secret
+397	Can add vault secret	100	add_vaultsecret
+398	Can change vault secret	100	change_vaultsecret
+399	Can delete vault secret	100	delete_vaultsecret
+400	Can view vault secret	100	view_vaultsecret
+401	Can add node key	101	add_nodekey
+402	Can change node key	101	change_nodekey
+403	Can delete node key	101	delete_nodekey
+404	Can view node key	101	view_nodekey
+405	Can add node user data	102	add_nodeuserdata
+406	Can change node user data	102	change_nodeuserdata
+407	Can delete node user data	102	delete_nodeuserdata
+408	Can view node user data	102	view_nodeuserdata
+409	Can add script	103	add_script
+410	Can change script	103	change_script
+411	Can delete script	103	delete_script
+412	Can view script	103	view_script
+413	Can add script set	104	add_scriptset
+414	Can change script set	104	change_scriptset
+415	Can delete script set	104	delete_scriptset
+416	Can view script set	104	view_scriptset
+417	Can add script result	105	add_scriptresult
+418	Can change script result	105	change_scriptresult
+419	Can delete script result	105	delete_scriptresult
+420	Can view script result	105	view_scriptresult
+421	Can add boot resource file sync	106	add_bootresourcefilesync
+422	Can change boot resource file sync	106	change_bootresourcefilesync
+423	Can delete boot resource file sync	106	delete_bootresourcefilesync
+424	Can view boot resource file sync	106	view_bootresourcefilesync
+425	Can add default resource	107	add_defaultresource
+426	Can change default resource	107	change_defaultresource
+427	Can delete default resource	107	delete_defaultresource
+428	Can view default resource	107	view_defaultresource
+429	Can add Reserved IP	108	add_reservedip
+430	Can change Reserved IP	108	change_reservedip
+431	Can delete Reserved IP	108	delete_reservedip
+432	Can view Reserved IP	108	view_reservedip
+433	Can add consumer	109	add_consumer
+434	Can change consumer	109	change_consumer
+435	Can delete consumer	109	delete_consumer
+436	Can view consumer	109	view_consumer
+437	Can add nonce	110	add_nonce
+438	Can change nonce	110	change_nonce
+439	Can delete nonce	110	delete_nonce
+440	Can view nonce	110	view_nonce
+441	Can add token	111	add_token
+442	Can change token	111	change_token
+443	Can delete token	111	delete_token
+444	Can view token	111	view_token
 \.
 
 
@@ -11737,107 +8675,99 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 16	maasserver	event
 17	maasserver	eventtype
 18	maasserver	fabric
-19	maasserver	fannetwork
-20	maasserver	filestorage
-21	maasserver	filesystem
-22	maasserver	filesystemgroup
-23	maasserver	interface
-24	maasserver	interfacerelationship
-25	maasserver	largefile
-26	maasserver	licensekey
-27	maasserver	node
-28	maasserver	partition
-29	maasserver	partitiontable
-30	maasserver	space
-31	maasserver	sshkey
-32	maasserver	sslkey
-33	maasserver	staticipaddress
-34	maasserver	subnet
-35	maasserver	tag
-36	maasserver	userprofile
-37	maasserver	vlan
-38	maasserver	zone
-39	maasserver	physicalblockdevice
-40	maasserver	virtualblockdevice
-41	maasserver	bcache
-42	maasserver	bondinterface
-43	maasserver	device
-44	maasserver	physicalinterface
-45	maasserver	raid
-46	maasserver	unknowninterface
-47	maasserver	vlaninterface
-48	maasserver	volumegroup
-49	maasserver	machine
-50	maasserver	rackcontroller
-51	maasserver	dnsresource
-52	maasserver	domain
-53	maasserver	regioncontrollerprocess
-54	maasserver	regioncontrollerprocessendpoint
-55	maasserver	regioncontroller
-56	maasserver	bmc
-57	maasserver	dnsdata
-58	maasserver	iprange
-59	maasserver	nodegrouptorackcontroller
-60	maasserver	regionrackrpcconnection
-61	maasserver	service
-62	maasserver	template
-63	maasserver	versionedtextfile
-64	maasserver	bmcroutablerackcontrollerrelationship
-65	maasserver	dhcpsnippet
-66	maasserver	childinterface
-67	maasserver	bridgeinterface
-68	maasserver	ownerdata
-69	maasserver	controller
-70	maasserver	dnspublication
-71	maasserver	packagerepository
-72	maasserver	mdns
-73	maasserver	neighbour
-74	maasserver	staticroute
-75	maasserver	keysource
-76	maasserver	discovery
-77	maasserver	rdns
-78	maasserver	notification
-79	maasserver	notificationdismissal
-80	maasserver	podhints
-81	maasserver	pod
-82	maasserver	controllerinfo
-83	maasserver	nodemetadata
-84	maasserver	resourcepool
-85	maasserver	rootkey
-86	maasserver	globaldefault
-87	maasserver	podstoragepool
-88	maasserver	rbacsync
-89	maasserver	rbaclastsync
-90	maasserver	vmfs
-91	maasserver	numanode
-92	maasserver	virtualmachine
-93	maasserver	numanodehugepages
-94	maasserver	virtualmachineinterface
-95	maasserver	nodedevice
-96	maasserver	virtualmachinedisk
-97	maasserver	forwarddnsserver
-98	maasserver	vmcluster
-99	metadataserver	nodekey
-100	metadataserver	nodeuserdata
-101	metadataserver	script
-102	metadataserver	scriptresult
-103	metadataserver	scriptset
-104	piston3	consumer
-105	piston3	nonce
-106	piston3	token
-107	maasserver	nodeconfig
-108	maastesting	perftestbuild
-109	maasserver	nodedevicevpd
-110	maasserver	secret
-111	maasserver	vaultsecret
-112	maasserver	nodekey
-113	maasserver	nodeuserdata
-114	maasserver	scriptset
-115	maasserver	script
-116	maasserver	scriptresult
-117	maasserver	bootresourcefilesync
-118	maasserver	defaultresource
-119	maasserver	reservedip
+19	maasserver	filestorage
+20	maasserver	filesystem
+21	maasserver	filesystemgroup
+22	maasserver	interface
+23	maasserver	interfacerelationship
+24	maasserver	largefile
+25	maasserver	licensekey
+26	maasserver	node
+27	maasserver	partition
+28	maasserver	partitiontable
+29	maasserver	space
+30	maasserver	sshkey
+31	maasserver	sslkey
+32	maasserver	staticipaddress
+33	maasserver	subnet
+34	maasserver	tag
+35	maasserver	userprofile
+36	maasserver	vlan
+37	maasserver	zone
+38	maasserver	physicalblockdevice
+39	maasserver	virtualblockdevice
+40	maasserver	bcache
+41	maasserver	bondinterface
+42	maasserver	device
+43	maasserver	physicalinterface
+44	maasserver	raid
+45	maasserver	unknowninterface
+46	maasserver	vlaninterface
+47	maasserver	volumegroup
+48	maasserver	machine
+49	maasserver	rackcontroller
+50	maasserver	dnsresource
+51	maasserver	domain
+52	maasserver	regioncontrollerprocess
+53	maasserver	regioncontrollerprocessendpoint
+54	maasserver	regioncontroller
+55	maasserver	bmc
+56	maasserver	dnsdata
+57	maasserver	iprange
+58	maasserver	nodegrouptorackcontroller
+59	maasserver	regionrackrpcconnection
+60	maasserver	service
+61	maasserver	template
+62	maasserver	versionedtextfile
+63	maasserver	bmcroutablerackcontrollerrelationship
+64	maasserver	dhcpsnippet
+65	maasserver	childinterface
+66	maasserver	bridgeinterface
+67	maasserver	ownerdata
+68	maasserver	controller
+69	maasserver	dnspublication
+70	maasserver	packagerepository
+71	maasserver	mdns
+72	maasserver	neighbour
+73	maasserver	staticroute
+74	maasserver	discovery
+75	maasserver	rdns
+76	maasserver	notification
+77	maasserver	notificationdismissal
+78	maasserver	podhints
+79	maasserver	pod
+80	maasserver	controllerinfo
+81	maasserver	nodemetadata
+82	maasserver	resourcepool
+83	maasserver	rootkey
+84	maasserver	globaldefault
+85	maasserver	podstoragepool
+86	maasserver	rbacsync
+87	maasserver	rbaclastsync
+88	maasserver	vmfs
+89	maasserver	numanode
+90	maasserver	virtualmachine
+91	maasserver	numanodehugepages
+92	maasserver	virtualmachineinterface
+93	maasserver	nodedevice
+94	maasserver	virtualmachinedisk
+95	maasserver	forwarddnsserver
+96	maasserver	vmcluster
+97	maasserver	nodeconfig
+98	maasserver	nodedevicevpd
+99	maasserver	secret
+100	maasserver	vaultsecret
+101	maasserver	nodekey
+102	maasserver	nodeuserdata
+104	maasserver	scriptset
+103	maasserver	script
+105	maasserver	scriptresult
+106	maasserver	bootresourcefilesync
+107	maasserver	defaultresource
+108	maasserver	reservedip
+109	piston3	consumer
+110	piston3	nonce
+111	piston3	token
 \.
 
 
@@ -11846,405 +8776,6 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
-1	contenttypes	0001_initial	2021-11-19 12:40:42.824414+00
-2	auth	0001_initial	2021-11-19 12:40:42.858779+00
-3	auth	0002_auto_20151119_1629	2021-11-19 12:40:42.961604+00
-4	auth	0003_django_1_11_update	2021-11-19 12:40:42.982989+00
-5	auth	0004_user_email_allow_null	2021-11-19 12:40:42.99213+00
-6	auth	0005_auto_20200626_1049	2021-11-19 12:40:43.011789+00
-7	contenttypes	0002_remove_content_type_name	2021-11-19 12:40:43.030316+00
-8	piston3	0001_initial	2021-11-19 12:40:43.062801+00
-9	maasserver	0001_initial	2021-11-19 12:40:44.340749+00
-10	metadataserver	0001_initial	2021-11-19 12:40:44.570766+00
-11	maasserver	0002_remove_candidate_name_model	2021-11-19 12:40:44.582572+00
-12	maasserver	0003_add_node_type_to_node	2021-11-19 12:40:44.617527+00
-13	maasserver	0004_migrate_installable_to_node_type	2021-11-19 12:40:44.678379+00
-14	maasserver	0005_delete_installable_from_node	2021-11-19 12:40:44.706324+00
-15	maasserver	0006_add_lease_time_to_staticipaddress	2021-11-19 12:40:44.734773+00
-16	maasserver	0007_create_node_proxy_models	2021-11-19 12:40:44.745761+00
-17	maasserver	0008_use_new_arrayfield	2021-11-19 12:40:44.879861+00
-18	maasserver	0009_remove_routers_field_from_node	2021-11-19 12:40:44.910292+00
-19	maasserver	0010_add_dns_models	2021-11-19 12:40:45.10435+00
-20	maasserver	0011_domain_data	2021-11-19 12:40:45.23398+00
-21	maasserver	0012_drop_dns_fields	2021-11-19 12:40:45.349177+00
-22	maasserver	0013_remove_boot_type_from_node	2021-11-19 12:40:45.384578+00
-23	maasserver	0014_add_region_models	2021-11-19 12:40:45.594747+00
-24	maasserver	0015_add_bmc_model	2021-11-19 12:40:45.735538+00
-25	maasserver	0016_migrate_power_data_node_to_bmc	2021-11-19 12:40:45.917089+00
-26	maasserver	0017_remove_node_power_type	2021-11-19 12:40:45.951225+00
-27	maasserver	0018_add_dnsdata	2021-11-19 12:40:46.03917+00
-28	maasserver	0019_add_iprange	2021-11-19 12:40:46.085306+00
-29	maasserver	0020_nodegroup_to_rackcontroller	2021-11-19 12:40:46.203411+00
-30	maasserver	0021_nodegroupinterface_to_iprange	2021-11-19 12:40:46.280663+00
-31	maasserver	0022_extract_ip_for_bmcs	2021-11-19 12:40:46.355619+00
-32	maasserver	0023_add_ttl_field	2021-11-19 12:40:46.52367+00
-33	maasserver	0024_remove_nodegroupinterface	2021-11-19 12:40:47.168394+00
-34	maasserver	0025_create_node_system_id_sequence	2021-11-19 12:40:47.188836+00
-35	maasserver	0026_create_zone_serial_sequence	2021-11-19 12:40:47.194285+00
-36	maasserver	0027_replace_static_range_with_admin_reserved_ranges	2021-11-19 12:40:47.266471+00
-37	maasserver	0028_update_default_vlan_on_interface_and_subnet	2021-11-19 12:40:47.364843+00
-38	maasserver	0029_add_rdns_mode	2021-11-19 12:40:47.384279+00
-39	maasserver	0030_drop_all_old_funcs	2021-11-19 12:40:47.455476+00
-40	maasserver	0031_add_region_rack_rpc_conn_model	2021-11-19 12:40:47.690756+00
-41	maasserver	0032_loosen_vlan	2021-11-19 12:40:47.77097+00
-42	maasserver	0033_iprange_minor_changes	2021-11-19 12:40:47.865484+00
-43	maasserver	0034_rename_mount_params_as_mount_options	2021-11-19 12:40:47.916277+00
-44	maasserver	0035_convert_ether_wake_to_manual_power_type	2021-11-19 12:40:47.981797+00
-45	maasserver	0036_add_service_model	2021-11-19 12:40:48.064125+00
-46	maasserver	0037_node_last_image_sync	2021-11-19 12:40:48.104895+00
-47	maasserver	0038_filesystem_ramfs_tmpfs_support	2021-11-19 12:40:48.191633+00
-48	maasserver	0039_create_template_and_versionedtextfile_models	2021-11-19 12:40:48.218415+00
-49	maasserver	0040_fix_id_seq	2021-11-19 12:40:48.238787+00
-50	maasserver	0041_change_bmc_on_delete_to_set_null	2021-11-19 12:40:48.293066+00
-51	maasserver	0042_add_routable_rack_controllers_to_bmc	2021-11-19 12:40:48.485532+00
-52	maasserver	0043_dhcpsnippet	2021-11-19 12:40:48.545241+00
-53	maasserver	0044_remove_di_bootresourcefiles	2021-11-19 12:40:48.634506+00
-54	maasserver	0045_add_node_to_filesystem	2021-11-19 12:40:48.685887+00
-55	maasserver	0046_add_bridge_interface_type	2021-11-19 12:40:48.731426+00
-56	maasserver	0047_fix_spelling_of_degraded	2021-11-19 12:40:48.830138+00
-57	maasserver	0048_add_subnet_allow_proxy	2021-11-19 12:40:48.845873+00
-58	maasserver	0049_add_external_dhcp_present_to_vlan	2021-11-19 12:40:48.970804+00
-59	maasserver	0050_modify_external_dhcp_on_vlan	2021-11-19 12:40:49.134295+00
-60	maasserver	0051_space_fabric_unique	2021-11-19 12:40:49.397372+00
-61	maasserver	0052_add_codename_title_eol_to_bootresourcecache	2021-11-19 12:40:49.424495+00
-62	maasserver	0053_add_ownerdata_model	2021-11-19 12:40:49.516296+00
-63	maasserver	0054_controller	2021-11-19 12:40:49.524257+00
-64	maasserver	0055_dns_publications	2021-11-19 12:40:49.531248+00
-65	maasserver	0056_zone_serial_ownership	2021-11-19 12:40:49.538801+00
-66	maasserver	0057_initial_dns_publication	2021-11-19 12:40:49.60903+00
-67	maasserver	0058_bigger_integer_for_dns_publication_serial	2021-11-19 12:40:49.618122+00
-68	maasserver	0056_add_description_to_fabric_and_space	2021-11-19 12:40:49.77264+00
-69	maasserver	0057_merge	2021-11-19 12:40:49.775133+00
-70	maasserver	0059_merge	2021-11-19 12:40:49.77711+00
-71	maasserver	0060_amt_remove_mac_address	2021-11-19 12:40:49.851165+00
-72	maasserver	0061_maas_nodegroup_worker_to_maas	2021-11-19 12:40:49.925509+00
-73	maasserver	0062_fix_bootsource_daily_label	2021-11-19 12:40:50.006741+00
-74	maasserver	0063_remove_orphaned_bmcs_and_ips	2021-11-19 12:40:50.202739+00
-75	maasserver	0064_remove_unneeded_event_triggers	2021-11-19 12:40:50.270623+00
-76	maasserver	0065_larger_osystem_and_distro_series	2021-11-19 12:40:50.349286+00
-77	maasserver	0066_allow_squashfs	2021-11-19 12:40:50.359214+00
-78	maasserver	0067_add_size_to_largefile	2021-11-19 12:40:50.438721+00
-79	maasserver	0068_drop_node_system_id_sequence	2021-11-19 12:40:50.443859+00
-80	maasserver	0069_add_previous_node_status_to_node	2021-11-19 12:40:50.489576+00
-81	maasserver	0070_allow_null_vlan_on_interface	2021-11-19 12:40:50.551797+00
-82	maasserver	0071_ntp_server_to_ntp_servers	2021-11-19 12:40:50.556645+00
-83	maasserver	0072_packagerepository	2021-11-19 12:40:50.565478+00
-84	maasserver	0073_migrate_package_repositories	2021-11-19 12:40:50.707607+00
-85	maasserver	0072_update_status_and_previous_status	2021-11-19 12:40:50.78421+00
-86	maasserver	0074_merge	2021-11-19 12:40:50.786449+00
-87	maasserver	0075_modify_packagerepository	2021-11-19 12:40:50.816827+00
-88	maasserver	0076_interface_discovery_rescue_mode	2021-11-19 12:40:51.29596+00
-89	maasserver	0077_static_routes	2021-11-19 12:40:51.369006+00
-90	maasserver	0078_remove_packagerepository_description	2021-11-19 12:40:51.381147+00
-91	maasserver	0079_add_keysource_model	2021-11-19 12:40:51.476509+00
-92	maasserver	0080_change_packagerepository_url_type	2021-11-19 12:40:51.489155+00
-93	maasserver	0081_allow_larger_bootsourcecache_fields	2021-11-19 12:40:51.542287+00
-94	maasserver	0082_add_kflavor	2021-11-19 12:40:51.710735+00
-95	maasserver	0083_device_discovery	2021-11-19 12:40:51.781692+00
-96	maasserver	0084_add_default_user_to_node_model	2021-11-19 12:40:51.832194+00
-97	maasserver	0085_no_intro_on_upgrade	2021-11-19 12:40:51.910638+00
-98	maasserver	0086_remove_powerpc_from_ports_arches	2021-11-19 12:40:51.990442+00
-99	maasserver	0087_add_completed_intro_to_userprofile	2021-11-19 12:40:52.015202+00
-100	maasserver	0088_remove_node_disable_ipv4	2021-11-19 12:40:52.063366+00
-101	maasserver	0089_active_discovery	2021-11-19 12:40:52.291119+00
-102	maasserver	0090_bootloaders	2021-11-19 12:40:52.330415+00
-103	maasserver	0091_v2_to_v3	2021-11-19 12:40:52.415851+00
-104	maasserver	0092_rolling	2021-11-19 12:40:52.426926+00
-105	maasserver	0093_add_rdns_model	2021-11-19 12:40:52.507603+00
-106	maasserver	0094_add_unmanaged_subnets	2021-11-19 12:40:52.527624+00
-107	maasserver	0095_vlan_relay_vlan	2021-11-19 12:40:52.575416+00
-108	maasserver	0096_set_default_vlan_field	2021-11-19 12:40:52.631384+00
-109	maasserver	0097_node_chassis_storage_hints	2021-11-19 12:40:52.852524+00
-110	maasserver	0098_add_space_to_vlan	2021-11-19 12:40:52.911629+00
-111	maasserver	0099_set_default_vlan_field	2021-11-19 12:40:52.975955+00
-112	maasserver	0100_migrate_spaces_from_subnet_to_vlan	2021-11-19 12:40:53.065011+00
-113	maasserver	0101_filesystem_btrfs_support	2021-11-19 12:40:53.234079+00
-114	maasserver	0102_remove_space_from_subnet	2021-11-19 12:40:53.304323+00
-115	maasserver	0103_notifications	2021-11-19 12:40:53.356504+00
-116	maasserver	0104_notifications_dismissals	2021-11-19 12:40:53.420674+00
-117	metadataserver	0002_script_models	2021-11-19 12:40:53.730744+00
-118	maasserver	0105_add_script_sets_to_node_model	2021-11-19 12:40:53.911179+00
-119	maasserver	0106_testing_status	2021-11-19 12:40:54.13962+00
-120	maasserver	0107_chassis_to_pods	2021-11-19 12:40:54.559838+00
-121	maasserver	0108_generate_bmc_names	2021-11-19 12:40:54.64426+00
-122	maasserver	0109_bmc_names_unique	2021-11-19 12:40:54.682417+00
-123	maasserver	0110_notification_category	2021-11-19 12:40:54.705165+00
-124	maasserver	0111_remove_component_error	2021-11-19 12:40:54.714145+00
-125	maasserver	0112_update_notification	2021-11-19 12:40:54.853551+00
-126	maasserver	0113_set_filepath_limit_to_linux_max	2021-11-19 12:40:54.904174+00
-127	maasserver	0114_node_dynamic_to_creation_type	2021-11-19 12:40:55.13626+00
-128	maasserver	0115_additional_boot_resource_filetypes	2021-11-19 12:40:55.153205+00
-129	maasserver	0116_add_disabled_components_for_mirrors	2021-11-19 12:40:55.164284+00
-130	maasserver	0117_add_iscsi_block_device	2021-11-19 12:40:55.230126+00
-131	maasserver	0118_add_iscsi_storage_pod	2021-11-19 12:40:55.305038+00
-132	maasserver	0119_set_default_vlan_field	2021-11-19 12:40:55.398439+00
-133	maasserver	0120_bootsourcecache_extra	2021-11-19 12:40:55.40932+00
-134	maasserver	0121_relax_staticipaddress_unique_constraint	2021-11-19 12:40:55.498095+00
-135	maasserver	0122_make_virtualblockdevice_uuid_editable	2021-11-19 12:40:55.525899+00
-136	maasserver	0123_make_iprange_comment_default_to_empty_string	2021-11-19 12:40:55.573294+00
-137	maasserver	0124_staticipaddress_address_family_index	2021-11-19 12:40:55.583593+00
-138	maasserver	0125_add_switch_model	2021-11-19 12:40:55.652599+00
-139	maasserver	0126_add_controllerinfo_model	2021-11-19 12:40:55.804495+00
-140	maasserver	0127_nodemetadata	2021-11-19 12:40:55.902125+00
-141	maasserver	0128_events_created_index	2021-11-19 12:40:55.910201+00
-142	maasserver	0129_add_install_rackd_flag	2021-11-19 12:40:55.958036+00
-143	maasserver	0130_node_locked_flag	2021-11-19 12:40:56.012856+00
-144	maasserver	0131_update_event_model_for_audit_logs	2021-11-19 12:40:56.575592+00
-145	maasserver	0132_consistent_model_name_validation	2021-11-19 12:40:56.705325+00
-146	maasserver	0133_add_resourcepool_model	2021-11-19 12:40:56.722044+00
-147	maasserver	0134_create_default_resourcepool	2021-11-19 12:40:56.915219+00
-148	maasserver	0135_add_pool_reference_to_node	2021-11-19 12:40:57.23517+00
-149	maasserver	0136_add_user_role_models	2021-11-19 12:40:57.359211+00
-150	maasserver	0137_create_default_roles	2021-11-19 12:40:57.494462+00
-151	maasserver	0138_add_ip_and_user_agent_to_event_model	2021-11-19 12:40:57.598659+00
-152	maasserver	0139_add_endpoint_and_increase_user_agent_length_for_event	2021-11-19 12:40:57.713103+00
-153	maasserver	0140_add_usergroup_model	2021-11-19 12:40:57.924026+00
-154	maasserver	0141_add_default_usergroup	2021-11-19 12:40:58.132156+00
-155	maasserver	0142_pod_default_resource_pool	2021-11-19 12:40:58.708092+00
-156	maasserver	0143_blockdevice_firmware	2021-11-19 12:40:58.738474+00
-157	maasserver	0144_filesystem_zfsroot_support	2021-11-19 12:40:58.787936+00
-158	maasserver	0145_interface_firmware	2021-11-19 12:40:58.942118+00
-159	maasserver	0146_add_rootkey	2021-11-19 12:40:58.955765+00
-160	maasserver	0147_pod_zones	2021-11-19 12:40:59.027306+00
-161	maasserver	0148_add_tags_on_pods	2021-11-19 12:40:59.085931+00
-162	maasserver	0149_userprofile_auth_last_check	2021-11-19 12:40:59.123072+00
-163	maasserver	0150_add_pod_commit_ratios	2021-11-19 12:40:59.210989+00
-164	maasserver	0151_userprofile_is_local	2021-11-19 12:40:59.237346+00
-165	maasserver	0152_add_usergroup_local	2021-11-19 12:40:59.273197+00
-166	maasserver	0153_add_skip_bmc_config	2021-11-19 12:40:59.34225+00
-167	maasserver	0154_link_usergroup_role	2021-11-19 12:40:59.533655+00
-168	maasserver	0155_add_globaldefaults_model	2021-11-19 12:40:59.964278+00
-169	maasserver	0156_drop_ssh_unique_key_index	2021-11-19 12:41:00.004865+00
-170	maasserver	0157_drop_usergroup_and_role	2021-11-19 12:41:00.438749+00
-171	maasserver	0158_pod_default_pool_to_pod	2021-11-19 12:41:00.517242+00
-172	maasserver	0159_userprofile_auth_last_check_no_now_default	2021-11-19 12:41:00.546172+00
-173	maasserver	0160_pool_only_for_machines	2021-11-19 12:41:00.644982+00
-174	maasserver	0161_pod_storage_pools	2021-11-19 12:41:01.024573+00
-175	maasserver	0162_storage_pools_notification	2021-11-19 12:41:01.127099+00
-176	maasserver	0163_create_new_power_parameters_with_jsonfield	2021-11-19 12:41:01.219672+00
-177	maasserver	0164_copy_over_existing_power_parameters	2021-11-19 12:41:01.320742+00
-178	maasserver	0165_remove_and_rename_power_parameters	2021-11-19 12:41:01.535613+00
-179	maasserver	0166_auto_select_s390x_extra_arches	2021-11-19 12:41:01.634578+00
-180	maasserver	0167_add_pod_host	2021-11-19 12:41:01.70175+00
-181	maasserver	0168_add_pod_default_macvlan_mode	2021-11-19 12:41:01.750756+00
-182	maasserver	0169_find_pod_host	2021-11-19 12:41:01.754893+00
-183	maasserver	0170_add_subnet_allow_dns	2021-11-19 12:41:01.777208+00
-184	maasserver	0171_remove_pod_host	2021-11-19 12:41:01.854558+00
-185	maasserver	0172_partition_tags	2021-11-19 12:41:01.8685+00
-186	maasserver	0173_add_node_install_kvm	2021-11-19 12:41:02.092937+00
-187	maasserver	0174_add_user_id_and_node_system_id_for_events	2021-11-19 12:41:02.182792+00
-188	maasserver	0175_copy_user_id_and_node_system_id_for_events	2021-11-19 12:41:02.278096+00
-189	maasserver	0176_rename_user_id_migrate_to_user_id_for_events	2021-11-19 12:41:02.405644+00
-190	maasserver	0177_remove_unique_together_on_bmc	2021-11-19 12:41:02.453066+00
-191	maasserver	0178_break_apart_linked_bmcs	2021-11-19 12:41:02.554466+00
-192	maasserver	0179_rbacsync	2021-11-19 12:41:02.563308+00
-193	maasserver	0180_rbaclastsync	2021-11-19 12:41:02.572676+00
-194	maasserver	0181_packagerepository_disable_sources	2021-11-19 12:41:02.584713+00
-195	maasserver	0182_remove_duplicate_null_ips	2021-11-19 12:41:02.600768+00
-196	maasserver	0183_node_uuid	2021-11-19 12:41:02.657634+00
-197	maasserver	0184_add_ephemeral_deploy_setting_to_node	2021-11-19 12:41:02.717017+00
-198	maasserver	0185_vmfs6	2021-11-19 12:41:02.782762+00
-199	maasserver	0186_node_description	2021-11-19 12:41:02.835891+00
-200	maasserver	0187_status_messages_change_event_logging_levels	2021-11-19 12:41:02.936874+00
-201	maasserver	0192_event_node_no_set_null	2021-11-19 12:41:03.169205+00
-202	maasserver	0194_machine_listing_event_index	2021-11-19 12:41:03.217197+00
-203	maasserver	0188_network_testing	2021-11-19 12:41:03.353922+00
-204	maasserver	0189_staticipaddress_temp_expires_on	2021-11-19 12:41:03.387202+00
-205	maasserver	0190_bmc_clean_duplicates	2021-11-19 12:41:03.494379+00
-206	maasserver	0191_bmc_unique_power_type_and_parameters	2021-11-19 12:41:03.500855+00
-207	maasserver	0193_merge_maasserver_0191_1092	2021-11-19 12:41:03.503326+00
-208	maasserver	0195_merge_20190902_1357	2021-11-19 12:41:03.505799+00
-209	maasserver	0196_numa_model	2021-11-19 12:41:03.857158+00
-210	maasserver	0197_remove_duplicate_physical_interfaces	2021-11-19 12:41:03.962039+00
-211	maasserver	0198_interface_physical_unique_mac	2021-11-19 12:41:03.968275+00
-212	maasserver	0199_bootresource_tbz_txz	2021-11-19 12:41:03.980856+00
-213	maasserver	0200_interface_sriov_max_vf	2021-11-19 12:41:04.032233+00
-214	maasserver	0195_event_username_max_length	2021-11-19 12:41:04.148037+00
-215	maasserver	0201_merge_20191008_1426	2021-11-19 12:41:04.150753+00
-216	maasserver	0202_event_node_on_delete	2021-11-19 12:41:04.415722+00
-217	maasserver	0203_interface_node_name_duplicates_delete	2021-11-19 12:41:04.513428+00
-218	maasserver	0204_interface_node_name_unique_together	2021-11-19 12:41:04.562861+00
-219	maasserver	0205_pod_nodes	2021-11-19 12:41:04.640497+00
-220	maasserver	0206_remove_node_token	2021-11-19 12:41:04.721787+00
-221	maasserver	0207_notification_dismissable	2021-11-19 12:41:04.743513+00
-222	maasserver	0208_no_power_query_events	2021-11-19 12:41:04.846899+00
-223	maasserver	0209_default_partitiontable_gpt	2021-11-19 12:41:04.867675+00
-224	maasserver	0210_filepathfield_to_charfield	2021-11-19 12:41:04.91246+00
-225	maasserver	0211_jsonfield_default_callable	2021-11-19 12:41:05.008252+00
-226	maasserver	0212_notifications_fields	2021-11-19 12:41:05.07502+00
-227	maasserver	0213_virtual_machine	2021-11-19 12:41:05.247006+00
-228	maasserver	0214_virtualmachine_one_to_one	2021-11-19 12:41:05.336279+00
-229	maasserver	0215_numanode_hugepages	2021-11-19 12:41:05.590857+00
-230	maasserver	0216_remove_skip_bmc_config_column	2021-11-19 12:41:05.661625+00
-231	maasserver	0217_notification_dismissal_timestamp	2021-11-19 12:41:05.71417+00
-232	maasserver	0218_images_maas_io_daily_to_stable	2021-11-19 12:41:05.8216+00
-233	maasserver	0219_vm_nic_link	2021-11-19 12:41:05.907892+00
-234	maasserver	0220_nodedevice	2021-11-19 12:41:06.004318+00
-235	maasserver	0221_track_lxd_project	2021-11-19 12:41:06.219817+00
-236	maasserver	0222_replace_node_creation_type	2021-11-19 12:41:06.43745+00
-237	maasserver	0223_virtualmachine_blank_project	2021-11-19 12:41:06.847243+00
-238	maasserver	0224_virtual_machine_disk	2021-11-19 12:41:07.032887+00
-239	maasserver	0225_drop_rsd_pod	2021-11-19 12:41:07.148362+00
-240	maasserver	0226_drop_iscsi_storage	2021-11-19 12:41:07.247321+00
-241	maasserver	0227_drop_pod_local_storage	2021-11-19 12:41:07.343709+00
-242	maasserver	0228_drop_iscsiblockdevice	2021-11-19 12:41:07.350424+00
-243	maasserver	0229_drop_physicalblockdevice_storage_pool	2021-11-19 12:41:07.435156+00
-244	maasserver	0230_tag_kernel_opts_blank_instead_of_null	2021-11-19 12:41:07.453178+00
-245	maasserver	0231_bmc_version	2021-11-19 12:41:07.515054+00
-246	maasserver	0232_drop_controllerinfo_interface_fields	2021-11-19 12:41:07.606905+00
-247	maasserver	0233_drop_switch	2021-11-19 12:41:07.613541+00
-248	maasserver	0234_node_register_vmhost	2021-11-19 12:41:07.675696+00
-249	maasserver	0235_controllerinfo_versions_details	2021-11-19 12:41:08.164885+00
-250	maasserver	0236_controllerinfo_update_first_reported	2021-11-19 12:41:08.237173+00
-251	maasserver	0237_drop_controller_version_mismatch_notifications	2021-11-19 12:41:08.350623+00
-252	maasserver	0238_disable_boot_architectures	2021-11-19 12:41:08.374021+00
-253	maasserver	0239_add_iprange_specific_dhcp_snippets	2021-11-19 12:41:08.467242+00
-254	maasserver	0240_ownerdata_key_fix	2021-11-19 12:41:08.576326+00
-255	maasserver	0241_physical_interface_default_node_numanode	2021-11-19 12:41:08.806888+00
-256	maasserver	0242_forwarddnsserver	2021-11-19 12:41:08.936299+00
-257	maasserver	0243_node_dynamic_for_controller_and_vmhost	2021-11-19 12:41:09.0856+00
-258	maasserver	0244_controller_nodes_deployed	2021-11-19 12:41:09.483833+00
-259	maasserver	0245_bmc_power_parameters_index_hash	2021-11-19 12:41:09.635635+00
-260	maasserver	0246_bootresource_custom_base_type	2021-11-19 12:41:09.651438+00
-261	maasserver	0247_auto_20210915_1545	2021-11-19 12:41:09.769845+00
-262	maasserver	0248_auto_20211006_1829	2021-11-19 12:41:10.011088+00
-263	maasserver	0249_lxd_auth_metrics	2021-11-19 12:41:10.193577+00
-264	maasserver	0250_node_last_applied_storage_layout	2021-11-19 12:41:10.257785+00
-265	maasserver	0251_auto_20211027_2128	2021-11-19 12:41:10.383283+00
-266	metadataserver	0003_remove_noderesult	2021-11-19 12:41:10.497317+00
-267	metadataserver	0004_aborted_script_status	2021-11-19 12:41:10.519628+00
-268	metadataserver	0005_store_powerstate_on_scriptset_creation	2021-11-19 12:41:10.555844+00
-269	metadataserver	0006_scriptresult_combined_output	2021-11-19 12:41:10.582204+00
-270	metadataserver	0007_migrate-commissioningscripts	2021-11-19 12:41:10.887103+00
-271	metadataserver	0008_remove-commissioningscripts	2021-11-19 12:41:10.894502+00
-272	metadataserver	0009_remove_noderesult_schema	2021-11-19 12:41:10.902347+00
-273	metadataserver	0010_scriptresult_time_and_script_title	2021-11-19 12:41:10.957528+00
-274	metadataserver	0011_script_metadata	2021-11-19 12:41:11.051289+00
-275	metadataserver	0012_store_script_results	2021-11-19 12:41:11.091909+00
-276	metadataserver	0013_scriptresult_physicalblockdevice	2021-11-19 12:41:11.26438+00
-277	metadataserver	0014_rename_dhcp_unconfigured_ifaces	2021-11-19 12:41:11.379168+00
-278	metadataserver	0015_migrate_storage_tests	2021-11-19 12:41:11.494202+00
-279	metadataserver	0016_script_model_fw_update_and_hw_config	2021-11-19 12:41:11.542797+00
-280	metadataserver	0017_store_requested_scripts	2021-11-19 12:41:11.607621+00
-281	metadataserver	0018_script_result_skipped	2021-11-19 12:41:11.635989+00
-282	metadataserver	0019_add_script_result_suppressed	2021-11-19 12:41:11.674488+00
-283	metadataserver	0020_network_testing	2021-11-19 12:41:11.795427+00
-284	metadataserver	0021_scriptresult_applying_netconf	2021-11-19 12:41:11.839799+00
-285	metadataserver	0022_internet-connectivity-network-validation	2021-11-19 12:41:11.848087+00
-286	metadataserver	0023_reorder_network_scripts	2021-11-19 12:41:11.955536+00
-287	metadataserver	0024_reorder_commissioning_scripts	2021-11-19 12:41:12.070671+00
-288	metadataserver	0025_nodedevice	2021-11-19 12:41:12.085411+00
-289	metadataserver	0026_drop_ipaddr_script	2021-11-19 12:41:12.40226+00
-290	piston3	0002_auto_20151209_1652	2021-11-19 12:41:12.422797+00
-291	piston3	0003_piston_nonce_index	2021-11-19 12:41:12.433498+00
-292	sessions	0001_initial	2021-11-19 12:41:12.444821+00
-293	sites	0001_initial	2021-11-19 12:41:12.455763+00
-294	sites	0002_alter_domain_unique	2021-11-19 12:41:12.467536+00
-295	maasserver	0252_drop_fannetwork	2021-11-26 17:02:43.267105+00
-296	maasserver	0253_nodeconfig	2022-03-01 15:55:02.690198+00
-297	maasserver	0254_default_nodeconfig_devices	2022-03-01 15:55:02.735735+00
-298	maasserver	0255_node_current_config	2022-03-01 15:55:02.863062+00
-299	maasserver	0256_blockdevice_nodeconfig_only	2022-03-01 15:55:02.882362+00
-300	maasserver	0257_filesystem_populate_node_config_id	2022-03-01 15:55:02.892658+00
-301	maasserver	0258_filesystem_nodeconfig_only	2022-03-01 15:55:03.355721+00
-302	maasserver	0259_add_hardware_sync_flag	2022-03-01 15:55:03.478532+00
-303	maasserver	0260_drop_maas_support_views	2022-03-01 15:55:03.536395+00
-304	maasserver	0261_interface_nodeconfig_only	2022-03-01 15:55:03.547634+00
-305	maasserver	0262_nodeconfig_link_replace_node	2022-03-01 15:55:04.117676+00
-306	maasserver	0263_vlan_racks_on_delete	2022-03-01 15:55:04.573912+00
-307	maasserver	0264_nodedevice_nodeconfig_link	2022-03-01 15:55:04.795457+00
-308	maasserver	0265_nodedevice_nodeconfig_migrate	2022-03-01 15:55:04.81799+00
-309	maasserver	0266_nodedevice_unlink_node	2022-03-01 15:55:05.13206+00
-310	maastesting	0001_initial	2022-03-08 14:01:53.649122+00
-311	maasserver	0267_add_machine_specific_sync_interval_fields	2022-06-13 14:48:40.504678+00
-312	maasserver	0268_partition_index	2022-06-13 14:48:40.670232+00
-313	maasserver	0269_interface_idx_include_nodeconfig	2022-06-13 14:48:40.68281+00
-314	maasserver	0270_storage_uuid_drop_unique	2022-06-13 14:48:40.781473+00
-315	maasserver	0271_interface_unique	2022-06-13 14:48:40.900017+00
-316	maasserver	0272_virtualmachine_resources_unique	2022-06-13 14:48:41.864679+00
-317	maasserver	0273_ipaddress_defaults	2022-06-13 14:48:41.907316+00
-318	maasserver	0274_audit_log_add_endpoint_cli_type	2022-06-13 14:48:41.94551+00
-319	maasserver	0275_interface_children	2022-06-13 14:48:42.048243+00
-320	maasserver	0276_bmc_autodetect_metric	2022-06-13 14:48:42.290065+00
-321	maasserver	0277_replace_nullbooleanfield	2022-06-13 14:48:42.308843+00
-322	metadataserver	0027_reorder_machine_resources_script	2022-06-13 14:48:42.420499+00
-323	metadataserver	0028_scriptset_requested_scripts_rename	2022-06-13 14:48:42.503381+00
-324	metadataserver	0029_scriptset_tags_cleanup	2022-06-13 14:48:42.510804+00
-325	metadataserver	0030_scriptresult_script_link	2022-06-13 14:48:42.738442+00
-326	auth	0006_default_auto_field	2022-07-07 11:09:02.38743+00
-327	maasserver	0278_generic_jsonfield	2022-07-07 11:09:02.563813+00
-328	metadataserver	0031_id_field_bigint	2022-07-07 11:09:03.047446+00
-329	metadataserver	0032_default_auto_field	2022-07-07 11:09:03.68517+00
-330	maasserver	0279_store_vpd_metadata_for_nodedevice	2022-09-05 00:16:36.329151+00
-331	maasserver	0280_set_parent_for_existing_vms	2022-09-15 11:24:45.945397+00
-332	maasserver	0281_secret_model	2022-09-15 11:24:45.959926+00
-333	maasserver	0282_rpc_shared_secret_to_secret	2022-10-03 12:52:26.794349+00
-334	maasserver	0283_migrate_tls_secrets	2022-10-03 12:52:26.80416+00
-335	maasserver	0284_migrate_more_global_secrets	2022-10-03 12:52:26.811989+00
-336	maasserver	0285_migrate_external_auth_secrets	2022-10-06 11:12:27.640004+00
-337	metadataserver	0033_remove_nodekey_key	2022-10-07 06:51:34.349659+00
-338	maasserver	0286_node_deploy_metadata	2022-10-11 03:29:32.800937+00
-339	maasserver	0287_add_controller_info_vault_flag	2022-10-15 03:29:44.399652+00
-340	maasserver	0288_rootkey_material_secret	2022-10-21 03:29:26.788885+00
-341	maasserver	0289_vault_secret	2022-10-28 03:29:40.716763+00
-342	maasserver	0290_migrate_node_power_parameters	2022-11-19 03:29:31.92822+00
-343	maasserver	0291_rdns_hostnames_as_array	2023-01-19 03:29:20.405694+00
-344	maasserver	0292_use_builtin_json_field	2023-01-24 03:29:54.34659+00
-345	metadataserver	0034_use_builtin_json_field	2023-01-24 03:29:54.467889+00
-346	maasserver	0293_drop_verbose_regex_validator	2023-02-28 03:29:15.412014+00
-347	maasserver	0294_keyring_data_binary_field	2023-03-01 03:29:34.859599+00
-348	maasserver	0295_macaddress_text_field	2023-03-04 03:29:30.976082+00
-349	metadataserver	0035_move_metadata_node_models	2023-04-27 03:30:37.453124+00
-350	maasserver	0296_move_metadata_node_models	2023-04-27 03:30:37.656471+00
-351	metadataserver	0036_move_metadata_script_models	2023-04-28 03:30:33.711429+00
-352	maasserver	0297_move_metadata_script_models	2023-04-28 03:30:34.516888+00
-353	maasserver	0298_current_script_set_foreign_keys_drop_indexes	2023-04-28 03:30:34.954887+00
-354	maasserver	0299_current_script_set_foreign_keys_cleanup	2023-04-28 03:30:34.967579+00
-355	maasserver	0300_current_script_set_foreign_keys_readd	2023-04-28 03:30:35.35594+00
-356	maasserver	0301_discovery_ignore_fks	2023-05-03 03:30:38.164577+00
-357	maasserver	0302_big_auto_field	2023-05-03 03:30:46.026112+00
-358	piston3	0004_big_auto_field	2023-05-03 03:30:46.539848+00
-359	maasserver	0303_interface_params_cleanups	2023-05-12 03:30:35.152079+00
-360	maasserver	0304_interface_params_no_autoconf	2023-05-12 03:30:35.161528+00
-361	maasserver	0305_add_temporal_schema	2023-08-25 09:27:56.827957+00
-362	maasserver	0306_diskless_ephemeral_deploy	2023-09-01 03:30:49.394747+00
-363	maasserver	0307_bootresource_type_drop_generated	2023-09-05 03:30:35.621467+00
-364	maasserver	0308_remove_images_from_db	2023-09-05 03:30:35.88739+00
-365	maasserver	0309_drop_bootloader_filetype	2023-09-06 03:30:38.148484+00
-366	maasserver	0310_rootfs_image_extensions	2023-09-15 03:30:27.345312+00
-367	maasserver	0311_image_sync_tracking	2023-09-28 03:30:52.503645+00
-368	maasserver	0312_release_script_type	2023-10-24 03:52:07.798195+00
-369	maasserver	0313_add_superuser_flag_to_existing_sysuser	2023-10-24 14:17:19.969776+00
-370	maasserver	0314_bootresourcefile_sha256_index	2023-11-02 03:30:47.980664+00
-371	maasserver	0315_add_current_release_script_set_to_node_model	2023-11-28 13:29:59.274246+00
-372	maasserver	0316_add_defaultresource_table	2024-03-06 03:31:14.227521+00
-373	maasserver	0317_migrate_defaultresource_zone	2024-03-06 03:31:14.238827+00
-374	maasserver	0318_add_port_to_forward_dns_servers	2024-03-17 03:30:45.589405+00
-375	maasserver	0319_merge_0304_and_0318	2024-03-20 10:17:51.582553+00
-376	maasserver	0320_current_script_set_foreign_keys_drop_indexes	2024-03-20 10:17:51.918962+00
-377	maasserver	0321_current_script_set_foreign_keys_cleanup	2024-03-20 10:17:51.927243+00
-378	maasserver	0322_current_script_set_foreign_keys_readd	2024-03-20 10:17:52.193804+00
-379	maasserver	0323_add_bootresource_alias_column	2024-05-22 03:30:53.729029+00
-380	maasserver	0324_populate_distro_alias	2024-05-24 03:30:57.883427+00
-381	maasserver	0325_foreign_key_drop	2024-05-28 12:00:15.12313+00
-382	maasserver	0326_foreign_key_cleanup	2024-05-28 12:00:15.576421+00
-383	maasserver	0327_foreign_key_readd	2024-05-28 12:00:16.543243+00
-384	maasserver	0328_merge_0327_and_0324	2024-05-28 19:46:08.641012+00
-385	maasserver	0329_add_reserved_ip_model	2024-06-15 03:30:52.566813+00
-386	maasserver	0330_bootresourcefile_filename_on_disk	2024-09-06 03:29:42.181597+00
-387	maasserver	0331_merge_322_330	2024-09-06 03:29:42.183811+00
-388	maasserver	0332_node_enable_kernel_crash_dump	2024-10-01 03:29:32.748129+00
-389	maasserver	0333_migrate_20_maas_03_machine_resources	2024-10-08 03:29:47.744096+00
-390	maasserver	0334_dnspublication_update	2024-10-19 03:30:09.373532+00
-391	maasserver	0335_reservedip_remove_vlan_update_mac	2024-10-23 03:29:40.217669+00
-392	maasserver	0336_remove_bmc_name_unique	2024-10-24 03:30:13.161462+00
-393	maasserver	0337_alter_interface_name	2024-12-07 03:29:56.132482+00
-394	maasserver	0338_add_protocol_sshkey	2025-01-10 03:30:39.961001+00
-395	maasserver	0339_migrate_keysource_table	2025-01-10 03:30:40.046038+00
-396	maasserver	0340_drop_keysource_table	2025-01-10 03:30:40.140181+00
-397	maasserver	0341_add_is_dpu_to_node	2025-03-21 03:30:33.971309+00
-398	maasserver	0342_add_alembic_table	2025-04-18 12:27:51.551723+00
-399	maasserver	0343_goodbye_django	2025-04-18 12:27:51.554786+00
 \.
 
 
@@ -12261,7 +8792,6 @@ COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
 --
 
 COPY public.django_site (id, domain, name) FROM stdin;
-1	example.com	example.com
 \.
 
 
@@ -12277,7 +8807,7 @@ COPY public.maasserver_agent (id, created, updated, secret, rack_id, rackcontrol
 -- Data for Name: maasserver_agentcertificate; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_agentcertificate (id, certificate_fingerprint, certificate, revoked_at, agent_id) FROM stdin;
+COPY public.maasserver_agentcertificate (id, certificate_fingerprint, certificate, revoked_at, agent_id, created, updated) FROM stdin;
 \.
 
 
@@ -12398,7 +8928,7 @@ COPY public.maasserver_controllerinfo (created, updated, node_id, version, insta
 --
 
 COPY public.maasserver_defaultresource (id, created, updated, zone_id) FROM stdin;
-1	2024-03-06 03:31:14.232149+00	2024-03-06 03:31:14.232149+00	1
+1	2025-09-08 08:41:58.008863+00	2025-09-08 08:41:58.008863+00	1
 \.
 
 
@@ -12423,7 +8953,7 @@ COPY public.maasserver_dnsdata (id, created, updated, rrtype, rrdata, dnsresourc
 --
 
 COPY public.maasserver_dnspublication (id, serial, created, source, update) FROM stdin;
-1	1	2021-11-19 12:40:49.607453+00	Initial publication	
+1	1	2025-09-08 08:41:58.008863+00	Initial publication	
 \.
 
 
@@ -12448,7 +8978,7 @@ COPY public.maasserver_dnsresource_ip_addresses (id, dnsresource_id, staticipadd
 --
 
 COPY public.maasserver_domain (id, created, updated, name, authoritative, ttl) FROM stdin;
-0	2021-11-19 12:40:45.172211+00	2021-11-19 12:40:45.172211+00	maas	t	\N
+0	2025-09-08 08:41:58.008863+00	2025-09-08 08:41:58.008863+00	maas	t	\N
 \.
 
 
@@ -12521,7 +9051,7 @@ COPY public.maasserver_forwarddnsserver_domains (id, forwarddnsserver_id, domain
 --
 
 COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdin;
-0	2021-11-19 12:40:59.690026+00	2021-11-19 12:40:59.694316+00	0
+0	2025-09-08 08:41:58.008863+00	2025-09-08 08:41:58.008863+00	0
 \.
 
 
@@ -12706,8 +9236,8 @@ COPY public.maasserver_ownerdata (id, key, value, node_id) FROM stdin;
 --
 
 COPY public.maasserver_packagerepository (id, created, updated, name, url, components, arches, key, "default", enabled, disabled_pockets, distributions, disabled_components, disable_sources) FROM stdin;
-1	2021-11-19 12:40:50.636477+00	2021-11-19 12:40:50.636477+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
-2	2021-11-19 12:40:50.636477+00	2021-11-19 12:40:50.636477+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
+1	2025-09-08 08:41:58.008863+00	2025-09-08 08:41:58.008863+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
+2	2025-09-08 08:41:58.008863+00	2025-09-08 08:41:58.008863+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
 \.
 
 
@@ -12828,7 +9358,7 @@ COPY public.maasserver_reservedip (id, created, updated, ip, mac_address, commen
 --
 
 COPY public.maasserver_resourcepool (id, created, updated, name, description) FROM stdin;
-0	2021-11-19 12:40:56.90477+00	2021-11-19 12:40:56.90477+00	default	Default pool
+0	2025-09-08 08:41:58.008863+00	2025-09-08 08:41:58.008863+00	default	Default pool
 \.
 
 
@@ -13021,15 +9551,7 @@ COPY public.maasserver_vmcluster (id, created, updated, name, project, pool_id, 
 --
 
 COPY public.maasserver_zone (id, created, updated, name, description) FROM stdin;
-1	2021-11-19 12:40:43.705399+00	2021-11-19 12:40:43.705399+00	default	
-\.
-
-
---
--- Data for Name: maastesting_perftestbuild; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.maastesting_perftestbuild (id, created, updated, start_ts, end_ts, git_branch, git_hash, release) FROM stdin;
+1	2025-09-08 08:41:58.008863+00	2025-09-08 08:41:58.008863+00	default	
 \.
 
 
@@ -13255,20 +9777,20 @@ COPY temporal.request_cancel_info_maps (shard_id, namespace_id, workflow_id, run
 --
 
 COPY temporal.schema_update_history (version_partition, year, month, update_time, description, manifest_md5, new_version, old_version) FROM stdin;
-0	2023	9	2023-09-01 03:30:50.320866	initial version		0.0	0
-0	2023	9	2023-09-01 03:30:50.469309	base version of schema	55b84ca114ac34d84bdc5f52c198fa33	1.0	0.0
-0	2023	9	2023-09-01 03:30:50.472776	schema update for cluster metadata	58f06841bbb187cb210db32a090c21ee	1.1	1.0
-0	2023	9	2023-09-01 03:30:50.474978	schema update for RPC replication	c6bdeea21882e2625038927a84929b16	1.2	1.1
-0	2023	9	2023-09-01 03:30:50.478556	schema update for kafka deprecation	3beee7d470421674194475f94b58d89b	1.3	1.2
-0	2023	9	2023-09-01 03:30:50.480822	schema update for cluster metadata cleanup	c53e2e9cea5660c8a1f3b2ac73cdb138	1.4	1.3
-0	2023	9	2023-09-01 03:30:50.484438	schema update for cluster_membership, executions and history_node tables	bfb307ba10ac0fdec83e0065dc5ffee4	1.5	1.4
-0	2023	9	2023-09-01 03:30:50.486108	schema update for queue_metadata	978e1a6500d377ba91c6e37e5275a59b	1.6	1.5
-0	2023	9	2023-09-01 03:30:50.491825	create cluster metadata info table to store cluster information and executions to store tiered storage queue	366b8b49d6701a6a09778e51ad1682ed	1.7	1.6
-0	2023	9	2023-09-01 03:30:50.496234	drop unused tasks table; Expand VARCHAR columns governed by maxIDLength to VARCHAR(255)	229846b5beb0b96f49e7a3c5fde09fa7	1.8	1.7
-0	2023	9	2023-09-01 03:30:50.502285	add history tasks table	b62e4e5826967e152e00b75da42d12ea	1.9	1.8
-0	2023	10	2023-10-24 03:52:08.21352	add storage for update records and create task_queue_user_data table	2b0c361b0d4ab7cf09ead5566f0db520	1.10	1.9
-0	2024	11	2024-11-20 17:19:47.81129	add queues and queue_messages tables	790ad04897813446f2953f5bd174ad9e	1.11	1.10
-0	2024	11	2024-11-20 17:19:47.815033	add storage for Nexus incoming service records and create nexus_incoming_services and nexus_incoming_services_partition_status tables	9a9c378fc124da5a172f8229872bd24c	1.12	1.11
+0	2025	9	2025-09-08 08:41:58.404564	initial version		0.0	0
+0	2025	9	2025-09-08 08:41:58.444841	base version of schema	55b84ca114ac34d84bdc5f52c198fa33	1.0	0.0
+0	2025	9	2025-09-08 08:41:58.445337	schema update for cluster metadata	58f06841bbb187cb210db32a090c21ee	1.1	1.0
+0	2025	9	2025-09-08 08:41:58.445631	schema update for RPC replication	c6bdeea21882e2625038927a84929b16	1.2	1.1
+0	2025	9	2025-09-08 08:41:58.446226	schema update for kafka deprecation	3beee7d470421674194475f94b58d89b	1.3	1.2
+0	2025	9	2025-09-08 08:41:58.446551	schema update for cluster metadata cleanup	c53e2e9cea5660c8a1f3b2ac73cdb138	1.4	1.3
+0	2025	9	2025-09-08 08:41:58.447169	schema update for cluster_membership, executions and history_node tables	bfb307ba10ac0fdec83e0065dc5ffee4	1.5	1.4
+0	2025	9	2025-09-08 08:41:58.44742	schema update for queue_metadata	978e1a6500d377ba91c6e37e5275a59b	1.6	1.5
+0	2025	9	2025-09-08 08:41:58.44856	create cluster metadata info table to store cluster information and executions to store tiered storage queue	366b8b49d6701a6a09778e51ad1682ed	1.7	1.6
+0	2025	9	2025-09-08 08:41:58.449454	drop unused tasks table; Expand VARCHAR columns governed by maxIDLength to VARCHAR(255)	229846b5beb0b96f49e7a3c5fde09fa7	1.8	1.7
+0	2025	9	2025-09-08 08:41:58.450525	add history tasks table	b62e4e5826967e152e00b75da42d12ea	1.9	1.8
+0	2025	9	2025-09-08 08:41:58.45154	add storage for update records and create task_queue_user_data table	2b0c361b0d4ab7cf09ead5566f0db520	1.10	1.9
+0	2025	9	2025-09-08 08:41:58.453022	add queues and queue_messages tables	790ad04897813446f2953f5bd174ad9e	1.11	1.10
+0	2025	9	2025-09-08 08:41:58.45401	add storage for Nexus incoming service records and create nexus_incoming_services and nexus_incoming_services_partition_status tables	9a9c378fc124da5a172f8229872bd24c	1.12	1.11
 \.
 
 
@@ -13277,7 +9799,7 @@ COPY temporal.schema_update_history (version_partition, year, month, update_time
 --
 
 COPY temporal.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
-0	maas	2024-11-20 17:19:47.814504	1.12	1.0
+0	maas	2025-09-08 08:41:58.453923	1.12	1.0
 \.
 
 
@@ -13374,14 +9896,14 @@ COPY temporal_visibility.executions_visibility (namespace_id, run_id, start_time
 --
 
 COPY temporal_visibility.schema_update_history (version_partition, year, month, update_time, description, manifest_md5, new_version, old_version) FROM stdin;
-0	2023	9	2023-09-01 03:30:50.537388	initial version		0.0	0
-0	2023	9	2023-09-01 03:30:50.66697	base version of visibility schema	6a739dc4ceb78e29e490cd7cef662a80	1.0	0.0
-0	2023	9	2023-09-01 03:30:50.668808	add close time & status index	3bc835a57de6e863cf545c25aa418aa3	1.1	1.0
-0	2023	9	2023-09-01 03:30:50.821314	update schema to support advanced visibility	3943d27399fe3df0f1be869a4982c0bb	1.2	1.1
-0	2023	10	2023-10-24 03:52:08.304127	add history size bytes and build IDs visibility columns and indices	62928bdd9093a8c18bb4a39bfe8e3a22	1.3	1.2
-0	2024	11	2024-11-20 17:19:47.858019	add execution duration, state transition count and parent workflow info columns, and indices	c28266b8b78448f2fefb507a74c7dcdf	1.4	1.3
-0	2024	11	2024-11-20 17:19:47.860485	add root workflow info columns and indices	f8da72ec53ef81b85988465e08b20319	1.5	1.4
-0	2024	11	2024-11-20 17:19:47.865207	fix root workflow info columns	0cf22b219b64b4c76988c616e2c776de	1.6	1.5
+0	2025	9	2025-09-08 08:41:58.419453	initial version		0.0	0
+0	2025	9	2025-09-08 08:41:58.467569	base version of visibility schema	6a739dc4ceb78e29e490cd7cef662a80	1.0	0.0
+0	2025	9	2025-09-08 08:41:58.467919	add close time & status index	3bc835a57de6e863cf545c25aa418aa3	1.1	1.0
+0	2025	9	2025-09-08 08:41:58.492104	update schema to support advanced visibility	3943d27399fe3df0f1be869a4982c0bb	1.2	1.1
+0	2025	9	2025-09-08 08:41:58.497525	add history size bytes and build IDs visibility columns and indices	62928bdd9093a8c18bb4a39bfe8e3a22	1.3	1.2
+0	2025	9	2025-09-08 08:41:58.4989	add execution duration, state transition count and parent workflow info columns, and indices	c28266b8b78448f2fefb507a74c7dcdf	1.4	1.3
+0	2025	9	2025-09-08 08:41:58.499675	add root workflow info columns and indices	f8da72ec53ef81b85988465e08b20319	1.5	1.4
+0	2025	9	2025-09-08 08:41:58.50095	fix root workflow info columns	0cf22b219b64b4c76988c616e2c776de	1.6	1.5
 \.
 
 
@@ -13390,7 +9912,7 @@ COPY temporal_visibility.schema_update_history (version_partition, year, month, 
 --
 
 COPY temporal_visibility.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
-0	maas	2024-11-20 17:19:47.864954	1.6	0.1
+0	maas	2025-09-08 08:41:58.500869	1.6	0.1
 \.
 
 
@@ -13412,7 +9934,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 476, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 444, true);
 
 
 --
@@ -13440,14 +9962,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 111, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 399, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 396, true);
 
 
 --
@@ -13773,24 +10295,10 @@ SELECT pg_catalog.setval('public.maasserver_nodegrouptorackcontroller_id_seq', 1
 
 
 --
--- Name: maasserver_nodekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_nodekey_id_seq', 1, false);
-
-
---
 -- Name: maasserver_nodemetadata_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.maasserver_nodemetadata_id_seq', 1, false);
-
-
---
--- Name: maasserver_nodeuserdata_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_nodeuserdata_id_seq', 1, false);
 
 
 --
@@ -13941,27 +10449,6 @@ SELECT pg_catalog.setval('public.maasserver_rootkey_id_seq', 1, false);
 
 
 --
--- Name: maasserver_script_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_script_id_seq', 1, false);
-
-
---
--- Name: maasserver_scriptresult_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_scriptresult_id_seq', 1, false);
-
-
---
--- Name: maasserver_scriptset_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_scriptset_id_seq', 1, false);
-
-
---
 -- Name: maasserver_service_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -14063,7 +10550,7 @@ SELECT pg_catalog.setval('public.maasserver_virtualmachineinterface_id_seq', 1, 
 -- Name: maasserver_vlan_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.maasserver_vlan_id_seq', 1, false);
+SELECT pg_catalog.setval('public.maasserver_vlan_id_seq', 5001, false);
 
 
 --
@@ -14084,14 +10571,7 @@ SELECT pg_catalog.setval('public.maasserver_zone_id_seq', 1, true);
 -- Name: maasserver_zone_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.maasserver_zone_serial_seq', 3, true);
-
-
---
--- Name: maastesting_perftestbuild_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maastesting_perftestbuild_id_seq', 1, false);
+SELECT pg_catalog.setval('public.maasserver_zone_serial_seq', 1, true);
 
 
 --
@@ -14155,6 +10635,14 @@ SELECT pg_catalog.setval('public.piston3_token_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('temporal.buffered_events_id_seq', 1, false);
+
+
+--
+-- Name: alembic_version alembic_version_pkc; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alembic_version
+    ADD CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num);
 
 
 --
@@ -15587,22 +12075,6 @@ ALTER TABLE ONLY public.maasserver_zone
 
 ALTER TABLE ONLY public.maasserver_zone
     ADD CONSTRAINT maasserver_zone_pkey PRIMARY KEY (id);
-
-
---
--- Name: maastesting_perftestbuild maastesting_perftestbuild_git_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maastesting_perftestbuild
-    ADD CONSTRAINT maastesting_perftestbuild_git_hash_key UNIQUE (git_hash);
-
-
---
--- Name: maastesting_perftestbuild maastesting_perftestbuild_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maastesting_perftestbuild
-    ADD CONSTRAINT maastesting_perftestbuild_pkey PRIMARY KEY (id);
 
 
 --
@@ -17208,13 +13680,6 @@ CREATE INDEX maasserver_zone_name_a0aef207_like ON public.maasserver_zone USING 
 
 
 --
--- Name: maastesting_perftestbuild_git_hash_07335de3_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maastesting_perftestbuild_git_hash_07335de3_like ON public.maastesting_perftestbuild USING btree (git_hash text_pattern_ops);
-
-
---
 -- Name: metadataserver_script_name_b2be1ba5_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17670,6 +14135,748 @@ CREATE INDEX default_idx ON temporal_visibility.executions_visibility USING btre
 
 
 --
+-- Name: maasserver_blockdevice blockdevice_nd_blockdevice_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER blockdevice_nd_blockdevice_link_notify AFTER INSERT ON public.maasserver_blockdevice FOR EACH ROW EXECUTE FUNCTION public.nd_blockdevice_link_notify();
+
+
+--
+-- Name: maasserver_blockdevice blockdevice_nd_blockdevice_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER blockdevice_nd_blockdevice_unlink_notify AFTER DELETE ON public.maasserver_blockdevice FOR EACH ROW EXECUTE FUNCTION public.nd_blockdevice_unlink_notify();
+
+
+--
+-- Name: maasserver_blockdevice blockdevice_nd_blockdevice_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER blockdevice_nd_blockdevice_update_notify AFTER UPDATE ON public.maasserver_blockdevice FOR EACH ROW EXECUTE FUNCTION public.nd_blockdevice_update_notify();
+
+
+--
+-- Name: maasserver_bmc bmc_bmc_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bmc_bmc_machine_update_notify AFTER UPDATE ON public.maasserver_bmc FOR EACH ROW EXECUTE FUNCTION public.bmc_machine_update_notify();
+
+
+--
+-- Name: maasserver_bmc bmc_pod_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bmc_pod_delete_notify AFTER DELETE ON public.maasserver_bmc FOR EACH ROW EXECUTE FUNCTION public.pod_delete_notify();
+
+
+--
+-- Name: maasserver_bmc bmc_pod_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bmc_pod_insert_notify AFTER INSERT ON public.maasserver_bmc FOR EACH ROW EXECUTE FUNCTION public.pod_insert_notify();
+
+
+--
+-- Name: maasserver_bmc bmc_pod_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bmc_pod_update_notify AFTER UPDATE ON public.maasserver_bmc FOR EACH ROW EXECUTE FUNCTION public.pod_update_notify();
+
+
+--
+-- Name: maasserver_cacheset cacheset_nd_cacheset_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER cacheset_nd_cacheset_link_notify AFTER INSERT ON public.maasserver_cacheset FOR EACH ROW EXECUTE FUNCTION public.nd_cacheset_link_notify();
+
+
+--
+-- Name: maasserver_cacheset cacheset_nd_cacheset_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER cacheset_nd_cacheset_unlink_notify AFTER DELETE ON public.maasserver_cacheset FOR EACH ROW EXECUTE FUNCTION public.nd_cacheset_unlink_notify();
+
+
+--
+-- Name: maasserver_cacheset cacheset_nd_cacheset_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER cacheset_nd_cacheset_update_notify AFTER UPDATE ON public.maasserver_cacheset FOR EACH ROW EXECUTE FUNCTION public.nd_cacheset_update_notify();
+
+
+--
+-- Name: maasserver_config config_sys_proxy_config_use_peer_proxy_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER config_sys_proxy_config_use_peer_proxy_insert AFTER INSERT ON public.maasserver_config FOR EACH ROW EXECUTE FUNCTION public.sys_proxy_config_use_peer_proxy_insert();
+
+
+--
+-- Name: maasserver_config config_sys_proxy_config_use_peer_proxy_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER config_sys_proxy_config_use_peer_proxy_update AFTER UPDATE ON public.maasserver_config FOR EACH ROW EXECUTE FUNCTION public.sys_proxy_config_use_peer_proxy_update();
+
+
+--
+-- Name: maasserver_controllerinfo controllerinfo_controllerinfo_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER controllerinfo_controllerinfo_link_notify AFTER INSERT ON public.maasserver_controllerinfo FOR EACH ROW EXECUTE FUNCTION public.controllerinfo_link_notify();
+
+
+--
+-- Name: maasserver_controllerinfo controllerinfo_controllerinfo_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER controllerinfo_controllerinfo_unlink_notify AFTER DELETE ON public.maasserver_controllerinfo FOR EACH ROW EXECUTE FUNCTION public.controllerinfo_unlink_notify();
+
+
+--
+-- Name: maasserver_controllerinfo controllerinfo_controllerinfo_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER controllerinfo_controllerinfo_update_notify AFTER UPDATE ON public.maasserver_controllerinfo FOR EACH ROW EXECUTE FUNCTION public.controllerinfo_update_notify();
+
+
+--
+-- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dhcpsnippet_dhcpsnippet_create_notify AFTER INSERT ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_create_notify();
+
+
+--
+-- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dhcpsnippet_dhcpsnippet_delete_notify AFTER DELETE ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_delete_notify();
+
+
+--
+-- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dhcpsnippet_dhcpsnippet_update_notify AFTER UPDATE ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_update_notify();
+
+
+--
+-- Name: maasserver_dnsdata dnsdata_dnsdata_domain_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsdata_dnsdata_domain_delete_notify AFTER DELETE ON public.maasserver_dnsdata FOR EACH ROW EXECUTE FUNCTION public.dnsdata_domain_delete_notify();
+
+
+--
+-- Name: maasserver_dnsdata dnsdata_dnsdata_domain_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsdata_dnsdata_domain_insert_notify AFTER INSERT ON public.maasserver_dnsdata FOR EACH ROW EXECUTE FUNCTION public.dnsdata_domain_insert_notify();
+
+
+--
+-- Name: maasserver_dnsdata dnsdata_dnsdata_domain_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsdata_dnsdata_domain_update_notify AFTER UPDATE ON public.maasserver_dnsdata FOR EACH ROW EXECUTE FUNCTION public.dnsdata_domain_update_notify();
+
+
+--
+-- Name: maasserver_dnsresource dnsresource_dnsresource_domain_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsresource_dnsresource_domain_delete_notify AFTER DELETE ON public.maasserver_dnsresource FOR EACH ROW EXECUTE FUNCTION public.dnsresource_domain_delete_notify();
+
+
+--
+-- Name: maasserver_dnsresource dnsresource_dnsresource_domain_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsresource_dnsresource_domain_insert_notify AFTER INSERT ON public.maasserver_dnsresource FOR EACH ROW EXECUTE FUNCTION public.dnsresource_domain_insert_notify();
+
+
+--
+-- Name: maasserver_dnsresource dnsresource_dnsresource_domain_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsresource_dnsresource_domain_update_notify AFTER UPDATE ON public.maasserver_dnsresource FOR EACH ROW EXECUTE FUNCTION public.dnsresource_domain_update_notify();
+
+
+--
+-- Name: maasserver_dnsresource_ip_addresses dnsresource_ip_addresses_rrset_sipaddress_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsresource_ip_addresses_rrset_sipaddress_link_notify AFTER INSERT ON public.maasserver_dnsresource_ip_addresses FOR EACH ROW EXECUTE FUNCTION public.rrset_sipaddress_link_notify();
+
+
+--
+-- Name: maasserver_dnsresource_ip_addresses dnsresource_ip_addresses_rrset_sipaddress_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER dnsresource_ip_addresses_rrset_sipaddress_unlink_notify AFTER DELETE ON public.maasserver_dnsresource_ip_addresses FOR EACH ROW EXECUTE FUNCTION public.rrset_sipaddress_unlink_notify();
+
+
+--
+-- Name: maasserver_domain domain_domain_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER domain_domain_create_notify AFTER INSERT ON public.maasserver_domain FOR EACH ROW EXECUTE FUNCTION public.domain_create_notify();
+
+
+--
+-- Name: maasserver_domain domain_domain_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER domain_domain_delete_notify AFTER DELETE ON public.maasserver_domain FOR EACH ROW EXECUTE FUNCTION public.domain_delete_notify();
+
+
+--
+-- Name: maasserver_domain domain_domain_node_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER domain_domain_node_update_notify AFTER UPDATE ON public.maasserver_domain FOR EACH ROW EXECUTE FUNCTION public.domain_node_update_notify();
+
+
+--
+-- Name: maasserver_domain domain_domain_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER domain_domain_update_notify AFTER UPDATE ON public.maasserver_domain FOR EACH ROW EXECUTE FUNCTION public.domain_update_notify();
+
+
+--
+-- Name: maasserver_event event_event_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER event_event_create_notify AFTER INSERT ON public.maasserver_event FOR EACH ROW EXECUTE FUNCTION public.event_create_notify();
+
+
+--
+-- Name: maasserver_event event_event_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER event_event_machine_update_notify AFTER INSERT ON public.maasserver_event FOR EACH ROW EXECUTE FUNCTION public.event_machine_update_notify();
+
+
+--
+-- Name: maasserver_fabric fabric_fabric_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER fabric_fabric_create_notify AFTER INSERT ON public.maasserver_fabric FOR EACH ROW EXECUTE FUNCTION public.fabric_create_notify();
+
+
+--
+-- Name: maasserver_fabric fabric_fabric_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER fabric_fabric_delete_notify AFTER DELETE ON public.maasserver_fabric FOR EACH ROW EXECUTE FUNCTION public.fabric_delete_notify();
+
+
+--
+-- Name: maasserver_fabric fabric_fabric_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER fabric_fabric_machine_update_notify AFTER UPDATE ON public.maasserver_fabric FOR EACH ROW EXECUTE FUNCTION public.fabric_machine_update_notify();
+
+
+--
+-- Name: maasserver_fabric fabric_fabric_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER fabric_fabric_update_notify AFTER UPDATE ON public.maasserver_fabric FOR EACH ROW EXECUTE FUNCTION public.fabric_update_notify();
+
+
+--
+-- Name: maasserver_filesystem filesystem_nd_filesystem_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER filesystem_nd_filesystem_link_notify AFTER INSERT ON public.maasserver_filesystem FOR EACH ROW EXECUTE FUNCTION public.nd_filesystem_link_notify();
+
+
+--
+-- Name: maasserver_filesystem filesystem_nd_filesystem_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER filesystem_nd_filesystem_unlink_notify AFTER DELETE ON public.maasserver_filesystem FOR EACH ROW EXECUTE FUNCTION public.nd_filesystem_unlink_notify();
+
+
+--
+-- Name: maasserver_filesystem filesystem_nd_filesystem_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER filesystem_nd_filesystem_update_notify AFTER UPDATE ON public.maasserver_filesystem FOR EACH ROW EXECUTE FUNCTION public.nd_filesystem_update_notify();
+
+
+--
+-- Name: maasserver_filesystemgroup filesystemgroup_nd_filesystemgroup_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER filesystemgroup_nd_filesystemgroup_link_notify AFTER INSERT ON public.maasserver_filesystemgroup FOR EACH ROW EXECUTE FUNCTION public.nd_filesystemgroup_link_notify();
+
+
+--
+-- Name: maasserver_filesystemgroup filesystemgroup_nd_filesystemgroup_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER filesystemgroup_nd_filesystemgroup_unlink_notify AFTER DELETE ON public.maasserver_filesystemgroup FOR EACH ROW EXECUTE FUNCTION public.nd_filesystemgroup_unlink_notify();
+
+
+--
+-- Name: maasserver_filesystemgroup filesystemgroup_nd_filesystemgroup_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER filesystemgroup_nd_filesystemgroup_update_notify AFTER UPDATE ON public.maasserver_filesystemgroup FOR EACH ROW EXECUTE FUNCTION public.nd_filesystemgroup_update_notify();
+
+
+--
+-- Name: maasserver_interface interface_interface_pod_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_interface_pod_notify AFTER INSERT OR DELETE OR UPDATE ON public.maasserver_interface FOR EACH ROW EXECUTE FUNCTION public.interface_pod_notify();
+
+
+--
+-- Name: maasserver_interface_ip_addresses interface_ip_addresses_nd_sipaddress_dns_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_ip_addresses_nd_sipaddress_dns_link_notify AFTER INSERT ON public.maasserver_interface_ip_addresses FOR EACH ROW EXECUTE FUNCTION public.nd_sipaddress_dns_link_notify();
+
+
+--
+-- Name: maasserver_interface_ip_addresses interface_ip_addresses_nd_sipaddress_dns_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_ip_addresses_nd_sipaddress_dns_unlink_notify AFTER DELETE ON public.maasserver_interface_ip_addresses FOR EACH ROW EXECUTE FUNCTION public.nd_sipaddress_dns_unlink_notify();
+
+
+--
+-- Name: maasserver_interface_ip_addresses interface_ip_addresses_nd_sipaddress_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_ip_addresses_nd_sipaddress_link_notify AFTER INSERT ON public.maasserver_interface_ip_addresses FOR EACH ROW EXECUTE FUNCTION public.nd_sipaddress_link_notify();
+
+
+--
+-- Name: maasserver_interface_ip_addresses interface_ip_addresses_nd_sipaddress_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_ip_addresses_nd_sipaddress_unlink_notify AFTER DELETE ON public.maasserver_interface_ip_addresses FOR EACH ROW EXECUTE FUNCTION public.nd_sipaddress_unlink_notify();
+
+
+--
+-- Name: maasserver_interface interface_nd_interface_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_nd_interface_link_notify AFTER INSERT ON public.maasserver_interface FOR EACH ROW EXECUTE FUNCTION public.nd_interface_link_notify();
+
+
+--
+-- Name: maasserver_interface interface_nd_interface_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_nd_interface_unlink_notify AFTER DELETE ON public.maasserver_interface FOR EACH ROW EXECUTE FUNCTION public.nd_interface_unlink_notify();
+
+
+--
+-- Name: maasserver_interface interface_nd_interface_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER interface_nd_interface_update_notify AFTER UPDATE ON public.maasserver_interface FOR EACH ROW EXECUTE FUNCTION public.nd_interface_update_notify();
+
+
+--
+-- Name: maasserver_iprange iprange_iprange_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER iprange_iprange_create_notify AFTER INSERT ON public.maasserver_iprange FOR EACH ROW EXECUTE FUNCTION public.iprange_create_notify();
+
+
+--
+-- Name: maasserver_iprange iprange_iprange_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER iprange_iprange_delete_notify AFTER DELETE ON public.maasserver_iprange FOR EACH ROW EXECUTE FUNCTION public.iprange_delete_notify();
+
+
+--
+-- Name: maasserver_iprange iprange_iprange_subnet_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER iprange_iprange_subnet_delete_notify AFTER DELETE ON public.maasserver_iprange FOR EACH ROW EXECUTE FUNCTION public.iprange_subnet_delete_notify();
+
+
+--
+-- Name: maasserver_iprange iprange_iprange_subnet_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER iprange_iprange_subnet_insert_notify AFTER INSERT ON public.maasserver_iprange FOR EACH ROW EXECUTE FUNCTION public.iprange_subnet_insert_notify();
+
+
+--
+-- Name: maasserver_iprange iprange_iprange_subnet_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER iprange_iprange_subnet_update_notify AFTER UPDATE ON public.maasserver_iprange FOR EACH ROW EXECUTE FUNCTION public.iprange_subnet_update_notify();
+
+
+--
+-- Name: maasserver_iprange iprange_iprange_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER iprange_iprange_update_notify AFTER UPDATE ON public.maasserver_iprange FOR EACH ROW EXECUTE FUNCTION public.iprange_update_notify();
+
+
+--
+-- Name: maasserver_neighbour neighbour_neighbour_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER neighbour_neighbour_create_notify AFTER INSERT ON public.maasserver_neighbour FOR EACH ROW EXECUTE FUNCTION public.neighbour_create_notify();
+
+
+--
+-- Name: maasserver_neighbour neighbour_neighbour_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER neighbour_neighbour_delete_notify AFTER DELETE ON public.maasserver_neighbour FOR EACH ROW EXECUTE FUNCTION public.neighbour_delete_notify();
+
+
+--
+-- Name: maasserver_neighbour neighbour_neighbour_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER neighbour_neighbour_update_notify AFTER UPDATE ON public.maasserver_neighbour FOR EACH ROW EXECUTE FUNCTION public.neighbour_update_notify();
+
+
+--
+-- Name: maasserver_node node_device_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_device_create_notify AFTER INSERT ON public.maasserver_node FOR EACH ROW WHEN ((new.node_type = 1)) EXECUTE FUNCTION public.device_create_notify();
+
+
+--
+-- Name: maasserver_node node_device_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_device_delete_notify AFTER DELETE ON public.maasserver_node FOR EACH ROW WHEN ((old.node_type = 1)) EXECUTE FUNCTION public.device_delete_notify();
+
+
+--
+-- Name: maasserver_node node_device_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_device_update_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW WHEN (((new.node_type = 1) AND (((new.architecture)::text IS DISTINCT FROM (old.architecture)::text) OR (new.bmc_id IS DISTINCT FROM old.bmc_id) OR (new.cpu_count IS DISTINCT FROM old.cpu_count) OR (new.cpu_speed IS DISTINCT FROM old.cpu_speed) OR (new.current_commissioning_script_set_id IS DISTINCT FROM old.current_commissioning_script_set_id) OR (new.current_installation_script_set_id IS DISTINCT FROM old.current_installation_script_set_id) OR (new.current_testing_script_set_id IS DISTINCT FROM old.current_testing_script_set_id) OR (new.description IS DISTINCT FROM old.description) OR ((new.distro_series)::text IS DISTINCT FROM (old.distro_series)::text) OR (new.domain_id IS DISTINCT FROM old.domain_id) OR ((new.error)::text IS DISTINCT FROM (old.error)::text) OR ((new.hostname)::text IS DISTINCT FROM (old.hostname)::text) OR ((new.hwe_kernel)::text IS DISTINCT FROM (old.hwe_kernel)::text) OR (new.instance_power_parameters IS DISTINCT FROM old.instance_power_parameters) OR (new.last_image_sync IS DISTINCT FROM old.last_image_sync) OR ((new.license_key)::text IS DISTINCT FROM (old.license_key)::text) OR (new.locked IS DISTINCT FROM old.locked) OR ((new.min_hwe_kernel)::text IS DISTINCT FROM (old.min_hwe_kernel)::text) OR ((new.osystem)::text IS DISTINCT FROM (old.osystem)::text) OR (new.owner_id IS DISTINCT FROM old.owner_id) OR (new.parent_id IS DISTINCT FROM old.parent_id) OR (new.pool_id IS DISTINCT FROM old.pool_id) OR ((new.power_state)::text IS DISTINCT FROM (old.power_state)::text) OR (new.status IS DISTINCT FROM old.status) OR (new.swap_size IS DISTINCT FROM old.swap_size) OR (new.zone_id IS DISTINCT FROM old.zone_id)))) EXECUTE FUNCTION public.device_update_notify();
+
+
+--
+-- Name: maasserver_node node_machine_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_machine_create_notify AFTER INSERT ON public.maasserver_node FOR EACH ROW WHEN ((new.node_type = 0)) EXECUTE FUNCTION public.machine_create_notify();
+
+
+--
+-- Name: maasserver_node node_machine_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_machine_delete_notify AFTER DELETE ON public.maasserver_node FOR EACH ROW WHEN ((old.node_type = 0)) EXECUTE FUNCTION public.machine_delete_notify();
+
+
+--
+-- Name: maasserver_node node_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_machine_update_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW WHEN (((new.node_type = 0) AND (((new.architecture)::text IS DISTINCT FROM (old.architecture)::text) OR (new.bmc_id IS DISTINCT FROM old.bmc_id) OR (new.cpu_count IS DISTINCT FROM old.cpu_count) OR (new.cpu_speed IS DISTINCT FROM old.cpu_speed) OR (new.current_commissioning_script_set_id IS DISTINCT FROM old.current_commissioning_script_set_id) OR (new.current_installation_script_set_id IS DISTINCT FROM old.current_installation_script_set_id) OR (new.current_testing_script_set_id IS DISTINCT FROM old.current_testing_script_set_id) OR (new.description IS DISTINCT FROM old.description) OR ((new.distro_series)::text IS DISTINCT FROM (old.distro_series)::text) OR (new.domain_id IS DISTINCT FROM old.domain_id) OR ((new.error)::text IS DISTINCT FROM (old.error)::text) OR ((new.hostname)::text IS DISTINCT FROM (old.hostname)::text) OR ((new.hwe_kernel)::text IS DISTINCT FROM (old.hwe_kernel)::text) OR (new.instance_power_parameters IS DISTINCT FROM old.instance_power_parameters) OR (new.last_image_sync IS DISTINCT FROM old.last_image_sync) OR ((new.license_key)::text IS DISTINCT FROM (old.license_key)::text) OR (new.locked IS DISTINCT FROM old.locked) OR ((new.min_hwe_kernel)::text IS DISTINCT FROM (old.min_hwe_kernel)::text) OR ((new.osystem)::text IS DISTINCT FROM (old.osystem)::text) OR (new.owner_id IS DISTINCT FROM old.owner_id) OR (new.parent_id IS DISTINCT FROM old.parent_id) OR (new.pool_id IS DISTINCT FROM old.pool_id) OR ((new.power_state)::text IS DISTINCT FROM (old.power_state)::text) OR (new.status IS DISTINCT FROM old.status) OR (new.swap_size IS DISTINCT FROM old.swap_size) OR (new.zone_id IS DISTINCT FROM old.zone_id)))) EXECUTE FUNCTION public.machine_update_notify();
+
+
+--
+-- Name: maasserver_node node_node_pod_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_node_pod_delete_notify AFTER DELETE ON public.maasserver_node FOR EACH ROW EXECUTE FUNCTION public.node_pod_delete_notify();
+
+
+--
+-- Name: maasserver_node node_node_pod_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_node_pod_insert_notify AFTER INSERT ON public.maasserver_node FOR EACH ROW EXECUTE FUNCTION public.node_pod_insert_notify();
+
+
+--
+-- Name: maasserver_node node_node_pod_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_node_pod_update_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW WHEN ((((new.architecture)::text IS DISTINCT FROM (old.architecture)::text) OR (new.bmc_id IS DISTINCT FROM old.bmc_id) OR (new.cpu_count IS DISTINCT FROM old.cpu_count) OR (new.cpu_speed IS DISTINCT FROM old.cpu_speed) OR (new.current_commissioning_script_set_id IS DISTINCT FROM old.current_commissioning_script_set_id) OR (new.current_installation_script_set_id IS DISTINCT FROM old.current_installation_script_set_id) OR (new.current_testing_script_set_id IS DISTINCT FROM old.current_testing_script_set_id) OR (new.description IS DISTINCT FROM old.description) OR ((new.distro_series)::text IS DISTINCT FROM (old.distro_series)::text) OR (new.domain_id IS DISTINCT FROM old.domain_id) OR ((new.error)::text IS DISTINCT FROM (old.error)::text) OR ((new.hostname)::text IS DISTINCT FROM (old.hostname)::text) OR ((new.hwe_kernel)::text IS DISTINCT FROM (old.hwe_kernel)::text) OR (new.instance_power_parameters IS DISTINCT FROM old.instance_power_parameters) OR (new.last_image_sync IS DISTINCT FROM old.last_image_sync) OR ((new.license_key)::text IS DISTINCT FROM (old.license_key)::text) OR (new.locked IS DISTINCT FROM old.locked) OR ((new.min_hwe_kernel)::text IS DISTINCT FROM (old.min_hwe_kernel)::text) OR ((new.osystem)::text IS DISTINCT FROM (old.osystem)::text) OR (new.owner_id IS DISTINCT FROM old.owner_id) OR (new.parent_id IS DISTINCT FROM old.parent_id) OR (new.pool_id IS DISTINCT FROM old.pool_id) OR ((new.power_state)::text IS DISTINCT FROM (old.power_state)::text) OR (new.status IS DISTINCT FROM old.status) OR (new.swap_size IS DISTINCT FROM old.swap_size) OR (new.zone_id IS DISTINCT FROM old.zone_id))) EXECUTE FUNCTION public.node_pod_update_notify();
+
+
+--
+-- Name: maasserver_node node_node_type_change_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_node_type_change_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW WHEN ((new.node_type IS DISTINCT FROM old.node_type)) EXECUTE FUNCTION public.node_type_change_notify();
+
+
+--
+-- Name: maasserver_node node_node_vmcluster_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_node_vmcluster_delete_notify AFTER DELETE ON public.maasserver_node FOR EACH ROW EXECUTE FUNCTION public.node_vmcluster_delete_notify();
+
+
+--
+-- Name: maasserver_node node_node_vmcluster_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_node_vmcluster_insert_notify AFTER INSERT ON public.maasserver_node FOR EACH ROW EXECUTE FUNCTION public.node_vmcluster_insert_notify();
+
+
+--
+-- Name: maasserver_node node_node_vmcluster_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_node_vmcluster_update_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW EXECUTE FUNCTION public.node_vmcluster_update_notify();
+
+
+--
+-- Name: maasserver_node node_rack_controller_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_rack_controller_create_notify AFTER INSERT ON public.maasserver_node FOR EACH ROW WHEN ((new.node_type = 2)) EXECUTE FUNCTION public.rack_controller_create_notify();
+
+
+--
+-- Name: maasserver_node node_rack_controller_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_rack_controller_delete_notify AFTER DELETE ON public.maasserver_node FOR EACH ROW WHEN ((old.node_type = 2)) EXECUTE FUNCTION public.rack_controller_delete_notify();
+
+
+--
+-- Name: maasserver_node node_rack_controller_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_rack_controller_update_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW WHEN (((new.node_type = 2) AND (((new.architecture)::text IS DISTINCT FROM (old.architecture)::text) OR (new.bmc_id IS DISTINCT FROM old.bmc_id) OR (new.cpu_count IS DISTINCT FROM old.cpu_count) OR (new.cpu_speed IS DISTINCT FROM old.cpu_speed) OR (new.current_commissioning_script_set_id IS DISTINCT FROM old.current_commissioning_script_set_id) OR (new.current_installation_script_set_id IS DISTINCT FROM old.current_installation_script_set_id) OR (new.current_testing_script_set_id IS DISTINCT FROM old.current_testing_script_set_id) OR (new.description IS DISTINCT FROM old.description) OR ((new.distro_series)::text IS DISTINCT FROM (old.distro_series)::text) OR (new.domain_id IS DISTINCT FROM old.domain_id) OR ((new.error)::text IS DISTINCT FROM (old.error)::text) OR ((new.hostname)::text IS DISTINCT FROM (old.hostname)::text) OR ((new.hwe_kernel)::text IS DISTINCT FROM (old.hwe_kernel)::text) OR (new.instance_power_parameters IS DISTINCT FROM old.instance_power_parameters) OR (new.last_image_sync IS DISTINCT FROM old.last_image_sync) OR ((new.license_key)::text IS DISTINCT FROM (old.license_key)::text) OR (new.locked IS DISTINCT FROM old.locked) OR ((new.min_hwe_kernel)::text IS DISTINCT FROM (old.min_hwe_kernel)::text) OR ((new.osystem)::text IS DISTINCT FROM (old.osystem)::text) OR (new.owner_id IS DISTINCT FROM old.owner_id) OR (new.parent_id IS DISTINCT FROM old.parent_id) OR (new.pool_id IS DISTINCT FROM old.pool_id) OR ((new.power_state)::text IS DISTINCT FROM (old.power_state)::text) OR (new.status IS DISTINCT FROM old.status) OR (new.swap_size IS DISTINCT FROM old.swap_size) OR (new.zone_id IS DISTINCT FROM old.zone_id)))) EXECUTE FUNCTION public.rack_controller_update_notify();
+
+
+--
+-- Name: maasserver_node node_region_and_rack_controller_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_region_and_rack_controller_create_notify AFTER INSERT ON public.maasserver_node FOR EACH ROW WHEN ((new.node_type = 4)) EXECUTE FUNCTION public.region_and_rack_controller_create_notify();
+
+
+--
+-- Name: maasserver_node node_region_and_rack_controller_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_region_and_rack_controller_delete_notify AFTER DELETE ON public.maasserver_node FOR EACH ROW WHEN ((old.node_type = 4)) EXECUTE FUNCTION public.region_and_rack_controller_delete_notify();
+
+
+--
+-- Name: maasserver_node node_region_and_rack_controller_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_region_and_rack_controller_update_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW WHEN (((new.node_type = 4) AND (((new.architecture)::text IS DISTINCT FROM (old.architecture)::text) OR (new.bmc_id IS DISTINCT FROM old.bmc_id) OR (new.cpu_count IS DISTINCT FROM old.cpu_count) OR (new.cpu_speed IS DISTINCT FROM old.cpu_speed) OR (new.current_commissioning_script_set_id IS DISTINCT FROM old.current_commissioning_script_set_id) OR (new.current_installation_script_set_id IS DISTINCT FROM old.current_installation_script_set_id) OR (new.current_testing_script_set_id IS DISTINCT FROM old.current_testing_script_set_id) OR (new.description IS DISTINCT FROM old.description) OR ((new.distro_series)::text IS DISTINCT FROM (old.distro_series)::text) OR (new.domain_id IS DISTINCT FROM old.domain_id) OR ((new.error)::text IS DISTINCT FROM (old.error)::text) OR ((new.hostname)::text IS DISTINCT FROM (old.hostname)::text) OR ((new.hwe_kernel)::text IS DISTINCT FROM (old.hwe_kernel)::text) OR (new.instance_power_parameters IS DISTINCT FROM old.instance_power_parameters) OR (new.last_image_sync IS DISTINCT FROM old.last_image_sync) OR ((new.license_key)::text IS DISTINCT FROM (old.license_key)::text) OR (new.locked IS DISTINCT FROM old.locked) OR ((new.min_hwe_kernel)::text IS DISTINCT FROM (old.min_hwe_kernel)::text) OR ((new.osystem)::text IS DISTINCT FROM (old.osystem)::text) OR (new.owner_id IS DISTINCT FROM old.owner_id) OR (new.parent_id IS DISTINCT FROM old.parent_id) OR (new.pool_id IS DISTINCT FROM old.pool_id) OR ((new.power_state)::text IS DISTINCT FROM (old.power_state)::text) OR (new.status IS DISTINCT FROM old.status) OR (new.swap_size IS DISTINCT FROM old.swap_size) OR (new.zone_id IS DISTINCT FROM old.zone_id)))) EXECUTE FUNCTION public.region_and_rack_controller_update_notify();
+
+
+--
+-- Name: maasserver_node node_region_controller_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_region_controller_create_notify AFTER INSERT ON public.maasserver_node FOR EACH ROW WHEN ((new.node_type = 3)) EXECUTE FUNCTION public.region_controller_create_notify();
+
+
+--
+-- Name: maasserver_node node_region_controller_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_region_controller_delete_notify AFTER DELETE ON public.maasserver_node FOR EACH ROW WHEN ((old.node_type = 3)) EXECUTE FUNCTION public.region_controller_delete_notify();
+
+
+--
+-- Name: maasserver_node node_region_controller_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_region_controller_update_notify AFTER UPDATE ON public.maasserver_node FOR EACH ROW WHEN (((new.node_type = 3) AND (((new.architecture)::text IS DISTINCT FROM (old.architecture)::text) OR (new.bmc_id IS DISTINCT FROM old.bmc_id) OR (new.cpu_count IS DISTINCT FROM old.cpu_count) OR (new.cpu_speed IS DISTINCT FROM old.cpu_speed) OR (new.current_commissioning_script_set_id IS DISTINCT FROM old.current_commissioning_script_set_id) OR (new.current_installation_script_set_id IS DISTINCT FROM old.current_installation_script_set_id) OR (new.current_testing_script_set_id IS DISTINCT FROM old.current_testing_script_set_id) OR (new.description IS DISTINCT FROM old.description) OR ((new.distro_series)::text IS DISTINCT FROM (old.distro_series)::text) OR (new.domain_id IS DISTINCT FROM old.domain_id) OR ((new.error)::text IS DISTINCT FROM (old.error)::text) OR ((new.hostname)::text IS DISTINCT FROM (old.hostname)::text) OR ((new.hwe_kernel)::text IS DISTINCT FROM (old.hwe_kernel)::text) OR (new.instance_power_parameters IS DISTINCT FROM old.instance_power_parameters) OR (new.last_image_sync IS DISTINCT FROM old.last_image_sync) OR ((new.license_key)::text IS DISTINCT FROM (old.license_key)::text) OR (new.locked IS DISTINCT FROM old.locked) OR ((new.min_hwe_kernel)::text IS DISTINCT FROM (old.min_hwe_kernel)::text) OR ((new.osystem)::text IS DISTINCT FROM (old.osystem)::text) OR (new.owner_id IS DISTINCT FROM old.owner_id) OR (new.parent_id IS DISTINCT FROM old.parent_id) OR (new.pool_id IS DISTINCT FROM old.pool_id) OR ((new.power_state)::text IS DISTINCT FROM (old.power_state)::text) OR (new.status IS DISTINCT FROM old.status) OR (new.swap_size IS DISTINCT FROM old.swap_size) OR (new.zone_id IS DISTINCT FROM old.zone_id)))) EXECUTE FUNCTION public.region_controller_update_notify();
+
+
+--
+-- Name: maasserver_node_tags node_tags_machine_device_tag_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_tags_machine_device_tag_link_notify AFTER INSERT ON public.maasserver_node_tags FOR EACH ROW EXECUTE FUNCTION public.machine_device_tag_link_notify();
+
+
+--
+-- Name: maasserver_node_tags node_tags_machine_device_tag_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER node_tags_machine_device_tag_unlink_notify AFTER DELETE ON public.maasserver_node_tags FOR EACH ROW EXECUTE FUNCTION public.machine_device_tag_unlink_notify();
+
+
+--
+-- Name: maasserver_nodedevice nodedevice_nodedevice_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER nodedevice_nodedevice_create_notify AFTER INSERT ON public.maasserver_nodedevice FOR EACH ROW EXECUTE FUNCTION public.nodedevice_create_notify();
+
+
+--
+-- Name: maasserver_nodedevice nodedevice_nodedevice_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER nodedevice_nodedevice_delete_notify AFTER DELETE ON public.maasserver_nodedevice FOR EACH ROW EXECUTE FUNCTION public.nodedevice_delete_notify();
+
+
+--
+-- Name: maasserver_nodedevice nodedevice_nodedevice_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER nodedevice_nodedevice_update_notify AFTER UPDATE ON public.maasserver_nodedevice FOR EACH ROW EXECUTE FUNCTION public.nodedevice_update_notify();
+
+
+--
+-- Name: maasserver_nodemetadata nodemetadata_nodemetadata_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER nodemetadata_nodemetadata_link_notify AFTER INSERT ON public.maasserver_nodemetadata FOR EACH ROW EXECUTE FUNCTION public.nodemetadata_link_notify();
+
+
+--
+-- Name: maasserver_nodemetadata nodemetadata_nodemetadata_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER nodemetadata_nodemetadata_unlink_notify AFTER DELETE ON public.maasserver_nodemetadata FOR EACH ROW EXECUTE FUNCTION public.nodemetadata_unlink_notify();
+
+
+--
+-- Name: maasserver_nodemetadata nodemetadata_nodemetadata_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER nodemetadata_nodemetadata_update_notify AFTER UPDATE ON public.maasserver_nodemetadata FOR EACH ROW EXECUTE FUNCTION public.nodemetadata_update_notify();
+
+
+--
+-- Name: maasserver_notification notification_notification_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER notification_notification_create_notify AFTER INSERT ON public.maasserver_notification FOR EACH ROW EXECUTE FUNCTION public.notification_create_notify();
+
+
+--
+-- Name: maasserver_notification notification_notification_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER notification_notification_delete_notify AFTER DELETE ON public.maasserver_notification FOR EACH ROW EXECUTE FUNCTION public.notification_delete_notify();
+
+
+--
+-- Name: maasserver_notification notification_notification_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER notification_notification_update_notify AFTER UPDATE ON public.maasserver_notification FOR EACH ROW EXECUTE FUNCTION public.notification_update_notify();
+
+
+--
+-- Name: maasserver_notificationdismissal notificationdismissal_notificationdismissal_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER notificationdismissal_notificationdismissal_create_notify AFTER INSERT ON public.maasserver_notificationdismissal FOR EACH ROW EXECUTE FUNCTION public.notificationdismissal_create_notify();
+
+
+--
+-- Name: maasserver_ownerdata ownerdata_ownerdata_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ownerdata_ownerdata_link_notify AFTER INSERT ON public.maasserver_ownerdata FOR EACH ROW EXECUTE FUNCTION public.ownerdata_link_notify();
+
+
+--
+-- Name: maasserver_ownerdata ownerdata_ownerdata_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ownerdata_ownerdata_unlink_notify AFTER DELETE ON public.maasserver_ownerdata FOR EACH ROW EXECUTE FUNCTION public.ownerdata_unlink_notify();
+
+
+--
+-- Name: maasserver_ownerdata ownerdata_ownerdata_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ownerdata_ownerdata_update_notify AFTER UPDATE ON public.maasserver_ownerdata FOR EACH ROW EXECUTE FUNCTION public.ownerdata_update_notify();
+
+
+--
+-- Name: maasserver_packagerepository packagerepository_packagerepository_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER packagerepository_packagerepository_create_notify AFTER INSERT ON public.maasserver_packagerepository FOR EACH ROW EXECUTE FUNCTION public.packagerepository_create_notify();
+
+
+--
+-- Name: maasserver_packagerepository packagerepository_packagerepository_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER packagerepository_packagerepository_delete_notify AFTER DELETE ON public.maasserver_packagerepository FOR EACH ROW EXECUTE FUNCTION public.packagerepository_delete_notify();
+
+
+--
+-- Name: maasserver_packagerepository packagerepository_packagerepository_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER packagerepository_packagerepository_update_notify AFTER UPDATE ON public.maasserver_packagerepository FOR EACH ROW EXECUTE FUNCTION public.packagerepository_update_notify();
+
+
+--
+-- Name: maasserver_partition partition_nd_partition_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER partition_nd_partition_link_notify AFTER INSERT ON public.maasserver_partition FOR EACH ROW EXECUTE FUNCTION public.nd_partition_link_notify();
+
+
+--
+-- Name: maasserver_partition partition_nd_partition_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER partition_nd_partition_unlink_notify AFTER DELETE ON public.maasserver_partition FOR EACH ROW EXECUTE FUNCTION public.nd_partition_unlink_notify();
+
+
+--
+-- Name: maasserver_partition partition_nd_partition_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER partition_nd_partition_update_notify AFTER UPDATE ON public.maasserver_partition FOR EACH ROW EXECUTE FUNCTION public.nd_partition_update_notify();
+
+
+--
+-- Name: maasserver_partitiontable partitiontable_nd_partitiontable_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER partitiontable_nd_partitiontable_link_notify AFTER INSERT ON public.maasserver_partitiontable FOR EACH ROW EXECUTE FUNCTION public.nd_partitiontable_link_notify();
+
+
+--
+-- Name: maasserver_partitiontable partitiontable_nd_partitiontable_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER partitiontable_nd_partitiontable_unlink_notify AFTER DELETE ON public.maasserver_partitiontable FOR EACH ROW EXECUTE FUNCTION public.nd_partitiontable_unlink_notify();
+
+
+--
+-- Name: maasserver_partitiontable partitiontable_nd_partitiontable_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER partitiontable_nd_partitiontable_update_notify AFTER UPDATE ON public.maasserver_partitiontable FOR EACH ROW EXECUTE FUNCTION public.nd_partitiontable_update_notify();
+
+
+--
+-- Name: maasserver_physicalblockdevice physicalblockdevice_nd_physblockdevice_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER physicalblockdevice_nd_physblockdevice_update_notify AFTER UPDATE ON public.maasserver_physicalblockdevice FOR EACH ROW EXECUTE FUNCTION public.nd_physblockdevice_update_notify();
+
+
+--
 -- Name: piston3_consumer piston3_consumer_consumer_token_update_notify; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -17691,17 +14898,381 @@ CREATE TRIGGER piston3_token_token_delete_notify AFTER DELETE ON public.piston3_
 
 
 --
--- Name: piston3_token piston3_token_user_token_link_notify; Type: TRIGGER; Schema: public; Owner: -
+-- Name: maasserver_rbacsync rbacsync_sys_rbac_sync; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER piston3_token_user_token_link_notify AFTER INSERT ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.user_token_link_notify();
+CREATE TRIGGER rbacsync_sys_rbac_sync AFTER INSERT ON public.maasserver_rbacsync FOR EACH ROW EXECUTE FUNCTION public.sys_rbac_sync();
 
 
 --
--- Name: piston3_token piston3_token_user_token_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+-- Name: maasserver_regionrackrpcconnection regionrackrpcconnection_sys_core_rpc_delete; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER piston3_token_user_token_unlink_notify AFTER DELETE ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.user_token_unlink_notify();
+CREATE TRIGGER regionrackrpcconnection_sys_core_rpc_delete AFTER DELETE ON public.maasserver_regionrackrpcconnection FOR EACH ROW EXECUTE FUNCTION public.sys_core_rpc_delete();
+
+
+--
+-- Name: maasserver_regionrackrpcconnection regionrackrpcconnection_sys_core_rpc_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER regionrackrpcconnection_sys_core_rpc_insert AFTER INSERT ON public.maasserver_regionrackrpcconnection FOR EACH ROW EXECUTE FUNCTION public.sys_core_rpc_insert();
+
+
+--
+-- Name: maasserver_resourcepool resourcepool_sys_rbac_rpool_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER resourcepool_sys_rbac_rpool_delete AFTER DELETE ON public.maasserver_resourcepool FOR EACH ROW EXECUTE FUNCTION public.sys_rbac_rpool_delete();
+
+
+--
+-- Name: maasserver_resourcepool resourcepool_sys_rbac_rpool_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER resourcepool_sys_rbac_rpool_insert AFTER INSERT ON public.maasserver_resourcepool FOR EACH ROW EXECUTE FUNCTION public.sys_rbac_rpool_insert();
+
+
+--
+-- Name: maasserver_resourcepool resourcepool_sys_rbac_rpool_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER resourcepool_sys_rbac_rpool_update AFTER UPDATE ON public.maasserver_resourcepool FOR EACH ROW EXECUTE FUNCTION public.sys_rbac_rpool_update();
+
+
+--
+-- Name: maasserver_script script_script_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER script_script_create_notify AFTER INSERT ON public.maasserver_script FOR EACH ROW EXECUTE FUNCTION public.script_create_notify();
+
+
+--
+-- Name: maasserver_script script_script_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER script_script_delete_notify AFTER DELETE ON public.maasserver_script FOR EACH ROW EXECUTE FUNCTION public.script_delete_notify();
+
+
+--
+-- Name: maasserver_script script_script_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER script_script_update_notify AFTER UPDATE ON public.maasserver_script FOR EACH ROW EXECUTE FUNCTION public.script_update_notify();
+
+
+--
+-- Name: maasserver_scriptresult scriptresult_nd_scriptresult_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptresult_nd_scriptresult_link_notify AFTER INSERT ON public.maasserver_scriptresult FOR EACH ROW EXECUTE FUNCTION public.nd_scriptresult_link_notify();
+
+
+--
+-- Name: maasserver_scriptresult scriptresult_nd_scriptresult_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptresult_nd_scriptresult_unlink_notify AFTER DELETE ON public.maasserver_scriptresult FOR EACH ROW EXECUTE FUNCTION public.nd_scriptresult_unlink_notify();
+
+
+--
+-- Name: maasserver_scriptresult scriptresult_nd_scriptresult_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptresult_nd_scriptresult_update_notify AFTER UPDATE ON public.maasserver_scriptresult FOR EACH ROW EXECUTE FUNCTION public.nd_scriptresult_update_notify();
+
+
+--
+-- Name: maasserver_scriptresult scriptresult_scriptresult_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptresult_scriptresult_create_notify AFTER INSERT ON public.maasserver_scriptresult FOR EACH ROW EXECUTE FUNCTION public.scriptresult_create_notify();
+
+
+--
+-- Name: maasserver_scriptresult scriptresult_scriptresult_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptresult_scriptresult_delete_notify AFTER DELETE ON public.maasserver_scriptresult FOR EACH ROW EXECUTE FUNCTION public.scriptresult_delete_notify();
+
+
+--
+-- Name: maasserver_scriptresult scriptresult_scriptresult_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptresult_scriptresult_update_notify AFTER UPDATE ON public.maasserver_scriptresult FOR EACH ROW EXECUTE FUNCTION public.scriptresult_update_notify();
+
+
+--
+-- Name: maasserver_scriptset scriptset_nd_scriptset_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptset_nd_scriptset_link_notify AFTER INSERT ON public.maasserver_scriptset FOR EACH ROW EXECUTE FUNCTION public.nd_scriptset_link_notify();
+
+
+--
+-- Name: maasserver_scriptset scriptset_nd_scriptset_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER scriptset_nd_scriptset_unlink_notify AFTER DELETE ON public.maasserver_scriptset FOR EACH ROW EXECUTE FUNCTION public.nd_scriptset_unlink_notify();
+
+
+--
+-- Name: maasserver_service service_service_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER service_service_create_notify AFTER INSERT ON public.maasserver_service FOR EACH ROW EXECUTE FUNCTION public.service_create_notify();
+
+
+--
+-- Name: maasserver_service service_service_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER service_service_delete_notify AFTER DELETE ON public.maasserver_service FOR EACH ROW EXECUTE FUNCTION public.service_delete_notify();
+
+
+--
+-- Name: maasserver_service service_service_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER service_service_update_notify AFTER UPDATE ON public.maasserver_service FOR EACH ROW EXECUTE FUNCTION public.service_update_notify();
+
+
+--
+-- Name: maasserver_space space_space_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER space_space_create_notify AFTER INSERT ON public.maasserver_space FOR EACH ROW EXECUTE FUNCTION public.space_create_notify();
+
+
+--
+-- Name: maasserver_space space_space_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER space_space_delete_notify AFTER DELETE ON public.maasserver_space FOR EACH ROW EXECUTE FUNCTION public.space_delete_notify();
+
+
+--
+-- Name: maasserver_space space_space_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER space_space_machine_update_notify AFTER UPDATE ON public.maasserver_space FOR EACH ROW EXECUTE FUNCTION public.space_machine_update_notify();
+
+
+--
+-- Name: maasserver_space space_space_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER space_space_update_notify AFTER UPDATE ON public.maasserver_space FOR EACH ROW EXECUTE FUNCTION public.space_update_notify();
+
+
+--
+-- Name: maasserver_staticipaddress staticipaddress_ipaddress_domain_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticipaddress_ipaddress_domain_delete_notify AFTER DELETE ON public.maasserver_staticipaddress FOR EACH ROW EXECUTE FUNCTION public.ipaddress_domain_delete_notify();
+
+
+--
+-- Name: maasserver_staticipaddress staticipaddress_ipaddress_domain_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticipaddress_ipaddress_domain_insert_notify AFTER INSERT ON public.maasserver_staticipaddress FOR EACH ROW EXECUTE FUNCTION public.ipaddress_domain_insert_notify();
+
+
+--
+-- Name: maasserver_staticipaddress staticipaddress_ipaddress_domain_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticipaddress_ipaddress_domain_update_notify AFTER UPDATE ON public.maasserver_staticipaddress FOR EACH ROW EXECUTE FUNCTION public.ipaddress_domain_update_notify();
+
+
+--
+-- Name: maasserver_staticipaddress staticipaddress_ipaddress_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticipaddress_ipaddress_machine_update_notify AFTER UPDATE ON public.maasserver_staticipaddress FOR EACH ROW EXECUTE FUNCTION public.ipaddress_machine_update_notify();
+
+
+--
+-- Name: maasserver_staticipaddress staticipaddress_ipaddress_subnet_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticipaddress_ipaddress_subnet_delete_notify AFTER DELETE ON public.maasserver_staticipaddress FOR EACH ROW EXECUTE FUNCTION public.ipaddress_subnet_delete_notify();
+
+
+--
+-- Name: maasserver_staticipaddress staticipaddress_ipaddress_subnet_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticipaddress_ipaddress_subnet_insert_notify AFTER INSERT ON public.maasserver_staticipaddress FOR EACH ROW EXECUTE FUNCTION public.ipaddress_subnet_insert_notify();
+
+
+--
+-- Name: maasserver_staticipaddress staticipaddress_ipaddress_subnet_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticipaddress_ipaddress_subnet_update_notify AFTER UPDATE ON public.maasserver_staticipaddress FOR EACH ROW EXECUTE FUNCTION public.ipaddress_subnet_update_notify();
+
+
+--
+-- Name: maasserver_staticroute staticroute_staticroute_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticroute_staticroute_create_notify AFTER INSERT ON public.maasserver_staticroute FOR EACH ROW EXECUTE FUNCTION public.staticroute_create_notify();
+
+
+--
+-- Name: maasserver_staticroute staticroute_staticroute_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticroute_staticroute_delete_notify AFTER DELETE ON public.maasserver_staticroute FOR EACH ROW EXECUTE FUNCTION public.staticroute_delete_notify();
+
+
+--
+-- Name: maasserver_staticroute staticroute_staticroute_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER staticroute_staticroute_update_notify AFTER UPDATE ON public.maasserver_staticroute FOR EACH ROW EXECUTE FUNCTION public.staticroute_update_notify();
+
+
+--
+-- Name: maasserver_subnet subnet_subnet_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER subnet_subnet_create_notify AFTER INSERT ON public.maasserver_subnet FOR EACH ROW EXECUTE FUNCTION public.subnet_create_notify();
+
+
+--
+-- Name: maasserver_subnet subnet_subnet_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER subnet_subnet_delete_notify AFTER DELETE ON public.maasserver_subnet FOR EACH ROW EXECUTE FUNCTION public.subnet_delete_notify();
+
+
+--
+-- Name: maasserver_subnet subnet_subnet_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER subnet_subnet_machine_update_notify AFTER UPDATE ON public.maasserver_subnet FOR EACH ROW EXECUTE FUNCTION public.subnet_machine_update_notify();
+
+
+--
+-- Name: maasserver_subnet subnet_subnet_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER subnet_subnet_update_notify AFTER UPDATE ON public.maasserver_subnet FOR EACH ROW EXECUTE FUNCTION public.subnet_update_notify();
+
+
+--
+-- Name: maasserver_subnet subnet_sys_proxy_subnet_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER subnet_sys_proxy_subnet_delete AFTER DELETE ON public.maasserver_subnet FOR EACH ROW EXECUTE FUNCTION public.sys_proxy_subnet_delete();
+
+
+--
+-- Name: maasserver_subnet subnet_sys_proxy_subnet_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER subnet_sys_proxy_subnet_insert AFTER INSERT ON public.maasserver_subnet FOR EACH ROW EXECUTE FUNCTION public.sys_proxy_subnet_insert();
+
+
+--
+-- Name: maasserver_subnet subnet_sys_proxy_subnet_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER subnet_sys_proxy_subnet_update AFTER UPDATE ON public.maasserver_subnet FOR EACH ROW EXECUTE FUNCTION public.sys_proxy_subnet_update();
+
+
+--
+-- Name: maasserver_tag tag_tag_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tag_tag_create_notify AFTER INSERT ON public.maasserver_tag FOR EACH ROW EXECUTE FUNCTION public.tag_create_notify();
+
+
+--
+-- Name: maasserver_tag tag_tag_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tag_tag_delete_notify AFTER DELETE ON public.maasserver_tag FOR EACH ROW EXECUTE FUNCTION public.tag_delete_notify();
+
+
+--
+-- Name: maasserver_tag tag_tag_update_machine_device_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tag_tag_update_machine_device_notify AFTER UPDATE ON public.maasserver_tag FOR EACH ROW EXECUTE FUNCTION public.tag_update_machine_device_notify();
+
+
+--
+-- Name: maasserver_tag tag_tag_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tag_tag_update_notify AFTER UPDATE ON public.maasserver_tag FOR EACH ROW EXECUTE FUNCTION public.tag_update_notify();
+
+
+--
+-- Name: maasserver_virtualblockdevice virtualblockdevice_nd_virtblockdevice_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER virtualblockdevice_nd_virtblockdevice_update_notify AFTER UPDATE ON public.maasserver_virtualblockdevice FOR EACH ROW EXECUTE FUNCTION public.nd_virtblockdevice_update_notify();
+
+
+--
+-- Name: maasserver_vlan vlan_vlan_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vlan_vlan_create_notify AFTER INSERT ON public.maasserver_vlan FOR EACH ROW EXECUTE FUNCTION public.vlan_create_notify();
+
+
+--
+-- Name: maasserver_vlan vlan_vlan_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vlan_vlan_delete_notify AFTER DELETE ON public.maasserver_vlan FOR EACH ROW EXECUTE FUNCTION public.vlan_delete_notify();
+
+
+--
+-- Name: maasserver_vlan vlan_vlan_machine_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vlan_vlan_machine_update_notify AFTER UPDATE ON public.maasserver_vlan FOR EACH ROW EXECUTE FUNCTION public.vlan_machine_update_notify();
+
+
+--
+-- Name: maasserver_vlan vlan_vlan_subnet_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vlan_vlan_subnet_update_notify AFTER UPDATE ON public.maasserver_vlan FOR EACH ROW EXECUTE FUNCTION public.vlan_subnet_update_notify();
+
+
+--
+-- Name: maasserver_vlan vlan_vlan_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vlan_vlan_update_notify AFTER UPDATE ON public.maasserver_vlan FOR EACH ROW EXECUTE FUNCTION public.vlan_update_notify();
+
+
+--
+-- Name: maasserver_vmcluster vmcluster_vmcluster_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vmcluster_vmcluster_delete_notify AFTER DELETE ON public.maasserver_vmcluster FOR EACH ROW EXECUTE FUNCTION public.vmcluster_delete_notify();
+
+
+--
+-- Name: maasserver_vmcluster vmcluster_vmcluster_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vmcluster_vmcluster_insert_notify AFTER INSERT ON public.maasserver_vmcluster FOR EACH ROW EXECUTE FUNCTION public.vmcluster_insert_notify();
+
+
+--
+-- Name: maasserver_vmcluster vmcluster_vmcluster_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vmcluster_vmcluster_update_notify AFTER UPDATE ON public.maasserver_vmcluster FOR EACH ROW EXECUTE FUNCTION public.vmcluster_update_notify();
 
 
 --
@@ -17985,6 +15556,22 @@ ALTER TABLE ONLY public.maasserver_dnsresource_ip_addresses
 
 
 --
+-- Name: maasserver_dnsresource_ip_addresses maasserver_dnsresource_ip_addresses_dnsresource_id_49f1115e_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_dnsresource_ip_addresses
+    ADD CONSTRAINT maasserver_dnsresource_ip_addresses_dnsresource_id_49f1115e_fk FOREIGN KEY (dnsresource_id) REFERENCES public.maasserver_dnsresource(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_dnsresource_ip_addresses maasserver_dnsresource_ip_staticipaddress_id_794f210e_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_dnsresource_ip_addresses
+    ADD CONSTRAINT maasserver_dnsresource_ip_staticipaddress_id_794f210e_fk FOREIGN KEY (staticipaddress_id) REFERENCES public.maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_event maasserver_event_node_id_dd4495a7_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18073,6 +15660,14 @@ ALTER TABLE ONLY public.maasserver_forwarddnsserver_domains
 
 
 --
+-- Name: maasserver_forwarddnsserver_domains maasserver_forwarddnsserv_forwarddnsserver_id_c975e5df_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_forwarddnsserver_domains
+    ADD CONSTRAINT maasserver_forwarddnsserv_forwarddnsserver_id_c975e5df_fk FOREIGN KEY (forwarddnsserver_id) REFERENCES public.maasserver_forwarddnsserver(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_globaldefault maasserver_globaldef_domain_id_11c3ee74_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18086,6 +15681,22 @@ ALTER TABLE ONLY public.maasserver_globaldefault
 
 ALTER TABLE ONLY public.maasserver_interface_ip_addresses
     ADD CONSTRAINT maasserver_interface_interface_id_fk_maasserve FOREIGN KEY (interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_interface_ip_addresses maasserver_interface_ip_a_staticipaddress_id_5fa63951_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_interface_ip_addresses
+    ADD CONSTRAINT maasserver_interface_ip_a_staticipaddress_id_5fa63951_fk FOREIGN KEY (staticipaddress_id) REFERENCES public.maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_interface_ip_addresses maasserver_interface_ip_addresses_interface_id_d3d873df_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_interface_ip_addresses
+    ADD CONSTRAINT maasserver_interface_ip_addresses_interface_id_d3d873df_fk FOREIGN KEY (interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18177,11 +15788,11 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
--- Name: maasserver_node maasserver_node_boot_disk_id_db8131e9_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_node maasserver_node_boot_disk_id_db8131e9_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_boot_disk_id_db8131e9_fk_maasserve FOREIGN KEY (boot_disk_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_node_boot_disk_id_db8131e9_fk FOREIGN KEY (boot_disk_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18297,11 +15908,27 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
+-- Name: maasserver_node_tags maasserver_node_tags_node_id_a662a9f1_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node_tags
+    ADD CONSTRAINT maasserver_node_tags_node_id_a662a9f1_fk FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_node_tags maasserver_node_tags_node_id_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node_tags
     ADD CONSTRAINT maasserver_node_tags_node_id_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node_tags maasserver_node_tags_tag_id_f4728372_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node_tags
+    ADD CONSTRAINT maasserver_node_tags_tag_id_f4728372_fk FOREIGN KEY (tag_id) REFERENCES public.maasserver_tag(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18329,14 +15956,6 @@ ALTER TABLE ONLY public.maasserver_nodeconfig
 
 
 --
--- Name: maasserver_nodedevice maasserver_nodedevic_physical_blockdevice_7ce12336_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodedevice
-    ADD CONSTRAINT maasserver_nodedevic_physical_blockdevice_7ce12336_fk_maasserve FOREIGN KEY (physical_blockdevice_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
 -- Name: maasserver_nodedevice maasserver_nodedevice_node_config_id_3f91f0a0_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18350,6 +15969,14 @@ ALTER TABLE ONLY public.maasserver_nodedevice
 
 ALTER TABLE ONLY public.maasserver_nodedevice
     ADD CONSTRAINT maasserver_nodedevice_numa_node_id_fadf5b46_fk FOREIGN KEY (numa_node_id) REFERENCES public.maasserver_numanode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevice_physical_blockdevice_id_7ce12336_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevice_physical_blockdevice_id_7ce12336_fk FOREIGN KEY (physical_blockdevice_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18513,6 +16140,22 @@ ALTER TABLE ONLY public.maasserver_podhints
 
 
 --
+-- Name: maasserver_podhints_nodes maasserver_podhints_nodes_node_id_7e2e56a4_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints_nodes_node_id_7e2e56a4_fk FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_podhints_nodes maasserver_podhints_nodes_podhints_id_df1bafb3_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints_nodes_podhints_id_df1bafb3_fk FOREIGN KEY (podhints_id) REFERENCES public.maasserver_podhints(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_podhints maasserver_podhints_pod_id_42c87c40_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18590,6 +16233,14 @@ ALTER TABLE ONLY public.maasserver_script
 
 ALTER TABLE ONLY public.maasserver_scriptresult
     ADD CONSTRAINT maasserver_scriptresult_interface_id_9734c983_fk FOREIGN KEY (interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_scriptresult maasserver_scriptresult_physical_blockdevice_id_6d159ece_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_scriptresult
+    ADD CONSTRAINT maasserver_scriptresult_physical_blockdevice_id_6d159ece_fk FOREIGN KEY (physical_blockdevice_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18793,11 +16444,11 @@ ALTER TABLE ONLY public.maasserver_virtualmachinedisk
 
 
 --
--- Name: maasserver_vlan maasserver_vlan_fabric_id_af5275c8_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_vlan maasserver_vlan_fabric_id_af5275c8_fk_maasserver_fabric_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_vlan
-    ADD CONSTRAINT maasserver_vlan_fabric_id_af5275c8_fk FOREIGN KEY (fabric_id) REFERENCES public.maasserver_fabric(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_vlan_fabric_id_af5275c8_fk_maasserver_fabric_id FOREIGN KEY (fabric_id) REFERENCES public.maasserver_fabric(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18846,14 +16497,6 @@ ALTER TABLE ONLY public.maasserver_vmcluster
 
 ALTER TABLE ONLY public.maasserver_vmcluster
     ADD CONSTRAINT maasserver_vmcluster_zone_id_07623572_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_scriptresult metadataserver_scrip_physical_blockdevice_c728b2ad_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_scriptresult
-    ADD CONSTRAINT metadataserver_scrip_physical_blockdevice_c728b2ad_fk_maasserve FOREIGN KEY (physical_blockdevice_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

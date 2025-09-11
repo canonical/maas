@@ -443,6 +443,34 @@ Performing data migration
 
 If you need to perform data migration, very much in the same way, you will need to run add a new Alembic migration.
 
+Triggers
+---------------------------
+
+- **Before 3.7:**
+  Triggers and views were deleted before migrations ran and recreated afterward.
+
+- **From 3.7 onward:**
+  Triggers and views are created as part of the initial Alembic migrations.
+
+  - Running a data migration inside an Alembic migration can **fire triggers automatically**.
+  - Since triggers can impact performance, you **must** take extra precautions.
+
+.. important::
+
+   Each Alembic migration runs within a single transaction.
+   You **MUST** check for existing triggers on the table that you are going to change and disable triggers at the start of your migration and re-enable them if needed at the end.
+
+Example
+-------
+
+If you need to perform a data migration on the ``maasserver_node`` table, your migration should look like this:
+
+.. code-block:: python
+
+   op.execute("ALTER TABLE maasserver_node DISABLE TRIGGER ALL;")
+   op.execute(...)  # perform your data migration on `maasserver_node`
+   op.execute("ALTER TABLE maasserver_node ENABLE TRIGGER ALL;")
+
 Examining the database manually
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

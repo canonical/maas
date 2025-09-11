@@ -1,29 +1,13 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.dbviews`."""
 
 from django.db import connection
 
-from maasserver.dbviews import _ALL_VIEWS, register_all_views
 from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-
-
-class TestDatabaseViews(MAASServerTestCase):
-    def test_views_contain_valid_sql(self):
-        # This is a positive test case. The view creation code is very simple,
-        # and will just abort with an exception if the SQL is invalid. So all
-        # we just need to make sure no execeptions are thrown when the views
-        # are created.
-        register_all_views()
-
-    def test_each_view_can_be_used(self):
-        register_all_views()
-        for view_name, view_sql in _ALL_VIEWS.items():  # noqa: B007
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT * from %s;" % view_name)
 
 
 class TestRoutablePairs(MAASServerTestCase):

@@ -421,13 +421,43 @@ RegionControllerWorkerRule = Rule(
     Allow(StandardLibraries),
 )
 
-ServiceLayer = files("src/maasservicelayer/**/*.py")
+ServiceLayerAlembicMigrations = files(
+    "src/maasservicelayer/db/alembic/versions/**/*.py"
+)
+
+ServiceLayerAlembicMigrationsRule = Rule(
+    # The alembic migrations should never import classes/enums from maascommon or other modules.
+    Allow("alembic|alembic.**"),
+    Allow("maasservicelayer.db.alembic|maasservicelayer.db.alembic.**"),
+    Allow("sqlalchemy|sqlalchemy.**"),
+    Allow(StandardLibraries),
+)
+
+ServiceLayerAlembic = (
+    files("src/maasservicelayer/db/alembic/**/*.py")
+    - ServiceLayerAlembicMigrations
+)
+
+ServiceLayerAlembicRule = Rule(
+    # The alembic migrations should never import classes/enums from maascommon or other modules.
+    Allow("alembic|alembic.**"),
+    Allow("asyncio"),
+    Allow("maasservicelayer.db.tables|maasservicelayer.db.tables.**"),
+    Allow("maasservicelayer.db.alembic|maasservicelayer.db.alembic.**"),
+    Allow("sqlalchemy|sqlalchemy.**"),
+    Allow(StandardLibraries),
+)
+
+ServiceLayer = (
+    files("src/maasservicelayer/**/*.py")
+    - ServiceLayerAlembicMigrations
+    - ServiceLayerAlembic
+)
 
 ServiceLayerRule = Rule(
     Allow("asyncpg|asyncpg.**"),
     Allow("aiohttp|aiohttp.**"),
     Allow("aiofiles|aiofiles.**"),
-    Allow("alembic|alembic.**"),
     Allow(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),
@@ -663,6 +693,14 @@ checks = [
     #
     # Service layer
     #
+    (
+        ServiceLayerAlembicMigrations,
+        ServiceLayerAlembicMigrationsRule,
+    ),
+    (
+        ServiceLayerAlembic,
+        ServiceLayerAlembicRule,
+    ),
     (
         ServiceLayer,
         ServiceLayerRule,

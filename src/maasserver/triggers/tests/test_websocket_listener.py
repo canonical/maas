@@ -6,6 +6,7 @@ import logging
 import random
 from unittest import skip
 
+from django.db import connection
 from netaddr import IPAddress
 from twisted.internet.defer import DeferredList, DeferredQueue, inlineCallbacks
 
@@ -18,7 +19,6 @@ from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
-from maasserver.triggers.websocket import node_fields
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
@@ -242,14 +242,45 @@ class TestNodeListener(
             yield listener.stopService()
 
     def test_expected_number_of_fields_watched(self):
-        self.assertEqual(
-            26,
-            len(node_fields),
-            "Any field listed here will be monitored for changes causing "
-            "the UI on all clients to refresh this node object. This is "
-            "costly! Only fields which are visible in the UI, and not listed "
-            "in other handlers should be listed here.",
-        )
+        triggers = [
+            "node_region_controller_update_notify",
+            "node_machine_update_notify",
+            "node_device_update_notify",
+            "node_rack_controller_update_notify",
+            "node_region_and_rack_controller_update_notify",
+        ]
+        table_name = "maasserver_node"
+
+        for trigger_name in triggers:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT pg_get_triggerdef(t.oid)
+                    FROM pg_trigger t
+                    JOIN pg_class c ON c.oid = t.tgrelid
+                    WHERE t.tgname = %s
+                      AND c.relname = %s
+                    """,
+                    [trigger_name, table_name],
+                )
+                row = cursor.fetchone()
+
+            self.assertIsNotNone(
+                row, f"Trigger {trigger_name} not found on table {table_name}"
+            )
+
+            trigger_def = row[0]
+
+            count = trigger_def.count("IS DISTINCT FROM")
+
+            self.assertEqual(
+                26,
+                count,
+                "Any field listed here will be monitored for changes causing "
+                "the UI on all clients to refresh this node object. This is "
+                "costly! Only fields which are visible in the UI, and not listed "
+                f"in other handlers should be listed here. Please check the trigger {trigger_name}.",
+            )
 
 
 class TestControllerListener(
@@ -3375,46 +3406,6 @@ class TestMachineCachesetListener(
             )
             yield dv.get(timeout=2)
             self.assertEqual(("update", node.system_id), dv.value)
-        finally:
-            yield listener.stopService()
-
-
-class TestUserTokenListener(
-    MAASTransactionServerTestCase, TransactionalHelpersMixin
-):
-    """End-to-end test of both the listeners code and the piston3_token
-    table that notifies its user."""
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_with_update_on_create(self):
-        user = yield deferToDatabase(self.create_user)
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("user", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.create_token, {"user": user})
-            yield dv.get(timeout=2)
-            self.assertEqual(("update", str(user.id)), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_with_update_on_delete(self):
-        user = yield deferToDatabase(self.create_user)
-        token = yield deferToDatabase(self.create_token, {"user": user})
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("user", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_token, token.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 

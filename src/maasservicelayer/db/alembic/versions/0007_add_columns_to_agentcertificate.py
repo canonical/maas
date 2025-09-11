@@ -3,8 +3,8 @@
 
 """Add columns to agentcertificate
 
-Revision ID: 0004
-Revises: 0003
+Revision ID: 0007
+Revises: 0006
 Create Date: 2025-08-14 08:59:33.954732+00:00
 
 """
@@ -15,8 +15,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision: str = "0004"
-down_revision: str | None = "0003"
+revision: str = "0007"
+down_revision: str | None = "0006"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

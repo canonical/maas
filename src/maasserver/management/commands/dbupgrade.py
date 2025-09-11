@@ -5,7 +5,6 @@
 Django command: Upgrade MAAS regiond database.
 """
 
-import argparse
 from importlib.resources import files
 import os
 import subprocess
@@ -36,22 +35,6 @@ class Command(BaseCommand):
                 '"default" database.'
             ),
         )
-        parser.add_argument(
-            "--internal-no-triggers",
-            action="store_true",
-            dest="no_triggers",
-            help=argparse.SUPPRESS,
-        )
-
-    @classmethod
-    def _perform_trigger_installation(cls, database):
-        """Register all PL/pgSQL functions and triggers.
-
-        :attention: `database` argument is not used!
-        """
-        from maasserver import triggers
-
-        triggers.register_all_triggers()
 
     @classmethod
     def _get_all_triggers(cls, database):
@@ -92,16 +75,6 @@ class Command(BaseCommand):
         from maasserver import dbviews
 
         dbviews.drop_all_views()
-
-    @classmethod
-    def _perform_view_installation(cls, database):
-        """Register all PL/pgSQL views.
-
-        :attention: `database` argument is not used!
-        """
-        from maasserver import dbviews
-
-        dbviews.register_all_views()
 
     @classmethod
     def _temporal_migration(cls, database):
@@ -269,7 +242,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         database = options.get("database")
-        no_triggers = options.get("no_triggers")
 
         # Check database version
         conn = connections[database]
@@ -278,24 +250,18 @@ class Command(BaseCommand):
         if pg_ver // 100 < PGSQL_MIN_VERSION:
             raise UnsupportedDBException(pg_ver)
 
-        # First, drop any views that may already exist. We don't want views
-        # that that depend on a particular schema to prevent schema
-        # changes due to the dependency. The views will be recreated at the
-        # end of this process.
-        self._drop_all_views(database)
-
-        # Remove all of the trigger that MAAS uses before performing the
-        # migrations. This ensures that no triggers are ran during the
-        # migrations and that only the updated triggers are installed in
-        # the database.
-        self._drop_all_triggers(database)
-
         # If the django_migrations table exists and the alembic table does not, it means this is an existing environment that
         # still needs to run the django migrations. After the migrations are executed, the alembic table will be created so the
         # django migrations will not be executed anymore.
         # TODO: We must make the LTS a mandatory version that users can't skip it during an upgrade. After the LTS, we will remove
         #  entirely the django migrations and only the alembic ones will be executed.
         if self._should_run_django_migrations(database):
+            # Before 3.7, we used to delete/recreate the views and the triggers at every execution of dbupgrade.
+            # From 3.7, we do create the views and the triggers in the alembic migrations. So we have to drop them one last
+            # time here since we come from a < 3.7 environment.
+            self._drop_all_views(database)
+            self._drop_all_triggers(database)
+
             call_command(
                 "migrate",
                 interactive=False,
@@ -319,11 +285,5 @@ class Command(BaseCommand):
                 "An ongoing transaction may hide changes made "
                 "by external processes."
             )
-
-        # Install all database functions, triggers, and views. This is
-        # idempotent, so we run it at the end of every database upgrade.
-        if not no_triggers:
-            self._perform_trigger_installation(database)
-        self._perform_view_installation(database)
 
         self._temporal_migration(database)

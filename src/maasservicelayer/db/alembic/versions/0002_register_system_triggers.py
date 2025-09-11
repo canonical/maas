@@ -1,19 +1,30 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""
-System Triggers
+"""Register system triggers
 
-Each trigger will call a procedure to send the notification. Each procedure
-will raise a notify message in Postgres that a regiond process is listening
-for.
+Revision ID: 0002
+Revises: 0001
+Create Date: 2025-09-04 11:16:07.410600+00:00
+
 """
 
 from textwrap import dedent
+from typing import Sequence
 
-from maasserver.models.dnspublication import zone_serial
-from maasserver.triggers import register_procedure, register_trigger
-from maasserver.utils.orm import transactional
+from alembic import op
+
+from maasservicelayer.db.alembic.triggers import (
+    register_procedure,
+    register_trigger,
+)
+
+# revision identifiers, used by Alembic.
+revision: str = "0002"
+down_revision: str | None = "0001"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
 
 # Note that the corresponding test module (test_system) only tests that the
 # triggers and procedures are registered.  The behavior of these procedures
@@ -453,68 +464,86 @@ def render_sys_proxy_procedure(proc_name, on_delete=False):
     )
 
 
-@transactional
-def register_system_triggers():
+def upgrade() -> None:
     """Register all system triggers into the database."""
     # Core
-    register_procedure(CORE_GET_MANAGING_COUNT)
-    register_procedure(CORE_GET_NUMBER_OF_CONN)
-    register_procedure(CORE_GET_NUMBER_OF_PROCESSES)
-    register_procedure(CORE_PICK_NEW_REGION)
-    register_procedure(CORE_SET_NEW_REGION)
-    register_procedure(CORE_GEN_RANDOM_PREFIX)
+    register_procedure(op, CORE_GET_MANAGING_COUNT)
+    register_procedure(op, CORE_GET_NUMBER_OF_CONN)
+    register_procedure(op, CORE_GET_NUMBER_OF_PROCESSES)
+    register_procedure(op, CORE_PICK_NEW_REGION)
+    register_procedure(op, CORE_SET_NEW_REGION)
+    register_procedure(op, CORE_GEN_RANDOM_PREFIX)
 
     # RegionRackRPCConnection
-    register_procedure(CORE_REGIONRACKRPCONNECTION_INSERT)
+    register_procedure(op, CORE_REGIONRACKRPCONNECTION_INSERT)
     register_trigger(
-        "maasserver_regionrackrpcconnection", "sys_core_rpc_insert", "insert"
+        op,
+        "maasserver_regionrackrpcconnection",
+        "sys_core_rpc_insert",
+        "insert",
     )
-    register_procedure(CORE_REGIONRACKRPCONNECTION_DELETE)
+    register_procedure(op, CORE_REGIONRACKRPCONNECTION_DELETE)
     register_trigger(
-        "maasserver_regionrackrpcconnection", "sys_core_rpc_delete", "delete"
+        op,
+        "maasserver_regionrackrpcconnection",
+        "sys_core_rpc_delete",
+        "delete",
     )
-
-    # DNS
-    # create zone serial sequence if not exist
-    zone_serial.create_if_not_exists()
-
-    # Proxy
 
     # - Subnet
-    register_procedure(render_sys_proxy_procedure("sys_proxy_subnet_insert"))
-    register_trigger("maasserver_subnet", "sys_proxy_subnet_insert", "insert")
-    register_procedure(PROXY_SUBNET_UPDATE)
-    register_trigger("maasserver_subnet", "sys_proxy_subnet_update", "update")
     register_procedure(
-        render_sys_proxy_procedure("sys_proxy_subnet_delete", on_delete=True)
+        op, render_sys_proxy_procedure("sys_proxy_subnet_insert")
     )
-    register_trigger("maasserver_subnet", "sys_proxy_subnet_delete", "delete")
+    register_trigger(
+        op, "maasserver_subnet", "sys_proxy_subnet_insert", "insert"
+    )
+    register_procedure(op, PROXY_SUBNET_UPDATE)
+    register_trigger(
+        op, "maasserver_subnet", "sys_proxy_subnet_update", "update"
+    )
+    register_procedure(
+        op,
+        render_sys_proxy_procedure("sys_proxy_subnet_delete", on_delete=True),
+    )
+    register_trigger(
+        op, "maasserver_subnet", "sys_proxy_subnet_delete", "delete"
+    )
 
     # - Config/http_proxy (when use_peer_proxy)
-    register_procedure(PEER_PROXY_CONFIG_INSERT)
+    register_procedure(op, PEER_PROXY_CONFIG_INSERT)
     register_trigger(
-        "maasserver_config", "sys_proxy_config_use_peer_proxy_insert", "insert"
+        op,
+        "maasserver_config",
+        "sys_proxy_config_use_peer_proxy_insert",
+        "insert",
     )
-    register_procedure(PEER_PROXY_CONFIG_UPDATE)
+    register_procedure(op, PEER_PROXY_CONFIG_UPDATE)
     register_trigger(
-        "maasserver_config", "sys_proxy_config_use_peer_proxy_update", "update"
+        op,
+        "maasserver_config",
+        "sys_proxy_config_use_peer_proxy_update",
+        "update",
     )
 
     # - RBACSync
-    register_procedure(RBAC_SYNC)
-    register_trigger("maasserver_rbacsync", "sys_rbac_sync", "insert")
-    register_procedure(RBAC_SYNC_UPDATE)
+    register_procedure(op, RBAC_SYNC)
+    register_trigger(op, "maasserver_rbacsync", "sys_rbac_sync", "insert")
+    register_procedure(op, RBAC_SYNC_UPDATE)
 
     # - ResourcePool
-    register_procedure(RBAC_RPOOL_INSERT)
+    register_procedure(op, RBAC_RPOOL_INSERT)
     register_trigger(
-        "maasserver_resourcepool", "sys_rbac_rpool_insert", "insert"
+        op, "maasserver_resourcepool", "sys_rbac_rpool_insert", "insert"
     )
-    register_procedure(RBAC_RPOOL_UPDATE)
+    register_procedure(op, RBAC_RPOOL_UPDATE)
     register_trigger(
-        "maasserver_resourcepool", "sys_rbac_rpool_update", "update"
+        op, "maasserver_resourcepool", "sys_rbac_rpool_update", "update"
     )
-    register_procedure(RBAC_RPOOL_DELETE)
+    register_procedure(op, RBAC_RPOOL_DELETE)
     register_trigger(
-        "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete"
+        op, "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete"
     )
+
+
+def downgrade() -> None:
+    pass

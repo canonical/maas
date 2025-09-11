@@ -3001,6 +3001,11 @@ def upgrade() -> None:
     """)
 
     op.execute(f"""
+    INSERT INTO maasserver_globaldefault (id, created, updated, domain_id) VALUES
+    (0, '{now}', '{now}', 0);
+    """)
+
+    op.execute(f"""
     INSERT INTO maasserver_packagerepository (
         id, created, updated, name, url, components, arches, key, "default",
         enabled, disabled_pockets, distributions, disabled_components, disable_sources

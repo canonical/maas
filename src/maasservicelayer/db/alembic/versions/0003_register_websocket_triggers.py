@@ -1,5 +1,54 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Register websocket triggers
+
+Revision ID: 0003
+Revises: 0002
+Create Date: 2025-09-04 11:16:07.410600+00:00
+
+"""
+
+from enum import IntEnum
+import logging
+from textwrap import dedent
+from typing import Sequence
+
+from alembic import op
+
+from maasservicelayer.db.alembic.triggers import (
+    EVENTS_IUD,
+    EVENTS_LUU,
+    register_procedure,
+    register_trigger,
+    register_triggers,
+)
+
+# revision identifiers, used by Alembic.
+revision: str = "0003"
+down_revision: str | None = "0002"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+
+class BmcType(IntEnum):
+    """Valid BMC types. Copied from maascommon.enums.bmc"""
+
+    DEFAULT = 0
+    BMC = 0
+    POD = 1
+
+
+class NodeTypeEnum(IntEnum):
+    """Valid node types. Copied from maascommon.enums.node"""
+
+    DEFAULT = 0
+    MACHINE = 0
+    DEVICE = 1
+    RACK_CONTROLLER = 2
+    REGION_CONTROLLER = 3
+    REGION_AND_RACK_CONTROLLER = 4
+
 
 """
 Websocket Triggers
@@ -11,18 +60,6 @@ trigger "node_create" followed by "notify".
 E.g. "maasserver_node_node_create_notify".
 """
 
-import logging
-from textwrap import dedent
-
-from maasserver.enum import BMC_TYPE, NODE_TYPE
-from maasserver.triggers import (
-    EVENTS_IUD,
-    EVENTS_LUU,
-    register_procedure,
-    register_trigger,
-    register_triggers,
-)
-from maasserver.utils.orm import transactional
 
 # Note that the corresponding test module (test_triggers) only tests that the
 # triggers and procedures are registered.  The behavior of these procedures
@@ -31,8 +68,8 @@ from maasserver.utils.orm import transactional
 # test_listener where all the Twisted infrastructure is already in place.
 
 TYPE_CONTROLLERS = (
-    f"({NODE_TYPE.RACK_CONTROLLER}, {NODE_TYPE.REGION_CONTROLLER}, "
-    f"{NODE_TYPE.REGION_AND_RACK_CONTROLLER})"
+    f"({NodeTypeEnum.RACK_CONTROLLER.value}, {NodeTypeEnum.REGION_CONTROLLER.value}, "
+    f"{NodeTypeEnum.REGION_AND_RACK_CONTROLLER.value})"
 )
 
 # Procedure that is called when a tag is added or removed from a node/device.
@@ -152,7 +189,7 @@ POD_INSERT_NOTIFY = dedent(
     f"""\
     CREATE OR REPLACE FUNCTION pod_insert_notify() RETURNS trigger AS $$
     BEGIN
-      IF NEW.bmc_type = {BMC_TYPE.POD} THEN
+      IF NEW.bmc_type = {BmcType.POD.value} THEN
         PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
       END IF;
       RETURN NEW;
@@ -168,12 +205,12 @@ POD_UPDATE_NOTIFY = dedent(
     CREATE OR REPLACE FUNCTION pod_update_notify() RETURNS trigger AS $$
     BEGIN
       IF OLD.bmc_type = NEW.bmc_type THEN
-        IF OLD.bmc_type = {BMC_TYPE.POD} THEN
+        IF OLD.bmc_type = {BmcType.POD.value} THEN
           PERFORM pg_notify('pod_update',CAST(OLD.id AS text));
         END IF;
-      ELSIF OLD.bmc_type = {BMC_TYPE.BMC} AND NEW.bmc_type = {BMC_TYPE.POD} THEN
+      ELSIF OLD.bmc_type = {BmcType.BMC.value} AND NEW.bmc_type = {BmcType.POD.value} THEN
           PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
-      ELSIF OLD.bmc_type = {BMC_TYPE.POD} AND NEW.bmc_type = {BMC_TYPE.BMC} THEN
+      ELSIF OLD.bmc_type = {BmcType.POD.value} AND NEW.bmc_type = {BmcType.BMC.value} THEN
           PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
       END IF;
       RETURN NEW;
@@ -188,7 +225,7 @@ POD_DELETE_NOTIFY = dedent(
     f"""\
     CREATE OR REPLACE FUNCTION pod_delete_notify() RETURNS trigger AS $$
     BEGIN
-      IF OLD.bmc_type = {BMC_TYPE.POD} THEN
+      IF OLD.bmc_type = {BmcType.POD.value} THEN
           PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
       END IF;
       RETURN OLD;
@@ -209,7 +246,7 @@ NODE_VMCLUSTER_INSERT_NOTIFY = dedent(
     BEGIN
       IF NEW.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
-        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
+        IF bmc.bmc_type = {BmcType.POD.value} THEN
           SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
           IF hints IS NOT NULL AND hints.cluster_id IS NOT NULL THEN
             PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
@@ -232,7 +269,7 @@ NODE_VMCLUSTER_UPDATE_NOTIFY = dedent(
       old_hints RECORD;
       new_hints RECORD;
     BEGIN
-      bmc_type = {BMC_TYPE.POD};
+      bmc_type = {BmcType.POD.value};
       IF OLD.bmc_id IS NOT NULL AND NEW.bmc_id IS NOT NULL THEN
         IF OLD.bmc_id = NEW.bmc_id THEN
           SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
@@ -302,7 +339,7 @@ NODE_VMCLUSTER_DELETE_NOTIFY = dedent(
     BEGIN
       IF OLD.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
-        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
+        IF bmc.bmc_type = {BmcType.POD.value} THEN
           SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
           IF hints.cluster_id IS NOT NULL THEN
             PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
@@ -325,7 +362,7 @@ NODE_POD_INSERT_NOTIFY = dedent(
     BEGIN
       IF NEW.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
-        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
+        IF bmc.bmc_type = {BmcType.POD.value} THEN
           PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
         END IF;
       END IF;
@@ -349,14 +386,14 @@ NODE_POD_UPDATE_NOTIFY = dedent(
           OLD.bmc_id != NEW.bmc_id) THEN
         IF OLD.bmc_id IS NOT NULL THEN
           SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
-          IF bmc.bmc_type = {BMC_TYPE.POD} THEN
+          IF bmc.bmc_type = {BmcType.POD.value} THEN
             PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
           END IF;
         END IF;
       END IF;
       IF NEW.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
-        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
+        IF bmc.bmc_type = {BmcType.POD.value} THEN
           PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
         END IF;
       END IF;
@@ -377,7 +414,7 @@ NODE_POD_DELETE_NOTIFY = dedent(
     BEGIN
       IF OLD.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
-        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
+        IF bmc.bmc_type = {BmcType.POD.value} THEN
           PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
         END IF;
       END IF;
@@ -533,7 +570,7 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent(
           ON maasserver_nodeconfig.node_id = maasserver_node.id
         WHERE maasserver_nodeconfig.id = OLD.node_config_id;
 
-        IF node.node_type = {NODE_TYPE.MACHINE} THEN
+        IF node.node_type = {NodeTypeEnum.MACHINE.value} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
@@ -553,7 +590,7 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent(
         ON maasserver_nodeconfig.node_id = maasserver_node.id
       WHERE maasserver_nodeconfig.id = NEW.node_config_id;
 
-      IF node.node_type = {NODE_TYPE.MACHINE} THEN
+      IF node.node_type = {NodeTypeEnum.MACHINE.value} THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
         PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
@@ -1398,7 +1435,7 @@ def render_node_related_notification_procedure(proc_name, entry):
           FROM maasserver_node
           WHERE id = {entry}.node_id;
 
-          IF node.node_type = {NODE_TYPE.MACHINE} THEN
+          IF node.node_type = {NodeTypeEnum.MACHINE.value} THEN
             PERFORM pg_notify(
               'machine_update', CAST(node.system_id AS text)
             );
@@ -1440,7 +1477,7 @@ def render_node_related_notification_procedure_via_config(proc_name, entry):
             ON maasserver_nodeconfig.node_id = maasserver_node.id
           WHERE maasserver_nodeconfig.id = {entry}.node_config_id;
 
-          IF node.node_type = {NODE_TYPE.MACHINE} THEN
+          IF node.node_type = {NodeTypeEnum.MACHINE.value} THEN
             PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
           ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
             PERFORM pg_notify('controller_update',CAST(
@@ -1470,36 +1507,36 @@ NODE_TYPE_CHANGE = dedent(
           (NEW.node_type IN {TYPE_CONTROLLERS})
          )) THEN
         CASE OLD.node_type
-          WHEN {NODE_TYPE.MACHINE} THEN
+          WHEN {NodeTypeEnum.MACHINE.value} THEN
             PERFORM pg_notify('machine_delete',CAST(
               OLD.system_id AS TEXT));
-          WHEN {NODE_TYPE.DEVICE} THEN
+          WHEN {NodeTypeEnum.DEVICE.value} THEN
             PERFORM pg_notify('device_delete',CAST(
               OLD.system_id AS TEXT));
-          WHEN {NODE_TYPE.RACK_CONTROLLER} THEN
+          WHEN {NodeTypeEnum.RACK_CONTROLLER.value} THEN
             PERFORM pg_notify('controller_delete',CAST(
               OLD.system_id AS TEXT));
-          WHEN {NODE_TYPE.REGION_CONTROLLER} THEN
+          WHEN {NodeTypeEnum.REGION_CONTROLLER.value} THEN
             PERFORM pg_notify('controller_delete',CAST(
               OLD.system_id AS TEXT));
-          WHEN {NODE_TYPE.REGION_AND_RACK_CONTROLLER} THEN
+          WHEN {NodeTypeEnum.REGION_AND_RACK_CONTROLLER.value} THEN
             PERFORM pg_notify('controller_delete',CAST(
               OLD.system_id AS TEXT));
         END CASE;
         CASE NEW.node_type
-          WHEN {NODE_TYPE.MACHINE} THEN
+          WHEN {NodeTypeEnum.MACHINE.value} THEN
             PERFORM pg_notify('machine_create',CAST(
               NEW.system_id AS TEXT));
-          WHEN {NODE_TYPE.DEVICE} THEN
+          WHEN {NodeTypeEnum.DEVICE.value} THEN
             PERFORM pg_notify('device_create',CAST(
               NEW.system_id AS TEXT));
-          WHEN {NODE_TYPE.RACK_CONTROLLER} THEN
+          WHEN {NodeTypeEnum.RACK_CONTROLLER.value} THEN
             PERFORM pg_notify('controller_create',CAST(
               NEW.system_id AS TEXT));
-          WHEN {NODE_TYPE.REGION_CONTROLLER} THEN
+          WHEN {NodeTypeEnum.REGION_CONTROLLER.value} THEN
             PERFORM pg_notify('controller_create',CAST(
               NEW.system_id AS TEXT));
-          WHEN {NODE_TYPE.REGION_AND_RACK_CONTROLLER} THEN
+          WHEN {NodeTypeEnum.REGION_AND_RACK_CONTROLLER.value} THEN
             PERFORM pg_notify('controller_create',CAST(
               NEW.system_id AS TEXT));
         END CASE;
@@ -1526,12 +1563,12 @@ def render_script_result_notify(proc_name, script_set_id):
           WHERE
             scriptset.id = {script_set_id} AND
             scriptset.node_id = nodet.id;
-          IF node.node_type = {NODE_TYPE.MACHINE} THEN
+          IF node.node_type = {NodeTypeEnum.MACHINE.value} THEN
             PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
           ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
             PERFORM pg_notify(
               'controller_update',CAST(node.system_id AS text));
-          ELSIF node.node_type = {NODE_TYPE.DEVICE} THEN
+          ELSIF node.node_type = {NodeTypeEnum.DEVICE.value} THEN
             PERFORM pg_notify('device_update',CAST(node.system_id AS text));
           END IF;
           RETURN NEW;
@@ -1600,42 +1637,49 @@ node_fields = (
 )
 
 
-@transactional
-def register_websocket_triggers():
+def upgrade() -> None:
     """Register all websocket triggers into the database."""
     for proc_name_prefix, event_name_prefix, node_type in (
-        ("machine", "machine", NODE_TYPE.MACHINE),
-        ("rack_controller", "controller", NODE_TYPE.RACK_CONTROLLER),
-        ("region_controller", "controller", NODE_TYPE.REGION_CONTROLLER),
+        ("machine", "machine", NodeTypeEnum.MACHINE.value),
+        ("rack_controller", "controller", NodeTypeEnum.RACK_CONTROLLER.value),
+        (
+            "region_controller",
+            "controller",
+            NodeTypeEnum.REGION_CONTROLLER.value,
+        ),
         (
             "region_and_rack_controller",
             "controller",
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            NodeTypeEnum.REGION_AND_RACK_CONTROLLER.value,
         ),
     ):
         # Non-Device Node types
         register_procedure(
+            op,
             render_notification_procedure(
                 f"{proc_name_prefix}_create_notify",
                 f"{event_name_prefix}_create",
                 "NEW.system_id",
-            )
+            ),
         )
         register_procedure(
+            op,
             render_notification_procedure(
                 f"{proc_name_prefix}_update_notify",
                 f"{event_name_prefix}_update",
                 "NEW.system_id",
-            )
+            ),
         )
         register_procedure(
+            op,
             render_notification_procedure(
                 f"{proc_name_prefix}_delete_notify",
                 f"{event_name_prefix}_delete",
                 "OLD.system_id",
-            )
+            ),
         )
         register_triggers(
+            op,
             "maasserver_node",
             proc_name_prefix,
             {"node_type": node_type},
@@ -1644,21 +1688,25 @@ def register_websocket_triggers():
 
     # ControllerInfo notifications
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "controllerinfo_link_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "controllerinfo_update_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "controllerinfo_unlink_notify", "OLD"
-        )
+        ),
     )
     register_triggers(
+        op,
         "maasserver_controllerinfo",
         "controllerinfo",
         events=EVENTS_LUU,
@@ -1666,285 +1714,333 @@ def register_websocket_triggers():
 
     # NodeMetadata notifications
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "nodemetadata_link_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "nodemetadata_update_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "nodemetadata_unlink_notify", "OLD"
-        )
+        ),
     )
     register_triggers(
-        "maasserver_nodemetadata", "nodemetadata", events=EVENTS_LUU
+        op, "maasserver_nodemetadata", "nodemetadata", events=EVENTS_LUU
     )
 
     # workload annotations notifications
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "ownerdata_link_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "ownerdata_update_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "ownerdata_unlink_notify", "OLD"
-        )
+        ),
     )
-    register_triggers("maasserver_ownerdata", "ownerdata", events=EVENTS_LUU)
+    register_triggers(
+        op, "maasserver_ownerdata", "ownerdata", events=EVENTS_LUU
+    )
 
     # Device Node types
     register_procedure(
+        op,
         render_device_notification_procedure(
             "device_create_notify", "device_create", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_device_notification_procedure(
             "device_update_notify", "device_update", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_device_notification_procedure(
             "device_delete_notify", "device_delete", "OLD"
-        )
+        ),
     )
     register_triggers(
+        op,
         "maasserver_node",
         "device",
-        {"node_type": NODE_TYPE.DEVICE},
+        {"node_type": NodeTypeEnum.DEVICE.value},
         fields=node_fields,
     )
 
     # VLAN table
     register_procedure(
+        op,
         render_notification_procedure(
             "vlan_create_notify", "vlan_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "vlan_update_notify", "vlan_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "vlan_delete_notify", "vlan_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_vlan", "vlan")
+    register_triggers(op, "maasserver_vlan", "vlan")
 
     # IPRange table
     register_procedure(
+        op,
         render_notification_procedure(
             "iprange_create_notify", "iprange_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "iprange_update_notify", "iprange_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "iprange_delete_notify", "iprange_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_iprange", "iprange")
+    register_triggers(op, "maasserver_iprange", "iprange")
 
     # Neighbour table
     register_procedure(
+        op,
         render_notification_procedure(
             "neighbour_create_notify", "neighbour_create", "NEW.ip"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "neighbour_update_notify", "neighbour_update", "NEW.ip"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "neighbour_delete_notify", "neighbour_delete", "OLD.ip"
-        )
+        ),
     )
-    register_triggers("maasserver_neighbour", "neighbour")
+    register_triggers(op, "maasserver_neighbour", "neighbour")
 
     # StaticRoute table
     register_procedure(
+        op,
         render_notification_procedure(
             "staticroute_create_notify", "staticroute_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "staticroute_update_notify", "staticroute_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "staticroute_delete_notify", "staticroute_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_staticroute", "staticroute")
+    register_triggers(op, "maasserver_staticroute", "staticroute")
 
     # Fabric table
     register_procedure(
+        op,
         render_notification_procedure(
             "fabric_create_notify", "fabric_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "fabric_update_notify", "fabric_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "fabric_delete_notify", "fabric_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_fabric", "fabric")
+    register_triggers(op, "maasserver_fabric", "fabric")
 
     # Space table
     register_procedure(
+        op,
         render_notification_procedure(
             "space_create_notify", "space_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "space_update_notify", "space_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "space_delete_notify", "space_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_space", "space")
+    register_triggers(op, "maasserver_space", "space")
 
     # Subnet table
     register_procedure(
+        op,
         render_notification_procedure(
             "subnet_create_notify", "subnet_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "subnet_update_notify", "subnet_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "subnet_delete_notify", "subnet_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_subnet", "subnet")
+    register_triggers(op, "maasserver_subnet", "subnet")
 
     # Subnet node notifications
     register_procedure(
+        op,
         SUBNET_NODE_NOTIFY.format(
             function_name="subnet_machine_update_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
-        "maasserver_subnet", "subnet_machine_update_notify", "update"
+        op, "maasserver_subnet", "subnet_machine_update_notify", "update"
     )
 
     # Fabric node notifications
     register_procedure(
+        op,
         FABRIC_NODE_NOTIFY.format(
             function_name="fabric_machine_update_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
-        "maasserver_fabric", "fabric_machine_update_notify", "update"
+        op, "maasserver_fabric", "fabric_machine_update_notify", "update"
     )
 
     # Space node notifications
     register_procedure(
+        op,
         SPACE_NODE_NOTIFY.format(
             function_name="space_machine_update_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
-        "maasserver_space", "space_machine_update_notify", "update"
+        op, "maasserver_space", "space_machine_update_notify", "update"
     )
 
     # VLAN node notifications
     register_procedure(
+        op,
         VLAN_NODE_NOTIFY.format(
             function_name="vlan_machine_update_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
-    register_trigger("maasserver_vlan", "vlan_machine_update_notify", "update")
+    register_trigger(
+        op, "maasserver_vlan", "vlan_machine_update_notify", "update"
+    )
 
     # BMC node notifications
     register_procedure(
+        op,
         BMC_NODE_NOTIFY.format(
             function_name="bmc_machine_update_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
-    register_trigger("maasserver_bmc", "bmc_machine_update_notify", "update")
+    register_trigger(
+        op, "maasserver_bmc", "bmc_machine_update_notify", "update"
+    )
 
     # Event node notifications
     register_procedure(
+        op,
         EVENT_NODE_NOTIFY.format(
             function_name="event_machine_update_notify",
             entry="NEW",
             loglevel_info=logging.INFO,
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
-        "maasserver_event", "event_machine_update_notify", "insert"
+        op, "maasserver_event", "event_machine_update_notify", "insert"
     )
 
     # VLAN subnet notifications
     register_procedure(
+        op,
         VLAN_SUBNET_NOTIFY.format(
             function_name="vlan_subnet_update_notify",
             entry="NEW",
-        )
+        ),
     )
-    register_trigger("maasserver_vlan", "vlan_subnet_update_notify", "update")
+    register_trigger(
+        op, "maasserver_vlan", "vlan_subnet_update_notify", "update"
+    )
 
     # IP address node notifications
     register_procedure(
+        op,
         STATIC_IP_ADDRESS_NODE_NOTIFY.format(
             function_name="ipaddress_machine_update_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
+        op,
         "maasserver_staticipaddress",
         "ipaddress_machine_update_notify",
         "update",
@@ -1952,76 +2048,90 @@ def register_websocket_triggers():
 
     # IP address subnet notifications
     register_procedure(
+        op,
         STATIC_IP_ADDRESS_SUBNET_NOTIFY.format(
             function_name="ipaddress_subnet_update_notify"
-        )
+        ),
     )
     register_procedure(
+        op,
         STATIC_IP_ADDRESS_SUBNET_NOTIFY.format(
             function_name="ipaddress_subnet_insert_notify"
-        )
+        ),
     )
     register_procedure(
+        op,
         STATIC_IP_ADDRESS_SUBNET_NOTIFY.format(
             function_name="ipaddress_subnet_delete_notify"
-        )
+        ),
     )
     register_triggers(
-        "maasserver_staticipaddress", "ipaddress_subnet", events=EVENTS_IUD
+        op, "maasserver_staticipaddress", "ipaddress_subnet", events=EVENTS_IUD
     )
 
     # IP address domain notifications
     register_procedure(
+        op,
         STATIC_IP_ADDRESS_DOMAIN_NOTIFY.format(
             function_name="ipaddress_domain_insert_notify", entry="NEW"
-        )
+        ),
     )
-    register_procedure(STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY)
+    register_procedure(op, STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY)
     register_procedure(
+        op,
         STATIC_IP_ADDRESS_DOMAIN_NOTIFY.format(
             function_name="ipaddress_domain_delete_notify", entry="OLD"
-        )
+        ),
     )
     register_triggers(
-        "maasserver_staticipaddress", "ipaddress_domain", events=EVENTS_IUD
+        op, "maasserver_staticipaddress", "ipaddress_domain", events=EVENTS_IUD
     )
 
     # IP range subnet notifications
-    register_procedure(IP_RANGE_SUBNET_INSERT_NOTIFY)
-    register_procedure(IP_RANGE_SUBNET_UPDATE_NOTIFY)
-    register_procedure(IP_RANGE_SUBNET_DELETE_NOTIFY)
+    register_procedure(op, IP_RANGE_SUBNET_INSERT_NOTIFY)
+    register_procedure(op, IP_RANGE_SUBNET_UPDATE_NOTIFY)
+    register_procedure(op, IP_RANGE_SUBNET_DELETE_NOTIFY)
     register_triggers(
-        "maasserver_iprange", "iprange_subnet", events=EVENTS_IUD
+        op, "maasserver_iprange", "iprange_subnet", events=EVENTS_IUD
     )
 
     # VMCluster notifications
-    register_procedure(VMCLUSTER_INSERT_NOTIFY)
-    register_procedure(VMCLUSTER_UPDATE_NOTIFY)
-    register_procedure(VMCLUSTER_DELETE_NOTIFY)
-    register_triggers("maasserver_vmcluster", "vmcluster", events=EVENTS_IUD)
-
-    # NODE VMCluster notifications
-    register_procedure(NODE_VMCLUSTER_INSERT_NOTIFY)
-    register_procedure(NODE_VMCLUSTER_UPDATE_NOTIFY)
-    register_procedure(NODE_VMCLUSTER_DELETE_NOTIFY)
-    register_triggers("maasserver_node", "node_vmcluster", events=EVENTS_IUD)
-
-    # Pod notifications
-    register_procedure(POD_INSERT_NOTIFY)
-    register_procedure(POD_UPDATE_NOTIFY)
-    register_procedure(POD_DELETE_NOTIFY)
-    register_triggers("maasserver_bmc", "pod", events=EVENTS_IUD)
-
-    # Node pod notifications
-    register_procedure(NODE_POD_INSERT_NOTIFY)
-    register_procedure(NODE_POD_UPDATE_NOTIFY)
-    register_procedure(NODE_POD_DELETE_NOTIFY)
+    register_procedure(op, VMCLUSTER_INSERT_NOTIFY)
+    register_procedure(op, VMCLUSTER_UPDATE_NOTIFY)
+    register_procedure(op, VMCLUSTER_DELETE_NOTIFY)
     register_triggers(
-        "maasserver_node", "node_pod", events=EVENTS_IUD, fields=node_fields
+        op, "maasserver_vmcluster", "vmcluster", events=EVENTS_IUD
     )
 
-    register_procedure(INTERFACE_POD_NOTIFY)
+    # NODE VMCluster notifications
+    register_procedure(op, NODE_VMCLUSTER_INSERT_NOTIFY)
+    register_procedure(op, NODE_VMCLUSTER_UPDATE_NOTIFY)
+    register_procedure(op, NODE_VMCLUSTER_DELETE_NOTIFY)
+    register_triggers(
+        op, "maasserver_node", "node_vmcluster", events=EVENTS_IUD
+    )
+
+    # Pod notifications
+    register_procedure(op, POD_INSERT_NOTIFY)
+    register_procedure(op, POD_UPDATE_NOTIFY)
+    register_procedure(op, POD_DELETE_NOTIFY)
+    register_triggers(op, "maasserver_bmc", "pod", events=EVENTS_IUD)
+
+    # Node pod notifications
+    register_procedure(op, NODE_POD_INSERT_NOTIFY)
+    register_procedure(op, NODE_POD_UPDATE_NOTIFY)
+    register_procedure(op, NODE_POD_DELETE_NOTIFY)
+    register_triggers(
+        op,
+        "maasserver_node",
+        "node_pod",
+        events=EVENTS_IUD,
+        fields=node_fields,
+    )
+
+    register_procedure(op, INTERFACE_POD_NOTIFY)
     register_trigger(
+        op,
         "maasserver_interface",
         "interface_pod_notify",
         "INSERT OR UPDATE OR DELETE",
@@ -2029,88 +2139,101 @@ def register_websocket_triggers():
 
     # DNSData table
     register_procedure(
+        op,
         DNSDATA_DOMAIN_NOTIFY.format(
             function_name="dnsdata_domain_insert_notify",
             match_expr="NEW.dnsresource_id",
-        )
+        ),
     )
     register_procedure(
+        op,
         DNSDATA_DOMAIN_NOTIFY.format(
             function_name="dnsdata_domain_update_notify",
             match_expr="OLD.dnsresource_id OR dnsresource.id = NEW.dnsresource_id",
-        )
+        ),
     )
     register_procedure(
+        op,
         DNSDATA_DOMAIN_NOTIFY.format(
             function_name="dnsdata_domain_delete_notify",
             match_expr="OLD.dnsresource_id",
-        )
+        ),
     )
     register_triggers(
-        "maasserver_dnsdata", "dnsdata_domain", events=EVENTS_IUD
+        op, "maasserver_dnsdata", "dnsdata_domain", events=EVENTS_IUD
     )
 
     # DNSResource table
     register_procedure(
+        op,
         DNSRESOURCE_DOMAIN_NOTIFY.format(
             function_name="dnsresource_domain_insert_notify", entry="NEW"
-        )
+        ),
     )
-    register_procedure(DNSRESOURCE_DOMAIN_UPDATE_NOTIFY)
+    register_procedure(op, DNSRESOURCE_DOMAIN_UPDATE_NOTIFY)
     register_procedure(
+        op,
         DNSRESOURCE_DOMAIN_NOTIFY.format(
             function_name="dnsresource_domain_delete_notify", entry="OLD"
-        )
+        ),
     )
     register_triggers(
-        "maasserver_dnsresource", "dnsresource_domain", events=EVENTS_IUD
+        op, "maasserver_dnsresource", "dnsresource_domain", events=EVENTS_IUD
     )
 
     # Domain table
     register_procedure(
+        op,
         DOMAIN_NODE_NOTIFY.format(
             function_name="domain_node_update_notify",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "domain_create_notify", "domain_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "domain_update_notify", "domain_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "domain_delete_notify", "domain_delete", "OLD.id"
-        )
+        ),
     )
     register_trigger(
-        "maasserver_domain", "domain_node_update_notify", "update"
+        op, "maasserver_domain", "domain_node_update_notify", "update"
     )
-    register_triggers("maasserver_domain", "domain")
+    register_triggers(op, "maasserver_domain", "domain")
 
     # MAC static ip address table, update to linked domain via dnsresource
     register_procedure(
+        op,
         DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY.format(
             function_name="rrset_sipaddress_link_notify", entry="NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY.format(
             function_name="rrset_sipaddress_unlink_notify", entry="OLD"
-        )
+        ),
     )
     register_trigger(
+        op,
         "maasserver_dnsresource_ip_addresses",
         "rrset_sipaddress_link_notify",
         "insert",
     )
     register_trigger(
+        op,
         "maasserver_dnsresource_ip_addresses",
         "rrset_sipaddress_unlink_notify",
         "delete",
@@ -2118,106 +2241,123 @@ def register_websocket_triggers():
 
     # Service table
     register_procedure(
+        op,
         render_notification_procedure(
             "service_create_notify", "service_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "service_update_notify", "service_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "service_delete_notify", "service_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_service", "service")
+    register_triggers(op, "maasserver_service", "service")
 
     # Tag table
     register_procedure(
+        op,
         render_notification_procedure(
             "tag_create_notify", "tag_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "tag_update_notify", "tag_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "tag_delete_notify", "tag_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_tag", "tag")
+    register_triggers(op, "maasserver_tag", "tag")
 
     # Node tag link table
     register_procedure(
+        op,
         NODE_TAG_NOTIFY.format(
             function_name="machine_device_tag_link_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_procedure(
+        op,
         NODE_TAG_NOTIFY.format(
             function_name="machine_device_tag_unlink_notify",
             entry="OLD",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
-        "maasserver_node_tags", "machine_device_tag_link_notify", "insert"
+        op, "maasserver_node_tags", "machine_device_tag_link_notify", "insert"
     )
     register_trigger(
-        "maasserver_node_tags", "machine_device_tag_unlink_notify", "delete"
+        op,
+        "maasserver_node_tags",
+        "machine_device_tag_unlink_notify",
+        "delete",
     )
 
     # Tag table, update to linked nodes.
     register_procedure(
+        op,
         TAG_NODES_NOTIFY.format(
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
-        "maasserver_tag", "tag_update_machine_device_notify", "update"
+        op, "maasserver_tag", "tag_update_machine_device_notify", "update"
     )
 
     # Events table
     register_procedure(
+        op,
         render_notification_procedure(
             "event_create_notify", "event_create", "NEW.id"
-        )
+        ),
     )
-    register_trigger("maasserver_event", "event_create_notify", "insert")
+    register_trigger(op, "maasserver_event", "event_create_notify", "insert")
 
     # MAC static ip address table, update to linked node.
     register_procedure(
+        op,
         INTERFACE_IP_ADDRESS_NODE_NOTIFY.format(
             function_name="nd_sipaddress_link_notify",
             entry="NEW",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_procedure(
+        op,
         INTERFACE_IP_ADDRESS_NODE_NOTIFY.format(
             function_name="nd_sipaddress_unlink_notify",
             entry="OLD",
-            type_machine=NODE_TYPE.MACHINE,
+            type_machine=NodeTypeEnum.MACHINE.value,
             type_controllers=TYPE_CONTROLLERS,
-        )
+        ),
     )
     register_trigger(
+        op,
         "maasserver_interface_ip_addresses",
         "nd_sipaddress_link_notify",
         "insert",
     )
     register_trigger(
+        op,
         "maasserver_interface_ip_addresses",
         "nd_sipaddress_unlink_notify",
         "delete",
@@ -2225,23 +2365,27 @@ def register_websocket_triggers():
 
     # MAC static ip address table, update to linked domain via node.
     register_procedure(
+        op,
         INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY.format(
             function_name="nd_sipaddress_dns_link_notify",
             entry="NEW",
-        )
+        ),
     )
     register_procedure(
+        op,
         INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY.format(
             function_name="nd_sipaddress_dns_unlink_notify",
             entry="OLD",
-        )
+        ),
     )
     register_trigger(
+        op,
         "maasserver_interface_ip_addresses",
         "nd_sipaddress_dns_link_notify",
         "insert",
     )
     register_trigger(
+        op,
         "maasserver_interface_ip_addresses",
         "nd_sipaddress_dns_unlink_notify",
         "delete",
@@ -2249,47 +2393,54 @@ def register_websocket_triggers():
 
     # Node result table, update to linked node.
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "nd_scriptset_link_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure(
             "nd_scriptset_unlink_notify", "OLD"
-        )
+        ),
     )
     register_trigger(
-        "maasserver_scriptset", "nd_scriptset_link_notify", "insert"
+        op, "maasserver_scriptset", "nd_scriptset_link_notify", "insert"
     )
     register_trigger(
-        "maasserver_scriptset", "nd_scriptset_unlink_notify", "delete"
+        op, "maasserver_scriptset", "nd_scriptset_unlink_notify", "delete"
     )
 
     # ScriptResult triggers to the node for the nodes-listing page.
     register_procedure(
+        op,
         render_script_result_notify(
             "nd_scriptresult_link_notify", "NEW.script_set_id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_script_result_notify(
             "nd_scriptresult_update_notify", "NEW.script_set_id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_script_result_notify(
             "nd_scriptresult_unlink_notify", "OLD.script_set_id"
-        )
+        ),
     )
     register_trigger(
-        "maasserver_scriptresult", "nd_scriptresult_link_notify", "insert"
+        op, "maasserver_scriptresult", "nd_scriptresult_link_notify", "insert"
     )
     register_trigger(
+        op,
         "maasserver_scriptresult",
         "nd_scriptresult_update_notify",
         "update",
     )
     register_trigger(
+        op,
         "maasserver_scriptresult",
         "nd_scriptresult_unlink_notify",
         "delete",
@@ -2297,89 +2448,101 @@ def register_websocket_triggers():
 
     # ScriptResult triggers for the details page.
     register_procedure(
+        op,
         render_notification_procedure(
             "scriptresult_create_notify", "scriptresult_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "scriptresult_update_notify", "scriptresult_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "scriptresult_delete_notify", "scriptresult_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_scriptresult", "scriptresult")
+    register_triggers(op, "maasserver_scriptresult", "scriptresult")
 
     # Interface address table, update to linked node.
     register_procedure(
+        op,
         render_node_related_notification_procedure_via_config(
             "nd_interface_link_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure_via_config(
             "nd_interface_unlink_notify", "OLD"
-        )
+        ),
     )
-    register_procedure(INTERFACE_UPDATE_NODE_NOTIFY)
+    register_procedure(op, INTERFACE_UPDATE_NODE_NOTIFY)
     register_trigger(
-        "maasserver_interface", "nd_interface_link_notify", "insert"
-    )
-    register_trigger(
-        "maasserver_interface", "nd_interface_unlink_notify", "delete"
+        op, "maasserver_interface", "nd_interface_link_notify", "insert"
     )
     register_trigger(
-        "maasserver_interface", "nd_interface_update_notify", "update"
+        op, "maasserver_interface", "nd_interface_unlink_notify", "delete"
+    )
+    register_trigger(
+        op, "maasserver_interface", "nd_interface_update_notify", "update"
     )
 
     # Block device table, update to linked node.
     register_procedure(
+        op,
         render_node_related_notification_procedure_via_config(
             "nd_blockdevice_link_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure_via_config(
             "nd_blockdevice_update_notify", "NEW"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_node_related_notification_procedure_via_config(
             "nd_blockdevice_unlink_notify", "OLD"
-        )
+        ),
     )
     register_procedure(
+        op,
         PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY.format(
             func_name="nd_physblockdevice_update_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY.format(
             func_name="nd_virtblockdevice_update_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_trigger(
-        "maasserver_blockdevice", "nd_blockdevice_link_notify", "insert"
+        op, "maasserver_blockdevice", "nd_blockdevice_link_notify", "insert"
     )
     register_trigger(
-        "maasserver_blockdevice", "nd_blockdevice_update_notify", "update"
+        op, "maasserver_blockdevice", "nd_blockdevice_update_notify", "update"
     )
     register_trigger(
-        "maasserver_blockdevice", "nd_blockdevice_unlink_notify", "delete"
+        op, "maasserver_blockdevice", "nd_blockdevice_unlink_notify", "delete"
     )
     register_trigger(
+        op,
         "maasserver_physicalblockdevice",
         "nd_physblockdevice_update_notify",
         "update",
     )
     register_trigger(
+        op,
         "maasserver_virtualblockdevice",
         "nd_virtblockdevice_update_notify",
         "update",
@@ -2387,35 +2550,43 @@ def register_websocket_triggers():
 
     # Partition table, update to linked user.
     register_procedure(
+        op,
         PARTITIONTABLE_NODE_NOTIFY.format(
             func_name="nd_partitiontable_link_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         PARTITIONTABLE_NODE_NOTIFY.format(
             func_name="nd_partitiontable_update_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         PARTITIONTABLE_NODE_NOTIFY.format(
             func_name="nd_partitiontable_unlink_notify",
             entry="OLD",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_trigger(
-        "maasserver_partitiontable", "nd_partitiontable_link_notify", "insert"
+        op,
+        "maasserver_partitiontable",
+        "nd_partitiontable_link_notify",
+        "insert",
     )
     register_trigger(
+        op,
         "maasserver_partitiontable",
         "nd_partitiontable_update_notify",
         "update",
     )
     register_trigger(
+        op,
         "maasserver_partitiontable",
         "nd_partitiontable_unlink_notify",
         "delete",
@@ -2423,101 +2594,113 @@ def register_websocket_triggers():
 
     # Partition, update to linked user.
     register_procedure(
+        op,
         PARTITION_NODE_NOTIFY.format(
             func_name="nd_partition_link_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         PARTITION_NODE_NOTIFY.format(
             func_name="nd_partition_update_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         PARTITION_NODE_NOTIFY.format(
             func_name="nd_partition_unlink_notify",
             entry="OLD",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_trigger(
-        "maasserver_partition", "nd_partition_link_notify", "insert"
+        op, "maasserver_partition", "nd_partition_link_notify", "insert"
     )
     register_trigger(
-        "maasserver_partition", "nd_partition_update_notify", "update"
+        op, "maasserver_partition", "nd_partition_update_notify", "update"
     )
     register_trigger(
-        "maasserver_partition", "nd_partition_unlink_notify", "delete"
+        op, "maasserver_partition", "nd_partition_unlink_notify", "delete"
     )
 
     # Filesystem, update to linked user.
     register_procedure(
+        op,
         FILESYSTEM_NODE_NOTIFY.format(
             func_name="nd_filesystem_link_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         FILESYSTEM_NODE_NOTIFY.format(
             func_name="nd_filesystem_update_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         FILESYSTEM_NODE_NOTIFY.format(
             func_name="nd_filesystem_unlink_notify",
             entry="OLD",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_trigger(
-        "maasserver_filesystem", "nd_filesystem_link_notify", "insert"
+        op, "maasserver_filesystem", "nd_filesystem_link_notify", "insert"
     )
     register_trigger(
-        "maasserver_filesystem", "nd_filesystem_update_notify", "update"
+        op, "maasserver_filesystem", "nd_filesystem_update_notify", "update"
     )
     register_trigger(
-        "maasserver_filesystem", "nd_filesystem_unlink_notify", "delete"
+        op, "maasserver_filesystem", "nd_filesystem_unlink_notify", "delete"
     )
 
     # Filesystemgroup, update to linked user.
     register_procedure(
+        op,
         FILESYSTEMGROUP_NODE_NOTIFY.format(
             func_name="nd_filesystemgroup_link_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         FILESYSTEMGROUP_NODE_NOTIFY.format(
             func_name="nd_filesystemgroup_update_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         FILESYSTEMGROUP_NODE_NOTIFY.format(
             func_name="nd_filesystemgroup_unlink_notify",
             entry="OLD",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_trigger(
+        op,
         "maasserver_filesystemgroup",
         "nd_filesystemgroup_link_notify",
         "insert",
     )
     register_trigger(
+        op,
         "maasserver_filesystemgroup",
         "nd_filesystemgroup_update_notify",
         "update",
     )
     register_trigger(
+        op,
         "maasserver_filesystemgroup",
         "nd_filesystemgroup_unlink_notify",
         "delete",
@@ -2525,56 +2708,63 @@ def register_websocket_triggers():
 
     # Cacheset, update to linked user.
     register_procedure(
+        op,
         CACHESET_NODE_NOTIFY.format(
             func_name="nd_cacheset_link_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         CACHESET_NODE_NOTIFY.format(
             func_name="nd_cacheset_update_notify",
             entry="NEW",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_procedure(
+        op,
         CACHESET_NODE_NOTIFY.format(
             func_name="nd_cacheset_unlink_notify",
             entry="OLD",
-            machine_type=NODE_TYPE.MACHINE,
-        )
+            machine_type=NodeTypeEnum.MACHINE.value,
+        ),
     )
     register_trigger(
-        "maasserver_cacheset", "nd_cacheset_link_notify", "insert"
+        op, "maasserver_cacheset", "nd_cacheset_link_notify", "insert"
     )
     register_trigger(
-        "maasserver_cacheset", "nd_cacheset_update_notify", "update"
+        op, "maasserver_cacheset", "nd_cacheset_update_notify", "update"
     )
     register_trigger(
-        "maasserver_cacheset", "nd_cacheset_unlink_notify", "delete"
+        op, "maasserver_cacheset", "nd_cacheset_unlink_notify", "delete"
     )
 
     # Token/Consumer table.
     register_procedure(
+        op,
         render_notification_procedure(
             "token_create_notify", "token_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "token_delete_notify", "token_delete", "OLD.id"
-        )
+        ),
     )
     register_procedure(
-        CONSUMER_TOKEN_NOTIFY.format("consumer_token_update_notify")
+        op, CONSUMER_TOKEN_NOTIFY.format("consumer_token_update_notify")
     )
     register_triggers(
+        op,
         "piston3_token",
         "token",
         events=[("insert", "create", "NEW"), ("delete", "delete", "OLD")],
     )
     register_trigger(
+        op,
         "piston3_consumer",
         "consumer_token_update_notify",
         event="update",
@@ -2583,49 +2773,56 @@ def register_websocket_triggers():
 
     # DHCPSnippet table
     register_procedure(
+        op,
         render_notification_procedure(
             "dhcpsnippet_create_notify", "dhcpsnippet_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "dhcpsnippet_update_notify", "dhcpsnippet_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "dhcpsnippet_delete_notify", "dhcpsnippet_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_dhcpsnippet", "dhcpsnippet")
+    register_triggers(op, "maasserver_dhcpsnippet", "dhcpsnippet")
 
     # PackageRepository table
     register_procedure(
+        op,
         render_notification_procedure(
             "packagerepository_create_notify",
             "packagerepository_create",
             "NEW.id",
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "packagerepository_update_notify",
             "packagerepository_update",
             "NEW.id",
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "packagerepository_delete_notify",
             "packagerepository_delete",
             "OLD.id",
-        )
+        ),
     )
-    register_triggers("maasserver_packagerepository", "packagerepository")
+    register_triggers(op, "maasserver_packagerepository", "packagerepository")
 
     # Node type change.
-    register_procedure(NODE_TYPE_CHANGE)
+    register_procedure(op, NODE_TYPE_CHANGE)
     register_trigger(
+        op,
         "maasserver_node",
         "node_type_change_notify",
         "update",
@@ -2634,30 +2831,35 @@ def register_websocket_triggers():
 
     # Notification table.
     register_procedure(
+        op,
         render_notification_procedure(
             "notification_create_notify", "notification_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "notification_update_notify", "notification_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "notification_delete_notify", "notification_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_notification", "notification")
+    register_triggers(op, "maasserver_notification", "notification")
 
     # NotificationDismissal table.
     register_procedure(
+        op,
         render_notification_dismissal_notification_procedure(
             "notificationdismissal_create_notify",
             "notificationdismissal_create",
-        )
+        ),
     )
     register_trigger(
+        op,
         "maasserver_notificationdismissal",
         "notificationdismissal_create_notify",
         "insert",
@@ -2665,36 +2867,46 @@ def register_websocket_triggers():
 
     # Script table
     register_procedure(
+        op,
         render_notification_procedure(
             "script_create_notify", "script_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "script_update_notify", "script_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "script_delete_notify", "script_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_script", "script")
+    register_triggers(op, "maasserver_script", "script")
 
     # NodeDevice table
     register_procedure(
+        op,
         render_notification_procedure(
             "nodedevice_create_notify", "nodedevice_create", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "nodedevice_update_notify", "nodedevice_update", "NEW.id"
-        )
+        ),
     )
     register_procedure(
+        op,
         render_notification_procedure(
             "nodedevice_delete_notify", "nodedevice_delete", "OLD.id"
-        )
+        ),
     )
-    register_triggers("maasserver_nodedevice", "nodedevice")
+    register_triggers(op, "maasserver_nodedevice", "nodedevice")
+
+
+def downgrade() -> None:
+    pass
