@@ -1,78 +1,46 @@
-Distinguish groups of machines by assigning availability zones, tags, and resource pools.
+MAAS provides several built-in grouping mechanisms them can be used to help find suitable machines faster.  Some of these groups support special use cases for tools like Juju or OpenStack, but none of them are limited. These groups are just labels to MAAS; you decide how much structure to impose. 
 
-## Availability zones
+## Options for grouping
+MAAS exposes three main grouping tools: tags, availability zones, and resource pools. Each was originally designed for a slightly different problem, but all three can be used more flexibly if your environment calls for it. MAAS also provides notes and dynamic annotations. While they’re not formal grouping tools, they give you extra ways to mark machines with context or live metadata that can help characterize machines quickly.
 
-An availability zone is an organizational unit containing nodes, with each node belonging to exactly one zone. Zones help with fault tolerance, service performance, and power management. Machines can be allocated from specific zones in production.  
+## Tags: flexible labels
 
-### Fault tolerance
+Tags are the most open-ended grouping mechanism. You can:
 
-Fault tolerance ensures a system continues operating despite failures. MAAS zones can improve resilience by separating resources based on power supply, network segmentation, or data center location.  
+- Apply them directly to machines: You can assign one or more tags to any machine, by hand.
 
-- Machines working together should be in the same zone.  
-- The entire service should be replicated in another zone for redundancy.  
+- Automate them with XPath: MAAS lets you set up XPath expressions that automatically attach tags when a machine meets certain criteria (for example, a particular CPU feature or interface type).
 
-### Service performance  
+- Use them for selection: Tags are especially useful for selecting subsets of machines to commission or deploy. For instance, you might tag machines with a specific NIC type so they can be targeted during commissioning.
 
-Service performance focuses on efficiency and speed. MAAS zones help by placing nodes close to performance-critical resources.  
+Tags are flexible, multi-valued, and easy to search. Think of them as a lightweight way to create many groups slice across your inventory in different ways, without re-archtecting it.
 
-- Allocate nodes based on network topology and latency needs.  
-- Use smaller, well-defined zones to group resources efficiently.  
+## Availability zones: designed as fault-domain labels
 
-### Power management
+Availability zones (AZs) come from the cloud world.  They are:
 
-Power management optimizes power usage and cooling.  
+Assigned one to a machine: MAAS only allows a machine to belong to a single AZ.
 
-- Distribute high-power or heat-generating nodes across zones.  
-- Prevent hotspots and balance power consumption.  
+Originally for Juju and OpenStack: These tools treat AZs as “fault domains” — if something fails in one zone, they can redeploy workloads into another.  MAAS, on the other hand, makes no decisions about AZs.
 
-### Default zone  
+Are compabtible with ailover semantics: In Juju or OpenStack, zones act like high-availability boundaries, so you get resilience by spreading workloads across them.
 
-A newly installed MAAS includes a default zone that holds all nodes. You cannot remove or rename this zone, but you can create new ones and assign machines. If zones aren’t relevant to your setup, you can ignore them.
+In MAAS alone, an AZ is just a label. You can repurpose them any way you like, but they’re most valuable if you also run tools that respect fault domains.
 
-## Tags
+## Resource pools: designed for access-control
 
-Tags are short, descriptive, searchable words that can be applied to various objects, including:
+Resource pools are another single-assignment label.  They are:
 
-- machines
-- VM hosts
-- controllers (rack and region)
-- storage devices (block devices or partitions)
-- network interfaces
-- devices
-- nodes (via CLI)
+Assigned one to a machine: Like AZs, each machine belongs to one pool.
 
-They help identify, group and locate objects efficiently, especially when managing numerous machines. 
+Designed for RBAC: Pools were added primarily to support role-based access control. You can assign a pool to a user or team, giving them access to just that subset of machines.
 
-### Tag types
+Easy to customize: The pool name can be anything -- finance, HPC, staging, or “arm64-nodes." It’s entirely up to you.
 
-Two types of tags can be used:
+Outside RBAC, MAAS doesn’t enforce semantics beyond the label. If you’re not using RBAC, pools are just another way to subdivide your machines.  Often this is useful when you have a limited number of machines per corporate function.
 
-- **Manual Tags:** These are user-defined tags applied directly to MAAS objects. Users can create and assign tags based on specific criteria or organizational needs. For example, tagging machines based on their role, location, or hardware specifications.
+For example, if you run the IT department of a large hospital, you may want to reserve so many machines for nursing stations, so many for physicians, so many for pharamacy, and so on.  This helps make sure that one or two failed machines won't mean pulling capacity from another department.
 
-- **Automatic Tags:** Introduced in MAAS 3.2 and above, automatic tags use XPath expressions to auto-apply tags to machines that match specific hardware characteristics or settings. This feature allows for dynamic tagging based on machine attributes, such as CPU features, memory size, or presence of specific hardware components. For instance, machines with Intel VT-d enabled and a Tesla V100 GPU can be automatically tagged for GPU passthrough configurations.
+## Notes and dynamic annotations
 
-## Annotations
-
-Annotations are descriptive, searchable phrases that apply only to machines. They come in two types:
-
-- **Static Annotations:** Always present, regardless of the machine's state.
-
-- **Dynamic Annotations:** Present only when machines are in allocated or deployed states.
-
-Annotations assist in identifying, characterizing, and conveying information about machines within the MAAS environment.
-
-## Managing Tags and Annotations
-
-- **Creating and Assigning Tags:** In the MAAS UI, creating and assigning tags is a combined operation. Users can enter the desired tag name in the "Tags" field when editing an object, and the tag will be created and assigned simultaneously.
-
-- **Removing Tags:** To remove a tag, users can click the "X" next to the tag name in the object's "Tags" field. The tag is effectively deleted when it's removed from all associated objects. 
-
-- **Automatic Tagging:** By defining XPath expressions, MAAS can automatically apply tags to machines that match specific criteria. This automation ensures that machines with particular hardware configurations or capabilities are consistently tagged, facilitating efficient management and deployment.
-
-Utilizing tags and annotations in MAAS enhances the organization, searchability, and management of resources, streamlining operations in complex environments.
-
-## Resource pools
-
-Resource pools in MAAS let admins group machines and VM hosts logically, aiding in resource allocation for specific functions. By default, all machines are added to the "default" pool, but custom pools can be created for specific needs. For example, in a hospital data center, you might reserve machines for applications like charts, documentation, or orders.
-
-Assigning machines to resource pools ensures they're allocated appropriately, regardless of the specific application deployed on them. This grouping also enhances multi-tenancy by restricting user access based on roles and assigned pools.  MAAS auto-assigns new machines to the "default" resource pool.
+In addition to formal grouping, MAAS lets you attach notes or dynamic annotations to machines. These aren’t designed as grouping tools, but they can provide context that helps you reason about why a machine is in a particular tag, zone, or pool. Notes are human-readable reminders that persist through any state from Ready to Deployed.  Annotations are dynamic and persist only while a machine is deployed, but they can be updated programmatically to reflect changing conditions.
