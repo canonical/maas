@@ -45,8 +45,8 @@ def image_store_dir(maas_data_dir, mocker):
 def boot_activities(mocker, controller):
     region_id = controller.system_id
     token = create_auth_token(controller.owner)
-    mocker.patch.object(BootResourcesActivity, "_create_unix_client")
-    mocker.patch.object(BootResourcesActivity, "_create_client")
+    mocker.patch.object(BootResourcesActivity, "_create_unix_session")
+    mocker.patch.object(BootResourcesActivity, "_create_session")
     act = BootResourcesActivity("", token, "", region_id)
     yield act
 
