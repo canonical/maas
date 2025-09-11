@@ -645,5 +645,6 @@ class ServiceCollectionV3:
             configurations_service=services.configurations,
             users_service=services.users,
             vlans_service=services.vlans,
+            v3dnsrrsets_service=services.v3dnsrrsets,
         )
         return services

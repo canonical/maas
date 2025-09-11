@@ -141,7 +141,7 @@ class TestDomainsService:
             domains_repository=domains_repository,
         )
         if not valid:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValidationException):
                 builder = DomainBuilder(name=name)
                 await service.create(builder)
         else:
@@ -175,7 +175,7 @@ class TestDomainsService:
             users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationException):
             builder = DomainBuilder(name="maas_internal_domain")
             await service.create(builder)
 

@@ -1,7 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -11,6 +11,13 @@ from maasservicelayer.builders.dnsdata import DNSDataBuilder
 from maasservicelayer.builders.dnsresources import DNSResourceBuilder
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.dnsdata import DNSDataClauseFactory
+from maasservicelayer.db.repositories.dnsresources import (
+    DNSResourceClauseFactory,
+)
+from maasservicelayer.db.repositories.domains import DomainsClauseFactory
+from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.dnsresourcerecordsets import (
     DNSResourceTypeEnum,
     GenericDNSRecord,
@@ -291,3 +298,120 @@ class TestV3DNSResourceRecordSetsService:
             domain_id=0, dns_record=dns_record, user_id=0
         )
         dnsresource_service.create.assert_called_once_with(resource_builder)
+
+    @pytest.mark.parametrize("kms_host", ["", None])
+    async def test_update_kms_srv_empty_value(
+        self, kms_host: str | None
+    ) -> None:
+        domains_service = Mock(DomainsService)
+        dnsresource_service = Mock(DNSResourcesService)
+        dnsdata_service = Mock(DNSDataService)
+        domains_service.get_many.return_value = [
+            Domain(id=0, name="maas", authoritative=True, ttl=30)
+        ]
+        v3dnsrrsets_service = V3DNSResourceRecordSetsService(
+            context=Mock(Context),
+            domains_service=domains_service,
+            dnsresource_service=dnsresource_service,
+            dnsdata_service=dnsdata_service,
+            staticipaddress_service=Mock(StaticIPAddressService),
+            subnets_service=Mock(SubnetsService),
+        )
+        v3dnsrrsets_service._create_dnsdata_records_for_domain = AsyncMock()
+
+        await v3dnsrrsets_service.update_kms_srv(kms_host)
+
+        domains_service.get_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=DomainsClauseFactory.with_authoritative(True)
+            )
+        )
+        dnsdata_service.delete_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=DNSDataClauseFactory.and_clauses(
+                    [
+                        DNSDataClauseFactory.with_domain_id(0),
+                        DNSDataClauseFactory.with_dnsresource_name(
+                            "_vlmcs._tcp"
+                        ),
+                        DNSDataClauseFactory.with_rrtype(
+                            DNSResourceTypeEnum.SRV
+                        ),
+                        DNSDataClauseFactory.with_rrdata_starting_with(
+                            "0 0 1688 "
+                        ),
+                    ]
+                )
+            )
+        )
+        dnsresource_service.get_one.assert_not_awaited()
+        domains_service.validate_domain_name.assert_not_awaited()
+        v3dnsrrsets_service._create_dnsdata_records_for_domain.assert_not_awaited()
+
+    async def test_update_kms_srv_invalid_name(self) -> None:
+        domains_service = Mock(DomainsService)
+        dnsresource_service = Mock(DNSResourcesService)
+        dnsdata_service = Mock(DNSDataService)
+        domains_service.get_many.return_value = [
+            Domain(id=0, name="maas", authoritative=True, ttl=30)
+        ]
+        domains_service.validate_domain_name.side_effect = ValueError(
+            "Domain name contains invalid characters."
+        )
+        v3dnsrrsets_service = V3DNSResourceRecordSetsService(
+            context=Mock(Context),
+            domains_service=domains_service,
+            dnsresource_service=dnsresource_service,
+            dnsdata_service=dnsdata_service,
+            staticipaddress_service=Mock(StaticIPAddressService),
+            subnets_service=Mock(SubnetsService),
+        )
+        v3dnsrrsets_service._create_dnsdata_records_for_domain = AsyncMock()
+
+        kms_host = "!%^$test"
+        with pytest.raises(ValidationException) as exc_info:
+            await v3dnsrrsets_service.update_kms_srv(kms_host)
+        assert exc_info.value.args[0] == "Invalid value."
+        assert (
+            exc_info.value.details[0].message
+            == "Domain name contains invalid characters."
+        )
+        assert exc_info.value.details[0].field == "value"
+
+    async def test_update_kms_srv(self) -> None:
+        domains_service = Mock(DomainsService)
+        dnsresource_service = Mock(DNSResourcesService)
+        dnsdata_service = Mock(DNSDataService)
+        domains_service.get_many.return_value = [
+            Domain(id=0, name="maas", authoritative=True, ttl=30)
+        ]
+        v3dnsrrsets_service = V3DNSResourceRecordSetsService(
+            context=Mock(Context),
+            domains_service=domains_service,
+            dnsresource_service=dnsresource_service,
+            dnsdata_service=dnsdata_service,
+            staticipaddress_service=Mock(StaticIPAddressService),
+            subnets_service=Mock(SubnetsService),
+        )
+        v3dnsrrsets_service._create_dnsdata_records_for_domain = AsyncMock()
+
+        kms_host = "test"
+        await v3dnsrrsets_service.update_kms_srv(kms_host)
+
+        domains_service.get_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=DomainsClauseFactory.with_authoritative(True)
+            )
+        )
+        print(dnsresource_service.get_one.call_args)
+        dnsresource_service.get_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=DNSResourceClauseFactory.and_clauses(
+                    [
+                        DNSResourceClauseFactory.with_name("_vlmcs._tcp"),
+                        DNSResourceClauseFactory.with_domain_id(0),
+                    ]
+                )
+            )
+        )
+        v3dnsrrsets_service._create_dnsdata_records_for_domain.assert_awaited_once()

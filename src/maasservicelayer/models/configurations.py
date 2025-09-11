@@ -1077,8 +1077,9 @@ class VaultEnabledConfig(Config[Optional[bool]]):
 
 
 class WindowsKmsHostConfig(Config[Optional[str]]):
-    is_public: ClassVar[bool] = False
+    is_public: ClassVar[bool] = True
     name: ClassVar[str] = "windows_kms_host"
+    hook_required: ClassVar[bool] = True
     default: ClassVar[Optional[str]] = None
     description: ClassVar[str] = "Windows KMS activation host"
     help_text: ClassVar[Optional[str]] = (

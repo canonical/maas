@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.dnsdata import DNSDataClauseFactory
 from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceClauseFactory,
 )
+from maasservicelayer.db.repositories.domains import DomainsClauseFactory
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
 )
@@ -21,6 +22,7 @@ from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
     NotFoundException,
+    ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
@@ -272,3 +274,65 @@ class V3DNSResourceRecordSetsService(Service):
                     rrdata=rrdata,
                 )
             )
+
+    async def update_kms_srv(self, kms_host: str | None):
+        for domain in await self.domains_service.get_many(
+            query=QuerySpec(
+                where=DomainsClauseFactory.with_authoritative(True)
+            )
+        ):
+            if kms_host in (None, ""):
+                # No more Config.windows_kms_host, so we need to delete the kms
+                # host entries that we may have created.
+                await self.dnsdata_service.delete_one(
+                    query=QuerySpec(
+                        where=DNSDataClauseFactory.and_clauses(
+                            [
+                                DNSDataClauseFactory.with_domain_id(domain.id),
+                                DNSDataClauseFactory.with_dnsresource_name(
+                                    "_vlmcs._tcp"
+                                ),
+                                DNSDataClauseFactory.with_rrtype(
+                                    DNSResourceTypeEnum.SRV
+                                ),
+                                DNSDataClauseFactory.with_rrdata_starting_with(
+                                    "0 0 1688 "
+                                ),
+                            ]
+                        )
+                    )
+                )
+            else:
+                try:
+                    await self.domains_service.validate_domain_name(kms_host)
+                except ValueError as e:
+                    raise ValidationException.build_for_field(
+                        field="value", message=str(e)
+                    ) from e
+                # force kms_host to be an FQDN (with trailing dot.)
+                if not kms_host.endswith("."):
+                    kms_host += "."
+                # The windows_kms_host config parameter only manages priority 0,
+                # weight 0, port 1688.  To do something different, use the api.
+                srv_record = GenericDNSRecord(
+                    name="_vlmcs._tcp",
+                    rrtype=DNSResourceTypeEnum.SRV,
+                    rrdatas=[f"0 0 1688 {kms_host}"],
+                )
+                dns_resource = await self.dnsresource_service.get_one(
+                    query=QuerySpec(
+                        where=DNSResourceClauseFactory.and_clauses(
+                            [
+                                DNSResourceClauseFactory.with_name(
+                                    srv_record.name
+                                ),
+                                DNSResourceClauseFactory.with_domain_id(
+                                    domain.id
+                                ),
+                            ]
+                        )
+                    )
+                )
+                await self._create_dnsdata_records_for_domain(
+                    srv_record, domain, dns_resource
+                )

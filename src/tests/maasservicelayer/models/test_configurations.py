@@ -330,7 +330,6 @@ class TestConfigFactory:
             "tls_port",
             "uuid",
             "vault_enabled",
-            "windows_kms_host",
         ],
     )
     def test_private_config(self, name: str):

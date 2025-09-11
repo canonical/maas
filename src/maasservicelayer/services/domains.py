@@ -57,15 +57,13 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         self.configurations_service = configurations_service
         self.users_service = users_service
 
-    async def pre_create_hook(self, builder: DomainBuilder) -> None:
+    async def validate_domain_name(self, name):
         # Same name validation as maasserver.models.domain.validate_domain_name
         namespec = re.compile(f"^{NAMESPEC}$")
-        name = builder.name
         assert isinstance(name, str)
         if len(name) > 255:
-            raise ValidationException.build_for_field(
-                field="name",
-                message="Domain name cannot exceed 255 characters.",
+            raise ValueError(
+                "Domain name cannot exceed 255 characters.",
             )
         if not namespec.match(name):
             disallowed_chars = re.sub("[a-zA-Z0-9-.]*", "", name)
@@ -78,6 +76,14 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
             raise ValueError(
                 "Domain name cannot duplicate MAAS internal domain."
             )
+
+    async def pre_create_hook(self, builder: DomainBuilder) -> None:
+        try:
+            await self.validate_domain_name(builder.name)
+        except ValueError as e:
+            raise ValidationException.build_for_field(
+                field="name", message=str(e)
+            ) from e
 
     async def post_create_hook(self, resource: Domain) -> None:
         if resource.authoritative:
