@@ -33,7 +33,6 @@ class TestZoneSerial(MAASServerTestCase):
         self.assertEqual(zone_serial.owner, "maasserver_dnspublication.serial")
 
     def test_parameters_in_database(self):
-        zone_serial.create_if_not_exists()
         query = "SELECT last_value, is_called FROM %s" % zone_serial.name
         with connection.cursor() as cursor:
             cursor.execute(query)

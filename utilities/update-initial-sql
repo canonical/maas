@@ -34,7 +34,7 @@ if ! have_pending_migration; then
 fi
 
 msg "upgrading schema"
-bin/maas-region dbupgrade --internal-no-triggers
+bin/maas-region dbupgrade
 
 msg "dumping updated database file"
 pg_dump "$PGDATABASE" --no-owner --no-privileges --format=plain -f "$sql_dump_file"

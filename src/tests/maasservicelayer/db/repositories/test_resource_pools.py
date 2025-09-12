@@ -58,8 +58,8 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
     ) -> list[ResourcePool]:
         # The default resource pool is created by the migrations
         # and it has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:12611
-        ts = datetime(2021, 11, 19, 12, 40, 56, 904770, tzinfo=timezone.utc)
+        # see src/maasserver/testing/inital.maas_test.sql:9360
+        ts = datetime(2025, 9, 11, 12, 23, 3, 583496, tzinfo=timezone.utc)
         created_resource_pools = [
             ResourcePool(
                 id=0,

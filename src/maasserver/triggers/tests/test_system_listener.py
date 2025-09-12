@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Use the `PostgresListenerService` to test all of the triggers from for
@@ -13,7 +13,6 @@ from twisted.internet.defer import inlineCallbacks
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.triggers.system import register_system_triggers
 from maasserver.triggers.testing import (
     DNSHelpersMixin,
     RBACHelpersMixin,
@@ -35,7 +34,6 @@ class TestCoreRegionRackRPCConnectionInsertListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_alerts_region_process_and_sets_managing_process(self):
-        yield deferToDatabase(register_system_triggers)
         region = yield deferToDatabase(self.create_region_controller)
         region_process = yield deferToDatabase(
             self.create_region_controller_process, {"region": region}
@@ -125,8 +123,6 @@ class TestCoreRegionRackRPCConnectionInsertListener(
             },
         )
 
-        # Now create the trigger so that it is actually ran.
-        yield deferToDatabase(register_system_triggers)
         process_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -212,8 +208,6 @@ class TestCoreRegionRackRPCConnectionInsertListener(
             },
         )
 
-        # Now create the trigger so that it is actually ran.
-        yield deferToDatabase(register_system_triggers)
         process_dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -287,9 +281,6 @@ class TestCoreRegionRackRPCConnectionInsertListener(
                 "rack_controller": rack_controller,
             },
         )
-
-        # Now create the trigger so that it is actually ran.
-        yield deferToDatabase(register_system_triggers)
 
         # Catch that unwatch is called on the overloaded region process and
         # watch is called on the other region process.
@@ -387,9 +378,6 @@ class TestCoreRegionRackRPCConnectionInsertListener(
             )
             region_process_endpoints.append(endpoint)
 
-        # Now create the trigger so that it is actually ran.
-        yield deferToDatabase(register_system_triggers)
-
         # Create a new connection between the rack controller and the first
         # un-used region process. The managing rack controller should not
         # change because the rack controller is not connected to at least
@@ -470,9 +458,6 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
             },
         )
 
-        # Now create the trigger so that it is actually ran.
-        yield deferToDatabase(register_system_triggers)
-
         # Catch that unwatch is called on the region process and
         # watch is called on the other region process.
         listener = self.make_listener_without_delay()
@@ -541,9 +526,6 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
             },
         )
 
-        # Now create the trigger so that it is actually ran.
-        yield deferToDatabase(register_system_triggers)
-
         # Catch that unwatch is called on the region process and
         # watch is called on the other region process.
         listener = self.make_listener_without_delay()
@@ -583,7 +565,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_subnet_insert(self):
-        yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register("sys_proxy", lambda *args: dv.set(args))
@@ -597,7 +578,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_subnet_cidr_update(self):
-        yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(self.create_subnet)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -621,7 +601,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_subnet_allow_proxy_update(self):
-        yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(
             self.create_subnet, {"allow_proxy": False}
         )
@@ -640,7 +619,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_subnet_delete(self):
-        yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(self.create_subnet)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -655,7 +633,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_insert_enable_proxy(self):
-        yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register("sys_proxy", lambda *args: dv.set(args))
@@ -669,7 +646,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_insert_use_peer_proxy(self):
-        yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register("sys_proxy", lambda *args: dv.set(args))
@@ -683,7 +659,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_insert_prefer_v4_proxy(self):
-        yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register("sys_proxy", lambda *args: dv.set(args))
@@ -697,7 +672,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_insert_maas_proxy_port(self):
-        yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register("sys_proxy", lambda *args: dv.set(args))
@@ -712,7 +686,6 @@ class TestProxyListener(
     @inlineCallbacks
     def test_sends_message_for_config_insert_http_proxy(self):
         self.useFixture(SignalsDisabled("bootsources"))
-        yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register("sys_proxy", lambda *args: dv.set(args))
@@ -728,7 +701,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_update_enable_proxy(self):
-        yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(self.create_config, "enable_proxy", True)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -743,7 +715,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_update_use_peer_proxy(self):
-        yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(self.create_config, "use_peer_proxy", True)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -758,7 +729,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_update_prefer_v4_proxy(self):
-        yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(self.create_config, "prefer_v4_proxy", True)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -773,7 +743,6 @@ class TestProxyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_update_maas_proxy_port(self):
-        yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(self.create_config, "maas_proxy_port", 8000)
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -789,7 +758,6 @@ class TestProxyListener(
     @inlineCallbacks
     def test_sends_message_for_config_update_http_proxy(self):
         self.useFixture(SignalsDisabled("bootsources"))
-        yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
             self.create_config, "http_proxy", "http://proxy1.example.com"
         )
@@ -814,7 +782,6 @@ class TestRBACResourcePoolListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_resource_pool_insert(self):
-        yield deferToDatabase(register_system_triggers)
         yield self.captureSynced()
         name = factory.make_name("pool")
         dv = DeferredValue()
@@ -839,7 +806,6 @@ class TestRBACResourcePoolListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_resource_pool_update(self):
-        yield deferToDatabase(register_system_triggers)
         pool = yield deferToDatabase(self.create_resource_pool, {})
         pool_name = factory.make_name("pool")
         yield self.captureSynced()
@@ -868,7 +834,6 @@ class TestRBACResourcePoolListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_resource_pool_delete(self):
-        yield deferToDatabase(register_system_triggers)
         pool = yield deferToDatabase(self.create_resource_pool)
         yield self.captureSynced()
         dv = DeferredValue()

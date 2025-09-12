@@ -1,59 +1,14 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.triggers`."""
-
-from contextlib import closing
-
-from django.db import connection
-
-from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.triggers import register_procedure, register_trigger
-from maasserver.triggers.system import register_system_triggers
-from maasserver.triggers.websocket import (
-    register_websocket_triggers,
-    render_notification_procedure,
-)
-
-EMPTY_SET = frozenset()
+import pytest
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 
-class TestTriggers(MAASServerTestCase):
-    def test_register_trigger_doesnt_create_trigger_if_already_exists(self):
-        NODE_CREATE_PROCEDURE = render_notification_procedure(
-            "node_create_notify", "node_create", "NEW.system_id"
-        )
-        register_procedure(NODE_CREATE_PROCEDURE)
-        with closing(connection.cursor()) as cursor:
-            cursor.execute(
-                "DROP TRIGGER IF EXISTS node_node_create_notify ON "
-                "maasserver_node;"
-                "CREATE TRIGGER node_node_create_notify "
-                "AFTER INSERT ON maasserver_node "
-                "FOR EACH ROW EXECUTE PROCEDURE node_create_notify();"
-            )
-
-        # Will raise an OperationError if trigger already exists.
-        register_trigger("maasserver_node", "node_create_notify", "insert")
-
-    def test_register_trigger_creates_missing_trigger(self):
-        NODE_CREATE_PROCEDURE = render_notification_procedure(
-            "node_create_notify", "node_create", "NEW.system_id"
-        )
-        register_procedure(NODE_CREATE_PROCEDURE)
-        register_trigger("maasserver_node", "node_create_notify", "insert")
-
-        with closing(connection.cursor()) as cursor:
-            cursor.execute(
-                "SELECT * FROM pg_trigger WHERE "
-                "tgname = 'node_node_create_notify'"
-            )
-            triggers = cursor.fetchall()
-
-        self.assertEqual(1, len(triggers), "Trigger was not created.")
-
-
-class TestTriggersUsed(MAASServerTestCase):
+@pytest.mark.usefixtures("ensuremaasdb")
+@pytest.mark.asyncio
+class TestTriggersUsed:
     """Tests relating to those triggers the MAAS application uses."""
 
     triggers_system = {
@@ -189,8 +144,6 @@ class TestTriggersUsed(MAASServerTestCase):
         "piston3_consumer_consumer_token_update_notify",
         "piston3_token_token_create_notify",
         "piston3_token_token_delete_notify",
-        "piston3_token_user_token_link_notify",
-        "piston3_token_user_token_unlink_notify",
         "service_service_create_notify",
         "service_service_delete_notify",
         "service_service_update_notify",
@@ -229,37 +182,64 @@ class TestTriggersUsed(MAASServerTestCase):
 
     triggers_all = triggers_system | triggers_websocket
 
-    def find_triggers_in_database(self):
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT tgname::text FROM pg_trigger WHERE NOT tgisinternal"
-            )
-            return {tgname for (tgname,) in cursor.fetchall()}
+    async def find_triggers_in_database(self, db_connection: AsyncConnection):
+        stmt = text(
+            "SELECT tgname::text FROM pg_trigger WHERE NOT tgisinternal"
+        )
+        result = await db_connection.execute(stmt)
+        return {tgname for (tgname,) in result.fetchall()}
 
-    def check_triggers_in_database(self):
+    async def check_triggers_in_database(self, db_connection: AsyncConnection):
         # Note: if this test fails, a trigger may have been added, but not
         # added to the list of expected triggers.
-        triggers_found = self.find_triggers_in_database()
-        self.assertEqual(
-            (self.triggers_all - triggers_found),
-            EMPTY_SET,
-            "Some triggers were expected but not found.",
+        triggers_found = await self.find_triggers_in_database(db_connection)
+        assert self.triggers_all - triggers_found == frozenset(), (
+            "Some triggers were expected but not found."
         )
-        self.assertEqual(
-            (triggers_found - self.triggers_all),
-            EMPTY_SET,
-            "Some triggers were unexpected.",
+        assert triggers_found - self.triggers_all == frozenset(), (
+            "Some triggers were unexpected."
         )
 
-    def test_all_triggers_present_and_correct(self):
+    async def test_all_triggers_present_and_correct(
+        self, db_connection: AsyncConnection
+    ):
         # Running in a fully migrated database means all triggers should be
         # present from the get go.
-        self.check_triggers_in_database()
+        await self.check_triggers_in_database(db_connection)
 
-    def test_register_system_triggers_does_not_introduce_more(self):
-        register_system_triggers()
-        self.check_triggers_in_database()
 
-    def test_register_websocket_triggers_does_not_introduce_more(self):
-        register_websocket_triggers()
-        self.check_triggers_in_database()
+@pytest.mark.usefixtures("ensuremaasdb")
+@pytest.mark.asyncio
+class TestTriggers:
+    async def test_register_system_triggers(
+        self, db_connection: AsyncConnection
+    ):
+        triggers = [
+            "regionrackrpcconnection_sys_core_rpc_insert",
+            "regionrackrpcconnection_sys_core_rpc_delete",
+            "subnet_sys_proxy_subnet_insert",
+            "subnet_sys_proxy_subnet_update",
+            "subnet_sys_proxy_subnet_delete",
+            "resourcepool_sys_rbac_rpool_insert",
+            "resourcepool_sys_rbac_rpool_update",
+            "resourcepool_sys_rbac_rpool_delete",
+        ]
+
+        stmt = text("""
+            SELECT tgname::text
+            FROM pg_trigger
+            WHERE tgname::text = ANY(:triggers)
+        """).bindparams(triggers=triggers)
+
+        result = await db_connection.execute(stmt)
+        db_triggers = [row[0] for row in result.fetchall()]
+
+        # Note: if this test fails, a trigger may have been added, but not
+        # added to the list of expected triggers.
+        triggers_found = [trigger[0] for trigger in db_triggers]
+        missing_triggers = [
+            trigger for trigger in triggers if trigger not in triggers_found
+        ]
+        assert len(triggers) == len(db_triggers), (
+            f"Missing {len(triggers) - len(db_triggers)} triggers in the database. Triggers missing: {missing_triggers}"
+        )

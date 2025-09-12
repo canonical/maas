@@ -4,7 +4,6 @@
 """Global default objects."""
 
 from django.db.models import AutoField, ForeignKey, Manager, PROTECT
-from django.utils import timezone
 
 from maasserver.enum import ALLOCATED_NODE_STATUSES, NODE_STATUS
 from maasserver.models.cleansave import CleanSave
@@ -17,17 +16,7 @@ maaslog = get_maas_logger("default")
 
 class GlobalDefaultManager(Manager):
     def instance(self):
-        now = timezone.now()
-        instance, _ = self.get_or_create(
-            id=0,
-            defaults=dict(
-                id=0,
-                domain=Domain.objects.get_or_create_default_domain(),
-                created=now,
-                updated=now,
-            ),
-        )
-        return instance
+        return self.get(id=0)  # Created in the initial alembic migration.
 
 
 class GlobalDefault(CleanSave, TimestampedModel):

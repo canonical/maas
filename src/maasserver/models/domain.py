@@ -26,7 +26,6 @@ from django.db.models import (
 )
 from django.db.models.aggregates import Coalesce
 from django.db.models.query import QuerySet
-from django.utils import timezone
 from netaddr import IPAddress
 
 from maascommon.enums.dns import DnsUpdateAction
@@ -130,22 +129,6 @@ class DomainManager(Manager, DomainQueriesMixin):
             );"""
         )
         return list(rows)
-
-    def get_or_create_default_domain(self):
-        """Return the default domain."""
-        now = timezone.now()
-        domain, _ = self.get_or_create(
-            id=0,
-            defaults={
-                "id": 0,
-                "name": DEFAULT_DOMAIN_NAME,
-                "authoritative": True,
-                "ttl": None,
-                "created": now,
-                "updated": now,
-            },
-        )
-        return domain
 
     def get_domain_or_404(self, specifiers, user, perm):
         """Fetch a `Domain` by its id.  Raise exceptions if no `Domain` with

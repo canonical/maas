@@ -43,8 +43,8 @@ class TestCommonPackageRepositoriesRepository(
     ) -> list[PackageRepository]:
         # The default package repositories are created by the migration and it
         # has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:12541
-        ts = datetime(2021, 11, 19, 12, 40, 50, 636477, tzinfo=timezone.utc)
+        # see src/maasserver/testing/inital.maas_test.sql:9239
+        ts = datetime(2025, 9, 11, 12, 23, 3, 583496, tzinfo=timezone.utc)
         created_package_repositories = [
             PackageRepository(
                 id=1,

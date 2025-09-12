@@ -59,8 +59,8 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
     ) -> list[Zone]:
         # The default zone is created by the migration and it has the following
         # timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:12804
-        ts = datetime(2021, 11, 19, 12, 40, 43, 705399, tzinfo=timezone.utc)
+        # see src/maasserver/testing/inital.maas_test.sql:9553
+        ts = datetime(2025, 9, 11, 12, 23, 3, 583496, tzinfo=timezone.utc)
         created_zones = [
             Zone(
                 id=1,
