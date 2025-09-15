@@ -13,6 +13,11 @@ class BootResourceType(IntEnum):
     UPLOADED = 2  # uploaded by user
 
 
+class BootResourceStrType(StrEnum):
+    SYNCED = "synced"
+    UPLOADED = "uploaded"
+
+
 class BootResourceFileType(StrEnum):
     """The vocabulary of possible file types for `BootResource`."""
 
