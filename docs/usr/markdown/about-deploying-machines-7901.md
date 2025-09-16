@@ -1,56 +1,87 @@
-This page explains the mechanics of MAAS machine deployment.
+Deployment is the central purpose of MAAS: taking bare-metal or virtual hardware and turning it into a running machine with an operating system and configuration ready for workloads. This section explains how deployment works, what components are involved, and what you can expect when MAAS installs an OS on a machine.
 
-## Deployment process
 
-Once a machine has been commissioned, the next logical step is to deploy it. Deploying a machine means, effectively, to install an operating system on it, along with any other application loads you wish to run on that machine.
+## From allocation to deployment
 
-A detailed picture of deployment looks something like this:
+Before deployment can begin, a machine must be:
 
-![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/f/f7e0fb1916bca084de75fc0479bfec3c95adf7b6.png)
+1. Commissioned – so MAAS knows its hardware profile and can schedule it.
+2. Allocated – reserved for a specific user or process, ensuring no other workflow can interfere.
 
-Before deploying a machine, MAAS must allocate it (status 'Allocated'). Allocating a machine reserves the machine for the exclusive use of the allocation process. The machine is no longer available to any other process, including another MAAS instance, or a process such as Juju.
+Once a machine is allocated, MAAS can drive it through the deployment sequence.
 
-The agent that triggers deployment may vary. For instance, if the machines are destined to run complex, inter-related services that scale up or down frequently, like a "cloud" resource, then [Juju](https://jaas.ai/) is the recommended deployment agent. Juju will also install and configure services on the deployed machines. If you want to use MAAS to install a base operating system and work on the machines manually, then you can deploy a machine directly with MAAS.
+
+## The role of curtin and cloud-init
+
+Two key technologies power MAAS deployments:
+
+- Curtin (“curt installer”): A fast, image-based installer. Curtin runs inside a small ephemeral environment, prepares the hardware (partitioning, RAID, filesystem creation), and writes the target operating system image to disk.
+- Cloud-init: A first-boot configuration tool embedded in the target OS image. Cloud-init handles user-data, networking, package installs, and any customisation you’ve provided.
+
+Together, curtin and cloud-init ensure that machines emerge from deployment both installed and configured.
+
+
+## Deployment sequence in detail
+
+The following steps trace the boot and installation process for a typical deployment:
+
+1. Power on: MAAS uses the machine’s BMC (IPMI, Redfish, iLO, etc.) to trigger a power-on.
+2. DHCP discovery: The machine sends a DHCP discover. The MAAS DHCP service replies with an IP address and the location of a boot server.
+3. Network Boot Program (NBP): The firmware downloads a bootloader (via TFTP or HTTP).
+4. Ephemeral image request: The bootloader asks MAAS for a bootable kernel and initrd.
+5. Ephemeral environment boot: MAAS delivers a kernel, initrd, and a compressed SquashFS root filesystem. The machine boots into this RAM-only environment.
+6. Curtin runs: Inside the ephemeral OS, curtin executes. It applies preseed instructions, partitions disks, configures storage, and lays down the target OS image.
+7. Target image installation: Curtin fetches the target image (Ubuntu, CentOS, RHEL, or a custom image) from the MAAS image store and installs it onto the machine’s storage.
+8. Reboot into target OS: Once installation is complete, the machine reboots from local disk.
+9. Cloud-init takes over: On first boot, the embedded cloud-init in the target OS configures networking, applies SSH keys, installs packages, and runs any user-defined scripts.
+10. Deployed state: The machine is now operational, running the chosen OS with your configuration applied.
+
 
 ## Access to deployed machines
 
-Machines deployed with MAAS will also be ready to accept connections via SSH, to the 'ubuntu' user account. This connection assumes that you have imported an SSH key to your MAAS account.
+By default, MAAS injects your SSH keys into the deployed machine and enables login for the `ubuntu` user. Other orchestration layers, like [Juju](https://juju.is/), may add additional keys and perform further service-level configuration.
 
-Juju adds SSH keys to machines under its control.
+This makes it possible to log in immediately after deployment without touching the machine’s console.
 
-## Pre-seeding deployments
 
-MAAS also supports machine customisation with a process called "preseeding."
+## Preseeding and customisation
 
-## Basic requirements for deployment
+Curtin supports preseed files, allowing administrators to influence how storage, networking, or packages are configured during deployment. Cloud-init adds a second layer of flexibility, running scripts and applying configuration on first boot.
 
-To deploy, you must configure the underlying machine to netboot. Such a machine will undergo the following process, outlined in the above diagram:
+Between curtin preseeds and cloud-init user-data, you can tailor deployments to a very fine level of detail.
 
-1. MAAS boots the machine via the machine's BMC, using whatever power driver is necessary to properly communicate with the machine.
-2. The booted machine sends a DHCP Discover request.
-3. The MAAS-managed DHCP server (ideally) responds with an IP address and the location of a MAAS-managed HTTP or TFTP boot server.
-4. The machine uses the HTTP/TFTP location to request a usable Network Boot Program (NBP).
-5. The machine receives the NBP and boots.
-6. The machine firmware requests a bootable image.
-7. MAAS sends an ephemeral OS image, including an initrd; this ephemeral (RAM-only) image is necessary for `curtin` to carry out any hardware-prep instructions (such as disk partitioning) before the deployed OS is booted.
-8. The initrd mounts a SquashFS image, also ephemerally, over HTTP.
-9. The machine boots the ephemeral image.
-10. The ephemeral image runs `curtin`, with passed pre-seed information, to configure the machine's hardware.
-11. The desired deployment (target) image is retrieved by `curtin`, which installs and boots that deployment image. Note that the curtin installer uses an image-based method and is now the only installer used by MAAS. Although the older debian-installer method has been removed, curtin continues to support preseed files. 
-12. The target image runs its embedded `cloud-init` script set, including any customisations and pre-seeds.
 
-Once this is done, the target image is up and running on the machine, and the machine can be considered successfully deployed.
+## Ephemeral OS deployments (MAAS 3.5+)
 
-Also note that, before deploying, you should take two key actions:
+Since MAAS 3.5, you can choose to deploy an ephemeral OS instance:
 
-1. Review and possibly set the Ubuntu kernels that will get used by deployed machines.
+- The entire operating system runs from memory, with no disk installation.
+- This is useful for stateless workloads, temporary testing, or security-sensitive use cases.
+- For Ubuntu images, MAAS configures full networking automatically. For non-Ubuntu images, only the PXE interface is configured; additional interfaces must be set up manually.
 
-2. Ensure any pertinent SSH keys are imported to MAAS so it can connect to deployed machines.
+Ephemeral deployment is available in the deployment configuration screen by selecting “Deploy in memory.”
 
-## Deploying ephemeral OS instances (MAAS 3.5 and higher)
 
-With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images are possible.  These ephemeral deployments run completely in the machine's memory and need not access (or be aware of) any disk resources.  
+## Why image-based deployment?
 
-Note that networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
+MAAS no longer uses the older Debian installer (d-i). Instead, curtin installs images directly. This provides:
 
-You can choose an ephemeral OS deployment from the deployment configuration screen in the machine list: Just select the "Deploy in memory" option and deploy as normal.
+- Much faster deployment (no per-package downloads).
+- Consistency across machines.
+- Support for prebuilt custom images.
+
+The images provided by MAAS are delivered as kernel/initrd pairs plus a SquashFS filesystem, streamed efficiently over HTTP.
+
+
+## Key takeaway
+
+Deployment in MAAS is a tightly choreographed sequence:
+
+Allocate → PXE boot → ephemeral environment → curtin installs → cloud-init configures → reboot → deployed.
+
+By combining curtin’s fast, image-based installation with cloud-init’s flexible first-boot configuration, MAAS delivers machines that are not just provisioned but production-ready.
+
+## Next steps
+
+- Learn how to [customize machines](https://canonical.com/maas/docs/about-machine-customization) to deliver precisely-tailored configurations.
+- Discover some of the [pre-packaged configurations](https://canonical.com/maas/docs/how-to-use-cloud-init-with-maas) you can deploy using cloud-init.
