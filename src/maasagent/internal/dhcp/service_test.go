@@ -17,6 +17,7 @@ package dhcp
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -27,16 +28,24 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/canonical/lxd/lxd/db/schema"
+	"github.com/canonical/microcluster/v2/microcluster"
+	"github.com/canonical/microcluster/v2/state"
+	"github.com/insomniacslk/dhcp/dhcpv4"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
+	"maas.io/core/src/maasagent/internal/cluster"
 	"maas.io/core/src/maasagent/internal/dhcpd"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
@@ -141,6 +150,7 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 		s.T().Name(),
 		mockControllerV4,
 		mockControllerV6,
+		false,
 		WithOMAPIConnFactory(func(_ string, _ string) (net.Conn, error) {
 			return client, nil
 		}),
@@ -557,8 +567,8 @@ func TestQueueFlush(t *testing.T) {
 	}{
 		"successful request": {
 			notifications: []*dhcpd.Notification{
-				//nolint:gofmt // linter is expecting {} but we need a pointer
-				&dhcpd.Notification{
+
+				{
 					IP:  "10.0.0.1",
 					MAC: "00:00:00:00:00",
 				},
@@ -579,8 +589,8 @@ func TestQueueFlush(t *testing.T) {
 		},
 		"retry once": {
 			notifications: []*dhcpd.Notification{
-				//nolint:gofmt // linter is expecting {} but we need a pointer
-				&dhcpd.Notification{
+
+				{
 					IP:  "10.0.0.1",
 					MAC: "00:00:00:00:00",
 				},
@@ -644,5 +654,537 @@ func TestQueueFlush(t *testing.T) {
 				t.Error("expected an error to be returned")
 			}
 		})
+	}
+}
+
+func TestConfigureDQLite(t *testing.T) {
+	testcases := map[string]struct {
+		in  ConfigDQLiteParam
+		out struct {
+			vlans    []Vlan
+			subnets  []Subnet
+			ipranges []IPRange
+		}
+		err error
+	}{
+		"basic": {
+			in: ConfigDQLiteParam{
+				Vlans: []VLANData{
+					{
+						ID:  1,
+						VID: 0,
+						MTU: 1500,
+					},
+				},
+				Subnets: []SubnetData{
+					{
+						ID:         1,
+						GatewayIP:  "10.0.0.1",
+						DNSServers: []string{"10.0.0.2"},
+						VlanID:     1,
+						AllowDNS:   true,
+						CIDR:       "10.0.0.0/24",
+					},
+				},
+				Interfaces: []InterfaceData{
+					{
+						ID:     1,
+						Name:   "lo",
+						VlanID: 1,
+					},
+				},
+				IPRanges: []IPRangeData{
+					{
+						ID:       1,
+						StartIP:  "10.0.0.100",
+						EndIP:    "10.0.0.200",
+						Dynamic:  true,
+						SubnetID: 1,
+					},
+				},
+				DefaultDNSServers: []string{"1.1.1.1"},
+				NTPServers:        []string{"10.0.0.2"},
+			},
+			out: struct {
+				vlans    []Vlan
+				subnets  []Subnet
+				ipranges []IPRange
+			}{
+				vlans: []Vlan{
+					{
+						ID:  1,
+						VID: 0,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionInterfaceMTU):       "1500",
+							uint16(dhcpv4.OptionIPAddressLeaseTime): "600",
+						},
+					},
+				},
+				subnets: []Subnet{
+					{
+						ID: 1,
+						CIDR: &net.IPNet{
+							IP:   net.ParseIP("10.0.0.0").To4(),
+							Mask: net.CIDRMask(24, 32),
+						},
+						VlanID:        1,
+						AddressFamily: 4,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionSubnetMask):       "ffffff00",
+							uint16(dhcpv4.OptionDomainNameServer): "1.1.1.1,10.0.0.2",
+							uint16(dhcpv4.OptionNTPServers):       "10.0.0.2",
+							uint16(dhcpv4.OptionRouter):           "10.0.0.1",
+						},
+					},
+				},
+				ipranges: []IPRange{
+					{
+						ID:             1,
+						StartIP:        net.ParseIP("10.0.0.100"),
+						EndIP:          net.ParseIP("10.0.0.200"),
+						Size:           101,
+						SubnetID:       1,
+						FullyAllocated: false,
+						Dynamic:        true,
+						Options:        make(map[uint16]string),
+					},
+				},
+			},
+		},
+		"relayed vlan": {
+			in: ConfigDQLiteParam{
+				Vlans: []VLANData{
+					{
+						ID:  1,
+						VID: 0,
+						MTU: 1500,
+					}, {
+						ID:            2,
+						VID:           1,
+						MTU:           1500,
+						RelayedVLANID: 1,
+					},
+				},
+				Subnets: []SubnetData{
+					{
+						ID:         1,
+						GatewayIP:  "10.0.0.1",
+						DNSServers: []string{"10.0.0.2"},
+						VlanID:     1,
+						AllowDNS:   true,
+						CIDR:       "10.0.0.0/24",
+					},
+				},
+				Interfaces: []InterfaceData{
+					{
+						ID:     1,
+						Name:   "lo",
+						VlanID: 1,
+					},
+				},
+				IPRanges: []IPRangeData{
+					{
+						ID:       1,
+						StartIP:  "10.0.0.100",
+						EndIP:    "10.0.0.200",
+						Dynamic:  true,
+						SubnetID: 1,
+					},
+				},
+				DefaultDNSServers: []string{"1.1.1.1"},
+				NTPServers:        []string{"10.0.0.2"},
+			},
+			out: struct {
+				vlans    []Vlan
+				subnets  []Subnet
+				ipranges []IPRange
+			}{
+				vlans: []Vlan{
+					{
+						ID:  1,
+						VID: 0,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionInterfaceMTU):       "1500",
+							uint16(dhcpv4.OptionIPAddressLeaseTime): "600",
+						},
+					}, {
+						ID:            2,
+						VID:           1,
+						RelayedVlanID: 1,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionInterfaceMTU):       "1500",
+							uint16(dhcpv4.OptionIPAddressLeaseTime): "600",
+						},
+					},
+				},
+				subnets: []Subnet{
+					{
+						ID: 1,
+						CIDR: &net.IPNet{
+							IP:   net.ParseIP("10.0.0.0").To4(),
+							Mask: net.CIDRMask(24, 32),
+						},
+						VlanID:        1,
+						AddressFamily: 4,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionSubnetMask):       "ffffff00",
+							uint16(dhcpv4.OptionDomainNameServer): "1.1.1.1,10.0.0.2",
+							uint16(dhcpv4.OptionNTPServers):       "10.0.0.2",
+							uint16(dhcpv4.OptionRouter):           "10.0.0.1",
+						},
+					},
+				},
+				ipranges: []IPRange{
+					{
+						ID:             1,
+						StartIP:        net.ParseIP("10.0.0.100"),
+						EndIP:          net.ParseIP("10.0.0.200"),
+						Size:           101,
+						SubnetID:       1,
+						FullyAllocated: false,
+						Dynamic:        true,
+						Options:        make(map[uint16]string),
+					},
+				},
+			},
+		},
+		"multiple subnets": {
+			in: ConfigDQLiteParam{
+				Vlans: []VLANData{
+					{
+						ID:  1,
+						VID: 0,
+						MTU: 1500,
+					},
+				},
+				Subnets: []SubnetData{
+					{
+						ID:         1,
+						GatewayIP:  "10.0.0.1",
+						DNSServers: []string{"10.0.0.2"},
+						VlanID:     1,
+						AllowDNS:   true,
+						CIDR:       "10.0.0.0/24",
+					}, {
+						ID:         2,
+						GatewayIP:  "10.0.1.1",
+						DNSServers: []string{"10.0.1.2"},
+						VlanID:     1,
+						AllowDNS:   true,
+						CIDR:       "10.0.1.0/24",
+					},
+				},
+				Interfaces: []InterfaceData{
+					{
+						ID:     1,
+						Name:   "lo",
+						VlanID: 1,
+					},
+				},
+				IPRanges: []IPRangeData{
+					{
+						ID:       1,
+						StartIP:  "10.0.0.100",
+						EndIP:    "10.0.0.200",
+						Dynamic:  true,
+						SubnetID: 1,
+					},
+				},
+				DefaultDNSServers: []string{"1.1.1.1"},
+				NTPServers:        []string{"10.0.0.2"},
+			},
+			out: struct {
+				vlans    []Vlan
+				subnets  []Subnet
+				ipranges []IPRange
+			}{
+				vlans: []Vlan{
+					{
+						ID:  1,
+						VID: 0,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionInterfaceMTU):       "1500",
+							uint16(dhcpv4.OptionIPAddressLeaseTime): "600",
+						},
+					},
+				},
+				subnets: []Subnet{
+					{
+						ID: 1,
+						CIDR: &net.IPNet{
+							IP:   net.ParseIP("10.0.0.0").To4(),
+							Mask: net.CIDRMask(24, 32),
+						},
+						VlanID:        1,
+						AddressFamily: 4,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionSubnetMask):       "ffffff00",
+							uint16(dhcpv4.OptionDomainNameServer): "1.1.1.1,10.0.0.2",
+							uint16(dhcpv4.OptionNTPServers):       "10.0.0.2",
+							uint16(dhcpv4.OptionRouter):           "10.0.0.1",
+						},
+					}, {
+						ID: 2,
+						CIDR: &net.IPNet{
+							IP:   net.ParseIP("10.0.1.0").To4(),
+							Mask: net.CIDRMask(24, 32),
+						},
+						VlanID:        1,
+						AddressFamily: 4,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionSubnetMask):       "ffffff00",
+							uint16(dhcpv4.OptionDomainNameServer): "1.1.1.1,10.0.1.2",
+							uint16(dhcpv4.OptionNTPServers):       "10.0.0.2",
+							uint16(dhcpv4.OptionRouter):           "10.0.1.1",
+						},
+					},
+				},
+				ipranges: []IPRange{
+					{
+						ID:             1,
+						StartIP:        net.ParseIP("10.0.0.100"),
+						EndIP:          net.ParseIP("10.0.0.200"),
+						Size:           101,
+						SubnetID:       1,
+						FullyAllocated: false,
+						Dynamic:        true,
+						Options:        make(map[uint16]string),
+					},
+				},
+			},
+		},
+		"no dns or ntp": {
+			in: ConfigDQLiteParam{
+				Vlans: []VLANData{
+					{
+						ID:  1,
+						VID: 0,
+						MTU: 1500,
+					},
+				},
+				Subnets: []SubnetData{
+					{
+						ID:        1,
+						GatewayIP: "10.0.0.1",
+						VlanID:    1,
+						AllowDNS:  false,
+						CIDR:      "10.0.0.0/24",
+					},
+				},
+				Interfaces: []InterfaceData{
+					{
+						ID:     1,
+						Name:   "lo",
+						VlanID: 1,
+					},
+				},
+				IPRanges: []IPRangeData{
+					{
+						ID:       1,
+						StartIP:  "10.0.0.100",
+						EndIP:    "10.0.0.200",
+						Dynamic:  true,
+						SubnetID: 1,
+					},
+				},
+			},
+			out: struct {
+				vlans    []Vlan
+				subnets  []Subnet
+				ipranges []IPRange
+			}{
+				vlans: []Vlan{
+					{
+						ID:  1,
+						VID: 0,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionInterfaceMTU):       "1500",
+							uint16(dhcpv4.OptionIPAddressLeaseTime): "600",
+						},
+					},
+				},
+				subnets: []Subnet{
+					{
+						ID: 1,
+						CIDR: &net.IPNet{
+							IP:   net.ParseIP("10.0.0.0").To4(),
+							Mask: net.CIDRMask(24, 32),
+						},
+						VlanID:        1,
+						AddressFamily: 4,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionSubnetMask): "ffffff00",
+							uint16(dhcpv4.OptionRouter):     "10.0.0.1",
+						},
+					},
+				},
+				ipranges: []IPRange{
+					{
+						ID:             1,
+						StartIP:        net.ParseIP("10.0.0.100"),
+						EndIP:          net.ParseIP("10.0.0.200"),
+						Size:           101,
+						SubnetID:       1,
+						FullyAllocated: false,
+						Dynamic:        true,
+						Options:        make(map[uint16]string),
+					},
+				},
+			},
+		},
+	}
+
+	i := 0
+
+	for tname, tc := range testcases {
+		t.Run(tname, func(t *testing.T) {
+			ctx := context.Background()
+
+			_ = tc
+
+			if deadline, ok := t.Deadline(); ok {
+				var cancel context.CancelFunc
+
+				ctx, cancel = context.WithDeadline(ctx, deadline)
+
+				defer cancel()
+			}
+
+			dataPath := t.TempDir()
+			app, appErr := microcluster.App(microcluster.Args{
+				StateDir: filepath.Join(dataPath, "microcluster"),
+			})
+			require.NoError(t, appErr)
+
+			clusterName := strings.ReplaceAll(strings.ReplaceAll(t.Name(), "/", "-"), "_", "-")
+
+			errChan := make(chan error)
+
+			dhcpService := NewDHCPService(
+				"abc",
+				nil,
+				nil,
+				true,
+				WithDataPathFactory(func(path string) string {
+					return filepath.Join(dataPath, path)
+				}),
+				WithServerStart(func(_ context.Context) error {
+					return nil
+				}),
+			)
+
+			var currentState state.State
+
+			stateLock := &sync.RWMutex{}
+
+			go app.Start(ctx, microcluster.DaemonArgs{
+				Version:          "UNKNOWN",
+				Debug:            false,
+				ExtensionsSchema: []schema.Update{cluster.SchemaAppendDHCP},
+				Hooks: &state.Hooks{
+					OnStart: func(ctx context.Context, _ state.State) error {
+						defer close(errChan)
+
+						err := app.NewCluster(ctx, clusterName, fmt.Sprintf("127.0.0.1:556%d", i), nil)
+						if err != nil {
+							errChan <- err
+							return nil
+						}
+
+						return nil
+					},
+					PostBootstrap: func(ctx context.Context, s state.State, _ map[string]string) error {
+						stateLock.Lock()
+						defer stateLock.Unlock()
+
+						currentState = s
+
+						return dhcpService.OnBootstrap(ctx, s)
+					},
+				},
+			})
+
+			err := <-errChan
+			require.NoError(t, err)
+
+			err = app.Ready(ctx)
+			require.NoError(t, err)
+
+			wfTestSuite := &testsuite.WorkflowTestSuite{}
+			env := wfTestSuite.NewTestActivityEnvironment()
+
+			_, err = env.ExecuteLocalActivity(dhcpService.configureDQLite, tc.in)
+			if err != nil && tc.err != nil {
+				assert.ErrorIs(t, err, tc.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			stateLock.RLock()
+			defer stateLock.RUnlock()
+
+			err = currentState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+				for _, expectedVlan := range tc.out.vlans {
+					row := tx.QueryRowContext(ctx, "SELECT * FROM vlan WHERE id=$1;", expectedVlan.ID)
+
+					vlan := &Vlan{}
+
+					err = vlan.ScanRow(row)
+					if err != nil {
+						return err
+					}
+
+					err = vlan.LoadOptions(ctx, tx)
+					if err != nil {
+						return err
+					}
+
+					assert.Equal(t, expectedVlan, *vlan)
+				}
+
+				for _, expectedSubnet := range tc.out.subnets {
+					row := tx.QueryRowContext(ctx, "SELECT * FROM subnet WHERE id=$1;", expectedSubnet.ID)
+
+					subnet := &Subnet{}
+
+					err = subnet.ScanRow(row)
+					if err != nil {
+						return err
+					}
+
+					err = subnet.LoadOptions(ctx, tx)
+					if err != nil {
+						return err
+					}
+
+					assert.Equal(t, expectedSubnet, *subnet)
+				}
+
+				for _, expectedIPRange := range tc.out.ipranges {
+					row := tx.QueryRowContext(ctx, "SELECT * FROM ip_range WHERE id=$1;", expectedIPRange.ID)
+
+					iprange := &IPRange{}
+
+					err = iprange.ScanRow(row)
+					if err != nil {
+						return err
+					}
+
+					err = iprange.LoadOptions(ctx, tx)
+					if err != nil {
+						return err
+					}
+
+					assert.Equal(t, expectedIPRange, *iprange)
+				}
+
+				return nil
+			})
+
+			require.NoError(t, err)
+		})
+
+		i++
 	}
 }

@@ -307,6 +307,7 @@ class InterfaceRepository(BaseRepository):
                 InterfaceTable.c.enabled,
                 InterfaceTable.c.link_speed,
                 InterfaceTable.c.sriov_max_vf,
+                InterfaceTable.c.vlan_id,
                 func.array_agg(
                     func.json_build_object(
                         "id",

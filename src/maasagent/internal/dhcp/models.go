@@ -41,6 +41,18 @@ const (
 	loadSubnetOptionsStmt          = "SELECT number, value FROM dhcp_option WHERE subnet_id = $1;"
 	loadIPRangeOptionsStmt         = "SELECT number, value FROM dhcp_option WHERE range_id = $1;"
 	loadHostReservationOptionsStmt = "SELECT number, value FROM dhcp_option WHERE host_reservation_id = $1;"
+
+	insertOrReplaceVLANStmt        = "INSERT OR REPLACE INTO vlan (id, vid) VALUES ($1, $2);"
+	insertOrReplaceRelayedVLANStmt = "INSERT OR REPLACE INTO vlan (id, vid, relay_vlan_id) VALUES ($1, $2, $3);"
+	insertOrReplaceSubnetStmt      = "INSERT OR REPLACE INTO subnet (id, cidr, address_family, vlan_id) VALUES ($1, $2, $3, $4);"
+	insertOrReplaceIPRangeStmt     = `
+	INSERT OR REPLACE INTO ip_range (
+		id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id
+	) VALUES ($1, $2, $3, $4, $5, $6, $7);
+	`
+
+	insertVLANOptionStmt   = "INSERT OR REPLACE INTO dhcp_option (id, label, number, value, vlan_id) VALUES (NULL, $1, $2, $3, $4);"
+	insertSubnetOptionStmt = "INSERT OR REPLACE INTO dhcp_option (id, label, number, value, subnet_id) VALUES (NULL, $1, $2, $3, $4);"
 )
 
 // loadOptions loads the options for the given sql statement and id.
@@ -112,6 +124,30 @@ func (v *Vlan) LoadOptions(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
+func (v *Vlan) InsertOrReplace(ctx context.Context, tx *sql.Tx) error {
+	if v.RelayedVlanID > 0 {
+		_, err := tx.ExecContext(ctx, insertOrReplaceRelayedVLANStmt, v.ID, v.VID, v.RelayedVlanID)
+		return err
+	}
+
+	_, err := tx.ExecContext(ctx, insertOrReplaceVLANStmt, v.ID, v.VID)
+
+	return err
+}
+
+func (v *Vlan) InsertOption(ctx context.Context, tx *sql.Tx, label string, number int, value string) error {
+	_, err := tx.ExecContext(
+		ctx,
+		insertVLANOptionStmt,
+		label,
+		number,
+		value,
+		v.ID,
+	)
+
+	return err
+}
+
 type Interface struct {
 	Hostname string
 	ID       int
@@ -170,6 +206,16 @@ func (s *Subnet) LoadOptions(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
+func (s *Subnet) InsertOrReplace(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, insertOrReplaceSubnetStmt, s.ID, s.CIDR.String(), s.AddressFamily, s.VlanID)
+	return err
+}
+
+func (s *Subnet) InsertOption(ctx context.Context, tx *sql.Tx, label string, number int, value string) error {
+	_, err := tx.ExecContext(ctx, insertSubnetOptionStmt, label, number, value, s.ID)
+	return err
+}
+
 type IPRange struct {
 	Options        map[uint16]string
 	StartIP        net.IP
@@ -212,6 +258,22 @@ func (i *IPRange) LoadOptions(ctx context.Context, tx *sql.Tx) error {
 	i.Options = options
 
 	return nil
+}
+
+func (i *IPRange) InsertOrReplace(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(
+		ctx,
+		insertOrReplaceIPRangeStmt,
+		i.ID,
+		i.StartIP.String(),
+		i.EndIP.String(),
+		i.Size,
+		i.FullyAllocated,
+		i.Dynamic,
+		i.SubnetID,
+	)
+
+	return err
 }
 
 type HostReservation struct {

@@ -298,7 +298,8 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 							return nil
 						}
 
-						handler := NewDORAHandler(allocator, s)
+						handler := NewDORAHandler(allocator)
+						handler.SetClusterState(s)
 
 						handler.discoverReplyOverride = func(ctx context.Context, ifaceIdx int, resp *dhcpv4.DHCPv4) error {
 							assert.Equal(t, resp, tc.out)
@@ -327,6 +328,9 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 
 						return nil
 					},
+					PostBootstrap: func(_ context.Context, _ state.State, cfg map[string]string) error {
+						return nil
+					},
 				},
 			})
 
@@ -337,5 +341,133 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 		})
 
 		i++
+	}
+}
+
+func TestOptionMarshalers(t *testing.T) {
+	testcases := map[string]struct {
+		inType  int
+		inValue string
+		out     []byte
+		err     error
+	}{
+		"uint8": {
+			inType:  OptionTypeUint8,
+			inValue: "6",
+			out:     []byte{0x06},
+		},
+		"uint8 overflow": {
+			inType:  OptionTypeUint8,
+			inValue: "300",
+			err:     ErrInvalidOptionValue,
+		},
+		"uint16": {
+			inType:  OptionTypeUint16,
+			inValue: "300",
+			out:     []byte{0x01, 0x2c},
+		},
+		"uint16 overflow": {
+			inType:  OptionTypeUint16,
+			inValue: "70000",
+			err:     ErrInvalidOptionValue,
+		},
+		"uint32": {
+			inType:  OptionTypeUint32,
+			inValue: "70000",
+			out:     []byte{0x00, 0x01, 0x11, 0x70},
+		},
+		"uint32 overflow": {
+			inType:  OptionTypeUint32,
+			inValue: "4294967298",
+			err:     ErrInvalidOptionValue,
+		},
+		"uint64": {
+			inType:  OptionTypeUint64,
+			inValue: "4294967298",
+			out:     []byte{0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02},
+		},
+		"ipv4": {
+			inType:  OptionTypeIPv4,
+			inValue: "10.0.0.1",
+			out:     []byte{0x0A, 0x00, 0x00, 0x01},
+		},
+		"ipv6 for ipv4": {
+			inType:  OptionTypeIPv4,
+			inValue: "ffff:efef::1",
+			err:     ErrInvalidOptionValue,
+		},
+		"ipv6": {
+			inType:  OptionTypeIPv6,
+			inValue: "ffff:efef::1",
+			out:     []byte{0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+		},
+		"ipv4 for ipv6": {
+			inType:  OptionTypeIPv6,
+			inValue: "::FFFF:10.11.12.13",
+			out:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x0A, 0x0B, 0x0C, 0x0D},
+		},
+		"ipv4 list": {
+			inType:  OptionTypeIPv4List,
+			inValue: "10.0.0.1,10.0.0.2",
+			out:     []byte{0x0A, 0x00, 0x00, 0x01, 0x0A, 0x00, 0x00, 0x02},
+		},
+		"ipv4 list with spaces": {
+			inType:  OptionTypeIPv4List,
+			inValue: "10.0.0.1, 10.0.0.2",
+			out:     []byte{0x0A, 0x00, 0x00, 0x01, 0x0A, 0x00, 0x00, 0x02},
+		},
+		"ipv6 list": {
+			inType:  OptionTypeIPv6List,
+			inValue: "ffff:efef::1,ffff:efef::2",
+			out: []byte{
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
+			},
+		},
+		"ipv6 list with spaces": {
+			inType:  OptionTypeIPv6List,
+			inValue: "ffff:efef::1, ffff:efef::2",
+			out: []byte{
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
+			},
+		},
+		"mixed ip list for ipv4": {
+			inType:  OptionTypeIPv4List,
+			inValue: "ffff:efef::1,10.0.0.1",
+			err:     ErrInvalidOptionValue,
+		},
+		"mixed ip list for ipv6": {
+			inType:  OptionTypeIPv6List,
+			inValue: "ffff:efef::1,10.0.0.1",
+			out: []byte{
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x0A, 0x00, 0x00, 0x01,
+			},
+		},
+		"hex": {
+			inType:  OptionTypeHex,
+			inValue: "ffff",
+			out:     []byte{0xff, 0xff},
+		},
+	}
+
+	for tname, tc := range testcases {
+		t.Run(tname, func(t *testing.T) {
+			marshaler, ok := optionMarshalers[tc.inType]
+			require.True(t, ok)
+
+			result, err := marshaler(tc.inValue)
+			if err != nil {
+				if tc.err != nil {
+					assert.ErrorIs(t, err, tc.err)
+					return
+				}
+
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, tc.out, result)
+		})
 	}
 }

@@ -5,15 +5,24 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
 from temporalio.testing import ActivityEnvironment
 
+from maascommon.enums.ipaddress import IpAddressType
+from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db import Database
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.dhcp import (
     ConfigureDHCPParam,
     DHCPConfigActivity,
+    DHCPDataForAgent,
     FetchHostsForUpdateParam,
     GetActiveInterfacesForAgentParam,
+    GetDHCPDataForAgentParam,
     Host,
+    InterfaceData,
+    IPRangeData,
+    SubnetData,
+    VlanData,
 )
+from tests.fixtures.factories.configuration import create_test_configuration
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.node import (
@@ -396,3 +405,84 @@ class TestDHCPConfigActivity:
         )
 
         assert result.ifaces == [iface1.name]
+
+    async def test_get_dhcp_data_for_agent(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        env = ActivityEnvironment()
+
+        await create_test_configuration(
+            fixture, name="use_external_ntp_only", value=False
+        )
+        rack_controller = await create_test_rack_controller_entry(fixture)
+        vlan1 = await create_test_vlan_entry(fixture, dhcp_on=True)
+        vlan2 = await create_test_vlan_entry(fixture, dhcp_on=False)
+        subnet1 = await create_test_subnet_entry(fixture, vlan_id=vlan1["id"])
+        await create_test_subnet_entry(fixture, vlan_id=vlan2["id"])
+        iprange = await create_test_ip_range_entry(
+            fixture, subnet=subnet1, offset=1, size=5, type=IPRangeType.DYNAMIC
+        )
+        sips = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet1, alloc_type=IpAddressType.STICKY
+        )
+        iface1 = await create_test_interface_entry(
+            fixture,
+            vlan=vlan1,
+            node=rack_controller,
+            ips=sips,
+        )
+        await create_test_interface_entry(
+            fixture, vlan=vlan2, node=rack_controller
+        )
+
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db,
+            services_cache,
+            temporal_client=Mock(Client),
+            connection=db_connection,
+        )
+
+        result = await env.run(
+            activities.get_dhcp_data_for_agent,
+            GetDHCPDataForAgentParam(
+                system_id=rack_controller["system_id"],
+            ),
+        )
+
+        assert result == DHCPDataForAgent(
+            vlans=[
+                VlanData(
+                    id=vlan1["id"],
+                    vid=vlan1["vid"],
+                    relayed_vlan_id=vlan1["relay_vlan_id"],
+                    mtu=vlan1["mtu"],
+                )
+            ],
+            subnets=[
+                SubnetData(
+                    id=subnet1["id"],
+                    cidr=str(subnet1["cidr"]),
+                    gateway_ip=str(subnet1["gateway_ip"]),
+                    dns_servers=subnet1["dns_servers"],
+                    allow_dns=subnet1["allow_dns"],
+                    vlan_id=subnet1["vlan_id"],
+                )
+            ],
+            ipranges=[
+                IPRangeData(
+                    id=iprange["id"],
+                    start_ip=str(iprange["start_ip"]),
+                    end_ip=str(iprange["end_ip"]),
+                    dynamic=iprange["type"] == IPRangeType.DYNAMIC,
+                    subnet_id=iprange["subnet_id"],
+                )
+            ],
+            interfaces=[
+                InterfaceData(
+                    id=iface1.id, name=iface1.name, vlan_id=iface1.vlan_id
+                )
+            ],
+            default_dns_servers=[str(sip["ip"]) for sip in sips],
+            ntp_servers=[str(sip["ip"]) for sip in sips],
+        )

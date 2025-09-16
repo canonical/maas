@@ -45,6 +45,7 @@ class Interface(MaasTimestampedBaseModel):
     name: str
     type: InterfaceType
     mac_address: Optional[str]
+    vlan_id: Optional[int] = None
     # TODO
     # effective_mtu: int = 0
     node_config_id: Optional[int] = None

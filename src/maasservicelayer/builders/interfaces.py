@@ -32,3 +32,4 @@ class InterfaceBuilder(ResourceBuilder):
     sriov_max_vf: Union[int, Unset] = Field(default=UNSET, required=False)
     type: Union[InterfaceType, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    vlan_id: Union[int, None, Unset] = Field(default=UNSET, required=False)

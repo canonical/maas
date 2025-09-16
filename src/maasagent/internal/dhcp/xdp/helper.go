@@ -18,6 +18,7 @@ package xdp
 import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/rs/zerolog/log"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -makebase "$MAKEDIR" -tags linux bpf xdp.c -- -I../../ebpf/include
@@ -39,7 +40,7 @@ func New() *Program {
 func (p *Program) Load() error {
 	err := rlimit.RemoveMemlock()
 	if err != nil {
-		return err
+		log.Warn().Err(err).Msg("unable to set rlimit, continuing with default")
 	}
 
 	return loadBpfObjects(&p.objs, nil)

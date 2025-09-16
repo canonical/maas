@@ -25,3 +25,4 @@ class Vlan(MaasTimestampedBaseModel):
     relay_vlan_id: Optional[int] = None
     fabric_id: int
     space_id: Optional[int] = None
+    relayed_vlan_id: Optional[int] = None

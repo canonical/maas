@@ -219,6 +219,7 @@ async def main() -> None:
                 dhcp_activity.find_agents_for_updates,
                 dhcp_activity.fetch_hosts_for_update,
                 dhcp_activity.get_omapi_key,
+                dhcp_activity.get_dhcp_data_for_agent,
                 # DNS activities
                 dns_activity.get_changes_since_current_serial,
                 dns_activity.get_region_controllers,

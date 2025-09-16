@@ -17,6 +17,8 @@ package cluster
 
 import (
 	"context"
+	"errors"
+	"os"
 
 	"github.com/canonical/microcluster/v2/microcluster"
 	"github.com/canonical/microcluster/v2/state"
@@ -32,6 +34,7 @@ import (
 
 const (
 	clusteringPort = 5280
+	daemonConf     = "microcluster/daemon.yaml" // only exists in initialized clusters
 )
 
 type ClusterService struct {
@@ -165,30 +168,34 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 			}
 		}()
 
-		err := s.cluster.Ready(cctx)
-		if err != nil {
-			log.Error("Microcluster is not ready", "err", err)
-			return err
-		}
-
-		status, err := s.cluster.Status(cctx)
-		if err == nil && status.Ready {
-			return nil
-		}
-
-		// TODO: allow selecting interface used for clustering
-		address := lxdutil.CanonicalNetworkAddress(lxdutil.NetworkInterfaceAddress(), clusteringPort)
-
-		// TODO: join existing cluster with token
-		err = s.cluster.NewCluster(cctx, s.systemID, address, nil)
-
-		return err
+		return nil
 	}); err != nil {
 		log.Error("Failed to setup cluster-service", "err", err)
 		return err
 	}
 
 	log.Info("Started cluster-service")
+
+	return nil
+}
+
+// OnStart executes in microcluster's start hook and checks if there is an existing daemon configuration
+// this allows us to confirm whether there is an existing cluster configuration (single host, or multi-member)
+// or if one is needed to be created.
+func (s *ClusterService) OnStart(ctx context.Context) error {
+	_, err := os.Stat(s.dataPathFactory(daemonConf))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// TODO: allow selecting interface used for clustering
+			address := lxdutil.CanonicalNetworkAddress(lxdutil.NetworkInterfaceAddress(), clusteringPort)
+
+			err = s.cluster.NewCluster(ctx, s.systemID, address, nil)
+		}
+
+		return err
+	}
+
+	// TODO join existing cluster
 
 	return nil
 }

@@ -54,6 +54,7 @@ apps:
       - network-observe
       - snap-refresh-control
       - system-observe
+      - system-trace # allows for the running of eBPF programs
       - time-control
 
   maas:

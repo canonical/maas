@@ -32,6 +32,9 @@ class VlanBuilder(ResourceBuilder):
     relay_vlan_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )
+    relayed_vlan_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     secondary_rack_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )
