@@ -14,10 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/lxc/lxd/lxd/resources"
-	"github.com/lxc/lxd/shared"
-	lxdapi "github.com/lxc/lxd/shared/api"
-	"github.com/lxc/lxd/shared/version"
+	"github.com/canonical/lxd/lxd/resources"
+	"github.com/canonical/lxd/shared"
+	lxdapi "github.com/canonical/lxd/shared/api"
+	"github.com/canonical/lxd/shared/version"
 )
 
 // OSInfo represents OS information
@@ -26,7 +26,7 @@ type OSInfo struct {
 	OSVersion string `json:"os_version" yaml:"os_version"`
 }
 
-// ServerEnvironment is a subset of github.com/lxc/lxd/shared/api/server.ServerEnvironment
+// ServerEnvironment is a subset of github.com/canonical/lxd/shared/api/server.ServerEnvironment
 type ServerEnvironment struct {
 	Kernel             string `json:"kernel" yaml:"kernel"`
 	KernelArchitecture string `json:"kernel_architecture" yaml:"kernel_architecture"`
@@ -37,7 +37,7 @@ type ServerEnvironment struct {
 	ServerVersion string `json:"server_version" yaml:"server_version"`
 }
 
-// HostInfo is a subset of github.com/lxc/lxd/shared/api/server.HostInfo
+// HostInfo is a subset of github.com/canonical/lxd/shared/api/server.HostInfo
 type HostInfo struct {
 	Environment   ServerEnvironment `json:"environment" yaml:"environment"`
 	APIVersion    string            `json:"api_version" yaml:"api_version"`
