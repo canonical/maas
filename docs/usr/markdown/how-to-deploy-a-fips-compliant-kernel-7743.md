@@ -1,5 +1,3 @@
-# How to deploy a FIPS-compliant machine
-
 FIPS (Federal Information Processing Standards) compliance is required in many regulated industries, such as finance, government, and healthcare. Deploying a FIPS-enabled machine with MAAS allows you to run workloads that meet these strict security requirements.
 
 This guide walks you through the steps to deploy a FIPS-compliant Ubuntu machine.
