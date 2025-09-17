@@ -65,11 +65,12 @@ class TestUISubnetOrderByQueryFilter:
 
 class TestUISubnetFiltersParams:
     @pytest.mark.parametrize(
-        "cidrs,vlan_ids,fabric_names,space_names,expected_clause",
+        "cidrs,vlan_ids,fabric_names,space_names,subnet_ids,expected_clause",
         [
-            ([], [], [], [], None),
+            ([], [], [], [], [], None),
             (
                 ["10.0.0.0/24"],
+                [],
                 [],
                 [],
                 [],
@@ -84,12 +85,14 @@ class TestUISubnetFiltersParams:
                 [1],
                 [],
                 [],
+                [],
                 Clause(condition=UISubnetView.c.vlan_id.in_([1])),
             ),
             (
                 [],
                 [],
                 ["fabric-0"],
+                [],
                 [],
                 Clause(condition=UISubnetView.c.fabric_name.in_(["fabric-0"])),
             ),
@@ -98,13 +101,23 @@ class TestUISubnetFiltersParams:
                 [],
                 [],
                 ["space-0"],
+                [],
                 Clause(condition=UISubnetView.c.space_name.in_(["space-0"])),
+            ),
+            (
+                [],
+                [],
+                [],
+                [],
+                [1],
+                Clause(condition=UISubnetView.c.id.in_([1])),
             ),
             (
                 ["10.0.0.0/24"],
                 [1],
                 ["fabric-0"],
                 ["space-0"],
+                [1],
                 Clause(
                     condition=and_(
                         *[
@@ -114,6 +127,7 @@ class TestUISubnetFiltersParams:
                             UISubnetView.c.vlan_id.in_([1]),
                             UISubnetView.c.fabric_name.in_(["fabric-0"]),
                             UISubnetView.c.space_name.in_(["space-0"]),
+                            UISubnetView.c.id.in_([1]),
                         ]
                     )
                 ),
@@ -126,6 +140,7 @@ class TestUISubnetFiltersParams:
         vlan_ids: list[int],
         fabric_names: list[str],
         space_names: list[str],
+        subnet_ids: list[int],
         expected_clause: Clause,
     ) -> None:
         f = UISubnetFiltersParams(
@@ -133,28 +148,32 @@ class TestUISubnetFiltersParams:
             vlan_ids=vlan_ids,
             fabric_names=fabric_names,
             space_names=space_names,
+            subnet_ids=subnet_ids,
         )
         assert f.to_clause() == expected_clause
 
     @pytest.mark.parametrize(
-        "cidrs,vlan_ids,fabric_names,space_names,expected_href",
+        "cidrs,vlan_ids,fabric_names,space_names,subnet_ids,expected_href",
         [
-            ([], [], [], [], ""),
-            (["10.0.0.0/24"], [], [], [], "cidr=10.0.0.0/24"),
-            ([], [1], [], [], "vlan_id=1"),
-            ([], [], ["fabric-0"], [], "fabric=fabric-0"),
-            ([], [], [], ["space-0"], "space=space-0"),
+            ([], [], [], [], [], ""),
+            (["10.0.0.0/24"], [], [], [], [], "cidr=10.0.0.0/24"),
+            ([], [1], [], [], [], "vlan_id=1"),
+            ([], [], ["fabric-0"], [], [], "fabric=fabric-0"),
+            ([], [], [], ["space-0"], [], "space=space-0"),
+            ([], [], [], [], [1], "subnet_id=1"),
             (
                 ["10.10.0.0/24"],
                 [1],
                 ["fabric-0"],
                 ["space-0"],
-                "cidr=10.10.0.0/24&vlan_id=1&fabric=fabric-0&space=space-0",
+                [1],
+                "cidr=10.10.0.0/24&vlan_id=1&fabric=fabric-0&space=space-0&subnet_id=1",
             ),
             (
                 [],
                 [],
                 ["fabric-0", "fabric-1"],
+                [],
                 [],
                 "fabric=fabric-0&fabric=fabric-1",
             ),
@@ -166,6 +185,7 @@ class TestUISubnetFiltersParams:
         vlan_ids: list[int],
         fabric_names: list[str],
         space_names: list[str],
+        subnet_ids: list[int],
         expected_href: str,
     ) -> None:
         f = UISubnetFiltersParams(
@@ -173,6 +193,7 @@ class TestUISubnetFiltersParams:
             vlan_ids=vlan_ids,
             fabric_names=fabric_names,
             space_names=space_names,
+            subnet_ids=subnet_ids,
         )
         assert f.to_href_format() == expected_href
 

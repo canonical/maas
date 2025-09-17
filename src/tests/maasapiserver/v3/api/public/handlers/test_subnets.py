@@ -443,13 +443,13 @@ class TestUISubnetApi(ApiCommonTests):
             items=[TEST_UI_SUBNET], total=2
         )
         response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?size=1&q=foo&order_by=asc(cidr)&order_by=asc(fabric)&order_by=desc(space)&vlan_id=5001&fabric=fabric-0"
+            f"{self.BASE_PATH}?size=1&q=foo&order_by=asc(cidr)&order_by=asc(fabric)&order_by=desc(space)&vlan_id=5001&fabric=fabric-0&subnet_id=1"
         )
         assert response.status_code == 200
         subnets_response = UISubnetsListResponse(**response.json())
         assert (
             subnets_response.next
-            == f"{self.BASE_PATH}?page=2&size=1&vlan_id=5001&fabric=fabric-0&q=foo&order_by=asc(cidr)&order_by=asc(fabric)&order_by=desc(space)"
+            == f"{self.BASE_PATH}?page=2&size=1&vlan_id=5001&fabric=fabric-0&subnet_id=1&q=foo&order_by=asc(cidr)&order_by=asc(fabric)&order_by=desc(space)"
         )
 
     @pytest.mark.parametrize(

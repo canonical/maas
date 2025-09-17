@@ -57,6 +57,10 @@ class UISubnetsClauseFactory(ClauseFactory):
             condition=cast(UISubnetView.c.cidr, String).contains(partial_cidr)
         )
 
+    @classmethod
+    def with_subnet_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=UISubnetView.c.id.in_(ids))
+
 
 class UISubnetsOrderByClauses(OrderByClauseFactory):
     @staticmethod
