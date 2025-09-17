@@ -58,6 +58,7 @@ from maasservicelayer.utils.image_local_files import (
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_maas_lock_path
+from provisioningserver.utils.twisted import retry
 
 maaslog = get_maas_logger("bootresources")
 log = LegacyLogger()
@@ -65,7 +66,7 @@ log = LegacyLogger()
 
 def import_resources():
     """Starts the master image sync workflow."""
-    start_workflow(
+    return start_workflow(
         MASTER_IMAGE_SYNC_WORKFLOW_NAME,
         "master-image-sync",
         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
@@ -116,8 +117,14 @@ class ImportResourcesService(TimerService):
                 return auto
 
         d = deferToDatabase(transactional(determine_auto))
-        d.addCallback(self.import_resources_if_configured)
-        d.addErrback(log.err, "Failure importing boot resources.")
+        d.addCallback(
+            lambda x: retry(self.import_resources_if_configured, x, timeout=60)
+        )
+        d.addErrback(
+            log.err,
+            f"Failure importing boot resources. Next automatic retry will be triggered in "
+            f"{str(IMPORT_RESOURCES_SERVICE_PERIOD)} hours.",
+        )
         return d
 
     def import_resources_if_configured(self, auto):

@@ -135,6 +135,24 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 
         bootresources.import_resources.assert_not_called()
 
+    def test_maybe_import_resources_logs_errback_on_failure(self):
+        with transaction.atomic():
+            Config.objects.set_config("boot_images_auto_import", True)
+
+        service = bootresources.ImportResourcesService()
+
+        retry_patch = self.patch(bootresources, "retry")
+        retry_patch.return_value = fail(Exception("BOOM"))
+        log_mock = self.patch(bootresources.log, "err")
+
+        maybe_import_resources = asynchronous(service.maybe_import_resources)
+        maybe_import_resources().wait(TIMEOUT)
+
+        log_mock.assert_called()
+        called_message = log_mock.call_args[0][1]
+        expected_message = "Failure importing boot resources. Next automatic retry will be triggered in 1:00:00 hours."
+        self.assertEqual(called_message, expected_message)
+
 
 class TestImportResourcesProgressService(MAASServerTestCase):
     """Tests for `ImportResourcesProgressService`."""
