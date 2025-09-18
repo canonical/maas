@@ -290,6 +290,20 @@ class TestUserHandler(MAASServerTestCase):
         with self.assertRaises(HandlerPermissionError):
             handler.update(params)
 
+    def test_update_self_raises_error(self):
+        unpriv_user = factory.make_User()
+        handler = UserHandler(unpriv_user, {}, None)
+        params = make_user_attribute_params(unpriv_user)
+        params.update(
+            {
+                "id": unpriv_user.id,
+                "is_superuser": True,
+            }
+        )
+
+        with self.assertRaises(HandlerPermissionError):
+            handler.update(params)
+
     def test_update_self_as_unprivileged(self):
         user = factory.make_User()
         handler = UserHandler(user, {}, None)
@@ -299,7 +313,7 @@ class TestUserHandler(MAASServerTestCase):
                 "id": user.id,
                 "last_name": factory.make_name("Newname"),
                 "email": f"new-{factory.make_string()}@example.com",
-                "is_superuser": True,
+                "is_superuser": False,
                 "username": factory.make_name("newname"),
             }
         )
