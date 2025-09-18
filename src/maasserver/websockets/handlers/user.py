@@ -127,6 +127,9 @@ class UserHandler(Handler):
     def update(self, params):
         """Update a user, and log an event for it."""
         try:
+            if not self.user.is_superuser:
+                if self.user.id != params["id"] or params["is_superuser"]:
+                    raise HandlerPermissionError()
             result = super().update(params=params)
         except HandlerDoesNotExistError:
             raise HandlerPermissionError()
