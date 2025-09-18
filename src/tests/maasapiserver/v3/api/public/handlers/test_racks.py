@@ -1,6 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from base64 import b64decode
+import json
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -9,6 +11,7 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.responses.racks import (
+    RackBootstrapTokenResponse,
     RackListResponse,
     RackResponse,
 )
@@ -62,6 +65,9 @@ class TestRacksApi(ApiCommonTests):
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="POST", path=f"{self.BASE_PATH}/1/tokens:generate"
+            ),
         ]
 
     async def test_list_no_other_page(
@@ -237,3 +243,27 @@ class TestRacksApi(ApiCommonTests):
             f"{self.BASE_PATH}/100"
         )
         assert response.status_code == 204
+
+    async def test_generate_bootstrap_token(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.racks = Mock(RacksService)
+        services_mock.racks.get_by_id.return_value = TEST_RACK_1
+        token = {
+            "secret": "abcdef",
+            "fingerprint": "abcdef",
+            "join_addresses": ["https://maas.internal"],
+        }
+        services_mock.racks.generate_bootstrap_token.side_effect = [token]
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/100/tokens:generate"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        rack_response = RackBootstrapTokenResponse(**response.json())
+        assert token == json.loads(
+            b64decode(rack_response.token).decode("utf-8")
+        )

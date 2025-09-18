@@ -620,6 +620,8 @@ class ServiceCollectionV3:
             repository=RacksRepository(context),
             agents_service=services.agents,
             bootstraptokens_service=services.bootstraptokens,
+            configurations_service=services.configurations,
+            secrets_service=services.secrets,
         )
         services.rdns = RDNSService(
             context=context, rdns_repository=RDNSRepository(context)

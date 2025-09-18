@@ -14,6 +14,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
 from maasapiserver.v3.api.public.models.responses.racks import (
+    RackBootstrapTokenResponse,
     RackListResponse,
     RackResponse,
 )
@@ -184,3 +185,37 @@ class RacksHandler(Handler):
     ) -> Response:
         await services.racks.delete_by_id(rack_id, etag_if_match)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/racks/{rack_id}/tokens:generate",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": RackBootstrapTokenResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def generate_rack_bootstrap_token(
+        self,
+        rack_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> RackBootstrapTokenResponse:
+        rack = await services.racks.get_by_id(rack_id)
+        if rack is None:
+            raise NotFoundException()
+        response.headers["ETag"] = rack.etag()
+
+        token = await services.racks.generate_bootstrap_token(rack)
+
+        return RackBootstrapTokenResponse.from_model(
+            token=token,
+        )

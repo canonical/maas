@@ -476,6 +476,7 @@ ServiceLayerRule = Rule(
     Allow("metadataserver.enum.*"),
     Allow("netaddr"),
     Allow("netaddr.**"),
+    Allow("provisioningserver.certificates.**"),
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.security.**"),
     Allow("provisioningserver.utils.arch.**"),
