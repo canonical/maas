@@ -623,6 +623,34 @@ class TestDNSConfigActivity:
                     IPAddress(str(sip["ip"])).reverse_dns for sip in sips
                 ]
                 assert len(answers) == 3
+                for answer in answers:
+                    assert answer[0][-1] == "."
+
+    @pytest.mark.parametrize(
+        "name,fqdn",
+        [
+            ("name", "name."),
+            ("dotted.", "dotted."),
+            ("multi.label", "multi.label."),
+        ],
+    )
+    def test__ensure_fqdn(
+        self,
+        name: str,
+        fqdn: str,
+        db: Database,
+        db_connection: AsyncConnection,
+    ):
+        services_cache = CacheForServices()
+        activities = DNSConfigActivity(
+            db,
+            services_cache,
+            connection=db_connection,
+        )
+
+        result = activities._ensure_fqdn(name)
+
+        assert result == fqdn
 
     async def test__rndc_cmd(
         self,
