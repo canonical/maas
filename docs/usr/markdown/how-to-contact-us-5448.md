@@ -1,13 +1,27 @@
-We're eager to hear about your experiences with MAAS — the good, the bad, and everything in between. Your insights are invaluable for shaping the future of the platform. Whether you're a seasoned user or just getting started, there are multiple avenues for you to engage with us and the broader MAAS community.
 
-1. **Join the Conversation on [Discourse](https://discourse.maas.io)^**: The MAAS Discourse forum is an interactive platform where users and developers alike discuss features, share solutions, and offer insights. If you have questions, chances are someone in this active community has the answers.
-  
-2. **Contribute on [Launchpad](https://launchpad.net/maas)^**: For those interested in the nuts and bolts of MAAS, our Launchpad repository is the go-to place for source code and issue tracking. Your contributions can range from bug reports to code enhancements.
+Your experience helps shape the future of MAAS. Whether you’re troubleshooting, proposing features, or exploring enterprise adoption, there are several ways to engage with the team and the wider community.
 
-If you're considering adopting MAAS at an enterprise scale, or interested in forming a partnership with Canonical, don't hesitate to reach out directly.
 
-- **Business and Partnerships**: Use the [Contact Canonical](https://maas.io/contact-us)**^** form, and a team member will respond within a single working day to discuss your needs and options.
+## Join the community
 
-- **Premium Support**: For organisations requiring additional layers of support, visit the [Ubuntu Pro shop](https://buy.ubuntu.com/)**^** to explore professional service offerings tailored to your needs.
+- [Discourse forum](https://discourse.maas.io/)
+  Ask questions, share solutions, and discuss features with an active community of users and developers.
 
-We look forward to connecting with you.
+- [Launchpad](https://launchpad.net/maas)
+  Contribute bug reports, track issues, and review or propose code changes.
+
+
+## Work with Canonical
+
+- Business & partnerships
+  If you’re exploring MAAS for enterprise use or partnership opportunities, use the [Contact Canonical form](https://canonical.com/maas/contact-us). A team member will follow up within one working day.
+
+- Premium support
+  Organisations that need professional services or enterprise-grade support can visit the [Ubuntu Pro shop](https://buy.ubuntu.com/) to explore tailored support options.
+
+
+## Next steps
+
+- [How to report and review bugs](https://canonical.com/maas/docs/how-to-report-and-review-bugs)
+- [How to file a feature request](https://canonical.com/maas/docs/how-to-request-features)
+- [How to improve our documentation](https://canonical.com/maas/docs/how-to-contribute-to-maas-documentation)
