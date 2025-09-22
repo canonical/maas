@@ -253,8 +253,9 @@ class TestRacksApi(ApiCommonTests):
         services_mock.racks.get_by_id.return_value = TEST_RACK_1
         token = {
             "secret": "abcdef",
-            "fingerprint": "abcdef",
-            "join_addresses": ["https://maas.internal"],
+            "controllers": [
+                {"fingerprint": "abcdef", "url": "https://maas.internal"}
+            ],
         }
         services_mock.racks.generate_bootstrap_token.side_effect = [token]
         response = await mocked_api_client_admin.post(

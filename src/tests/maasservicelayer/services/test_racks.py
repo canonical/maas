@@ -137,10 +137,11 @@ class TestRacksService(ServiceCommonTests):
 
         # verify token
         assert ["controllers", "secret"] == sorted(token.keys())
-        assert ["fingerprint", "url"] == sorted(token["controllers"].keys())
+        for controller in token["controllers"]:
+            assert ["fingerprint", "url"] == sorted(controller.keys())
         assert len(token["secret"]) == 64
-        assert token["controllers"]["url"] == "https://example.com:5242"
-        assert token["controllers"]["fingerprint"] == "fingerprint"
+        assert token["controllers"][0]["url"] == "https://example.com:5242"
+        assert token["controllers"][0]["fingerprint"] == "fingerprint"
 
         # verify calls
         mock_certificate_from_pem.assert_called_once_with(
@@ -164,12 +165,10 @@ class TestRacksService(ServiceCommonTests):
         )
 
     @patch("maasservicelayer.services.racks.get_maas_cluster_cert_paths")
-    @patch("maasservicelayer.services.racks.Certificate.from_pem")
     @patch("aiofiles.open")
     async def test_generate_bootstrap_token_no_cluster_certs(
         self,
         mock_aiofiles_open,
-        mock_certificate_from_pem,
         mock_get_maas_cluster_cert_paths,
         test_instance: Rack,
     ):
@@ -219,10 +218,11 @@ class TestRacksService(ServiceCommonTests):
 
         # verify token
         assert ["controllers", "secret"] == sorted(token.keys())
-        assert ["fingerprint", "url"] == sorted(token["controllers"].keys())
+        for controller in token["controllers"]:
+            assert ["fingerprint", "url"] == sorted(controller.keys())
         assert len(token["secret"]) == 64
-        assert token["controllers"]["url"] == "https://example.com:5242"
-        assert token["controllers"]["fingerprint"] == ""
+        assert token["controllers"][0]["url"] == "https://example.com:5242"
+        assert token["controllers"][0]["fingerprint"] == ""
 
         # verify calls
         bootstraptokens_service_mock.create.assert_called_once()
