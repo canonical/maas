@@ -867,9 +867,11 @@ class DNSConfigActivity(ActivityBase):
                             for answer in answers:
                                 ip = IPAddress(answer[0])
                                 ptr_answer = (
-                                    ".".join([rec_name, domain_name])
+                                    self._ensure_fqdn(
+                                        ".".join([rec_name, domain_name])
+                                    )
                                     if rec_name != "@"
-                                    else domain_name,
+                                    else self._ensure_fqdn(domain_name),
                                     answer[1],
                                 )
                                 if ip in net:
@@ -892,11 +894,18 @@ class DNSConfigActivity(ActivityBase):
                                         if ptr_answer not in record:
                                             record.append(
                                                 (
-                                                    ".".join(
-                                                        [rec_name, domain_name]
+                                                    self._ensure_fqdn(
+                                                        ".".join(
+                                                            [
+                                                                rec_name,
+                                                                domain_name,
+                                                            ]
+                                                        )
                                                     )
                                                     if rec_name != "@"
-                                                    else domain_name,
+                                                    else self._ensure_fqdn(
+                                                        domain_name
+                                                    ),
                                                     answer[1],
                                                 )
                                             )
@@ -904,6 +913,12 @@ class DNSConfigActivity(ActivityBase):
                 if not rev_records[rev_name]:
                     rev_records[rev_name] = {}
         return rev_records
+
+    def _ensure_fqdn(self, name: str) -> str:
+        # ensure the given name is a fqdn, i.e ends in '.'
+        if name[-1] == ".":
+            return name
+        return f"{name}."
 
     def _get_named_rndc_conf_path(self) -> str:
         return get_named_rndc_conf_path()
