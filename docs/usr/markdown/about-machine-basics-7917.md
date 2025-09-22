@@ -1,62 +1,90 @@
-MAAS provisions bare-metal or virtual servers on a reachable network segment.
+In MAAS, a machine is a physical or virtual server that MAAS can provision, configure, and manage. To understand how MAAS treats machines, it helps to start with the basics: what a machine is at the hardware level, how it boots, how it is controlled, and how MAAS represents those components.
 
-## Machine List
 
-The machine list in MAAS is a central dashboard displaying servers with details like status, power state, owner, and tags. Hovering over status icons reveals additional information, such as warnings for failed hardware tests. The Add hardware menu enables adding new machines or chassis. Selecting machines activates the Take action menu for various operations. Filtering options allow refining the machine list based on attributes and keywords.
+## What is a machine?
 
-## CLI Dashboard
+A *machine* is any server that can:
 
-A non-interactive machine dashboard can be generated via the CLI with `jq`:
+- Boot over the network (PXE/iPXE): Machines start from firmware (BIOS or UEFI), fetch a bootloader over the network, and run a small image provided by MAAS.
+- Report its hardware inventory: Once booted, MAAS commissions the machine, probing CPU, memory, storage, and network devices.
+- Be controlled remotely: Machines expose a BMC (Baseboard Management Controller) or equivalent power interface (IPMI, Redfish, iLO, etc.) so MAAS can power them on/off and reconfigure them without human intervention.
 
-```nohighlight
-maas admin machines read | jq -r '(["FQDN","POWER","STATUS", "OWNER", "TAGS", "POOL", "NOTE", "ZONE"] | (., map(length*"-"))),
-(.[] | [.hostname, .power_state, .status_name, .owner // "-", .tag_names[0] // "-", .pool.name, .description // "-", .zone.name]) | @tsv' | column -t
+Machines can be bare-metal servers, VMs on a hypervisor, or even virtual hardware defined in a cloud environment — as long as they can PXE boot and present a controllable power interface.
+
+
+## Machine components
+
+When MAAS talks about machines, it models the following dimensions:
+
+- Identity: Hostname, domain, owner, system ID.
+- Power management: IPMI, Redfish, iLO, etc. allow MAAS to power cycle the machine.
+- CPU & memory: Discovered during commissioning; used for scheduling workloads.
+- Storage: Disks, partitions, and layouts (RAID, LVM, bcache).
+- Networking: Interfaces, fabrics, VLANs, subnets, and IP assignments.
+- Location: Zones (physical placement), resource pools (ownership/quota), and tags (custom labels).
+- Attached devices: PCI/USB devices such as GPUs or NICs.
+
+This structured representation lets MAAS track, allocate, and configure machines consistently.
+
+
+## How machines boot under MAAS
+
+1. PXE/iPXE request: The machine firmware requests a boot image from the network.
+2. MAAS responds: MAAS provides a bootloader and kernel/initrd tailored to the deployment stage.
+3. Commissioning: MAAS runs tests and gathers hardware inventory.
+4. Deployment: MAAS installs the requested operating system with user-defined configuration (cloud-init).
+5. Operational state: The machine reboots into its installed OS and is ready for workloads.
+
+At every step, MAAS uses the BMC interface to ensure the machine can be powered on/off or rebooted reliably.
+
+
+## Machines in the MAAS UI
+
+In the web UI, machines appear in the *Machines* list, with columns for status, power state, owner, pool, zone, and tags. From here, you can:
+
+- Filter and search for machines.
+- Add new hardware manually or via chassis import.
+- Select machines to take bulk actions (commission, deploy, release).
+
+Clicking a machine opens its summary, which shows:
+
+- Overview: Lifecycle state, OS, owner.
+- CPU & Memory: Hardware specs and test results.
+- Storage: Disk layouts and editing options.
+- Network: Interfaces and IP assignments.
+- Domain & Zone: Placement and scoping information.
+- Power settings: Configured power type and credentials.
+- Tags & Notes: Metadata for organizing workloads.
+
+
+## CLI equivalent
+
+The same data can be retrieved programmatically. For example:
+
+```bash
+maas $PROFILE machines read | jq -r '(["FQDN","POWER","STATUS","OWNER","POOL","ZONE"] | (., map(length*"-"))),
+(.[] | [.hostname, .power_state, .status_name, .owner // "-", .pool.name, .zone.name]) | @tsv' | column -t
 ```
 
-This output provides an overview of each machine’s state, tags, and assignment.
+This command lists machines with their state, ownership, pool, and zone.
 
-## Machine Summary
 
-Selecting a machine’s FQDN or MAC address (in the UI) opens a summary view with key details:
+## Normal machine behaviour
 
-- Overview: Status, OS version, and owner.
-- CPU & Memory: Specs and test links.
-- Storage: Disk layout and modification options.
-- Domain & Zone: Configuration settings with edit links.
-- Power Type: Configurable power settings.
-- Tags: Assigned tags with edit options.
+Once integrated into MAAS, machines follow a consistent lifecycle:
 
-Most machine events are accessible from the *Machines* menu.
+- New → Commissioning → Ready → Deployed → Released.
+- Hardware changes are detected and updated during commissioning.
+- Devices removed manually will reappear when recommissioned.
+- Network and storage layouts are applied during commissioning and can be edited before deployment.
+- On release, MAAS can securely erase storage to prepare the machine for reallocation.
 
-### USB & PCI Devices
+## Key takeaway
 
-Machines may include USB or PCI devices such as keyboards, GPUs, or network cards. These devices are detected during commissioning and listed under the *PCI devices* and *USB* tabs, showing device type, vendor ID, product ID, driver name, NUMA node (if applicable), and address.
+A machine in MAAS is not just an entry in a table. It’s a full representation of a server: its hardware, network identity, power controls, and configuration. By abstracting these details, MAAS makes it possible to provision and manage fleets of servers as easily as you might manage VMs in a cloud.
 
-These devices can be removed via the CLI:
+## Next steps
 
-```nohighlight
-maas $PROFILE node-device delete $SYSTEM_ID $DEVICE_ID
-```
+ - Learn about the [MAAS machine life-cycle](https://canonical.com/maas/docs/about-the-machine-life-cycle).
+ - Understand how and why to [commission machines](https://canonical.com/maas/docs/about-commissioning-machines).
 
-Recommissioning the machine will restore detected devices.
-
-### Network Configuration
-
-The *Network* tab allows viewing and editing machine network settings. Changes can be made while a machine is in the 'Ready' state.
-
-### Booting & Power Management
-
-The *Booting* tab provides machine configuration options, including PXE boot settings.
-
-- *Hard Power-Off* immediately shuts down power.
-- *Soft Power-Off (MAAS 3.5+)* gracefully shuts down the OS.
-
-### Storage Management
-
-MAAS supports various storage configurations, including:
-
-- Traditional partitioning, LVM, RAID, and bcache.
-- UEFI boot mechanisms.
-- Storage configuration for CentOS and RHEL, including RAID and custom partitioning (ZFS and bcache excluded).
-
-Storage layouts are applied during commissioning, and users can modify configurations as needed. Multiple disk erasure options are available when releasing a machine.
