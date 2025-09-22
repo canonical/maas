@@ -1,56 +1,86 @@
-Operating MAAS without internet access is possible, but requires planning. Four key elements must be in place for a seamless experience:
 
-1. Snap updates via the Enterprise Store.
-2. Local package repository
-3. MAAS-specific images from a local mirror
-4. Other OS images from various sources
+## Cheat sheet
+| Resource | What to provide | How to verify |
+| Snaps | Enterprise Store with required snaps | `snap info maas` works without internet |
+| Packages | Local Debian repo via `reprepro` | `apt update` succeeds |
+| Ubuntu images | Local `simplestreams` mirror | `maas $PROFILE boot-resources read` lists images |
+| Other OS images | Custom images or `user_data` | Deploy CentOS/RHEL node |
+| Proxy (optional) | Transparent proxy for MAAS + Ubuntu requests | DNS redirects to your mirror |
 
-Some of these resources can also utilize a transparent proxy, minimizing impact on your existing MAAS setup.
 
-## Enterprise Store
+## Why this matters
+MAAS can run in an air-gapped environment (no internet access), but only if you prepare the right local resources. Without preparation, you’ll run into failed package installs, missing images, and broken updates.
 
-To manage snaps in an air-gapped setup, use the Enterprise Store. This  eliminates the need for devices to connect to the internet. Steps to get this up:
+This guide shows you how to:
+
+- Provide snaps from an Enterprise Store
+- Host a local package repository
+- Mirror Ubuntu images locally
+- Support other OS images (CentOS, RHEL, etc.)
+- Optionally use a transparent proxy to simplify access
+
+
+## Prepare the Enterprise Store (snaps)
+
+Snaps are central to MAAS. In an offline environment, you need a private Enterprise Store.
 
 1. Register the Enterprise Store on a machine with internet access.
-2. Secure your deployment with HTTP.
-3. Populate the store with snaps needed for your MAAS environment.
+2. Secure the deployment with HTTPS.
+3. Populate the store with the snaps required by your MAAS environment.
 
-For detailed guidance, see the [official documentation](https://documentation.ubuntu.com/enterprise-store).
+For detailed steps, see [Enterprise Store docs](https://documentation.ubuntu.com/enterprise-store).
 
-## Local package update
 
-Utilize the `reprepro` command to manage local Debian package repositories. It's the recommended way, as `apt-mirror` is no longer maintained. `Reprepro` does not require an external database and manages package signatures efficiently.
+## Host a local package repository
 
-For easier access, you might want to use a transparent proxy.
+MAAS rack and region controllers still depend on Debian packages. Use `reprepro` to build and manage a local mirror:
 
-## Local image mirror
+- `reprepro` is actively maintained (unlike `apt-mirror`).
+- No external database required.
+- Handles package signatures efficiently.
 
-MAAS allows you to mirror images locally by following these steps:
+You can also front this with a transparent proxy for easier access.
+
+
+## Mirror MAAS images locally
+
+MAAS must download Ubuntu OS images for commissioning and deployment. Without internet, mirror them yourself:
 
 1. Install `simplestreams`.
-2. Define variables for easier CLI interaction.
-3. Specify image storage locations.
-4. Add a new boot source pointing to the local mirror.
+2. Define environment variables for CLI interaction.
+3. Configure local storage paths.
+4. Add a new boot source in MAAS pointing to your local mirror.
 
-Check the [local image mirror guide](https://canonical.com/maas/docs/how-to-manage-images#p-9030-use-a-local-mirror) for comprehensive details.
+See [local image mirror guide](https://canonical.com/maas/docs/how-to-manage-images).
 
-## Non-Ubuntu images
 
-For non-MAAS OS like CentOS or RHEL, you have two options:
+## Provide non-Ubuntu images
 
-- Use custom `user_data`.
-- Create and store custom images in a local mirror.
+For CentOS, RHEL, or other OSes:
 
-## Using `user_data`
+- Use custom `user_data` to configure the installer with your own package mirrors.
+- Or build and store custom images in your local mirror for MAAS to deploy.
 
-Custom `user_data` can configure CentOS or RHEL to use specific mirrors. 
 
-## Transparent proxies
+## Use a transparent proxy (optional)
 
-To avoid altering MAAS or Ubuntu settings, establish a transparent proxy:
- 
+A transparent proxy makes offline operation less intrusive:
+
 1. Redirect Ubuntu and MAAS package requests via HTTP.
-2. Create local mirrors for `archive.ubuntu.com` and `images.maas.io`.
-3. Adjust DNS settings to point to these local mirrors.
+2. Mirror both `archive.ubuntu.com` and `images.maas.io`.
+3. Adjust DNS so that requests resolve to your local mirrors.
 
-This way, your existing configurations remain untouched.
+This way, MAAS and Ubuntu configurations don’t need to be altered — requests are intercepted and handled locally.
+
+
+## Safety nets
+
+- Test each mirror before disconnecting from the internet (`apt update`, `snap info`, `maas boot-resources import`).
+- Confirm MAAS can download and deploy at least one image end-to-end.
+- Document your local mirror hostnames and ensure DNS overrides are in place.
+
+
+## Next steps
+- Find out how to [secure MAAS](https://canonical.com/maas/docs/how-to-enhance-maas-security)
+- Learn more about [MAAS security](https://canonical.com/maas/docs/about-maas-security)
+- Read up on [networking in MAAS](https://canonical.com/maas/docs/about-maas-networking)
