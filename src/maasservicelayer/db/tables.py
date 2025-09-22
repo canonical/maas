@@ -207,6 +207,13 @@ BootResourceTable = Table(
     Column("base_image", String(255), nullable=False),
     Column("alias", String(255), nullable=True),
     Column("last_deployed", DateTime(timezone=False), nullable=True),
+    Column(
+        "selection_id",
+        BigInteger,
+        ForeignKey("maasserver_bootsourceselection.id"),
+        # It has to be nullable because of user-uploaded boot resources
+        nullable=True,
+    ),
     UniqueConstraint("name", "architecture", "alias"),
 )
 
@@ -332,6 +339,7 @@ BootSourceCacheTable = Table(
     Column("subarch", String(32), nullable=False),
     Column("release", String(32), nullable=False),
     Column("label", String(32), nullable=False),
+    Column("latest_version", String(32), nullable=True),
     Column(
         "boot_source_id",
         BigInteger,
@@ -361,9 +369,7 @@ BootSourceSelectionTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("os", String(20), nullable=False),
     Column("release", String(20), nullable=False),
-    Column("arches", ARRAY(Text), nullable=True),
-    Column("subarches", ARRAY(Text), nullable=True),
-    Column("labels", ARRAY(Text), nullable=True),
+    Column("arch", Text, nullable=False),
     Column(
         "boot_source_id",
         BigInteger,
@@ -374,7 +380,7 @@ BootSourceSelectionTable = Table(
         ),
         nullable=False,
     ),
-    UniqueConstraint("boot_source_id", "os", "release"),
+    UniqueConstraint("boot_source_id", "os", "release", "arch"),
     Index(
         "maasserver_bootsourceselection_boot_source_id_b911aa0f",
         "boot_source_id",
