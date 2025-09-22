@@ -141,6 +141,18 @@ func (l *NotificationListener) Listen(ctx context.Context) {
 	}
 }
 
+func (l *NotificationListener) EnqueueLeaseNotification(ctx context.Context, n *Notification) error {
+	select {
+	case <-ctx.Done():
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+	case l.buf <- n:
+	}
+
+	return nil
+}
+
 func (l *NotificationListener) read(ctx context.Context) {
 	decoder := json.NewDecoder(l.conn)
 

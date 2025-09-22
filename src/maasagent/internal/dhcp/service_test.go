@@ -1068,7 +1068,7 @@ func TestConfigureDQLite(t *testing.T) {
 				WithDataPathFactory(func(path string) string {
 					return filepath.Join(dataPath, path)
 				}),
-				WithServerStart(func(_ context.Context) error {
+				WithServerStart(func(_ context.Context, _ LeaseReporter) error {
 					return nil
 				}),
 			)

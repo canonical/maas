@@ -28,12 +28,14 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/canonical/microcluster/v2/state"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/insomniacslk/dhcp/dhcpv4"
 	"github.com/rs/zerolog/log"
+	"maas.io/core/src/maasagent/internal/dhcpd"
 )
 
 var (
@@ -214,8 +216,13 @@ func getDHCPv4OptionType(optCode uint16) int {
 	return OptionTypeString
 }
 
+type LeaseReporter interface {
+	EnqueueLeaseNotification(context.Context, *dhcpd.Notification) error
+}
+
 type DORAHandler struct {
 	allocator             Allocator4
+	leaseReporter         LeaseReporter
 	clusterState          state.State
 	server                *Server
 	discoverReplyOverride func(context.Context, int, *dhcpv4.DHCPv4) error
@@ -224,9 +231,10 @@ type DORAHandler struct {
 	stateLock             sync.RWMutex
 }
 
-func NewDORAHandler(a Allocator4) *DORAHandler {
+func NewDORAHandler(a Allocator4, l LeaseReporter) *DORAHandler {
 	return &DORAHandler{
-		allocator: a,
+		allocator:     a,
+		leaseReporter: l,
 	}
 }
 
@@ -466,6 +474,28 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		err   error
 	)
 
+	defer func() {
+		if err == nil && lease != nil {
+			var hostname string
+			if hn, ok := lease.Options[uint16(dhcpv4.OptionHostName)]; ok {
+				hostname = hn
+			}
+
+			err = d.leaseReporter.EnqueueLeaseNotification(
+				ctx,
+				&dhcpd.Notification{
+					Action:    "commit",
+					IPFamily:  "ipv4",
+					Hostname:  hostname,
+					MAC:       lease.MACAddress.String(),
+					IP:        lease.IP.String(),
+					Timestamp: int64(lease.UpdatedAt),
+					LeaseTime: int64(lease.Lifetime),
+				},
+			)
+		}
+	}()
+
 	requestedIPBytes, ok := msg.Pkt4.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
 	if !ok || (len(requestedIPBytes) != 4 && len(requestedIPBytes) != 16) {
 		return ErrNoIPRequested
@@ -575,7 +605,24 @@ func (d *DORAHandler) handleDecline(ctx context.Context, msg Message) error {
 
 func (d *DORAHandler) handleRelease(ctx context.Context, msg Message) error {
 	return d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return d.allocator.Release(ctx, tx, int(msg.IfaceIdx), msg.Pkt4.ClientHWAddr)
+		err := d.allocator.Release(ctx, tx, int(msg.IfaceIdx), msg.Pkt4.ClientHWAddr)
+		if err != nil {
+			return err
+		}
+
+		var hostname string
+		if hn, ok := msg.Pkt4.Options[uint8(dhcpv4.OptionHostName)]; ok {
+			hostname = string(hn)
+		}
+
+		return d.leaseReporter.EnqueueLeaseNotification(ctx, &dhcpd.Notification{
+			Action:    "release",
+			IPFamily:  "ipv4",
+			Hostname:  hostname,
+			IP:        msg.Pkt4.YourIPAddr.String(),
+			MAC:       msg.Pkt4.ClientHWAddr.String(),
+			Timestamp: time.Now().Unix(),
+		})
 	})
 }
 

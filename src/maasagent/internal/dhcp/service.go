@@ -125,7 +125,7 @@ type DHCPService struct {
 	serverCancel       context.CancelFunc
 	omapiConnFactory   omapiConnFactory
 	omapiClientFactory omapiClientFactory
-	serverStart        func(context.Context) error
+	serverStart        func(context.Context, LeaseReporter) error
 	stateLock          *sync.RWMutex
 	client             *apiclient.APIClient
 	runningV4          *atomic.Bool
@@ -210,7 +210,7 @@ func WithDataPathFactory(factory dataPathFactory) DHCPServiceOption {
 	}
 }
 
-func WithServerStart(fn func(context.Context) error) DHCPServiceOption {
+func WithServerStart(fn func(context.Context, LeaseReporter) error) DHCPServiceOption {
 	return func(s *DHCPService) {
 		s.serverStart = fn
 	}
@@ -364,7 +364,7 @@ func (s *DHCPService) OnNewMember(ctx context.Context, st state.State) error {
 	return s.handleClusterStateUpdate(ctx, st)
 }
 
-func (s *DHCPService) startInternalServer(ctx context.Context) error {
+func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter) error {
 	log.Info().Msg("STARTING INTERNAL DHCP SERVER")
 
 	allocator4, err := newDQLiteAllocator4()
@@ -372,7 +372,7 @@ func (s *DHCPService) startInternalServer(ctx context.Context) error {
 		return err
 	}
 
-	handler4 := NewDORAHandler(allocator4)
+	handler4 := NewDORAHandler(allocator4, lr)
 	if s.clusterState != nil {
 		handler4.SetClusterState(s.clusterState)
 	}
@@ -440,7 +440,7 @@ func (s *DHCPService) start() error {
 	if s.internal {
 		ctx, s.serverCancel = context.WithCancel(context.Background())
 
-		err = s.serverStart(ctx)
+		err = s.serverStart(ctx, notificationListener)
 		if err != nil {
 			log.Err(err).Send()
 			return err
