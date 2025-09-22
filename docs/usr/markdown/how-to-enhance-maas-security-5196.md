@@ -5,7 +5,7 @@
 |---------------|--------------------|-------|
 | TLS (3.3+) | `maas config-tls enable key.pem cert.pem --cacert chain.pem --port 5443` | Use same cert across HA; default port 5443 |
 | TLS (≤3.2) | Reverse proxy with nginx or apache2 | TLS must be terminated in front of MAAS |
-| Check TLS | UI: *Settings* > *Configuration* > *Security* | Shows CN, expiry, fingerprint |
+| Check TLS | UI: *Settings* > *Security* | Shows CN, expiry, fingerprint |
 | Renew TLS | Re-run `config-tls enable` with new files | Store certs in `/var/snap/maas/common` |
 | Ports | `ufw allow 5240`, `ufw allow 5248`, `ufw allow 5241:5247/tcp|udp`, `ufw allow 5250:5270/tcp|udp` | Limit exposure, see [port reference](https://canonical.com/maas/docs/configuration-reference#p-17901-controller-port-settings) |
 | HAProxy | `sudo apt install haproxy` → edit `/etc/haproxy/haproxy.cfg` | Use as TLS terminator + load balancer |
@@ -47,7 +47,7 @@ X509v3 Subject Alternative Name:
 ```
 
 ### Check TLS status
-UI path: *Settings* > *Configuration* > *Security*.
+UI path: *Settings* > *Security*.
 Look for:
 - Common name (CN)
 - Expiration date
