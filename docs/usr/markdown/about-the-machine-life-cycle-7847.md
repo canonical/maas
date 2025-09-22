@@ -25,7 +25,7 @@ For supported power drivers, MAAS creates a dedicated `maas` user on the
 BMC with a randomly generated password, then uses those credentials for
 power control. MAAS stores the credentials in its database and does not
 modify existing BMC users unless you explicitly configure it to do so.
-Examples include IPMI- and Redfish-based power drivers.
+Examples include power drivers using IPMI and Redfish.
 
 Note that if your policy forbids new BMC users, you can supply existing
 credentials instead; MAAS will use what you provide and skip creating
