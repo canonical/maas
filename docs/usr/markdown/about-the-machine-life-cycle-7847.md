@@ -1,49 +1,104 @@
-Understanding the machine life-cycle is key to leveraging MAAS effectively. Machines under MAAS control transition through specific states, primarily user-controlled, except for the "failed" state, which MAAS assigns when certain operations can't be completed successfully.
+Once MAAS has discovered a machine, it begins a structured life-cycle that reflects the real stages of bringing hardware into service, operating it, and eventually returning it to the pool. Understanding this flow is essential to managing machines effectively.
 
-## Machine states
 
-The standard life-cycle includes the following states:
+## Enlistment: when MAAS first meets a machine
 
-- **New:** Machines configured to network boot on a MAAS-accessible subnet are automatically enlisted with a "NEW" status.
+When a machine is configured to network boot (PXE/iPXE) on a subnet controlled by MAAS, it will contact MAAS during boot. MAAS responds with a small ephemeral image, boots the machine, and records its basic identity (MAC address, architecture). At this point the machine appears in MAAS with the state:
 
-- **Commissioning:** Selected "NEW" machines undergo commissioning, where MAAS boots them via PXE, loads an ephemeral Ubuntu OS into RAM, and assesses hardware configurations. Failures during this process result in a "FAILED" state.
+- New - visible to admins, but not yet trusted for workloads.
 
-- **Testing:** Post-commissioning, MAAS performs basic hardware tests. Machines that don't pass these tests are moved to a "FAILED" state.
+Admins can also manually add machines. In that case MAAS skips the “new” stage and immediately commissions them.
 
-- **Ready:** Machines that pass testing are marked "READY," indicating they're prepared for deployment.
 
-- **Allocated:** Users allocate "READY" machines to take ownership, preventing others from deploying them.
+## Commissioning: gathering the details
 
-- **Deploying:** Allocated machines are deployed with the specified OS and configurations.
+Commissioning turns a "new" machine into a usable one. MAAS:
 
-- **Deployed:** Machines successfully deployed and operational.
+- Boots the machine into an ephemeral Ubuntu image.
+- Runs hardware probes to detect CPU, RAM, storage, and network devices.
+- Applies baseline configuration (firmware settings, power parameters).
+- Runs optional hardware tests to confirm the machine is healthy.
 
-- **Releasing:** Deployed machines can be released back to the pool, optionally undergoing disk erasure.
+Power parameters:
 
-## Exceptional states
+For supported power drivers, MAAS creates a dedicated `maas` user on the
+BMC with a randomly generated password, then uses those credentials for
+power control. MAAS stores the credentials in its database and does not
+modify existing BMC users unless you explicitly configure it to do so.
+Examples include power drivers using IPMI and Redfish.
 
-- **Rescue mode:** Allows troubleshooting of deployed or broken machines by booting into an ephemeral environment.
+Note that if your policy forbids new BMC users, you can supply existing
+credentials instead; MAAS will use what you provide and skip creating
+`maas`.
 
-- **Broken:** Machines with critical issues can be marked as "BROKEN," indicating they require attention before returning to the pool.
+Outcomes:
 
-Understanding these states and transitions is crucial for effective machine management in MAAS.
+- Commissioning - while the process is in progress.
+- Failed - if MAAS cannot complete commissioning or if tests fail.
+- Ready - if the machine passes.
 
-## Enlistment and commissioning
+At this point MAAS has a complete hardware inventory for scheduling and can deploy the machine.
 
-MAAS simplifies machine management through enlistment and commissioning processes:
 
-- **Enlistment:** MAAS discovers machines configured to netboot on accessible subnets, boots them into an ephemeral Ubuntu environment, and gathers basic hardware information, assigning them a "NEW" status.
+## Allocation and ownership
 
-- **Commissioning:** Administrators select "NEW" machines for commissioning, during which MAAS collects detailed hardware information and performs initial configurations. Successful commissioning transitions machines to the "READY" state.
+To prevent conflicts in multi-user environments, machines must be allocated before they can be deployed:
 
-Administrators can also manually add machines to MAAS, which automatically commissions them.
+- Allocated - a "ready" machine has been reserved by a user or project. Other users can’t deploy it until it’s released.
 
-## Cloning configurations (MAAS 3.1+)
+Allocation does not change the machine’s state on the wire — it still sits idle — but it locks the record in MAAS for one user.
 
-MAAS 3.1 introduced the ability to clone configurations from one machine to others, streamlining the setup of multiple machines with similar settings. This feature allows users to replicate network and storage configurations, provided certain conditions are met, such as matching interface names and adequate storage capacity on destination machines.
 
-## Adding live machines (MAAS 3.1+)
+## Deployment: making the machine useful
 
-MAAS 3.1 also allows the addition of machines already running workloads without disrupting them. Administrators can specify that a machine is already deployed, preventing the standard commissioning process and marking it as deployed. A provided script can collect hardware information from these machines and send it back to MAAS.
+When the user initiates deployment:
 
-By understanding and utilizing these processes and features, administrators can effectively manage machines within MAAS, ensuring efficient deployment and maintenance across their infrastructure.
+1. MAAS powers on the allocated machine.
+2. It boots via PXE and installs the chosen operating system.
+3. MAAS reboots the machine into the new OS, adds user data (via `cloud-init`), and hands control to the user.
+
+The states:
+
+- Deploying - installation is in progress.
+- Deployed - installation succeeded; the machine is running in the chosen OS.
+
+From here, the machine is fully usable as a server.
+
+
+## Releasing: returning to the pool
+
+When the workload is finished, a machine can be released:
+
+- Releasing - MAAS is wiping the disks (if secure erase options are selected).
+- Ready - once released, the machine is idle again and available for others to allocate.
+
+Disk erasure ensures sensitive data isn’t passed to the next user.
+
+
+## Exceptional and maintenance states
+
+Some states occur outside the normal cycle:
+
+- Rescue mode - boots the machine into an ephemeral environment for troubleshooting. Useful if an OS won’t boot or if you need to repair storage.
+- Broken - an admin can mark a machine as broken when it has hardware issues; it cannot be deployed until repaired and recommissioned.
+- Failed - an automatic state assigned when commissioning or deployment did not succeed. Machines must be recommissioned before use.
+
+
+## Advanced features
+
+- Cloning configurations (3.1+): admins can copy storage and network layouts from one machine to others, provided their hardware is compatible.
+- Adding live machines (3.1+): MAAS can import machines that are already running workloads. These appear as "deployed" immediately, bypassing the usual commissioning sequence.
+
+
+## Key takeaway
+
+The life-cycle is MAAS’s way of mirroring the real operational journey of a server:
+
+New > Commissioning > Ready > Allocated > Deploying > Deployed > Releasing > Ready again.
+
+Understanding the transitions -- what MAAS is doing, what the admin can do, and what failures mean -- lets you manage machines with confidence and keep your fleet healthy.
+
+## Next steps
+
+- Dig into [the commissioning process](https://canonical.com/maas/docs/about-commissioning-machines) to understand the kinds of hardware knowledge MAAS needs to deploy a machine successfully.
+- Take a deep dive into [machine deployment](https://canonical.com/maas/docs/about-deploying-machines); this is how MAAS provisions machines to run workloads.
