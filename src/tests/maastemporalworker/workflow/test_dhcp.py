@@ -17,6 +17,7 @@ from maastemporalworker.workflow.dhcp import (
     GetActiveInterfacesForAgentParam,
     GetDHCPDataForAgentParam,
     Host,
+    HostReservationData,
     InterfaceData,
     IPRangeData,
     SubnetData,
@@ -434,6 +435,18 @@ class TestDHCPConfigActivity:
         await create_test_interface_entry(
             fixture, vlan=vlan2, node=rack_controller
         )
+        host = await create_test_machine_entry(fixture)
+        host_sips = await create_test_staticipaddress_entry(
+            fixture,
+            subnet=subnet1,
+            alloc_type=IpAddressType.AUTO,
+        )
+        host_interface = await create_test_interface_entry(
+            fixture,
+            vlan=vlan1,
+            node=host,
+            ips=host_sips,
+        )
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
@@ -481,6 +494,15 @@ class TestDHCPConfigActivity:
             interfaces=[
                 InterfaceData(
                     id=iface1.id, name=iface1.name, vlan_id=iface1.vlan_id
+                )
+            ],
+            host_reservations=[
+                HostReservationData(
+                    ip=str(host_sips[0]["ip"]),
+                    mac_address=str(host_interface.mac_address),
+                    hostname=host["hostname"],
+                    domain_search=["maas"],
+                    subnet_id=subnet1["id"],
                 )
             ],
             default_dns_servers=[str(sip["ip"]) for sip in sips],

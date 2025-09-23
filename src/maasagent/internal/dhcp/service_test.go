@@ -664,6 +664,7 @@ func TestConfigureDQLite(t *testing.T) {
 			vlans    []Vlan
 			subnets  []Subnet
 			ipranges []IPRange
+			hosts    []HostReservation
 		}
 		err error
 	}{
@@ -709,6 +710,7 @@ func TestConfigureDQLite(t *testing.T) {
 				vlans    []Vlan
 				subnets  []Subnet
 				ipranges []IPRange
+				hosts    []HostReservation
 			}{
 				vlans: []Vlan{
 					{
@@ -798,6 +800,7 @@ func TestConfigureDQLite(t *testing.T) {
 				vlans    []Vlan
 				subnets  []Subnet
 				ipranges []IPRange
+				hosts    []HostReservation
 			}{
 				vlans: []Vlan{
 					{
@@ -897,6 +900,7 @@ func TestConfigureDQLite(t *testing.T) {
 				vlans    []Vlan
 				subnets  []Subnet
 				ipranges []IPRange
+				hosts    []HostReservation
 			}{
 				vlans: []Vlan{
 					{
@@ -992,6 +996,7 @@ func TestConfigureDQLite(t *testing.T) {
 				vlans    []Vlan
 				subnets  []Subnet
 				ipranges []IPRange
+				hosts    []HostReservation
 			}{
 				vlans: []Vlan{
 					{
@@ -1028,6 +1033,109 @@ func TestConfigureDQLite(t *testing.T) {
 						FullyAllocated: false,
 						Dynamic:        true,
 						Options:        make(map[uint16]string),
+					},
+				},
+			},
+		},
+		"host reservations": {
+			in: ConfigDQLiteParam{
+				Vlans: []VLANData{
+					{
+						ID:  1,
+						VID: 0,
+						MTU: 1500,
+					},
+				},
+				Subnets: []SubnetData{
+					{
+						ID:        1,
+						GatewayIP: "10.0.0.1",
+						VlanID:    1,
+						AllowDNS:  false,
+						CIDR:      "10.0.0.0/24",
+					},
+				},
+				Interfaces: []InterfaceData{
+					{
+						ID:     1,
+						Name:   "lo",
+						VlanID: 1,
+					},
+				},
+				IPRanges: []IPRangeData{
+					{
+						ID:       1,
+						StartIP:  "10.0.0.100",
+						EndIP:    "10.0.0.200",
+						Dynamic:  true,
+						SubnetID: 1,
+					},
+				},
+				HostReservations: []HostData{
+					{
+						IP:           "10.0.0.4",
+						MAC:          "AB:CD:EF:00:11:22",
+						Hostname:     "host",
+						Domain:       "example.com",
+						DomainSearch: []string{"example.com", "test"},
+						SubnetID:     1,
+					},
+				},
+			},
+			out: struct {
+				vlans    []Vlan
+				subnets  []Subnet
+				ipranges []IPRange
+				hosts    []HostReservation
+			}{
+				vlans: []Vlan{
+					{
+						ID:  1,
+						VID: 0,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionInterfaceMTU):       "1500",
+							uint16(dhcpv4.OptionIPAddressLeaseTime): "600",
+						},
+					},
+				},
+				subnets: []Subnet{
+					{
+						ID: 1,
+						CIDR: &net.IPNet{
+							IP:   net.ParseIP("10.0.0.0").To4(),
+							Mask: net.CIDRMask(24, 32),
+						},
+						VlanID:        1,
+						AddressFamily: 4,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionSubnetMask): "ffffff00",
+							uint16(dhcpv4.OptionRouter):     "10.0.0.1",
+						},
+					},
+				},
+				ipranges: []IPRange{
+					{
+						ID:             1,
+						StartIP:        net.ParseIP("10.0.0.100"),
+						EndIP:          net.ParseIP("10.0.0.200"),
+						Size:           101,
+						SubnetID:       1,
+						FullyAllocated: false,
+						Dynamic:        true,
+						Options:        make(map[uint16]string),
+					},
+				},
+				hosts: []HostReservation{
+					{
+						ID:         1,
+						IPAddress:  net.ParseIP("10.0.0.4"),
+						MACAddress: net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
+						SubnetID:   1,
+						Options: map[uint16]string{
+							uint16(dhcpv4.OptionHostName):            "host",
+							uint16(dhcpv4.OptionDomainName):          "example.com",
+							uint16(dhcpv4.OptionDNSDomainSearchList): "example.com,test",
+						},
 					},
 				},
 			},
@@ -1177,6 +1285,24 @@ func TestConfigureDQLite(t *testing.T) {
 					}
 
 					assert.Equal(t, expectedIPRange, *iprange)
+				}
+
+				for _, expectedHost := range tc.out.hosts {
+					row := tx.QueryRowContext(ctx, "SELECT * FROM host_reservation WHERE id=$1;", expectedHost.ID)
+
+					host := &HostReservation{}
+
+					err = host.ScanRow(row)
+					if err != nil {
+						return err
+					}
+
+					err = host.LoadOptions(ctx, tx)
+					if err != nil {
+						return err
+					}
+
+					assert.Equal(t, expectedHost, *host)
 				}
 
 				return nil

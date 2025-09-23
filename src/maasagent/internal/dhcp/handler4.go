@@ -16,6 +16,7 @@
 package dhcp
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/binary"
@@ -60,6 +61,7 @@ const (
 	OptionTypeIPv4List
 	OptionTypeIPv6List
 	OptionTypeHex
+	OptionTypeZeroByteSeparatedList
 	OptionTypeSubOption
 )
 
@@ -164,6 +166,17 @@ var (
 			return buf, nil
 		},
 		OptionTypeHex: hex.DecodeString,
+		OptionTypeZeroByteSeparatedList: func(s string) ([]byte, error) {
+			sList := strings.Split(s, ",")
+
+			bytesList := make([][]byte, len(sList))
+
+			for i, elem := range sList {
+				bytesList[i] = []byte(strings.TrimSpace(elem))
+			}
+
+			return bytes.Join(bytesList, []byte{0x00}), nil
+		},
 		// TODO: support suboptions
 	}
 )
@@ -211,6 +224,8 @@ func getDHCPv4OptionType(optCode uint16) int {
 		return OptionTypeUint16
 	case uint16(dhcpv4.OptionIPAddressLeaseTime):
 		return OptionTypeUint32
+	case uint16(dhcpv4.OptionDNSDomainSearchList):
+		return OptionTypeZeroByteSeparatedList
 	}
 
 	return OptionTypeString

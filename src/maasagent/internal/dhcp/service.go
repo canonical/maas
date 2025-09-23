@@ -728,11 +728,23 @@ type IPRangeData struct {
 	Dynamic  bool   `json:"dynamic"`
 }
 
+type HostData struct {
+	MAC          string   `json:"mac_address"`
+	DUID         string   `json:"duid"`
+	IP           string   `json:"ip"`
+	Hostname     string   `json:"hostname"`
+	Domain       string   `json:"domain"`
+	DomainSearch []string `json:"domain_search"`
+	SubnetID     int      `json:"subnet_id"`
+	RangeID      int      `json:"range_id"`
+}
+
 type ConfigDQLiteParam struct {
 	Vlans             []VLANData      `json:"vlans"`
 	Subnets           []SubnetData    `json:"subnets"`
 	Interfaces        []InterfaceData `json:"interfaces"`
 	IPRanges          []IPRangeData   `json:"ipranges"`
+	HostReservations  []HostData      `json:"host_reservations"`
 	DefaultDNSServers []string        `json:"default_dns_servers"`
 	NTPServers        []string        `json:"ntp_servers"`
 }
@@ -920,6 +932,40 @@ func (s *DHCPService) configureDQLite(ctx context.Context, param ConfigDQLitePar
 			}
 
 			// TODO queue small IPRange free IPs in allocator's memory
+		}
+
+		for _, hr := range param.HostReservations {
+			mac, err := net.ParseMAC(hr.MAC)
+			if err != nil {
+				return fmt.Errorf("failed to parse MAC address in host reservation: %w", err)
+			}
+
+			h := &HostReservation{
+				IPAddress:  net.ParseIP(hr.IP),
+				MACAddress: mac,
+				DUID:       hr.DUID,
+				SubnetID:   hr.SubnetID,
+			}
+
+			err = h.InsertOrReplace(ctx, tx)
+			if err != nil {
+				return err
+			}
+
+			err = h.InsertOption(ctx, tx, "hostname", int(dhcpv4.OptionHostName), hr.Hostname)
+			if err != nil {
+				return err
+			}
+
+			err = h.InsertOption(ctx, tx, "domain", int(dhcpv4.OptionDomainName), hr.Domain)
+			if err != nil {
+				return err
+			}
+
+			err = h.InsertOption(ctx, tx, "domain-search", int(dhcpv4.OptionDNSDomainSearchList), strings.Join(hr.DomainSearch, ","))
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil

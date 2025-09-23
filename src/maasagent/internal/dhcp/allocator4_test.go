@@ -98,7 +98,7 @@ func TestAllocator4GetOfferFromDiscover(t *testing.T) {
 			INSERT INTO subnet VALUES (3, "10.0.0.0/24", 4, 1);
 			INSERT INTO ip_range VALUES (4, "10.0.0.1", "10.0.0.5", 4, false, false, 3);
 			INSERT INTO ip_range VALUES (5, "10.0.0.10", "10.0.0.15", 4, false, true, 3);
-			INSERT INTO host_reservation VALUES (6, "10.0.0.2", "ab:cd:ef:00:11:22", 4);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (6, "10.0.0.2", "ab:cd:ef:00:11:22", 4, 3);
 			INSERT INTO dhcp_option(label, number, value, vlan_id) VALUES ("mtu", 26, "1500", 1);
 			INSERT INTO dhcp_option(label, number, value, vlan_id) VALUES ("lease lifetime", 51, "3000", 1);
 			INSERT INTO dhcp_option(label, number, value, subnet_id) VALUES ("gateway", 3, "10.0.0.1", 3);
@@ -491,7 +491,7 @@ func TestGetHostReservationIfExists(t *testing.T) {
 			INSERT INTO vlan VALUES (1, 0, NULL);
 			INSERT INTO subnet VALUES (2, "10.0.0.0/24", 4, 1);
 			INSERT INTO ip_range VALUES (3, "10.0.0.1", "10.0.0.11", 10, false, true, 2);
-			INSERT INTO host_reservation VALUES (4, "10.0.0.2", "ab:cd:ef:00:11:22", 3);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (4, "10.0.0.2", "ab:cd:ef:00:11:22", 3, 2);
 			`,
 			in: struct {
 				vlanID int
@@ -505,6 +505,7 @@ func TestGetHostReservationIfExists(t *testing.T) {
 				IPAddress:  net.ParseIP("10.0.0.2"),
 				MACAddress: net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
 				RangeID:    3,
+				SubnetID:   2,
 			},
 		},
 		"host reservation exists for different vlan": {
@@ -513,7 +514,7 @@ func TestGetHostReservationIfExists(t *testing.T) {
 			INSERT INTO vlan VALUES (5, 0, NULL);
 			INSERT INTO subnet VALUES (2, "10.0.0.0/24", 4, 1);
 			INSERT INTO ip_range VALUES (3, "10.0.0.1", "10.0.0.11", 10, false, true, 2);
-			INSERT INTO host_reservation VALUES (4, "10.0.0.2", "ab:cd:ef:00:11:22", 3);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (4, "10.0.0.2", "ab:cd:ef:00:11:22", 3, 2);
 			`,
 			in: struct {
 				vlanID int

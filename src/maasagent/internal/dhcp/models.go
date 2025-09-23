@@ -50,9 +50,15 @@ const (
 		id, start_ip, end_ip, size, fully_allocated, dynamic, subnet_id
 	) VALUES ($1, $2, $3, $4, $5, $6, $7);
 	`
+	insertOrReplaceHostReservationStmt = `
+	INSERT OR REPLACE INTO host_reservation (
+		id, ip_address, mac_address, range_id, subnet_id
+	) VALUES (NULL, $1, $2, $3, $4);
+	`
 
-	insertVLANOptionStmt   = "INSERT OR REPLACE INTO dhcp_option (id, label, number, value, vlan_id) VALUES (NULL, $1, $2, $3, $4);"
-	insertSubnetOptionStmt = "INSERT OR REPLACE INTO dhcp_option (id, label, number, value, subnet_id) VALUES (NULL, $1, $2, $3, $4);"
+	insertVLANOptionStmt            = "INSERT OR REPLACE INTO dhcp_option (id, label, number, value, vlan_id) VALUES (NULL, $1, $2, $3, $4);"
+	insertSubnetOptionStmt          = "INSERT OR REPLACE INTO dhcp_option (id, label, number, value, subnet_id) VALUES (NULL, $1, $2, $3, $4);"
+	insertHostReservationOptionStmt = "INSERT OR REPLACE INTO dhcp_option (id, label, number, value, host_reservation_id) VALUES (NULL, $1, $2, $3, $4);"
 )
 
 // loadOptions loads the options for the given sql statement and id.
@@ -278,20 +284,28 @@ func (i *IPRange) InsertOrReplace(ctx context.Context, tx *sql.Tx) error {
 
 type HostReservation struct {
 	Options    map[uint16]string
+	DUID       string
 	IPAddress  net.IP
 	MACAddress net.HardwareAddr
 	ID         int
 	RangeID    int
+	SubnetID   int
 }
 
 func (h *HostReservation) ScanRow(row *sql.Row) error {
-	var ipStr, macStr string
+	var (
+		ipStr, macStr string
+		duid          *string
+		rangeID       *int
+	)
 
 	err := row.Scan(
 		&h.ID,
 		&ipStr,
 		&macStr,
-		&h.RangeID,
+		&duid,
+		&rangeID,
+		&h.SubnetID,
 	)
 	if err != nil {
 		return err
@@ -299,6 +313,14 @@ func (h *HostReservation) ScanRow(row *sql.Row) error {
 
 	h.IPAddress = net.ParseIP(ipStr)
 	h.MACAddress, err = net.ParseMAC(macStr)
+
+	if duid != nil {
+		h.DUID = *duid
+	}
+
+	if rangeID != nil {
+		h.RangeID = *rangeID
+	}
 
 	return err
 }
@@ -379,6 +401,39 @@ func (h *HostReservation) LoadOptions(ctx context.Context, tx *sql.Tx) error {
 	h.Options = options
 
 	return nil
+}
+
+func (h *HostReservation) InsertOrReplace(ctx context.Context, tx *sql.Tx) error {
+	var rangeID *int
+	if h.RangeID > 0 {
+		rangeID = &h.RangeID
+	}
+
+	result, err := tx.ExecContext(
+		ctx,
+		insertOrReplaceHostReservationStmt,
+		h.IPAddress.String(),
+		h.MACAddress.String(),
+		rangeID,
+		h.SubnetID,
+	)
+	if err != nil {
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	h.ID = int(id)
+
+	return nil
+}
+
+func (h *HostReservation) InsertOption(ctx context.Context, tx *sql.Tx, label string, number int, value string) error {
+	_, err := tx.ExecContext(ctx, insertHostReservationOptionStmt, label, number, value, h.ID)
+	return err
 }
 
 type Lease struct {

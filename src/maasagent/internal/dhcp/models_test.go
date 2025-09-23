@@ -585,12 +585,12 @@ func TestHostReservationScanRow(t *testing.T) {
 		err error
 	}{
 		"all values set": {
-			in: "INSERT INTO host_reservation VALUES (NULL, \"10.0.0.1\", \"ab:cd:ef:00:11:22\", 3);",
+			in: "INSERT INTO host_reservation(id, ip_address, mac_address, subnet_id) VALUES (NULL, \"10.0.0.1\", \"ab:cd:ef:00:11:22\", 3);",
 			out: HostReservation{
 				ID:         1,
 				IPAddress:  net.ParseIP("10.0.0.1"),
 				MACAddress: testMac,
-				RangeID:    3,
+				SubnetID:   3,
 			},
 		},
 		"missing": {
@@ -653,7 +653,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 	}{
 		"one option": {
 			in: `
-			INSERT INTO host_reservation VALUES (NULL, "10.0.0.1", "ab:cd:ef:00:11:22", 3);
+			INSERT INTO host_reservation(id, ip_address, mac_address, subnet_id) VALUES (NULL, "10.0.0.1", "ab:cd:ef:00:11:22", 3);
 			INSERT INTO dhcp_option(label, number, value, host_reservation_id) VALUES ("mtu", 26, "1500", 1);
 			`,
 			out: map[uint16]string{
@@ -662,7 +662,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 		},
 		"multiple options": {
 			in: `
-			INSERT INTO host_reservation VALUES (NULL, "10.0.0.1", "ab:cd:ef:00:11:22", 3);
+			INSERT INTO host_reservation(id, ip_address, mac_address, subnet_id) VALUES (NULL, "10.0.0.1", "ab:cd:ef:00:11:22", 3);
 			INSERT INTO dhcp_option(label, number, value, host_reservation_id) VALUES ("mtu", 26, "1500", 1);
 			INSERT INTO dhcp_option(label, number, value, host_reservation_id) VALUES ("hostname", 12, "test", 1);
 			`,
@@ -676,7 +676,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 			INSERT INTO vlan VALUES (2, 2, NULL);
 			INSERT INTO subnet VALUES (3, "10.0.0.0/24", 4, 2);
 			INSERT INTO ip_range VALUES (4, "10.0.0.1", "10.0.0.21", 20, false, true, 3);
-			INSERT INTO host_reservation VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4, 3);
 			INSERT INTO dhcp_option(label, number, value, vlan_id) VALUES ("mtu", 26, "1500", 2);
 			`,
 			out: map[uint16]string{
@@ -688,7 +688,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 			INSERT INTO vlan VALUES (2, 2, NULL);
 			INSERT INTO subnet VALUES (3, "10.0.0.0/24", 4, 2);
 			INSERT INTO ip_range VALUES (4, "10.0.0.1", "10.0.0.21", 20, false, true, 3);
-			INSERT INTO host_reservation VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4, 3);
 			INSERT INTO dhcp_option(label, number, value, vlan_id) VALUES ("mtu", 26, "1500", 2);
 			INSERT INTO dhcp_option(label, number, value, subnet_id) VALUES ("mtu", 26, "1000", 3);
 			`,
@@ -701,7 +701,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 			INSERT INTO vlan VALUES (2, 2, NULL);
 			INSERT INTO subnet VALUES (3, "10.0.0.0/24", 4, 2);
 			INSERT INTO ip_range VALUES (4, "10.0.0.1", "10.0.0.21", 20, false, true, 3);
-			INSERT INTO host_reservation VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4, 3);
 			INSERT INTO dhcp_option(label, number, value, vlan_id) VALUES ("mtu", 26, "1500", 2);
 			INSERT INTO dhcp_option(label, number, value, subnet_id) VALUES ("mtu", 26, "1000", 3);
 			INSERT INTO dhcp_option(label, number, value, range_id) VALUES ("mtu", 26, "500", 4);
@@ -715,7 +715,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 			INSERT INTO vlan VALUES (2, 2, NULL);
 			INSERT INTO subnet VALUES (3, "10.0.0.0/24", 4, 2);
 			INSERT INTO ip_range VALUES (4, "10.0.0.1", "10.0.0.21", 20, false, true, 3);
-			INSERT INTO host_reservation VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (1, "10.0.0.2", "ab:cd:ef:00:11:22", 4, 3);
 			INSERT INTO dhcp_option(label, number, value, vlan_id) VALUES ("mtu", 26, "1500", 2);
 			INSERT INTO dhcp_option(label, number, value, subnet_id) VALUES ("mtu", 26, "1000", 3);
 			INSERT INTO dhcp_option(label, number, value, range_id) VALUES ("mtu", 26, "500", 4);
@@ -726,7 +726,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 			},
 		},
 		"no options": {
-			in:  "INSERT INTO host_reservation VALUES (1, \"10.0.0.2\", \"ab:cd:ef:00:11:22\", 4);",
+			in:  "INSERT INTO host_reservation(id, ip_address, mac_address, subnet_id) VALUES (1, \"10.0.0.2\", \"ab:cd:ef:00:11:22\", 4);",
 			out: map[uint16]string{},
 		},
 	}
@@ -904,7 +904,7 @@ func TestLeaseLoadOptions(t *testing.T) {
 			INSERT INTO vlan VALUES (2, 2, NULL);
 			INSERT INTO subnet VALUES (3, "10.0.0.0/24", 4, 2);
 			INSERT INTO ip_range VALUES (4, "10.0.0.1", "10.0.0.21", 20, false, true, 3);
-			INSERT INTO host_reservation VALUES (1, "10.0.0.1", "ab:cd:ef:00:11:22", 4);
+			INSERT INTO host_reservation(id, ip_address, mac_address, range_id, subnet_id) VALUES (1, "10.0.0.1", "ab:cd:ef:00:11:22", 4, 3);
 			INSERT INTO lease VALUES (NULL, "10.0.0.1", "ab:cd:ef:00:11:22", NULL, 100, 100, 3000, 0, true, 4);
 			INSERT INTO dhcp_option(label, number, value, vlan_id) VALUES ("mtu", 26, "1500", 2);
 			INSERT INTO dhcp_option(label, number, value, subnet_id) VALUES ("mtu", 26, "1000", 3);

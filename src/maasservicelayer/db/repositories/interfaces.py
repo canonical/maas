@@ -356,3 +356,30 @@ class InterfaceRepository(BaseRepository):
                 # VlanTable.c.mtu,
             )
         )
+
+    async def get_for_ip(self, ip_id: int) -> list[Interface] | None:
+        stmt = (
+            select(InterfaceTable)
+            .select_from(StaticIPAddressTable)
+            .join(
+                InterfaceIPAddressTable,
+                eq(
+                    StaticIPAddressTable.c.id,
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                ),
+            )
+            .join(
+                InterfaceTable,
+                eq(
+                    InterfaceIPAddressTable.c.interface_id, InterfaceTable.c.id
+                ),
+            )
+            .filter(eq(StaticIPAddressTable.c.id, ip_id))
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+
+        if not result:
+            return None
+
+        return [Interface(**r._asdict()) for r in result]
