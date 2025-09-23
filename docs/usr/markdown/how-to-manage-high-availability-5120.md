@@ -1,6 +1,4 @@
 
-Region and rack controllers are the backbone of MAAS. By deploying multiple controllers, you automatically gain load-balancing and failover. This ensures that machine provisioning and API access continue even if one controller goes offline.
-
 This page explains how to enable and manage HA for both rack and region controllers, as well as supporting services like PostgreSQL, DHCP, and the MAAS API.
 
 
@@ -13,37 +11,50 @@ sudo snap install maas
 sudo maas init rack --maas-url $MAAS_URL --secret $SECRET
 ```
 
-### Package install
+For package installs:
+
 ```shell
 sudo apt install maas-rack-controller
 sudo maas-rack register --url $MAAS_URL --secret $SECRET
 ```
 
-The `$SECRET` is generated in the region controllers, and is stored at:
+The $SECRET is stored at:
+- `/var/snap/maas/common/maas/secret` (Snap)
+- `/var/lib/maas/secret` (Package)
 
-- Snap: `/var/snap/maas/common/maas/secret`
-- Package: `/var/lib/maas/secret`
-
-You can also follow the UI path: *Controllers* > *Add rack controller*.
-
+The UI also provides install instructions under *Controllers* > *Add rack controller*.
 
 ## Manage rack controllers
 
-Rack controllers manage networks and connected machines.
+Rack controllers manage machines and their connected networks.
 
 ### List racks
+
 ```shell
 maas $PROFILE rack-controllers read | grep hostname | cut -d '"' -f 4
 ```
 Multiple racks are required for HA. Ensure VM hosts can reach each rack controller.
 
+Multiple racks are required for HA. Ensure VM hosts can communicate with new rack controllers.
+
 ### Delete a rack controller
-- UI: *Controllers* > select controller > *Delete*
-- CLI:
-  ```shell
-  maas $PROFILE rack-controller delete $SYSTEM_ID
-  ```
-⚠️ If the controller participates in DHCP HA, disable DHCP HA first. If you don’t remove the software, a reboot will reinstate it.
+
+UI:
+*Controllers* > Select Controller > *Delete*
+
+CLI:
+
+```shell
+maas $PROFILE rack-controller delete $SYSTEM_ID
+```
+
+Deleting a DHCP HA rack controller requires disabling DHCP HA first. If software is not removed, a reboot reinstates the rack controller.
+
+### Move a rack controller
+
+Moving a rack controller between MAAS instances or versions is unsupported and may cause data loss. Instead:
+
+1. Delete the rack controller:
 
 ### Move a rack controller
 Moving between MAAS instances or versions is not supported and risks data loss. Instead:
@@ -51,7 +62,9 @@ Moving between MAAS instances or versions is not supported and risks data loss. 
    ```shell
    maas $PROFILE rack-controller delete $SYSTEM_ID
    ```
-2. Register a new one.
+
+2. Register a new one:
+
    ```shell
    sudo maas-rack register --url $NEW_MAAS_URL --secret $NEW_SECRET
    ```
@@ -61,10 +74,15 @@ Moving between MAAS instances or versions is not supported and risks data loss. 
 - Don’t move rack controllers between MAAS versions.
 - Don’t connect a rack controller to multiple MAAS instances.
 
+Avoid these mistakes:
+
+- Rack + VM Host: Resource contention may degrade performance.
+- Version Mismatch: A rack controller cannot be moved between MAAS versions.
+- Multiple MAAS Connections: One rack controller cannot serve multiple MAAS instances.
 
 ## Manage region controllers
 
-Region controllers coordinate racks and present the API/UI.
+Region controllers manage one or more racks (a data center), and interface with users.
 
 ### Add a region controller
 On a secondary host:
@@ -84,8 +102,9 @@ sudo systemctl start maas-regiond
 ```
 Check logs for errors.
 
-### Allow HA MAAS to access the database
-All region controllers share the same PostgreSQL DB.
+### Enable highly-available PostgreSQL
+
+All region controllers must connect to the same PostgreSQL database.
 
 1. Allow each API server:
    ```shell
@@ -93,7 +112,7 @@ All region controllers share the same PostgreSQL DB.
    sudo systemctl restart postgresql
    ```
 
-2. Add the region controller:
+2. Add a region controller:
 
 **Snap**
    ```shell
@@ -125,14 +144,8 @@ All region controllers share the same PostgreSQL DB.
    ```
 
 ### Boost region performance
-Increase workers in `/etc/maas/regiond.conf`:
 
-**Snap**
-```bash
-EDITOR=<name of editor>
-sudo $EDITOR /var/snap/maas/current/regiond.conf
-sudo snap restart maas
-```
+Increase `num_workers` in `/etc/maas/regiond.conf` for better performance:
 
 **Debian packages**
 ```yaml
@@ -140,26 +153,49 @@ num_workers: 8
 ```
 Each worker requires 11 PostgreSQL connections. Recommended: one per CPU, max 8.
 
+Each worker requires 11 additional PostgreSQL connections. Recommended: 1 worker per CPU, up to 8 total.
 
 ## Load balancing and HA for services
 
-### BMC load balancing
-Adding a second rack controller automatically balances BMC duties.
+Adding a second rack controller enables automatic BMC load balancing.
 
 ### DHCP HA
 Rack controllers replicate DHCP leases. No user action is required.
 
-Enable via:
-- UI: *Subnets* > VLAN > *Configure DHCP*
-- CLI:
-  ```shell 
-  vid=$(maas maas subnets read | jq -r '.[] | select(.cidr == "10.0.0.0/24") | .vlan.vid')
-  fabric_id=$(maas maas fabrics read | jq -r '.[] | select(.name == "fabric-1") | .id')
-  maas maas vlan update $fabric_id $vid primary_rack=$(hostname) dhcp_on=true
-  ```
+Rack controllers replicate DHCP leases, improving failover. DHCP HA setup:
 
-### Multiple region endpoints
-Define endpoints manually:
+```yaml
+failover peer "failover-partner" {
+     primary;
+     address dhcp-primary.example.com;
+     peer address dhcp-secondary.example.com;
+     split 255;
+}
+failover peer "failover-partner" {
+     secondary;
+     address dhcp-secondary.example.com;
+     peer address dhcp-primary.example.com;
+}
+```
+
+Enable DHCP after adding a rack controller:
+
+UI
+*Subnets* > VLAN > *Reconfigure DHCP*
+
+CLI
+```shell
+vid=$(maas maas subnets read | jq -r '.[] | select(.cidr == "10.0.0.0/24") | .vlan.vid')
+fabric_id=$(maas maas fabrics read | jq -r '.[] | select(.name == "fabric-1") | .id')
+maas maas vlan update $fabric_id $vid primary_rack=$(hostname) dhcp_on=true
+```
+
+### Define multiple region endpoints
+
+MAAS discovers and connects to available region controllers. You can manually define multiple endpoints in:
+
+- `/var/snap/maas/current/rackd.conf` (Snap)
+- `/etc/maas/rackd.conf` (Package)
 
 - Snap: `/var/snap/maas/current/rackd.conf`
 - Package: `/etc/maas/rackd.conf`
@@ -169,11 +205,15 @@ maas_url:
   - http://<ip2>:<port>/MAAS/
 ```
 
-These are the initial endpoints.  Once the rack successfully connect to a region, it receives the list of all region endpoints, and will connect to these other regions as well.
+### Enable highly-available region controllers
 
-### Region controller HA
-- PostgreSQL HA is strongly recommended.
-- Each region controller may need 40 DB connections under load. Increase `max_connections` in PostgreSQL.
+Load balancing region controllers is recommended.  MAAS requires PostgreSQL HA for true region HA. Follow the [PostgreSQL HA guide](https://www.postgresql.org/docs/9.5/static/high-availability.html).
+
+Each region controller requires 40 database connections under high load. Increase `max_connections` accordingly.
+
+## Configure a highly-available API
+
+Install and configure HAProxy to enable a highly-available MAAS API:
 
 ### Highly-available API with HAProxy
 Install HAProxy:
@@ -182,6 +222,7 @@ sudo apt install haproxy
 ```
 
 Configure `/etc/haproxy/haproxy.cfg`:
+
 ```yaml
 frontend maas
     bind    *:80
@@ -195,18 +236,9 @@ backend maas
 ```
 
 Restart HAProxy:
+
 ```shell
 sudo systemctl restart haproxy
 ```
 
 Use port 80 instead of 5240 for API/UI access.
-
-
-## Safety nets
-- Always back up PostgreSQL before modifying configs.
-- Never mix controller versions between instances.
-- Plan database connection limits when scaling workers or regions.
-
-
-## Next steps
-- [About controllers](https://canonical.com/maas/docs/about-controllers)
