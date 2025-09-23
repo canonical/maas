@@ -33,28 +33,33 @@ The RT kernel is not built into MAAS images. Instead:
 
    * Select [one of the valid kernels](https://documentation.ubuntu.com/real-time/latest/reference/releases/).
 
-3. Add cloud-init user-data
+3.  Configure cloud-init:
+   Select *Cloud-init user-data* and use one of the following templates.
+   Replace `<ubuntu_pro_token>` with your valid token.
 
-   * Under *Cloud-init user-data*, paste one of the following snippets (depending on your cloud-init version). 
+### Configure cloud-init
 
-To check your `cloud-init` version:
+Use this simple rule based on the **Ubuntu series you’re deploying** (per current -updates):
 
-```bash
-cloud-init --version
-```
+- **20.04 (Focal) and newer (22.04 Jammy, 24.04 Noble, etc.)** → use the **`ubuntu_pro`** block.
+- **18.04 (Bionic) and older** → use the **`runcmd`** block.
 
-For `cloud-init` ≥ 23.4:
+> If you’ve customised images or aren’t sure, you can confirm your version with:
+> ```bash
+> cloud-init --version
+> ```
+> Use **`ubuntu_pro`** when `cloud-init >= 24.1`; otherwise use **`runcmd`**.
 
+#### `ubuntu_pro` style (Focal/20.04 and newer, or `cloud-init >= 24.1`)
 ```yaml
 #cloud-config
-ubuntu_advantage:
+ubuntu_pro:
   token: <ubuntu_pro_token>
   enable:
-    - realtime-kernel
+    - fips-updates
 ```
 
-For `cloud-init` < 23.4:
-
+#### `runcmd` style (Bionic/18.04 and older, or `cloud-init < 24.1`)
 ```yaml
 #cloud-config
 package_update: true
@@ -62,10 +67,8 @@ package_upgrade: true
 
 runcmd:
   - pro attach <ubuntu_pro_token>
-  - yes | pro enable realtime-kernel
+  - yes | pro enable fips-updates
 ```
-
-Replace `<ubuntu_pro_token>` with your actual token.
 
 4. Start deployment
 
