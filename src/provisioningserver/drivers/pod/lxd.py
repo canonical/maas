@@ -90,6 +90,9 @@ LXD_REQUIRED_EXTENSIONS = frozenset(
 
 LXD_MIN_VERSION = "4.16"
 
+# A policy used when waiting between retries of power changes.
+LXD_WAITING_POLICY = (1, 2, 2, 4, 6, 8, 12, 20, 30)
+
 
 def convert_lxd_byte_suffixes(value, divisor=None):
     """Takes the value and converts to a proper integer
@@ -188,6 +191,7 @@ class LXDPodDriver(PodDriver):
     can_probe = False
     can_set_boot_order = False
     description = "LXD (virtual systems)"
+    wait_time = LXD_WAITING_POLICY
     settings = [
         make_setting_field(
             "power_address",
