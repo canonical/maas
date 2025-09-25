@@ -1,29 +1,27 @@
-MAAS models networking objects in this order: fabric > VLAN > subnet > IP. You will usually create them in that sequence, then attach interfaces to the appropriate VLAN/subnet.
+MAAS models networking in this order: Fabric > VLAN > Subnet > IP. In most deployments you will create and configure them in that sequence, and then attach interfaces on machines to the appropriate VLAN/subnet.
 
 This page shows you how to:
 
-- Create and manage fabrics, VLANS, subnets, and IP ranges (CRUD, CLI-first).
+- Create and manage fabrics, VLANs, subnets, and IP ranges.
 - Configure and maintain interfaces (physical, VLAN interfaces, bonds, bridges).
 - Reserve IP addresses and ranges.
 - Enable network discovery and configure additional DNS servers.
 
-> For deeper concepts, see [About MAAS Networking](https://canonical.com/maas/docs/about-maas-networking).
+> For deeper concepts, see [About MAAS networking](https://canonical.com/maas/docs/about-maas-networking).
 
----
 
-## Cheat sheet: Set variables once, then CRUD by object
+## Quick setup variables (edit once)
 
-Paste once; edit for your environment:
+Paste these into your shell and adjust the values for your environment. They’re used throughout the CLI examples below.
 
 ```bash
-# set your variables (edit these)
 PROFILE=admin
-FABRIC_NAME=fabric-1
-FABRIC_ID=1                  # Optional; you can use FABRIC_NAME instead
+FABRIC_NAME=fabric-1          # Or use a custom name
+FABRIC_ID=1                   # Optional; name also works in most commands
 VLAN_NAME=prod
-VLAN_ID=100                  # Use 0 for untagged
-SYSTEM_ID=abcd12
-INTERFACE_ID=3
+VLAN_ID=100                   # Use 0 for untagged VLAN
+SYSTEM_ID=abcd12              # The machine's system id
+INTERFACE_ID=3                # Interface id on that machine
 SUBNET_CIDR=10.0.0.0/24
 SUBNET_ID=42
 GATEWAY_IP=10.0.0.1
@@ -35,248 +33,268 @@ IP_STATIC_RANGE_LOW=10.0.0.200
 IP_STATIC_RANGE_HIGH=10.0.0.249
 ```
 
-### Fabrics — CLI
 
+## Fabrics
+
+What: A fabric groups VLANs that share L2 connectivity inside MAAS.
+
+### Do it in the UI
+Go to Networking > Fabrics to perform fabric-related actions:
+
+- Create: *Add Fabric* > *Name* > *Add*
+- Read: Fabrics table lists all
+- Update: *(Fabric)* > *Edit* > change *Name* > *Save*
+- Delete: *(Fabric)* > *Delete* > *Confirm*
+
+### Do it with the CLI
 ```bash
-# create
+# Create
 maas $PROFILE fabrics create name=$FABRIC_NAME
 
-# read
+# Read
 maas $PROFILE fabrics read
 
-# update (rename)
+# Update (rename)
 maas $PROFILE fabric update $FABRIC_NAME name=fabric-prod
 
-# delete
+# Delete
 maas $PROFILE fabric delete $FABRIC_NAME
 ```
 
-### Fabrics — UI
 
-Create / Read / Update / Delete
-- Create: *Networking* > *Fabrics* > *Add Fabric* > *Name* > *Add*
-- Read: *Networking* > *Fabrics* (table lists all)
-- Rename: *Networking* > *Fabrics* > *(Fabric)* > *Edit* > *Name* > *Save*
-- Delete: *Networking* > *Fabrics* > *(Fabric)* > *Delete* > *Confirm*
+## VLANs
 
----
+What: Layer‑2 segments inside a fabric; VID 0 denotes the untagged VLAN.
 
-### VLANs — CLI
+### Do it in the UI
+Go to Networking > Fabrics > (Fabric) for VLAN actions:
 
+- Create: *Add VLAN* > set *Name* and *VID* (0 = Untagged) > *Add*
+- Read: *(Fabric)* shows the VLANs list
+- Update (e.g., DHCP/MTU/Primary rack): *(VLAN)* > *Edit* > toggle/adjust > *Save*
+- Delete: *(VLAN)* > *Delete* > *Confirm*
+- Untagged VLAN (VID=0): *(VLAN “Untagged (0)”)* > *Edit* > enable DHCP and set Primary rack > *Save*
+
+### Do it with the CLI
 ```bash
-# create (by fabric name)
+# Create (by fabric name)
 maas $PROFILE vlans create $FABRIC_NAME name=$VLAN_NAME vid=$VLAN_ID
 
-# read VLANS in a fabric
+# Read VLANs in a fabric
 maas $PROFILE vlans read $FABRIC_NAME
 
-# update (toggle DHCP or MTU)
+# Update VLAN options (examples)
 maas $PROFILE vlan update $FABRIC_NAME $VLAN_ID dhcp_on=true mtu=9000
 
-# untagged VLAN (vid=0) example: enable DHCP and set primary rack
+# Untagged VLAN (vid=0): enable DHCP and set primary rack
 maas $PROFILE vlan update $FABRIC_NAME 0 dhcp_on=true primary_rack=<rack-name>
 
-# delete
+# Delete
 maas $PROFILE vlan delete $FABRIC_NAME $VLAN_ID
 ```
 
-### VLANs — UI
 
-Create / Read / Update / Delete
-- Create: *Networking* > *Fabrics* > *(Fabric)* > *Add VLAN* > *Name, VID (use 0 for Untagged)* > *Add*
-- Read: *Networking* > *Fabrics* > *(Fabric)* (VLANs tab lists all)
-- Update (DHCP/MTU/Primary rack): *Networking* > *Fabrics* > *(Fabric)* > *(VLAN)* > *Edit* > *Toggle DHCP, set MTU, Primary rack* > *Save*
-- Delete: *Networking* > *Fabrics* > *(Fabric)* > *(VLAN)* > *Delete* > *Confirm*
+## Subnets
 
-Untagged VLAN (VID=0)
-- *Networking* > *Fabrics* > *(Fabric)* > *VLAN “Untagged (0)”* > *Edit* > *Enable DHCP, set Primary rack* > *Save*
+What: L3 networks that live inside a VLAN. Here you set gateways, define ranges, and decide whether MAAS manages IP allocation.
 
-## Manage subnets
+### Managed vs. unmanaged (what MAAS actually does)
 
-Subnets live inside VLANs. This is where you set gateways, define ranges, and decide whether MAAS manages IP allocation.
+- Managed subnet: MAAS manages IP assignment for the entire CIDR except user‑reserved ranges. “Reserved” means “exclude from MAAS assignment.”
+- Unmanaged subnet: MAAS does not manage the entire CIDR. You may still create Reserved ranges; in this case “Reserved” means “MAAS may allocate only from these ranges.”
 
-Managed vs unmanaged (MAAS behavior)
-- Managed subnet: MAAS manages IP assignments for the entire CIDR, except user-reserved ranges. “Reserved” = excluded from MAAS assignment.
-- Unmanaged subnet: MAAS does not manage the whole CIDR. You can still create Reserved ranges; “Reserved” = usable by MAAS. MAAS will allocate only from those Reserved ranges.
+### Do it in the UI
+Go to Networking > Subnets for subnet actions:
 
-### Subnets — UI
+- Create: *Add Subnet* > choose *CIDR*, *VLAN* (from a fabric), optional *Gateway* > *Add*
+- Read: Subnets table shows all > click a subnet for details
+- Enable/Disable “Managed”: *(Subnet)* > *Edit* > *Managed allocation* On/Off > *Save*
+- Additional DNS Servers: *(Subnet)* > *Edit* > *DNS Servers* > *Save*
+- Static Routes: *(Subnet)* > *Static Routes* > *Add* > set *Source*, *Destination*, *Gateway*, optional *Metric* > *Save*
+- Delete: *(Subnet)* > *Delete* > *Confirm*
 
-- Create: *Networking* > *Subnets* > *Add Subnet* > *CIDR, VLAN (pick from this Fabric), Gateway (optional)* > *Add*
-- Read: *Networking* > *Subnets* (table)* > *click subnet for details
-- Enable/Disable Managed: *Networking* > *Subnets* > *(Subnet)* > *Edit* > *Managed allocation (On/Off)* > *Save*
-- Additional DNS Servers: *Networking* > *Subnets* > *(Subnet)* > *Edit* > *DNS Servers* > *Save*
-- Delete: *Networking* > *Subnets* > *(Subnet)* > *Delete* > *Confirm*
-
-Static Routes
-- *Networking* > *Subnets* > *(Subnet)* > *Static Routes* > *Add* > *Source, Destination, Gateway (optional Metric)* > *Save*
-
-### Subnets — CLI
-
+### Do it with the CLI
 ```bash
-# create (attach to VLAN; set a gateway)
+# Create (attach to VLAN; set a gateway)
 maas $PROFILE subnets create cidr=$SUBNET_CIDR vlan=$VLAN_ID gateway_ip=$GATEWAY_IP
 
-# read (all / one)
+# Read (all / one)
 maas $PROFILE subnets read
 maas $PROFILE subnet read $SUBNET_ID
 
-# update: Managed On/Off
+# Toggle Managed allocation
 maas $PROFILE subnet update $SUBNET_CIDR managed=true
 maas $PROFILE subnet update $SUBNET_CIDR managed=false
 
-# update: Additional DNS servers (MAAS injects itself automatically)
+# Configure additional DNS servers (MAAS adds itself automatically)
 maas $PROFILE subnet update $SUBNET_CIDR dns_servers=$DNS_SERVER_IPS
 
-# delete
+# Add a per‑subnet static route
+maas $PROFILE static-routes create source=$SUBNET_CIDR destination=10.10.0.0/16 gateway_ip=$GATEWAY_IP
+
+# Delete
 maas $PROFILE subnet delete $SUBNET_ID
 ```
 
-## Manage IP addresses
 
-Reserve single IPs or ranges to control allocation.
+## IP addresses and ranges
 
-### IP Addresses — UI
+What: Reserve single IPs or ranges to control allocation behavior.
 
-- Reserve a Single IP: *Networking* > *Subnets* > *(Subnet)* > *Reserved Ranges* > *Reserve IP* > *Enter IP* > *Reserve*
-- Dynamic Range (DHCP Pool): *Networking* > *Subnets* > *(Subnet)* > *Reserved Ranges* > *Reserve Range* > *Type: Dynamic* > *Start/End* > *Reserve*
-- Reserved Static Range: *Networking* > *Subnets* > *(Subnet)* > *Reserved Ranges* > *Reserve Range* > *Type: Reserved* > *Start/End* > *Reserve*
-- Edit/Delete a Range: *Networking* > *Subnets* > *(Subnet)* > *Reserved Ranges* > *(Range)* > *Edit/Delete*
+### Do it in the UI
+Go to Networking > Subnets > (Subnet) > Reserved Ranges:
 
-### IP addresses — CLI
+- Single IP: *Reserve IP* > enter address > *Reserve*
+- Dynamic range (DHCP pool): *Reserve Range* > Type: *Dynamic* > *Start/End* > *Reserve*
+- Reserved static range: *Reserve Range* > Type: *Reserved* > *Start/End* > *Reserve*
+- Edit/Delete a range: click a range > *Edit* / *Delete*
 
+### Do it with the CLI
 ```bash
-# reserve a single IP
+# Reserve a single IP address in this subnet’s CIDR
+# (This marks the address in MAAS; assignment to a machine happens when you link
+# an interface in STATIC mode to this IP.)
 maas $PROFILE ipaddresses reserve ip=$IP_STATIC_SINGLE
 
-# dynamic range (DHCP pool)
-maas $PROFILE ipranges create type=dynamic subnet=$SUBNET_CIDR start_ip=$IP_DYNAMIC_RANGE_LOW end_ip=$IP_DYNAMIC_RANGE_HIGH
+# Create a dynamic range (DHCP pool)
+maas $PROFILE ipranges create type=dynamic subnet=$SUBNET_CIDR   start_ip=$IP_DYNAMIC_RANGE_LOW end_ip=$IP_DYNAMIC_RANGE_HIGH
 
-# reserved static range
-maas $PROFILE ipranges create type=reserved subnet=$SUBNET_CIDR start_ip=$IP_STATIC_RANGE_LOW end_ip=$IP_STATIC_RANGE_HIGH
+# Create a reserved static range (excluded from MAAS auto‑assignment on managed subnets;
+# used *as the only pool* on unmanaged subnets)
+maas $PROFILE ipranges create type=reserved subnet=$SUBNET_CIDR   start_ip=$IP_STATIC_RANGE_LOW end_ip=$IP_STATIC_RANGE_HIGH
 ```
 
-## Manage interfaces (on a machine)
+> Note on single‑IP reservations: the example above reserves the address in MAAS. To give that IP to a specific machine, link the interface in STATIC mode to that IP (see Interfaces > CLI below).
 
-Interfaces determine how machines connect to subnets. MAAS supports physical, VLAN interface (on a parent NIC), bond, and bridge. Most changes require the machine to be **Ready** or **Broken**.
 
-### Interfaces — UI
+## Interfaces (on a machine)
 
-Find the machine first: *Machines* > *(Machine)* > *Network tab*
+What: How a machine connects to subnets. MAAS supports physical, VLAN interface (on a parent NIC), bond, and bridge.
 
-Create / Link / Update / Delete
-- Create VLAN interface: *Network* > *Add Interface* > *VLAN* > *Parent: (NIC)* > *VLAN: (Select)* > *Create*
-- Create bond: *Network* > *Add Interface* > *Bond* > *Select parents* > *Mode (e.g., 802.3ad)* > *Create*
-- Create bridge: *Network* > *Add Interface* > *Bridge* > *Parent: (NIC or VLAN)* > *Create*
-- Link to subnet (Static/DHCP): *Network* > *(Interface)* > *Edit* > *IPv4* > *Mode: Static or Auto (DHCP)* > *Subnet (and IP if static)* > *Save*
-- Unlink/disconnect: *Network* > *(Interface)* > *Edit* > *Remove subnet / disconnect* > *Save*
-- Delete interface: *Network* > *(Interface)* > *Delete* > *Confirm*
-- Change MAC/Other props: *Network* > *(Interface)* > *Edit* > *Save*  
-  *(Note: Most edits require the machine to be **Ready** or **Broken**, not **Deployed**.)*
+> Many interface changes require the machine state to be Ready or Broken (not Deployed). Where a command has a state requirement, it’s noted.
 
-### Interfaces — CLI
+### Do it in the UI
+Find the machine first: Machines > (Machine) > Network.
 
+- Create VLAN interface: *Add Interface > VLAN* > select *Parent NIC* & *VLAN* > *Create* (Ready/Broken)
+- Create bond: *Add Interface > Bond* > select parents & *Mode* (e.g., *802.3ad*) > *Create* (Ready/Broken)
+- Create bridge: *Add Interface > Bridge* > select *Parent* (NIC or VLAN) > *Create* (Ready/Broken)
+- Link to subnet (Static/DHCP): *(Interface)* > *Edit* > IPv4 *Mode*: *Static* or *Auto (DHCP)* > choose *Subnet*, and if static, set *IP* > *Save*
+- Unlink / disconnect: *(Interface)* > *Edit* > remove subnet / disconnect > *Save* (Ready/Broken)
+- Rename / MAC change / other props: *(Interface)* > *Edit* > change values > *Save*
+  - *Renaming an interface is allowed even on Deployed machines.*
+- Delete interface: *(Interface)* > *Delete* > *Confirm* (Ready/Broken)
+
+### Do it with the CLI
 ```bash
-# read / update / delete
+# Read / inspect
 maas $PROFILE interfaces read $SYSTEM_ID
 maas $PROFILE interface read $SYSTEM_ID $INTERFACE_ID
-maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID key=value...
-maas $PROFILE interface delete $SYSTEM_ID $INTERFACE_ID
 
-# link / unlink / disconnect
-maas $PROFILE interface link-subnet $SYSTEM_ID $INTERFACE_ID mode=STATIC subnet=$SUBNET_ID ip_address=10.0.0.101
+# Update (meaningful example): rename an interface  (works on Deployed machines)
+maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID name=public-uplink
+
+# Link in STATIC mode to a specific IP (machine must be Ready/Broken)
+maas $PROFILE interface link-subnet $SYSTEM_ID $INTERFACE_ID   mode=STATIC subnet=$SUBNET_ID ip_address=$IP_STATIC_SINGLE
+
+# Link in AUTO (DHCP) mode (machine must be Ready/Broken)
+maas $PROFILE interface link-subnet $SYSTEM_ID $INTERFACE_ID   mode=AUTO subnet=$SUBNET_ID
+
+# Unlink / disconnect (machine must be Ready/Broken)
 maas $PROFILE interface unlink-subnet $SYSTEM_ID $INTERFACE_ID
 maas $PROFILE interface disconnect $SYSTEM_ID $INTERFACE_ID
+
+# Delete the interface (machine must be Ready/Broken)
+maas $PROFILE interface delete $SYSTEM_ID $INTERFACE_ID
 ```
 
 Common types
+
 - Physical: Detected during commissioning.
-- VLAN interface: Virtual interface tied to a parent NIC + VLAN ID.
+- VLAN interface: Virtual NIC tied to a parent physical NIC plus a VLAN ID.
 - Bond: Group NICs for redundancy/throughput (e.g., 802.3ad).
 - Bridge: Share a NIC with VMs/containers or implement L2 connectivity.
 
-See the [Interface reference](https://canonical.com/maas/docs/interface) for full options.
+See the Interface reference for full options (canonical.com/maas/docs/interface).
 
-## Manage routes
 
-Use static routes for custom pathing between subnets.
+## Routes
 
-### Routes — UI
+Use default gateways and static routes to control pathing between subnets.
 
-- Default gateway (subnet level): *Networking* > *Subnets* > *(Subnet)* > *Edit* > *Gateway IP* > *Save*
-- Per-subnet static route: *Networking* > *Subnets* > *(Subnet)* > *Static Routes* > *Add* > *Save*
+### Do it in the UI
+- Default gateway (per subnet): Networking > Subnets > (Subnet) > Edit > Gateway IP > Save
+- Static route (per subnet): Networking > Subnets > (Subnet) > Static Routes > Add > Save
 
-### Routes — CLI
-
+### Do it with the CLI
 ```bash
+# Add a static route on a subnet
 maas $PROFILE static-routes create source=$SUBNET_CIDR destination=10.10.0.0/16 gateway_ip=$GATEWAY_IP
+
+# Set default gateway on a subnet
 maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$GATEWAY_IP
 ```
 
-## Tag interfaces
 
-Tags help classify Interfaces for automation (e.g., `uplink`, `pxe`).
+## Tags (on interfaces)
 
-### Tags — UI
+Tags help classify interfaces for filtering and automation (examples: `uplink`, `pxe`).
 
-- Add tag: *Machines* > *(Machine)* > *Network* > *(Interface)* > *Edit* > *Tags* > *Add* > *Save*
-- Remove tag: *Machines* > *(Machine)* > *Network* > *(Interface)* > *Edit* > *Tags* > *Remove* > *Save*
+### Do it in the UI
+- Add tag / Remove tag: Machines > (Machine) > Network > (Interface) > Edit > Tags > Add/Remove > Save
 
-### Tags — CLI
-
+### Do it with the CLI
 ```bash
 maas $PROFILE interface add-tag $SYSTEM_ID $INTERFACE_ID tag=my-tag
 maas $PROFILE interface remove-tag $SYSTEM_ID $INTERFACE_ID tag=my-tag
 ```
 
-## Manage network discovery
 
-Use discovery to detect devices on connected subnets.
+## Network discovery
 
-### Discovery — UI
+Discovery detects devices on connected subnets (switches, routers, IoT, etc.). You can control it globally and per subnet.
 
-Global & per-subnet
-- Enable/disable globally: *Networking* > *Network Discovery* > *Configuration* > *Enabled/Disabled* > *Save*
-- Per-subnet active discovery: *Networking* > *Subnets* > *(Subnet)* > *Edit* > *Active Discovery (On/Off)* > *Save*
-- Scan specific subnets (if available in your version): *Networking* > *Network Discovery* > *Subnet Mapping* > *Select Subnets* > *Save*
-- Clear all discoveries: *Networking* > *Network Discovery* > *Clear All Discoveries* > *Confirm*
+### Do it in the UI
+- Global enable/disable: Networking > Network Discovery > Configuration > Enabled/Disabled > Save
+- Per‑subnet active discovery: Networking > Subnets > (Subnet) > Edit > Active Discovery (On/Off) > Save
+- Scan specific subnets (if available in your version): Networking > Network Discovery > Subnet Mapping > Select Subnets > Save
+- Clear all discoveries: Networking > Network Discovery > Clear All Discoveries > Confirm
 
-### Discovery — CLI
-
+### Do it with the CLI
 ```bash
-# global on/off
+# Global on/off
 maas $PROFILE maas set-config name=network_discovery value=enabled
 maas $PROFILE maas set-config name=network_discovery value=disabled
 
-# per-subnet active discovery
+# Per‑subnet active discovery
 maas $PROFILE subnet update $SUBNET_CIDR active_discovery=true
 maas $PROFILE subnet update $SUBNET_CIDR active_discovery=false
 
-# clear all discoveries
+# Clear all discoveries
 maas $PROFILE discoveries clear all=true
 ```
 
-> Learn more: [Discovery](https://canonical.com/maas/docs/discovery)
+> Learn more: canonical.com/maas/docs/discovery
+
 
 ## Verify your changes
 
-### Verify — UI
+### In the UI
+- Fabrics/VLANs: Look under the Networking option.
+- Subnets/Ranges/Routes: Also under Networking.
+- Machine interfaces: Look at the machine's Network tab.
+- Discovery results: See Results, under Network Discovery.
 
-- Fabrics/VLANs: *Networking* > *Fabrics* > *(Fabric)*
-- Subnets/Ranges/Routes: *Networking* > *Subnets* > *(Subnet)*
-- Interfaces on machines: *Machines* > *(Machine)* > *Network*
-- Discovery results: *Networking* > *Network Discovery* > *Results*
-
-### Verify — CLI
-
-- Confirm CLI reads show expected fabrics, VLANS, subnets, ranges, and interfaces.
-- On deployed machines, verify connectivity with:
+### With the CLI
+- Check that reads reflect your changes for fabrics, vlans, subnets, ranges, and interfaces.
+- On deployed machines, confirm connectivity:
   ```bash
   ip addr
   ip route
-  ping 8.8.8.8 -c 3
+  ping -c 3 8.8.8.8
   ```
 
 ## Next steps
 
-- About MAAS Networking: https://canonical.com/maas/docs/about-maas-networking
-- Discovery: https://canonical.com/maas/docs/discovery
+- Learn [about MAAS netorking](https://canonical.com/maas/docs/about-maas-networking)
+- Understand [discovery](https://canonical.com/maas/docs/discovery).
