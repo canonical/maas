@@ -3,12 +3,15 @@
 
 from operator import eq
 
-from sqlalchemy import not_, select, Table
+from sqlalchemy import desc, not_, select, Table
+from sqlalchemy.sql.functions import count
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BootSourceCacheTable
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourcecache import BootSourceCache
+from maasservicelayer.models.bootsources import BootSourceAvailableImage
 
 
 class BootSourceCacheClauseFactory(ClauseFactory):
@@ -76,3 +79,91 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
         result = (await self.execute_stmt(stmt)).all()
         # keep only the releases
         return [row[0] for row in result]
+
+    async def get_all_available_images(self) -> list[BootSourceAvailableImage]:
+        stmt = (
+            select(
+                BootSourceCacheTable.c.os,
+                BootSourceCacheTable.c.release,
+                BootSourceCacheTable.c.release_title,
+                BootSourceCacheTable.c.arch,
+                BootSourceCacheTable.c.boot_source_id,
+            )
+            .select_from(self.get_repository_table())
+            .group_by(
+                BootSourceCacheTable.c.os,
+                BootSourceCacheTable.c.release,
+                BootSourceCacheTable.c.release_title,
+                BootSourceCacheTable.c.arch,
+                BootSourceCacheTable.c.boot_source_id,
+            )
+            .order_by(
+                desc(BootSourceCacheTable.c.os),
+                desc(BootSourceCacheTable.c.release_title),
+                desc(BootSourceCacheTable.c.arch),
+            )
+        )
+        result = (await self.execute_stmt(stmt)).all()
+        return [BootSourceAvailableImage(**row._asdict()) for row in result]
+
+    async def list_boot_source_cache_available_images(
+        self,
+        page: int,
+        size: int,
+        boot_source_id: int,
+    ) -> ListResult[BootSourceAvailableImage]:
+        total_substmt = (
+            select(
+                BootSourceCacheTable.c.os,
+                BootSourceCacheTable.c.release,
+                BootSourceCacheTable.c.release_title,
+                BootSourceCacheTable.c.arch,
+            )
+            .select_from(self.get_repository_table())
+            .where(eq(BootSourceCacheTable.c.boot_source_id, boot_source_id))
+            .group_by(
+                BootSourceCacheTable.c.os,
+                BootSourceCacheTable.c.release,
+                BootSourceCacheTable.c.release_title,
+                BootSourceCacheTable.c.arch,
+            )
+            .subquery()
+        )
+        total_stmt = select(count()).select_from(total_substmt)
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
+
+        stmt = (
+            select(
+                BootSourceCacheTable.c.os,
+                BootSourceCacheTable.c.release,
+                BootSourceCacheTable.c.release_title,
+                BootSourceCacheTable.c.arch,
+            )
+            .select_from(self.get_repository_table())
+            .where(eq(BootSourceCacheTable.c.boot_source_id, boot_source_id))
+            .group_by(
+                BootSourceCacheTable.c.os,
+                BootSourceCacheTable.c.release,
+                BootSourceCacheTable.c.release_title,
+                BootSourceCacheTable.c.arch,
+            )
+            .order_by(
+                desc(BootSourceCacheTable.c.os),
+                desc(BootSourceCacheTable.c.release_title),
+                desc(BootSourceCacheTable.c.arch),
+            )
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+        return ListResult[BootSourceAvailableImage](
+            items=[
+                BootSourceAvailableImage(
+                    boot_source_id=boot_source_id,
+                    **row._asdict(),
+                )
+                for row in result
+            ],
+            total=total,
+        )

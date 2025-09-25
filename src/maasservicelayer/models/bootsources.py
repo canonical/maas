@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import dataclasses
 from typing import Optional
 
 from pydantic import BaseModel
@@ -51,3 +52,12 @@ class SourceAvailableImage(BaseModel):
             release_title=release_title,
             architecture=product.arch,
         )
+
+
+@dataclasses.dataclass
+class BootSourceAvailableImage:
+    os: str
+    release: str
+    release_title: str
+    arch: str
+    boot_source_id: int
