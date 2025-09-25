@@ -75,25 +75,44 @@ class TemporalService(Service):
 
             client = await self.get_temporal_client()
             # TODO: make the task_queue a workflow parameter instead of hardcoding it here.
-            if wait:
-                await client.execute_workflow(
-                    workflow_name,
-                    parameter,
-                    id=workflow_id,
-                    task_queue="region",
-                    *args,  # noqa: B026
-                    **kwargs,
-                )
+            if parameter:
+                if wait:
+                    await client.execute_workflow(
+                        workflow_name,
+                        parameter,
+                        id=workflow_id,
+                        task_queue="region",
+                        *args,  # noqa: B026
+                        **kwargs,
+                    )
+                else:
+                    fut = await client.start_workflow(
+                        workflow_name,
+                        parameter,
+                        id=workflow_id,
+                        task_queue="region",
+                        *args,  # noqa: B026
+                        **kwargs,
+                    )
+                    self._running_workflows.append(fut)
             else:
-                fut = await client.start_workflow(
-                    workflow_name,
-                    parameter,
-                    id=workflow_id,
-                    task_queue="region",
-                    *args,  # noqa: B026
-                    **kwargs,
-                )
-                self._running_workflows.append(fut)
+                if wait:
+                    await client.execute_workflow(
+                        workflow_name,
+                        id=workflow_id,
+                        task_queue="region",
+                        *args,  # noqa: B026
+                        **kwargs,
+                    )
+                else:
+                    fut = await client.start_workflow(
+                        workflow_name,
+                        id=workflow_id,
+                        task_queue="region",
+                        *args,  # noqa: B026
+                        **kwargs,
+                    )
+                    self._running_workflows.append(fut)
         self._post_commit_workflows = {}
 
     async def resolve_background_workflows(self) -> None:
@@ -114,7 +133,7 @@ class TemporalService(Service):
     def register_workflow_call(
         self,
         workflow_name: str,
-        parameter: Any,
+        parameter: Optional[Any] = None,
         workflow_id: Optional[str] = None,
         wait: Optional[bool] = True,
         *args: list[Any],
@@ -133,7 +152,7 @@ class TemporalService(Service):
     def register_or_update_workflow_call(
         self,
         workflow_name: str,
-        parameter: Any,
+        parameter: Optional[Any] = None,
         workflow_id: Optional[str] = None,
         wait: Optional[bool] = True,
         override_previous_parameters: Optional[bool] = False,
@@ -144,7 +163,7 @@ class TemporalService(Service):
         key = self._make_key(workflow_name, workflow_id)
 
         if self.workflow_is_registered(workflow_name, workflow_id=workflow_id):
-            if not override_previous_parameters:
+            if parameter and not override_previous_parameters:
                 if parameter_merge_func is None:
                     raise ValueError(
                         "must either override or merge parameters with existing workflows"

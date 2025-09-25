@@ -321,8 +321,6 @@ class TestConfigFactory:
         [
             "active_discovery_last_scan",
             "commissioning_osystem",
-            "enable_http_proxy",
-            "http_proxy",
             "maas_url",
             "network_discovery",
             "omapi_key",

@@ -984,7 +984,7 @@ class CommissioningOSystemConfig(Config[Optional[str]]):
 
 
 class EnableHttpProxyConfig(Config[Optional[bool]]):
-    is_public: ClassVar[bool] = False
+    is_public: ClassVar[bool] = True
     name: ClassVar[str] = "enable_http_proxy"
     default: ClassVar[Optional[bool]] = True
     description: ClassVar[str] = (
@@ -997,7 +997,7 @@ class EnableHttpProxyConfig(Config[Optional[bool]]):
 
 
 class HttpProxyConfig(Config[Optional[AnyHttpUrl]]):
-    is_public: ClassVar[bool] = False
+    is_public: ClassVar[bool] = True
     name: ClassVar[str] = "http_proxy"
     default: ClassVar[Optional[AnyHttpUrl]] = None
     description: ClassVar[str] = "Proxy for APT or YUM and HTTP/HTTPS"
@@ -1093,6 +1093,8 @@ class ConfigFactory:
         MAASNameConfig.name: MAASNameConfig,
         ThemeConfig.name: ThemeConfig,
         KernelOptsConfig.name: KernelOptsConfig,
+        EnableHttpProxyConfig.name: EnableHttpProxyConfig,
+        HttpProxyConfig.name: HttpProxyConfig,
         MAASProxyPortConfig.name: MAASProxyPortConfig,
         UsePeerProxyConfig.name: UsePeerProxyConfig,
         PreferV4ProxyConfig.name: PreferV4ProxyConfig,
@@ -1155,8 +1157,6 @@ class ConfigFactory:
         # Private configs.
         ActiveDiscoveryLastScanConfig.name: ActiveDiscoveryLastScanConfig,
         CommissioningOSystemConfig.name: CommissioningOSystemConfig,
-        EnableHttpProxyConfig.name: EnableHttpProxyConfig,
-        HttpProxyConfig.name: HttpProxyConfig,
         MAASUrlConfig.name: MAASUrlConfig,
         NetworkDiscoveryConfig.name: NetworkDiscoveryConfig,
         OMAPIKeyConfig.name: OMAPIKeyConfig,

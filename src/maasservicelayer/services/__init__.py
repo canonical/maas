@@ -645,6 +645,7 @@ class ServiceCollectionV3:
         services.hooked_configurations = HookedConfigurationsService(
             context=context,
             configurations_service=services.configurations,
+            temporal_service=services.temporal,
             users_service=services.users,
             vlans_service=services.vlans,
             v3dnsrrsets_service=services.v3dnsrrsets,

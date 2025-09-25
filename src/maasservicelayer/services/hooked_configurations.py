@@ -3,8 +3,15 @@
 
 from typing import Any
 
+from temporalio.common import WorkflowIDReusePolicy
+
+from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.models.configurations import (
+    EnableHttpProxyConfig,
+    HttpProxyConfig,
     NTPExternalOnlyConfig,
     NTPServersConfig,
     SessionLengthConfig,
@@ -15,6 +22,7 @@ from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dnsresourcerecordsets import (
     V3DNSResourceRecordSetsService,
 )
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
 
@@ -28,12 +36,14 @@ class HookedConfigurationsService(Service):
         self,
         context: Context,
         configurations_service: ConfigurationsService,
+        temporal_service: TemporalService,
         users_service: UsersService,
         vlans_service: VlansService,
         v3dnsrrsets_service: V3DNSResourceRecordSetsService,
     ):
         super().__init__(context)
         self.configurations_service = configurations_service
+        self.temporal_service = temporal_service
         self.users_service = users_service
         self.vlans_service = vlans_service
         self.v3dnsrrsets_service = v3dnsrrsets_service
@@ -44,6 +54,12 @@ class HookedConfigurationsService(Service):
         )
 
         match name:
+            case EnableHttpProxyConfig.name | HttpProxyConfig.name:
+                self.temporal_service.register_or_update_workflow_call(
+                    workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+                    workflow_id="fetch-manifest",
+                    id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+                )
             case SessionLengthConfig.name:
                 await self.users_service.clear_all_sessions()
             case NTPServersConfig.name:
