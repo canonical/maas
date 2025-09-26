@@ -58,11 +58,13 @@ from maascommon.workflows.bootresource import (
 from maasserver.utils.converters import human_readable_bytes
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.configurations import MAASUrlConfig
 from maasservicelayer.simplestreams.models import (
     SimpleStreamsBootloaderProductList,
@@ -105,7 +107,7 @@ DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME = "discard-error-notification"
 # can't be defined in maascommon due to service layer imports
 @dataclass
 class BootSourceProductsMapping:
-    boot_source: BootSource
+    boot_source_id: int
     # Ugly, but temporal needs concrete classes to convert json to python
     products_list: list[
         SimpleStreamsSingleFileProductList
@@ -349,7 +351,7 @@ class BootResourcesActivity(ActivityBase):
             await services.image_sync.check_commissioning_series_selected()
             return [
                 BootSourceProductsMapping(
-                    boot_source=source, products_list=products_list
+                    boot_source_id=source.id, products_list=products_list
                 )
                 for source, products_list in boot_source_products_mapping.items()
             ]
@@ -365,9 +367,24 @@ class BootResourcesActivity(ActivityBase):
                 event_type=EventTypeEnum.REGION_IMPORT_INFO,
                 event_description=f"Started importing boot images from {len(param)} source(s).",
             )
-            boot_source_products_mapping = {
-                mapping.boot_source: mapping.products_list for mapping in param
-            }
+            boot_sources = await services.boot_sources.get_many(
+                query=QuerySpec(
+                    where=BootSourcesClauseFactory.with_ids(
+                        {m.boot_source_id for m in param}
+                    )
+                )
+            )
+            boot_source_products_mapping = {}
+            for mapping in param:
+                boot_source = next(
+                    filter(
+                        lambda x: x.id == mapping.boot_source_id, boot_sources
+                    )
+                )
+                boot_source_products_mapping[boot_source] = (
+                    mapping.products_list
+                )
+
             boot_source_products_mapping = (
                 await services.image_sync.filter_products(
                     boot_source_products_mapping

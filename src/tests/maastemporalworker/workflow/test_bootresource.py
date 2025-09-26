@@ -52,6 +52,7 @@ from maasservicelayer.db.repositories.notifications import (
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
+from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootresourcefilesync import (
     BootResourceFileSyncService,
 )
@@ -689,6 +690,8 @@ class TestGetFilesToDownloadActivity:
         mock_ss_products_list = Mock(SimpleStreamsProductList)
         mock_ss_products_list.products = [Mock(BootloaderProduct)]
         services_mock.events = Mock(EventsService)
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_many.return_value = [mock_boot_source]
         services_mock.image_sync = Mock(ImageSyncService)
         services_mock.image_sync.filter_products.return_value = {
             mock_boot_source: mock_ss_products_list
@@ -706,7 +709,7 @@ class TestGetFilesToDownloadActivity:
             boot_activities.get_files_to_download,
             [
                 BootSourceProductsMapping(
-                    boot_source=mock_boot_source,
+                    boot_source_id=mock_boot_source.id,
                     products_list=mock_ss_products_list,
                 )
             ],

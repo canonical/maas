@@ -20,6 +20,10 @@ class BootSourcesClauseFactory(ClauseFactory):
     def with_url(cls, url: str) -> Clause:
         return Clause(condition=eq(BootSourceTable.c.url, url))
 
+    @classmethod
+    def with_ids(cls, ids: set[int]) -> Clause:
+        return Clause(condition=BootSourceTable.c.id.in_(ids))
+
 
 class BootSourcesRepository(BaseRepository[BootSource]):
     def get_repository_table(self) -> Table:
