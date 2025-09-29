@@ -83,6 +83,7 @@ class ResourceDeleteParam:
 class GetFilesToDownloadReturnValue:
     resources: list[ResourceDownloadParam]
     boot_resource_ids: set[int]
+    http_proxy: str | None = None
 
 
 @dataclass

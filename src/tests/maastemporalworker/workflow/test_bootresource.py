@@ -51,7 +51,11 @@ from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
 from maasservicelayer.models.bootsources import BootSource
-from maasservicelayer.services import CacheForServices, ServiceCollectionV3
+from maasservicelayer.services import (
+    CacheForServices,
+    ConfigurationsService,
+    ServiceCollectionV3,
+)
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootresourcefilesync import (
     BootResourceFileSyncService,
@@ -700,6 +704,10 @@ class TestGetFilesToDownloadActivity:
             {},
             {1},
         )
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = [
+            "http://internal-proxy/"
+        ]
 
         heartbeats = []
         env = ActivityEnvironment()
@@ -721,6 +729,7 @@ class TestGetFilesToDownloadActivity:
         )
         services_mock.image_sync.filter_products.assert_awaited_once()
         services_mock.image_sync.get_files_to_download_from_product_list.assert_awaited_once()
+        services_mock.configurations.get.assert_awaited_once()
 
 
 class TestGetGlobalDefaultReleaseActivity:
@@ -900,6 +909,7 @@ class MockActivities:
                 )
             ],
             boot_resource_ids={1, 2, 3},
+            http_proxy="http://proxy:8080",
         )
         self.fetch_manifest_and_update_cache_result = []
 

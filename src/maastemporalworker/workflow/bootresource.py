@@ -65,7 +65,10 @@ from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.models.configurations import MAASUrlConfig
+from maasservicelayer.models.configurations import (
+    HttpProxyConfig,
+    MAASUrlConfig,
+)
 from maasservicelayer.simplestreams.models import (
     SimpleStreamsBootloaderProductList,
     SimpleStreamsMultiFileProductList,
@@ -403,9 +406,15 @@ class BootResourcesActivity(ActivityBase):
                 resources_to_download.update(to_download)
                 boot_resource_ids_to_keep |= boot_resource_ids
 
+            # Do not include the http_proxy in every boot resource here so to keep the return value of the activity small.
+            http_proxy = await services.configurations.get(
+                HttpProxyConfig.name
+            )
+
         return GetFilesToDownloadReturnValue(
             resources=list(resources_to_download.values()),
             boot_resource_ids=boot_resource_ids_to_keep,
+            http_proxy=http_proxy,
         )
 
     @activity_defn_with_context(name=SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME)
@@ -765,6 +774,7 @@ class MasterImageSyncWorkflow:
 
             resources_to_download = result.resources
             boot_resource_ids_to_keep = result.boot_resource_ids
+            http_proxy = result.http_proxy
 
             required_disk_space_for_files = sum(
                 [r.total_size for r in resources_to_download],
@@ -809,12 +819,16 @@ class MasterImageSyncWorkflow:
             )
 
             # _download_and_sync_resource is a coroutine that will handle the `WorfklowAlreadyStartedError`
-            download_and_sync_jobs = [
-                self._download_and_sync_resource(
-                    SyncRequestParam(resource=res, region_endpoints=endpoints)
+            download_and_sync_jobs = []
+            for res in resources_to_download:
+                res.http_proxy = http_proxy
+                download_and_sync_jobs.append(
+                    self._download_and_sync_resource(
+                        SyncRequestParam(
+                            resource=res, region_endpoints=endpoints
+                        )
+                    )
                 )
-                for res in resources_to_download
-            ]
 
             if download_and_sync_jobs:
                 logger.info(
