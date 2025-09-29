@@ -31,6 +31,11 @@ class MAASAPIClient:
         if self.user_agent:
             headers["User-Agent"] = self.user_agent
 
+        if http_proxy == "":
+            # It might be that the http_proxy configuration is empty string, and it would crash httpx. Replace with None to
+            # represent that the proxy is not set.
+            http_proxy = None
+
         return httpx.AsyncClient(
             verify=False,
             proxy=http_proxy,
