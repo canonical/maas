@@ -10499,6 +10499,84 @@ class TestNode_Start(MAASTransactionServerTestCase):
             node.storage_layout_issues(),
         )
 
+    def test_storage_layout_issues_is_invalid_uefi_no_boot_efi(self):
+        """Test that UEFI systems without /boot/efi fail validation."""
+        node = factory.make_Node(
+            osystem="ubuntu",
+            bios_boot_method="uefi",
+            with_boot_disk=False,
+        )
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=(100 * 1024**3)
+        )
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table
+        )
+        factory.make_Filesystem(
+            node_config=node.current_config,
+            partition=root_partition,
+            fstype=FILESYSTEM_TYPE.EXT4,
+            mount_point="/",
+        )
+        self.assertEqual(
+            [
+                "UEFI system requires a /boot/efi filesystem. Please configure /boot/efi to proceed.",
+            ],
+            node.storage_layout_issues(),
+        )
+
+    def test_storage_layout_issues_is_valid_uefi_with_boot_efi(self):
+        """Test that UEFI systems with /boot/efi pass validation."""
+        node = factory.make_Node(
+            osystem="ubuntu",
+            bios_boot_method="uefi",
+            with_boot_disk=False,
+        )
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=(100 * 1024**3)
+        )
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table
+        )
+        efi_partition = factory.make_Partition(partition_table=partition_table)
+        factory.make_Filesystem(
+            node_config=node.current_config,
+            partition=root_partition,
+            fstype=FILESYSTEM_TYPE.EXT4,
+            mount_point="/",
+        )
+        factory.make_Filesystem(
+            node_config=node.current_config,
+            partition=efi_partition,
+            fstype=FILESYSTEM_TYPE.FAT32,
+            mount_point="/boot/efi",
+        )
+        self.assertEqual([], node.storage_layout_issues())
+
+    def test_storage_layout_issues_bios_no_boot_efi_required(self):
+        """Test that BIOS systems don't require /boot/efi."""
+        node = factory.make_Node(
+            osystem="ubuntu",
+            bios_boot_method="pxe",  # BIOS, not UEFI
+            with_boot_disk=False,
+        )
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=(100 * 1024**3)
+        )
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table
+        )
+        factory.make_Filesystem(
+            node_config=node.current_config,
+            partition=root_partition,
+            fstype=FILESYSTEM_TYPE.EXT4,
+            mount_point="/",
+        )
+        self.assertEqual([], node.storage_layout_issues())
+
 
 class TestGetBMCClientConnectionInfo(MAASServerTestCase):
     def test_returns_bmc_identifiers(self):
