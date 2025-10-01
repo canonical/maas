@@ -289,6 +289,24 @@ class TestStaticIPAddressManager(MAASServerTestCase):
                 list(orm.retry_context.stack._cm_pending),
             )
 
+    def test_allocate_new_requests_retry_when_free_address_taken_ValidationError(
+        self,
+    ):
+        set_ip_address = self.patch(StaticIPAddress, "set_ip_address")
+        set_ip_address.side_effect = ValidationError("unique validation error")
+        with orm.retry_context:
+            # A retry has been requested.
+            self.assertRaises(
+                orm.RetryTransaction,
+                StaticIPAddress.objects.allocate_new,
+                subnet=factory.make_managed_Subnet(),
+            )
+            # Aquisition of `address_allocation` is pending.
+            self.assertEqual(
+                [locks.address_allocation],
+                list(orm.retry_context.stack._cm_pending),
+            )
+
     def test_allocate_new_propagates_other_integrity_errors(self):
         set_ip_address = self.patch(StaticIPAddress, "set_ip_address")
         set_ip_address.side_effect = orm.make_unique_violation()
