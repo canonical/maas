@@ -87,7 +87,11 @@ class SubnetAllocationQueue:
         self.reserved.add(address)
 
     def free(self, address: str):
-        self.reserved.remove(address)
+        try:
+            self.reserved.remove(address)
+        except KeyError:
+            # this can happen due to a race condition, ignore this and don't raise the error
+            pass
 
     def get_reserved(self, extra: Iterable[str]) -> Iterable[str]:
         return self.reserved.union(extra)
@@ -253,6 +257,10 @@ class StaticIPAddressManager(Manager):
             with orm.savepoint():
                 ipaddress.set_ip_address(requested_address.format())
                 ipaddress.save()
+        except ValidationError:
+            # This can happen because of `ipaddress.save()` that will call
+            # `validate_unique` and raise a ValidationError.
+            orm.request_transaction_retry(locks.address_allocation)
         except IntegrityError as error:
             if orm.is_unique_violation(error):
                 # The address is taken. We could allow the transaction retry
