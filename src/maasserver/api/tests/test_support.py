@@ -195,6 +195,31 @@ class TestDeprecatedMethodDecorator(MAASServerTestCase):
 
         self.assertEqual(api_endpoint.deprecated, api_replacement_endpoint)
 
+    def test_deprecated_class_inheritance_only_affects_own_methods(self):
+        class BaseHandler:
+            api_doc_section_name = "Base"
+
+            def inherited_method(self):
+                pass
+
+        class ReplacementHandler:
+            api_doc_section_name = "Replacement"
+
+            def own_method(self):
+                pass
+
+        @deprecated(use=ReplacementHandler)
+        class DeprecatedHandler(BaseHandler):
+            api_doc_section_name = "Deprecated"
+
+            def own_method(self):
+                pass
+
+        self.assertTrue(hasattr(DeprecatedHandler.own_method, "deprecated"))
+        self.assertFalse(
+            hasattr(DeprecatedHandler.inherited_method, "deprecated")
+        )
+
 
 class TestOperationsHandlerMixin(MAASTestCase):
     """Tests for :py:class:`maasserver.api.support.OperationsHandlerMixin`."""

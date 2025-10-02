@@ -189,11 +189,13 @@ def deprecated(use):
         return func
 
     def apply_to_methods(cls):
-        for name, method in inspect.getmembers(cls, inspect.isfunction):
-            new_method = getattr(use, name, None)
-            if new_method:
-                method.deprecated = new_method
-                update_method_docstring(method)
+        # Only apply deprecation to methods actually defined on this class,
+        for name, method in cls.__dict__.items():
+            if inspect.isfunction(method):
+                new_method = getattr(use, name, None)
+                if new_method:
+                    method.deprecated = new_method
+                    update_method_docstring(method)
 
     return _decorator
 
