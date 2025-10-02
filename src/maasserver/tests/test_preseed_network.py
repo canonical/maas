@@ -1394,7 +1394,7 @@ class TestNetplan(MAASServerTestCase):
                                 "routing-policy": [
                                     {
                                         "from": "10.0.1.0/24",
-                                        "priority": 100,
+                                        "priority": 1000,
                                         "table": 1,
                                     },
                                     {
@@ -1404,7 +1404,7 @@ class TestNetplan(MAASServerTestCase):
                                     },
                                     {
                                         "from": "0.0.0.0/0",
-                                        "priority": 100,
+                                        "priority": 1000,
                                         "table": 1,
                                         "to": "192.168.0.0/24",
                                     },

@@ -283,7 +283,7 @@ class InterfaceConfiguration:
             }
         )
         self.secondary_gateway_policies.append(
-            {"from": str(network), "table": self.table_id, "priority": 100}
+            {"from": str(network), "table": self.table_id, "priority": 1000}
         )
         self.secondary_gateway_policies.append(
             {"from": str(network), "to": str(network), "table": 254}
@@ -295,7 +295,7 @@ class InterfaceConfiguration:
                         "from": "0.0.0.0/0",
                         "to": route.destination.cidr,
                         "table": self.table_id,
-                        "priority": 100,
+                        "priority": 1000,
                     }
                 )
                 self.secondary_gateway_routes.append(
