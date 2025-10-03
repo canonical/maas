@@ -100,7 +100,7 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         assert len(events) == 1
         assert (
             events[0].description
-            == f"Deleted boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arches={boot_source_selection.arches}"
+            == f"Deleted boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arch={boot_source_selection.arch}"
         )
 
     def test_DELETE_requires_admin(self):
@@ -115,87 +115,19 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         boot_source_selection = factory.make_BootSourceSelection()
         new_os = factory.make_name("os")
         new_release = factory.make_name("release")
-        boot_source_caches = factory.make_many_BootSourceCaches(
-            2,
+        boot_source_cache = factory.make_BootSourceCache(
             boot_source=boot_source_selection.boot_source,
             os=new_os,
             release=new_release,
         )
         new_values = {
-            "os": new_os,
             "release": new_release,
-            "arches": [boot_source_caches[0].arch, boot_source_caches[1].arch],
-            "subarches": [
-                boot_source_caches[0].subarch,
-                boot_source_caches[1].subarch,
-            ],
-            "labels": [boot_source_caches[0].label],
+            "arch": boot_source_cache.arch,
         }
         response = self.client.put(
             get_boot_source_selection_uri(boot_source_selection), new_values
         )
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content
-        )
-        boot_source_selection = reload_object(boot_source_selection)
-        self.assertEqual(boot_source_selection.os, new_os)
-        self.assertEqual(boot_source_selection.release, new_release)
-        self.assertEqual(
-            boot_source_selection.arches,
-            [boot_source_caches[0].arch, boot_source_caches[1].arch],
-        )
-        self.assertEqual(
-            boot_source_selection.subarches,
-            [boot_source_caches[0].subarch, boot_source_caches[1].subarch],
-        )
-        self.assertEqual(
-            boot_source_selection.labels, [boot_source_caches[0].label]
-        )
-
-    def test_PUT_create_audit_event(self):
-        self.become_admin()
-        boot_source_selection = factory.make_BootSourceSelection()
-        new_os = factory.make_name("os")
-        new_release = factory.make_name("release")
-        boot_source_caches = factory.make_many_BootSourceCaches(
-            2,
-            boot_source=boot_source_selection.boot_source,
-            os=new_os,
-            release=new_release,
-        )
-        new_arches = [boot_source_caches[0].arch, boot_source_caches[1].arch]
-        new_values = {
-            "os": new_os,
-            "release": new_release,
-            "arches": new_arches,
-            "subarches": [
-                boot_source_caches[0].subarch,
-                boot_source_caches[1].subarch,
-            ],
-            "labels": [boot_source_caches[0].label],
-        }
-        response = self.client.put(
-            get_boot_source_selection_uri(boot_source_selection), new_values
-        )
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content
-        )
-        events = Event.objects.filter(
-            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
-        )
-        assert len(events) == 1
-        assert (
-            events[0].description
-            == f"Updated boot source selection for {new_os}/{new_release} arches={new_arches}: {boot_source_selection.boot_source.url}"
-        )
-
-    def test_PUT_requires_admin(self):
-        boot_source_selection = factory.make_BootSourceSelection()
-        new_values = {"release": factory.make_name("release")}
-        response = self.client.put(
-            get_boot_source_selection_uri(boot_source_selection), new_values
-        )
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.METHOD_NOT_ALLOWED, response.status_code)
 
 
 class TestBootSourceSelectionsAPI(APITestCase.ForUser):
@@ -245,17 +177,12 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
         self.become_admin()
         boot_source = factory.make_BootSource()
         new_release = factory.make_name("release")
-        boot_source_caches = factory.make_many_BootSourceCaches(
-            2, boot_source=boot_source, release=new_release
+        boot_source_cache = factory.make_BootSourceCache(
+            boot_source=boot_source, release=new_release
         )
         params = {
             "release": new_release,
-            "arches": [boot_source_caches[0].arch, boot_source_caches[1].arch],
-            "subarches": [
-                boot_source_caches[0].subarch,
-                boot_source_caches[1].subarch,
-            ],
-            "labels": [boot_source_caches[0].label],
+            "arch": boot_source_cache.arch,
         }
         response = self.client.post(
             reverse("boot_source_selections_handler", args=[boot_source.id]),
@@ -268,33 +195,20 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
             id=parsed_result["id"]
         )
         self.assertEqual(boot_source_selection.release, new_release)
-        self.assertEqual(
-            boot_source_selection.arches,
-            [boot_source_caches[0].arch, boot_source_caches[1].arch],
-        )
-        self.assertEqual(
-            boot_source_selection.subarches,
-            [boot_source_caches[0].subarch, boot_source_caches[1].subarch],
-        )
-        self.assertEqual(
-            boot_source_selection.labels, [boot_source_caches[0].label]
-        )
+        self.assertEqual(boot_source_selection.arch, boot_source_cache.arch)
 
     def test_POST_create_audit_event(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
         os = factory.make_name("os")
         new_release = factory.make_name("release")
-        boot_source_caches = factory.make_many_BootSourceCaches(
-            2, boot_source=boot_source, os=os, release=new_release
+        boot_source_cache = factory.make_BootSourceCache(
+            boot_source=boot_source, os=os, release=new_release
         )
-        arches = [boot_source_caches[0].arch, boot_source_caches[1].arch]
         params = {
             "os": os,
             "release": new_release,
-            "arches": arches,
-            "subarches": ["*"],
-            "labels": ["*"],
+            "arch": boot_source_cache.arch,
         }
         response = self.client.post(
             reverse("boot_source_selections_handler", args=[boot_source.id]),
@@ -307,21 +221,13 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
         assert len(events) == 1
         assert (
             events[0].description
-            == f"Created boot source selection for {os}/{new_release} arches={[boot_source_caches[0].arch, boot_source_caches[1].arch]}: {boot_source.url}"
+            == f"Created boot source selection for {os}/{new_release} arch={boot_source_cache.arch}: {boot_source.url}"
         )
 
     def test_POST_requires_admin(self):
         boot_source = factory.make_BootSource()
         new_release = factory.make_name("release")
-        params = {
-            "release": new_release,
-            "arches": [factory.make_name("arch"), factory.make_name("arch")],
-            "subarches": [
-                factory.make_name("subarch"),
-                factory.make_name("subarch"),
-            ],
-            "labels": [factory.make_name("label")],
-        }
+        params = {"release": new_release, "arch": factory.make_name("arch")}
         response = self.client.post(
             reverse("boot_source_selections_handler", args=[boot_source.id]),
             params,

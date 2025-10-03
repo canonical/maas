@@ -2351,9 +2351,7 @@ class Factory(maastesting.factory.Factory):
         boot_source=None,
         os=None,
         release=None,
-        arches=None,
-        subarches=None,
-        labels=None,
+        arch=None,
     ):
         """Create a `BootSourceSelection`."""
         if boot_source is None:
@@ -2362,24 +2360,13 @@ class Factory(maastesting.factory.Factory):
             os = self.make_name("os")
         if release is None:
             release = self.make_name("release")
-        if arches is None:
-            arch_count = random.randint(1, 10)
-            arches = [self.make_name("arch") for _ in range(arch_count)]
-        if subarches is None:
-            subarch_count = random.randint(1, 10)
-            subarches = [
-                self.make_name("subarch") for _ in range(subarch_count)
-            ]
-        if labels is None:
-            label_count = random.randint(1, 10)
-            labels = [self.make_name("label") for _ in range(label_count)]
+        if arch is None:
+            arch = self.make_name("arch")
         boot_source_selection = BootSourceSelection(
             boot_source=boot_source,
             os=os,
             release=release,
-            arches=arches,
-            subarches=subarches,
-            labels=labels,
+            arch=arch,
         )
         boot_source_selection.save()
         return boot_source_selection
@@ -2512,6 +2499,7 @@ class Factory(maastesting.factory.Factory):
         base_image="",
         platform="generic",
         supported_platforms="generic",
+        boot_source_selection=None,
     ) -> BootResource:
         if rtype is None:
             if base_image:
@@ -2567,6 +2555,7 @@ class Factory(maastesting.factory.Factory):
             extra=extra,
             rolling=rolling,
             base_image=base_image,
+            boot_source_selection=boot_source_selection,
         )
         return result
 
@@ -2671,6 +2660,7 @@ class Factory(maastesting.factory.Factory):
         base_image="",
         platform="generic",
         supported_platforms="generic",
+        boot_source_selection=None,
     ):
         resource = self.make_BootResource(
             rtype=rtype,
@@ -2684,6 +2674,7 @@ class Factory(maastesting.factory.Factory):
             base_image=base_image,
             platform=platform,
             supported_platforms=supported_platforms,
+            boot_source_selection=boot_source_selection,
         )
         resource_set = self.make_BootResourceSet(
             resource,

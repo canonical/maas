@@ -106,15 +106,14 @@ class TestBootSource(MAASServerTestCase):
             boot_source=boot_source
         )
         bootloaders = []
-        for arch in boot_source_selection.arches:
-            bootloader_type = factory.make_name("bootloader-type")
-            factory.make_BootSourceCache(
-                boot_source=boot_source,
-                bootloader_type=bootloader_type,
-                release=bootloader_type,
-                arch=arch,
-            )
-            bootloaders.append(bootloader_type)
+        bootloader_type = factory.make_name("bootloader-type")
+        factory.make_BootSourceCache(
+            boot_source=boot_source,
+            bootloader_type=bootloader_type,
+            release=bootloader_type,
+            arch=boot_source_selection.arch,
+        )
+        bootloaders.append(bootloader_type)
         self.assertCountEqual(
             [
                 selection["release"]
