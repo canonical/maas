@@ -22,3 +22,4 @@ class BootResource(MaasTimestampedBaseModel):
     base_image: str
     alias: str | None = None
     last_deployed: datetime | None = None
+    selection_id: int | None = None

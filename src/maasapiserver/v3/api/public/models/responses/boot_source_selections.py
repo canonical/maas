@@ -15,9 +15,7 @@ class BootSourceSelectionResponse(HalResponse[BaseHal]):
     id: int
     os: str
     release: str
-    arches: list[str]
-    subarches: list[str]
-    labels: list[str]
+    arch: str
     boot_source_id: int
 
     @classmethod
@@ -30,9 +28,7 @@ class BootSourceSelectionResponse(HalResponse[BaseHal]):
             id=boot_source_selection.id,
             os=boot_source_selection.os,
             release=boot_source_selection.release,
-            arches=boot_source_selection.arches,
-            subarches=boot_source_selection.subarches,
-            labels=boot_source_selection.labels,
+            arch=boot_source_selection.arch,
             boot_source_id=boot_source_selection.boot_source_id,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(

@@ -32,6 +32,9 @@ class BootSourceCacheBuilder(ResourceBuilder):
     extra: Union[dict, Unset] = Field(default=UNSET, required=False)
     kflavor: Union[str, None, Unset] = Field(default=UNSET, required=False)
     label: Union[str, Unset] = Field(default=UNSET, required=False)
+    latest_version: Union[str, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     os: Union[str, Unset] = Field(default=UNSET, required=False)
     release: Union[str, Unset] = Field(default=UNSET, required=False)
     release_codename: Union[str, None, Unset] = Field(
@@ -77,26 +80,6 @@ class BootSourceCacheBuilder(ResourceBuilder):
         }
 
     @classmethod
-    def _from_simplestreams_single_file_product(
-        cls, product: SingleFileProduct, boot_source_id: int
-    ) -> set[Self]:
-        return {
-            cls(
-                os=product.os,
-                arch=product.arch,
-                subarch=subarch,
-                release=product.release,
-                label=product.label,
-                boot_source_id=boot_source_id,
-                release_title=product.release_title,
-                support_eol=product.support_eol,
-                kflavor="generic",
-                extra={},
-            )
-            for subarch in product.subarches.split(",")
-        }
-
-    @classmethod
     def _from_simplestreams_multi_file_product(
         cls, product: MultiFileProduct, boot_source_id: int
     ) -> set[Self]:
@@ -126,6 +109,26 @@ class BootSourceCacheBuilder(ResourceBuilder):
             for subarch in subarches
         }
         return builders
+
+    @classmethod
+    def _from_simplestreams_single_file_product(
+        cls, product: SingleFileProduct, boot_source_id: int
+    ) -> set[Self]:
+        return {
+            cls(
+                os=product.os,
+                arch=product.arch,
+                subarch=subarch,
+                release=product.release,
+                label=product.label,
+                boot_source_id=boot_source_id,
+                release_title=product.release_title,
+                support_eol=product.support_eol,
+                kflavor="generic",
+                extra={},
+            )
+            for subarch in product.subarches.split(",")
+        }
 
     @classmethod
     def from_simplestreams_product(

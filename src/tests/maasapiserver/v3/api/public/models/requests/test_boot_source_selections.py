@@ -17,20 +17,17 @@ class TestBootSourceSelectionRequest:
             updated=updated_at,
             url="http://example.com",
             keyring_filename="/path/to/keyring.gpg",
+            keyring_data=b"",
             priority=100,
             skip_keyring_verification=False,
         )
         bootsourceselection_request = BootSourceSelectionRequest(
             os="ubuntu",
             release="noble",
-            arches=["amd64", "arm64"],
-            subarches=["*"],
-            labels=["*"],
+            arch="amd64",
         )
         builder = bootsourceselection_request.to_builder(boot_source)
 
         assert builder.os == "ubuntu"
         assert builder.release == "noble"
-        assert builder.arches == ["amd64", "arm64"]
-        assert builder.subarches == ["*"]
-        assert builder.labels == ["*"]
+        assert builder.arch == "amd64"

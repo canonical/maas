@@ -17,17 +17,8 @@ class BootSourceSelectionRequest(BaseModel):
     release: str = Field(
         description="The release for which to import resources."
     )
-    arches: list[str] | None = Field(
+    arch: str = Field(
         description="The architecture list for which to import resources.",
-        default=["*"],
-    )
-    subarches: list[str] | None = Field(
-        description="The subarchitecture list for which to import resources.",
-        default=["*"],
-    )
-    labels: list[str] | None = Field(
-        description="The label lists for which to import resources.",
-        default=["*"],
     )
 
     def to_builder(
@@ -36,8 +27,6 @@ class BootSourceSelectionRequest(BaseModel):
         return BootSourceSelectionBuilder(
             os=self.os,
             release=self.release,
-            arches=self.arches,
-            subarches=self.subarches,
-            labels=self.labels,
+            arch=self.arch,
             boot_source_id=boot_source.id,
         )

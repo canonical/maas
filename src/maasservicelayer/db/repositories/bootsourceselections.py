@@ -35,18 +35,8 @@ class BootSourceSelectionClauseFactory(ClauseFactory):
         )
 
     @classmethod
-    def with_all_arches(cls) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.arches, ["*"]))
-
-    @classmethod
-    def with_all_subarches(cls) -> Clause:
-        return Clause(
-            condition=eq(BootSourceSelectionTable.c.subarches, ["*"])
-        )
-
-    @classmethod
-    def with_all_labels(cls) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.labels, ["*"]))
+    def with_arch(cls, arch: str) -> Clause:
+        return Clause(condition=eq(BootSourceSelectionTable.c.arch, arch))
 
 
 class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
@@ -55,3 +45,23 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
 
     def get_model_factory(self) -> type[BootSourceSelection]:
         return BootSourceSelection
+
+    async def update_one(self, query, builder):
+        raise NotImplementedError(
+            "Update is not supported for bootsourceselections"
+        )
+
+    async def update_many(self, query, builder):
+        raise NotImplementedError(
+            "Update is not supported for bootsourceselections"
+        )
+
+    async def update_by_id(self, id, builder):
+        raise NotImplementedError(
+            "Update is not supported for bootsourceselections"
+        )
+
+    async def _update(self, query, builder):
+        raise NotImplementedError(
+            "Update is not supported for bootsourceselections"
+        )

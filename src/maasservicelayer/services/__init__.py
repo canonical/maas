@@ -350,24 +350,6 @@ class ServiceCollectionV3:
             dnspublications_service=services.dnspublications,
             nodes_repository=NodesRepository(context),
         )
-        services.boot_source_cache = BootSourceCacheService(
-            context=context,
-            repository=BootSourceCacheRepository(context),
-        )
-        services.boot_source_selections = BootSourceSelectionsService(
-            context=context,
-            repository=BootSourceSelectionsRepository(context),
-            events_service=services.events,
-            boot_source_cache_service=services.boot_source_cache,
-        )
-        services.boot_sources = BootSourcesService(
-            context=context,
-            repository=BootSourcesRepository(context),
-            boot_source_cache_service=services.boot_source_cache,
-            boot_source_selections_service=services.boot_source_selections,
-            configuration_service=services.configurations,
-            events_service=services.events,
-        )
         services.boot_resource_file_sync = BootResourceFileSyncService(
             context=context,
             repository=BootResourceFileSyncRepository(context),
@@ -389,6 +371,25 @@ class ServiceCollectionV3:
             context=context,
             repository=BootResourcesRepository(context),
             boot_resource_sets_service=services.boot_resource_sets,
+        )
+        services.boot_source_cache = BootSourceCacheService(
+            context=context,
+            repository=BootSourceCacheRepository(context),
+        )
+        services.boot_source_selections = BootSourceSelectionsService(
+            context=context,
+            repository=BootSourceSelectionsRepository(context),
+            events_service=services.events,
+            boot_source_cache_service=services.boot_source_cache,
+            boot_resource_service=services.boot_resources,
+        )
+        services.boot_sources = BootSourcesService(
+            context=context,
+            repository=BootSourcesRepository(context),
+            boot_source_cache_service=services.boot_source_cache,
+            boot_source_selections_service=services.boot_source_selections,
+            configuration_service=services.configurations,
+            events_service=services.events,
         )
         services.image_sync = ImageSyncService(
             context=context,

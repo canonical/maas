@@ -23,3 +23,4 @@ class BootSourceCache(MaasTimestampedBaseModel):
     kflavor: str | None = None
     bootloader_type: str | None = None
     extra: dict
+    latest_version: str | None = None
