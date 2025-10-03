@@ -34,7 +34,6 @@ from maascommon.workflows.bootresource import (
     CancelObsoleteDownloadWorkflowsParam,
     CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME,
     CLEANUP_TIMEOUT,
-    CleanupOldBootResourceParam,
     DELETE_BOOTRESOURCE_WORKFLOW_NAME,
     DISK_TIMEOUT,
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
@@ -283,7 +282,8 @@ class BootResourcesActivity(ActivityBase):
                 return False
 
             raise ApplicationError(
-                ex.strerror, type=ex.__class__.__name__
+                ex.strerror if ex.strerror else str(ex),
+                type=ex.__class__.__name__,
             ) from None
         except (
             httpx.HTTPError,
@@ -359,7 +359,6 @@ class BootResourcesActivity(ActivityBase):
         self, param: list[BootSourceProductsMapping]
     ) -> GetFilesToDownloadReturnValue:
         resources_to_download: dict[str, ResourceDownloadParam] = {}
-        boot_resource_ids_to_keep: set[int] = set()
         async with self.start_transaction() as services:
             await services.events.record_event(
                 event_type=EventTypeEnum.REGION_IMPORT_INFO,
@@ -377,18 +376,13 @@ class BootResourcesActivity(ActivityBase):
                 boot_source,
                 products_list,
             ) in boot_source_products_mapping.items():
-                (
-                    to_download,
-                    boot_resource_ids,
-                ) = await services.image_sync.get_files_to_download_from_product_list(
+                to_download = await services.image_sync.get_files_to_download_from_product_list(
                     boot_source, products_list
                 )
                 resources_to_download.update(to_download)
-                boot_resource_ids_to_keep |= boot_resource_ids
 
         return GetFilesToDownloadReturnValue(
             resources=list(resources_to_download.values()),
-            boot_resource_ids=boot_resource_ids_to_keep,
         )
 
     @activity_defn_with_context(name=SET_GLOBAL_DEFAULT_RELEASES_ACTIVITY_NAME)
@@ -398,16 +392,9 @@ class BootResourcesActivity(ActivityBase):
 
     @activity_defn_with_context(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
     async def cleanup_old_boot_resources(
-        self, param: CleanupOldBootResourceParam
+        self,
     ) -> None:
         async with self.start_transaction() as services:
-            if not await services.image_sync.delete_old_boot_resources(
-                param.boot_resource_ids_to_keep
-            ):
-                raise ApplicationError(
-                    message="Finalization of image synchronization aborted or all the synced images would be deleted.",
-                    non_retryable=True,
-                )
             await services.image_sync.delete_old_boot_resource_sets()
             # Deletion of files is handled by the temporal service, so we have to manually call post_commit
             await services.temporal.post_commit()
@@ -747,7 +734,6 @@ class MasterImageSyncWorkflow:
             )
 
             resources_to_download = result.resources
-            boot_resource_ids_to_keep = result.boot_resource_ids
 
             required_disk_space_for_files = sum(
                 [r.total_size for r in resources_to_download],
@@ -815,7 +801,6 @@ class MasterImageSyncWorkflow:
             )
             await workflow.execute_activity(
                 CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
-                arg=CleanupOldBootResourceParam(boot_resource_ids_to_keep),
                 start_to_close_timeout=CLEANUP_TIMEOUT,
             )
         except (ActivityError, WorkflowFailureError) as ex:

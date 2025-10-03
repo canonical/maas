@@ -80,8 +80,8 @@
     }
    }
   },
-    "com.ubuntu.maas.stable:v3:boot:22.04:amd64:hwe-22.04": {
-   "arch": "amd64",
+  "com.ubuntu.maas.stable:v3:boot:22.04:arm64:ga-22.04": {
+   "arch": "arm64",
    "kflavor": "generic",
    "krel": "jammy",
    "label": "stable",
@@ -89,39 +89,69 @@
    "release": "jammy",
    "release_codename": "Jammy Jellyfish",
    "release_title": "22.04 LTS",
-   "subarch": "hwe-22.04",
+   "subarch": "ga-22.04",
    "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t,hwe-u,hwe-v,hwe-w,ga-16.04,ga-16.10,ga-17.04,ga-17.10,ga-18.04,ga-18.10,ga-19.04,ga-19.10,ga-20.04,ga-20.10,ga-21.04,ga-21.10,ga-22.04",
-   "support_eol": "2027-04-21",
+   "support_eol": "2027-06-01",
    "support_esm_eol": "2032-04-21",
    "version": "22.04",
    "versions": {
-    "20250718": {
+    "20250808": {
      "items": {
       "boot-initrd": {
        "ftype": "boot-initrd",
-       "kpackage": "linux-generic-hwe-22.04",
-       "path": "jammy/amd64/20250718/hwe-22.04/generic/boot-initrd",
-       "sha256": "f5f0cde6d0d8e69c75a6bfeca0aeb0746ef53871f121b620393505a2f1acbb6b",
-       "size": 180542978
+       "kpackage": "linux-generic",
+       "path": "jammy/arm64/20250808/ga-22.04/generic/boot-initrd",
+       "sha256": "49967d9352f1ba65ddd9355af65843aec4724e8840906576f6ac34536b0bee96",
+       "size": 103565515
       },
       "boot-kernel": {
        "ftype": "boot-kernel",
-       "kpackage": "linux-generic-hwe-22.04",
-       "path": "jammy/amd64/20250718/hwe-22.04/generic/boot-kernel",
-       "sha256": "1fba6d0211f35cc71440d8ae481f21afd9bad7e8e706b2b82cfcb60e2464ba16",
-       "size": 14969224
+       "kpackage": "linux-generic",
+       "path": "jammy/arm64/20250808/ga-22.04/generic/boot-kernel",
+       "sha256": "260d82490954ecfb7c2d35fe5aa065b0eee2ae1d664bf70745bb955c7909f8b6",
+       "size": 15231417
       },
       "manifest": {
        "ftype": "manifest",
-       "path": "jammy/amd64/20250718/squashfs.manifest",
-       "sha256": "4fde9ca48290efe6afd7e911083a547d3f94a3ee9d3755914e29aa7805a7d456",
-       "size": 17741
+       "path": "jammy/arm64/20250808/squashfs.manifest",
+       "sha256": "30916b90225a3c0e78f04952e9ad08c738f10cf8e0abaa966ef7aa818ff1dd74",
+       "size": 17992
       },
       "squashfs": {
        "ftype": "squashfs",
-       "path": "jammy/amd64/20250718/squashfs",
-       "sha256": "edbd57a3d69392e6942ef4a35bc7c062cc234b9d1d48d99bf3e15401ceda0d46",
-       "size": 455462912
+       "path": "jammy/arm64/20250808/squashfs",
+       "sha256": "d4366471220732377bd8eab6a80d04b907dd9f74140ac41d58e45a3808fd80c7",
+       "size": 418340864
+      }
+     }
+    },
+    "20250812": {
+     "items": {
+      "boot-initrd": {
+       "ftype": "boot-initrd",
+       "kpackage": "linux-generic",
+       "path": "jammy/arm64/20250812/ga-22.04/generic/boot-initrd",
+       "sha256": "75769ea42e8f3a3710f7bc8110e4039e194984f569e6a1aa00c92d97809fc2e1",
+       "size": 103565269
+      },
+      "boot-kernel": {
+       "ftype": "boot-kernel",
+       "kpackage": "linux-generic",
+       "path": "jammy/arm64/20250812/ga-22.04/generic/boot-kernel",
+       "sha256": "260d82490954ecfb7c2d35fe5aa065b0eee2ae1d664bf70745bb955c7909f8b6",
+       "size": 15231417
+      },
+      "manifest": {
+       "ftype": "manifest",
+       "path": "jammy/arm64/20250812/squashfs.manifest",
+       "sha256": "30916b90225a3c0e78f04952e9ad08c738f10cf8e0abaa966ef7aa818ff1dd74",
+       "size": 17992
+      },
+      "squashfs": {
+       "ftype": "squashfs",
+       "path": "jammy/arm64/20250812/squashfs",
+       "sha256": "d8cfee10e06692aa32cd9e74530898e18cf1c66f9b51ad168147e7f1cebb4e6d",
+       "size": 418373632
       }
      }
     }

@@ -23,6 +23,7 @@ from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maascommon.osystem.ubuntu import UbuntuOS
 from maascommon.workflows.bootresource import ResourceDownloadParam
+from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
@@ -176,17 +177,16 @@ class ImageSyncService(Service):
                 arches = [arch, "amd64"]
 
             ubuntu = UbuntuOS()
-            selection_builder = BootSourceSelectionBuilder(
-                boot_source_id=boot_source.id,
-                os=ubuntu.name,
-                release=ubuntu.get_default_commissioning_release(),
-                arches=arches,
-                subarches=["*"],
-                labels=["*"],
-            )
-            await self.boot_source_selections_service.create_without_boot_source_cache(
-                selection_builder
-            )
+            for arch in arches:
+                selection_builder = BootSourceSelectionBuilder(
+                    boot_source_id=boot_source.id,
+                    os=ubuntu.name,
+                    release=ubuntu.get_default_commissioning_release(),
+                    arch=arch,
+                )
+                await self.boot_source_selections_service.create_without_boot_source_cache(
+                    selection_builder
+                )
             return True
         else:
             # XXX ensure the default keyrings path in the database points to the
@@ -242,9 +242,9 @@ class ImageSyncService(Service):
                                     BootSourceSelectionClauseFactory.with_release(
                                         cache.release
                                     ),
-                                    BootSourceSelectionClauseFactory.with_all_arches(),
-                                    BootSourceSelectionClauseFactory.with_all_subarches(),
-                                    BootSourceSelectionClauseFactory.with_all_labels(),
+                                    BootSourceSelectionClauseFactory.with_arch(
+                                        cache.arch
+                                    ),
                                 ]
                             )
                         )
@@ -254,9 +254,7 @@ class ImageSyncService(Service):
                                 os=cache.os,
                                 release=cache.release,
                                 boot_source_id=boot_source.id,
-                                arches=["*"],
-                                subarches=["*"],
-                                labels=["*"],
+                                arch=cache.arch,
                             )
                         )
 
@@ -522,15 +520,10 @@ class ImageSyncService(Service):
         self, product: ImageProduct, selections: list[BootSourceSelection]
     ) -> bool:
         for selection in selections:
-            arches = selection.arches or []
-            subarches = selection.subarches or []
-            labels = selection.labels or []
             if (
                 product.os == selection.os
                 and product.release == selection.release
-                and (product.arch in arches or arches == ["*"])
-                and (product.subarch in subarches or subarches == ["*"])
-                and (product.label in labels or labels == ["*"])
+                and product.arch == selection.arch
             ):
                 return True
         return False
@@ -635,7 +628,7 @@ class ImageSyncService(Service):
         self,
         boot_source: BootSource,
         filtered_products_list: list[SimpleStreamsProductList],
-    ) -> tuple[dict[str, ResourceDownloadParam], set[int]]:
+    ) -> dict[str, ResourceDownloadParam]:
         """Get all the files that must be downloaded from simplestreams for this boot source.
 
         Args:
@@ -650,14 +643,10 @@ class ImageSyncService(Service):
             The latter will come in handy when deleting the old boot resources.
         """
         resources_to_download: dict[str, ResourceDownloadParam] = {}
-        boot_resource_ids = set()
         for product_list in filtered_products_list:
             for product in product_list.products:
-                (
-                    to_download,
-                    boot_resource_id,
-                ) = await self.get_files_to_download_from_product(
-                    boot_source.url,
+                to_download = await self.get_files_to_download_from_product(
+                    boot_source,
                     product,
                 )
                 for resource in to_download:
@@ -669,15 +658,14 @@ class ImageSyncService(Service):
 
                     else:
                         resources_to_download[resource.sha256] = resource
-                boot_resource_ids.add(boot_resource_id)
 
-        return (resources_to_download, boot_resource_ids)
+        return resources_to_download
 
     async def get_files_to_download_from_product(
         self,
-        boot_source_url: str,
+        boot_source: BootSource,
         product: Product,
-    ) -> tuple[list[ResourceDownloadParam], int]:
+    ) -> list[ResourceDownloadParam]:
         """Returns the files to be downloaded from a simplestreams product.
 
         Filtering happens before this function. If we arrived here we have to
@@ -694,6 +682,35 @@ class ImageSyncService(Service):
         boot_resource = await self.boot_resources_service.create_or_update_from_simplestreams_product(
             product
         )
+
+        if boot_resource.bootloader_type is None:
+            # Add the selection id only to the non-bootloader images
+            osystem, release = boot_resource.name.split("/")
+            arch, _ = boot_resource.architecture.split("/", maxsplit=1)
+            related_selection = await self.boot_source_selections_service.get_one(
+                query=QuerySpec(
+                    where=BootSourceSelectionClauseFactory.and_clauses(
+                        [
+                            BootSourceSelectionClauseFactory.with_os(osystem),
+                            BootSourceSelectionClauseFactory.with_release(
+                                release
+                            ),
+                            BootSourceSelectionClauseFactory.with_arch(arch),
+                            BootSourceSelectionClauseFactory.with_boot_source_id(
+                                boot_source.id
+                            ),
+                        ]
+                    )
+                )
+            )
+            # This can't happen as we are processing the products that match our selections.
+            assert related_selection is not None, (
+                f"No suitable selection found for boot resource: {boot_resource}"
+            )
+            await self.boot_resources_service.update_by_id(
+                boot_resource.id,
+                BootResourceBuilder(selection_id=related_selection.id),
+            )
 
         boot_resource_set = await self.boot_resource_sets_service.create_or_update_from_simplestreams_product(
             product, boot_resource.id
@@ -762,19 +779,15 @@ class ImageSyncService(Service):
             resources_to_download.append(
                 ResourceDownloadParam(
                     rfile_ids=[resource_file.id],
-                    source_list=[f"{boot_source_url}/{file.path}"],
+                    source_list=[f"{boot_source.url}/{file.path}"],
                     sha256=resource_file.sha256,
                     filename_on_disk=resource_file.filename_on_disk,
                     total_size=resource_file.size,
-                    # force=force_download, # force isn't used anywhere
                     extract_paths=[extract_path] if extract_path else [],
                 )
             )
 
-        return (
-            resources_to_download,
-            boot_resource.id,
-        )
+        return resources_to_download
 
     async def get_latest_support_commissioning_boot_resource(
         self,
@@ -859,167 +872,6 @@ class ImageSyncService(Service):
                 await self.configurations_service.set(
                     DefaultDistroSeriesConfig.name, release
                 )
-
-    async def _boot_resource_is_duplicated(
-        self,
-        boot_resource: BootResource,
-        boot_resources_to_delete_ids: set[int],
-    ) -> bool:
-        """Check if simplestreams provided another image with the same os, arch,
-        series combination.
-
-        Args:
-            - boot_resource: the boot resource to check for duplicates
-            - boot_resources_to_delete_ids: ids of the boot resources that are
-            scheduled for removal. These are filtered out and not taken into account.
-
-        NOTE: boot_resource name is composed by {os}/{series} while boot_resource
-        architecture is in the form {arch}/{subarch}. When checking for duplicates,
-        the sub-architecture is not taken into account.
-
-        """
-        return await self.boot_resources_service.exists(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_ids(
-                                boot_resources_to_delete_ids
-                            )
-                        ),
-                        BootResourceClauseFactory.with_name(
-                            boot_resource.name
-                        ),
-                        BootResourceClauseFactory.with_architecture_starting_with(
-                            boot_resource.architecture.split("/", maxsplit=1)[
-                                0
-                            ]
-                        ),
-                    ]
-                )
-            )
-        )
-
-    async def _boot_resource_is_selected(
-        self,
-        boot_resource: BootResource,
-        resource_set_label: str,
-        selections: list[BootSourceSelection],
-    ) -> bool:
-        """Returns True if the boot_resource matches one of the selections.
-
-        Args:
-            - boot_resource: the boot resource to check
-            - resource_set_label: the label of the boot resource's set
-            - selections: the selections to match
-        """
-        os, release = boot_resource.name.split("/")
-        arch, subarch = boot_resource.architecture.split("/", 1)
-        for selection in selections:
-            arches = selection.arches or []
-            subarches = selection.subarches or []
-            labels = selection.labels or []
-            if (
-                os == selection.os
-                and release == selection.release
-                and (arch in arches or arches == ["*"])
-                and (subarch in subarches or subarches == ["*"])
-                and (resource_set_label in labels or labels == ["*"])
-            ):
-                return True
-        return False
-
-    async def delete_old_boot_resources(
-        self, boot_resource_ids_to_keep: set[int]
-    ) -> bool:
-        """Deletes the no more necessary boot resources.
-
-        Deletes all the boot resources which:
-            - don't have a boot resource set
-            - don't relate to any boot source selection
-            - are a duplicate of another boot resource
-
-        It will keep the boot resources that are part of a selection even if
-        they aren't present anymore in the simplestreams mirror. In such case,
-        it will produce an event.
-
-        Args:
-            - boot_resource_ids_to_keep: a set of ids of boot resources that
-              must not be deleted. This is coming from `get_files_to_download_from_product_list`
-        Returns:
-            - returns False if the method would delete all the boot resources, True otherwise.
-        """
-        all_boot_resources = await self.boot_resources_service.get_many(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            BootResourceType.SYNCED
-                        ),
-                    ]
-                )
-            )
-        )
-        boot_resources_to_delete = [
-            br
-            for br in all_boot_resources
-            if br.id not in boot_resource_ids_to_keep
-        ]
-        if not boot_resources_to_delete:
-            return True
-
-        boot_resources_to_delete_ids = {
-            br.id for br in boot_resources_to_delete
-        }
-        selections = await self.boot_source_selections_service.get_many(
-            query=QuerySpec()
-        )
-        for boot_resource in boot_resources_to_delete:
-            boot_resource_set = await self.boot_resource_sets_service.get_latest_for_boot_resource(
-                boot_resource.id
-            )
-            if (
-                boot_resource_set
-                and await self._boot_resource_is_selected(
-                    boot_resource, boot_resource_set.label, selections
-                )
-                and not await self._boot_resource_is_duplicated(
-                    boot_resource, boot_resources_to_delete_ids
-                )
-            ):
-                # we keep the image because it's part of a selection but is not
-                # present in simplestreams anymore
-                await self.events_service.record_event(
-                    event_type=EventTypeEnum.REGION_IMPORT_WARNING,
-                    event_description=f"Boot image {boot_resource.name}/"
-                    f"{boot_resource.architecture} no longer exists in stream, "
-                    "but remains in selections. To delete this image remove its selection.",
-                )
-                boot_resources_to_delete_ids.remove(boot_resource.id)
-
-        # We have to remove the bootloaders from the total since they will always
-        # be downloaded.
-        bootloaders_count = len(
-            [br for br in all_boot_resources if br.bootloader_type is not None]
-        )
-        if len(all_boot_resources) - bootloaders_count == len(
-            boot_resources_to_delete_ids
-        ):
-            await self.events_service.record_event(
-                event_type=EventTypeEnum.REGION_IMPORT_ERROR,
-                event_description=f"Finalization of image synchronization aborted "
-                f"or all {len(all_boot_resources) - bootloaders_count} synced images would be deleted.",
-            )
-            return False
-
-        await self.boot_resources_service.delete_many(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_ids(
-                    boot_resources_to_delete_ids
-                )
-            )
-        )
-        return True
 
     async def delete_old_boot_resource_sets(self) -> None:
         """Deletes the old boot resource sets.

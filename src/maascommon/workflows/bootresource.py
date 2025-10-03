@@ -33,7 +33,6 @@ class ResourceDownloadParam:
     filename_on_disk: str
     total_size: int
     size: int = 0
-    force: bool = False
     extract_paths: list[str] = field(default_factory=list)
     http_proxy: str | None = None
 
@@ -82,12 +81,6 @@ class ResourceDeleteParam:
 @dataclass
 class GetFilesToDownloadReturnValue:
     resources: list[ResourceDownloadParam]
-    boot_resource_ids: set[int]
-
-
-@dataclass
-class CleanupOldBootResourceParam:
-    boot_resource_ids_to_keep: set[int]
 
 
 @dataclass

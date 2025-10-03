@@ -31,17 +31,13 @@ from maasservicelayer.builders.bootsourceselections import (
 )
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import OrderByClauseFactory, QuerySpec
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFileClauseFactory,
 )
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
     BootResourceOrderByClauses,
-)
-from maasservicelayer.db.repositories.bootresourcesets import (
-    BootResourceSetClauseFactory,
-    BootResourceSetsOrderByClauses,
 )
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
@@ -57,7 +53,6 @@ from maasservicelayer.db.tables import (
     BootResourceSetTable,
     BootResourceTable,
     BootSourceCacheTable,
-    EventTable,
     NotificationTable,
 )
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
@@ -147,9 +142,7 @@ BOOT_SELECTION_NOBLE_SOURCE_1 = BootSourceSelection(
     id=1,
     os="ubuntu",
     release="noble",
-    arches=["*"],
-    subarches=["*"],
-    labels=["*"],
+    arch="amd64",
     boot_source_id=BOOT_SOURCE_1.id,
 )
 
@@ -157,18 +150,14 @@ BOOT_SELECTION_NOBLE_SOURCE_2 = BootSourceSelection(
     id=1,
     os="ubuntu",
     release="noble",
-    arches=["*"],
-    subarches=["*"],
-    labels=["*"],
+    arch="amd64",
     boot_source_id=BOOT_SOURCE_2.id,
 )
 BOOT_SELECTION_ORACULAR_SOURCE_1 = BootSourceSelection(
     id=2,
     os="ubuntu",
     release="oracular",
-    arches=["*"],
-    subarches=["*"],
-    labels=["*"],
+    arch="amd64",
     boot_source_id=BOOT_SOURCE_1.id,
 )
 
@@ -180,6 +169,7 @@ BOOT_RESOURCE_NOBLE = BootResource(
     extra={},
     rolling=False,
     base_image="",
+    selection_id=BOOT_SELECTION_NOBLE_SOURCE_1.id,
 )
 
 
@@ -198,6 +188,7 @@ BOOT_RESOURCE_ORACULAR = BootResource(
     extra={},
     rolling=False,
     base_image="",
+    selection_id=BOOT_SELECTION_ORACULAR_SOURCE_1.id,
 )
 
 BOOT_RESOURCE_SET_ORACULAR = BootResourceSet(
@@ -388,15 +379,25 @@ class TestImageSyncService:
                 skip_keyring_verification=False,
             )
         )
-        self.boot_source_selections_service.create_without_boot_source_cache.assert_awaited_once_with(
-            BootSourceSelectionBuilder(
-                boot_source_id=1,
-                os="ubuntu",
-                release="noble",
-                arches=[arch, "amd64"],
-                subarches=["*"],
-                labels=["*"],
-            )
+        self.boot_source_selections_service.create_without_boot_source_cache.assert_has_awaits(
+            [
+                call(
+                    BootSourceSelectionBuilder(
+                        boot_source_id=1,
+                        os="ubuntu",
+                        release="noble",
+                        arch=arch,
+                    )
+                ),
+                call(
+                    BootSourceSelectionBuilder(
+                        boot_source_id=1,
+                        os="ubuntu",
+                        release="noble",
+                        arch="amd64",
+                    )
+                ),
+            ]
         )
 
     async def test_ensure_boot_source_definition_creates_with_default_arch(
@@ -433,9 +434,7 @@ class TestImageSyncService:
                 boot_source_id=1,
                 os="ubuntu",
                 release="noble",
-                arches=["amd64"],
-                subarches=["*"],
-                labels=["*"],
+                arch="amd64",
             )
         )
 
@@ -535,9 +534,7 @@ class TestImageSyncService:
                 os="ubuntu",
                 release="noble",
                 boot_source_id=100,
-                arches=["*"],
-                subarches=["*"],
-                labels=["*"],
+                arch="amd64",
             )
         )
 
@@ -806,9 +803,7 @@ class TestImageSyncService:
                 id=1,
                 os="centos",
                 release="centos70",
-                arches=["*"],
-                subarches=["*"],
-                labels=["*"],
+                arch="amd64",
                 boot_source_id=1,
             )
         ]
@@ -989,21 +984,23 @@ class TestImageSyncService:
         ]
 
         self.boot_resources_service.create_or_update_from_simplestreams_product.return_value = boot_resource
+        self.boot_source_selections_service.get_one.return_value = (
+            BOOT_SELECTION_ORACULAR_SOURCE_1
+        )
         self.boot_resource_sets_service.create_or_update_from_simplestreams_product.return_value = boot_resource_set
         self.boot_resource_files_service.get_or_create_from_simplestreams_file.side_effect = resource_files
         # mark all the files as not complete
         self.boot_resource_files_service.is_sync_complete.return_value = False
-        (
-            res_to_download,
-            boot_res_id,
-        ) = await self.service.get_files_to_download_from_product(
-            "http://source-1.com", product
+        res_to_download = (
+            await self.service.get_files_to_download_from_product(
+                BOOT_SOURCE_1, product
+            )
         )
 
         assert res_to_download == [
             ResourceDownloadParam(
                 rfile_ids=[file.id],
-                source_list=[f"http://source-1.com/{path}"],
+                source_list=[f"{BOOT_SOURCE_1.url}/{path}"],
                 sha256=file.sha256,
                 filename_on_disk=file.filename_on_disk,
                 total_size=file.size,
@@ -1018,11 +1015,11 @@ class TestImageSyncService:
                 ],
             )
         ]
-        assert boot_res_id == boot_resource.id
 
         self.boot_resources_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product
         )
+        self.boot_source_selections_service.get_one.assert_awaited_once()
         self.boot_resource_sets_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product, boot_resource.id
         )
@@ -1083,11 +1080,10 @@ class TestImageSyncService:
         self.boot_resource_files_service.get_or_create_from_simplestreams_file.side_effect = resource_files
         # mark all the files as not complete
         self.boot_resource_files_service.is_sync_complete.return_value = False
-        (
-            res_to_download,
-            boot_res_id,
-        ) = await self.service.get_files_to_download_from_product(
-            "http://source-1.com", product
+        res_to_download = (
+            await self.service.get_files_to_download_from_product(
+                BOOT_SOURCE_1, product
+            )
         )
 
         assert res_to_download == [
@@ -1109,11 +1105,11 @@ class TestImageSyncService:
                 ],
             )
         ]
-        assert boot_res_id == boot_resource.id
 
         self.boot_resources_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product
         )
+        self.boot_source_selections_service.get_one.assert_not_awaited()
         self.boot_resource_sets_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product, boot_resource.id
         )
@@ -1138,7 +1134,7 @@ class TestImageSyncService:
         )
         # Already tested above, mock for this test
         self.service.get_files_to_download_from_product = AsyncMock(
-            side_effect=[([r1], 1), ([r2], 2)]
+            side_effect=[[r1], [r2]]
         )
 
         product_list = SimpleStreamsBootloaderProductList(
@@ -1149,11 +1145,10 @@ class TestImageSyncService:
             products=[BOOTLOADER_PRODUCT, BOOTLOADER_PRODUCT],
         )
 
-        (
-            resources_to_download,
-            used_boot_resource_ids,
-        ) = await self.service.get_files_to_download_from_product_list(
-            BOOT_SOURCE_1, [product_list]
+        resources_to_download = (
+            await self.service.get_files_to_download_from_product_list(
+                BOOT_SOURCE_1, [product_list]
+            )
         )
 
         assert len(resources_to_download) == 1
@@ -1168,190 +1163,6 @@ class TestImageSyncService:
             total_size=1024,
             extract_paths=["path/to/file-1", "path/to/file-2"],
         )
-
-        assert used_boot_resource_ids == {1, 2}
-
-    async def test_boot_resource_is_duplicated(self) -> None:
-        await self.service._boot_resource_is_duplicated(
-            BOOT_RESOURCE_BOOTLOADER, set()
-        )
-
-        self.boot_resources_service.exists.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_ids(set())
-                        ),
-                        BootResourceClauseFactory.with_name(
-                            BOOT_RESOURCE_BOOTLOADER.name
-                        ),
-                        BootResourceClauseFactory.with_architecture_starting_with(
-                            BOOT_RESOURCE_BOOTLOADER.architecture.split("/")[0]
-                        ),
-                    ]
-                )
-            )
-        )
-
-    async def test_boot_resource_is_selected(self) -> None:
-        selections = [BOOT_SELECTION_ORACULAR_SOURCE_1]
-        resource_set_label = "stable"
-        is_selected = await self.service._boot_resource_is_selected(
-            BOOT_RESOURCE_ORACULAR, resource_set_label, selections
-        )
-        assert is_selected is True
-        is_selected = await self.service._boot_resource_is_selected(
-            BOOT_RESOURCE_BOOTLOADER, resource_set_label, selections
-        )
-        assert is_selected is False
-
-    async def test_delete_old_boot_resources__no_resources_to_delete(
-        self,
-    ) -> None:
-        self.boot_resources_service.get_many.return_value = []
-        await self.service.delete_old_boot_resources({1, 2})
-
-    async def test_delete_old_boot_resources__keep_image(self) -> None:
-        self.boot_resources_service.get_many.return_value = [
-            BOOT_RESOURCE_ORACULAR
-        ]
-        self.boot_resource_sets_service.get_latest_for_boot_resource.return_value = BOOT_RESOURCE_SET_ORACULAR
-        self.service._boot_resource_is_selected = AsyncMock(return_value=True)
-        self.service._boot_resource_is_duplicated = AsyncMock(
-            return_value=False
-        )
-
-        await self.service.delete_old_boot_resources({100})
-
-        self.boot_resources_service.get_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            BootResourceType.SYNCED
-                        ),
-                    ]
-                )
-            )
-        )
-        self.boot_resource_sets_service.get_latest_for_boot_resource.assert_awaited_once_with(
-            BOOT_RESOURCE_ORACULAR.id
-        )
-        self.events_service.record_event.assert_awaited_once_with(
-            event_type=EventTypeEnum.REGION_IMPORT_WARNING,
-            event_description=f"Boot image {BOOT_RESOURCE_ORACULAR.name}/"
-            f"{BOOT_RESOURCE_ORACULAR.architecture} no longer exists in stream, "
-            "but remains in selections. To delete this image remove its selection.",
-        )
-        self.boot_resources_service.delete_many.assert_awaited_once_with(
-            query=QuerySpec(where=BootResourceClauseFactory.with_ids(set()))
-        )
-
-    async def test_delete_old_boot_resources__deletes_image(self) -> None:
-        self.boot_resources_service.get_many.return_value = [
-            BOOT_RESOURCE_NOBLE,
-            BOOT_RESOURCE_ORACULAR,
-        ]
-        self.boot_resource_sets_service.get_latest_for_boot_resource.return_value = BOOT_RESOURCE_SET_ORACULAR
-        self.service._boot_resource_is_selected = AsyncMock(return_value=False)
-        self.service._boot_resource_is_duplicated = AsyncMock(
-            return_value=False
-        )
-
-        await self.service.delete_old_boot_resources({BOOT_RESOURCE_NOBLE.id})
-
-        self.boot_resources_service.get_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            BootResourceType.SYNCED
-                        ),
-                    ]
-                )
-            )
-        )
-        self.boot_resource_sets_service.get_latest_for_boot_resource.assert_awaited_once_with(
-            BOOT_RESOURCE_ORACULAR.id
-        )
-        self.events_service.record_event.assert_not_awaited()
-        self.boot_resources_service.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_ids(
-                    {BOOT_RESOURCE_ORACULAR.id}
-                )
-            )
-        )
-
-    async def test_delete_old_boot_resources_records_event(self) -> None:
-        # only one resource
-        self.boot_resources_service.get_many.return_value = [
-            BOOT_RESOURCE_ORACULAR
-        ]
-        self.boot_resource_sets_service.get_latest_for_boot_resource.return_value = BOOT_RESOURCE_SET_ORACULAR
-        self.service._boot_resource_is_selected = AsyncMock(return_value=False)
-        self.service._boot_resource_is_duplicated = AsyncMock(
-            return_value=False
-        )
-
-        await self.service.delete_old_boot_resources({100})
-
-        self.boot_resources_service.get_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            BootResourceType.SYNCED
-                        ),
-                    ]
-                )
-            )
-        )
-        self.boot_resource_sets_service.get_latest_for_boot_resource.assert_awaited_once_with(
-            BOOT_RESOURCE_ORACULAR.id
-        )
-        self.events_service.record_event.assert_awaited_once_with(
-            event_type=EventTypeEnum.REGION_IMPORT_ERROR,
-            event_description="Finalization of image synchronization aborted "
-            "or all 1 synced images would be deleted.",
-        )
-        self.boot_resources_service.delete_many.assert_not_awaited()
-
-    async def test_delete_old_boot_resource_sets(self) -> None:
-        self.boot_resources_service.get_many.return_value = [
-            BOOT_RESOURCE_ORACULAR
-        ]
-        set1 = BOOT_RESOURCE_ORACULAR.copy()
-        set2 = BOOT_RESOURCE_ORACULAR.copy()
-        set2.id = 2
-        self.boot_resource_sets_service.get_many.return_value = [set2, set1]
-        self.boot_resource_sets_service.is_sync_complete.side_effect = [
-            True,
-            False,
-        ]
-
-        await self.service.delete_old_boot_resource_sets()
-
-        self.boot_resources_service.get_many.assert_awaited_once()
-        self.boot_resource_sets_service.get_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_resource_id(
-                    BOOT_RESOURCE_ORACULAR.id
-                ),
-                order_by=[
-                    OrderByClauseFactory.desc_clause(
-                        BootResourceSetsOrderByClauses.by_id()
-                    )
-                ],
-            )
-        )
-        self.boot_resource_sets_service.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_ids({set1.id})
-            )
-        )
-        self.boot_resources_service.delete_all_without_sets.assert_awaited_once()
 
     async def test_get_latest_support_commissioning_boot_resource(
         self,
@@ -1549,15 +1360,21 @@ class TestIntegrationImageSyncService:
             os="ubuntu",
             release="noble",
             boot_source_id=test_boot_source_1.id,
-            arches=["amd64", "arm64"],
+            arch="amd64",
+        )
+        await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="noble",
+            boot_source_id=test_boot_source_1.id,
+            arch="arm64",
         )
         await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
             release="jammy",
             boot_source_id=test_boot_source_1.id,
-            arches=["amd64"],
-            subarches=["hwe-22.04"],
+            arch="amd64",
         )
 
         # 3.
@@ -1578,16 +1395,20 @@ class TestIntegrationImageSyncService:
                     ("pxelinux", "i386"),
                 ]
             elif isinstance(product_list, SimpleStreamsMultiFileProductList):
+                os_release_arch_subarch = [
+                    (p.os, p.release, p.arch, p.subarch)
+                    for p in product_list.products
+                ]
                 assert len(product_list.products) == 3
                 os_release_arch_subarch = [
                     (p.os, p.release, p.arch, p.subarch)
                     for p in product_list.products
                 ]
-                # The test data contains two entries for jammy amd64. Make sure
-                # that we only selected the "hwe-22.04" subarch for jammy
-                # and both amd64 and arm64 for noble.
+                # The test data contains the following images:
+                # - jammy: amd64, arm64 (ga-22.04)
+                # - noble: amd64, arm64 (ga-24.04)
                 assert os_release_arch_subarch == [
-                    ("ubuntu", "jammy", "amd64", "hwe-22.04"),
+                    ("ubuntu", "jammy", "amd64", "ga-22.04"),
                     ("ubuntu", "noble", "amd64", "ga-24.04"),
                     ("ubuntu", "noble", "arm64", "ga-24.04"),
                 ]
@@ -1597,17 +1418,11 @@ class TestIntegrationImageSyncService:
         # 5.
         existing_boot_resources = await fixture.get(BootResourceTable.name)
         assert existing_boot_resources == []
-        (
-            resources_to_download,
-            boot_resource_ids,
-        ) = await services.image_sync.get_files_to_download_from_product_list(
-            test_boot_source_1, mapping[test_boot_source_1]
+        resources_to_download = (
+            await services.image_sync.get_files_to_download_from_product_list(
+                test_boot_source_1, mapping[test_boot_source_1]
+            )
         )
-
-        created_boot_resources = await fixture.get_typed(
-            BootResourceTable.name, BootResource
-        )
-        assert {br.id for br in created_boot_resources} == boot_resource_ids
 
         sha256s = {
             file.sha256
@@ -1673,22 +1488,28 @@ class TestIntegrationImageSyncService:
             os="ubuntu",
             release="noble",
             boot_source_id=test_boot_source_2.id,
-            arches=["arm64"],
+            arch="arm64",
         )
         await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
             release="noble",
             boot_source_id=test_boot_source_1.id,
-            arches=["amd64", "arm64"],
+            arch="amd64",
+        )
+        await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="noble",
+            boot_source_id=test_boot_source_1.id,
+            arch="arm64",
         )
         await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
             release="jammy",
             boot_source_id=test_boot_source_1.id,
-            arches=["amd64"],
-            subarches=["hwe-22.04"],
+            arch="amd64",
         )
 
         # 3.
@@ -1736,7 +1557,7 @@ class TestIntegrationImageSyncService:
                     for p in product_list.products
                 ]
                 assert os_release_arch_subarch == [
-                    ("ubuntu", "jammy", "amd64", "hwe-22.04"),
+                    ("ubuntu", "jammy", "amd64", "ga-22.04"),
                     ("ubuntu", "noble", "amd64", "ga-24.04"),
                 ]
             elif isinstance(product_list, SimpleStreamsSingleFileProductList):
@@ -1744,25 +1565,16 @@ class TestIntegrationImageSyncService:
         # 5.
         existing_boot_resources = await fixture.get(BootResourceTable.name)
         assert existing_boot_resources == []
-        (
-            resources_to_download_1,
-            boot_resource_ids_1,
-        ) = await services.image_sync.get_files_to_download_from_product_list(
-            test_boot_source_1, mapping[test_boot_source_1]
+        resources_to_download_1 = (
+            await services.image_sync.get_files_to_download_from_product_list(
+                test_boot_source_1, mapping[test_boot_source_1]
+            )
         )
-        (
-            resources_to_download_2,
-            boot_resource_ids_2,
-        ) = await services.image_sync.get_files_to_download_from_product_list(
-            test_boot_source_2, mapping[test_boot_source_2]
+        resources_to_download_2 = (
+            await services.image_sync.get_files_to_download_from_product_list(
+                test_boot_source_2, mapping[test_boot_source_2]
+            )
         )
-
-        created_boot_resources_1 = await fixture.get_typed(
-            BootResourceTable.name, BootResource
-        )
-        assert {
-            br.id for br in created_boot_resources_1
-        } == boot_resource_ids_1.union(boot_resource_ids_2)
 
         sha256_source_1 = {
             file.sha256
@@ -1779,66 +1591,6 @@ class TestIntegrationImageSyncService:
         }
 
         assert set(resources_to_download_2.keys()) == sha256_source_2
-
-    async def test_delete_old_boot_resources(
-        self,
-        fixture: Fixture,
-        services: ServiceCollectionV3,
-        test_boot_source_1: BootSource,
-    ) -> None:
-        # must be deleted - no resource set associated
-        await create_test_bootresource_entry(
-            fixture,
-            rtype=BootResourceType.SYNCED,
-            name="ubuntu/noble",
-            architecture="amd64/ga24.04",
-        )
-        # must be deleted - no selection applies to this
-        to_delete_1 = await create_test_bootresource_entry(
-            fixture,
-            rtype=BootResourceType.SYNCED,
-            name="ubuntu/focal",
-            architecture="amd64/ga20.04",
-        )
-        await create_test_bootresourceset_entry(
-            fixture,
-            version="20250618",
-            label="stable",
-            resource_id=to_delete_1.id,
-        )
-
-        # must be kept - matches a selection
-        to_keep = await create_test_bootresource_entry(
-            fixture,
-            rtype=BootResourceType.SYNCED,
-            name="ubuntu/noble",
-            architecture="amd64/hwe24.04",
-        )
-        await create_test_bootresourceset_entry(
-            fixture, version="20250618", label="stable", resource_id=to_keep.id
-        )
-
-        await create_test_bootsourceselection_entry(
-            fixture,
-            os="ubuntu",
-            release="noble",
-            boot_source_id=test_boot_source_1.id,
-        )
-
-        await services.image_sync.delete_old_boot_resources(set())
-
-        boot_resources = await fixture.get_typed(
-            BootResourceTable.name, BootResource
-        )
-
-        assert boot_resources == [to_keep]
-
-        events = await fixture.get(EventTable.name)
-        assert len(events) == 1
-        assert events[0]["description"] == (
-            "Boot image ubuntu/noble/amd64/hwe24.04 no longer exists in stream, "
-            "but remains in selections. To delete this image remove its selection."
-        )
 
     async def test_delete_old_boot_resource_sets(
         self,
