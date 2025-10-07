@@ -195,10 +195,6 @@ class PackageRepositoriesHandler(OperationsHandler):
         @param (string) "disabled_pockets" [required=false] The list of pockets
         to disable.
 
-        @param (string) "disabled_components" [required=false] The list of
-        components to disable. Only applicable to the default Ubuntu
-        repositories.
-
         @param (string) "components" [required=false] The list of components to
         enable. Only applicable to custom repositories.
 
