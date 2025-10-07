@@ -9,9 +9,12 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 import structlog
 
+from maascommon.tracing import get_or_set_trace_id, set_trace_id
 from maasservicelayer.context import Context
 
 logger = structlog.getLogger()
+
+TRACE_ID_HEADER_KEY = "MAAS-trace-id"
 
 
 class ContextMiddleware(BaseHTTPMiddleware):
@@ -25,11 +28,17 @@ class ContextMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        context = Context()
+        trace_id = request.headers.get(TRACE_ID_HEADER_KEY, None)
+        if trace_id:
+            set_trace_id(trace_id)
+        else:
+            trace_id = get_or_set_trace_id()
+
+        context = Context(trace_id=trace_id)
         request.state.context = context
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
-            context_id=context.context_id,
+            trace_id=context.trace_id,
         )
         logger.info(
             "Start processing request",
@@ -45,4 +54,5 @@ class ContextMiddleware(BaseHTTPMiddleware):
             status_code=response.status_code,
             elapsed_time_seconds=context.get_elapsed_time_seconds(),
         )
+        response.headers[TRACE_ID_HEADER_KEY] = trace_id
         return response

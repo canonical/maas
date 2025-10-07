@@ -327,7 +327,7 @@ class TestExternalAuthService:
         os_mock.return_value = os_urandom
 
         external_auth_service = ExternalAuthService(
-            context=Context(context_id="1224"),
+            context=Context(trace_id="1224"),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),

@@ -236,6 +236,9 @@ CommonRule = Rule(
     Allow("maascommon|maascommon.**"),
     Allow("OpenSSL|OpenSSL.**"),
     Allow("netaddr|netaddr.**"),
+    Allow("temporalio.client.**"),
+    Allow("temporalio.worker.**"),
+    Allow("temporalio.converter.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")

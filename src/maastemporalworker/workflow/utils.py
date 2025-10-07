@@ -9,6 +9,7 @@ import random
 import structlog
 from temporalio import activity, workflow
 
+from maascommon.tracing import get_or_set_trace_id
 from maasservicelayer.context import Context
 
 logger = structlog.getLogger()
@@ -23,11 +24,9 @@ def activity_defn_with_context(name):
         @activity.defn(name=name)
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            context = Context()
+            context = Context(trace_id=get_or_set_trace_id())
             structlog.contextvars.clear_contextvars()
-            structlog.contextvars.bind_contextvars(
-                context_id=context.context_id
-            )
+            structlog.contextvars.bind_contextvars(trace_id=context.trace_id)
             logger.info(f"Starting activity {func.__name__}")
             res = await func(*args, **kwargs)
             logger.info(
@@ -49,9 +48,9 @@ def workflow_run_with_context(func):
     @workflow.run
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        context = Context()
+        context = Context(trace_id=get_or_set_trace_id())
         structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(context_id=context.context_id)
+        structlog.contextvars.bind_contextvars(trace_id=context.trace_id)
         logger.info(f"Starting workflow {func.__qualname__}")
         res = await func(*args, **kwargs)
         logger.info(
