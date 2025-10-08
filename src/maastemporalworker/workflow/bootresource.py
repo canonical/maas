@@ -284,7 +284,11 @@ class BootResourcesActivity(ActivityBase):
             if ex.errno == 28:
                 lfile.unlink()
                 await self.report_progress(param.rfile_ids, 0)
-                logger.error(ex.strerror)
+                logger.error(
+                    ex.strerror
+                    if ex.strerror is not None
+                    else "No space left on device"
+                )
                 return False
 
             raise ApplicationError(
