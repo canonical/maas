@@ -82,7 +82,11 @@ class TestContextMiddleware:
         ) as mock_logger:
             client = TestClient(app)
             resp = client.get(
-                "/ping?foo=bar", headers={"x-real-ip": "127.0.0.1"}
+                "/ping?foo=bar",
+                headers={
+                    "x-real-ip": "127.0.0.1",
+                    "user-agent": "MockUserAgent",
+                },
             )
 
         assert resp.status_code == 200
@@ -93,6 +97,7 @@ class TestContextMiddleware:
         assert start_call.kwargs["request_path"] == "/ping"
         assert start_call.kwargs["request_query"] == "foo=bar"
         assert start_call.kwargs["request_remote_ip"] == "127.0.0.1"
+        assert start_call.kwargs["useragent"] == "MockUserAgent"
 
         end_call = mock_logger.info.call_args_list[-1]
         assert "End processing request" in end_call.args[0]

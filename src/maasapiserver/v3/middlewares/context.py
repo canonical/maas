@@ -47,6 +47,7 @@ class ContextMiddleware(BaseHTTPMiddleware):
             request_query=request.url.query,
             # From our nginx config
             request_remote_ip=request.headers.get("x-real-ip"),
+            useragent=request.headers.get("user-agent"),
         )
         response = await call_next(request)
         logger.info(
