@@ -25,6 +25,7 @@ from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.permissions import NodePermission
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.certificates import (
     generate_certificate,
     get_maas_client_cn,
@@ -72,7 +73,7 @@ class GeneralHandler(Handler):
 
     def architectures(self, params):
         """Return all usable architectures."""
-        return BootResource.objects.get_usable_architectures()
+        return service_layer.services.boot_resources.get_usable_architectures()
 
     def known_architectures(self, params):
         """Return all known architectures, usable or not."""

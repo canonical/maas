@@ -1,5 +1,5 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 
 from enum import IntEnum, StrEnum
@@ -13,7 +13,16 @@ class BootResourceType(IntEnum):
     UPLOADED = 2  # uploaded by user
 
 
+# A means of gets a human-readble string from boot resource type.
+BOOT_RESOURCE_TYPE_DICT = {
+    BootResourceType.SYNCED: "Synced",
+    BootResourceType.UPLOADED: "Uploaded",
+}
+
+
 class BootResourceStrType(StrEnum):
+    """Possible selections for the type of `BootResource`."""
+
     SYNCED = "synced"
     UPLOADED = "uploaded"
 

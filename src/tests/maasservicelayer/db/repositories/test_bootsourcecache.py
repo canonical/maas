@@ -13,7 +13,10 @@ from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheRepository,
 )
 from maasservicelayer.models.bootsourcecache import BootSourceCache
-from maasservicelayer.models.bootsources import BootSourceAvailableImage
+from maasservicelayer.models.bootsources import (
+    BootSourceAvailableImage,
+    BootSourceCacheOSRelease,
+)
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.fixtures.factories.bootsourcecache import (
     create_test_bootsourcecache_entry,
@@ -585,3 +588,63 @@ class TestBootSourceCacheRepository:
             assert (
                 expected_result == boot_source_available_images_page.items[idx]
             )
+
+    async def test_list_unique_os_releases(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-p",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-s",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="ga-24.04",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        result = await repository.get_unique_os_releases()
+
+        assert len(result) == 2
+        assert BootSourceCacheOSRelease(os="ubuntu", release="focal") in result
+        assert BootSourceCacheOSRelease(os="ubuntu", release="noble") in result

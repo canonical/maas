@@ -58,6 +58,17 @@ class TestBootResourceSetClauseFactory:
             == "maasserver_bootresourceset.version = '20250618'"
         )
 
+    def with_version_prefix(self) -> None:
+        clause = BootResourceSetClauseFactory.with_version_prefix("20250618")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_bootresourceset.version LIKE '20250618%'"
+        )
+
     def with_label(self) -> None:
         clause = BootResourceSetClauseFactory.with_label("stable")
         assert (
@@ -177,3 +188,55 @@ class TestBootResourceSetRepository:
         )
 
         assert resource_set is None
+
+    async def test_get_many_newest_to_oldest_for_boot_resource(
+        self,
+        fixture: Fixture,
+        repository: BootResourceSetsRepository,
+    ) -> None:
+        boot_resource = await create_test_bootresource_entry(
+            fixture,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+            rtype=BootResourceType.SYNCED,
+        )
+        first = await create_test_bootresourceset_entry(
+            fixture,
+            version="20220202",
+            label="stable",
+            resource_id=boot_resource.id,
+        )
+        second = await create_test_bootresourceset_entry(
+            fixture,
+            version="20240404",
+            label="stable",
+            resource_id=boot_resource.id,
+        )
+
+        resource_sets = (
+            await repository.get_many_newest_to_oldest_for_boot_resource(
+                boot_resource.id
+            )
+        )
+
+        assert resource_sets == [second, first]
+
+    async def test_get_many_newest_to_oldest_for_boot_resource_no_sets(
+        self,
+        fixture: Fixture,
+        repository: BootResourceSetsRepository,
+    ) -> None:
+        boot_resource = await create_test_bootresource_entry(
+            fixture,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+            rtype=BootResourceType.SYNCED,
+        )
+
+        resource_sets = (
+            await repository.get_many_newest_to_oldest_for_boot_resource(
+                boot_resource.id
+            )
+        )
+
+        assert resource_sets == []

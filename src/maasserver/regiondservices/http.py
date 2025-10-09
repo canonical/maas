@@ -12,6 +12,7 @@ from typing import Optional
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.utils.images import get_bootresource_store_path
 from maascommon.worker import worker_socket_paths
 from maasserver.certificates import get_maas_certificate
 from maasserver.listener import (
@@ -23,9 +24,6 @@ from maasserver.regiondservices import certificate_expiration_check
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
 from maasserver.utils.threads import deferToDatabase
-from maasservicelayer.utils.image_local_files import (
-    get_bootresource_store_path,
-)
 from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_maas_data_path

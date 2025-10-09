@@ -65,9 +65,9 @@ class NotFoundBodyResponse(ErrorBodyResponse):
 
 
 class NotFoundResponse(JSONResponse):
-    def __init__(self, **kwargs):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]], **kwargs):
         super().__init__(
-            content=jsonable_encoder(NotFoundBodyResponse()),
+            content=jsonable_encoder(NotFoundBodyResponse(details=details)),
             status_code=status.HTTP_404_NOT_FOUND,
             **kwargs,
         )

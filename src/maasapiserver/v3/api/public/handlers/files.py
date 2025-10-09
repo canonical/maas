@@ -38,7 +38,13 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.filestorage import (
     FileStorageClauseFactory,
 )
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -144,6 +150,12 @@ class FilesHandler(Handler):
             # when the API endpoint is not present.  We do this by setting
             # a header: "Workaround: bug1123986".
             return NotFoundResponse(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"File '{filename}' does not exist.",
+                    ),
+                ],
                 headers={
                     "Workaround": "bug1123986",
                 },

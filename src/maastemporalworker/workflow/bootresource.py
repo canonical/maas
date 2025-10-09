@@ -30,6 +30,7 @@ from maascommon.enums.notifications import (
     NotificationCategoryEnum,
     NotificationComponent,
 )
+from maascommon.utils.images import get_bootresource_store_path
 from maascommon.workflows.bootresource import (
     CancelObsoleteDownloadWorkflowsParam,
     CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME,
@@ -75,7 +76,6 @@ from maasservicelayer.simplestreams.models import (
     SimpleStreamsSingleFileProductList,
 )
 from maasservicelayer.utils.image_local_files import (
-    get_bootresource_store_path,
     LocalBootResourceFile,
     LocalStoreInvalidHash,
     LocalStoreWriteBeyondEOF,
@@ -545,7 +545,7 @@ class SyncLocalBootResourcesWorkflow:
             check_space_jobs.append(
                 workflow.execute_child_workflow(
                     CHECK_BOOTRESOURCES_STORAGE_WORKFLOW_NAME,
-                    input.resource,
+                    input.space_requirement,
                     id=f"check-bootresources-storage:{region}",
                     execution_timeout=DISK_TIMEOUT,
                     run_timeout=DISK_TIMEOUT,

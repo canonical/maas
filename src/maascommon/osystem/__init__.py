@@ -237,3 +237,6 @@ builtin_osystems = [
 ]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)
+
+
+LINUX_OSYSTEMS = ("ubuntu", "centos", "rhel", "ol")

@@ -52,3 +52,6 @@ CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE = "CannotDeleteDefaultZoneViolation"
 CANNOT_DELETE_DEFAULT_PACKAGE_REPO_VIOLATION_TYPE = (
     "CannotDeleteDefaultPackageRepositoryViolation"
 )
+
+# Boot resources
+MISSING_FILE_CONTENT_VIOLATION_TYPE = "MissingFileContentViolationType"

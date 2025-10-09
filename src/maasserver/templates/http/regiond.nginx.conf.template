@@ -114,6 +114,11 @@ server {
         root {{boot_resources_dir}};
         try_files /$1 /$1/$2 =404;
     }
+
+    location /MAAS/a/v3/boot_resources {
+        client_max_body_size 200G;
+        proxy_pass http://apiserver;
+    }
 }
 
 {{if tls_enabled}}

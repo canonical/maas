@@ -19,6 +19,7 @@ from crochet import TimeoutError
 from django.core.exceptions import ValidationError
 from django.http.request import HttpRequest
 
+from maascommon.osystem import LINUX_OSYSTEMS
 from maasserver import locks
 from maasserver.audit import create_audit_event
 from maasserver.enum import (
@@ -37,7 +38,6 @@ from maasserver.exceptions import (
 )
 from maasserver.forms.clone import CloneForm
 from maasserver.models import Config, Machine, ResourcePool, Zone
-from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.models.scriptresult import ScriptResult
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission

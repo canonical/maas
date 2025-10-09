@@ -20,7 +20,8 @@ from typing import BinaryIO
 
 import aiofiles
 
-from maascommon.path import get_maas_data_path, get_maas_lock_path
+from maascommon.path import get_maas_lock_path
+from maascommon.utils.images import get_bootresource_store_path
 
 CHUNK_SIZE = 4 * (2**20)
 
@@ -39,10 +40,6 @@ class LocalStoreAllocationFail(Exception):
 
 class LocalStoreLockException(Exception):
     """Could not acquire file lock"""
-
-
-def get_bootresource_store_path() -> Path:
-    return Path(get_maas_data_path("image-storage"))
 
 
 class MMapedLocalFile(mmap.mmap):

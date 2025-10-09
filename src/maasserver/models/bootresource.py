@@ -35,8 +35,6 @@ from maasserver.models.timestampedmodel import now, TimestampedModel
 from maasserver.utils.orm import get_first, get_one
 from provisioningserver.utils.twisted import undefined
 
-LINUX_OSYSTEMS = ("ubuntu", "centos", "rhel", "ol")
-
 
 class BootResourceManager(Manager):
     def _has_resource(self, rtype, name, architecture, subarchitecture):
@@ -84,39 +82,6 @@ class BootResourceManager(Manager):
         return self._get_resource(
             BOOT_RESOURCE_TYPE.UPLOADED, name, architecture, subarchitecture
         )
-
-    def get_usable_architectures(self):
-        """Return the set of usable architectures.
-
-        Return the architectures for which the resource has at least one
-        commissioning image and at least one install image.
-        """
-        arches = set()
-        for resource in self.all():
-            resource_set = resource.get_latest_complete_set()
-            if (
-                resource_set is not None
-                and resource_set.commissionable
-                and resource_set.xinstallable
-            ):
-                if (
-                    "hwe-" not in resource.architecture
-                    and "ga-" not in resource.architecture
-                ):
-                    arches.add(resource.architecture)
-                arch, _ = resource.split_arch()
-                if "subarches" in resource.extra:
-                    for subarch in resource.extra["subarches"].split(","):
-                        if "hwe-" not in subarch and "ga-" not in subarch:
-                            arches.add(f"{arch}/{subarch.strip()}")
-                if "platform" in resource.extra:
-                    arches.add(f"{arch}/{resource.extra['platform']}")
-                if "supported_platforms" in resource.extra:
-                    for platform in resource.extra[
-                        "supported_platforms"
-                    ].split(","):
-                        arches.add(f"{arch}/{platform}")
-        return sorted(arches)
 
     def get_commissionable_resource(self, osystem, series):
         """Return generator for all commissionable resources for the

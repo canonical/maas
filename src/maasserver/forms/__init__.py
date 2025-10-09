@@ -92,7 +92,11 @@ from formencode.validators import StringBool
 from lxml import etree
 from netaddr import IPNetwork, valid_ipv6
 
-from maascommon.osystem import OperatingSystemRegistry, validate_license_key
+from maascommon.osystem import (
+    LINUX_OSYSTEMS,
+    OperatingSystemRegistry,
+    validate_license_key,
+)
 from maasserver.api.utils import get_optional_param, get_overridden_query_dict
 from maasserver.audit import create_audit_event
 from maasserver.clusterrpc.driver_parameters import (
@@ -151,7 +155,6 @@ from maasserver.models import (
     VolumeGroup,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.models.defaultresource import DefaultResource
 from maasserver.models.node import RegionController
 from maasserver.models.partition import MIN_PARTITION_SIZE
@@ -162,6 +165,7 @@ from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.zone import Zone
 from maasserver.permissions import NodePermission, ResourcePoolPermission
+from maasserver.sqlalchemy import service_layer
 from maasserver.storage_layouts import VMFS6StorageLayout, VMFS7StorageLayout
 from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import machine_readable_bytes
@@ -505,7 +509,7 @@ def list_all_usable_architectures():
     all clusters sync from the region, all cluster support the same
     architectures.
     """
-    return sorted(BootResource.objects.get_usable_architectures())
+    return service_layer.services.boot_resources.get_usable_architectures()
 
 
 def list_architecture_choices(architectures):

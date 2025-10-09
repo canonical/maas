@@ -61,3 +61,9 @@ class BootSourceAvailableImage:
     release_title: str
     arch: str
     boot_source_id: int
+
+
+@dataclasses.dataclass
+class BootSourceCacheOSRelease:
+    os: str
+    release: str

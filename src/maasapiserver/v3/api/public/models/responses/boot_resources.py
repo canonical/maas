@@ -1,5 +1,5 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 from datetime import datetime
 from typing import Optional, Self
 
@@ -9,7 +9,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maascommon.enums.boot_resources import BootResourceType
+from maascommon.enums.boot_resources import BOOT_RESOURCE_TYPE_DICT
 from maasservicelayer.models.bootresources import BootResource
 
 
@@ -19,7 +19,7 @@ class BootResourceResponse(HalResponse[BaseHal]):
     id: int
     name: str
     architecture: str
-    rtype: BootResourceType
+    type: str
     extra: dict
     last_deployed: Optional[datetime]
 
@@ -31,7 +31,7 @@ class BootResourceResponse(HalResponse[BaseHal]):
             id=boot_resource.id,
             name=boot_resource.name,
             architecture=boot_resource.architecture,
-            rtype=boot_resource.rtype,
+            type=BOOT_RESOURCE_TYPE_DICT[boot_resource.rtype],
             extra=boot_resource.extra,
             last_deployed=boot_resource.last_deployed,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]

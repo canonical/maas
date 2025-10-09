@@ -11,7 +11,10 @@ from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BootSourceCacheTable
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourcecache import BootSourceCache
-from maasservicelayer.models.bootsources import BootSourceAvailableImage
+from maasservicelayer.models.bootsources import (
+    BootSourceAvailableImage,
+    BootSourceCacheOSRelease,
+)
 
 
 class BootSourceCacheClauseFactory(ClauseFactory):
@@ -167,3 +170,18 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
             ],
             total=total,
         )
+
+    async def get_unique_os_releases(self) -> list[BootSourceCacheOSRelease]:
+        stmt = (
+            select(
+                BootSourceCacheTable.c.os,
+                BootSourceCacheTable.c.release,
+            )
+            .distinct()
+            .select_from(self.get_repository_table())
+        )
+        result = (await self.execute_stmt(stmt)).all()
+        return [
+            BootSourceCacheOSRelease(os=row[0], release=row[1])
+            for row in result
+        ]

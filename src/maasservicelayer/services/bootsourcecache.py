@@ -10,7 +10,10 @@ from maasservicelayer.db.repositories.bootsourcecache import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourcecache import BootSourceCache
-from maasservicelayer.models.bootsources import BootSourceAvailableImage
+from maasservicelayer.models.bootsources import (
+    BootSourceAvailableImage,
+    BootSourceCacheOSRelease,
+)
 from maasservicelayer.services.base import BaseService, ServiceCache
 
 
@@ -78,3 +81,6 @@ class BootSourceCacheService(
         return await self.repository.list_boot_source_cache_available_images(
             page=page, size=size, boot_source_id=boot_source_id
         )
+
+    async def get_unique_os_releases(self) -> list[BootSourceCacheOSRelease]:
+        return await self.repository.get_unique_os_releases()

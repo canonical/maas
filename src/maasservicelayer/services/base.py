@@ -325,7 +325,14 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         """
         resource = await self.get_one(query=query)
         if not resource:
-            raise NotFoundException()
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message="Resource with such identifiers does not exist (in delete_one).",
+                    )
+                ],
+            )
         return await self._delete_resource(resource, etag_if_match, force)
 
     async def delete_by_id(
@@ -341,7 +348,14 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         """
         resource = await self.get_by_id(id=id)
         if not resource:
-            raise NotFoundException()
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Resource with id {id} does not exist.",
+                    )
+                ],
+            )
         return await self._delete_resource(resource, etag_if_match, force)
 
     async def _delete_resource(
