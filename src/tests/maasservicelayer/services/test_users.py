@@ -1,12 +1,13 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import time
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from maascommon.enums.consumer import ConsumerState
 from maascommon.enums.token import TokenType
+from maascommon.logging.security import AUTHN_PASSWORD_CHANGED, SECURITY
 from maasservicelayer.builders.consumers import ConsumerBuilder
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.builders.nodes import NodeBuilder
@@ -467,6 +468,24 @@ class TestUsersService:
                 where=FileStorageClauseFactory.with_owner_id(TEST_USER.id)
             )
         )
+
+    async def test_post_update_hook_creates_log_on_password_change(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        UPDATED_TEST_USER = TEST_USER.copy()
+        UPDATED_TEST_USER.password = "changed_password"
+        with patch("maasservicelayer.services.users.logger") as mock_logger:
+            await users_service.post_update_hook(TEST_USER, UPDATED_TEST_USER)
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHN_PASSWORD_CHANGED}:{TEST_USER.username}", type=SECURITY
+        )
+
+    async def test_post_update_hook_creates_no_log_when_password_not_changed(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        with patch("maasservicelayer.services.users.logger") as mock_logger:
+            await users_service.post_update_hook(TEST_USER, TEST_USER)
+        mock_logger.assert_not_called()
 
     async def test_transfer_resources(
         self, users_service: UsersService, users_repository: Mock

@@ -21,6 +21,7 @@ from maasapiserver.common.api.models.responses.errors import (
     UnauthorizedResponse,
     ValidationErrorResponse,
 )
+from maascommon.logging.security import AUTHN_AUTH_FAILED, SECURITY
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
@@ -107,6 +108,10 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
             return BadRequestResponse(e.details)
         except UnauthorizedException as e:
             logger.debug(e)
+            logger.info(
+                AUTHN_AUTH_FAILED,
+                type=SECURITY,
+            )
             return UnauthorizedResponse(e.details)
         except DischargeRequiredException as e:
             logger.debug(e)

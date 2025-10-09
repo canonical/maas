@@ -3,10 +3,15 @@
 
 import datetime
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
+from maascommon.logging.security import (
+    AUTHN_LOGIN_SUCCESSFUL,
+    AUTHN_LOGIN_UNSUCCESSFUL,
+    SECURITY,
+)
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -63,6 +68,25 @@ class TestAuthService:
             QuerySpec(UserClauseFactory.with_username(user.username))
         )
 
+    async def test_login_logging(self) -> None:
+        user = self._build_test_user()
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret.return_value = "123"
+
+        users_service_mock = Mock(UsersService)
+        users_service_mock.get_one.return_value = user
+        auth_service = AuthService(
+            context=Context(),
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        with patch("maasservicelayer.services.auth.logger") as mock_logger:
+            await auth_service.login(user.username, "test")
+        mock_logger.info.assert_called_once_with(
+            AUTHN_LOGIN_SUCCESSFUL,
+            type=SECURITY,
+        )
+
     async def test_login_admin(self) -> None:
         admin = self._build_test_user(is_superuser=True)
         secrets_service_mock = Mock(SecretsService)
@@ -108,6 +132,27 @@ class TestAuthService:
         users_service_mock.get_one.return_value = None
         with pytest.raises(UnauthorizedException):
             await auth_service.login("bb", "test")
+
+    async def test_login_unauthorized_logging(self) -> None:
+        user = self._build_test_user()
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret.return_value = "123"
+
+        users_service_mock = Mock(UsersService)
+        users_service_mock.get_one.return_value = user
+        auth_service = AuthService(
+            context=Context(),
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        with patch("maasservicelayer.services.auth.logger") as mock_logger:
+            users_service_mock.get_one.return_value = user
+            with pytest.raises(UnauthorizedException):
+                await auth_service.login(user.username, "wrong")
+        mock_logger.info.assert_called_once_with(
+            AUTHN_LOGIN_UNSUCCESSFUL,
+            type=SECURITY,
+        )
 
     async def test_jwt_key_is_cached(self) -> None:
         user = self._build_test_user()

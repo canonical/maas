@@ -15,6 +15,7 @@ from macaroonbakery.bakery import (
 )
 from pymacaroons import Macaroon
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 from starlette.responses import Response
@@ -33,8 +34,17 @@ from maasapiserver.v3.middlewares.auth import (
     MacaroonAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
-from maasapiserver.v3.middlewares.context import ContextMiddleware
+from maasapiserver.v3.middlewares.context import (
+    ContextMiddleware,
+    TRACE_ID_HEADER_KEY,
+)
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
+from maascommon.logging.security import (
+    ADMIN,
+    AUTHN_AUTH_SUCCESSFUL,
+    SECURITY,
+    USER,
+)
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
@@ -249,6 +259,58 @@ class TestV3AuthenticationMiddleware:
         )
         assert authenticated_admin.username == "admin"
         assert authenticated_admin.roles == {UserRole.ADMIN, UserRole.USER}
+
+    async def test_authentication_creates_logging_context(
+        self,
+        fixture: Fixture,
+        auth_client: AsyncClient,
+        mocker: MockerFixture,
+    ) -> None:
+        mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
+
+        # invalid session_id
+        await auth_client.get(
+            f"{V3_API_PREFIX}/users/me",
+            headers={
+                "Cookie": "sessionid=invalid",
+                TRACE_ID_HEADER_KEY: "mock_trace_id",
+            },
+        )
+        mock_logger.assert_not_called()
+
+        # valid user session_id
+        user = await create_test_user(
+            fixture, username="myuser", is_superuser=False
+        )
+        session_id = "mysession"
+        await create_test_session(
+            fixture=fixture, user_id=user.id, session_id=session_id
+        )
+        await auth_client.get(
+            f"{V3_API_PREFIX}/users/me",
+            headers={"Cookie": f"sessionid={session_id}"},
+        )
+        mock_logger.info.assert_called_with(
+            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="myuser", role=USER
+        )
+
+        # valid admin session_id
+        admin = await create_test_user(
+            fixture, username="admin", is_superuser=True
+        )
+        admin_session_id = "adminsession"
+        await create_test_session(
+            fixture=fixture,
+            user_id=admin.id,
+            session_id=admin_session_id,
+        )
+        await auth_client.get(
+            f"{V3_API_PREFIX}/users/me",
+            headers={"Cookie": f"sessionid={admin_session_id}"},
+        )
+        mock_logger.info.assert_called_with(
+            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="admin", role=ADMIN
+        )
 
     async def test_authentication_with_macaroons(self) -> None:
         macaroon_auth_provider_mock = Mock(MacaroonAuthenticationProvider)

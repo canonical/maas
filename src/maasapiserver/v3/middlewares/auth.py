@@ -14,9 +14,16 @@ import macaroonbakery._utils as utils
 from pymacaroons import Macaroon
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
+import structlog
 
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.logging.security import (
+    ADMIN,
+    AUTHN_AUTH_SUCCESSFUL,
+    SECURITY,
+    USER,
+)
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
@@ -53,6 +60,8 @@ from maasservicelayer.models.users import User
 from maasservicelayer.utils.date import utcnow
 
 EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
+
+logger = structlog.getLogger()
 
 
 class AuthenticationProvider(abc.ABC):
@@ -432,6 +441,14 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         ):
             user = await self._macaroon_authentication(request, macaroons)
         request.state.authenticated_user = user
+
+        if user is not None:
+            logger.info(
+                AUTHN_AUTH_SUCCESSFUL,
+                type=SECURITY,
+                userID=user.username,
+                role=ADMIN if user.is_admin() else USER,
+            )
 
         return await call_next(request)
 

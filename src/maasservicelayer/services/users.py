@@ -4,6 +4,8 @@
 from time import time
 from typing import List
 
+import structlog
+
 from maascommon.constants import (
     GENERIC_CONSUMER,
     MAAS_USER_EMAIL,
@@ -12,6 +14,7 @@ from maascommon.constants import (
 )
 from maascommon.enums.consumer import ConsumerState
 from maascommon.enums.token import TokenType
+from maascommon.logging.security import AUTHN_PASSWORD_CHANGED, SECURITY
 from maascommon.utils.strings import get_random_string
 from maasservicelayer.builders.consumers import ConsumerBuilder
 from maasservicelayer.builders.ipranges import IPRangeBuilder
@@ -66,6 +69,8 @@ from maasservicelayer.utils.date import utcnow
 
 KEY_SIZE = 18
 SECRET_SIZE = 32
+
+logger = structlog.getLogger()
 
 
 class UsersService(BaseService[User, UsersRepository, UserBuilder]):
@@ -345,6 +350,14 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         await self._update_resource(
             user, UserBuilder(password=hashed_password)
         )
+
+    async def post_update_hook(self, old_resource, updated_resource):
+        if old_resource.password != updated_resource.password:
+            logger.info(
+                f"{AUTHN_PASSWORD_CHANGED}:{updated_resource.username}",
+                type=SECURITY,
+            )
+        return await super().post_update_hook(old_resource, updated_resource)
 
     async def clear_all_sessions(self) -> None:
         await self.repository.clear_all_sessions()
