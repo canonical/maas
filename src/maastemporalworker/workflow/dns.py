@@ -1244,24 +1244,6 @@ class DNSConfigActivity(ActivityBase):
 class ConfigureDNSWorkflow:
     @workflow_run_with_context
     async def run(self, param: ConfigureDNSParam) -> None:
-        updates = None
-        need_full_reload = param.need_full_reload
-
-        if not need_full_reload:
-            latest_serial, updates = await workflow.execute_activity(
-                GET_CHANGES_SINCE_CURRENT_SERIAL_NAME,
-                start_to_close_timeout=GET_CHANGES_SINCE_CURRENT_SERIAL_TIMEOUT,
-            )
-            if latest_serial is None or latest_serial == 0:  # up-to-date
-                return
-
-            if updates["force_reload"]:
-                need_full_reload = True
-            else:
-                for publication in updates["updates"]:
-                    if publication["operation"] == DnsUpdateAction.RELOAD:
-                        need_full_reload = True
-
         region_controllers = await workflow.execute_activity(
             GET_REGION_CONTROLLERS_NAME,
             start_to_close_timeout=GET_REGION_CONTROLLERS_TIMEOUT,
@@ -1270,6 +1252,27 @@ class ConfigureDNSWorkflow:
         for region_controller_system_id in region_controllers[
             "region_controller_system_ids"
         ]:
+            updates = None
+            need_full_reload = param.need_full_reload
+
+            if not need_full_reload:
+                latest_serial, updates = await workflow.execute_activity(
+                    GET_CHANGES_SINCE_CURRENT_SERIAL_NAME,
+                    start_to_close_timeout=GET_CHANGES_SINCE_CURRENT_SERIAL_TIMEOUT,
+                    task_queue=get_task_queue_for_update(
+                        region_controller_system_id
+                    ),
+                )
+                if latest_serial is None or latest_serial == -1:  # up-to-date
+                    continue
+
+                if updates["force_reload"]:
+                    need_full_reload = True
+                else:
+                    for publication in updates["updates"]:
+                        if publication["operation"] == DnsUpdateAction.RELOAD:
+                            need_full_reload = True
+
             new_serial = None
             if need_full_reload:
                 logger.debug(
