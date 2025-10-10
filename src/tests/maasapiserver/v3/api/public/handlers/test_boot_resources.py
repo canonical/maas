@@ -1,10 +1,10 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
-import asyncio
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import hashlib
 from io import BytesIO
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from httpx import AsyncClient
 import pytest
@@ -58,6 +58,7 @@ from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.image_local_files import LocalBootResourceFile
 from maastesting.factory import factory
+from tests.fixtures import AsyncContextManagerMock
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -114,6 +115,29 @@ TEST_BOOT_RESOURCE_FILE = BootResourceFile(
 )
 
 
+class MockTemporaryFile:
+    def __init__(self, name: str = "test-tmp-file.txt"):
+        self._written_data = b""
+        self._name = name
+
+    async def write(self, chunk) -> int:
+        self._written_data += chunk
+        return len(chunk)
+
+    async def tell(self) -> int:
+        return len(self._written_data)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
 class TestBootResourcesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/boot_resources"
 
@@ -143,9 +167,8 @@ class TestBootResourcesApi(ApiCommonTests):
         file_bytes.seek(0)
         return file_bytes
 
-    @patch(
-        "maasapiserver.v3.api.public.handlers.boot_resources.BootResourcesHandler._get_maas_id"
-    )
+    @patch("maasapiserver.v3.api.public.handlers.boot_resources.aiofiles.os")
+    @patch("maasapiserver.v3.api.public.handlers.boot_resources.MAAS_ID")
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.NamedTemporaryFile"
     )
@@ -156,7 +179,8 @@ class TestBootResourcesApi(ApiCommonTests):
         self,
         request_to_builder_mock: MagicMock,
         named_temp_file_mock: MagicMock,
-        get_maas_id_mock: MagicMock,
+        maas_id_mock: MagicMock,
+        aiofiles_os_mock: MagicMock,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
@@ -203,7 +227,9 @@ class TestBootResourcesApi(ApiCommonTests):
         services_mock.boot_resource_files.create.return_value = resource_file
         services_mock.boot_resource_files.calculate_filename_on_disk.return_value = file_name
 
-        get_maas_id_mock.return_value = "abc1de"
+        aiofiles_os_mock.rename = AsyncMock(return_value=None)
+
+        maas_id_mock.get.return_value = "abc1de"
 
         node_mock = Mock(Node)
         node_mock.id = 1
@@ -222,22 +248,8 @@ class TestBootResourcesApi(ApiCommonTests):
         services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.register_or_update_workflow_call.return_value = None
 
-        async def fake_write(d: bytes):
-            await asyncio.sleep(0)
-            return len(d)
-
-        async def fake_tell():
-            await asyncio.sleep(0)
-            return file_size
-
-        named_temp_file_mock.return_value.__aenter__.return_value.write = (
-            fake_write
-        )
-        named_temp_file_mock.return_value.__aenter__.return_value.name = (
-            "test-tmp-file.txt"
-        )
-        named_temp_file_mock.return_value.__aenter__.return_value.tell = (
-            fake_tell
+        named_temp_file_mock.return_value = AsyncContextManagerMock(
+            MockTemporaryFile()
         )
 
         headers = {
@@ -282,7 +294,12 @@ class TestBootResourcesApi(ApiCommonTests):
                     total_resources_size=file_size,
                 ),
             ),
+            workflow_id=f"sync-local-bootresource:{resource_file.id}",
             wait=False,
+        )
+
+        aiofiles_os_mock.rename.assert_called_once_with(
+            "test-tmp-file.txt", local_file_mock.path
         )
 
     @patch(
@@ -317,22 +334,8 @@ class TestBootResourcesApi(ApiCommonTests):
             TEST_BOOT_RESOURCE_SET
         )
 
-        async def fake_write(d: bytes):
-            await asyncio.sleep(0)
-            return len(d)
-
-        async def fake_tell():
-            await asyncio.sleep(0)
-            return file_size
-
-        named_temp_file_mock.return_value.__aenter__.return_value.write = (
-            fake_write
-        )
-        named_temp_file_mock.return_value.__aenter__.return_value.name = (
-            "test-tmp-file.txt"
-        )
-        named_temp_file_mock.return_value.__aenter__.return_value.tell = (
-            fake_tell
+        named_temp_file_mock.return_value = AsyncContextManagerMock(
+            MockTemporaryFile()
         )
 
         headers = {
@@ -393,12 +396,8 @@ class TestBootResourcesApi(ApiCommonTests):
             TEST_BOOT_RESOURCE_SET
         )
 
-        async def fake_write(d: bytes):
-            await asyncio.sleep(0)
-            return len(d)
-
-        named_temp_file_mock.return_value.__aenter__.return_value.write = (
-            fake_write
+        named_temp_file_mock.return_value = AsyncContextManagerMock(
+            MockTemporaryFile()
         )
 
         headers = {
@@ -452,12 +451,8 @@ class TestBootResourcesApi(ApiCommonTests):
             TEST_BOOT_RESOURCE_SET
         )
 
-        async def fake_write(_: bytes):
-            await asyncio.sleep(0)
-            return 0
-
-        named_temp_file_mock.return_value.__aenter__.return_value.write = (
-            fake_write
+        named_temp_file_mock.return_value = AsyncContextManagerMock(
+            MockTemporaryFile()
         )
 
         headers = {

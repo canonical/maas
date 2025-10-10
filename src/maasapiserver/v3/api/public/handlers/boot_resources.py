@@ -1,10 +1,11 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import asyncio
 import hashlib
-from pathlib import Path
 from typing import Annotated
 
+import aiofiles.os
 from aiofiles.tempfile import NamedTemporaryFile
 from fastapi import Depends, Header, Query, Request, Response
 from starlette import status
@@ -95,12 +96,6 @@ class BootResourcesHandler(Handler):
         }
         return filetype_filename.get(filetype, filetype)
 
-    def _create_hardlink(self, target_path: Path, source_path: str) -> None:
-        target_path.hardlink_to(source_path)
-
-    def _get_maas_id(self) -> str | None:
-        return MAAS_ID.get()
-
     @handler(
         path="/boot_resources",
         methods=["POST"],
@@ -171,15 +166,15 @@ class BootResourcesHandler(Handler):
 
             # The size of chunks provided below is defined by several factors and can change.
             # Instead we buffer the uploaded data to reduce the number of IO writes and expensive SHA256 updates.
-            chunk_buffer = bytes()
+            chunk_buffer = bytearray()
             async for chunk in request.stream():
-                chunk_buffer += chunk
+                chunk_buffer.extend(chunk)
                 if len(chunk_buffer) >= self.CHUNK_SIZE:
                     sha256.update(chunk_buffer)
                     bytes_written += await tmp_file.write(chunk_buffer)
-                    chunk_buffer = bytes()
+                    chunk_buffer = bytearray()
 
-            if len(chunk_buffer) > 0:
+            if chunk_buffer:
                 sha256.update(chunk_buffer)
                 bytes_written += await tmp_file.write(chunk_buffer)
 
@@ -251,17 +246,12 @@ class BootResourcesHandler(Handler):
 
             local_resource_file = resource_file.create_local_file()
 
-            # Create hardlink to make temporary file permanent, overwriting existing file if needed
-            await asyncio.to_thread(
-                self._create_hardlink,
-                local_resource_file.path,
-                tmp_filename,
-            )
+            await aiofiles.os.rename(tmp_filename, local_resource_file.path)
             logger.info(
-                f"Hard link created to file '{local_resource_file.path}'"
+                f"Temporary file moved to permanent storage at '{local_resource_file.path}'"
             )
 
-            maas_system_id = await asyncio.to_thread(self._get_maas_id)
+            maas_system_id = await asyncio.to_thread(lambda: MAAS_ID.get())
             assert maas_system_id is not None
 
             region_info = await services.nodes.get_one(
@@ -308,6 +298,7 @@ class BootResourcesHandler(Handler):
         services.temporal.register_or_update_workflow_call(
             SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
             sync_request_param,
+            workflow_id=f"sync-local-bootresource:{resource_file_id}",
             wait=False,
         )
 

@@ -190,9 +190,10 @@ APIServer = files("src/maasapiserver/**/*.py")
 
 APIServerRule = Rule(
     Allow("aiofiles.tempfile.NamedTemporaryFile"),
-    # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow("aiofiles.os"),
     Allow("aiohttp|aiohttp.**"),
     Allow("asyncpg|asyncpg.**"),
+    # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("django.conf.*"),
     Allow("django.contrib.auth.hashers.*"),
     Allow("fastapi|fastapi.**"),
