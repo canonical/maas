@@ -3,7 +3,7 @@
 
 from datetime import timedelta
 import os
-from unittest.mock import ANY, call, Mock, patch
+from unittest.mock import ANY, AsyncMock, call, Mock, patch
 
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
@@ -23,22 +23,26 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
+    ExternalOAuthRepository,
 )
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     DischargeRequiredException,
     UnauthorizedException,
 )
-from maasservicelayer.models.external_auth import RootKey
+from maasservicelayer.models.external_auth import OAuthProvider, RootKey
 from maasservicelayer.models.secrets import RootKeyMaterialSecret
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import SecretsService, UsersService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.external_auth import (
     ExternalAuthService,
     ExternalAuthServiceCache,
+    ExternalOAuthService,
 )
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.security import to_bin, to_hex
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_KEY = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
 
@@ -792,3 +796,37 @@ class TestExternalAuthService:
             ]
         )
         external_auth_service.cache.clear()
+
+
+@pytest.mark.asyncio
+class TestExternalOAuthService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return ExternalOAuthService(
+            external_oauth_repository=Mock(ExternalOAuthRepository)
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> OAuthProvider:
+        return OAuthProvider(
+            id=1,
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+    async def test_get_provider(self, service_instance, test_instance):
+        service_instance.repository.get_provider = AsyncMock(
+            return_value=test_instance
+        )
+
+        provider = await service_instance.get_provider()
+
+        assert provider is not None
+        assert provider.name == "test_provider"

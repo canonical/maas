@@ -1594,6 +1594,21 @@ NumaNodeTable = Table(
     Index("maasserver_numanode_node_id_539a7e2f", "node_id"),
 )
 
+OIDCProviderTable = Table(
+    "maasserver_oidc_provider",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), nullable=False, unique=True),
+    Column("client_id", String(255), nullable=False),
+    Column("client_secret", String(255), nullable=False),
+    Column("issuer_url", String(512), nullable=False),
+    Column("redirect_uri", Text, nullable=False),
+    Column("scopes", String(255), nullable=False),
+    Column("enabled", Boolean, nullable=False),
+)
+
 PackageRepositoryTable = Table(
     "maasserver_packagerepository",
     METADATA,

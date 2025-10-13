@@ -23,11 +23,13 @@ from maasservicelayer.auth.macaroons.macaroon_client import (
     RbacAsyncClient,
 )
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
+    ExternalOAuthRepository,
 )
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -36,13 +38,14 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.models.secrets import (
     ExternalAuthSecret,
     MacaroonKeySecret,
     RootKeyMaterialSecret,
 )
 from maasservicelayer.models.users import User
-from maasservicelayer.services.base import Service, ServiceCache
+from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
@@ -353,3 +356,13 @@ class ExternalAuthService(Service, RootKeyStore):
         # auth_config.url comes with a /auth suffix used for some macaroon internals.
         # We don't want to diverge too much from the structure we have in maasserver, hence we simply remove the suffix here.
         return RbacAsyncClient(auth_config.url.rstrip("/auth"), auth_info)
+
+
+class ExternalOAuthService(
+    BaseService[OAuthProvider, ExternalOAuthRepository, OAuthProviderBuilder]
+):
+    def __init__(self, external_oauth_repository: ExternalOAuthRepository):
+        self.repository = external_oauth_repository
+
+    async def get_provider(self) -> OAuthProvider | None:
+        return await self.repository.get_provider()

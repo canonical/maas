@@ -24,9 +24,14 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
+from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService
-from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.external_auth import (
+    ExternalAuthService,
+    ExternalOAuthService,
+)
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
@@ -178,3 +183,50 @@ class TestAuthApi:
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 401
+
+    # GET /auth/oauth/initiate
+    async def test_get_oauth_initiate_success(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        test_provider = OAuthProvider(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_provider.return_value = test_provider
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/oauth/initiate"
+        )
+
+        assert response.status_code == 200
+        provider_info = response.json()
+        assert provider_info["auth_url"] == test_provider.build_auth_url()
+        assert provider_info["provider_name"] == test_provider.name
+
+    async def test_get_oauth_initiate_not_configured(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_provider.return_value = None
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/oauth/initiate"
+        )
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404

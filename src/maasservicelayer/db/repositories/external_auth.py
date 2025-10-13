@@ -7,9 +7,10 @@ from sqlalchemy import delete, desc, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import and_, eq, ge, le
 
-from maasservicelayer.db.repositories.base import Repository
-from maasservicelayer.db.tables import RootKeyTable
-from maasservicelayer.models.external_auth import RootKey
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.repositories.base import BaseRepository, Repository
+from maasservicelayer.db.tables import OIDCProviderTable, RootKeyTable
+from maasservicelayer.models.external_auth import OAuthProvider, RootKey
 from maasservicelayer.utils.date import utcnow
 
 
@@ -85,3 +86,21 @@ class ExternalAuthRepository(Repository):
     async def delete(self, id: int) -> None:
         stmt = delete(RootKeyTable).where(eq(RootKeyTable.c.id, id))
         await self.execute_stmt(stmt)
+
+
+class ExternalOAuthClauseFactory(ClauseFactory):
+    @classmethod
+    def with_enabled(cls, enabled: bool) -> Clause:
+        return Clause(condition=OIDCProviderTable.c.enabled.is_(enabled))
+
+
+class ExternalOAuthRepository(BaseRepository[OAuthProvider]):
+    async def get_provider(self) -> OAuthProvider | None:
+        query = QuerySpec(where=ExternalOAuthClauseFactory.with_enabled(True))
+        return await self.get_one(query)
+
+    def get_repository_table(self):
+        return OIDCProviderTable
+
+    def get_model_factory(self):
+        return OAuthProvider
