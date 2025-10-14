@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import typing
+
 from pydantic import BaseModel
 
 from maasservicelayer.models.external_auth import OAuthProvider
@@ -22,7 +24,30 @@ class AuthProviderInfoResponse(BaseModel):
     provider_name: str
 
     @classmethod
-    def from_model(cls, provider: OAuthProvider) -> "AuthProviderInfoResponse":
+    def from_model(cls, provider: OAuthProvider) -> typing.Self:
         return cls(
             provider_name=provider.name, auth_url=provider.build_auth_url()
+        )
+
+
+class OAuthProviderResponse(BaseModel):
+    kind = "AuthProvider"
+    issuer_url: str
+    name: str
+    client_id: str
+    client_secret: str
+    redirect_uri: str
+    scopes: str
+    enabled: bool
+
+    @classmethod
+    def from_model(cls, provider: OAuthProvider) -> typing.Self:
+        return cls(
+            name=provider.name,
+            client_id=provider.client_id,
+            client_secret=provider.client_secret,
+            issuer_url=provider.issuer_url,
+            redirect_uri=provider.redirect_uri,
+            scopes=provider.scopes,
+            enabled=provider.enabled,
         )

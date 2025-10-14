@@ -11,9 +11,13 @@ from maasapiserver.common.api.models.responses.errors import (
 )
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.external_auth import (
+    OAuthProviderRequest,
+)
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
     AuthProviderInfoResponse,
+    OAuthProviderResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
@@ -124,6 +128,38 @@ class AuthHandler(Handler):
                 BaseExceptionDetail(
                     type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
                     message="No external OAuth provider is configured.",
+                )
+            ]
+        )
+
+    @handler(
+        path="/auth/oauth/{provider_id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+    )
+    async def update_oauth_provider(
+        self,
+        provider_id: int,
+        request: OAuthProviderRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> OAuthProviderResponse:
+        builder = request.to_builder()
+        if updated_provider := await services.external_oauth.update_provider(
+            id=provider_id,
+            builder=builder,
+        ):
+            return OAuthProviderResponse.from_model(updated_provider)
+
+        raise NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                    message="No OIDC provider with the given ID was found.",
                 )
             ]
         )

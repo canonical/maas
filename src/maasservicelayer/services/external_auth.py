@@ -34,10 +34,14 @@ from maasservicelayer.db.repositories.external_auth import (
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
+    ConflictException,
     DischargeRequiredException,
     UnauthorizedException,
 )
-from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
+    INVALID_TOKEN_VIOLATION_TYPE,
+)
 from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.models.secrets import (
     ExternalAuthSecret,
@@ -366,3 +370,25 @@ class ExternalOAuthService(
 
     async def get_provider(self) -> OAuthProvider | None:
         return await self.repository.get_provider()
+
+    async def update_provider(
+        self, id: int, builder: OAuthProviderBuilder
+    ) -> OAuthProvider | None:
+        enable_requested = builder.enabled is True
+        existing_enabled = await self.get_provider()
+
+        if (
+            not enable_requested
+            or not existing_enabled
+            or existing_enabled.id == id
+        ):
+            return await self.update_by_id(id=id, builder=builder)
+
+        raise ConflictException(
+            details=[
+                BaseExceptionDetail(
+                    type=CONFLICT_VIOLATION_TYPE,
+                    message="An enabled OIDC provider already exists. Please disable it first.",
+                )
+            ]
+        )
