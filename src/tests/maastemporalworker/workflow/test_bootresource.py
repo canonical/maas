@@ -34,7 +34,6 @@ from maascommon.enums.notifications import (
 )
 from maascommon.workflows.bootresource import (
     CancelObsoleteDownloadWorkflowsParam,
-    CleanupOldBootResourceParam,
     GetFilesToDownloadReturnValue,
     LocalSyncRequestParam,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
@@ -686,17 +685,17 @@ class TestGetFilesToDownloadActivity:
     ) -> None:
         mock_boot_source = Mock(BootSource)
         mock_boot_source.id = 1
+        mock_product = Mock(BootloaderProduct)
         mock_ss_products_list = Mock(SimpleStreamsProductList)
-        mock_ss_products_list.products = [Mock(BootloaderProduct)]
+        mock_ss_products_list.products = [mock_product]
         services_mock.events = Mock(EventsService)
         services_mock.image_sync = Mock(ImageSyncService)
         services_mock.image_sync.filter_products.return_value = {
             mock_boot_source: mock_ss_products_list
         }
-        services_mock.image_sync.get_files_to_download_from_product_list.return_value = (
-            {},
-            {1},
-        )
+        services_mock.image_sync.get_files_to_download_from_product_list.return_value = {
+            "some-fake-sha": mock_product
+        }
 
         heartbeats = []
         env = ActivityEnvironment()
@@ -745,13 +744,7 @@ class TestCleanupOldBootResourcesActivity:
 
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
-        param = CleanupOldBootResourceParam(
-            boot_resource_ids_to_keep={1, 2, 3}
-        )
-        await env.run(boot_activities.cleanup_old_boot_resources, param)
-        services_mock.image_sync.delete_old_boot_resources.assert_awaited_once_with(
-            {1, 2, 3}
-        )
+        await env.run(boot_activities.cleanup_old_boot_resources)
         services_mock.image_sync.delete_old_boot_resource_sets.assert_awaited_once()
         services_mock.temporal.post_commit.assert_awaited_once()
 
@@ -895,8 +888,7 @@ class MockActivities:
                     filename_on_disk="0" * 7,
                     total_size=100,
                 )
-            ],
-            boot_resource_ids={1, 2, 3},
+            ]
         )
         self.fetch_manifest_and_update_cache_result = []
 
@@ -931,9 +923,7 @@ class MockActivities:
         return self.files_to_download_result
 
     @activity.defn(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
-    async def cleanup_old_boot_resources(
-        self, param: CleanupOldBootResourceParam
-    ) -> None:
+    async def cleanup_old_boot_resources(self) -> None:
         pass
 
     @activity.defn(name=CANCEL_OBSOLETE_DOWNLOAD_WORKFLOWS_ACTIVITY_NAME)
