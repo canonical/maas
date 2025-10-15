@@ -12,7 +12,6 @@ __all__ = [
 import http.client
 
 from django.conf import settings
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -38,7 +37,7 @@ from maasserver.exceptions import (
     MAASAPIForbidden,
     MAASAPIValidationError,
 )
-from maasserver.forms import BootResourceForm, BootResourceNoContentForm
+from maasserver.forms import BootResourceForm
 from maasserver.models import BootResource, BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.node import RegionController
@@ -209,8 +208,9 @@ class BootResourcesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """@description-title Upload a new boot resource
-        @description Uploads a new boot resource.
+        """@description-title Create a new boot resource
+        @description Creates a new boot resource. The file upload must be done
+        in chunk, see Boot resource file upload.
 
         @param (string) "name" [required=true] Name of the boot resource.
 
@@ -233,10 +233,6 @@ class BootResourcesHandler(OperationsHandler):
         @param (string) "base_image" [required=false] The Base OS image a
         custom image is built on top of. Only required for custom image.
 
-        @param (string) "content" [required=false] Image content. Note: this is
-        not a normal parameter, but an ``application/octet-stream`` file
-        upload.
-
         @success (http-status-code) "server-success" 201
         @success (json) "success-json" A JSON object containing information
         about the uploaded resource.
@@ -251,25 +247,10 @@ class BootResourcesHandler(OperationsHandler):
             data = {}
         if "filetype" not in data:
             data["filetype"] = "tgz"
-        file_content = get_content_parameter(request)
-        if file_content is not None:
-            content = SimpleUploadedFile(
-                content=file_content,
-                name="file",
-                content_type="application/octet-stream",
-            )
-            form = BootResourceForm(data=data, files={"content": content})
-        else:
-            form = BootResourceNoContentForm(data=data)
+        form = BootResourceForm(data=data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
         resource = form.save()
-
-        # If an upload contained the full file, then we can have the clusters
-        # sync a new resource.
-        if file_content is not None:
-            rfile = resource.sets.first().files.first()
-            post_commit_do(filestore_add_file, rfile)
 
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request
@@ -402,16 +383,25 @@ class BootResourceFileUploadHandler(OperationsHandler):
     """Upload a boot resource file."""
 
     api_doc_section_name = "Boot resource file upload"
-
     read = create = delete = None
 
-    hidden = True
-
     @admin_method
-    def update(self, request, id, file_id):
-        """Upload piece of boot resource file."""
-        resource = get_object_or_404(BootResource, id=id)
-        rfile = get_object_or_404(BootResourceFile, id=file_id)
+    def update(self, request, resource_id, id):
+        """@description-title Upload chunk of boot resource file.
+        @description Uploads a chunk of boot resource file
+
+        @param (int) "{resource_id}" [required=true] The boot resource id.
+
+        @param (int) "{id}" [required=true] The boot resource file id.
+
+        @success (http-status-code) "200" 200
+        @error (http-status-code) "400" 400
+        @error (content) "bad-request" Error while uploading the file.
+        @error (http-status-code) "403" 403
+        @error (content) "forbidden" The user tried to upload to a boot resource of wrong type.
+        """
+        resource = get_object_or_404(BootResource, id=resource_id)
+        rfile = get_object_or_404(BootResourceFile, id=id)
         size = int(request.headers.get("content-length", "0"))
         data = request.body
         if size == 0:
@@ -454,11 +444,11 @@ class BootResourceFileUploadHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, resource=None, rfile=None):
         if resource is None:
+            resource_id = "resource_id"
+        else:
+            resource_id = resource.id
+        if rfile is None:
             id = "id"
         else:
-            id = resource.id
-        if rfile is None:
-            file_id = "id"
-        else:
-            file_id = rfile.id
-        return ("boot_resource_file_upload_handler", (id, file_id))
+            id = rfile.id
+        return ("boot_resource_file_upload_handler", (resource_id, id))

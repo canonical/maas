@@ -4,7 +4,6 @@
 """Moved from src/tests/maasserver/utils/test_bootresource.py."""
 
 import hashlib
-from io import BytesIO
 from itertools import islice, repeat
 import os
 from pathlib import Path
@@ -263,25 +262,6 @@ class TestLocalBootResourceFile:
         assert not os.access(f.path, os.F_OK)
         assert os.access(f.partial_file_path, os.F_OK)
         assert not f.valid
-
-    def test_create_from_content(
-        self,
-        image_store_dir: Path,
-        file_content: bytes,
-        file_sha256: str,
-        file_filename_on_disk: str,
-    ):
-        with LocalBootResourceFile.create_from_content(
-            BytesIO(file_content)
-        ) as (tmpname, size, sha256):
-            localfile = LocalBootResourceFile(sha256, sha256[:7], size)
-            if not localfile.path.exists():
-                os.link(tmpname, localfile.path)
-        assert os.access(localfile.path, os.F_OK)
-        assert localfile.valid
-        assert localfile.size == FILE_SIZE
-        assert localfile.sha256 == file_sha256
-        assert localfile.filename_on_disk == file_sha256[:7]
 
     def test_lock_acquire(
         self,

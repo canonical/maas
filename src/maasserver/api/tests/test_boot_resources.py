@@ -243,7 +243,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         return random.choice(list(filetypes.items()))
 
     def test_POST_creates_boot_resource(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -255,6 +254,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "filetype": upload_type,
             "content": (factory.make_file_upload(content=sample_binary_data)),
             "base_image": "ubuntu/focal",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -268,14 +269,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         self.assertEqual("uploaded", resource_set.label)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
         self.assertEqual(filetype, rfile.filetype)
-        lfile = rfile.local_file()
-        with open(lfile.path, "rb") as stream:
-            written_data = stream.read()
-        self.assertEqual(sample_binary_data, written_data)
-        mock_filestore.assert_called_once()
 
     def test_POST_creates_boot_resource_with_default_filetype(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -285,6 +280,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "architecture": architecture,
             "content": (factory.make_file_upload(content=sample_binary_data)),
             "base_image": "ubuntu/focal",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -294,10 +291,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
         self.assertEqual(BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, rfile.filetype)
-        mock_filestore.assert_called_once()
 
     def test_POST_creates_boot_resource_with_already_existing_file(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         lfile = factory.make_boot_file()
@@ -319,7 +314,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         rfile = resource_set.files.first()
         lfile = rfile.local_file()
         self.assertTrue(lfile.path.exists())
-        mock_filestore.assert_not_called()
 
     def test_POST_creates_boot_resource_with_empty_file(self):
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
@@ -376,7 +370,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         mock_filestore.assert_not_called()
 
     def test_POST_returns_full_definition_of_boot_resource(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -384,14 +377,14 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         params = {
             "name": name,
             "architecture": architecture,
-            "content": (factory.make_file_upload(content=sample_binary_data)),
             "base_image": "ubuntu/focal",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertIn("sets", parsed_result)
-        mock_filestore.assert_called_once()
 
     def test_POST_validates_boot_resource(self):
         mock_filestore = self.patch(boot_resources, "filestore_add_file")

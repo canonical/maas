@@ -15,8 +15,6 @@ import mmap
 import os
 from pathlib import Path
 import tarfile
-from tempfile import NamedTemporaryFile
-from typing import BinaryIO
 
 import aiofiles
 
@@ -325,33 +323,6 @@ class LocalBootResourceFile:
             yield
         finally:
             self.release_lock()
-
-    @classmethod
-    @contextmanager
-    def create_from_content(
-        cls,
-        content: BinaryIO,
-    ):
-        """Create a local file from content.
-        This method assumes that content was externally validated already
-
-        Args:
-            content (BinaryIO): the content to be written
-
-        Returns:
-            LocalBootResourceFile: the local file object
-        """
-        with NamedTemporaryFile(
-            mode="+wb",
-            dir=get_bootresource_store_path(),
-        ) as tmp:
-            sha256 = hashlib.sha256()
-            for data in content:
-                sha256.update(data)
-                tmp.write(data)
-            size = tmp.tell()
-            hexdigest = sha256.hexdigest()
-            yield tmp.name, size, hexdigest
 
     def extract_file(self, extract_path: str):
         store = get_bootresource_store_path()
