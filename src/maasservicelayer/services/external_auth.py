@@ -368,6 +368,18 @@ class ExternalOAuthService(
     def __init__(self, external_oauth_repository: ExternalOAuthRepository):
         self.repository = external_oauth_repository
 
+    async def pre_create_hook(self, builder) -> None:
+        existing_enabled = await self.get_provider()
+        if existing_enabled and builder.enabled is True:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message="An enabled OIDC provider already exists. Please disable it first.",
+                    )
+                ]
+            )
+
     async def get_provider(self) -> OAuthProvider | None:
         return await self.repository.get_provider()
 

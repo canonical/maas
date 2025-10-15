@@ -22,12 +22,16 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import JWT, UserRole
 from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
     BaseExceptionDetail,
+    ConflictException,
     DischargeRequiredException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.services import ServiceCollectionV3
@@ -336,3 +340,109 @@ class TestAuthApi:
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    # POST /auth/oauth
+    async def test_create_oauth_provider_success(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        created_provider = OAuthProvider(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        services_mock.external_oauth.create.return_value = created_provider
+
+        response = await mocked_api_client.post(
+            f"{self.BASE_PATH}/oauth",
+            json=jsonable_encoder(request_body.dict()),
+        )
+        assert response.status_code == 200
+        provider_response = OAuthProviderResponse(**response.json())
+        assert provider_response.client_id == request_body.client_id
+        assert provider_response.client_secret == request_body.client_secret
+        assert provider_response.issuer_url == request_body.issuer_url
+
+    async def test_create_oauth_provider_already_exists(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.create.side_effect = AlreadyExistsException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                    message="A resource with such identifiers already exist.",
+                )
+            ]
+        )
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+
+        response = await mocked_api_client.post(
+            f"{self.BASE_PATH}/oauth",
+            json=jsonable_encoder(request_body.dict()),
+        )
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+
+    async def test_create_oauth_provider_conflict(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.create.side_effect = ConflictException(
+            details=[
+                BaseExceptionDetail(
+                    type=CONFLICT_VIOLATION_TYPE,
+                    message="An enabled OIDC provider already exists. Please disable it first.",
+                )
+            ]
+        )
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+
+        response = await mocked_api_client.post(
+            f"{self.BASE_PATH}/oauth",
+            json=jsonable_encoder(request_body.dict()),
+        )
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409

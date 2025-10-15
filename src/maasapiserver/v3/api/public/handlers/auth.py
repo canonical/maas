@@ -6,6 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
     UnauthorizedBodyResponse,
 )
@@ -163,3 +164,22 @@ class AuthHandler(Handler):
                 )
             ]
         )
+
+    @handler(
+        path="/auth/oauth",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        status_code=200,
+    )
+    async def create_oauth_provider(
+        self,
+        request: OAuthProviderRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> OAuthProviderResponse:
+        builder = request.to_builder()
+        provider = await services.external_oauth.create(builder)
+        return OAuthProviderResponse.from_model(provider=provider)
