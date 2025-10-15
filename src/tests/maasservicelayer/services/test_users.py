@@ -7,7 +7,15 @@ import pytest
 
 from maascommon.enums.consumer import ConsumerState
 from maascommon.enums.token import TokenType
-from maascommon.logging.security import AUTHN_PASSWORD_CHANGED, SECURITY
+from maascommon.logging.security import (
+    ADMIN,
+    AUTHN_PASSWORD_CHANGED,
+    SECURITY,
+    USER,
+    USER_CREATED,
+    USER_DELETED,
+    USER_UPDATED,
+)
 from maasservicelayer.builders.consumers import ConsumerBuilder
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.builders.nodes import NodeBuilder
@@ -469,6 +477,36 @@ class TestUsersService:
             )
         )
 
+    async def test_post_delete_hook_creates_log(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        with patch("maasservicelayer.services.users.logger") as mock_logger:
+            await users_service.post_delete_hook(TEST_USER)
+        mock_logger.info.assert_called_once_with(
+            f"{USER_DELETED}:{TEST_USER.username}",
+            type=SECURITY,
+        )
+
+    async def test_post_create_hook_creates_info_log(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        with patch("maasservicelayer.services.users.logger") as mock_logger:
+            await users_service.post_create_hook(TEST_USER)
+        mock_logger.info.assert_called_once_with(
+            f"{USER_CREATED}:{TEST_USER.username}:{USER}", type=SECURITY
+        )
+
+    async def test_post_create_hook_creates_warn_log(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        ADMIN_USER = TEST_USER.copy()
+        ADMIN_USER.is_superuser = True
+        with patch("maasservicelayer.services.users.logger") as mock_logger:
+            await users_service.post_create_hook(ADMIN_USER)
+        mock_logger.warn.assert_called_once_with(
+            f"{USER_CREATED}:{ADMIN_USER.username}:{ADMIN}", type=SECURITY
+        )
+
     async def test_post_update_hook_creates_log_on_password_change(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
@@ -486,6 +524,28 @@ class TestUsersService:
         with patch("maasservicelayer.services.users.logger") as mock_logger:
             await users_service.post_update_hook(TEST_USER, TEST_USER)
         mock_logger.assert_not_called()
+
+    async def test_post_update_hook_creates_warn_log_when_user_becomes_admin(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        UPDATED_TEST_USER = TEST_USER.copy()
+        UPDATED_TEST_USER.is_superuser = True
+        with patch("maasservicelayer.services.users.logger") as mock_logger:
+            await users_service.post_update_hook(TEST_USER, UPDATED_TEST_USER)
+        mock_logger.warn.assert_called_once_with(
+            f"{USER_UPDATED}:{TEST_USER.username}:{ADMIN}", type=SECURITY
+        )
+
+    async def test_post_update_hook_creates_info_log_when_admin_becomes_user(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        ADMIN_TEST_USER = TEST_USER.copy()
+        ADMIN_TEST_USER.is_superuser = True
+        with patch("maasservicelayer.services.users.logger") as mock_logger:
+            await users_service.post_update_hook(ADMIN_TEST_USER, TEST_USER)
+        mock_logger.info.assert_called_once_with(
+            f"{USER_UPDATED}:{TEST_USER.username}:{USER}", type=SECURITY
+        )
 
     async def test_transfer_resources(
         self, users_service: UsersService, users_repository: Mock
