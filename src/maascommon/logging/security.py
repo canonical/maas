@@ -11,6 +11,9 @@ AUTHN_AUTH_FAILED = "AUTHN_authentication_failed"
 AUTHN_AUTH_SUCCESSFUL = "AUTHN_authentication_successful"
 AUTHN_PASSWORD_CHANGED = "AUTHN_password_changed"
 
+# Authorization
+AUTHZ_FAIL = "AUTHZ_fail"
+
 # Users
 USER_CREATED = "USER_created"
 USER_DELETED = "USER_deleted"

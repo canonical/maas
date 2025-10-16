@@ -21,7 +21,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorResponse,
 )
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
-from maascommon.logging.security import AUTHN_AUTH_FAILED, SECURITY
+from maascommon.logging.security import AUTHN_AUTH_FAILED, AUTHZ_FAIL, SECURITY
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
@@ -138,3 +138,18 @@ class TestExceptionLogging:
 
         assert logging_call.kwargs["type"] == SECURITY
         assert AUTHN_AUTH_FAILED in logging_call.args[0]
+
+    async def test_forbidden_exception(self):
+        async def mock_call_next(request):
+            raise ForbiddenException(
+                details=[BaseExceptionDetail(type="type", message="msg")]
+            )
+
+        middleware = ExceptionMiddleware(app=Mock(ASGIApp))
+        request = MagicMock(spec=Request)
+        with patch(
+            "maasapiserver.common.middlewares.exceptions.logger"
+        ) as mock_logger:
+            await middleware.dispatch(request, mock_call_next)
+
+        mock_logger.warn.assert_called_once_with(AUTHZ_FAIL, type=SECURITY)
