@@ -756,21 +756,33 @@ class DomainsRepository(BaseRepository[Domain]):
 
         rows = (await self.execute_stmt(stmt)).all()
 
-        result = []
+        result = {}
 
         for row in rows:
             row_dict = row._asdict()
-            result.append(
-                (
-                    Domain(**row_dict),
+            domain = Domain(**row_dict)
+            if domain.name in result:
+                result[domain.name][1].append(
                     ForwardDNSServer(
                         id=row_dict["fdns_id"],
                         created=row_dict["fdns_created"],
                         updated=row_dict["fdns_updated"],
                         ip_address=row_dict["fdns_ip_address"],
                         port=row_dict["fdns_port"],
-                    ),
+                    )
                 )
-            )
+            else:
+                result[domain.name] = (
+                    domain,
+                    [
+                        ForwardDNSServer(
+                            id=row_dict["fdns_id"],
+                            created=row_dict["fdns_created"],
+                            updated=row_dict["fdns_updated"],
+                            ip_address=row_dict["fdns_ip_address"],
+                            port=row_dict["fdns_port"],
+                        )
+                    ],
+                )
 
-        return result
+        return [values for values in result.values()]
