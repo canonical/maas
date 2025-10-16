@@ -45,6 +45,9 @@ from tests.fixtures.factories.dnspublication import (
 )
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
+from tests.fixtures.factories.forwarddnsserver import (
+    create_test_forwarddnsserver_entry,
+)
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import (
     create_test_rack_and_region_controller_entry,
@@ -930,6 +933,15 @@ a 30 IN A 10.0.0.1
             await create_test_staticipaddress_entry(fixture, subnet=subnet)
         )[0]
         await create_test_dnsresource_entry(fixture, domain=domain, ip=sip)
+
+        # pass a forwarded domain into the config template
+        forwarded_domain = await create_test_domain_entry(
+            fixture, authoritative=False
+        )
+        await create_test_forwarddnsserver_entry(
+            fixture,
+            domain=forwarded_domain,
+        )
 
         result = await env.run(
             activities.full_reload_dns_configuration,

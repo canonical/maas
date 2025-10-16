@@ -150,7 +150,7 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
             )
             for i in range(3)
         ]
-        fwd_srvrs = [
+        srvrs = [
             await create_test_forwarddnsserver_entry(
                 fixture, ip_address=f"10.0.0.{i + 1}", domain=domain
             )
@@ -161,6 +161,7 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
 
         assert len(fwd_domains) == len(domains)
 
-        for fwd_domain, fwd_srvr in fwd_domains:
+        for fwd_domain, fwd_srvrs in fwd_domains:
             assert fwd_domain in domains
-            assert fwd_srvr in fwd_srvrs
+            for fwd_srvr in fwd_srvrs:
+                assert fwd_srvr in srvrs

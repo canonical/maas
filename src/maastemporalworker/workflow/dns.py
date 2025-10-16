@@ -1081,9 +1081,9 @@ class DNSConfigActivity(ActivityBase):
                 forwarded_zones=[
                     (
                         domain.name,
-                        (srvr.ip_address, srvr.port),
+                        [(str(srvr.ip_address), srvr.port) for srvr in srvrs],
                     )
-                    for domain, srvr in forwarded_domains
+                    for domain, srvrs in forwarded_domains
                 ],
                 trusted_networks=[
                     str(subnet.cidr) for subnet in trusted_networks
