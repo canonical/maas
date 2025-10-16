@@ -15,6 +15,17 @@ def get_test_data_file(filename: str) -> str:
         return f.read()
 
 
+class ContextManagerMock:
+    def __init__(self, mock):
+        self.mock = mock
+
+    def __enter__(self):
+        return self.mock
+
+    def __exit__(self, exc_type, exc, tb):
+        pass
+
+
 class AsyncContextManagerMock:
     """Mock for async context managers with nested mocking capabilities."""
 

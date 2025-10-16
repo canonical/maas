@@ -50,9 +50,8 @@ class TestHelpers(APITestCase.ForUser):
         self.region = factory.make_RegionController()
 
     def test_boot_resource_file_to_dict(self):
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
+        content = factory.make_bytes(total_size)
         lfile = factory.make_boot_file(content, total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
@@ -78,7 +77,7 @@ class TestHelpers(APITestCase.ForUser):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(random.randint(512, 1023))
+        content = factory.make_bytes(total_size)
         lfile = factory.make_boot_file(content, total_size)
         rfile = factory.make_BootResourceFile(
             resource_set, size=total_size, sha256=lfile.sha256

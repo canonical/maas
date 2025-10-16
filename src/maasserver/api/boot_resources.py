@@ -44,9 +44,10 @@ from maasserver.models.node import RegionController
 from maasserver.utils.orm import post_commit_do
 from maasserver.workflow import execute_workflow
 from maasservicelayer.utils.image_local_files import (
-    LocalBootResourceFile,
+    LocalStoreAllocationFail,
+    LocalStoreFileSizeMismatch,
     LocalStoreInvalidHash,
-    LocalStoreWriteBeyondEOF,
+    SyncLocalBootResourceFile,
 )
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.bootresource import (
@@ -417,28 +418,31 @@ class BootResourceFileUploadHandler(OperationsHandler):
         sync_status, _ = rfile.bootresourcefilesync_set.get_or_create(
             region=RegionController.objects.get_running_controller()
         )
-        lfile = LocalBootResourceFile(
+        lfile = SyncLocalBootResourceFile(
             sha256=rfile.sha256,
             filename_on_disk=rfile.filename_on_disk,
             total_size=rfile.size,
-            size=sync_status.size,
         )
         if sync_status.size == lfile.total_size:
             raise MAASAPIBadRequest("Cannot upload to a complete file.")
 
         try:
-            with lfile.store() as m:
-                m.write(data)
+            lfile.append_chunk(data)
             sync_status.size += size
             sync_status.save()
             if lfile.complete:
-                post_commit_do(filestore_add_file, rfile)
-        except LocalStoreWriteBeyondEOF:
-            raise MAASAPIBadRequest("Too much data received.")  # noqa: B904
-        except LocalStoreInvalidHash:
-            raise MAASAPIBadRequest(  # noqa: B904
+                if lfile.valid:
+                    post_commit_do(filestore_add_file, rfile)
+                else:
+                    raise LocalStoreInvalidHash()
+        except LocalStoreFileSizeMismatch as e:
+            raise MAASAPIBadRequest("Too much data received.") from e
+        except LocalStoreInvalidHash as e:
+            raise MAASAPIBadRequest(
                 "Saved content does not match given SHA256 value."
-            )
+            ) from e
+        except LocalStoreAllocationFail as e:
+            raise MAASAPIBadRequest("No space left on device") from e
         return rc.ALL_OK
 
     @classmethod

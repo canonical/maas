@@ -4,12 +4,12 @@
 import asyncio
 from collections.abc import AsyncGenerator
 import hashlib
-from itertools import islice, repeat
 import os
 from pathlib import Path
 import shutil
 from unittest.mock import AsyncMock, call, Mock, patch
 
+from aiofiles.threadpool.binary import AsyncBufferedIOBase
 import httpx
 import pytest
 from temporalio import activity
@@ -63,10 +63,10 @@ from maasservicelayer.simplestreams.models import (
     SimpleStreamsProductList,
 )
 from maasservicelayer.utils.image_local_files import (
-    LocalBootResourceFile,
+    AsyncLocalBootResourceFile,
+    LocalStoreAllocationFail,
+    LocalStoreFileSizeMismatch,
     LocalStoreInvalidHash,
-    LocalStoreWriteBeyondEOF,
-    MMapedLocalFile,
 )
 from maastemporalworker.worker import (
     custom_sandbox_runner,
@@ -159,7 +159,7 @@ def boot_activities(
 
 @pytest.fixture
 def a_file(image_store_dir):
-    content = bytes(b"".join(islice(repeat(b"\x01"), FILE_SIZE)))
+    content = b"\x01" * FILE_SIZE
     sha256 = hashlib.sha256()
     sha256.update(content)
     file = image_store_dir / f"{str(sha256.hexdigest())}"
@@ -170,10 +170,11 @@ def a_file(image_store_dir):
 
 @pytest.fixture
 def mock_local_file(mocker):
-    m = Mock(LocalBootResourceFile)
+    m = Mock(AsyncLocalBootResourceFile)
     mocker.patch(
-        "maastemporalworker.workflow.bootresource.LocalBootResourceFile"
+        "maastemporalworker.workflow.bootresource.AsyncLocalBootResourceFile"
     ).return_value = m
+    m.total_size = FILE_SIZE
     yield m
 
 
@@ -307,41 +308,13 @@ class TestGetBootresourcefileEndpointsActivity:
 
 
 class TestDownloadBootresourcefileActivity:
-    async def test_failed_acquiring_lock_emits_heartbeat(
-        self,
-        mocker,
-        mock_local_file: Mock,
-        boot_activities: BootResourcesActivity,
-    ) -> None:
-        mock_local_file.acquire_lock.side_effect = [False, True]
-        mock_local_file.avalid.return_value = True
-        mocker.patch("asyncio.sleep")
-
-        heartbeats = []
-        env = ActivityEnvironment()
-        env.payload_converter = pydantic_data_converter
-        env.on_heartbeat = lambda *args: heartbeats.append(args[0])
-        param = ResourceDownloadParam(
-            rfile_ids=[1],
-            source_list=["http://maas-image-stream.io"],
-            sha256="0" * 64,
-            filename_on_disk="0" * 7,
-            total_size=100,
-        )
-        res = await env.run(boot_activities.download_bootresourcefile, param)
-        assert res is True
-
-        assert heartbeats == ["Waiting for file lock"]
-        mock_local_file.release_lock.assert_called_once()
-
     async def test_valid_file_dont_get_downloaded_again(
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
         mock_apiclient: Mock,
     ) -> None:
-        mock_local_file.acquire_lock.return_value = True
-        mock_local_file.avalid.return_value = True
+        mock_local_file.valid.return_value = True
 
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
@@ -355,12 +328,11 @@ class TestDownloadBootresourcefileActivity:
         res = await env.run(boot_activities.download_bootresourcefile, param)
         assert res is True
 
-        mock_local_file.commit.assert_called_once()
         boot_activities.report_progress.assert_awaited_once_with(
-            param.rfile_ids, mock_local_file.size
+            param.rfile_ids, mock_local_file.total_size
         )
         mock_apiclient.make_client.assert_not_called()
-        mock_local_file.release_lock.assert_called_once()
+        mock_local_file.store.assert_not_called()
 
     async def test_extract_file_emits_heartbeat(
         self,
@@ -368,8 +340,7 @@ class TestDownloadBootresourcefileActivity:
         boot_activities: BootResourcesActivity,
         mock_apiclient: Mock,
     ) -> None:
-        mock_local_file.acquire_lock.return_value = True
-        mock_local_file.avalid.return_value = True
+        mock_local_file.valid.return_value = True
         mock_local_file.extract_file.return_value = None
 
         heartbeats = []
@@ -392,12 +363,10 @@ class TestDownloadBootresourcefileActivity:
             "Extracted file in path2",
         ]
 
-        mock_local_file.commit.assert_called_once()
         boot_activities.report_progress.assert_awaited_once_with(
-            param.rfile_ids, mock_local_file.size
+            param.rfile_ids, mock_local_file.total_size
         )
         mock_apiclient.make_client.assert_not_called()
-        mock_local_file.release_lock.assert_called_once()
 
     async def test_download_file_if_not_valid(
         self,
@@ -405,8 +374,7 @@ class TestDownloadBootresourcefileActivity:
         boot_activities: BootResourcesActivity,
         mock_apiclient: Mock,
     ) -> None:
-        mock_local_file.acquire_lock.return_value = True
-        mock_local_file.avalid.side_effect = [False, True]
+        mock_local_file.valid.side_effect = [False, True]
         chunked_data = [b"foo", b"bar", b""]
 
         mock_http_response = Mock(httpx.Response)
@@ -416,8 +384,8 @@ class TestDownloadBootresourcefileActivity:
         mock_apiclient._mocked_client.stream.return_value = (
             AsyncContextManagerMock(mock_http_response)
         )
-        mock_store = Mock(MMapedLocalFile)
-        mock_local_file.astore.return_value = AsyncContextManagerMock(
+        mock_store = Mock(AsyncBufferedIOBase)
+        mock_local_file.store.return_value = AsyncContextManagerMock(
             mock_store
         )
 
@@ -439,7 +407,7 @@ class TestDownloadBootresourcefileActivity:
             "Downloaded chunk",
             "Downloaded chunk",
             "Downloaded chunk",
-            "Finished download, doing checksum",
+            "Download finished",
         ]
 
         mock_store.write.assert_has_calls(
@@ -449,16 +417,14 @@ class TestDownloadBootresourcefileActivity:
                 call(b""),
             ]
         )
-        mock_local_file.commit.assert_called_once()
         boot_activities.report_progress.assert_awaited_once_with(
-            param.rfile_ids, mock_local_file.size
+            param.rfile_ids, mock_local_file.total_size
         )
         mock_apiclient.make_client.assert_called_once_with(None)
         mock_apiclient._mocked_client.stream.assert_called_once_with(
             "GET",
             "http://maas-image-stream.io",
         )
-        mock_local_file.release_lock.assert_called_once()
 
     async def test_download_file_fails_checksum_check(
         self,
@@ -466,19 +432,12 @@ class TestDownloadBootresourcefileActivity:
         boot_activities: BootResourcesActivity,
         mock_apiclient: Mock,
     ) -> None:
-        mock_local_file.acquire_lock.return_value = True
-        mock_local_file.avalid.side_effect = [False, False]
-        chunked_data = [b"foo", b"bar", b""]
+        mock_local_file.valid.return_value = False
+        mock_local_file.store.side_effect = LocalStoreInvalidHash()
 
         mock_http_response = Mock(httpx.Response)
-        mock_http_response.aiter_bytes.return_value = AsyncIteratorMock(
-            chunked_data
-        )
         mock_apiclient._mocked_client.stream.return_value = (
             AsyncContextManagerMock(mock_http_response)
-        )
-        mock_local_file.astore.return_value = AsyncContextManagerMock(
-            Mock(MMapedLocalFile)
         )
 
         heartbeats = []
@@ -495,16 +454,8 @@ class TestDownloadBootresourcefileActivity:
         with pytest.raises(ApplicationError) as err:
             await env.run(boot_activities.download_bootresourcefile, param)
 
-        assert str(err.value) == "Invalid checksum"
+        assert str(err.value) == "Invalid SHA256 checksum"
 
-        assert heartbeats == [
-            "Downloaded chunk",
-            "Downloaded chunk",
-            "Downloaded chunk",
-            "Finished download, doing checksum",
-        ]
-
-        mock_local_file.unlink.assert_called_once()
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, 0
         )
@@ -512,18 +463,22 @@ class TestDownloadBootresourcefileActivity:
             "GET",
             "http://maas-image-stream.io",
         )
-        mock_local_file.release_lock.assert_called_once()
 
     async def test_download_file_raise_out_of_disk_exception(
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
+        mock_apiclient: Mock,
     ) -> None:
-        # Acquire lock is not the responsible of raising all these exceptions,
-        # but we use it to avoid patching the rest of the function
+        mock_local_file.valid.return_value = False
         exception = IOError()
         exception.errno = 28
-        mock_local_file.acquire_lock.side_effect = exception
+        mock_local_file.store.side_effect = exception
+        mock_http_response = Mock(httpx.Response)
+        mock_apiclient._mocked_client.stream.return_value = (
+            AsyncContextManagerMock(mock_http_response)
+        )
+
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
         param = ResourceDownloadParam(
@@ -533,13 +488,13 @@ class TestDownloadBootresourcefileActivity:
             filename_on_disk="0" * 7,
             total_size=100,
         )
-        res = await env.run(boot_activities.download_bootresourcefile, param)
-        assert res is False
-        mock_local_file.unlink.assert_called_once()
+        with pytest.raises(ApplicationError):
+            await env.run(boot_activities.download_bootresourcefile, param)
+
+        mock_local_file.unlink.assert_awaited_once()
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, 0
         )
-        mock_local_file.release_lock.assert_called_once()
 
     @pytest.mark.parametrize(
         "exception",
@@ -549,11 +504,18 @@ class TestDownloadBootresourcefileActivity:
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
+        mock_apiclient: Mock,
         exception,
     ) -> None:
-        # Acquire lock is not the responsible of raising all these exceptions,
+        mock_local_file.valid.return_value = False
+        # `store` is not the responsible of raising all these exceptions,
         # but we use it to avoid patching the rest of the function
-        mock_local_file.acquire_lock.side_effect = exception
+        mock_local_file.store.side_effect = exception
+        mock_http_response = Mock(httpx.Response)
+        mock_apiclient._mocked_client.stream.return_value = (
+            AsyncContextManagerMock(mock_http_response)
+        )
+
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
         param = ResourceDownloadParam(
@@ -569,7 +531,6 @@ class TestDownloadBootresourcefileActivity:
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, 0
         )
-        mock_local_file.release_lock.assert_called_once()
 
     @pytest.mark.parametrize(
         "exception",
@@ -577,18 +538,26 @@ class TestDownloadBootresourcefileActivity:
             IOError(),
             httpx.HTTPError("Error"),
             LocalStoreInvalidHash(),
-            LocalStoreWriteBeyondEOF(),
+            LocalStoreAllocationFail(),
+            LocalStoreFileSizeMismatch(),
         ],
     )
     async def test_download_file_raise_other_exception(
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
+        mock_apiclient: Mock,
         exception,
     ) -> None:
-        # Acquire lock is not the responsible of raising all these exceptions,
+        mock_local_file.valid.return_value = False
+        # `store` is not the responsible of raising all these exceptions,
         # but we use it to avoid patching the rest of the function
-        mock_local_file.acquire_lock.side_effect = exception
+        mock_local_file.store.side_effect = exception
+        mock_http_response = Mock(httpx.Response)
+        mock_apiclient._mocked_client.stream.return_value = (
+            AsyncContextManagerMock(mock_http_response)
+        )
+
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
         param = ResourceDownloadParam(
@@ -600,17 +569,14 @@ class TestDownloadBootresourcefileActivity:
         )
         with pytest.raises(ApplicationError):
             await env.run(boot_activities.download_bootresourcefile, param)
-        mock_local_file.release_lock.assert_called_once()
 
 
 class TestDeleteBootresourcefileActivity:
     async def test_delete_emits_heartbeat(
         self,
         mocker,
-        mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
     ) -> None:
-        mock_local_file.acquire_lock.side_effect = [False, True]
         mocker.patch("asyncio.sleep")
 
         heartbeats = []
@@ -623,15 +589,13 @@ class TestDeleteBootresourcefileActivity:
         res = await env.run(boot_activities.delete_bootresourcefile, param)
         assert res is True
 
-        assert heartbeats == ["Waiting for file lock"]
+        assert heartbeats == ["File deleted"]
 
     async def test_delete(
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
     ) -> None:
-        mock_local_file.acquire_lock.return_value = True
-
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
         param = ResourceDeleteParam(
@@ -639,9 +603,7 @@ class TestDeleteBootresourcefileActivity:
         )
         res = await env.run(boot_activities.delete_bootresourcefile, param)
         assert res is True
-        mock_local_file.acquire_lock.assert_called_once()
         mock_local_file.unlink.assert_called_once()
-        mock_local_file.release_lock.assert_called_once()
 
 
 class TestFetchManifestAndUpdateCacheActivity:
@@ -998,7 +960,7 @@ def sample_local_sync_request(sample_resource):
     return LocalSyncRequestParam(
         resource=sample_resource,
         space_requirement=SpaceRequirementParam(
-            min_free_space=sample_resource.size
+            min_free_space=sample_resource.total_size
         ),
     )
 

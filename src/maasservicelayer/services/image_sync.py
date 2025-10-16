@@ -753,7 +753,7 @@ class ImageSyncService(Service):
             local_file = resource_file.create_local_file()
 
             if (
-                local_file.complete
+                await local_file.complete()
                 and await self.boot_resource_files_service.is_sync_complete(
                     resource_file.id
                 )

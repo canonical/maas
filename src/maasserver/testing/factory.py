@@ -125,7 +125,7 @@ from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
-from maasservicelayer.utils.image_local_files import LocalBootResourceFile
+from maasservicelayer.utils.image_local_files import SyncLocalBootResourceFile
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from metadataserver.builtin_scripts import load_builtin_scripts
@@ -2451,7 +2451,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_boot_file(
         self, content: bytes | None = None, size: int | None = None
-    ) -> LocalBootResourceFile:
+    ) -> SyncLocalBootResourceFile:
         """Create a boot resource file with content
         the file will be named after its SHA256 hash
 
@@ -2459,7 +2459,7 @@ class Factory(maastesting.factory.Factory):
         :param size: Size of `content`. If `content` is None
             then it will be a random string of this size.
 
-        returns LocalBootResourceFile
+        returns SyncLocalBootResourceFile
         """
         if content is None:
             size = size or 512
@@ -2472,11 +2472,11 @@ class Factory(maastesting.factory.Factory):
         filename_on_disk = BootResourceFile.objects.calculate_filename_on_disk(
             filehash
         )
-        lf = LocalBootResourceFile(
+        lf = SyncLocalBootResourceFile(
             sha256=filehash, filename_on_disk=filename_on_disk, total_size=size
         )
-        with lf.store() as m:
-            m.write(content)
+        with lf.store() as stream:
+            stream.write(content)
         return lf
 
     def make_base_image_name(self, osystem=None, release=None):
@@ -2759,7 +2759,6 @@ class Factory(maastesting.factory.Factory):
         filename=None,
         platform=None,
         supported_platforms=None,
-        resource_synced: list[RegionController] | None = None,
     ):
         resource = self.make_BootResource(
             rtype=rtype,
@@ -2790,12 +2789,10 @@ class Factory(maastesting.factory.Factory):
         )
         filetypes.add(random.choice(XINSTALL_TYPES))
         for filetype in filetypes:
-            # Create a half completed file.
             size = 512
-            content = factory.make_bytes(256)
-            sync_status = (
-                [(r, -1) for r in resource_synced] if resource_synced else None
-            )
+            content = factory.make_bytes(size)
+            # The boot resource is incomplete if it's not fully synchronized
+            sync_status = None
             self.make_boot_resource_file_with_content(
                 resource_set,
                 filename=filename,

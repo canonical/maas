@@ -32,7 +32,6 @@ class ResourceDownloadParam:
     sha256: str
     filename_on_disk: str
     total_size: int
-    size: int = 0
     extract_paths: list[str] = field(default_factory=list)
     http_proxy: str | None = None
 

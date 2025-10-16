@@ -35,7 +35,7 @@ from maasserver.models.largefile import LargeFile
 from maasserver.models.node import RegionController
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.workflow import execute_workflow
-from maasservicelayer.utils.image_local_files import LocalBootResourceFile
+from maasservicelayer.utils.image_local_files import SyncLocalBootResourceFile
 
 SHORTSHA256_MIN_PREFIX_LEN = 7
 
@@ -211,8 +211,8 @@ class BootResourceFile(CleanSave, TimestampedModel):
             )
         ]
 
-    def local_file(self) -> LocalBootResourceFile:
-        return LocalBootResourceFile(
+    def local_file(self) -> SyncLocalBootResourceFile:
+        return SyncLocalBootResourceFile(
             self.sha256, self.filename_on_disk, self.size
         )
 

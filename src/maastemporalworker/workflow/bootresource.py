@@ -69,10 +69,11 @@ from maasservicelayer.simplestreams.models import (
     SimpleStreamsSingleFileProductList,
 )
 from maasservicelayer.utils.image_local_files import (
+    AsyncLocalBootResourceFile,
     get_bootresource_store_path,
-    LocalBootResourceFile,
+    LocalStoreAllocationFail,
+    LocalStoreFileSizeMismatch,
     LocalStoreInvalidHash,
-    LocalStoreWriteBeyondEOF,
 )
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.activity import ActivityBase
@@ -204,8 +205,8 @@ class BootResourcesActivity(ActivityBase):
         Returns:
             bool: True if the file was successfully downloaded
         """
-        lfile = LocalBootResourceFile(
-            param.sha256, param.filename_on_disk, param.total_size, param.size
+        lfile = AsyncLocalBootResourceFile(
+            param.sha256, param.filename_on_disk, param.total_size
         )
 
         url = param.source_list[
@@ -214,24 +215,19 @@ class BootResourcesActivity(ActivityBase):
         logger.debug(f"Downloading from {url}")
 
         try:
-            while not lfile.acquire_lock(try_lock=True):
-                activity.heartbeat("Waiting for file lock")
-                await asyncio.sleep(5)
-
-            if await lfile.avalid():
+            if await lfile.valid():
                 logger.info("file already downloaded, skipping")
-                lfile.commit()
                 for target in param.extract_paths:
-                    lfile.extract_file(target)
+                    await lfile.extract_file(target)
                     activity.heartbeat(f"Extracted file in {target}")
-                await self.report_progress(param.rfile_ids, lfile.size)
+                await self.report_progress(param.rfile_ids, lfile.total_size)
                 return True
 
             async with (
                 self.apiclient.make_client(param.http_proxy).stream(
                     "GET", url
                 ) as response,
-                lfile.astore(autocommit=False) as store,
+                lfile.store() as store,
             ):
                 response.raise_for_status()
                 last_update = datetime.now(timezone.utc)
@@ -252,54 +248,57 @@ class BootResourcesActivity(ActivityBase):
                     activity.heartbeat("Downloaded chunk")
                     dt_now = datetime.now(timezone.utc)
                     if dt_now > (last_update + REPORT_INTERVAL):
-                        await self.report_progress(param.rfile_ids, lfile.size)
+                        await self.report_progress(
+                            param.rfile_ids, await store.tell()
+                        )
                         last_update = dt_now
-                    store.write(chunk)
+                    await store.write(chunk)
+            activity.heartbeat("Download finished")
 
-            logger.debug("Download done, doing checksum")
-            activity.heartbeat("Finished download, doing checksum")
-            if await lfile.avalid():
-                lfile.commit()
-                logger.debug(f"file commited {lfile.size}")
+            for target in param.extract_paths:
+                await lfile.extract_file(target)
+                activity.heartbeat(f"Extracted file in {target}")
 
-                for target in param.extract_paths:
-                    lfile.extract_file(target)
-                    activity.heartbeat(f"Extracted file in {target}")
+            await self.report_progress(param.rfile_ids, lfile.total_size)
+            return True
 
-                await self.report_progress(param.rfile_ids, lfile.size)
-                return True
-            else:
-                await self.report_progress(param.rfile_ids, 0)
-                lfile.unlink()
-                raise ApplicationError("Invalid checksum")
+        except LocalStoreInvalidHash as e:
+            await self.report_progress(param.rfile_ids, 0)
+            raise ApplicationError("Invalid SHA256 checksum") from e
+        except LocalStoreAllocationFail as e:
+            await self.report_progress(param.rfile_ids, 0)
+            raise ApplicationError(
+                "No space left on disk", non_retryable=True
+            ) from e
+        except LocalStoreFileSizeMismatch as e:
+            await self.report_progress(param.rfile_ids, 0)
+            raise ApplicationError(
+                "Downloaded file size does not match expected size"
+            ) from e
         except IOError as ex:
             # if we run out of disk space, stop this download.
             # let the user fix the issue and restart it manually later
+            await lfile.unlink()
+            await self.report_progress(param.rfile_ids, 0)
             if ex.errno == 28:
-                lfile.unlink()
-                await self.report_progress(param.rfile_ids, 0)
                 logger.error(ex.strerror)
-                return False
+                raise ApplicationError(
+                    "No space left on disk", non_retryable=True
+                ) from ex
 
             raise ApplicationError(
                 ex.strerror if ex.strerror else str(ex),
                 type=ex.__class__.__name__,
-            ) from None
-        except (
-            httpx.HTTPError,
-            LocalStoreInvalidHash,
-            LocalStoreWriteBeyondEOF,
-        ) as ex:
-            raise ApplicationError(
-                str(ex), type=ex.__class__.__name__
-            ) from None
+            ) from ex
+        except httpx.HTTPError as ex:
+            await lfile.unlink()
+            await self.report_progress(param.rfile_ids, 0)
+            raise ApplicationError(str(ex), type=ex.__class__.__name__) from ex
         except (asyncio.CancelledError, CancelledError) as ex:
-            lfile.unlink()
+            await lfile.unlink()
             await self.report_progress(param.rfile_ids, 0)
             # re-raise it as it is since temporal will propagate this to the parent wf
             raise ex
-        finally:
-            lfile.release_lock()
 
     @activity_defn_with_context(name=DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME)
     async def delete_bootresourcefile(
@@ -308,16 +307,11 @@ class BootResourcesActivity(ActivityBase):
         """Delete files from disk"""
         for file in param.files:
             logger.debug(f"attempt to delete {file}")
-            lfile = LocalBootResourceFile(
+            lfile = AsyncLocalBootResourceFile(
                 file.sha256, file.filename_on_disk, 0
             )
-            try:
-                while not lfile.acquire_lock(try_lock=True):
-                    activity.heartbeat("Waiting for file lock")
-                    await asyncio.sleep(5)
-                lfile.unlink()
-            finally:
-                lfile.release_lock()
+            await lfile.unlink()
+            activity.heartbeat("File deleted")
             logger.info(f"file {file} deleted")
         return True
 
