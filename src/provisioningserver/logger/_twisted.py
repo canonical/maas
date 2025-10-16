@@ -1,11 +1,13 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted-specific logging stuff."""
 
+import json
 import os
 import re
 import sys
+import threading
 import warnings
 
 import crochet
@@ -13,6 +15,7 @@ from twisted import logger as twistedModern
 from twisted.python import log as twistedLegacy
 from twisted.python import usage
 
+from maascommon.tracing import get_trace_id
 from provisioningserver.logger._common import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_VERBOSITY,
@@ -120,15 +123,22 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
         )
 
 
-def EventLogger(outFile=sys.__stdout__):
+def EventLogger(outFile=sys.__stdout__, use_json_logging: bool | None = None):
     """Factory returning a `t.logger.ILogObserver`.
 
     This logs to the real standard out using MAAS's logging conventions.
 
     Refer to this with `twistd`'s `--logger` argument.
     """
+
+    from provisioningserver import settings
+
+    if use_json_logging is None:
+        use_json_logging = settings.USE_JSON_LOGGING
     return twistedModern.FilteringLogObserver(
-        twistedModern.FileLogObserver(outFile, _formatModernEvent),
+        twistedModern.FileLogObserver(
+            outFile, LogFormatter(use_json_logging=use_json_logging)
+        ),
         (_filterByLevel, _filterByNoise),
     )
 
@@ -152,28 +162,47 @@ def _startLoggingWithObserver(observer, setStdout=1):
     )
 
 
-_lineFormat = DEFAULT_LOG_FORMAT + "\n"
+class LogFormatter:
+    def __init__(self, use_json_logging: bool):
+        self._formatter = (
+            self.__json_formatter
+            if use_json_logging
+            else self.__plaintext_formatter
+        )
 
+    def __json_formatter(self, record: dict) -> str:
+        return json.dumps(record)
 
-def _formatModernEvent(event):
-    """Format a "modern" event according to MAAS's conventions."""
-    text = twistedModern.formatEvent(event)
-    if "log_failure" in event:
-        try:
-            traceback = event["log_failure"].getTraceback()
-        except Exception:
-            traceback = "(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
-        text = "\n".join((text, traceback))
-    level = event["log_level"] if "log_level" in event else None
-    system = event["log_system"] if "log_system" in event else None
-    if system is None and "log_namespace" in event:
-        system = _getSystemName(event["log_namespace"])
+    def __plaintext_formatter(self, record: dict):
+        return DEFAULT_LOG_FORMAT % {
+            "levelname": record["level"],
+            "message": record["message"],
+            "name": record["name"],
+        }
 
-    return _lineFormat % {
-        "levelname": "-" if level is None else level.name,
-        "message": "-" if text is None else text.replace("\n", "\n\t"),
-        "name": "-" if system is None else system,
-    }
+    def __call__(self, event):
+        """Format a "modern" event according to MAAS's conventions."""
+        text = twistedModern.formatEvent(event)
+        if "log_failure" in event:
+            try:
+                traceback = event["log_failure"].getTraceback()
+            except Exception:
+                traceback = "(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
+            text = "\n".join((text, traceback))
+        level = event["log_level"] if "log_level" in event else None
+        system = event["log_system"] if "log_system" in event else None
+        if system is None and "log_namespace" in event:
+            system = _getSystemName(event["log_namespace"])
+
+        log_record = {
+            "level": "-" if level is None else level.name,
+            "message": "-" if text is None else text.replace("\n", "\n\t"),
+            "name": "-" if system is None else system,
+            "trace_id": get_trace_id(),
+            "thread": f"{threading.current_thread().name}:{threading.current_thread().ident}",
+        }
+
+        return self._formatter(log_record) + "\n"
 
 
 def _getSystemName(system):

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:mod:`maasserver.clusterrpc.utils`."""
@@ -7,7 +7,6 @@ import random
 from unittest.mock import Mock, sentinel
 
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
-from fixtures import FakeLogger
 from twisted.python.failure import Failure
 
 from maasserver.clusterrpc import utils
@@ -80,7 +79,7 @@ class TestCallClusters(MAASServerTestCase):
         timeout_callback.assert_not_called()
 
     def test_with_unavailable_callbacks(self):
-        logger = self.useFixture(FakeLogger("maasserver"))
+        logger = self.patch(utils, "logger")
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.side_effect = NoConnectionsAvailable
@@ -109,10 +108,12 @@ class TestCallClusters(MAASServerTestCase):
         success_callback.assert_not_called()
         failed_callback.assert_not_called()
         timeout_callback.assert_not_called()
-        self.assertIn("Unable to get RPC connection", logger.output)
+        logger.error.assert_called_once()
+        args, _ = logger.error.call_args
+        self.assertIn("Unable to get RPC connection", args[0])
 
     def test_with_failed_callbacks(self):
-        logger = self.useFixture(FakeLogger("maasserver"))
+        logger = self.patch(utils, "logger")
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
@@ -144,13 +145,15 @@ class TestCallClusters(MAASServerTestCase):
         failed_callback.assert_called_once_with(rack)
         timeout_callback.assert_not_called()
 
+        logger.warn.assert_called_once()
+        args, _ = logger.warn.call_args
         self.assertRegex(
-            logger.output,
+            args[0],
             "Exception during .* on rack controller.*MockFailure: ",
         )
 
     def test_with_timeout_callbacks(self):
-        logger = self.useFixture(FakeLogger("maasserver"))
+        logger = self.patch(utils, "logger")
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
@@ -180,7 +183,9 @@ class TestCallClusters(MAASServerTestCase):
         failed_callback.assert_not_called()
         timeout_callback.assert_called_once_with(rack)
 
-        self.assertIn("RPC connection timed out", logger.output)
+        logger.error.assert_called_once()
+        args, _ = logger.error.call_args
+        self.assertIn("RPC connection timed out", args[0])
 
 
 class TestCallRacksSynchronously(MAASServerTestCase):

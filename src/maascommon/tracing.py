@@ -11,6 +11,10 @@ def get_trace_id() -> str:
     return TRACE_ID.get()
 
 
+def regenerate_trace_id() -> None:
+    set_trace_id(uuid.uuid4().hex)
+
+
 def set_trace_id(trace_id: str) -> None:
     TRACE_ID.set(trace_id)
 

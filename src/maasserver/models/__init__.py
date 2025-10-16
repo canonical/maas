@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model export and helpers for maasserver."""
@@ -41,7 +41,6 @@ __all__ = [
     "IPRange",
     "LargeFile",
     "LicenseKey",
-    "logger",
     "Machine",
     "MDNS",
     "Neighbour",
@@ -111,7 +110,6 @@ from django.db.models.signals import post_save
 from django.urls import get_callable, get_resolver, get_script_prefix
 from piston3.doc import HandlerDocumentation
 
-from maasserver import logger
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import (
     BMC,

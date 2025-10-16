@@ -10,6 +10,7 @@ import pytest
 from maascommon.tracing import (
     get_or_set_trace_id,
     get_trace_id,
+    regenerate_trace_id,
     set_trace_id,
     TRACE_ID,
 )
@@ -29,6 +30,12 @@ class TestTracing:
         trace_id = "custom-trace-123"
         set_trace_id(trace_id)
         assert TRACE_ID.get() == trace_id
+
+    def test_regenerate_trace_id(self):
+        trace_id = "custom-trace-123"
+        set_trace_id(trace_id)
+        regenerate_trace_id()
+        assert TRACE_ID.get() not in ("", trace_id)
 
     def test_get_or_set_trace_id_returns_existing(self):
         trace_id = "existing-trace-456"

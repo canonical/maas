@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Common code for MAAS Cluster RPC operations."""
@@ -9,11 +9,11 @@ from functools import partial
 from django.core.exceptions import ValidationError
 from twisted.python.failure import Failure
 
-from maasserver import logger
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.models.node import RackController
 from maasserver.rpc import getClientFor
 from maasserver.utils import asynchronous
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 RPCResults = namedtuple(
@@ -28,6 +28,8 @@ RPCResults = namedtuple(
         "timeout",
     ),
 )
+
+logger = LegacyLogger()
 
 
 def call_racks_synchronously(
@@ -151,11 +153,7 @@ def call_clusters(
             client = getClientFor(controller.system_id)
         except NoConnectionsAvailable:
             logger.error(
-                "Error while calling %s: Unable to get RPC connection for "
-                "rack controller '%s' (%s).",
-                command_name,
-                controller.hostname,
-                controller.system_id,
+                f"Error while calling {command_name}: Unable to get RPC connection for rack controller '{controller.hostname}' ({controller.system_id})."
             )
             unavailable_callback(controller)
             if not ignore_errors:
@@ -200,7 +198,7 @@ def call_clusters(
                     error,
                 )
             )
-            logger.warning(human_readable_error)
+            logger.warn(human_readable_error)
             # For failures, there are two callbacks: one for the controller
             # that failed, the second for the specific failure that occurred.
             failed_callback(controller)
@@ -214,11 +212,7 @@ def call_clusters(
     for controller in calls.values():
         timeout_callback(controller)
         logger.error(
-            "Error while calling %s: RPC connection timed out to rack "
-            "controller '%s' (%s).",
-            command_name,
-            controller.hostname,
-            controller.system_id,
+            f"Error while calling '{command_name}': RPC connection timed out to rack controller '{controller.hostname}' ({controller.system_id})."
         )
 
 

@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin code for the MAAS provisioning server"""
@@ -199,9 +199,11 @@ class ProvisioningServiceMaker:
         # Load the settings from rackd.conf.
         with ClusterConfiguration.open() as config:
             settings.DEBUG = config.debug
+            settings.USE_JSON_LOGGING = config.use_json_logging
         # Debug mode is always on in the development environment.
         if is_dev_environment():
             settings.DEBUG = True
+            settings.USE_JSON_LOGGING = False
 
     def _configureCrochet(self):
         # Prevent other libraries from starting the reactor via crochet.

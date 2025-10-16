@@ -6,6 +6,7 @@
 from collections import defaultdict
 from collections.abc import Iterable
 import contextlib
+import contextvars
 from functools import partial, wraps
 from http import HTTPStatus
 from itertools import chain, repeat, starmap
@@ -40,6 +41,7 @@ from twisted.web.server import Site
 from zope import interface
 from zope.interface import provider
 
+from maascommon.tracing import get_or_set_trace_id
 from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
@@ -897,9 +899,21 @@ class ThreadPool(threadpool.ThreadPool):
         the pool (which assumes that creating a thread will always succeed).
         """
 
+        # This is where all the tracing magic happens: if the reactor is scheduling new tasks to a default/db thread,
+        # the trace id would be set and copied in the thread. Then, the thread might callFromThread to execute other tasks on the reactor
+        # (for example, a post commit) and in this case it would have the trace id populated. This ensures that
+        # every call that is executed from the thread is using the same trace id, even if the execution is going back and forth
+        # from the event loop and/or other threads.
+        get_or_set_trace_id()
+        ctx = contextvars.copy_context()
+
         def callInContext(context, func, *args, **kwargs):
+            # We are inside a database or default thread. Reset the trace_id for this execution.
             context.enter()  # Delayed until now.
-            return func(*args, **kwargs)
+
+            # No need to reset the trace id when the job is done, because when a new task is scheduled a brand new context will be
+            # provided.
+            return ctx.run(func, *args, **kwargs)
 
         return super().callInThreadWithCallback(
             onResult, callInContext, self.context, func, *args, **kwargs

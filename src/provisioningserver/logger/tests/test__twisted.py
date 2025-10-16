@@ -1,24 +1,27 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Twisted-specific logging stuff."""
 
 import io
+import json
+import threading
 import time
 
 from twisted import logger
 from twisted.python.failure import Failure
 
+from maascommon.tracing import set_trace_id
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.logger import _twisted
 from provisioningserver.logger._twisted import (
-    _formatModernEvent,
     _getCommandName,
     _getSystemName,
     EventLogger,
     LegacyLogger,
+    LogFormatter,
     observe_twisted_internet_tcp,
     observe_twisted_internet_udp,
     observe_twisted_internet_unix,
@@ -299,7 +302,7 @@ class TestGetCommandName(MAASTestCase):
         self.assertEqual(self.expected, _getCommandName(self.argv))
 
 
-class TestFormatModernEvent(MAASTestCase):
+class TestLogFormatter(MAASTestCase):
     """Tests for `_formatModernEvent`."""
 
     scenarios = tuple(
@@ -315,7 +318,7 @@ class TestFormatModernEvent(MAASTestCase):
         log_time = pick_log_time()
         self.assertEqual(
             f"{log_system}: [{self.log_level.name}] >{thing1}< >{thing2}<\n",
-            _formatModernEvent(
+            LogFormatter(use_json_logging=False)(
                 {
                     "log_time": log_time,
                     "log_format": log_format,
@@ -342,7 +345,7 @@ class TestFormatModernEvent(MAASTestCase):
                 self.log_level.name,
                 failure.getTraceback().replace("\n", "\n\t"),
             ),
-            _formatModernEvent(
+            LogFormatter(use_json_logging=False)(
                 {
                     "log_system": log_system,
                     "log_level": self.log_level,
@@ -354,13 +357,15 @@ class TestFormatModernEvent(MAASTestCase):
     def test_formats_without_format(self):
         self.assertEqual(
             "-: [%s] \n" % self.log_level.name,
-            _formatModernEvent({"log_level": self.log_level}),
+            LogFormatter(use_json_logging=False)(
+                {"log_level": self.log_level}
+            ),
         )
 
     def test_formats_with_null_format(self):
         self.assertEqual(
             f"-: [{self.log_level.name}] \n",
-            _formatModernEvent(
+            LogFormatter(use_json_logging=False)(
                 {"log_format": None, "log_level": self.log_level}
             ),
         )
@@ -369,7 +374,7 @@ class TestFormatModernEvent(MAASTestCase):
         log_namespace = factory.make_name("namespace")
         self.assertEqual(
             f"{log_namespace}: [{self.log_level.name}] \n",
-            _formatModernEvent(
+            LogFormatter(use_json_logging=False)(
                 {"log_level": self.log_level, "log_namespace": log_namespace}
             ),
         )
@@ -378,12 +383,67 @@ class TestFormatModernEvent(MAASTestCase):
         log_namespace = factory.make_name("namespace")
         self.assertEqual(
             f"{log_namespace}: [{self.log_level.name}] \n",
-            _formatModernEvent(
+            LogFormatter(use_json_logging=False)(
                 {
                     "log_level": self.log_level,
                     "log_namespace": log_namespace,
                     "log_system": None,
                 }
+            ),
+        )
+
+    def test_json_formatting(self):
+        thing1 = factory.make_name("thing")
+        thing2 = factory.make_name("thing")
+        log_system = factory.make_name("system")
+        log_format = ">{thing1}< >{thing2}<"
+        log_time = pick_log_time()
+        self.assertEqual(
+            {
+                "level": self.log_level.name,
+                "message": f">{thing1}< >{thing2}<",
+                "name": log_system,
+                "trace_id": "",
+                "thread": f"{threading.current_thread().name}:{threading.current_thread().ident}",
+            },
+            json.loads(
+                LogFormatter(use_json_logging=True)(
+                    {
+                        "log_time": log_time,
+                        "log_format": log_format,
+                        "log_system": log_system,
+                        "log_level": self.log_level,
+                        "thing1": thing1,
+                        "thing2": thing2,
+                    }
+                )
+            ),
+        )
+
+    def test_json_formatting_includes_trace_id(self):
+        self.addCleanup(set_trace_id, "")
+        set_trace_id("test_trace_id")
+        log_system = factory.make_name("system")
+        log_format = "test"
+        log_time = pick_log_time()
+        self.assertEqual(
+            {
+                "level": self.log_level.name,
+                "message": "test",
+                "name": log_system,
+                "thread": f"{threading.current_thread().name}:{threading.current_thread().ident}",
+                "trace_id": "test_trace_id",
+            },
+            json.loads(
+                LogFormatter(use_json_logging=True)(
+                    {
+                        "log_time": log_time,
+                        "log_format": log_format,
+                        "log_system": log_system,
+                        "log_level": self.log_level,
+                        "test": "test",
+                    }
+                )
             ),
         )
 
@@ -399,8 +459,16 @@ class TestEventLogger(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.output = io.StringIO()
+        self._disable_json_logging()
         self.log = EventLogger(self.output)
-        self.get_logs = lambda: find_log_lines(self.output.getvalue())
+        self.get_logs = lambda: find_log_lines(
+            self.output.getvalue(), use_json_logging=False
+        )
+
+    def _disable_json_logging(self):
+        from provisioningserver import settings
+
+        settings.USE_JSON_LOGGING = False
 
     def setLogLevel(self, log_level):
         """Set the level at which events will be logged.

@@ -1,11 +1,13 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """XPath-related utilities."""
 
-import logging
-
 from lxml import etree
+
+from provisioningserver.logger import LegacyLogger
+
+logger = LegacyLogger()
 
 
 def is_compiled_xpath(xpath):
@@ -39,7 +41,7 @@ def match_xpath(xpath, doc):
         return doc.xpath(xpath)
 
 
-def try_match_xpath(xpath, doc, logger=logging):
+def try_match_xpath(xpath, doc):
     """See if the XPath expression matches the given XML document.
 
     Invalid XPath expressions are logged, and are returned as a
@@ -59,5 +61,5 @@ def try_match_xpath(xpath, doc, logger=logging):
     except etree.XPathEvalError as error:
         # Get a plaintext version of `xpath`.
         expr = xpath.path if is_compiled_xpath(xpath) else xpath
-        logger.warning("Invalid expression '%s': %s", expr, str(error))
+        logger.warn(f"Invalid expression '{expr}': {str(error)}")
         return False

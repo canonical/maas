@@ -11,7 +11,6 @@ import attr
 from netaddr import IPAddress, IPNetwork
 
 from maascommon.dns import HostnameIPMapping, HostnameRRsetMapping
-from maasserver import logger
 from maasserver.enum import IPRANGE_TYPE, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models.config import Config
@@ -26,6 +25,9 @@ from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
 )
+from provisioningserver.logger import LegacyLogger
+
+logger = LegacyLogger()
 
 
 class lazydict(dict):
@@ -93,7 +95,7 @@ WARNING_MESSAGE = (
 def warn_loopback(ip):
     """Warn if the given IP address is in the loopback network."""
     if IPAddress(ip).is_loopback():
-        logger.warning(WARNING_MESSAGE % ip)
+        logger.warn(WARNING_MESSAGE % ip)
 
 
 def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):

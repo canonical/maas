@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.config`."""
@@ -152,3 +152,26 @@ class TestRegionConfigurationDebugOptions(MAASTestCase):
         self.assertTrue(getattr(config, self.option))
         # It's also stored in the configuration database.
         self.assertEqual({self.option: True}, config.store)
+
+
+class TestRegionConfigurationUseJSONLogging(MAASTestCase):
+    options_and_defaults = {"use_json_logging": True}
+
+    scenarios = tuple(
+        (name, {"option": name, "default": default})
+        for name, default in options_and_defaults.items()
+    )
+
+    def test_default(self):
+        config = RegionConfiguration({})
+        self.assertEqual(self.default, getattr(config, self.option))
+
+    def test_set_and_get(self):
+        config = RegionConfiguration({})
+        example_value = random.choice(["false", "no", "False"])
+        # Argument values will most often be passed in from the command-line,
+        # so convert to a string before use to reflect that usage.
+        setattr(config, self.option, example_value)
+        self.assertFalse(getattr(config, self.option))
+        # It's also stored in the configuration database.
+        self.assertEqual({self.option: False}, config.store)

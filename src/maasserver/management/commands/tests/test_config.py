@@ -116,6 +116,7 @@ class TestConfigurationSet(MAASTestCase):
             "debug_queries",
             "debug_http",
             "database_keepalive",
+            "use_json_logging",
         ]:
             value = random.choice([True, False])
         else:

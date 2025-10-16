@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin code for the MAAS Region."""
@@ -93,6 +93,7 @@ class RegionWorkerServiceMaker:
         from provisioningserver import settings
 
         settings.DEBUG = django_settings.DEBUG
+        settings.USE_JSON_LOGGING = django_settings.USE_JSON_LOGGING
 
     def _configureReactor(self):
         # Disable all database connections in the reactor.

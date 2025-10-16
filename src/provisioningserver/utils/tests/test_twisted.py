@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from functools import partial
@@ -35,6 +35,7 @@ from twisted.python import context, threadable
 from twisted.python.failure import Failure
 from twisted.web.test import requesthelper
 
+from maascommon.tracing import get_trace_id, set_trace_id
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -1604,6 +1605,42 @@ class TestThreadPool(MAASTestCase):
             )
         )
         self.assertIn("maastesting.factory.TestException#", logger.output)
+
+    @inlineCallbacks
+    def test_trace_id_is_generated_and_propagated(self):
+        trace_id = get_trace_id()
+        pool = ThreadPool(
+            minthreads=1,
+            maxthreads=1,
+        )
+        self.addCleanup(stop_pool_if_running, pool)
+        pool.start()
+
+        def _extract_trace_id_in_thread():
+            return get_trace_id()
+
+        result = yield deferToThreadPool(
+            reactor, pool, _extract_trace_id_in_thread
+        )
+        self.assertIsNot(result, trace_id)
+
+    @inlineCallbacks
+    def test_trace_id_is_copied_if_present(self):
+        set_trace_id("test-trace-id")
+        pool = ThreadPool(
+            minthreads=1,
+            maxthreads=1,
+        )
+        self.addCleanup(stop_pool_if_running, pool)
+        pool.start()
+
+        def _extract_trace_id_in_thread():
+            return get_trace_id()
+
+        result = yield deferToThreadPool(
+            reactor, pool, _extract_trace_id_in_thread
+        )
+        self.assertEqual(result, "test-trace-id")
 
 
 def stop_pool_if_running(pool):
