@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from maasapiserver.common.api.base import Handler, handler
@@ -183,3 +183,22 @@ class AuthHandler(Handler):
         builder = request.to_builder()
         provider = await services.external_oauth.create(builder)
         return OAuthProviderResponse.from_model(provider=provider)
+
+    @handler(
+        path="/auth/oauth/{provider_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+    )
+    async def delete_oauth_provider(
+        self,
+        provider_id: int,
+        etag_if_match: str | None = Header(alias="if-match", default=None),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.external_oauth.delete_by_id(provider_id, etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

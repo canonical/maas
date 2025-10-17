@@ -26,10 +26,12 @@ from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
     DischargeRequiredException,
+    PreconditionFailedException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
+    ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
@@ -446,3 +448,56 @@ class TestAuthApi:
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 409
+
+    # DELETE /auth/oauth/:provider_id
+    async def test_delete_oauth_provider(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.delete_by_id.side_effect = None
+        response = await mocked_api_client.delete(f"{self.BASE_PATH}/oauth/1")
+        assert response.status_code == 204
+
+    async def test_delete_oauth_provider_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.delete_by_id.side_effect = None
+        response = await mocked_api_client.delete(
+            f"{self.BASE_PATH}/oauth/1",
+            headers={"if-match": "my_etag"},
+        )
+        assert response.status_code == 204
+
+    async def test_delete_oauth_provider_wrong_etag_error(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.delete_by_id.side_effect = [
+            PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                        message="The etag 'wrong_etag' did not match etag 'my_etag'.",
+                    )
+                ]
+            ),
+            None,
+        ]
+        response = await mocked_api_client.delete(
+            f"{self.BASE_PATH}/oauth/1",
+            headers={"if-match": "wrong_etag"},
+        )
+        assert response.status_code == 412
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 412
+        assert error_response.message == "A precondition has failed."
+        assert (
+            error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
+        )
