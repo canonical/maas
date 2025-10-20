@@ -1,18 +1,43 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from uuid import uuid4
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.agents import AgentBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.agents import AgentsRepository
+from maasservicelayer.db.repositories.agents import (
+    AgentsClauseFactory,
+    AgentsRepository,
+)
 from maasservicelayer.models.agents import Agent
 from tests.fixtures.factories.agents import create_test_agents_entry
 from tests.fixtures.factories.node import create_test_rack_controller_entry
 from tests.fixtures.factories.racks import create_test_rack_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+
+
+class TestAgentsClauseFactory:
+    def test_with_id(self) -> None:
+        clause = AgentsClauseFactory.with_id(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_agent.id = 1")
+
+    def with_rack_id(self) -> None:
+        clause = AgentsClauseFactory.with_rack_id(2)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_agent.url = 2")
+
+    def with_rack_id_in(self) -> None:
+        clause = AgentsClauseFactory.with_rack_id_in({1, 2})
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_agent.id IN (1, 2)")
 
 
 class TestAgentsRepository(RepositoryCommonTests[Agent]):
@@ -32,7 +57,7 @@ class TestAgentsRepository(RepositoryCommonTests[Agent]):
         return [
             await create_test_agents_entry(
                 fixture,
-                secret=f"secret-{i}",
+                uuid=str(uuid4()),
                 rack_id=racks[i].id,
                 rackcontroller_id=rack_controllers[i]["id"],
             )
@@ -46,7 +71,7 @@ class TestAgentsRepository(RepositoryCommonTests[Agent]):
 
         return await create_test_agents_entry(
             fixture,
-            secret="secret",
+            uuid=str(uuid4()),
             rack_id=rack.id,
             rackcontroller_id=rack_controller["id"],
         )
@@ -59,7 +84,7 @@ class TestAgentsRepository(RepositoryCommonTests[Agent]):
         rack_controller = await create_test_rack_controller_entry(fixture)
 
         return AgentBuilder(
-            secret="secret",
+            uuid=str(uuid4()),
             rack_id=rack.id,
             rackcontroller_id=rack_controller["id"],
         )

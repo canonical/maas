@@ -39,6 +39,9 @@ from maasapiserver.v3.middlewares.auth import (
     MacaroonAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
+from maasapiserver.v3.middlewares.client_certificate import (
+    RequireClientCertMiddleware,
+)
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasservicelayer.db import Database
@@ -166,7 +169,12 @@ async def create_internal_app(
         "MAASInternalAPIServer",
         "maasinternalapiserver",
     )
+
+    app.add_middleware(ExceptionMiddleware)
+    app.add_middleware(RequireClientCertMiddleware)
+
     APIv3Internal.register(app.router)
+
     return app
 
 

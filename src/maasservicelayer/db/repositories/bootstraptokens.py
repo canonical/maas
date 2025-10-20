@@ -22,6 +22,10 @@ class BootstrapTokensClauseFactory(ClauseFactory):
             condition=BootstrapTokenTable.c.rack_id.in_(rack_id_list)
         )
 
+    @classmethod
+    def with_secret(cls, secret):
+        return Clause(condition=eq(BootstrapTokenTable.c.secret, secret))
+
 
 class BootstrapTokensRepository(BaseRepository[BootstrapToken]):
     def get_repository_table(self) -> Table:

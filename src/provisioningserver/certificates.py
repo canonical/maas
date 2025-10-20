@@ -43,7 +43,7 @@ class CertificateRequest(NamedTuple):
         organizational_unit_name: Optional[str] = None,
         key_bits: int = 4096,
         subject_alternative_name: bytes | None = None,
-    ):
+    ) -> Self:
         key = crypto.PKey()
         key.generate_key(crypto.TYPE_RSA, key_bits)
 
@@ -360,7 +360,7 @@ def store_maas_cluster_cert_tuple(
     )
 
 
-def get_maas_cert_tuple():
+def get_maas_cert_tuple() -> tuple[str, str] | None:
     """Return a 2-tuple with certificate and private key paths.
 
     The format is the same used by python-requests."""

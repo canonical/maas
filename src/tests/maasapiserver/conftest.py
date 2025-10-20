@@ -14,6 +14,7 @@ from .fixtures.app import (
     authenticated_user_api_client_v3,
     enable_candid,
     enable_rbac,
+    internal_app_with_mocked_services,
     mock_aioresponse,
     mocked_api_client,
     mocked_api_client_admin,
@@ -22,6 +23,7 @@ from .fixtures.app import (
     mocked_api_client_session_id,
     mocked_api_client_user,
     mocked_api_client_user_rbac,
+    mocked_internal_api_client,
     user_session_id,
 )
 from .fixtures.db import (
@@ -54,6 +56,8 @@ __all__ = [
     "mocked_api_client_rbac",
     "mocked_api_client_user_rbac",
     "mocked_api_client_admin_rbac",
+    "internal_app_with_mocked_services",
+    "mocked_internal_api_client",
     "app_with_mocked_services",
     "app_with_mocked_services_user",
     "app_with_mocked_services_admin",

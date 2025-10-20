@@ -47,7 +47,7 @@ AgentTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("secret", String(64), unique=True, nullable=False),
+    Column("uuid", String(36), unique=True, nullable=False),
     Column(
         "rack_id",
         BigInteger,
@@ -58,25 +58,9 @@ AgentTable = Table(
         "rackcontroller_id",
         BigInteger,
         ForeignKey("maasserver_node.id"),
-        nullable=False,
+        nullable=True,  # WIP: change to False once MAE is complete
     ),
-)
-
-AgentCertificateTable = Table(
-    "maasserver_agentcertificate",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("certificate_fingerprint", String(64), unique=True, nullable=False),
-    Column("certificate", LargeBinary, unique=True, nullable=False),
-    Column("revoked_at", DateTime(timezone=True), nullable=True),
-    Column(
-        "agent_id",
-        BigInteger,
-        ForeignKey("maasserver_agent.id"),
-        nullable=False,
-    ),
+    UniqueConstraint("rack_id", "rackcontroller_id"),
 )
 
 BlockDeviceTable = Table(

@@ -208,6 +208,7 @@ APIServerRule = Rule(
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("markupsafe.Markup"),
     Allow("netaddr|netaddr.**"),
+    Allow("OpenSSL|OpenSSL.**"),
     Allow("prometheus_client|prometheus_client.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("provisioningserver.certificates.*"),

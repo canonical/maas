@@ -18,6 +18,8 @@ class AgentBuilder(ResourceBuilder):
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     rack_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    rackcontroller_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    secret: Union[str, Unset] = Field(default=UNSET, required=False)
+    rackcontroller_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    uuid: Union[str, Unset] = Field(default=UNSET, required=False)

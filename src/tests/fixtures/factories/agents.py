@@ -10,8 +10,8 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 async def create_test_agents_entry(
     fixture: Fixture,
-    secret: str,
-    rack_id: id,
+    uuid: str,
+    rack_id: str,
     rackcontroller_id: int,
     **extra_details,
 ) -> Agent:
@@ -21,7 +21,7 @@ async def create_test_agents_entry(
     agent = {
         "created": created_at,
         "updated": updated_at,
-        "secret": secret,
+        "uuid": uuid,
         "rack_id": rack_id,
         "rackcontroller_id": rackcontroller_id,
     }

@@ -13,6 +13,10 @@ from maasservicelayer.models.agents import Agent
 
 class AgentsClauseFactory(ClauseFactory):
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(AgentTable.c.id, id))
+
+    @classmethod
     def with_rack_id(cls, rack_id: int) -> Clause:
         return Clause(condition=eq(AgentTable.c.rack_id, rack_id))
 

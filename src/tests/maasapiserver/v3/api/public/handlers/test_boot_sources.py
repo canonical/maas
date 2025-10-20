@@ -617,12 +617,19 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_sources.list.return_value = ListResult[BootSource](
             items=[TEST_BOOTSOURCE_1, TEST_BOOTSOURCE_2], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections?page=1&size=1"
+        )
         assert response.status_code == 200
-        boot_sources_response = BootSourcesListResponse(**response.json())
+        boot_sources_response = BootSourceSelectionListResponse(
+            **response.json()
+        )
         assert len(boot_sources_response.items) == 2
         assert boot_sources_response.total == 2
-        assert boot_sources_response.next == f"{self.BASE_PATH}?page=2&size=1"
+        assert (
+            boot_sources_response.next
+            == f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections?page=2&size=1"
+        )
 
     async def test_get_200(
         self,
@@ -803,8 +810,6 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
-        boot_source_id = 196
-
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -812,7 +817,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             TEST_BOOTSOURCESELECTION
         )
         response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}/{boot_source_id}/selections/{TEST_BOOTSOURCESELECTION.id}",
+            f"{self.BASE_PATH}/{TEST_BOOTSOURCESELECTION.boot_source_id}/selections/{TEST_BOOTSOURCESELECTION.id}",
         )
         assert response.status_code == 204
 

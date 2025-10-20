@@ -1,3 +1,6 @@
+# Copyright 2025 Canonical Ltd. This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 """MAAS Agent Enrollment
 
 Revision ID: 0006
@@ -37,9 +40,11 @@ def upgrade() -> None:
         ),
         sa.Column("created", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("secret", sa.String(length=64), nullable=False),
+        sa.Column("uuid", sa.String(length=36), nullable=False),
         sa.Column("rack_id", sa.BigInteger(), nullable=False),
-        sa.Column("rackcontroller_id", sa.BigInteger(), nullable=False),
+        sa.Column(
+            "rackcontroller_id", sa.BigInteger(), nullable=True
+        ),  # change to False once MAE is complete
         sa.ForeignKeyConstraint(
             ["rack_id"],
             ["maasserver_rack.id"],
@@ -48,8 +53,9 @@ def upgrade() -> None:
             ["rackcontroller_id"],
             ["maasserver_node.id"],
         ),
+        sa.UniqueConstraint("uuid"),
+        sa.UniqueConstraint("rack_id", "rackcontroller_id"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("secret"),
     )
     op.create_table(
         "maasserver_bootstraptoken",
@@ -68,29 +74,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("secret"),
     )
-    op.create_table(
-        "maasserver_agentcertificate",
-        sa.Column(
-            "id", sa.BigInteger(), sa.Identity(always=False), nullable=False
-        ),
-        sa.Column(
-            "certificate_fingerprint", sa.String(length=64), nullable=False
-        ),
-        sa.Column("certificate", sa.LargeBinary(), nullable=False),
-        sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("agent_id", sa.BigInteger(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["agent_id"],
-            ["maasserver_agent.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("certificate"),
-        sa.UniqueConstraint("certificate_fingerprint"),
-    )
 
 
 def downgrade() -> None:
-    op.drop_table("maasserver_agentcertificate")
     op.drop_table("maasserver_bootstraptoken")
     op.drop_table("maasserver_agent")
     op.drop_table("maasserver_rack")

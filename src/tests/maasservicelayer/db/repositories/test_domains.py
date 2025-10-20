@@ -72,8 +72,8 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
     ) -> Sequence[Domain]:
         # The default domain is created by the migrations
         # and it has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:8981
-        ts = datetime(2025, 9, 8, 8, 41, 58, 8863, tzinfo=timezone.utc)
+        # see src/maasserver/testing/inital.maas_test.sql:8977
+        ts = datetime(2025, 10, 17, 10, 15, 20, 698940, tzinfo=timezone.utc)
         created_domains = [
             Domain(
                 id=0,

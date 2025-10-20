@@ -10,6 +10,10 @@ from maasapiserver.common.api.models.responses.errors import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.racks import RackRequest
+from maasapiserver.v3.api.public.models.responses.agents import (
+    AgentListResponse,
+    AgentResponse,
+)
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
@@ -21,6 +25,8 @@ from maasapiserver.v3.api.public.models.responses.racks import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -219,3 +225,131 @@ class RacksHandler(Handler):
         return RackBootstrapTokenResponse.from_model(
             token=token,
         )
+
+    @handler(
+        path="/racks/{rack_id}/agents",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": AgentListResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_rack_agents(
+        self,
+        rack_id: int,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> AgentListResponse:
+        agents = await services.agents.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=QuerySpec(where=AgentsClauseFactory.with_rack_id(rack_id)),
+        )
+        if not agents:
+            raise NotFoundException()
+
+        return AgentListResponse(
+            items=[
+                AgentResponse.from_model(
+                    agent=agent,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/racks/{rack_id}/agents/",
+                )
+                for agent in agents.items
+            ],
+            total=agents.total,
+            next=(
+                f"{V3_API_PREFIX}/racks/{rack_id}/agents?"
+                f"{pagination_params.to_next_href_format()}"
+                if agents.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+        )
+
+    @handler(
+        path="/racks/{rack_id}/agents/{id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": AgentResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_rack_agent(
+        self,
+        rack_id: int,
+        id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> AgentResponse:
+        agent = await services.agents.get_one(
+            QuerySpec(
+                where=AgentsClauseFactory.and_clauses(
+                    [
+                        AgentsClauseFactory.with_id(id),
+                        AgentsClauseFactory.with_rack_id(rack_id),
+                    ]
+                )
+            )
+        )
+        if not agent:
+            raise NotFoundException()
+
+        response.headers["ETag"] = agent.etag()
+        return AgentResponse.from_model(
+            agent=agent,
+            self_base_hyperlink=f"{V3_API_PREFIX}/racks/{rack_id}/agents/",
+        )
+
+    @handler(
+        path="/racks/{rack_id}/agents/{id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def delete_rack_agent(
+        self,
+        rack_id: int,
+        id: int,
+        etag_if_match: str | None = Header(alias="if-match", default=None),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        query = QuerySpec(
+            where=AgentsClauseFactory.and_clauses(
+                [
+                    AgentsClauseFactory.with_id(id),
+                    AgentsClauseFactory.with_rack_id(rack_id),
+                ]
+            )
+        )
+        await services.agents.delete_one(
+            query=query,
+            etag_if_match=etag_if_match,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

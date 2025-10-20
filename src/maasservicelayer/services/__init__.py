@@ -4,9 +4,6 @@
 from typing import Callable, Self
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.agentcertificates import (
-    AgentCertificatesRepository,
-)
 from maasservicelayer.db.repositories.agents import AgentsRepository
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFilesRepository,
@@ -101,7 +98,6 @@ from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.db.repositories.zones import ZonesRepository
-from maasservicelayer.services.agentcertificates import AgentCertificateService
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
@@ -220,7 +216,6 @@ class ServiceCollectionV3:
 
     # Keep them in alphabetical order, please
     agents: AgentsService
-    agentcertificates: AgentCertificateService
     auth: AuthService
     boot_resources: BootResourceService
     boot_resource_sets: BootResourceSetsService
@@ -584,16 +579,11 @@ class ServiceCollectionV3:
         services.external_oauth = ExternalOAuthService(
             external_oauth_repository=ExternalOAuthRepository(context)
         )
-        services.agentcertificates = AgentCertificateService(
-            context=context,
-            repository=AgentCertificatesRepository(context),
-        )
         services.agents = AgentsService(
             context=context,
             repository=AgentsRepository(context),
             configurations_service=services.configurations,
             users_service=services.users,
-            agentcertificates_service=services.agentcertificates,
             cache=cache.get(
                 AgentsService.__name__, AgentsService.build_cache_object
             ),  # type: ignore
