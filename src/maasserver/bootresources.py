@@ -25,10 +25,7 @@ from maascommon.constants import (
     BOOTLOADERS_DIR,
     IMPORT_RESOURCES_SERVICE_PERIOD,
 )
-from maascommon.workflows.bootresource import (
-    MASTER_IMAGE_SYNC_WORKFLOW_NAME,
-    SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
-)
+from maascommon.workflows.bootresource import MASTER_IMAGE_SYNC_WORKFLOW_NAME
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -47,11 +44,7 @@ from maasserver.utils import absolute_reverse
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.workflow import (
-    cancel_workflow,
-    cancel_workflows_of_type,
-    start_workflow,
-)
+from maasserver.workflow import cancel_workflow, start_workflow
 from maasservicelayer.utils.image_local_files import (
     get_bootresource_store_path,
 )
@@ -85,9 +78,6 @@ def stop_import_resources():
     running = is_import_resources_running()
     if running:
         cancel_workflow(workflow_id="master-image-sync")
-        cancel_workflows_of_type(
-            workflow_type=SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME
-        )
 
 
 class ImportResourcesService(TimerService):

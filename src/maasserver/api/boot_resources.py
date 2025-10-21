@@ -21,11 +21,11 @@ from piston3.utils import rc
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.workflows.bootresource import (
-    LocalSyncRequestParam,
-    SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+    short_sha,
+    SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+    SyncRequestParam,
 )
 from maasserver.api.support import admin_method, operation, OperationsHandler
-from maasserver.api.utils import get_optional_param
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -53,21 +53,12 @@ from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
-    SpaceRequirementParam,
 )
 
 TYPE_MAPPING = {
     "synced": BOOT_RESOURCE_TYPE.SYNCED,
     "uploaded": BOOT_RESOURCE_TYPE.UPLOADED,
 }
-
-
-def get_content_parameter(request):
-    """Get the "content" parameter from a POST or PUT."""
-    content = get_optional_param(request.FILES, "content", None)
-    if content is None:
-        return None
-    return content.read()
 
 
 def boot_resource_file_to_dict(rfile: BootResourceFile):
@@ -138,7 +129,7 @@ def json_object(obj, request):
 
 
 def filestore_add_file(rfile: BootResourceFile):
-    param = LocalSyncRequestParam(
+    param = SyncRequestParam(
         resource=ResourceDownloadParam(
             rfile_ids=[rfile.id],
             source_list=[],
@@ -146,11 +137,10 @@ def filestore_add_file(rfile: BootResourceFile):
             filename_on_disk=rfile.filename_on_disk,
             total_size=rfile.size,
         ),
-        space_requirement=SpaceRequirementParam(min_free_space=rfile.size),
     )
     return execute_workflow(
-        SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
-        f"sync-local-bootresource:{rfile.id}",
+        SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+        f"sync-bootresources:{short_sha(rfile.sha256)}",
         param,
         task_queue=REGION_TASK_QUEUE,
         execution_timeout=DOWNLOAD_TIMEOUT,

@@ -21,14 +21,13 @@ from maastemporalworker.worker import get_client_async, REGION_TASK_QUEUE
 from maastemporalworker.worker import Worker as TemporalWorker
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
-    CheckBootResourcesStorageWorkflow,
     DeleteBootResourceWorkflow,
     DownloadBootResourceWorkflow,
     FetchManifestWorkflow,
     MasterImageSyncWorkflow,
     SyncBootResourcesWorkflow,
-    SyncLocalBootResourcesWorkflow,
     SyncRemoteBootResourcesWorkflow,
+    SyncSelectionWorkflow,
 )
 from maastemporalworker.workflow.commission import CommissionNWorkflow
 from maastemporalworker.workflow.configure import (
@@ -160,15 +159,14 @@ async def main() -> None:
             task_queue=REGION_TASK_QUEUE,
             workflows=[
                 # Boot resources workflows
-                CheckBootResourcesStorageWorkflow,
                 DeleteBootResourceWorkflow,
                 # DownloadBootResourceWorkflow is run by the region that executes SyncBootResourcesWorkflow to download
                 # the image on its own storage. Then, DownloadBootResourceWorkflow is scheduled on the task queues of the
                 # other regions if the HA is being used.
                 DownloadBootResourceWorkflow,
-                SyncLocalBootResourcesWorkflow,
                 SyncRemoteBootResourcesWorkflow,
                 SyncBootResourcesWorkflow,
+                SyncSelectionWorkflow,
                 MasterImageSyncWorkflow,
                 FetchManifestWorkflow,
                 # Configuration workflows
@@ -200,11 +198,10 @@ async def main() -> None:
                 boot_res_activity.fetch_manifest_and_update_cache,
                 boot_res_activity.download_bootresourcefile,
                 boot_res_activity.get_bootresourcefile_endpoints,
-                boot_res_activity.get_files_to_download,
+                boot_res_activity.get_files_to_download_for_selection,
                 boot_res_activity.get_synced_regions_for_file,
-                boot_res_activity.cancel_obsolete_download_workflows,
-                boot_res_activity.set_global_default_releases,
-                boot_res_activity.cleanup_old_boot_resources,
+                boot_res_activity.get_all_highest_priority_selections,
+                boot_res_activity.cleanup_old_boot_resource_sets_for_selection,
                 boot_res_activity.register_error_notification,
                 boot_res_activity.discard_error_notification,
                 # Configuration activities
@@ -246,14 +243,12 @@ async def main() -> None:
             task_queue=f"region:{maas_id}",
             workflows=[
                 # Boot resources workflows
-                CheckBootResourcesStorageWorkflow,
                 DownloadBootResourceWorkflow,
             ],
             activities=[
                 # Boot resources activities
                 boot_res_activity.delete_bootresourcefile,
                 boot_res_activity.download_bootresourcefile,
-                boot_res_activity.check_disk_space,
                 # dns activities
                 dns_activity.full_reload_dns_configuration,
                 dns_activity.dynamic_update_dns_configuration,

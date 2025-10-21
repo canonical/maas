@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionsRepository,
 )
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
+from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.fixtures.factories.bootsourceselections import (
     create_test_bootsourceselection_entry,
 )
@@ -47,7 +48,7 @@ class TestBootSourceSelectionClauseFactory:
         ) == ("maasserver_bootsourceselection.release = 'noble'")
 
 
-class TestBootSourceSelectionRepository(
+class TestCommonBootSourceSelectionRepository(
     RepositoryCommonTests[BootSourceSelection]
 ):
     @pytest.fixture
@@ -138,3 +139,40 @@ class TestBootSourceSelectionRepository(
             return await super().test_update_by_id(
                 repository_instance, instance_builder
             )
+
+
+class TestBootSourceSelectionRepository:
+    @pytest.fixture
+    def repository(self, db_connection: AsyncConnection):
+        return BootSourceSelectionsRepository(
+            context=Context(connection=db_connection)
+        )
+
+    async def test_get_all_highest_priority(
+        self, fixture: Fixture, repository: BootSourceSelectionsRepository
+    ) -> None:
+        source_1 = await create_test_bootsource_entry(
+            fixture, url="http://foo.com", priority=1
+        )
+        source_2 = await create_test_bootsource_entry(
+            fixture, url="http://bar.com", priority=2
+        )
+        selection_1 = await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="noble",
+            arch="amd64",
+            boot_source_id=source_1.id,
+        )
+        selection_2 = await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="noble",
+            arch="amd64",
+            boot_source_id=source_2.id,
+        )
+
+        selections = await repository.get_all_highest_priority()
+        assert len(selections) == 1
+        assert selection_1 not in selections
+        assert selection_2 in selections

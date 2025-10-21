@@ -8,9 +8,6 @@ from django.db import transaction
 from twisted.application.internet import TimerService
 from twisted.internet.defer import fail
 
-from maascommon.workflows.bootresource import (
-    SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
-)
 from maasserver import bootresources
 from maasserver.components import (
     get_persistent_error,
@@ -54,18 +51,12 @@ class TestStopImportResources(MAASTransactionServerTestCase):
         mock_running = self.patch(bootresources, "is_import_resources_running")
         mock_running.return_value = True
         mock_cancel_workflow = self.patch(bootresources, "cancel_workflow")
-        mock_cancel_workflows_of_type = self.patch(
-            bootresources, "cancel_workflows_of_type"
-        )
 
         bootresources.stop_import_resources()
 
         mock_running.assert_called_once()
         mock_cancel_workflow.assert_called_once_with(
             workflow_id="master-image-sync"
-        )
-        mock_cancel_workflows_of_type.assert_called_once_with(
-            workflow_type=SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME
         )
 
 

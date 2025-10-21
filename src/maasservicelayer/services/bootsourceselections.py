@@ -153,3 +153,15 @@ class BootSourceSelectionsService(
             f"arch={resource.arch} "
             f"in boot source with ID {resource.boot_source_id}",
         )
+
+    async def get_all_highest_priority(self) -> list[BootSourceSelection]:
+        """Returns the selections with the highest priorities.
+
+        This method will filter out all the duplicate selections and keep only
+        the one with highest priority.
+
+        E.g. if you have two selections that refer to the same os, arch, release,
+        this method will return the one linked to the boot source with highest
+        priority.
+        """
+        return await self.repository.get_all_highest_priority()

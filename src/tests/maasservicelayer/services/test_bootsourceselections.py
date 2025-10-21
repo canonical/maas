@@ -25,7 +25,7 @@ from tests.maasservicelayer.services.base import ServiceCommonTests
 
 
 @pytest.mark.asyncio
-class TestBootSourceSelectionsService(ServiceCommonTests):
+class TestCommonBootSourceSelectionsService(ServiceCommonTests):
     @pytest.fixture
     def service_instance(self) -> BootSourceSelectionsService:
         return BootSourceSelectionsService(
@@ -163,3 +163,22 @@ class TestBootSourceSelectionsService(ServiceCommonTests):
             return await super().test_update_by_id_etag_not_matching(
                 service_instance, test_instance, builder_model
             )
+
+
+@pytest.mark.asyncio
+class TestBootSourceSelectionsService:
+    @pytest.fixture
+    def service(self) -> BootSourceSelectionsService:
+        return BootSourceSelectionsService(
+            context=Context(),
+            repository=Mock(BootSourceSelectionsRepository),
+            boot_source_cache_service=Mock(BootSourceCacheService),
+            boot_resource_service=Mock(BootResourceService),
+            events_service=Mock(EventsService),
+        )
+
+    async def test_get_all_highest_priority(
+        self, service: BootSourceSelectionsService
+    ) -> None:
+        await service.get_all_highest_priority()
+        service.repository.get_all_highest_priority.assert_awaited_once()

@@ -35,10 +35,6 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFileClauseFactory,
 )
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-    BootResourceOrderByClauses,
-)
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
 )
@@ -64,8 +60,6 @@ from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.configurations import (
     CommissioningDistroSeriesConfig,
     CommissioningOSystemConfig,
-    DefaultDistroSeriesConfig,
-    DefaultOSystemConfig,
     EnableHttpProxyConfig,
 )
 from maasservicelayer.services import ServiceCollectionV3
@@ -784,7 +778,7 @@ class TestImageSyncService:
 
         self.notifications_service.create.assert_not_awaited()
 
-    def test_bootloader_matches_selections(self):
+    def test_bootloader_matches_selection(self):
         good = BOOTLOADER_PRODUCT
         bad_arch = BOOTLOADER_PRODUCT.copy()
         bad_arch.arch = "ppc64el"
@@ -793,20 +787,18 @@ class TestImageSyncService:
             "com.ubuntu.maas.stable:9:grub-efi-signed:uefi:amd64"
         )
 
-        assert self.service._bootloader_matches_selections(good) is True
-        assert self.service._bootloader_matches_selections(bad_arch) is False
-        assert self.service._bootloader_matches_selections(bad_name) is False
+        assert self.service._bootloader_matches_selection(good) is True
+        assert self.service._bootloader_matches_selection(bad_arch) is False
+        assert self.service._bootloader_matches_selection(bad_name) is False
 
-    def test_single_file_image_matches_selections(self) -> None:
-        selections = [
-            BootSourceSelection(
-                id=1,
-                os="centos",
-                release="centos70",
-                arch="amd64",
-                boot_source_id=1,
-            )
-        ]
+    def test_single_file_image_matches_selection(self) -> None:
+        selection = BootSourceSelection(
+            id=1,
+            os="centos",
+            release="centos70",
+            arch="amd64",
+            boot_source_id=1,
+        )
         good = SingleFileProduct(
             product_name="com.ubuntu.maas.stable:centos-bases:7.0:amd64",
             arch="amd64",
@@ -823,20 +815,18 @@ class TestImageSyncService:
         bad_release = good.copy()
         bad_release.release = "wrong-release"
         assert (
-            self.service._single_file_image_matches_selections(
-                good, selections
-            )
+            self.service._single_file_image_matches_selection(good, selection)
             is True
         )
         assert (
-            self.service._single_file_image_matches_selections(
-                bad_release, selections
+            self.service._single_file_image_matches_selection(
+                bad_release, selection
             )
             is False
         )
 
-    def test_multi_file_image_matches_selections(self) -> None:
-        selections = [BOOT_SELECTION_ORACULAR_SOURCE_1]
+    def test_multi_file_image_matches_selection(self) -> None:
+        selection = BOOT_SELECTION_ORACULAR_SOURCE_1
 
         good = MULTIFILE_PRODUCT_ORACULAR
         bad_name = MULTIFILE_PRODUCT_ORACULAR.copy()
@@ -847,58 +837,58 @@ class TestImageSyncService:
         bad_release.release = "noble"
 
         assert (
-            self.service._multi_file_image_matches_selections(good, selections)
+            self.service._multi_file_image_matches_selection(good, selection)
             is True
         )
         assert (
-            self.service._multi_file_image_matches_selections(
-                bad_name, selections
+            self.service._multi_file_image_matches_selection(
+                bad_name, selection
             )
             is False
         )
         assert (
-            self.service._multi_file_image_matches_selections(
-                bad_release, selections
+            self.service._multi_file_image_matches_selection(
+                bad_release, selection
             )
             is False
         )
 
-    async def test_product_matches_selections_calls_right_function(
+    async def test_product_matches_selection_calls_right_function(
         self,
     ) -> None:
-        self.service._single_file_image_matches_selections = Mock(
+        self.service._single_file_image_matches_selection = Mock(
             return_value=True
         )
-        self.service._multi_file_image_matches_selections = Mock(
+        self.service._multi_file_image_matches_selection = Mock(
             return_value=True
         )
-        self.service._bootloader_matches_selections = Mock(return_value=True)
+        self.service._bootloader_matches_selection = Mock(return_value=True)
 
-        match = self.service.product_matches_selections(
-            Mock(BootloaderProduct), []
+        match = self.service.product_matches_selection(
+            Mock(BootloaderProduct), Mock(BootSourceSelection)
         )
         assert match is True
-        self.service._bootloader_matches_selections.assert_called_once()
+        self.service._bootloader_matches_selection.assert_called_once()
 
-        match = self.service.product_matches_selections(
-            Mock(SingleFileProduct), []
+        match = self.service.product_matches_selection(
+            Mock(SingleFileProduct), Mock(BootSourceSelection)
         )
         assert match is True
-        self.service._single_file_image_matches_selections.assert_called_once()
+        self.service._single_file_image_matches_selection.assert_called_once()
 
-        match = self.service.product_matches_selections(
-            Mock(MultiFileProduct), []
+        match = self.service.product_matches_selection(
+            Mock(MultiFileProduct), Mock(BootSourceSelection)
         )
         assert match is True
-        self.service._multi_file_image_matches_selections.assert_called_once()
+        self.service._multi_file_image_matches_selection.assert_called_once()
 
-        match = self.service.product_matches_selections(Mock(), [])
+        match = self.service.product_matches_selection(
+            Mock(), Mock(BootSourceSelection)
+        )
         assert match is False
 
-    async def test_filter_products(self) -> None:
-        bs1 = BOOT_SOURCE_1
-        bs2 = BOOT_SOURCE_2
-        bs1_product_list = [
+    async def test_filter_products_for_selection(self) -> None:
+        product_list = [
             SimpleStreamsMultiFileProductList(
                 content_id="com.ubuntu.maas:stable:v3:download",
                 datatype=Datatype.image_ids,
@@ -907,7 +897,11 @@ class TestImageSyncService:
                 products=[MULTIFILE_PRODUCT_NOBLE, MULTIFILE_PRODUCT_ORACULAR],
             )
         ]
-        bs2_product_list = [
+
+        result = await self.service.filter_products_for_selection(
+            BOOT_SELECTION_NOBLE_SOURCE_1, product_list
+        )
+        expected = [
             SimpleStreamsMultiFileProductList(
                 content_id="com.ubuntu.maas:stable:v3:download",
                 datatype=Datatype.image_ids,
@@ -917,26 +911,21 @@ class TestImageSyncService:
             )
         ]
 
-        selections = [
-            BOOT_SELECTION_NOBLE_SOURCE_1,
-            BOOT_SELECTION_NOBLE_SOURCE_2,
-            BOOT_SELECTION_ORACULAR_SOURCE_1,
+        assert result == expected
+
+        result = await self.service.filter_products_for_selection(
+            BOOT_SELECTION_ORACULAR_SOURCE_1, product_list
+        )
+        expected = [
+            SimpleStreamsMultiFileProductList(
+                content_id="com.ubuntu.maas:stable:v3:download",
+                datatype=Datatype.image_ids,
+                format="products:1.0",
+                updated=None,
+                products=[MULTIFILE_PRODUCT_ORACULAR],
+            )
         ]
 
-        self.boot_source_selections_service.get_many.return_value = selections
-
-        mapping = {bs1: bs1_product_list}
-        result = await self.service.filter_products(mapping)
-
-        assert result == mapping
-
-        mapping = {bs1: bs1_product_list, bs2: bs2_product_list}
-        result = await self.service.filter_products(mapping)
-
-        # we have noble and oracular in bs1 and only noble in bs2.
-        # since bs2 has higher priority we expect to see noble only in bs2.
-        bs1_product_list[0].products.pop(0)
-        expected = {bs1: bs1_product_list, bs2: bs2_product_list}
         assert result == expected
 
     async def test_get_files_to_download_from_product__image_product(
@@ -1164,91 +1153,6 @@ class TestImageSyncService:
             extract_paths=["path/to/file-1", "path/to/file-2"],
         )
 
-    async def test_get_latest_support_commissioning_boot_resource(
-        self,
-    ) -> None:
-        self.boot_source_cache_service.get_available_lts_releases.return_value = [
-            "noble",
-            "jammy",
-        ]
-        self.boot_resources_service.get_many.return_value = [
-            BOOT_RESOURCE_NOBLE
-        ]
-        self.boot_resource_sets_service.get_latest_for_boot_resource.return_value = BOOT_RESOURCE_SET_NOBLE
-        self.boot_resource_sets_service.is_sync_complete.return_value = True
-        self.boot_resource_sets_service.is_usable.return_value = True
-
-        boot_res = (
-            await self.service.get_latest_support_commissioning_boot_resource()
-        )
-        assert boot_res == BOOT_RESOURCE_NOBLE
-
-        self.boot_resources_service.get_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            BootResourceType.SYNCED
-                        ),
-                        BootResourceClauseFactory.with_names(
-                            ["ubuntu/noble", "ubuntu/jammy"]
-                        ),
-                    ]
-                ),
-                order_by=[
-                    BootResourceOrderByClauses.by_name_with_priority(
-                        ["ubuntu/noble", "ubuntu/jammy"]
-                    )
-                ],
-            )
-        )
-        self.boot_resource_sets_service.get_latest_for_boot_resource.assert_awaited_once_with(
-            BOOT_RESOURCE_NOBLE.id
-        )
-        self.boot_resource_sets_service.is_sync_complete.assert_awaited_once_with(
-            BOOT_RESOURCE_SET_NOBLE.id
-        )
-        self.boot_resource_sets_service.is_usable.assert_awaited_once_with(
-            BOOT_RESOURCE_SET_NOBLE.id
-        )
-
-    async def test_set_global_default_releases(self, mocker) -> None:
-        mocker.patch.object(
-            self.service, "get_latest_support_commissioning_boot_resource"
-        ).return_value = BOOT_RESOURCE_NOBLE
-        self.configurations_service.get_many.return_value = {
-            CommissioningDistroSeriesConfig.name: None,
-            DefaultDistroSeriesConfig.name: None,
-        }
-
-        await self.service.set_global_default_releases()
-
-        self.configurations_service.set.assert_has_calls(
-            [
-                call(CommissioningOSystemConfig.name, "ubuntu"),
-                call(CommissioningDistroSeriesConfig.name, "noble"),
-                call(DefaultOSystemConfig.name, "ubuntu"),
-                call(DefaultDistroSeriesConfig.name, "noble"),
-            ]
-        )
-
-        self.service.get_latest_support_commissioning_boot_resource.assert_awaited_once()
-
-    async def test_set_global_default_releases_no_op(self, mocker) -> None:
-        mocker.patch.object(
-            self.service, "get_latest_support_commissioning_boot_resource"
-        ).return_value = BOOT_RESOURCE_NOBLE
-        self.configurations_service.get_many.return_value = {
-            CommissioningDistroSeriesConfig.name: "noble",
-            DefaultDistroSeriesConfig.name: "noble",
-        }
-
-        await self.service.set_global_default_releases()
-
-        self.configurations_service.set.assert_not_awaited()
-
-        self.service.get_latest_support_commissioning_boot_resource.assert_not_awaited()
-
 
 @pytest.mark.asyncio
 class TestIntegrationImageSyncService:
@@ -1355,24 +1259,10 @@ class TestIntegrationImageSyncService:
         await create_test_configuration(
             fixture, name=CommissioningDistroSeriesConfig.name, value="noble"
         )
-        await create_test_bootsourceselection_entry(
+        selection_noble_amd = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
             release="noble",
-            boot_source_id=test_boot_source_1.id,
-            arch="amd64",
-        )
-        await create_test_bootsourceselection_entry(
-            fixture,
-            os="ubuntu",
-            release="noble",
-            boot_source_id=test_boot_source_1.id,
-            arch="arm64",
-        )
-        await create_test_bootsourceselection_entry(
-            fixture,
-            os="ubuntu",
-            release="jammy",
             boot_source_id=test_boot_source_1.id,
             arch="amd64",
         )
@@ -1383,8 +1273,12 @@ class TestIntegrationImageSyncService:
         assert notifications == []
 
         # 4.
-        mapping = await services.image_sync.filter_products(mapping)
-        for product_list in mapping[test_boot_source_1]:
+        filtered_products_list = (
+            await services.image_sync.filter_products_for_selection(
+                selection_noble_amd, mapping[test_boot_source_1]
+            )
+        )
+        for product_list in filtered_products_list:
             if isinstance(product_list, SimpleStreamsBootloaderProductList):
                 assert len(product_list.products) == 4
                 os_arch = [(p.os, p.arch) for p in product_list.products]
@@ -1399,18 +1293,13 @@ class TestIntegrationImageSyncService:
                     (p.os, p.release, p.arch, p.subarch)
                     for p in product_list.products
                 ]
-                assert len(product_list.products) == 3
+                assert len(product_list.products) == 1
                 os_release_arch_subarch = [
                     (p.os, p.release, p.arch, p.subarch)
                     for p in product_list.products
                 ]
-                # The test data contains the following images:
-                # - jammy: amd64, arm64 (ga-22.04)
-                # - noble: amd64, arm64 (ga-24.04)
                 assert os_release_arch_subarch == [
-                    ("ubuntu", "jammy", "amd64", "ga-22.04"),
                     ("ubuntu", "noble", "amd64", "ga-24.04"),
-                    ("ubuntu", "noble", "arm64", "ga-24.04"),
                 ]
             elif isinstance(product_list, SimpleStreamsSingleFileProductList):
                 assert len(product_list.products) == 0
@@ -1420,13 +1309,13 @@ class TestIntegrationImageSyncService:
         assert existing_boot_resources == []
         resources_to_download = (
             await services.image_sync.get_files_to_download_from_product_list(
-                test_boot_source_1, mapping[test_boot_source_1]
+                test_boot_source_1, filtered_products_list
             )
         )
 
         sha256s = {
             file.sha256
-            for products_list in mapping[test_boot_source_1]
+            for products_list in filtered_products_list
             for product in products_list.products
             for file in product.get_latest_version().get_downloadable_files()
         }
@@ -1483,33 +1372,26 @@ class TestIntegrationImageSyncService:
             fixture, name=CommissioningDistroSeriesConfig.name, value="noble"
         )
         # remember: test_boot_source_2 has higher priority
-        await create_test_bootsourceselection_entry(
+        noble_amd_source2 = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
             release="noble",
             boot_source_id=test_boot_source_2.id,
-            arch="arm64",
+            arch="amd64",
         )
-        await create_test_bootsourceselection_entry(
+        noble_amd_source1 = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
             release="noble",
             boot_source_id=test_boot_source_1.id,
             arch="amd64",
         )
-        await create_test_bootsourceselection_entry(
+        noble_arm_source1 = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
             release="noble",
             boot_source_id=test_boot_source_1.id,
             arch="arm64",
-        )
-        await create_test_bootsourceselection_entry(
-            fixture,
-            os="ubuntu",
-            release="jammy",
-            boot_source_id=test_boot_source_1.id,
-            arch="amd64",
         )
 
         # 3.
@@ -1518,9 +1400,22 @@ class TestIntegrationImageSyncService:
         assert notifications == []
 
         # 4.
-        mapping = await services.image_sync.filter_products(mapping)
+        selections = (
+            await services.boot_source_selections.get_all_highest_priority()
+        )
+        assert len(selections) == 2
+        assert noble_amd_source1 not in selections
+        assert noble_arm_source1 in selections
+        assert noble_amd_source2 in selections
 
-        for product_list in mapping[test_boot_source_2]:
+        # selection for ubuntu/noble/arm64 boot_source 1
+        filtered_products_list_noble_arm = (
+            await services.image_sync.filter_products_for_selection(
+                noble_arm_source1, mapping[test_boot_source_1]
+            )
+        )
+
+        for product_list in filtered_products_list_noble_arm:
             if isinstance(product_list, SimpleStreamsBootloaderProductList):
                 assert len(product_list.products) == 4
                 os_arch = [(p.os, p.arch) for p in product_list.products]
@@ -1536,65 +1431,75 @@ class TestIntegrationImageSyncService:
                     (p.os, p.release, p.arch, p.subarch)
                     for p in product_list.products
                 ]
-                # test_boot_source_2 has higher priority, so noble arm64 will
-                # be downloaded only from this source
                 assert os_release_arch_subarch == [
                     ("ubuntu", "noble", "arm64", "ga-24.04"),
                 ]
             elif isinstance(product_list, SimpleStreamsSingleFileProductList):
                 assert len(product_list.products) == 0
 
-        for product_list in mapping[test_boot_source_1]:
-            if isinstance(product_list, SimpleStreamsBootloaderProductList):
-                # these already being downloaded by the other boot source
-                # since they are the same
-                assert len(product_list.products) == 0
+        # selection for ubuntu/noble/amd64 boot_source 2
+        filtered_products_list_noble_amd = (
+            await services.image_sync.filter_products_for_selection(
+                noble_amd_source2, mapping[test_boot_source_2]
+            )
+        )
 
+        for product_list in filtered_products_list_noble_amd:
+            if isinstance(product_list, SimpleStreamsBootloaderProductList):
+                assert len(product_list.products) == 4
+                os_arch = [(p.os, p.arch) for p in product_list.products]
+                assert os_arch == [
+                    ("grub-efi-signed", "amd64"),
+                    ("grub-efi", "arm64"),
+                    ("grub-ieee1275", "ppc64el"),
+                    ("pxelinux", "i386"),
+                ]
             elif isinstance(product_list, SimpleStreamsMultiFileProductList):
-                assert len(product_list.products) == 2
+                assert len(product_list.products) == 1
                 os_release_arch_subarch = [
                     (p.os, p.release, p.arch, p.subarch)
                     for p in product_list.products
                 ]
                 assert os_release_arch_subarch == [
-                    ("ubuntu", "jammy", "amd64", "ga-22.04"),
                     ("ubuntu", "noble", "amd64", "ga-24.04"),
                 ]
             elif isinstance(product_list, SimpleStreamsSingleFileProductList):
                 assert len(product_list.products) == 0
+
         # 5.
         existing_boot_resources = await fixture.get(BootResourceTable.name)
         assert existing_boot_resources == []
         resources_to_download_1 = (
             await services.image_sync.get_files_to_download_from_product_list(
-                test_boot_source_1, mapping[test_boot_source_1]
+                test_boot_source_1, filtered_products_list_noble_arm
             )
         )
         resources_to_download_2 = (
             await services.image_sync.get_files_to_download_from_product_list(
-                test_boot_source_2, mapping[test_boot_source_2]
+                test_boot_source_2, filtered_products_list_noble_amd
             )
         )
 
         sha256_source_1 = {
             file.sha256
-            for products_list in mapping[test_boot_source_1]
+            for products_list in filtered_products_list_noble_arm
             for product in products_list.products
             for file in product.get_latest_version().get_downloadable_files()
         }
         assert set(resources_to_download_1.keys()) == sha256_source_1
         sha256_source_2 = {
             file.sha256
-            for products_list in mapping[test_boot_source_2]
+            for products_list in filtered_products_list_noble_amd
             for product in products_list.products
             for file in product.get_latest_version().get_downloadable_files()
         }
 
         assert set(resources_to_download_2.keys()) == sha256_source_2
 
-    async def test_delete_old_boot_resource_sets(
+    async def test_delete_old_boot_resource_sets_for_selection(
         self,
         fixture: Fixture,
+        test_boot_source_1: BootSource,
         services: ServiceCollectionV3,
     ) -> None:
         """
@@ -1609,11 +1514,19 @@ class TestIntegrationImageSyncService:
 
         """
         region = await create_test_region_controller_entry(fixture)
+        selection = await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="noble",
+            arch="amd64",
+            boot_source_id=test_boot_source_1.id,
+        )
         br_1 = await create_test_bootresource_entry(
             fixture,
             rtype=BootResourceType.SYNCED,
-            name="ubuntu/focal",
-            architecture="amd64/ga20.04",
+            name="ubuntu/noble",
+            architecture="amd64/ga-24.04-lowlatency",
+            selection_id=selection.id,
         )
         await create_test_bootresourceset_entry(
             fixture, version="20250618", label="stable", resource_id=br_1.id
@@ -1624,6 +1537,7 @@ class TestIntegrationImageSyncService:
             rtype=BootResourceType.SYNCED,
             name="ubuntu/noble",
             architecture="amd64/hwe24.04",
+            selection_id=selection.id,
         )
         set_2 = await create_test_bootresourceset_entry(
             fixture, version="20250618", label="stable", resource_id=br_2.id
@@ -1648,7 +1562,8 @@ class TestIntegrationImageSyncService:
             fixture,
             rtype=BootResourceType.SYNCED,
             name="ubuntu/noble",
-            architecture="arm64/hwe24.04",
+            architecture="arm64/ga24.04",
+            selection_id=selection.id,
         )
         set_3a = await create_test_bootresourceset_entry(
             fixture, version="20250617", label="stable", resource_id=br_3.id
@@ -1689,7 +1604,9 @@ class TestIntegrationImageSyncService:
 
         services.boot_resource_files.temporal_service = Mock(TemporalService)
 
-        await services.image_sync.delete_old_boot_resource_sets()
+        await services.image_sync.delete_old_boot_resource_sets_for_selection(
+            selection.id
+        )
 
         boot_resource_sets = await fixture.get_typed(
             BootResourceSetTable.name, BootResourceSet

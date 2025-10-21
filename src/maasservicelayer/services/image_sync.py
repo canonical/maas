@@ -37,7 +37,6 @@ from maasservicelayer.db.repositories.bootresourcefiles import (
 )
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
-    BootResourceOrderByClauses,
 )
 from maasservicelayer.db.repositories.bootresourcesets import (
     BootResourceSetClauseFactory,
@@ -55,7 +54,6 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
-from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import (
     BootSource,
@@ -66,8 +64,6 @@ from maasservicelayer.models.configurations import (
     BootImagesNoProxyConfig,
     CommissioningDistroSeriesConfig,
     CommissioningOSystemConfig,
-    DefaultDistroSeriesConfig,
-    DefaultOSystemConfig,
     EnableHttpProxyConfig,
     HttpProxyConfig,
 )
@@ -500,7 +496,7 @@ class ImageSyncService(Service):
             )
         return no_error
 
-    def _bootloader_matches_selections(
+    def _bootloader_matches_selection(
         self, product: BootloaderProduct
     ) -> bool:
         if BOOTLOADER_REGEX.search(product.product_name) is None:
@@ -516,35 +512,32 @@ class ImageSyncService(Service):
                 return True
         return False
 
-    def _image_product_matches_selections(
-        self, product: ImageProduct, selections: list[BootSourceSelection]
+    def _image_product_matches_selection(
+        self, product: ImageProduct, selection: BootSourceSelection
     ) -> bool:
-        for selection in selections:
-            if (
-                product.os == selection.os
-                and product.release == selection.release
-                and product.arch == selection.arch
-            ):
-                return True
+        if (
+            product.os == selection.os
+            and product.release == selection.release
+            and product.arch == selection.arch
+        ):
+            return True
         return False
 
-    def _single_file_image_matches_selections(
-        self, product: SingleFileProduct, selections: list[BootSourceSelection]
+    def _single_file_image_matches_selection(
+        self, product: SingleFileProduct, selection: BootSourceSelection
     ) -> bool:
-        return self._image_product_matches_selections(product, selections)
+        return self._image_product_matches_selection(product, selection)
 
-    def _multi_file_image_matches_selections(
-        self, product: MultiFileProduct, selections: list[BootSourceSelection]
+    def _multi_file_image_matches_selection(
+        self, product: MultiFileProduct, selection: BootSourceSelection
     ) -> bool:
         if UBUNTU_REGEX.search(product.product_name) is None:
             # Only insert v2 or v3 Ubuntu products.
             return False
-        return self._image_product_matches_selections(product, selections)
+        return self._image_product_matches_selection(product, selection)
 
-    def product_matches_selections(
-        self,
-        product: Product,
-        selections: list[BootSourceSelection],
+    def product_matches_selection(
+        self, product: Product, selection: BootSourceSelection
     ) -> bool:
         """Whether `product` matches our boot source selections.
 
@@ -556,73 +549,43 @@ class ImageSyncService(Service):
         """
         match = False
         if isinstance(product, BootloaderProduct):
-            match = self._bootloader_matches_selections(product)
+            match = self._bootloader_matches_selection(product)
         elif isinstance(product, SingleFileProduct):
-            match = self._single_file_image_matches_selections(
-                product, selections
+            match = self._single_file_image_matches_selection(
+                product, selection
             )
         elif isinstance(product, MultiFileProduct):
-            match = self._multi_file_image_matches_selections(
-                product, selections
+            match = self._multi_file_image_matches_selection(
+                product, selection
             )
         return match
 
-    async def filter_products(
+    async def filter_products_for_selection(
         self,
-        boot_source_products_mapping: dict[
-            BootSource, list[SimpleStreamsProductList]
-        ],
-    ) -> dict[BootSource, list[SimpleStreamsProductList]]:
-        """Filter simplestreams products to be downloaded.
+        selection: BootSourceSelection,
+        products_list: list[SimpleStreamsProductList],
+    ) -> list[SimpleStreamsProductList]:
+        """Filter simplestreams products to be downloaded for a selection.
 
-        It takes into account both the selections and the priority of the boot source.
-        It starts from the highest priority boot source and for each of them:
-            - get the selections that apply to that boot source
-            - for each product list in the mapping:
-                - update the product list with the products that, at the same time,
-                match the selections AND are not already added by another boot source
-                - keep track of the already added products
+        For each product list it will only keep the products that match the selection.
 
         Args:
-            - boot_source_products_mapping: a dict mapping a boot source to its
-            simplestreams product list (see `fetch_images_metadata`)
+            - selection: the `BootSourceSelection` to filter by
+            - products_list: the simplestreams product list to be filtered.
 
         Returns:
-            The initial dict containing, for each boot source, only the products
+            The updated simplestreams product list, containing only the products
             that must be downloaded.
 
         """
-        seen_products: set[Product] = set()
-
-        sorted_boot_sources = sorted(
-            boot_source_products_mapping.keys(),
-            key=lambda boot_source: boot_source.priority,
-            reverse=True,
-        )
-
-        selections = await self.boot_source_selections_service.get_many(
-            query=QuerySpec()
-        )
-
-        for boot_source in sorted_boot_sources:
-            selections_for_boot_source = [
-                s for s in selections if s.boot_source_id == boot_source.id
-            ]
-            for product_list in boot_source_products_mapping[boot_source]:
-                new_product_list = []
-                for product in product_list.products:
-                    if (
-                        self.product_matches_selections(
-                            product, selections_for_boot_source
-                        )
-                        and product not in seen_products
-                    ):
-                        new_product_list.append(product)
-                        seen_products.add(product)
-
-                product_list.products = new_product_list
-
-        return boot_source_products_mapping
+        filtered_products_list = [ss_list.copy() for ss_list in products_list]
+        for product_list in filtered_products_list:
+            new_product_list = []
+            for product in product_list.products:
+                if self.product_matches_selection(product, selection):
+                    new_product_list.append(product)
+            product_list.products = new_product_list
+        return filtered_products_list
 
     async def get_files_to_download_from_product_list(
         self,
@@ -636,11 +599,8 @@ class ImageSyncService(Service):
             - filtered_products_list: The filtered list of simplestreams products for this source
 
         Returns:
-            A tuple (resources_to_download, boot_resource_ids) where resources_to_download
-            is a dict mapping the sha256 to the corresponding ResourceDownloadParam
-            (to be later supplied to the Temporal workflow) and boot_resource_ids
-            is a set of the ids of the boot resources that have been used/created.
-            The latter will come in handy when deleting the old boot resources.
+            A  dict mapping the sha256 to the corresponding ResourceDownloadParam
+            (to be later supplied to the Temporal workflow)
         """
         resources_to_download: dict[str, ResourceDownloadParam] = {}
         for product_list in filtered_products_list:
@@ -676,8 +636,7 @@ class ImageSyncService(Service):
             - product: the simplestreams product to extract files from
 
         Returns:
-            A tuple composed by a list of resource_download_param and the id of
-            the boot resource used.
+            A list of `ResourceDownloadParam`
         """
         boot_resource = await self.boot_resources_service.create_or_update_from_simplestreams_product(
             product
@@ -789,103 +748,29 @@ class ImageSyncService(Service):
 
         return resources_to_download
 
-    async def get_latest_support_commissioning_boot_resource(
-        self,
-    ) -> BootResource | None:
-        """Return the Ubuntu boot resource that can be used for commissioning.
-
-        Only returns an LTS release that have been fully imported.
-        """
-        lts_releases = (
-            await self.boot_source_cache_service.get_available_lts_releases()
-        )
-        lts_releases = [f"ubuntu/{release}" for release in lts_releases]
-
-        for boot_resource in await self.boot_resources_service.get_many(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            BootResourceType.SYNCED
-                        ),
-                        BootResourceClauseFactory.with_names(lts_releases),
-                    ]
-                ),
-                order_by=[
-                    BootResourceOrderByClauses.by_name_with_priority(
-                        lts_releases
-                    )
-                ],
-            )
-        ):
-            resource_set = await self.boot_resource_sets_service.get_latest_for_boot_resource(
-                boot_resource.id
-            )
-            if (
-                resource_set
-                and await self.boot_resource_sets_service.is_sync_complete(
-                    resource_set.id
-                )
-                and await self.boot_resource_sets_service.is_usable(
-                    resource_set.id
-                )
-            ):
-                return boot_resource
-
-        return None
-
-    async def set_global_default_releases(self):
-        """Sets the global configuration options for the deployment and
-        commissioning images."""
-        # Set the commissioning option to the latest LTS available.
-        default_resource = None
-        configs = await self.configurations_service.get_many(
-            {
-                CommissioningDistroSeriesConfig.name,
-                DefaultDistroSeriesConfig.name,
-            }
-        )
-        if not configs[CommissioningDistroSeriesConfig.name]:
-            default_resource = (
-                await self.get_latest_support_commissioning_boot_resource()
-            )
-            if default_resource:
-                osystem, release = default_resource.name.split("/")
-                await self.configurations_service.set(
-                    CommissioningOSystemConfig.name, osystem
-                )
-                await self.configurations_service.set(
-                    CommissioningDistroSeriesConfig.name, release
-                )
-
-        # Set the default deploy option to the same as the commissioning option.
-        if not configs[DefaultDistroSeriesConfig.name]:
-            default_resource = (
-                default_resource
-                or await self.get_latest_support_commissioning_boot_resource()
-            )
-            if default_resource:
-                osystem, release = default_resource.name.split("/")
-                await self.configurations_service.set(
-                    DefaultOSystemConfig.name, osystem
-                )
-                await self.configurations_service.set(
-                    DefaultDistroSeriesConfig.name, release
-                )
-
-    async def delete_old_boot_resource_sets(self) -> None:
+    async def delete_old_boot_resource_sets_for_selection(
+        self, selection_id: int
+    ) -> None:
         """Deletes the old boot resource sets.
 
+        It cleans all the boot resources related to the `selection_id` passed.
         For each boot resource, the most recent complete resource set is found,
         then all the others are deleted.
 
         """
-        boot_resources = await self.boot_resources_service.get_many(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_rtype(
-                    BootResourceType.SYNCED
-                )
+        query = QuerySpec(
+            where=BootResourceClauseFactory.and_clauses(
+                [
+                    BootResourceClauseFactory.with_rtype(
+                        BootResourceType.SYNCED
+                    ),
+                    BootResourceClauseFactory.with_selection_id(selection_id),
+                ]
             )
+        )
+
+        boot_resources = await self.boot_resources_service.get_many(
+            query=query
         )
         boot_resource_sets_to_delete = set()
         for boot_resource in boot_resources:
@@ -921,4 +806,4 @@ class ImageSyncService(Service):
             )
         )
 
-        await self.boot_resources_service.delete_all_without_sets()
+        await self.boot_resources_service.delete_all_without_sets(query=query)

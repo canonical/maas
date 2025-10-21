@@ -23,6 +23,18 @@ class TestBootSourcesClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootsource.id = 1")
 
+    def test_with_url(self) -> None:
+        clause = BootSourcesClauseFactory.with_url("http://foo.com")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsource.url = 'http://foo.com'")
+
+    def test_with_ids(self) -> None:
+        clause = BootSourcesClauseFactory.with_ids({1, 2})
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsource.id IN (1, 2)")
+
 
 class TestBootSourcesRepository(RepositoryCommonTests[BootSource]):
     @pytest.fixture

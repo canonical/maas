@@ -5,6 +5,7 @@ from maastesting.pytest.database import ensuremaasdb, templatemaasdb
 
 from ..fixtures import services_mock
 from ..maasapiserver.fixtures.db import db, db_connection, fixture, test_config
+from .workflow import temporal_calls, worker_test_interceptor
 
 __all__ = [
     "db",
@@ -14,4 +15,6 @@ __all__ = [
     "services_mock",
     "templatemaasdb",
     "test_config",
+    "worker_test_interceptor",
+    "temporal_calls",
 ]
