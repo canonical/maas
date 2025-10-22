@@ -53,8 +53,8 @@ from maastemporalworker.workflow.msm import (
     MSMConnectorActivity,
     MSMEnrolSiteWorkflow,
     MSMHeartbeatWorkflow,
+    MSMRestoreDefaultBootSourceWorkflow,
     MSMTokenRefreshWorkflow,
-    MSMWithdrawWorkflow,
 )
 from maastemporalworker.workflow.power import (
     PowerActivity,
@@ -182,7 +182,7 @@ async def main() -> None:
                 CommissionNWorkflow,
                 # MSM Connector service
                 MSMEnrolSiteWorkflow,
-                MSMWithdrawWorkflow,
+                MSMRestoreDefaultBootSourceWorkflow,
                 MSMHeartbeatWorkflow,
                 MSMTokenRefreshWorkflow,
                 # Power workflows
@@ -234,6 +234,9 @@ async def main() -> None:
                 msm_activity.set_bootsource,
                 msm_activity.get_bootsources,
                 msm_activity.delete_bootsources,
+                msm_activity.delete_selections,
+                msm_activity.get_msm_boot_source_id,
+                msm_activity.restore_default_boot_source,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities
