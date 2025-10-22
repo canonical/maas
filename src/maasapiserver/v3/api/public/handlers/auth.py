@@ -166,6 +166,40 @@ class AuthHandler(Handler):
         )
 
     @handler(
+        path="/auth/oauth:is_active",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.ADMIN},
+                )
+            )
+        ],
+    )
+    async def get_oauth_provider(
+        self,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> OAuthProviderResponse:
+        if provider := await services.external_oauth.get_provider():
+            response.headers["ETag"] = provider.etag()
+            return OAuthProviderResponse.from_model(provider=provider)
+        raise NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                    message="No external OAuth provider is configured.",
+                )
+            ]
+        )
+
+    @handler(
         path="/auth/oauth",
         methods=["POST"],
         tags=TAGS,

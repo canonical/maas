@@ -501,3 +501,57 @@ class TestAuthApi:
         assert (
             error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
+
+    async def test_get_active_oauth_provider_success(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        created_provider = OAuthProvider(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_provider.return_value = (
+            created_provider
+        )
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}/oauth:is_active"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        assert response.json() == {
+            "kind": "AuthProvider",
+            "name": created_provider.name,
+            "client_id": created_provider.client_id,
+            "client_secret": created_provider.client_secret,
+            "issuer_url": created_provider.issuer_url,
+            "redirect_uri": created_provider.redirect_uri,
+            "scopes": created_provider.scopes,
+            "enabled": created_provider.enabled,
+        }
+
+    async def test_get_active_oauth_provider_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_provider.return_value = None
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}/oauth:is_active"
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
