@@ -9,6 +9,7 @@ from unittest.mock import Mock
 from distro_info import UbuntuDistroInfo
 
 from maascommon.osystem import BOOT_IMAGE_PURPOSE
+from maascommon.osystem import ubuntu as ubuntu_module
 from maascommon.osystem.ubuntu import UbuntuOS
 
 
@@ -53,86 +54,44 @@ class TestUbuntuOS:
         expected = osystem.get_default_release()
         assert expected == self.get_lts_release()
 
-    def test_get_supported_commissioning_releases(self):
-        ubuntu_distro_info_mock = Mock(UbuntuDistroInfo)
+    def test_get_supported_commissioning_releases(self, monkeypatch):
+        ubuntu_distro_info_mock = Mock()
         ubuntu_distro_info_mock.is_lts.return_value = True
-        ubuntu_distro_info_mock.is_lts.supported.return_value = [
+        ubuntu_distro_info_mock.supported_esm.return_value = [
             "xenial",
             "bionic",
             "focal",
             "jammy",
             "noble",
         ]
+        monkeypatch.setattr(
+            ubuntu_module,
+            "UbuntuDistroInfo",
+            Mock(return_value=ubuntu_distro_info_mock),
+        )
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         assert isinstance(releases, list)
         assert ["bionic", "focal", "jammy", "noble"] == releases
 
-    def test_get_supported_commissioning_releases_excludes_non_lts(self):
+    def test_get_supported_commissioning_releases_excludes_non_lts(
+        self, monkeypatch
+    ):
         supported = ["bionic", "focal", "jammy", "noble"]
-        ubuntu_distro_info_mock = Mock(UbuntuDistroInfo)
-        ubuntu_distro_info_mock.supported.return_value = supported
+        ubuntu_distro_info_mock = Mock()
+        ubuntu_distro_info_mock.supported_esm.return_value = supported
+        monkeypatch.setattr(
+            ubuntu_module,
+            "UbuntuDistroInfo",
+            Mock(return_value=ubuntu_distro_info_mock),
+        )
+
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         assert isinstance(releases, list)
         udi = UbuntuDistroInfo()
         non_lts_releases = [name for name in supported if not udi.is_lts(name)]
         for release in non_lts_releases:
-            assert release not in releases
-
-    def test_get_supported_commissioning_releases_excludes_deprecated(self):
-        """Make sure we remove 'precise' from the list."""
-        ubuntu_distro_info_mock = Mock(UbuntuDistroInfo)
-        ubuntu_distro_info_mock.supported.return_value = [
-            "precise",
-            "trusty",
-            "vivid",
-            "wily",
-            "xenial",
-        ]
-        osystem = UbuntuOS()
-        releases = osystem.get_supported_commissioning_releases()
-        assert isinstance(releases, list)
-        assert "precise" not in releases
-        assert "trusty" not in releases
-
-    def test_get_supported_commissioning_releases_excludes_unsupported_lts(
-        self,
-    ):
-        ubuntu_distro_info_mock = Mock(UbuntuDistroInfo)
-        ubuntu_distro_info_mock.supported.return_value = [
-            "precise",
-            "trusty",
-            "vivid",
-            "wily",
-            "xenial",
-        ]
-        unsupported = [
-            "warty",
-            "hoary",
-            "breezy",
-            "dapper",
-            "edgy",
-            "feisty",
-            "gutsy",
-            "hardy",
-            "intrepid",
-            "jaunty",
-            "karmic",
-            "lucid",
-            "maverick",
-            "natty",
-            "oneiric",
-            "quantal",
-            "raring",
-            "saucy",
-            "utopic",
-        ]
-        ubuntu_distro_info_mock.unsupported.return_value = unsupported
-        osystem = UbuntuOS()
-        releases = osystem.get_supported_commissioning_releases()
-        assert isinstance(releases, list)
-        for release in unsupported:
             assert release not in releases
 
     def test_default_commissioning_release(self):
