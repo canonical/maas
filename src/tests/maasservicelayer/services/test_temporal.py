@@ -23,14 +23,33 @@ class TestTemporalService:
             cache=TemporalServiceCache(temporal_client=mock_temporal),
         )
 
+        param = {"a": 1}
+
         service.register_workflow_call(
-            "test_workflow", None, workflow_id="abc"
+            "test_workflow", parameter=param, workflow_id="abc"
         )
 
         await service.post_commit()
 
         mock_temporal.execute_workflow.assert_called_once_with(
-            "test_workflow", None, id="abc", task_queue="region"
+            "test_workflow", param, id="abc", task_queue="region"
+        )
+
+    async def test_post_commit_without_parameter(self):
+        mock_connection = Mock(AsyncConnection)
+        mock_connection.closed = False
+        mock_temporal = Mock(Client)
+        service = TemporalService(
+            context=Context(),
+            cache=TemporalServiceCache(temporal_client=mock_temporal),
+        )
+
+        service.register_workflow_call("test_workflow", workflow_id="abc")
+
+        await service.post_commit()
+
+        mock_temporal.execute_workflow.assert_called_once_with(
+            "test_workflow", id="abc", task_queue="region"
         )
 
     async def test_workflow_is_registered(self):

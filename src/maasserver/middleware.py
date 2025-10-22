@@ -25,12 +25,13 @@ from django.http import (
 from django.urls import get_resolver, get_urlconf, reverse
 from django.utils.encoding import force_str
 
-from maasserver import logger
+from maascommon.tracing import get_trace_id, set_trace_id
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.exceptions import MAASAPIException
 from maasserver.rbac import rbac
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import is_retryable_failure
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.shell import ExternalProcessError
 
@@ -67,6 +68,23 @@ PUBLIC_URL_PREFIXES = [
     # Boot resources simple streams endpoint; no login.
     settings.SIMPLESTREAMS_URL_PREFIX,
 ]
+
+logger = LegacyLogger()
+
+
+class TracingMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        trace_id = request.headers.get("MAAS-trace-id", None)
+        if trace_id:
+            set_trace_id(trace_id)
+        else:
+            trace_id = get_trace_id()
+        response = self.get_response(request)
+        response.headers["MAAS-trace-id"] = trace_id
+        return response
 
 
 def is_public_path(path):
@@ -202,8 +220,6 @@ class ExceptionMiddleware:
 
 
 class DebuggingLoggerMiddleware:
-    log_level = logging.DEBUG
-
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -264,29 +280,19 @@ class DebuggingLoggerMiddleware:
         )
 
     def __call__(self, request):
-        if settings.DEBUG_HTTP and logger.isEnabledFor(self.log_level):
+        if settings.DEBUG_HTTP:
             header = " Request dump ".center(79, "#")
-            logger.log(
-                self.log_level,
-                "%s\n%s",
-                header,
-                self._build_request_repr(request),
-            )
+            logger.debug(f"{header}\n{self._build_request_repr(request)}")
         response = self.get_response(request)
-        if settings.DEBUG_HTTP and logger.isEnabledFor(self.log_level):
+        if settings.DEBUG_HTTP:
             header = " Response dump ".center(79, "#")
             content = getattr(response, "content", b"{no content}")
             try:
                 decoded_content = content.decode("utf-8")
             except UnicodeDecodeError:
-                logger.log(
-                    self.log_level,
-                    "%s\n%s",
-                    header,
-                    "** non-utf-8 (binary?) content **",
-                )
+                logger.debug(f"{header}\n** non-utf-8 (binary?) content **")
             else:
-                logger.log(self.log_level, "%s\n%s", header, decoded_content)
+                logger.debug(f"{header}\n{decoded_content}")
         return response
 
 

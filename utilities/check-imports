@@ -189,9 +189,11 @@ APIClient = files("src/apiclient/**/*.py")
 APIServer = files("src/maasapiserver/**/*.py")
 
 APIServerRule = Rule(
-    # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow("aiofiles.tempfile.NamedTemporaryFile"),
+    Allow("aiofiles.os"),
     Allow("aiohttp|aiohttp.**"),
     Allow("asyncpg|asyncpg.**"),
+    # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("django.conf.*"),
     Allow("django.contrib.auth.hashers.*"),
     Allow("fastapi|fastapi.**"),
@@ -206,12 +208,16 @@ APIServerRule = Rule(
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("markupsafe.Markup"),
     Allow("netaddr|netaddr.**"),
+    Allow("OpenSSL|OpenSSL.**"),
     Allow("prometheus_client|prometheus_client.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("provisioningserver.certificates.*"),
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.path.get_maas_data_path"),
     Allow("provisioningserver.prometheus.utils.**"),
+    Allow(
+        "provisioningserver.utils.env.MAAS_ID"
+    ),  # TODO: Remove when moved to maascommon
     Allow("provisioningserver.utils.env.MAAS_UUID"),
     Allow("provisioningserver.utils.ipaddr.get_machine_default_gateway_ip"),
     Allow("pydantic|pydantic.**"),
@@ -237,6 +243,9 @@ CommonRule = Rule(
     Allow("maasservicelayer.simplestreams.**"),
     Allow("OpenSSL|OpenSSL.**"),
     Allow("netaddr|netaddr.**"),
+    Allow("temporalio.client.**"),
+    Allow("temporalio.worker.**"),
+    Allow("temporalio.converter.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")
@@ -477,6 +486,7 @@ ServiceLayerRule = Rule(
     Allow("metadataserver.enum.*"),
     Allow("netaddr"),
     Allow("netaddr.**"),
+    Allow("provisioningserver.certificates.**"),
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.security.**"),
     Allow("provisioningserver.utils.arch.**"),

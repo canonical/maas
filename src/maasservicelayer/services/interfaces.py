@@ -198,3 +198,6 @@ class InterfacesService(
             rtype="A",
             zone=domain.name,
         )
+
+    async def get_for_ip(self, sip: StaticIPAddress) -> list[Interface] | None:
+        return await self.repository.get_for_ip(ip_id=sip.id)

@@ -1,6 +1,6 @@
 # Copyright 2025 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the set LICENSE).
-
+import copy
 from datetime import datetime
 import math
 from unittest.mock import Mock
@@ -40,6 +40,14 @@ TEST_BOOT_RESOURCE_SET = BootResourceSet(
     version="20250618",
     label="stable",
     resource_id=1,
+)
+TEST_BOOT_RESOURCE_SET_2 = BootResourceSet(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    version="20250826",
+    label="stable",
+    resource_id=2,
 )
 TEST_BOOT_RESOURCE_SET_OLD = BootResourceSet(
     id=1,
@@ -272,3 +280,204 @@ class TestBootResourceSetsService:
         mock_boot_resource_file_sync_service.get_current_sync_size_for_files.assert_called_with(
             {0, 1, 2}
         )
+
+    async def test_get_latest_complete_set_for_boot_resource(
+        self,
+        service: BootResourceSetsService,
+        mock_repository: Mock,
+        mock_boot_resource_files_service: Mock,
+        mock_boot_resource_file_sync_service: Mock,
+    ) -> None:
+        boot_resource_id = 42
+
+        mock_repository.get_many_newest_to_oldest_for_boot_resource.return_value = [
+            TEST_BOOT_RESOURCE_SET_2,
+            TEST_BOOT_RESOURCE_SET,
+        ]
+
+        mock_boot_resource_file_sync_service.get_regions_count.return_value = 1
+
+        mock_boot_resource_files_service.get_files_in_resource_set.return_value = [
+            TEST_BOOT_RESOURCE_FILE
+        ]
+
+        mock_boot_resource_file_sync_service.get_current_sync_size_for_files.return_value = TEST_BOOT_RESOURCE_FILE.size
+
+        latest_complete_set = (
+            await service.get_latest_complete_set_for_boot_resource(
+                boot_resource_id
+            )
+        )
+
+        assert latest_complete_set == TEST_BOOT_RESOURCE_SET_2
+
+    async def test_get_latest_complete_set_for_boot_resource_no_sets(
+        self,
+        service: BootResourceSetsService,
+        mock_repository: Mock,
+        mock_boot_resource_file_sync_service: Mock,
+    ) -> None:
+        boot_resource_id = 42
+
+        mock_repository.get_many_newest_to_oldest_for_boot_resource.return_value = []
+
+        mock_boot_resource_file_sync_service.get_regions_count.return_value = 1
+
+        latest_complete_set = (
+            await service.get_latest_complete_set_for_boot_resource(
+                boot_resource_id
+            )
+        )
+
+        assert latest_complete_set is None
+
+    async def test_get_latest_complete_set_for_boot_resource_only_set_isnt_synced(
+        self,
+        service: BootResourceSetsService,
+        mock_repository: Mock,
+        mock_boot_resource_files_service: Mock,
+        mock_boot_resource_file_sync_service: Mock,
+    ) -> None:
+        boot_resource_id = 42
+
+        mock_repository.get_many_newest_to_oldest_for_boot_resource.return_value = [
+            TEST_BOOT_RESOURCE_SET
+        ]
+
+        mock_boot_resource_file_sync_service.get_regions_count.return_value = 2
+
+        mock_boot_resource_files_service.get_files_in_resource_set.return_value = [
+            TEST_BOOT_RESOURCE_FILE
+        ]
+
+        # Not fully synced on one region
+        mock_boot_resource_file_sync_service.get_current_sync_size_for_files.return_value = (
+            TEST_BOOT_RESOURCE_FILE.size * 1.5
+        )
+
+        latest_complete_set = (
+            await service.get_latest_complete_set_for_boot_resource(
+                boot_resource_id
+            )
+        )
+
+        assert latest_complete_set is None
+
+    async def test_is_usable(
+        self,
+        service: BootResourceSetsService,
+        mock_boot_resource_files_service: Mock,
+    ) -> None:
+        mock_boot_resource_files_service.get_files_in_resource_set.return_value = [
+            BootResourceFile(
+                id=1,
+                created=utcnow(),
+                updated=utcnow(),
+                filename="filename1",
+                filetype=BootResourceFileType.BOOT_KERNEL,
+                sha256="abcdef0123456789" * 4,
+                filename_on_disk="abcdef01",
+                size=100,
+                extra={},
+                resource_set_id=1,
+            ),
+            BootResourceFile(
+                id=2,
+                created=utcnow(),
+                updated=utcnow(),
+                filename="filename2",
+                filetype=BootResourceFileType.BOOT_INITRD,
+                sha256="a1f54f3d1f1537bb" * 4,
+                filename_on_disk="abcdef02",
+                size=1001,
+                extra={},
+                resource_set_id=1,
+            ),
+            BootResourceFile(
+                id=3,
+                created=utcnow(),
+                updated=utcnow(),
+                filename="filename3",
+                filetype=BootResourceFileType.SQUASHFS_IMAGE,
+                sha256="14564738172a6284" * 4,
+                filename_on_disk="abcdef03",
+                size=256,
+                extra={},
+                resource_set_id=1,
+            ),
+        ]
+
+        resource_set = BootResourceSet(
+            id=1,
+            version="20250826",
+            label="stable",
+            resource_id=1,
+        )
+
+        is_usable = await service.is_usable(resource_set.id)
+
+        assert is_usable
+
+    async def test_is_not_usable(
+        self,
+        service: BootResourceSetsService,
+        mock_boot_resource_files_service: Mock,
+    ) -> None:
+        file = copy.deepcopy(TEST_BOOT_RESOURCE_FILE)
+        file.filetype = BootResourceFileType.BOOT_DTB
+        mock_boot_resource_files_service.get_files_in_resource_set.return_value = [
+            file
+        ]
+
+        resource_set = BootResourceSet(
+            id=1,
+            version="20250826",
+            label="stable",
+            resource_id=1,
+        )
+
+        is_usable = await service.is_usable(resource_set.id)
+
+        assert not is_usable
+
+    async def test_is_xinstallable(
+        self,
+        service: BootResourceSetsService,
+        mock_boot_resource_files_service: Mock,
+    ) -> None:
+        mock_boot_resource_files_service.get_files_in_resource_set.return_value = [
+            TEST_BOOT_RESOURCE_FILE
+        ]
+
+        resource_set = BootResourceSet(
+            id=1,
+            version="20250826",
+            label="stable",
+            resource_id=1,
+        )
+
+        is_xinstallable = await service.is_xinstallable(resource_set.id)
+
+        assert is_xinstallable
+
+    async def test_is_not_xinstallable(
+        self,
+        service: BootResourceSetsService,
+        mock_boot_resource_files_service: Mock,
+    ) -> None:
+        file = copy.deepcopy(TEST_BOOT_RESOURCE_FILE)
+        file.filetype = BootResourceFileType.BOOT_KERNEL
+        mock_boot_resource_files_service.get_files_in_resource_set.return_value = [
+            file
+        ]
+
+        resource_set = BootResourceSet(
+            id=1,
+            version="20250826",
+            label="stable",
+            resource_id=1,
+        )
+
+        is_xinstallable = await service.is_xinstallable(resource_set.id)
+
+        assert not is_xinstallable

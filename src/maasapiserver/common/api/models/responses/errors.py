@@ -65,9 +65,9 @@ class NotFoundBodyResponse(ErrorBodyResponse):
 
 
 class NotFoundResponse(JSONResponse):
-    def __init__(self, **kwargs):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]], **kwargs):
         super().__init__(
-            content=jsonable_encoder(NotFoundBodyResponse()),
+            content=jsonable_encoder(NotFoundBodyResponse(details=details)),
             status_code=status.HTTP_404_NOT_FOUND,
             **kwargs,
         )
@@ -141,6 +141,21 @@ class ServiceUnavailableErrorResponse(JSONResponse):
                 ServiceUnavailableErrorBodyResponse(details=details)
             ),
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+class InsufficientStorageErrorBodyResponse(ErrorBodyResponse):
+    code: int = status.HTTP_507_INSUFFICIENT_STORAGE
+    message: str = "Can't store the file you are trying to upload. There's no sufficient space on storage."
+
+
+class InsufficientStorageErrorResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(
+                InsufficientStorageErrorBodyResponse(details=details)
+            ),
+            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
         )
 
 

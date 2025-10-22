@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """A script that configures and then logs via:
@@ -41,9 +41,13 @@ def main():
         type=modes.__getitem__,
         help=" or ".join(mode.name for mode in modes),
     )
+    parser.add_argument("--use_json_logging", action="store_true")
     options = parser.parse_args()
 
     # Configure logging. This is the main entry-point.
+    from provisioningserver import settings
+
+    settings.USE_JSON_LOGGING = options.use_json_logging
     provisioningserver.logger.configure(
         verbosity=options.verbosity, mode=options.mode
     )

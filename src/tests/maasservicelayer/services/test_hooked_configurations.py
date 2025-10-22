@@ -4,9 +4,15 @@
 from unittest.mock import Mock
 
 import pytest
+from temporalio.common import WorkflowIDReusePolicy
 
+from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.models.configurations import (
+    EnableHttpProxyConfig,
+    HttpProxyConfig,
     NTPExternalOnlyConfig,
     NTPServersConfig,
     SessionLengthConfig,
@@ -16,6 +22,7 @@ from maasservicelayer.models.configurations import (
 from maasservicelayer.services import (
     ConfigurationsService,
     HookedConfigurationsService,
+    TemporalService,
     UsersService,
     VlansService,
 )
@@ -30,6 +37,7 @@ class TestHookedConfigurationsService:
         service = HookedConfigurationsService(
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
+            temporal_service=Mock(TemporalService),
             users_service=Mock(UsersService),
             vlans_service=Mock(VlansService),
             v3dnsrrsets_service=Mock(V3DNSResourceRecordSetsService),
@@ -43,6 +51,7 @@ class TestHookedConfigurationsService:
         service = HookedConfigurationsService(
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
+            temporal_service=Mock(TemporalService),
             users_service=Mock(UsersService),
             vlans_service=Mock(VlansService),
             v3dnsrrsets_service=Mock(V3DNSResourceRecordSetsService),
@@ -57,6 +66,7 @@ class TestHookedConfigurationsService:
         service = HookedConfigurationsService(
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
+            temporal_service=Mock(TemporalService),
             users_service=Mock(UsersService),
             vlans_service=Mock(VlansService),
             v3dnsrrsets_service=Mock(V3DNSResourceRecordSetsService),
@@ -73,6 +83,7 @@ class TestHookedConfigurationsService:
         service = HookedConfigurationsService(
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
+            temporal_service=Mock(TemporalService),
             users_service=Mock(UsersService),
             vlans_service=Mock(VlansService),
             v3dnsrrsets_service=Mock(V3DNSResourceRecordSetsService),
@@ -87,6 +98,7 @@ class TestHookedConfigurationsService:
         service = HookedConfigurationsService(
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
+            temporal_service=Mock(TemporalService),
             users_service=Mock(UsersService),
             vlans_service=Mock(VlansService),
             v3dnsrrsets_service=Mock(V3DNSResourceRecordSetsService),
@@ -97,4 +109,42 @@ class TestHookedConfigurationsService:
         )
         service.v3dnsrrsets_service.update_kms_srv.assert_awaited_once_with(
             "foobar."
+        )
+
+    async def test_set_enable_http_proxy(self):
+        service = HookedConfigurationsService(
+            context=Context(),
+            configurations_service=Mock(ConfigurationsService),
+            temporal_service=Mock(TemporalService),
+            users_service=Mock(UsersService),
+            vlans_service=Mock(VlansService),
+            v3dnsrrsets_service=Mock(V3DNSResourceRecordSetsService),
+        )
+        await service.set(EnableHttpProxyConfig.name, True)
+        service.configurations_service.set.assert_awaited_once_with(
+            name=EnableHttpProxyConfig.name, value=True, hook_guard=False
+        )
+        service.temporal_service.register_or_update_workflow_call.assert_called_once_with(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            workflow_id="fetch-manifest",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+        )
+
+    async def test_set_http_proxy(self):
+        service = HookedConfigurationsService(
+            context=Context(),
+            configurations_service=Mock(ConfigurationsService),
+            temporal_service=Mock(TemporalService),
+            users_service=Mock(UsersService),
+            vlans_service=Mock(VlansService),
+            v3dnsrrsets_service=Mock(V3DNSResourceRecordSetsService),
+        )
+        await service.set(HttpProxyConfig.name, "http://1.2.3.4")
+        service.configurations_service.set.assert_awaited_once_with(
+            name=HttpProxyConfig.name, value="http://1.2.3.4", hook_guard=False
+        )
+        service.temporal_service.register_or_update_workflow_call.assert_called_once_with(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            workflow_id="fetch-manifest",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )

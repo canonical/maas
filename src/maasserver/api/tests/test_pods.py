@@ -9,6 +9,7 @@ from django.urls import reverse
 from twisted.internet.defer import succeed
 
 from maasserver import vmhost
+from maasserver.api.pods import PodHandler, VmHostHandler
 from maasserver.forms import pods
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
@@ -633,3 +634,19 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertNotIn(tag_to_be_removed, parsed_device["tags"])
         pod = reload_object(pod)
         self.assertNotIn(tag_to_be_removed, pod.tags)
+
+
+class TestDeprecationWarnings(APITestCase.ForUser):
+    def test_vm_host_read_not_deprecated(self):
+        """Test that vm-host read command is not marked as deprecated."""
+
+        vm_host_read = getattr(VmHostHandler, "read", None)
+        self.assertIsNotNone(vm_host_read)
+        self.assertFalse(hasattr(vm_host_read, "deprecated"))
+
+    def test_pod_read_not_deprecated(self):
+        """Test that pod read command is not marked as deprecated (inherited method)."""
+
+        pod_read = getattr(PodHandler, "read", None)
+        self.assertIsNotNone(pod_read)
+        self.assertFalse(hasattr(pod_read, "deprecated"))

@@ -97,7 +97,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         )
         get_dns_server_address()
         self.assertEqual(
-            call(WARNING_MESSAGE % "127.0.0.1"), logger.warning.call_args
+            call(WARNING_MESSAGE % "127.0.0.1"), logger.warn.call_args
         )
 
     def test_get_dns_server_address_uses_rack_controller_url(self):
@@ -170,29 +170,29 @@ class TestWarnLoopback(MAASServerTestCase):
         logger = self.patch(zonegenerator, "logger")
         loopback = "127.0.0.1"
         warn_loopback(loopback)
-        logger.warning.assert_called_once_with(WARNING_MESSAGE % loopback)
+        logger.warn.assert_called_once_with(WARNING_MESSAGE % loopback)
 
     def test_warn_loopback_warns_about_any_IPv4_loopback(self):
         logger = self.patch(zonegenerator, "logger")
         loopback = "127.254.100.99"
         warn_loopback(loopback)
-        logger.warning.assert_called_once_with(WARNING_MESSAGE % loopback)
+        logger.warn.assert_called_once_with(WARNING_MESSAGE % loopback)
 
     def test_warn_loopback_warns_about_IPv6_loopback(self):
         logger = self.patch(zonegenerator, "logger")
         loopback = "::1"
         warn_loopback(loopback)
-        logger.warning.assert_called_once_with(WARNING_MESSAGE % loopback)
+        logger.warn.assert_called_once_with(WARNING_MESSAGE % loopback)
 
     def test_warn_loopback_does_not_warn_about_sensible_IPv4(self):
         logger = self.patch(zonegenerator, "logger")
         warn_loopback("10.1.2.3")
-        logger.warning.assert_not_called()
+        logger.warn.assert_not_called()
 
     def test_warn_loopback_does_not_warn_about_sensible_IPv6(self):
         logger = self.patch(zonegenerator, "logger")
         warn_loopback("1::9")
-        logger.warning.assert_not_called()
+        logger.warn.assert_not_called()
 
 
 class TestLazyDict(TestCase):

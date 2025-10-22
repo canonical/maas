@@ -495,3 +495,46 @@ class TestInterfaceRepository:
         assert unknown_interface.interface_speed == 0
         assert unknown_interface.link_speed == 0
         assert unknown_interface.sriov_max_vf == 0
+
+    async def test_get_for_ip(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        vlan = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=0,
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+
+        static_ip = StaticIPAddress(
+            **(
+                await create_test_staticipaddress_entry(
+                    fixture=fixture,
+                    subnet=subnet,
+                    alloc_type=IpAddressType.DHCP,
+                )
+            )[0]
+        )
+        interface = await create_test_interface_entry(
+            fixture=fixture,
+            vlan=vlan,
+            name="test_interface",
+        )
+        await create_test_interface_entry(
+            fixture=fixture,
+            vlan=vlan,
+            name="test_interface_2",
+        )
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+
+        await interfaces_repository.add_ip(interface, static_ip.id)
+
+        iface = await interfaces_repository.get_for_ip(static_ip.id)
+
+        assert (
+            iface[0].id == interface.id
+            and iface[0].mac_address == interface.mac_address
+            and iface[0].name == interface.name
+        )

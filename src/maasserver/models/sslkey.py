@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.
+# Copyright 2014-2025 Canonical Ltd.
 # Copyright 2014 Cloudbase Solutions SRL.
 # This software is licensed under the GNU Affero General Public License
 # version 3 (see the file LICENSE).
@@ -10,9 +10,11 @@ from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, TextField
 from OpenSSL import crypto
 
-from maasserver import logger
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from provisioningserver.logger import LegacyLogger
+
+logger = LegacyLogger()
 
 
 class SSLKeyManager(Manager):
@@ -32,7 +34,7 @@ def validate_ssl_key(value):
         # Here, we catch them all and return a ValidationError since this
         # method only aims at validating keys and not return the exact cause of
         # the failure.
-        logger.exception("Invalid SSL key.")
+        logger.error("Invalid SSL key.")
         raise ValidationError("Invalid SSL key.")  # noqa: B904
 
 

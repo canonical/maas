@@ -10,7 +10,6 @@ from contextlib import asynccontextmanager, contextmanager
 import hashlib
 from io import BufferedWriter
 import os
-from pathlib import Path
 import shutil
 import tarfile
 from typing import AsyncGenerator, Generator
@@ -19,7 +18,7 @@ import aiofiles
 import aiofiles.os
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
 
-from maascommon.path import get_maas_data_path
+from maascommon.utils.images import get_bootresource_store_path
 
 CHUNK_SIZE = 4 * (2**20)
 
@@ -38,10 +37,6 @@ class LocalStoreInvalidHash(LocalStoreException):
 
 class LocalStoreAllocationFail(LocalStoreException):
     """Could not allocate space for this file"""
-
-
-def get_bootresource_store_path() -> Path:
-    return Path(get_maas_data_path("image-storage"))
 
 
 class SyncLocalBootResourceFile:

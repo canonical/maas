@@ -14,6 +14,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ConflictResponse,
     DischargeRequiredErrorResponse,
     ForbiddenResponse,
+    InsufficientStorageErrorResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     PreconditionFailedResponse,
@@ -21,6 +22,7 @@ from maasapiserver.common.api.models.responses.errors import (
     UnauthorizedResponse,
     ValidationErrorResponse,
 )
+from maascommon.logging.security import AUTHN_AUTH_FAILED, AUTHZ_FAIL, SECURITY
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
@@ -28,6 +30,7 @@ from maasservicelayer.exceptions.catalog import (
     ConflictException,
     DischargeRequiredException,
     ForbiddenException,
+    InsufficientStorageException,
     NotFoundException,
     PreconditionFailedException,
     ServiceUnavailableException,
@@ -107,22 +110,30 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
             return BadRequestResponse(e.details)
         except UnauthorizedException as e:
             logger.debug(e)
+            logger.info(
+                AUTHN_AUTH_FAILED,
+                type=SECURITY,
+            )
             return UnauthorizedResponse(e.details)
         except DischargeRequiredException as e:
             logger.debug(e)
             return DischargeRequiredErrorResponse(e.macaroon)
         except ForbiddenException as e:
             logger.debug(e)
+            logger.warn(AUTHZ_FAIL, type=SECURITY)
             return ForbiddenResponse(e.details)
         except ValidationException as e:
             logger.debug(e)
             return ValidationErrorResponse(e.details)
         except NotFoundException as e:
             logger.debug(e)
-            return NotFoundResponse()
+            return NotFoundResponse(e.details)
         except PreconditionFailedException as e:
             logger.debug(e)
             return PreconditionFailedResponse(e.details)
+        except InsufficientStorageException as e:
+            logger.error(e)
+            return InsufficientStorageErrorResponse(e.details)
         except ServiceUnavailableException as e:
             logger.error(e)
             return ServiceUnavailableErrorResponse(e.details)

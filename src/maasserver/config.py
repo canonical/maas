@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration for the MAAS region."""
@@ -155,4 +155,13 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "debug_http",
         "Enable HTTP debugging. Logs all HTTP requests and HTTP responses.",
         OneWayStringBool(if_missing=False),
+    )
+
+    # Logging format
+    use_json_logging = ConfigurationOption(
+        "use_json_logging",
+        "Control JSON-formatted log output for regiond."
+        "When enabled, regiond log statements as structured JSON objects."
+        "When disabled, logs are emitted in plaintext format.",
+        OneWayStringBool(if_missing=True),
     )

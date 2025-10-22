@@ -8,7 +8,12 @@ from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
     BootSourceCacheRepository,
 )
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourcecache import BootSourceCache
+from maasservicelayer.models.bootsources import (
+    BootSourceAvailableImage,
+    BootSourceCacheOSRelease,
+)
 from maasservicelayer.services.base import BaseService, ServiceCache
 
 
@@ -60,3 +65,22 @@ class BootSourceCacheService(
         if existing:
             return await self._update_resource(existing, builder)
         return await self.create(builder)
+
+    async def get_available_lts_releases(self) -> list[str]:
+        return await self.repository.get_available_lts_releases()
+
+    async def get_all_available_images(self) -> list[BootSourceAvailableImage]:
+        return await self.repository.get_all_available_images()
+
+    async def list_boot_source_cache_available_images(
+        self,
+        page: int,
+        size: int,
+        boot_source_id: int,
+    ) -> ListResult[BootSourceAvailableImage]:
+        return await self.repository.list_boot_source_cache_available_images(
+            page=page, size=size, boot_source_id=boot_source_id
+        )
+
+    async def get_unique_os_releases(self) -> list[BootSourceCacheOSRelease]:
+        return await self.repository.get_unique_os_releases()

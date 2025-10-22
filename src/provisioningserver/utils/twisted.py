@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities related to the Twisted/Crochet execution environment."""
@@ -6,6 +6,7 @@
 from collections import defaultdict
 from collections.abc import Iterable
 import contextlib
+import contextvars
 from functools import partial, wraps
 from http import HTTPStatus
 from itertools import chain, repeat, starmap
@@ -22,7 +23,9 @@ from twisted.internet.defer import (
     AlreadyCalledError,
     CancelledError,
     Deferred,
+    inlineCallbacks,
     maybeDeferred,
+    returnValue,
     succeed,
 )
 from twisted.internet.error import ProcessDone
@@ -38,6 +41,7 @@ from twisted.web.server import Site
 from zope import interface
 from zope.interface import provider
 
+from maascommon.tracing import get_or_set_trace_id
 from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
@@ -228,6 +232,50 @@ def suppress(failure, *exceptions, instead=None):
         return failure
     else:
         return instead
+
+
+@asynchronous
+@inlineCallbacks
+def retry(f, *args, timeout=30, intervals=1, clock=None, **kwargs):
+    """
+    Helper to retry a function until it succeeds or timeout expires. Returns the
+    output of 'f' or raises TimeoutError
+
+    :param f: A callable returning either a result or a Deferred.
+    :param args: Positional args to pass to 'f'.
+    :param timeout: From now, how long to keep iterating, in seconds. This can
+        be specified as a number, or as an iterable. In the latter case, the
+        iterator is advanced each time an interval is needed. This allows for
+        back-off strategies.
+    :param intervals: The sleep between each iteration, in seconds, an an
+        iterable from which to obtain intervals.
+    :param clock: An optional `IReactorTime` provider. Defaults to the
+        installed reactor.
+    :param kwargs: Keyword args to pass to 'f'.
+    """
+    if clock is None:
+        from twisted.internet import reactor as clock
+
+    attempts = retries(timeout=timeout, intervals=intervals, clock=clock)
+    last_failure = None
+
+    for _, remaining, wait in attempts:
+        if remaining <= 0:
+            break
+        try:
+            rv = f(*args, **kwargs)
+            result = yield rv if isinstance(rv, Deferred) else succeed(rv)
+            returnValue(result)
+        except Exception as e:
+            last_failure = e
+        yield pause(wait, clock=clock)
+
+    if last_failure is not None:
+        raise TimeoutError(
+            f"Retries exhausted after {timeout}s"
+        ) from last_failure
+    else:
+        raise TimeoutError(f"Retries exhausted after {timeout}s")
 
 
 def retries(timeout=30, intervals=1, clock=None):
@@ -851,9 +899,21 @@ class ThreadPool(threadpool.ThreadPool):
         the pool (which assumes that creating a thread will always succeed).
         """
 
+        # This is where all the tracing magic happens: if the reactor is scheduling new tasks to a default/db thread,
+        # the trace id would be set and copied in the thread. Then, the thread might callFromThread to execute other tasks on the reactor
+        # (for example, a post commit) and in this case it would have the trace id populated. This ensures that
+        # every call that is executed from the thread is using the same trace id, even if the execution is going back and forth
+        # from the event loop and/or other threads.
+        get_or_set_trace_id()
+        ctx = contextvars.copy_context()
+
         def callInContext(context, func, *args, **kwargs):
+            # We are inside a database or default thread. Reset the trace_id for this execution.
             context.enter()  # Delayed until now.
-            return func(*args, **kwargs)
+
+            # No need to reset the trace id when the job is done, because when a new task is scheduled a brand new context will be
+            # provided.
+            return ctx.run(func, *args, **kwargs)
 
         return super().callInThreadWithCallback(
             onResult, callInContext, self.context, func, *args, **kwargs

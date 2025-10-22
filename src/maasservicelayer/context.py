@@ -15,10 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 class Context:
     def __init__(
         self,
-        context_id: str | None = None,
+        trace_id: str | None = None,
         connection: AsyncConnection | Connection | None = None,
     ):
-        self.context_id = context_id or self._generate_context_id()
+        self.trace_id = trace_id or self._generate_trace_id()
         self._start_timestamp = time.time()
         self._end_timestamp = None
         self._connection = connection
@@ -46,5 +46,5 @@ class Context:
     def get_elapsed_time_seconds(self) -> float:
         return time.time() - self._start_timestamp
 
-    def _generate_context_id(self) -> str:
-        return str(uuid4())
+    def _generate_trace_id(self) -> str:
+        return uuid4().hex

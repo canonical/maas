@@ -47,4 +47,3 @@ For full build instructions:
   * Customize installer configuration (e.g., Kickstart, autoinstall, YAML)
   * Build the image
   * Upload it to MAAS
-

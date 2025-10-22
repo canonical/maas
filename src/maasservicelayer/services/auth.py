@@ -3,6 +3,13 @@
 
 import os
 
+import structlog
+
+from maascommon.logging.security import (
+    AUTHN_LOGIN_SUCCESSFUL,
+    AUTHN_LOGIN_UNSUCCESSFUL,
+    SECURITY,
+)
 from maasservicelayer.auth.jwt import JWT, UserRole
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -19,6 +26,8 @@ from maasservicelayer.models.secrets import V3JWTKeySecret
 from maasservicelayer.services.base import Service
 from maasservicelayer.services.secrets import SecretNotFound, SecretsService
 from maasservicelayer.services.users import UsersService
+
+logger = structlog.getLogger(__name__)
 
 
 class AuthService(Service):
@@ -43,6 +52,10 @@ class AuthService(Service):
             QuerySpec(UserClauseFactory.with_username(username))
         )
         if not user or not user.is_active or not user.check_password(password):
+            logger.info(
+                AUTHN_LOGIN_UNSUCCESSFUL,
+                type=SECURITY,
+            )
             raise UnauthorizedException(
                 details=[
                     BaseExceptionDetail(
@@ -51,6 +64,10 @@ class AuthService(Service):
                     )
                 ]
             )
+        logger.info(
+            AUTHN_LOGIN_SUCCESSFUL,
+            type=SECURITY,
+        )
 
         roles = (
             [UserRole.USER, UserRole.ADMIN]

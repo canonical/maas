@@ -867,9 +867,11 @@ class DNSConfigActivity(ActivityBase):
                             for answer in answers:
                                 ip = IPAddress(answer[0])
                                 ptr_answer = (
-                                    ".".join([rec_name, domain_name])
+                                    self._ensure_fqdn(
+                                        ".".join([rec_name, domain_name])
+                                    )
                                     if rec_name != "@"
-                                    else domain_name,
+                                    else self._ensure_fqdn(domain_name),
                                     answer[1],
                                 )
                                 if ip in net:
@@ -892,11 +894,18 @@ class DNSConfigActivity(ActivityBase):
                                         if ptr_answer not in record:
                                             record.append(
                                                 (
-                                                    ".".join(
-                                                        [rec_name, domain_name]
+                                                    self._ensure_fqdn(
+                                                        ".".join(
+                                                            [
+                                                                rec_name,
+                                                                domain_name,
+                                                            ]
+                                                        )
                                                     )
                                                     if rec_name != "@"
-                                                    else domain_name,
+                                                    else self._ensure_fqdn(
+                                                        domain_name
+                                                    ),
                                                     answer[1],
                                                 )
                                             )
@@ -904,6 +913,12 @@ class DNSConfigActivity(ActivityBase):
                 if not rev_records[rev_name]:
                     rev_records[rev_name] = {}
         return rev_records
+
+    def _ensure_fqdn(self, name: str) -> str:
+        # ensure the given name is a fqdn, i.e ends in '.'
+        if name[-1] == ".":
+            return name
+        return f"{name}."
 
     def _get_named_rndc_conf_path(self) -> str:
         return get_named_rndc_conf_path()
@@ -1066,9 +1081,9 @@ class DNSConfigActivity(ActivityBase):
                 forwarded_zones=[
                     (
                         domain.name,
-                        (srvr.ip_address, srvr.port),
+                        [(str(srvr.ip_address), srvr.port) for srvr in srvrs],
                     )
-                    for domain, srvr in forwarded_domains
+                    for domain, srvrs in forwarded_domains
                 ],
                 trusted_networks=[
                     str(subnet.cidr) for subnet in trusted_networks
@@ -1229,24 +1244,6 @@ class DNSConfigActivity(ActivityBase):
 class ConfigureDNSWorkflow:
     @workflow_run_with_context
     async def run(self, param: ConfigureDNSParam) -> None:
-        updates = None
-        need_full_reload = param.need_full_reload
-
-        if not need_full_reload:
-            latest_serial, updates = await workflow.execute_activity(
-                GET_CHANGES_SINCE_CURRENT_SERIAL_NAME,
-                start_to_close_timeout=GET_CHANGES_SINCE_CURRENT_SERIAL_TIMEOUT,
-            )
-            if latest_serial is None or latest_serial == 0:  # up-to-date
-                return
-
-            if updates["force_reload"]:
-                need_full_reload = True
-            else:
-                for publication in updates["updates"]:
-                    if publication["operation"] == DnsUpdateAction.RELOAD:
-                        need_full_reload = True
-
         region_controllers = await workflow.execute_activity(
             GET_REGION_CONTROLLERS_NAME,
             start_to_close_timeout=GET_REGION_CONTROLLERS_TIMEOUT,
@@ -1255,6 +1252,27 @@ class ConfigureDNSWorkflow:
         for region_controller_system_id in region_controllers[
             "region_controller_system_ids"
         ]:
+            updates = None
+            need_full_reload = param.need_full_reload
+
+            if not need_full_reload:
+                latest_serial, updates = await workflow.execute_activity(
+                    GET_CHANGES_SINCE_CURRENT_SERIAL_NAME,
+                    start_to_close_timeout=GET_CHANGES_SINCE_CURRENT_SERIAL_TIMEOUT,
+                    task_queue=get_task_queue_for_update(
+                        region_controller_system_id
+                    ),
+                )
+                if latest_serial is None or latest_serial == -1:  # up-to-date
+                    continue
+
+                if updates["force_reload"]:
+                    need_full_reload = True
+                else:
+                    for publication in updates["updates"]:
+                        if publication["operation"] == DnsUpdateAction.RELOAD:
+                            need_full_reload = True
+
             new_serial = None
             if need_full_reload:
                 logger.debug(

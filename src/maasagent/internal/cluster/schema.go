@@ -84,8 +84,11 @@ CREATE TABLE host_reservation (
 	id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 	ip_address TEXT NOT NULL,
 	mac_address TEXT,
-	range_id INTEGER NOT NULL,
+	duid TEXT,
+	range_id INTEGER,
+	subnet_id INTEGER NOT NULL,
 	FOREIGN KEY(range_id) REFERENCES ip_range(id),
+	FOREIGN KEY(subnet_id) REFERENCES subnet(id),
 	UNIQUE(ip_address)
 );
 `

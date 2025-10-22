@@ -1,46 +1,76 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://canonical.com/maas/docs/configuring-storage-layouts" target = "_blank">Let us know.</a>*
 
-MAAS supports multiple storage layouts, including options for non-UEFI-compatible systems.
+## Cheat sheet
+| Layout   | Best for | Key notes |
+| Flat | Simple setups, small servers | One root partition, minimal options |
+| LVM  | Flexibility & growth | Resize or add volumes later |
+| Bcache | Performance boost | Needs SSD for caching, defaults to writethrough |
+| VMFS6 | VMware ESXi hosts | Creates OS + VMFS datastore automatically |
+| Blank | Custom/manual setups | Wipes disks, must configure storage manually |
+
+MAAS lets you choose different storage layouts when deploying machines. These layouts affect performance, flexibility, and compatibility (e.g. UEFI vs. non-UEFI). Picking the right one ensures deployments succeed and fit your workload.
+
+You can configure layouts when:
+- Commissioning a new machine.
+- Editing a machine’s storage before deployment.
+
+In the UI: choose *Machines* > *[machine]* > *Storage*.
+
+In the CLI: use `maas $PROFILE machine set-storage-layout`.
+
 
 ## Flat layout
 
-The Flat layout means one partition takes up the whole boot disk, formatted with ext4 and mounted at the root (`/`).
+What it is:
+A simple setup where the entire disk is one root filesystem. Good for small or simple systems.
 
 | Name  | Size       | Type | Filesystem | Mount point |
-|-------|------------|------|------------|-------------|
 | sda   | -          | disk | -          | -           |
 | sda1  | 512 MB     | part | FAT32      | /boot/efi   |
 | sda2  | rest of sda| part | ext4       | /           |
 
-**Options:**
+How to configure:
+- UI: Choose Flat in the storage layout dropdown.
+- CLI:
+  ```bash
+  maas $PROFILE machine set-storage-layout $SYSTEM_ID layout=flat
+  ```
 
-- **boot_size**: Sets the size of the boot partition. Default is zero, putting `/boot` on the root filesystem.
-- **root_device**: The block device for the root partition. Usually the boot disk.
-- **root_size**: Root partition size, 100% by default.
+Options:
+- `boot_size`: Size of `/boot`. Default is 0 (combined with `/`).
+- `root_device`: Device to hold the root partition (default: boot disk).
+- `root_size`: Size of root partition (default: 100%).
+
 
 ## LVM layout
 
-LVM (Logical Volume Management) offers flexibility. A volume group `vgroot` covers a partition on the boot disk, wrapping logical volume `lvroot`.
+What it is:
+Logical Volume Manager (LVM) adds flexibility, allowing resizing or adding volumes later.
 
 | Name  | Size        | Type  | Filesystem     | Mount point |
-|-------|-------------|-------|----------------|-------------|
 | sda   | -           | disk  | -              | -           |
 | sda1  | 512 MB      | part  | FAT32          | /boot/efi   |
 | sda2  | rest of sda | part  | lvm-pv(vgroot) | -           |
 | lvroot| rest of sda | lvm   | ext4           | /           |
 
-**Options:**
+How to configure:
+- UI: Select LVM in storage layout.
+- CLI:
+  ```bash
+  maas $PROFILE machine set-storage-layout $SYSTEM_ID layout=lvm
+  ```
 
-- **vg_name**: Customise volume group's name.
-- **lv_name**: Personalise logical volume's name.
-- **lv_size**: Set the size, defaulting to the entire volume group.
+Options:
+- `vg_name`: Name of the volume group (default: `vgroot`).
+- `lv_name`: Name of logical volume (default: `lvroot`).
+- `lv_size`: Size of LV (default: 100%).
 
-## bcache layout
 
-For better disk performance, the bcache layout uses the boot disk as the backing device and an SSD as the cache.
+## Bcache layout
+
+What it is:
+Uses an SSD as a cache for a slower backing disk to improve performance.
 
 | Name   | Size        | Type      | Filesystem | Mount point |
-|--------|-------------|-----------|------------|-------------|
 | sda    | -           | disk      | -          | -           |
 | sda1   | 512 MB      | part      | FAT32      | /boot/efi   |
 | sda2   | rest of sda | part      | bc-backing | -           |
@@ -48,30 +78,65 @@ For better disk performance, the bcache layout uses the boot disk as the backing
 | sdb1   | 100% of sdb | part      | bc-cache   | -           |
 | bcache0| per sda2    | disk      | ext4       | /           |
 
-**Options:**
+How to configure:
+- UI: Select Bcache in storage layout.
+- CLI:
+  ```bash
+  maas $PROFILE machine set-storage-layout $SYSTEM_ID layout=bcache
+  ```
 
-- **cache_device**: Opt for cache device, defaulting to the smallest SSD.
-- **cache_mode**: Adjust the cache mode; `writethrough` is standard.
-- **cache_size**: Define cache partition size.
-- **cache_no_part**: Decide on partition creation for the cache device.
+Options:
+- `cache_device`: SSD to use as cache (default: smallest SSD).
+- `cache_mode`: Cache mode (`writethrough` by default).
+- `cache_size`: Partition size for cache.
+- `cache_no_part`: Whether to skip partition creation on cache device.
+
+If no SSD is present, bcache layout will fail.
+
 
 ## VMFS6 layout
 
-For VMware ESXi deployments, VMFS6 is the required layout, automating both OS and datastore configurations.
+What it is:
+Required for VMware ESXi deployments. Sets up both the OS and VMFS datastore.
 
 | Name  | Size        | Type       | Use                |
-|-------|-------------|------------|--------------------|
 | sda   | -           | disk       | -                  |
 | sda1  | 3 MB        | part       | EFI                |
 | sda2  | 4 GB        | part       | Basic Data         |
 | sda3  | Remaining   | part       | VMFS Datastore 1   |
 
-**Options:**
+How to configure:
+- UI: Select VMFS6 when editing storage.
+- CLI:
+  ```bash
+  maas $PROFILE machine set-storage-layout $SYSTEM_ID layout=vmfs6
+  ```
 
-- **root_size**: Sets the default VMFS Datastore size, generally the remaining disk space.
+Options:
+- `root_size`: Size of datastore (default: remainder of disk).
+
 
 ## Blank layout
 
-The Blank layout clears all, making way for custom configurations. It leaves the system un-deployable until you manually configure storage.
+What it is:
+Wipes the disk and leaves storage unconfigured. Use this if you want to manually define partitions, filesystems, or RAIDs before deployment.
 
-> Machines with this layout need manual storage configuration before deployment.
+How to configure:
+- UI: Select Blank in storage layout.
+- CLI:
+  ```bash
+  maas $PROFILE machine set-storage-layout $SYSTEM_ID layout=blank
+  ```
+
+A machine with Blank layout cannot deploy until storage is manually configured.
+
+
+## Safety nets
+
+- Always confirm layout with `maas $PROFILE machine read $SYSTEM_ID | jq .storage`.
+- In UI, check the Storage tab before hitting *Deploy*.
+- Test deployment of a machine before applying custom layouts widely.
+
+
+## Next steps
+- Peruse the [storage reference catalog](https://canonical.com/maas/docs/reference-maas-storage)

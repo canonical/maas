@@ -4,6 +4,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
+import os
 from typing import Optional
 
 from sqlalchemy import and_, or_, select, true
@@ -12,6 +13,9 @@ from temporalio import workflow
 from temporalio.common import WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
+from maascommon.enums.ipaddress import IpAddressType
+from maascommon.enums.ipranges import IPRangeType
+from maascommon.enums.node import NodeTypeEnum
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -19,7 +23,17 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
 )
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.domains import DomainsClauseFactory
 from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
+from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
+from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.db.repositories.reservedips import (
+    ReservedIPsClauseFactory,
+)
+from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressClauseFactory,
+)
+from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -32,6 +46,7 @@ from maasservicelayer.db.tables import (
     VlanTable,
 )
 from maasservicelayer.models.secrets import OMAPIKeySecret
+from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import ServiceCollectionV3
 from maastemporalworker.workflow.activity import ActivityBase
@@ -107,8 +122,85 @@ class GetActiveInterfacesForAgentParam:
 
 
 @dataclass
+class SetActiveInterfacesParam:
+    ifaces: list[str]
+
+
+@dataclass
 class ActiveInterfacesForAgentResult:
     ifaces: list[str]
+
+
+@dataclass
+class VlanData:
+    id: int
+    vid: int
+    relayed_vlan_id: int
+    mtu: int
+
+
+@dataclass
+class SubnetData:
+    id: int
+    cidr: str
+    gateway_ip: str
+    dns_servers: list[str]
+    allow_dns: bool
+    vlan_id: int
+
+
+@dataclass
+class InterfaceData:
+    id: int
+    vlan_id: int
+    name: str
+
+
+@dataclass
+class IPRangeData:
+    id: int
+    subnet_id: int
+    dynamic: bool
+    start_ip: str
+    end_ip: str
+
+
+@dataclass
+class HostReservationData:
+    ip: str
+    subnet_id: int
+    mac_address: Optional[str] = None
+    duid: Optional[str] = None
+    domain: Optional[str] = None
+    hostname: Optional[str] = None
+    domain_search: Optional[list[str]] = None
+
+
+@dataclass
+class DHCPDataForAgent:
+    vlans: list[VlanData]
+    subnets: list[SubnetData]
+    ipranges: list[IPRangeData]
+    interfaces: list[InterfaceData]
+    host_reservations: list[HostReservationData]
+    default_dns_servers: list[str]
+    ntp_servers: list[str]
+
+
+@dataclass
+class GetDHCPDataForAgentParam:
+    system_id: str
+
+
+@dataclass
+class ConfigDQLiteParam:
+    vlans: list[VlanData]
+    subnets: list[SubnetData]
+    ipranges: list[IPRangeData]
+    interfaces: list[InterfaceData]
+    host_reservations: list[HostReservationData]
+    default_dns_servers: list[str]
+    ntp_servers: list[str]
 
 
 class DHCPConfigActivity(ActivityBase):
@@ -433,22 +525,320 @@ class DHCPConfigActivity(ActivityBase):
             vlans = await self._get_active_vlans_for_agent(
                 svc, param.system_id
             )
+            node = await svc.nodes.get_one(
+                query=QuerySpec(
+                    where=NodeClauseFactory.with_system_id(param.system_id)
+                )
+            )
             ifaces = await svc.interfaces.get_many(
                 query=QuerySpec(
-                    where=InterfaceClauseFactory.with_vlan_id_in(
-                        [vlan.id for vlan in vlans],
-                    ),
-                ),
+                    where=InterfaceClauseFactory.and_clauses(
+                        clauses=[
+                            InterfaceClauseFactory.with_node_config_id(
+                                node.current_config_id
+                            ),
+                            InterfaceClauseFactory.with_vlan_id_in(
+                                [vlan.id for vlan in vlans]
+                            ),
+                        ]
+                    )
+                )
             )
             return ActiveInterfacesForAgentResult(
-                ifaces=[iface.name for iface in ifaces]
+                ifaces=[
+                    iface.name
+                    for iface in ifaces
+                    if iface.vlan_id in [vlan.id for vlan in vlans]
+                ]
+            )
+
+    async def _get_dhcp_host_reservations(
+        self, svc: ServiceCollectionV3, subnets: list[Subnet]
+    ) -> list[HostReservationData]:
+        sips = []
+        reserved_ips = []
+
+        for subnet in subnets:
+            sips += await svc.staticipaddress.get_many(
+                query=QuerySpec(
+                    where=StaticIPAddressClauseFactory.and_clauses(
+                        [
+                            StaticIPAddressClauseFactory.with_subnet_id(
+                                subnet.id
+                            ),
+                            StaticIPAddressClauseFactory.or_clauses(
+                                [
+                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                        IpAddressType.AUTO
+                                    ),
+                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                        IpAddressType.USER_RESERVED
+                                    ),
+                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                        IpAddressType.STICKY
+                                    ),
+                                ]
+                            ),
+                        ]
+                    )
+                )
+            )
+            reserved_ips += await svc.reservedips.get_many(
+                query=QuerySpec(
+                    where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
+                )
+            )
+
+        domains = await svc.domains.get_many(
+            query=QuerySpec(
+                where=DomainsClauseFactory.with_authoritative(True)
+            )
+        )
+        domain_search_list = [domain.name for domain in domains]
+
+        hosts = []
+        seen_domains = {}
+        seen_nodes = {}
+
+        for sip in sips:
+            interfaces = await svc.interfaces.get_for_ip(sip)
+            if not interfaces:
+                continue
+
+            for interface in interfaces:
+                if not interface.node_config_id:
+                    continue
+
+                node = None
+
+                if interface.node_config_id in seen_nodes:
+                    node = seen_nodes[interface.node_config_id]
+                else:
+                    node = await svc.nodes.get_one(
+                        query=QuerySpec(
+                            where=NodeClauseFactory.with_node_config_id(
+                                interface.node_config_id
+                            )
+                        )
+                    )
+                    if node.node_type in (
+                        NodeTypeEnum.RACK_CONTROLLER,
+                        NodeTypeEnum.REGION_CONTROLLER,
+                        NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
+                    ):
+                        continue
+
+                    seen_nodes[interface.node_config_id] = node
+
+                domain = None
+
+                if node.domain_id in seen_domains:
+                    domain = seen_domains[node.domain_id]
+                else:
+                    domain = await svc.domains.get_by_id(node.domain_id)
+                    seen_domains[node.domain_id] = domain
+
+                hosts.append(
+                    HostReservationData(
+                        mac_address=interface.mac_address,
+                        ip=str(sip.ip),
+                        hostname=node.hostname,
+                        domain=domain.name if domain else None,
+                        domain_search=domain_search_list,
+                        subnet_id=sip.subnet_id,
+                    )
+                )
+
+        hosts += [
+            HostReservationData(
+                ip=reserved_ip.ip,
+                mac_address=reserved_ip.mac_address,
+                subnet_id=reserved_ip.subnet_id,
+            )
+            for reserved_ip in reserved_ips
+        ]
+
+        return hosts
+
+    @activity_defn_with_context(name="get_dhcp_data_for_agent")
+    async def get_dhcp_data_for_agent(
+        self, param: GetDHCPDataForAgentParam
+    ) -> DHCPDataForAgent:
+        async with self.start_transaction() as svc:
+            vlans = await self._get_active_vlans_for_agent(
+                svc, param.system_id
+            )
+            node = await svc.nodes.get_one(
+                query=QuerySpec(
+                    where=NodeClauseFactory.with_system_id(param.system_id)
+                )
+            )
+            ifaces = await svc.interfaces.get_many(
+                query=QuerySpec(
+                    where=InterfaceClauseFactory.and_clauses(
+                        clauses=[
+                            InterfaceClauseFactory.with_node_config_id(
+                                node.current_config_id
+                            ),
+                            InterfaceClauseFactory.with_vlan_id_in(
+                                [vlan.id for vlan in vlans]
+                            ),
+                        ]
+                    )
+                )
+            )
+            subnets = await svc.subnets.get_many(
+                query=QuerySpec(
+                    where=SubnetClauseFactory.with_vlan_id_in(
+                        [vlan.id for vlan in vlans]
+                    )
+                )
+            )
+            ipranges = await svc.ipranges.get_many(
+                query=QuerySpec(
+                    where=IPRangeClauseFactory.with_subnet_ids(
+                        [subnet.id for subnet in subnets]
+                    )
+                )
+            )
+
+            rack_ips = await svc.staticipaddress.get_for_nodes(
+                query=QuerySpec(
+                    where=StaticIPAddressClauseFactory.and_clauses(
+                        [
+                            StaticIPAddressClauseFactory.with_node_system_id(
+                                system_id=node.system_id
+                            ),
+                            StaticIPAddressClauseFactory.or_clauses(
+                                [
+                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                        IpAddressType.STICKY
+                                    ),
+                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                        IpAddressType.USER_RESERVED
+                                    ),
+                                ]
+                            ),
+                        ]
+                    )
+                )
+            )
+            configured_subnet_ids = [subnet.id for subnet in subnets]
+
+            dns_servers = [
+                str(dns_ip.ip)
+                for dns_ip in rack_ips
+                if dns_ip.subnet_id in configured_subnet_ids
+            ]
+
+            ntp_servers = []
+            use_external_ntp_only = await svc.configurations.get(
+                "use_external_ntp_only"
+            )
+            if use_external_ntp_only:
+                ntp_servers = await svc.configurations.get(
+                    "ntp_servers", default=[]
+                )
+            else:
+                ntp_servers = [
+                    str(ntp_ip.ip)
+                    for ntp_ip in rack_ips
+                    if ntp_ip.subnet_id in configured_subnet_ids
+                ]
+
+            hosts = await self._get_dhcp_host_reservations(svc, subnets)
+
+            return DHCPDataForAgent(
+                interfaces=[
+                    InterfaceData(
+                        id=iface.id, name=iface.name, vlan_id=iface.vlan_id
+                    )
+                    for iface in ifaces
+                ],
+                vlans=[
+                    VlanData(
+                        id=vlan.id,
+                        vid=vlan.vid,
+                        relayed_vlan_id=vlan.relayed_vlan_id,
+                        mtu=vlan.mtu,
+                    )
+                    for vlan in vlans
+                ],
+                subnets=[
+                    SubnetData(
+                        id=subnet.id,
+                        cidr=str(subnet.cidr),
+                        vlan_id=subnet.vlan_id,
+                        gateway_ip=str(subnet.gateway_ip),
+                        dns_servers=subnet.dns_servers,
+                        allow_dns=subnet.allow_dns,
+                    )
+                    for subnet in subnets
+                ],
+                ipranges=[
+                    IPRangeData(
+                        id=iprange.id,
+                        subnet_id=iprange.subnet_id,
+                        start_ip=str(iprange.start_ip),
+                        end_ip=str(iprange.end_ip),
+                        dynamic=iprange.type == IPRangeType.DYNAMIC,
+                    )
+                    for iprange in ipranges
+                ],
+                host_reservations=hosts,
+                ntp_servers=ntp_servers,
+                default_dns_servers=dns_servers,
             )
 
 
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
+    async def _run_internal(self, param: ConfigureDHCPForAgentParam) -> None:
+        data = await workflow.execute_activity(
+            "get_dhcp_data_for_agent",
+            GetDHCPDataForAgentParam(
+                system_id=param.system_id,
+            ),
+            start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
+        )
+
+        await workflow.execute_activity(
+            "set-active-interfaces",
+            SetActiveInterfacesParam(
+                ifaces=[iface["name"] for iface in data["interfaces"]]
+            ),
+            task_queue=f"{param.system_id}@agent:main",
+            start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
+        )
+
+        await workflow.execute_activity(
+            "apply-dhcp-config-via-dqlite",
+            ConfigDQLiteParam(
+                vlans=[VlanData(**vlan) for vlan in data["vlans"]],
+                subnets=[SubnetData(**subnet) for subnet in data["subnets"]],
+                interfaces=[
+                    InterfaceData(**interface)
+                    for interface in data["interfaces"]
+                ],
+                ipranges=[
+                    IPRangeData(**iprange) for iprange in data["ipranges"]
+                ],
+                host_reservations=[
+                    HostReservationData(**host)
+                    for host in data["host_reservations"]
+                ],
+                ntp_servers=data["ntp_servers"],
+                default_dns_servers=data["default_dns_servers"],
+            ),
+            task_queue=f"{param.system_id}@agent:main",
+            start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
+        )
+
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
+        if os.environ.get("MAAS_INTERNAL_DHCP") == "1":
+            await self._run_internal(param)
+            return
         # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
         # scenario we want to update the dhcpd config.
         await workflow.execute_activity(

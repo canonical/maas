@@ -4,6 +4,7 @@
 from json import dumps as _dumps
 from unittest.mock import Mock, patch
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 from jose import jwt
@@ -11,22 +12,37 @@ from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.external_auth import (
+    OAuthProviderRequest,
+)
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
+    OAuthProviderResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import JWT, UserRole
 from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
     BaseExceptionDetail,
+    ConflictException,
     DischargeRequiredException,
+    PreconditionFailedException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
+    ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService
-from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.external_auth import (
+    ExternalAuthService,
+    ExternalOAuthService,
+)
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio
@@ -178,3 +194,310 @@ class TestAuthApi:
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 401
+
+    # GET /auth/oauth/initiate
+    async def test_get_oauth_initiate_success(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        test_provider = OAuthProvider(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_provider.return_value = test_provider
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/oauth/initiate"
+        )
+
+        assert response.status_code == 200
+        provider_info = response.json()
+        assert provider_info["auth_url"] == test_provider.build_auth_url()
+        assert provider_info["provider_name"] == test_provider.name
+
+    async def test_get_oauth_initiate_not_configured(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_provider.return_value = None
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/oauth/initiate"
+        )
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    # PUT /auth/oauth/:provider_id
+    async def test_update_oauth_provider_success(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        updated_provider = OAuthProvider(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="test_provider",
+            client_id="new_client_id",
+            client_secret="new_secret",
+            issuer_url="https://new-example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        services_mock.external_oauth.update_provider.return_value = (
+            updated_provider
+        )
+        response = await mocked_api_client.put(
+            f"{self.BASE_PATH}/oauth/1",
+            json=jsonable_encoder(request_body.dict()),
+        )
+
+        assert response.status_code == 200
+        updated_provider_response = OAuthProviderResponse(**response.json())
+        assert (
+            updated_provider_response.client_id == updated_provider.client_id
+        )
+        assert (
+            updated_provider_response.client_secret
+            == updated_provider.client_secret
+        )
+        assert (
+            updated_provider_response.issuer_url == updated_provider.issuer_url
+        )
+
+    async def test_update_oauth_provider_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        services_mock.external_oauth.update_provider.return_value = None
+        response = await mocked_api_client.put(
+            f"{self.BASE_PATH}/oauth/1",
+            json=jsonable_encoder(request_body.dict()),
+        )
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_update_oauth_provider_invalid_body(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        request_body = {
+            "name": "test_provider",
+            "client_id": "test_client_id",
+            "client_secret": "test_secret",
+            "issuer_url": "invalid_url",
+            "redirect_uri": "https://example.com/callback",
+            "scopes": "openid email profile",
+            "enabled": True,
+        }
+        services_mock.external_oauth.update_provider.return_value = None
+        response = await mocked_api_client.put(
+            f"{self.BASE_PATH}/oauth/1",
+            json=jsonable_encoder(request_body),
+        )
+
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    # POST /auth/oauth
+    async def test_create_oauth_provider_success(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        created_provider = OAuthProvider(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+        services_mock.external_oauth.create.return_value = created_provider
+
+        response = await mocked_api_client.post(
+            f"{self.BASE_PATH}/oauth",
+            json=jsonable_encoder(request_body.dict()),
+        )
+        assert response.status_code == 200
+        provider_response = OAuthProviderResponse(**response.json())
+        assert provider_response.client_id == request_body.client_id
+        assert provider_response.client_secret == request_body.client_secret
+        assert provider_response.issuer_url == request_body.issuer_url
+
+    async def test_create_oauth_provider_already_exists(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.create.side_effect = AlreadyExistsException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                    message="A resource with such identifiers already exist.",
+                )
+            ]
+        )
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+
+        response = await mocked_api_client.post(
+            f"{self.BASE_PATH}/oauth",
+            json=jsonable_encoder(request_body.dict()),
+        )
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+
+    async def test_create_oauth_provider_conflict(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.create.side_effect = ConflictException(
+            details=[
+                BaseExceptionDetail(
+                    type=CONFLICT_VIOLATION_TYPE,
+                    message="An enabled OIDC provider already exists. Please disable it first.",
+                )
+            ]
+        )
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+
+        response = await mocked_api_client.post(
+            f"{self.BASE_PATH}/oauth",
+            json=jsonable_encoder(request_body.dict()),
+        )
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+
+    # DELETE /auth/oauth/:provider_id
+    async def test_delete_oauth_provider(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.delete_by_id.side_effect = None
+        response = await mocked_api_client.delete(f"{self.BASE_PATH}/oauth/1")
+        assert response.status_code == 204
+
+    async def test_delete_oauth_provider_with_etag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.delete_by_id.side_effect = None
+        response = await mocked_api_client.delete(
+            f"{self.BASE_PATH}/oauth/1",
+            headers={"if-match": "my_etag"},
+        )
+        assert response.status_code == 204
+
+    async def test_delete_oauth_provider_wrong_etag_error(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.delete_by_id.side_effect = [
+            PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=ETAG_PRECONDITION_VIOLATION_TYPE,
+                        message="The etag 'wrong_etag' did not match etag 'my_etag'.",
+                    )
+                ]
+            ),
+            None,
+        ]
+        response = await mocked_api_client.delete(
+            f"{self.BASE_PATH}/oauth/1",
+            headers={"if-match": "wrong_etag"},
+        )
+        assert response.status_code == 412
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 412
+        assert error_response.message == "A precondition has failed."
+        assert (
+            error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
+        )

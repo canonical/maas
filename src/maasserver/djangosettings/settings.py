@@ -158,6 +158,7 @@ try:
         DEBUG = config.debug
         DEBUG_QUERIES = config.debug_queries
         DEBUG_HTTP = config.debug_http
+        USE_JSON_LOGGING = config.use_json_logging
         if DEBUG_QUERIES and not DEBUG:
             # For debug queries to work debug most also be on, so Django will
             # track the queries made.
@@ -276,6 +277,8 @@ MIDDLEWARE = (
     # Demands a user for most web pages. The equivalent for the Web API is
     # handled by Piston.
     "maasserver.middleware.AccessMiddleware",
+    # Extract the tracing header from the request if present
+    "maasserver.middleware.TracingMiddleware",
     # Sets X-Frame-Options header to SAMEORIGIN.
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 )

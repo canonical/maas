@@ -23,3 +23,6 @@ class BootResource(MaasTimestampedBaseModel):
     alias: str | None = None
     last_deployed: datetime | None = None
     selection_id: int | None = None
+
+    def split_arch(self) -> tuple[str, str]:
+        return tuple(self.architecture.split("/", 1))  # pyright: ignore[reportReturnType]

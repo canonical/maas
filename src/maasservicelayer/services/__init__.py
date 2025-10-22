@@ -4,9 +4,6 @@
 from typing import Callable, Self
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.agentcertificates import (
-    AgentCertificatesRepository,
-)
 from maasservicelayer.db.repositories.agents import AgentsRepository
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFilesRepository,
@@ -50,6 +47,7 @@ from maasservicelayer.db.repositories.events import (
 )
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
+    ExternalOAuthRepository,
 )
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.db.repositories.filestorage import FileStorageRepository
@@ -100,7 +98,6 @@ from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.db.repositories.zones import ZonesRepository
-from maasservicelayer.services.agentcertificates import AgentCertificateService
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
@@ -133,7 +130,10 @@ from maasservicelayer.services.dnsresourcerecordsets import (
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.events import EventsService
-from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.external_auth import (
+    ExternalAuthService,
+    ExternalOAuthService,
+)
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.hooked_configurations import (
@@ -216,7 +216,6 @@ class ServiceCollectionV3:
 
     # Keep them in alphabetical order, please
     agents: AgentsService
-    agentcertificates: AgentCertificateService
     auth: AuthService
     boot_resources: BootResourceService
     boot_resource_sets: BootResourceSetsService
@@ -237,6 +236,7 @@ class ServiceCollectionV3:
     domains: DomainsService
     events: EventsService
     external_auth: ExternalAuthService
+    external_oauth: ExternalOAuthService
     fabrics: FabricsService
     filestorage: FileStorageService
     hooked_configurations: HookedConfigurationsService
@@ -577,16 +577,14 @@ class ServiceCollectionV3:
                 ExternalAuthService.build_cache_object,
             ),  # type: ignore
         )
-        services.agentcertificates = AgentCertificateService(
-            context=context,
-            repository=AgentCertificatesRepository(context),
+        services.external_oauth = ExternalOAuthService(
+            external_oauth_repository=ExternalOAuthRepository(context)
         )
         services.agents = AgentsService(
             context=context,
             repository=AgentsRepository(context),
             configurations_service=services.configurations,
             users_service=services.users,
-            agentcertificates_service=services.agentcertificates,
             cache=cache.get(
                 AgentsService.__name__, AgentsService.build_cache_object
             ),  # type: ignore
@@ -621,6 +619,8 @@ class ServiceCollectionV3:
             repository=RacksRepository(context),
             agents_service=services.agents,
             bootstraptokens_service=services.bootstraptokens,
+            configurations_service=services.configurations,
+            secrets_service=services.secrets,
         )
         services.rdns = RDNSService(
             context=context, rdns_repository=RDNSRepository(context)
@@ -644,6 +644,7 @@ class ServiceCollectionV3:
         services.hooked_configurations = HookedConfigurationsService(
             context=context,
             configurations_service=services.configurations,
+            temporal_service=services.temporal,
             users_service=services.users,
             vlans_service=services.vlans,
             v3dnsrrsets_service=services.v3dnsrrsets,

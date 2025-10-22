@@ -1,23 +1,37 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
+    NotFoundBodyResponse,
     UnauthorizedBodyResponse,
 )
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.external_auth import (
+    OAuthProviderRequest,
+)
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
+    AuthProviderInfoResponse,
+    OAuthProviderResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
     get_authenticated_user,
 )
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -92,3 +106,99 @@ class AuthHandler(Handler):
         return AccessTokenResponse(
             token_type=self.TOKEN_TYPE, access_token=token.encoded
         )
+
+    @handler(
+        path="/auth/oauth/initiate",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": AuthProviderInfoResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+    )
+    async def oauth_initiate(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        if provider := await services.external_oauth.get_provider():
+            return AuthProviderInfoResponse.from_model(provider)
+
+        raise NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                    message="No external OAuth provider is configured.",
+                )
+            ]
+        )
+
+    @handler(
+        path="/auth/oauth/{provider_id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+    )
+    async def update_oauth_provider(
+        self,
+        provider_id: int,
+        request: OAuthProviderRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> OAuthProviderResponse:
+        builder = request.to_builder()
+        if updated_provider := await services.external_oauth.update_provider(
+            id=provider_id,
+            builder=builder,
+        ):
+            return OAuthProviderResponse.from_model(updated_provider)
+
+        raise NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                    message="No OIDC provider with the given ID was found.",
+                )
+            ]
+        )
+
+    @handler(
+        path="/auth/oauth",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        status_code=200,
+    )
+    async def create_oauth_provider(
+        self,
+        request: OAuthProviderRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> OAuthProviderResponse:
+        builder = request.to_builder()
+        provider = await services.external_oauth.create(builder)
+        return OAuthProviderResponse.from_model(provider=provider)
+
+    @handler(
+        path="/auth/oauth/{provider_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+    )
+    async def delete_oauth_provider(
+        self,
+        provider_id: int,
+        etag_if_match: str | None = Header(alias="if-match", default=None),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.external_oauth.delete_by_id(provider_id, etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

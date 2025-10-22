@@ -4,6 +4,8 @@
 from time import time
 from typing import List
 
+import structlog
+
 from maascommon.constants import (
     GENERIC_CONSUMER,
     MAAS_USER_EMAIL,
@@ -12,6 +14,15 @@ from maascommon.constants import (
 )
 from maascommon.enums.consumer import ConsumerState
 from maascommon.enums.token import TokenType
+from maascommon.logging.security import (
+    ADMIN,
+    AUTHN_PASSWORD_CHANGED,
+    SECURITY,
+    USER,
+    USER_CREATED,
+    USER_DELETED,
+    USER_UPDATED,
+)
 from maascommon.utils.strings import get_random_string
 from maasservicelayer.builders.consumers import ConsumerBuilder
 from maasservicelayer.builders.ipranges import IPRangeBuilder
@@ -66,6 +77,8 @@ from maasservicelayer.utils.date import utcnow
 
 KEY_SIZE = 18
 SECRET_SIZE = 32
+
+logger = structlog.getLogger()
 
 
 class UsersService(BaseService[User, UsersRepository, UserBuilder]):
@@ -124,6 +137,16 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 completed_intro=False, auth_last_check=None, is_local=True
             ),
         )
+        if resource.is_superuser:
+            logger.warn(
+                f"{USER_CREATED}:{resource.username}:{ADMIN}",
+                type=SECURITY,
+            )
+        else:
+            logger.info(
+                f"{USER_CREATED}:{resource.username}:{USER}",
+                type=SECURITY,
+            )
         return
 
     async def get_by_session_id(self, sessionid: str) -> User | None:
@@ -264,6 +287,10 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 where=FileStorageClauseFactory.with_owner_id(resource.id)
             )
         )
+        logger.info(
+            f"{USER_DELETED}:{resource.username}",
+            type=SECURITY,
+        )
 
     async def post_delete_many_hook(self, resources: List[User]) -> None:
         raise NotImplementedError("Not implemented yet")
@@ -345,6 +372,25 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         await self._update_resource(
             user, UserBuilder(password=hashed_password)
         )
+
+    async def post_update_hook(self, old_resource, updated_resource):
+        if old_resource.password != updated_resource.password:
+            logger.info(
+                f"{AUTHN_PASSWORD_CHANGED}:{updated_resource.username}",
+                type=SECURITY,
+            )
+        if old_resource.is_superuser != updated_resource.is_superuser:
+            if updated_resource.is_superuser:
+                logger.warn(
+                    f"{USER_UPDATED}:{updated_resource.username}:{ADMIN}",
+                    type=SECURITY,
+                )
+            else:
+                logger.info(
+                    f"{USER_UPDATED}:{updated_resource.username}:{USER}",
+                    type=SECURITY,
+                )
+        return await super().post_update_hook(old_resource, updated_resource)
 
     async def clear_all_sessions(self) -> None:
         await self.repository.clear_all_sessions()

@@ -29,6 +29,8 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.drivers.pod import lxd as lxd_module
+import provisioningserver.drivers.power as power_module
+from provisioningserver.drivers.power import PowerError
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
     RUN_MACHINE_RESOURCES,
@@ -619,6 +621,35 @@ class TestLXDPodDriver(MAASTestCase):
         yield self.driver.power_on(pod_id, self.make_context())
         machine.start.assert_not_called()
         mock_log.debug.assert_called_once_with(f"power_on: {pod_id} is on")
+
+    @inlineCallbacks
+    def test_perform_power_timeouts(self):
+        pod_id = factory.make_name("pod_id")
+        machine = self.fake_lxd.virtual_machines.get_return_value
+        machine.status_code = 110
+        mock_pause = self.patch(power_module, "pause")
+        mock_power_on = Mock()
+        mock_deferToThread = self.patch(power_module, "deferToThread")
+        mock_deferToThread.side_effect = PowerError
+        errors = self.driver.perform_power(
+            mock_power_on, "on", pod_id, self.make_context()
+        )
+        try:
+            yield errors
+        except PowerError:
+            pass
+        except Exception:
+            self.fail("perform_power did not raise PowerError")
+        expected_pause_calls = [
+            waiting_time for waiting_time in self.driver.wait_time
+        ]
+        actual_pause_calls = [
+            call.args[0] for call in mock_pause.call_args_list
+        ]
+        self.assertEqual(expected_pause_calls, actual_pause_calls)
+        self.assertEqual(
+            actual_pause_calls[-1], lxd_module.LXD_WAITING_POLICY[-1]
+        )
 
     @inlineCallbacks
     def test_power_off(self):

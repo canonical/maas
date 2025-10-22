@@ -42,6 +42,10 @@ class UISubnetFiltersParams(BaseModel):
         Query(default=None, title="Filter by space name", alias="space")
     )
 
+    subnet_ids: Optional[list[int]] = Field(
+        Query(default=None, title="Filter by subnet id", alias="subnet_id")
+    )
+
     def to_clause(self) -> Optional[Clause]:
         clauses = []
         if self.cidrs:
@@ -57,6 +61,11 @@ class UISubnetFiltersParams(BaseModel):
         if self.space_names:
             clauses.append(
                 UISubnetsClauseFactory.with_space_names(self.space_names)
+            )
+
+        if self.subnet_ids:
+            clauses.append(
+                UISubnetsClauseFactory.with_subnet_ids(self.subnet_ids)
             )
 
         if not clauses:
@@ -76,6 +85,8 @@ class UISubnetFiltersParams(BaseModel):
             tokens.extend([f"fabric={name}" for name in self.fabric_names])
         if self.space_names:
             tokens.extend([f"space={name}" for name in self.space_names])
+        if self.subnet_ids:
+            tokens.extend([f"subnet_id={id}" for id in self.subnet_ids])
 
         if tokens:
             return "&".join(tokens)

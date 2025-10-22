@@ -175,7 +175,7 @@ RANDOM_OR_NONE = object()
 
 class Factory(maastesting.factory.Factory):
     def make_fake_request(
-        self, path="/", method="GET", cookies=None, data=None
+        self, path="/", method="GET", cookies=None, data=None, headers=None
     ):
         """Create a fake request.
 
@@ -190,15 +190,18 @@ class Factory(maastesting.factory.Factory):
             data = {}
         if cookies is None:
             cookies = {}
+        if headers is None:
+            headers = {}
         if method == "GET":
-            request = rf.get(path, data=data)
+            request = rf.get(path, data=data, headers=headers)
         elif method == "POST":
-            request = rf.post(path, data=data)
+            request = rf.post(path, data=data, headers=headers)
         else:
-            request = rf.get(path, data=data)
+            request = rf.get(path, data=data, headers=headers)
             request.method = method
         request.data = data
         request.COOKIES = cookies.copy()
+        request.headers = headers.copy()
         return request
 
     def make_file_upload(self, name=None, content=None):

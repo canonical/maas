@@ -1,242 +1,291 @@
-MAAS logs help you find issues, spot configuration mistakes, and audit the use of your system.  Several types of logs are supported, including:
+This guide explains how to find, read, and filter MAAS logs. Logs are essential for troubleshooting, auditing, and understanding MAAS operations. You can access several types of logs:
 
-- System logs
-- Event logs
-- Commissioning logs
-- Testing logs
-- Audit event logs
+- System logs: General controller and service behavior.
+- Event logs: User and system actions, useful for debugging.
+- Commissioning logs: Hardware discovery and setup information.
+- Testing logs: Results from hardware and validation tests.
+- Audit logs: User activity and configuration changes for accountability (including OS image changes).
 
-Each of these has a specific purpose, as described in this document.
+> Prerequisites: Administrator access to the MAAS host, basic familiarity with `journalctl` (for MAAS 3.5+), and optional MAAS CLI access for filtering events/audits.
 
-## Checking Logs in Systemd (MAAS 3.5 and Newer)
+## System logs
 
-Understanding what MAAS is doing under the hood is critical when troubleshooting unexpected behavior — whether a machine fails to deploy, a controller won’t respond, or an API call returns errors. Starting with version 3.5, MAAS uses `systemd` journal logs instead of log files written to disk. This change offers a more efficient and centralized way to inspect logs, in context, in real time.
+### MAAS 3.5 and newer (systemd journal)
 
-### Region Controller Logs
+From version 3.5 onward, MAAS uses the `systemd` journal instead of writing logs to disk. This provides a centralized, real-time view.
 
- - Snap: `journalctl -u snap.maas.pebble -t maas-regiond`
+#### Region controller
 
- - Debian: `journalctl -u maas-regiond`
+- Snap-based installation
+  ```bash
+  journalctl -u snap.maas.pebble -t maas-regiond
+  ```
+- Debian-based installation
+  ```bash
+  journalctl -u maas-regiond
+  ```
 
-### Rack Controller Logs
+#### Rack controller
 
- - `Snap: journalctl -u snap.maas.pebble -t maas-rackd`
+- Snap-based installation
+  ```bash
+  journalctl -u snap.maas.pebble -t maas-rackd
+  ```
+- Debian-based installation
+  ```bash
+  journalctl -u maas-rackd
+  ```
 
- - `Debian: journalctl -u maas-rackd`
+#### Agent
 
-### Agent Logs
+- Snap-based installation
+  ```bash
+  journalctl -u snap.maas.pebble -t maas-agent
+  ```
+- Debian-based installation
+  ```bash
+  journalctl -u maas-agent
+  ```
 
- - Snap: `journalctl -u snap.maas.pebble -t maas-agent`
+#### API Server
 
- - Debian: `journalctl -u maas-agent`
+- Snap-based installation
+  ```bash
+  journalctl -u snap.maas.pebble -t maas-apiserver
+  ```
+- Debian-based installation
+  ```bash
+  journalctl -u maas-apiserver
+  ```
 
-### API Server Logs
+#### Filter logs by machine
 
- - Snap: `journalctl -u snap.maas.pebble -t maas-apiserver`
-
- - Debian: `journalctl -u maas-apiserver`
-
-### Filtering Logs by Machine Name
-
-To search for logs by machine name (hostname):
-
-```
+Search by machine (hostname):
+```bash
 journalctl -u snap.maas.pebble -t maas-machine --since "-15m" MAAS_MACHINE_HOSTNAME=ace-cougar
 ```
 
-## Checking Logs Before MAAS 3.5
+### MAAS versions earlier than 3.5 (log files)
 
-Before version 3.5, MAAS saved logs in custom files. Here are some examples:
+Before 3.5, MAAS wrote logs to files. Common locations include:
 
- - Region Controller: `/var/snap/maas/common/log/regiond.log` or `/var/log/maas/regiond.log`
+- Region controller: `/var/snap/maas/common/log/regiond.log` or `/var/log/maas/regiond.log`
+- Rack controller: `/var/snap/maas/common/log/rackd.log` or `/var/log/maas/rackd.log`
+- Proxy service: `/var/snap/maas/common/log/proxy/access.log`
 
- - Rack Controller: `/var/snap/maas/common/log/rackd.log` or `/var/log/maas/rackd.log`
-
- - Proxy: `/var/snap/maas/common/log/proxy/access.log`
-
-### Using the less Command to Read Logs
-
-```
+Read logs with:
+```bash
 less /var/snap/maas/common/log/regiond.log
 ```
 
-## How to Read Event Logs
+
+## Event logs
+
+Event logs track system and user activity, helping you trace what happened in MAAS.
 
 ### Using the UI
+1. Open *Machines*.
+2. Select a machine and open the *Events* tab.
+3. Click *View full history* for more detail.
 
- 1. Go to the Machines list in the UI.
+### Using the CLI
 
- 2. Click on a machine and select the Events tab.
-
-To see more details, click *View full history*.
-
-### Using the Command Line
-
-```
+Query events:
+```bash
 maas $PROFILE events query
 ```
 
-### Formatting Event Logs with jq
-
-To format the output neatly with jq:
-
-```
-maas admin events query | jq -r '(["HOSTNAME","TIMESTAMP","TYPE","DESCRIPTION"] | (., map(length*"-"))), (.events[] | [.hostname, .created, .type, .description // "-"]) | @tsv' | column -t -s $'\t'
+Format with `jq` for readability:
+```bash
+maas $PROFILE events query | jq -r '(["HOSTNAME","TIMESTAMP","TYPE","DESCRIPTION"] | (., map(length*"-"))), (.events[] | [.hostname, .created, .type, .description // "-"]) | @tsv' | column -t -s $'	'
 ```
 
-## How to Read Commissioning Logs
 
-Commissioning is the first real test of whether MAAS can interact successfully with your machine. It verifies hardware, applies base configurations, and gathers critical info like CPU count, RAM, disk layout, and NICs.
+## Commissioning logs
 
-When commissioning struggles or fails, commissioning logs help you to:
-
-- Understand hardware discovery issues: If a machine shows incomplete specs or can't be used for deployment, the logs may reveal missing drivers, unresponsive disks, or incompatible firmware.
-
-- Debug custom commissioning scripts: Running your own scripts? Commissioning logs are your best source for errors, output, and system state during execution.
-
-- Diagnose PXE/networking issues: If the machine never commissions successfully, logs often contain clues — like DHCP failures, network interface errors, or incorrect boot images.
-
-- Check package or script failures: Logs will reveal if MAAS couldn’t install key packages, failed to mount volumes, or hit permission issues.
-
-You should check commissioning logs when: 
-
-- A newly added machine won’t move past "Ready"
-- Commissioning fails with a generic error
-- Hardware details (CPU, disk, RAM) are missing or incorrect
-- You are testing or troubleshooting custom commissioning scripts
-- You see networking issues during PXE boot or image fetch
+Commissioning verifies whether MAAS can successfully interact with a machine, gather specs, and run setup tasks. Check these logs when a machine fails commissioning or stays stuck in Ready, hardware details are missing/incorrect, PXE boots fail, or custom commissioning scripts error out.
 
 ### Using the UI
+1. Go to the machine’s Commissioning tab.
+2. Click the log links for details.
 
- 1. Go to the Commissioning tab of a machine.
-
- 2. Click the links to see the detailed logs.
-
-### Using the command line
-
-```
+### Using the CLI
+```bash
 maas $PROFILE node-script-result read $SYSTEM_ID $RESULTS
 ```
 
-## How to read testing logs
 
-Testing logs are the final gatekeepers in the MAAS lifecycle. They help you identify whether your machine is usable for real workloads. Often skipped over, they can save you a world of trouble when hardware flakiness or misconfiguration happens.
+## Testing logs
 
-Testing confirms whether the machine is actually functioning as expected, not just booting.  It verify critical hardware functionality, validates storage health, and confirms firmware and kernel compatibility.
+Testing validates whether a machine is production-ready. Logs confirm hardware health and firmware/kernel compatibility.
 
-Test logs can contain any sort of test you may add, but the general form of the command is:
-
+### Using the CLI
 ```bash
 maas $PROFILE node-script-result read $SYSTEM_ID type=smartctl-validate
 ```
 
-## Auditing MAAS
 
-MAAS is often a shared resource, when something changes or breaks, you need to know who may have taken unexpected action. Audit logs help you:
+## Audit logs (including OS image changes)
 
-- Track configuration changes
-- Monitor user activity
-- Investigate failures or unauthorized actions
-- Maintain compliance or accountability
+Audit logs track user actions and configuration changes. Use them to investigate failures or changes, monitor who modified settings, and support compliance.
 
-You check audit logs when:
+> Note: New audit events exist for OS image auditing. Include these examples to track image imports, deletions, or changes to boot resources.
 
-- A machine config changes unexpectedly
-- Network settings or VLANs were modified, breaking connectivity
-- A deployment fails and you suspect human error
-- You’re in a shared MAAS environment and need to confirm who changed what
-- During a security review or internal audit
+### Query audit events
 
-The following commands will help you use auditing productively.
-
-### List audit events
-
-To get a list of MAAS audit events, you can use the following MAAS CLI command:
-
-```nohighlight
-$ maas $PROFILE events query level=AUDIT
+List all audit events:
+```bash
+maas $PROFILE events query level=AUDIT
 ```
 
-This command will list all audit events. The output will include details such as username, hostname, date, and event description.
+Filter audit logs:
 
-### Filter events by hostname
+- By hostname
+  ```bash
+  maas $PROFILE events query level=AUDIT hostname=your-hostname
+  ```
+- By MAC address
+  ```bash
+  maas $PROFILE events query level=AUDIT mac_address=00:11:22:33:44:55
+  ```
+- By system ID
+  ```bash
+  maas $PROFILE events query level=AUDIT id=system-id
+  ```
+- By zone
+  ```bash
+  maas $PROFILE events query level=AUDIT zone=your-zone
+  ```
+- By owner
+  ```bash
+  maas $PROFILE events query level=AUDIT owner=owner-username
+  ```
 
-To filter audit events by a specific hostname, use the following MAAS CLI command:
+### Limit and paginate
 
-```nohighlight
-$ maas $PROFILE events query level=AUDIT hostname=your-hostname
+- Limit results
+  ```bash
+  maas $PROFILE events query level=AUDIT limit=10
+  ```
+- Continue after an event ID
+  ```bash
+  maas $PROFILE events query level=AUDIT after=event-id
+  ```
+
+### OS image auditing examples
+
+Common descriptions/types you may see include image import, deletion, sync, and boot-resource updates. Examples:
+
+```bash
+# Show recent audit events related to images or boot resources (adjust regex as needed)
+maas $PROFILE events query level=AUDIT limit=200   | jq -r '.events[] | select((.description|test("image|boot resource|boot-resource|import|delete|sync"; "i"))) | "\(.created) \(.user) \(.type) \(.description)"'
+
+# Filter by event type if your version provides image/audit-specific types
+maas $PROFILE events query level=AUDIT type=BOOT_RESOURCE_UPDATED limit=100
+maas $PROFILE events query level=AUDIT type=BOOT_RESOURCE_IMPORTED limit=100
+maas $PROFILE events query level=AUDIT type=BOOT_RESOURCE_DELETED limit=100
+
+# Narrow to a specific OS or release name in the description
+maas $PROFILE events query level=AUDIT limit=200   | jq -r '.events[] | select((.description|test("ubuntu.*22\.04|focal|jammy"; "i"))) | "\(.created) \(.user) \(.type) \(.description)"'
 ```
 
-Replace `your-hostname` with the desired hostname. This command will list audit events specific to the provided hostname.
+> If your environment uses custom image mirrors or proxies, include those identifiers in your filters (e.g., `mirror`, `usn`, `daily`, `hwe`).
 
-### Filter events by MAC
+### Audit a machine lifecycle
 
-If you want to filter audit events by a specific MAC address, use this MAAS CLI command:
+Collect logs over time for one machine:
+```bash
+maas $PROFILE events query level=AUDIT hostname=your-hostname limit=1000 > /tmp/audit-data
+```
+Analyze `/tmp/audit-data` to see lifecycle changes for that host.
 
-```nohighlight
-$ maas $PROFILE events query level=AUDIT mac_address=00:11:22:33:44:55
+
+## Verification
+
+> This section adopts your proposed wording for the reviewer’s second comment.
+
+1) Verify MAAS services are emitting logs in real time
+
+Snap installs:
+
+```bash
+# Region + rack logs, live tail (press Ctrl-C to stop)
+sudo journalctl -f -u snap.maas.regiond -u snap.maas.rackd
 ```
 
-Replace `00:11:22:33:44:55` with the MAC address you want to filter by. This command will display audit events related to the specified MAC address.
+Deb/package installs:
 
-### Filter events by SYSID
-
-To filter audit events by a specific system ID, use the following MAAS CLI command:
-
-```nohighlight
-$ maas $PROFILE events query level=AUDIT id=system-id
+```bash
+sudo journalctl -f -u maas-regiond -u maas-rackd
 ```
 
-Replace `system-id` with the desired system ID. This command will list audit events specific to the provided system ID.
+Success criteria: Within a few seconds of UI/CLI activity, you see new INFO/DEBUG entries (timestamps increasing).
 
-### Filter events by zone
-
-If you want to filter audit events by a specific zone, use the following MAAS CLI command:
-
-```nohighlight
-$ maas $PROFILE events query level=AUDIT zone=your-zone
+Optional narrowing:
+```bash
+# Last 5 minutes, info and above
+sudo journalctl --since -5m -p info -u snap.maas.regiond -u snap.maas.rackd
 ```
 
-Replace `your-zone` with the desired zone name. This command will display audit events for machines in the specified zone.
+If nothing appears: confirm the right unit names, then run `sudo maas status` and check that region/rack are RUNNING.
 
-### Filter events by owner
+2) Confirm commissioning and testing logs exist after running workflows
 
-To filter audit events by the owner of the machine, use this MAAS CLI command:
+Trigger commissioning (example):
 
-```nohighlight
-$ maas $PROFILE events query level=AUDIT owner=owner-username
+```bash
+# Replace with your machine's system_id
+SYS=ab/cdefg
+maas $PROFILE machine commission $SYS
 ```
 
-Replace `owner-username` with the username of the machine's owner. This command will list audit events for machines owned by the specified user.
+UI path: Machines → <machine> → Logs → expect new entries for Commissioning (and Hardware testing if enabled).
 
-### Limit event count
-
-You can limit the number of audit events displayed using the `limit` parameter. For example:
-
-```nohighlight
-$ maas $PROFILE events query level=AUDIT limit=10
+CLI spot-check recent events:
+```bash
+# Recent events for this machine (adjust limit as needed)
+maas $PROFILE events query machine=$SYS limit=50 | jq -r '.events[] | "\(.created) \(.type) \(.description)"'
 ```
 
-This command will limit the output to the last 10 audit events. You can adjust the limit to your preference.
+Success criteria: You see event types like *Commissioning*, *Commissioning complete*, *Testing* (if selected), with current timestamps.
 
-### Move event window
+If commissioning doesn’t produce logs: verify the machine PXE boots into the ephemeral image, and that rack connectivity to region is healthy.
 
-To display audit events occurring after a specific event ID, you can use the `after` parameter. For example:
+3) Run audit queries and verify expected user activity
 
-```nohighlight
-$ maas $PROFILE events query level=AUDIT after=event-id
+Examples to prove audit trail is recording actions:
+
+```bash
+# Filter by a specific user (replace $USER_EMAIL or username)
+maas $PROFILE events query user=$USER_EMAIL limit=20 | jq -r '.events[] | "\(.created) \(.type) \(.description)"'
+
+# Grep for login/config changes in the last 15 minutes
+SINCE=$(date -Is -d '-15 minutes')
+maas $PROFILE events query since="$SINCE" limit=200   | jq -r '.events[] | select((.description|test("login|set-config|Create|Delete"; "i"))) | "\(.created) \(.user) \(.type) \(.description)"'
 ```
 
-Replace `event-id` with the ID of the event you want to start from. This command will display audit events that occurred after the specified event.
+Success criteria: You can point to concrete records: a login, an image import, a DHCP change, a machine action, with correct user and time.
 
-### Audit life-cycles
+If filters are unfamiliar: run `maas $PROFILE events query --help` to see supported parameters in your MAAS version.
 
-To audit a machine's life cycle, you can collect audit data for a specific machine over time. First, collect a significant amount of audit data for the machine using the hostname filter:
+4) (Optional) network service logs (when relevant)
 
-```nohighlight
-$ maas $PROFILE events query level=AUDIT hostname=your-hostname limit=1000 > /tmp/audit-data
+If validating DHCP/DNS behavior, also tail those services:
+
+Snap installs (named via bind9 in regiond):
+```bash
+sudo journalctl -f -u bind9
 ```
 
-This command will retrieve a substantial number of audit events for the specified hostname and store them in a file named `audit-data`.
+Deb/package installs (if isc-dhcp-server is used):
+```bash
+sudo journalctl -f -u isc-dhcp-server
+```
 
-Next, you can analyze this data to track changes, actions, and events related to the machine's life cycle. This can help in troubleshooting and monitoring machine behavior over time.
+Success criteria: `DHCPDISCOVER/DHCPOFFER/DHCPACK` and DNS query lines appear during commissioning or testing.
+
+
+## Next steps
+
+- Learn [how to monitor MAAS in real time](https://canonical.com/maas/docs/how-to-monitor-maas).
+- Investigate ways to [secure MAAS effectively](https://canonical.com/maas/docs/how-to-enhance-maas-security).

@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import date
 
 import pytest
 
@@ -12,6 +13,10 @@ from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheRepository,
 )
 from maasservicelayer.models.bootsourcecache import BootSourceCache
+from maasservicelayer.models.bootsources import (
+    BootSourceAvailableImage,
+    BootSourceCacheOSRelease,
+)
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.fixtures.factories.bootsourcecache import (
     create_test_bootsourcecache_entry,
@@ -179,3 +184,467 @@ class TestCommonBootSourceCacheRepository(
         self, repository_instance, instance_builder
     ):
         raise NotImplementedError()
+
+
+class TestBootSourceCacheRepository:
+    @pytest.fixture
+    def repository(
+        self, db_connection: AsyncConnection
+    ) -> BootSourceCacheRepository:
+        return BootSourceCacheRepository(Context(connection=db_connection))
+
+    async def test_get_available_lts_releases(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="jammy",
+            release_title="22.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2027, month=4, day=21),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="plucky",
+            release_title="25.04",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2026, month=1, day=15),
+        )
+        releases = await repository.get_available_lts_releases()
+        assert releases == ["noble", "jammy", "focal"]
+
+    async def test_get_all_available_images(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="arm64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="arm64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="centos",
+            release="8",
+            release_title="CentOS 8",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        all_available_images = await repository.get_all_available_images()
+        assert len(all_available_images) == 5
+
+        assert all_available_images == [
+            BootSourceAvailableImage(
+                "ubuntu", "noble", "24.04 LTS", "arm64", 1
+            ),
+            BootSourceAvailableImage(
+                "ubuntu", "noble", "24.04 LTS", "amd64", 1
+            ),
+            BootSourceAvailableImage(
+                "ubuntu", "focal", "20.04 LTS", "arm64", 1
+            ),
+            BootSourceAvailableImage(
+                "ubuntu", "focal", "20.04 LTS", "amd64", 1
+            ),
+            BootSourceAvailableImage("centos", "8", "CentOS 8", "amd64", 1),
+        ]
+
+    async def test_get_all_available_images_ensure_grouping(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-p",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-s",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="ga-24.04",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        all_available_images = await repository.get_all_available_images()
+        assert len(all_available_images) == 2
+
+        assert all_available_images == [
+            BootSourceAvailableImage(
+                "ubuntu", "noble", "24.04 LTS", "amd64", 1
+            ),
+            BootSourceAvailableImage(
+                "ubuntu", "focal", "20.04 LTS", "amd64", 1
+            ),
+        ]
+
+    async def test_list_boot_source_cache_available_images(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="arm64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="centos",
+            release="8",
+            release_title="CentOS 8",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="arm64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=2,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="arm64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+
+        pages = 3
+        page_size = 2
+        num_objects = 5
+
+        boot_source_id = 1
+
+        expected_page_items = {
+            1: [
+                BootSourceAvailableImage(
+                    "ubuntu", "noble", "24.04 LTS", "arm64", 1
+                ),
+                BootSourceAvailableImage(
+                    "ubuntu", "noble", "24.04 LTS", "amd64", 1
+                ),
+            ],
+            2: [
+                BootSourceAvailableImage(
+                    "ubuntu", "focal", "20.04 LTS", "arm64", 1
+                ),
+                BootSourceAvailableImage(
+                    "ubuntu", "focal", "20.04 LTS", "amd64", 1
+                ),
+            ],
+            3: [
+                BootSourceAvailableImage(
+                    "centos", "8", "CentOS 8", "amd64", 1
+                ),
+            ],
+        }
+
+        for page in range(1, pages + 1):
+            boot_source_available_images_page = (
+                await repository.list_boot_source_cache_available_images(
+                    page=page, size=page_size, boot_source_id=boot_source_id
+                )
+            )
+
+            if page == pages:  # last page may have fewer elements
+                elements_count = page_size - (
+                    (pages * page_size) % num_objects
+                )
+                assert (
+                    len(boot_source_available_images_page.items)
+                    == elements_count
+                )
+                for idx, expected_result in enumerate(
+                    expected_page_items[page]
+                ):
+                    assert (
+                        expected_result
+                        == boot_source_available_images_page.items[idx]
+                    )
+            else:
+                assert (
+                    len(boot_source_available_images_page.items) == page_size
+                )
+                for idx, expected_result in enumerate(
+                    expected_page_items[page]
+                ):
+                    assert (
+                        expected_result
+                        == boot_source_available_images_page.items[idx]
+                    )
+
+    async def test_list_boot_source_cache_available_images_ensure_grouping(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-p",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-s",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="ga-24.04",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        page_size = 2
+        expected_num_objects = 2
+
+        boot_source_id = 1
+
+        expected_page_items = [
+            BootSourceAvailableImage(
+                "ubuntu", "noble", "24.04 LTS", "amd64", 1
+            ),
+            BootSourceAvailableImage(
+                "ubuntu", "focal", "20.04 LTS", "amd64", 1
+            ),
+        ]
+
+        boot_source_available_images_page = (
+            await repository.list_boot_source_cache_available_images(
+                page=1, size=page_size, boot_source_id=boot_source_id
+            )
+        )
+
+        assert boot_source_available_images_page.total == expected_num_objects
+        assert len(boot_source_available_images_page.items) == page_size
+        for idx, expected_result in enumerate(expected_page_items):
+            assert (
+                expected_result == boot_source_available_images_page.items[idx]
+            )
+
+    async def test_list_unique_os_releases(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-p",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="hwe-s",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            subarch="ga-24.04",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        result = await repository.get_unique_os_releases()
+
+        assert len(result) == 2
+        assert BootSourceCacheOSRelease(os="ubuntu", release="focal") in result
+        assert BootSourceCacheOSRelease(os="ubuntu", release="noble") in result

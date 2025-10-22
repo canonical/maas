@@ -1655,6 +1655,7 @@ class Node(CleanSave, TimestampedModel):
         any_zfs,
         any_vmfs,
         any_btrfs,
+        efi_mounted,
     ):
         """Create and retrieve storage layout issues error messages."""
         issues = []
@@ -1699,6 +1700,10 @@ class Node(CleanSave, TimestampedModel):
         if not root_mounted:
             issues.append(
                 "Mount the root '/' filesystem to be able to deploy this node."
+            )
+        if self.get_bios_boot_method() == "uefi" and not efi_mounted:
+            issues.append(
+                "UEFI system requires a /boot/efi filesystem. Please configure /boot/efi to proceed."
             )
         if root_mounted and root_on_bcache and not boot_mounted:
             issues.append(
@@ -1774,6 +1779,7 @@ class Node(CleanSave, TimestampedModel):
         any_vmfs = False
         any_btrfs = False
         boot_mounted = False
+        efi_mounted = False
         arch, _ = self.split_arch()
 
         for block_device in self.current_config.blockdevice_set.all():
@@ -1793,6 +1799,8 @@ class Node(CleanSave, TimestampedModel):
                         block_device
                     ):
                         boot_mounted = True
+                    elif fs.mount_point == "/boot/efi":
+                        efi_mounted = True
                     any_bcache |= fs.fstype in (
                         FILESYSTEM_TYPE.BCACHE_CACHE,
                         FILESYSTEM_TYPE.BCACHE_BACKING,
@@ -1810,6 +1818,8 @@ class Node(CleanSave, TimestampedModel):
                         root_on_bcache = True
                 elif fs.mount_point == "/boot" and not on_bcache(block_device):
                     boot_mounted = True
+                elif fs.mount_point == "/boot/efi":
+                    efi_mounted = True
                 any_bcache |= fs.fstype in (
                     FILESYSTEM_TYPE.BCACHE_CACHE,
                     FILESYSTEM_TYPE.BCACHE_BACKING,
@@ -1828,6 +1838,7 @@ class Node(CleanSave, TimestampedModel):
             any_zfs,
             any_vmfs,
             any_btrfs,
+            efi_mounted,
         )
 
     def on_network(self):

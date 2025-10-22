@@ -1067,7 +1067,7 @@ class TestGetReleaseFromDistroInfo(MAASServerTestCase):
     def test_finds_by_series_prefix(self):
         release = self.pick_release()
         self.assertEqual(
-            release, get_release_from_distro_info(release["series"][0:2])
+            release, get_release_from_distro_info(release["series"][0:3])
         )
 
     def test_finds_by_version(self):

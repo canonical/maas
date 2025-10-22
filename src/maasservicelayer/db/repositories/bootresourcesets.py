@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
+from typing import List
 
 from sqlalchemy import desc, Table
 
@@ -38,6 +39,12 @@ class BootResourceSetClauseFactory(ClauseFactory):
         return Clause(condition=eq(BootResourceSetTable.c.version, version))
 
     @classmethod
+    def with_version_prefix(cls, version: str) -> Clause:
+        return Clause(
+            condition=BootResourceSetTable.c.version.like(f"{version}%")
+        )
+
+    @classmethod
     def with_label(cls, label: str) -> Clause:
         return Clause(condition=eq(BootResourceSetTable.c.label, label))
 
@@ -68,3 +75,14 @@ class BootResourceSetsRepository(BaseRepository[BootResourceSet]):
         if result:
             return BootResourceSet(**result[0]._asdict())
         return None
+
+    async def get_many_newest_to_oldest_for_boot_resource(
+        self, boot_resource_id: int
+    ) -> List[BootResourceSet]:
+        stmt = (
+            self.select_all_statement()
+            .where(eq(BootResourceSetTable.c.resource_id, boot_resource_id))
+            .order_by(desc(BootResourceSetTable.c.id))
+        )
+        result = (await self.execute_stmt(stmt)).all()
+        return [BootResourceSet(**row._asdict()) for row in result]

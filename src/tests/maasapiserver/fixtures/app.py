@@ -18,12 +18,16 @@ from maasapiserver.common.middlewares.exceptions import (
 )
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
+from maasapiserver.v3.api.internal.handlers import APIv3Internal
 from maasapiserver.v3.api.public.handlers import APIv3, APIv3UI
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
 )
 from maasapiserver.v3.auth.base import AuthenticatedUser
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.middlewares.client_certificate import (
+    RequireClientCertMiddleware,
+)
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
@@ -96,6 +100,30 @@ def create_app_with_mocks(
     return app
 
 
+def create_internal_app_with_mocks(
+    mocked_services: ServiceCollectionV3,
+):
+    class InjectServicesMocks(BaseHTTPMiddleware):
+        async def dispatch(
+            self,
+            request: Request,
+            call_next: Callable[[Request], Awaitable[Response]],
+        ) -> Response:
+            request.state.services = mocked_services
+            return await call_next(request)
+
+    app = FastAPI(
+        title="MAASInternalAPIServer",
+        name="maasinternalapiserver",
+    )
+
+    app.add_middleware(InjectServicesMocks)
+    app.add_middleware(ExceptionMiddleware)
+    app.add_middleware(RequireClientCertMiddleware)
+    APIv3Internal.register(app.router)
+    return app
+
+
 @pytest.fixture
 def app_with_mocked_services(services_mock: ServiceCollectionV3):
     yield create_app_with_mocks(services_mock)
@@ -131,11 +159,26 @@ def app_with_mocked_services_admin_rbac(services_mock: ServiceCollectionV3):
 
 
 @pytest.fixture
+def internal_app_with_mocked_services(services_mock: ServiceCollectionV3):
+    yield create_internal_app_with_mocks(services_mock)
+
+
+@pytest.fixture
 async def mocked_api_client(
     app_with_mocked_services: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
         app=app_with_mocked_services, base_url="http://test"
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def mocked_internal_api_client(
+    internal_app_with_mocked_services: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=internal_app_with_mocked_services, base_url="http://test"
     ) as client:
         yield client
 

@@ -72,8 +72,8 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
     ) -> Sequence[Domain]:
         # The default domain is created by the migrations
         # and it has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:8981
-        ts = datetime(2025, 9, 8, 8, 41, 58, 8863, tzinfo=timezone.utc)
+        # see src/maasserver/testing/inital.maas_test.sql:8977
+        ts = datetime(2025, 10, 17, 10, 15, 20, 698940, tzinfo=timezone.utc)
         created_domains = [
             Domain(
                 id=0,
@@ -150,7 +150,7 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
             )
             for i in range(3)
         ]
-        fwd_srvrs = [
+        srvrs = [
             await create_test_forwarddnsserver_entry(
                 fixture, ip_address=f"10.0.0.{i + 1}", domain=domain
             )
@@ -161,6 +161,7 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
 
         assert len(fwd_domains) == len(domains)
 
-        for fwd_domain, fwd_srvr in fwd_domains:
+        for fwd_domain, fwd_srvrs in fwd_domains:
             assert fwd_domain in domains
-            assert fwd_srvr in fwd_srvrs
+            for fwd_srvr in fwd_srvrs:
+                assert fwd_srvr in srvrs

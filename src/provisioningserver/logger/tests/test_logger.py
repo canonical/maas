@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for log.py"""
@@ -19,7 +19,12 @@ here = pathlib.Path(__file__).parent
 
 
 def log_something(
-    name: str, *, verbosity: int, set_verbosity: int = None, mode: LoggingMode
+    name: str,
+    *,
+    verbosity: int,
+    set_verbosity: int = None,
+    mode: LoggingMode,
+    use_json_logging: bool,
 ):
     env = dict(get_env_with_locale(), PYTHONPATH=":".join(sys.path))
     script = here.parent.joinpath("testing", "logsomething.py")
@@ -31,6 +36,8 @@ def log_something(
         "--mode",
         mode.name,
     ]
+    if use_json_logging:
+        args.append("--use_json_logging")
     if set_verbosity is not None:
         args.extend(["--set-verbosity", "%d" % set_verbosity])
     cmd = [sys.executable, str(script)] + args
@@ -49,9 +56,54 @@ class TestLogging(MAASTestCase):
     """
 
     scenarios = (
-        ("initial_only", {"initial_only": True, "increasing": False}),
-        ("increasing_verbosity", {"initial_only": False, "increasing": True}),
-        ("decreasing_verbosity", {"initial_only": False, "increasing": False}),
+        (
+            "initial_only",
+            {
+                "initial_only": True,
+                "increasing": False,
+                "use_json_logging": False,
+            },
+        ),
+        (
+            "initial_only_with_json",
+            {
+                "initial_only": True,
+                "increasing": False,
+                "use_json_logging": True,
+            },
+        ),
+        (
+            "increasing_verbosity",
+            {
+                "initial_only": False,
+                "increasing": True,
+                "use_json_logging": False,
+            },
+        ),
+        (
+            "increasing_verbosity_with_json",
+            {
+                "initial_only": False,
+                "increasing": True,
+                "use_json_logging": True,
+            },
+        ),
+        (
+            "decreasing_verbosity",
+            {
+                "initial_only": False,
+                "increasing": False,
+                "use_json_logging": True,
+            },
+        ),
+        (
+            "decreasing_verbosity_with_json",
+            {
+                "initial_only": False,
+                "increasing": False,
+                "use_json_logging": True,
+            },
+        ),
     )
 
     def _get_log_levels(self, verbosity_under_test: int):
@@ -74,9 +126,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.TWISTD,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "info", "From `twisted.logger`."),
             (name, "warn", "From `twisted.logger`."),
@@ -103,9 +156,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.TWISTD,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "debug", "From `twisted.logger`."),
             (name, "info", "From `twisted.logger`."),
@@ -135,9 +189,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.TWISTD,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "warn", "From `twisted.logger`."),
             (name, "error", "From `twisted.logger`."),
@@ -158,9 +213,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.TWISTD,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "error", "From `twisted.logger`."),
             (name, "error", "From `logging`."),
@@ -177,9 +233,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.COMMAND,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "info", "From `twisted.logger`."),
             (name, "warn", "From `twisted.logger`."),
@@ -209,9 +266,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.COMMAND,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "debug", "From `twisted.logger`."),
             (name, "info", "From `twisted.logger`."),
@@ -244,9 +302,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.COMMAND,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "warn", "From `twisted.logger`."),
             (name, "error", "From `twisted.logger`."),
@@ -271,9 +330,10 @@ class TestLogging(MAASTestCase):
             verbosity=verbosity,
             set_verbosity=set_verbosity,
             mode=LoggingMode.COMMAND,
+            use_json_logging=self.use_json_logging,
         )
         self.addDetail("logged", text_content(logged))
-        observed = find_log_lines(logged)
+        observed = find_log_lines(logged, self.use_json_logging)
         expected = [
             (name, "error", "From `twisted.logger`."),
             (name, "error", "From `logging`."),

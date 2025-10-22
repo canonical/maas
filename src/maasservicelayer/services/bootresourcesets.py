@@ -1,7 +1,5 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-
 import math
 from typing import List
 
@@ -26,6 +24,18 @@ from maasservicelayer.services.bootresourcefilesync import (
     BootResourceFileSyncService,
 )
 from maasservicelayer.simplestreams.models import Product
+
+# `BootResourceSet` must contain at least one of the file types to be consider
+# as supporting the ability to xinstall. 'xinstall' being the
+# fastpath-installer.
+XINSTALL_TYPES = (
+    BootResourceFileType.SQUASHFS_IMAGE,
+    BootResourceFileType.ROOT_IMAGE,
+    BootResourceFileType.ROOT_TGZ,
+    BootResourceFileType.ROOT_TBZ,
+    BootResourceFileType.ROOT_TXZ,
+    BootResourceFileType.ROOT_DD,
+)
 
 
 class BootResourceSetsService(
@@ -73,6 +83,37 @@ class BootResourceSetsService(
         return await self.repository.get_latest_for_boot_resource(
             boot_resource_id
         )
+
+    async def get_latest_complete_set_for_boot_resource(
+        self,
+        boot_resource_id: int,
+    ) -> BootResourceSet | None:
+        resource_sets = (
+            await self.repository.get_many_newest_to_oldest_for_boot_resource(
+                boot_resource_id
+            )
+        )
+
+        num_regions = (
+            await self.boot_resource_file_sync_service.get_regions_count()
+        )
+
+        for resource_set in resource_sets:
+            files_in_resource_set = await self.boot_resource_files_service.get_files_in_resource_set(
+                resource_set.id
+            )
+            if len(files_in_resource_set) == 0:
+                continue
+
+            files_size = sum([f.size for f in files_in_resource_set])
+            sync_size = await self.boot_resource_file_sync_service.get_current_sync_size_for_files(
+                set([f.id for f in files_in_resource_set])
+            )
+            if sync_size != num_regions * files_size:
+                continue
+
+            return resource_set
+        return None
 
     async def create_or_update_from_simplestreams_product(
         self, product: Product, boot_resource_id: int
@@ -154,4 +195,15 @@ class BootResourceSetsService(
                 BootResourceFileType.SQUASHFS_IMAGE in types
                 or BootResourceFileType.ROOT_IMAGE in types
             )
+        )
+
+    async def is_xinstallable(self, resource_set_id: int) -> bool:
+        associated_files = (
+            await self.boot_resource_files_service.get_files_in_resource_set(
+                resource_set_id
+            )
+        )
+        return any(
+            associated_file.filetype in XINSTALL_TYPES
+            for associated_file in associated_files
         )

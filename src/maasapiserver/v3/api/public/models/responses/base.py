@@ -47,7 +47,7 @@ class HalResponse(GenericModel, Generic[HAL]):
         allow_population_by_field_name = True
 
 
-T = TypeVar("T", bound=HalResponse)
+T = TypeVar("T")
 
 
 class PaginatedResponse(GenericModel, Generic[T]):

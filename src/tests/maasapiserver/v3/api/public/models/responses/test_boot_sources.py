@@ -4,12 +4,15 @@
 import base64
 
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
+    BootSourceAvailableImageResponse,
     BootSourceResponse,
     SourceAvailableImageResponse,
+    UISourceAvailableImageResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.models.bootsources import (
     BootSource,
+    BootSourceAvailableImage,
     SourceAvailableImage,
 )
 from maasservicelayer.utils.date import utcnow
@@ -65,3 +68,59 @@ class TestSourceAvailableImageResponse:
         assert image_response.release == image.release
         assert image_response.release_title == image.release_title
         assert image_response.architecture == image.architecture
+
+
+class TestBootSourceAvailableImageResponse:
+    def test_from_model(self) -> None:
+        boot_source_available_image = BootSourceAvailableImage(
+            os="Ubuntu",
+            release="Noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            boot_source_id=1,
+        )
+
+        image_response = BootSourceAvailableImageResponse.from_model(
+            boot_source_available_image=boot_source_available_image,
+        )
+
+        assert image_response.kind == "BootSourceAvailableImage"
+
+        assert image_response.os == boot_source_available_image.os
+        assert image_response.release == boot_source_available_image.release
+        assert image_response.architecture == boot_source_available_image.arch
+
+
+class TestUISourceAvailableImageResponse:
+    def test_from_model(self) -> None:
+        boot_source = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            url="http://example.com/v1/",
+            keyring_filename="/path/to/keyring.gpg",
+            keyring_data="",
+            priority=10,
+            skip_keyring_verification=False,
+        )
+        boot_source_available_image = BootSourceAvailableImage(
+            os="Ubuntu",
+            release="Noble",
+            release_title="24.04 LTS",
+            arch="amd64",
+            boot_source_id=boot_source.id,
+        )
+
+        image_response = UISourceAvailableImageResponse.from_model(
+            boot_source=boot_source,
+            boot_source_available_image=boot_source_available_image,
+        )
+
+        assert image_response.kind == "UISourceAvailableImage"
+
+        assert image_response.os == boot_source_available_image.os
+        assert image_response.release == boot_source_available_image.release
+        assert image_response.architecture == boot_source_available_image.arch
+
+        assert image_response.source_id == boot_source.id
+        assert image_response.source_name == boot_source.url

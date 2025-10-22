@@ -1,3 +1,4 @@
+from ipaddress import IPv4Address
 from unittest.mock import Mock
 
 import pytest
@@ -308,3 +309,54 @@ class TestInterfacesService:
         )
 
         assert dns_label == f"{interface.name}.{node.hostname}"
+
+    async def test_get_for_ip(self):
+        node = Node(
+            id=3,
+            system_id="abcdef",
+            hostname="test-node",
+            status=NodeStatus.READY,
+            power_state=PowerState.OFF,
+            node_type=NodeTypeEnum.MACHINE,
+        )
+        node_config = NodeConfig(id=7, name="abc", node_id=node.id)
+        node.current_config_id = node_config.id
+        interface = Interface(
+            id=1,
+            name="testeth0",
+            mac_address="00:11:22:33:44:55",
+            type=InterfaceType.PHYSICAL,
+            node_config_id=node_config.id,
+        )
+        sip = StaticIPAddress(
+            id=1,
+            ip=IPv4Address("10.0.0.2"),
+            subnet_id=1,
+            lease_time=80,
+            alloc_type=IpAddressType.AUTO,
+        )
+
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+        interface_repository_mock.get_for_ip.return_value = [interface]
+
+        interface_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+
+        await interface_service.get_for_ip(sip)
+
+        interface_repository_mock.get_for_ip.assert_called_once_with(
+            ip_id=sip.id
+        )

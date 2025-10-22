@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from functools import partial
@@ -35,6 +35,7 @@ from twisted.python import context, threadable
 from twisted.python.failure import Failure
 from twisted.web.test import requesthelper
 
+from maascommon.tracing import get_trace_id, set_trace_id
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -58,6 +59,7 @@ from provisioningserver.utils.twisted import (
     pause,
     reducedWebLogFormatter,
     retries,
+    retry,
     RPCFetcher,
     suppress,
     synchronous,
@@ -301,6 +303,74 @@ class TestSuppress(MAASTestCase):
             suppress(failure, error_type, instead=sentinel.instead),
             sentinel.instead,
         )
+
+
+class TestRetry(MAASTestCase):
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
+
+    def assertNoResult(self, d: Deferred):
+        self.assertFalse(d.called, "Deferred has already fired")
+
+    @inlineCallbacks
+    def test_retry_succeeds_immediately(self):
+        clock = Clock()
+
+        def succeed_func():
+            return "done"
+
+        result = yield retry(succeed_func, timeout=5, intervals=1, clock=clock)
+        self.assertEqual(result, "done")
+
+    @inlineCallbacks
+    def test_retry_succeeds_after_retries(self):
+        clock = Clock()
+        attempts = {"n": 0}
+
+        def flaky_func():
+            attempts["n"] += 1
+            if attempts["n"] < 4:
+                raise RuntimeError("BOOM")
+            return "ok"
+
+        d = retry(flaky_func, timeout=10, intervals=[1, 1, 1, 1], clock=clock)
+        self.assertNoResult(d)
+
+        clock.advance(1)
+        self.assertNoResult(d)
+
+        clock.advance(1)
+        self.assertNoResult(d)
+
+        clock.advance(1)
+        result = yield d
+        self.assertEqual(result, "ok")
+
+    @inlineCallbacks
+    def test_retry_times_out(self):
+        clock = Clock()
+
+        attempts = {"n": 0}
+
+        def always_fail():
+            attempts["n"] += 1
+            raise RuntimeError("BOOM")
+
+        d = retry(always_fail, timeout=3, intervals=1, clock=clock)
+        self.assertEqual(attempts["n"], 1)
+
+        clock.advance(1)
+        self.assertEqual(attempts["n"], 2)
+
+        clock.advance(1)
+        self.assertEqual(attempts["n"], 3)
+
+        clock.advance(2)  # exceed timeout, no call should be made.
+        self.assertEqual(attempts["n"], 3)
+
+        try:
+            yield d
+        except TimeoutError as e:
+            self.assertIn("Retries exhausted", str(e))
 
 
 class TestRetries(MAASTestCase):
@@ -1535,6 +1605,42 @@ class TestThreadPool(MAASTestCase):
             )
         )
         self.assertIn("maastesting.factory.TestException#", logger.output)
+
+    @inlineCallbacks
+    def test_trace_id_is_generated_and_propagated(self):
+        trace_id = get_trace_id()
+        pool = ThreadPool(
+            minthreads=1,
+            maxthreads=1,
+        )
+        self.addCleanup(stop_pool_if_running, pool)
+        pool.start()
+
+        def _extract_trace_id_in_thread():
+            return get_trace_id()
+
+        result = yield deferToThreadPool(
+            reactor, pool, _extract_trace_id_in_thread
+        )
+        self.assertIsNot(result, trace_id)
+
+    @inlineCallbacks
+    def test_trace_id_is_copied_if_present(self):
+        set_trace_id("test-trace-id")
+        pool = ThreadPool(
+            minthreads=1,
+            maxthreads=1,
+        )
+        self.addCleanup(stop_pool_if_running, pool)
+        pool.start()
+
+        def _extract_trace_id_in_thread():
+            return get_trace_id()
+
+        result = yield deferToThreadPool(
+            reactor, pool, _extract_trace_id_in_thread
+        )
+        self.assertEqual(result, "test-trace-id")
 
 
 def stop_pool_if_running(pool):

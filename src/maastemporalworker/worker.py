@@ -21,6 +21,7 @@ from temporalio.worker.workflow_sandbox import (
     SandboxRestrictions,
 )
 
+from maascommon.workflows.interceptors import ContextPropagationInterceptor
 from maastemporalworker.encryptor import EncryptionCodec
 from maastemporalworker.workflow.utils import async_retry
 from provisioningserver.certificates import get_maas_cluster_cert_paths
@@ -63,6 +64,7 @@ async def get_client_async() -> Client:
             client_cert=cert,
             client_private_key=key,
         ),
+        interceptors=[ContextPropagationInterceptor()],
     )
 
 
@@ -135,6 +137,7 @@ class Worker:
             workflows=self._workflows,
             activities=self._activities,
             workflow_runner=custom_sandbox_runner(),
+            interceptors=[ContextPropagationInterceptor()],
         )
         await self._worker.run()
 

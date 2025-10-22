@@ -7,14 +7,21 @@ from operator import eq
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
+    ExternalOAuthRepository,
 )
 from maasservicelayer.db.tables import RootKeyTable
+from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.utils.date import utcnow
-from tests.fixtures.factories.external_auth import create_rootkey
+from tests.fixtures.factories.external_auth import (
+    create_provider,
+    create_rootkey,
+)
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -150,3 +157,50 @@ class TestExternalAuthRepository:
             RootKeyTable.name, eq(RootKeyTable.c.id, created_rootkey.id)
         )
         assert rootkey == []
+
+
+@pytest.mark.usefixtures("ensuremaasdb")
+@pytest.mark.asyncio
+class TestExternalOAuthRepository(RepositoryCommonTests[OAuthProvider]):
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture, num_objects: int
+    ) -> list[OAuthProvider]:
+        return [
+            await create_provider(
+                fixture,
+                name=f"provider_{i}",
+                client_id=f"id_{i}",
+                client_secret=f"provider_{i}_secret",
+                issuer_url=f"https://provider-{i}.com/",
+            )
+            for i in range(num_objects)
+        ]
+
+    @pytest.fixture
+    async def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> ExternalOAuthRepository:
+        return ExternalOAuthRepository(Context(connection=db_connection))
+
+    @pytest.fixture
+    async def instance_builder(
+        self, fixture: Fixture, *args, **kwargs
+    ) -> OAuthProviderBuilder:
+        return OAuthProviderBuilder(
+            client_id="sample_id_123",
+            client_secret="sample_id_123",
+            enabled=True,
+            issuer_url="https://example.oidc.com",
+            name="SampleOIDCProvider",
+            redirect_uri="https://myapp.com/oauth/callback",
+            scopes="openid profile email",
+        )
+
+    @pytest.fixture
+    async def instance_builder_model(self) -> type[OAuthProviderBuilder]:
+        return OAuthProviderBuilder
+
+    @pytest.fixture
+    async def created_instance(self, fixture: Fixture) -> OAuthProvider:
+        return await create_provider(fixture)

@@ -4,13 +4,12 @@
 """Tests for XPath utilities."""
 
 from textwrap import dedent
-from unittest.mock import Mock
 
-from fixtures import FakeLogger
 from lxml import etree
 from testscenarios import multiply_scenarios
 
 from maastesting.testcase import MAASTestCase
+from provisioningserver.utils import xpath as xpath_module
 from provisioningserver.utils.xpath import try_match_xpath
 
 
@@ -63,9 +62,7 @@ class TestTryMatchXPathScenarios(MAASTestCase):
             "/foo:bar",
             "<foo/>",
             False,
-            expected_log="""\
-            Invalid expression '/foo:bar': Undefined namespace prefix
-            """,
+            expected_log="Invalid expression '/foo:bar': Undefined namespace prefix",
         ),
     )
 
@@ -92,25 +89,24 @@ class TestTryMatchXPathScenarios(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.logger = self.useFixture(FakeLogger())
+        self.logger = self.patch(xpath_module, "logger")
 
     def test(self):
         xpath = self.xpath_compile(self.xpath)
         doc = self.doc_compile(self.doc)
         self.assertIs(self.expected_result, try_match_xpath(xpath, doc))
-        self.assertIn(self.expected_log, self.logger.output)
+        if self.expected_log:
+            self.logger.warn.assert_called_once()
+            args, _ = self.logger.warn.call_args
+            self.assertEqual(self.expected_log, args[0])
 
 
 class TestTryMatchXPath(MAASTestCase):
     def test_logs_to_specified_logger(self):
+        logger = self.patch(xpath_module, "logger")
         xpath = etree.XPath("/foo:bar")
         doc = etree.XML("<foo/>")
-        root_logger = self.useFixture(FakeLogger())
-        callers_logger = Mock()
-        try_match_xpath(xpath, doc, callers_logger)
-        self.assertEqual("", root_logger.output)
-        callers_logger.warning.assert_called_once_with(
-            "Invalid expression '%s': %s",
-            "/foo:bar",
-            "Undefined namespace prefix",
+        try_match_xpath(xpath, doc)
+        logger.warn.assert_called_once_with(
+            "Invalid expression '/foo:bar': Undefined namespace prefix"
         )

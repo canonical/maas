@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Populate what nodes are associated with a tag."""
@@ -16,14 +16,12 @@ from typing import TYPE_CHECKING
 from django.db.models.query import QuerySet
 from lxml import etree
 
-from maasserver import logger
 from maasserver.models.node import Node
 from maasserver.models.nodeprobeddetails import (
     get_probed_details,
     get_single_probed_details,
     script_output_nsmap,
 )
-from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.tags import (
     DEFAULT_BATCH_SIZE,
     gen_batches,
@@ -35,10 +33,6 @@ from provisioningserver.utils.xpath import try_match_xpath
 
 if TYPE_CHECKING:
     from maasserver.models import Tag
-
-maaslog = get_maas_logger("tags")
-log = LegacyLogger()
-
 
 # The nsmap that XPath expression must be compiled with. This will
 # ensure that expressions like //lshw:something will work correctly.
@@ -61,7 +55,7 @@ def populate_tags_for_single_node(tags, node):
     probed_details_doc = merge_details(probed_details)
     # Same document, many queries: use XPathEvaluator.
     evaluator = etree.XPathEvaluator(probed_details_doc, namespaces=tag_nsmap)
-    evaluator = partial(try_match_xpath, doc=evaluator, logger=logger)
+    evaluator = partial(try_match_xpath, doc=evaluator)
     tags_defined = ((tag, tag.definition) for tag in tags if tag.is_defined)
     tags_matching, tags_nonmatching = classify(evaluator, tags_defined)
     node.tags.remove(*tags_nonmatching)
@@ -89,7 +83,7 @@ def populate_tag_for_multiple_nodes(
             for node in batch
         }
         nodes_matching, nodes_nonmatching = classify(
-            partial(try_match_xpath, xpath, logger=maaslog),
+            partial(try_match_xpath, xpath),
             probed_details_docs_by_node.items(),
         )
         tag.node_set.remove(*nodes_nonmatching)

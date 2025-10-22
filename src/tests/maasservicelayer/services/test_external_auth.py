@@ -3,7 +3,7 @@
 
 from datetime import timedelta
 import os
-from unittest.mock import ANY, call, Mock, patch
+from unittest.mock import ANY, AsyncMock, call, Mock, patch
 
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
@@ -18,27 +18,33 @@ from maasservicelayer.auth.macaroons.checker import (
 )
 from maasservicelayer.auth.macaroons.locator import AsyncThirdPartyLocator
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
+    ExternalOAuthRepository,
 )
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
+    ConflictException,
     DischargeRequiredException,
     UnauthorizedException,
 )
-from maasservicelayer.models.external_auth import RootKey
+from maasservicelayer.models.external_auth import OAuthProvider, RootKey
 from maasservicelayer.models.secrets import RootKeyMaterialSecret
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import SecretsService, UsersService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.external_auth import (
     ExternalAuthService,
     ExternalAuthServiceCache,
+    ExternalOAuthService,
 )
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.security import to_bin, to_hex
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_KEY = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
 
@@ -327,7 +333,7 @@ class TestExternalAuthService:
         os_mock.return_value = os_urandom
 
         external_auth_service = ExternalAuthService(
-            context=Context(context_id="1224"),
+            context=Context(trace_id="1224"),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
             cache=ExternalAuthService.build_cache_object(),
@@ -792,3 +798,98 @@ class TestExternalAuthService:
             ]
         )
         external_auth_service.cache.clear()
+
+
+@pytest.mark.asyncio
+class TestExternalOAuthService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return ExternalOAuthService(
+            external_oauth_repository=Mock(ExternalOAuthRepository)
+        )
+
+    @pytest.fixture
+    def builder_model(self) -> type[OAuthProviderBuilder]:
+        return OAuthProviderBuilder
+
+    @pytest.fixture
+    def test_instance(self) -> OAuthProvider:
+        return OAuthProvider(
+            id=1,
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+    async def test_get_provider(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.repository.get_provider = AsyncMock(
+            return_value=test_instance
+        )
+
+        provider = await service_instance.get_provider()
+
+        assert provider is not None
+        assert provider.name == "test_provider"
+
+    async def test_update_provider_success(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.get_provider = AsyncMock(return_value=test_instance)
+        test_instance.client_id = "updated_id"
+        test_instance.enabled = False
+        service_instance.update_by_id = AsyncMock(return_value=test_instance)
+
+        updated_provider = await service_instance.update_provider(
+            id=1, builder=test_instance
+        )
+
+        assert updated_provider is not None
+        assert updated_provider.client_id == "updated_id"
+        assert not updated_provider.enabled
+
+    async def test_update_provider_enables_when_none_enabled(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+        builder_model: OAuthProviderBuilder,
+    ) -> None:
+        service_instance.get_provider = AsyncMock(return_value=None)
+        service_instance.update_by_id = AsyncMock(return_value=test_instance)
+        builder_model.enabled = True
+        updated_provider = await service_instance.update_provider(
+            id=1, builder=builder_model
+        )
+
+        service_instance.update_by_id.assert_awaited_once_with(
+            id=1, builder=builder_model
+        )
+        assert updated_provider == test_instance
+
+    async def test_update_provider_conflict(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+        builder_model: OAuthProviderBuilder,
+    ) -> None:
+        service_instance.get_provider = AsyncMock(return_value=test_instance)
+        builder_model.enabled = True
+        builder_model.name = "A new name"
+
+        with pytest.raises(ConflictException) as exc_info:
+            await service_instance.update_provider(id=2, builder=builder_model)
+        assert (
+            exc_info.value.details[0].message
+            == "An enabled OIDC provider already exists. Please disable it first."
+        )

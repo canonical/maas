@@ -1,15 +1,11 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """MAAS Server application."""
 
-import logging
-
 from provisioningserver.utils.version import DISTRIBUTION
 
 __version__ = DISTRIBUTION.version
-
-logger = logging.getLogger("maasserver")
 
 
 def execute_from_command_line():

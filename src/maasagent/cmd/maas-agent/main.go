@@ -32,6 +32,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/canonical/microcluster/v2/rest/types"
+	"github.com/canonical/microcluster/v2/state"
 	backoff "github.com/cenkalti/backoff/v4"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
@@ -506,27 +508,75 @@ func Run() int {
 		resolver.WithHandlerMetrics(meterProvider.Meter("resolver")),
 	)
 
-	clusterService, err := cluster.NewClusterService(cfg.SystemID,
-		cluster.WithMetricMeter(meterProvider.Meter("cluster")),
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("Clustering initialisation error")
-		return 1
-	}
-
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
-	dhcpService := dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, dhcp.WithAPIClient(apiClient))
 	resolverService := resolver.NewResolverService(resolverHandler)
 
-	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
+	var (
+		clusterService *cluster.ClusterService
+		dhcpService    *dhcp.DHCPService
+	)
+
+	if os.Getenv("MAAS_INTERNAL_DHCP") != "1" {
+		clusterService, err = cluster.NewClusterService(cfg.SystemID,
+			cluster.WithMetricMeter(meterProvider.Meter("cluster")),
+		)
+		if err != nil {
+			log.Error().Err(err).Msg("Clustering initialisation error")
+			return 1
+		}
+
+		dhcpService = dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, false, dhcp.WithAPIClient(apiClient))
+	} else {
+		dhcpService = dhcp.NewDHCPService(cfg.SystemID, nil, nil, true)
+
+		// using anonymous functions for hooks to easily allow the addition of logic for additional clustered
+		// service
+		clusterService, err = cluster.NewClusterService(cfg.SystemID,
+			cluster.WithMetricMeter(meterProvider.Meter("cluster")),
+			cluster.WithClusterHooks(&state.Hooks{
+				PreInit: func(ctx context.Context, _ state.State, _ bool, _ map[string]string) error {
+					log.Info().Msg("microcluster has reached preinit")
+					return nil
+				},
+				OnStart: func(ctx context.Context, _ state.State) error {
+					log.Info().Msg("microcluster has started")
+					return clusterService.OnStart(ctx)
+				},
+				PostBootstrap: func(ctx context.Context, s state.State, _ map[string]string) error {
+					log.Info().Msg("microcluster has bootstrapped")
+					return dhcpService.OnBootstrap(ctx, s)
+				},
+				PostJoin: func(ctx context.Context, s state.State, _ map[string]string) error {
+					log.Info().Msg("microcluster has joined a cluster")
+					return dhcpService.OnJoin(ctx, s)
+				},
+				OnNewMember: func(ctx context.Context, s state.State, _ types.ClusterMemberLocal) error {
+					log.Info().Msg("microcluster has received a new member")
+					return dhcpService.OnNewMember(ctx, s)
+				},
+			}),
+		)
+		if err != nil {
+			log.Error().Err(err).Msg("Clustering initialisation error")
+			return 1
+		}
+	}
+
+	workerPoolOptions := []worker.WorkerPoolOption{
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
 		worker.WithConfigurator(clusterService),
 		worker.WithConfigurator(powerService),
 		worker.WithConfigurator(httpProxyService),
-		worker.WithConfigurator(dhcpService),
 		worker.WithConfigurator(resolverService),
-	)
+		worker.WithConfigurator(dhcpService),
+	}
+
+	if dhcpService != nil {
+		workerPoolOptions = append(workerPoolOptions, worker.WithConfigurator(dhcpService))
+	}
+
+	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient, workerPoolOptions...)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
 	workerPoolBackoff.MaxElapsedTime = 60 * time.Second

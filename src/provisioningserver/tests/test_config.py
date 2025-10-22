@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for provisioning configuration."""
@@ -665,6 +665,15 @@ class TestClusterConfiguration(MAASTestCase):
         config = ClusterConfiguration({})
         config.debug = "true"
         self.assertTrue(config.debug)
+
+    def test_default_use_json_logging(self):
+        config = ClusterConfiguration({})
+        self.assertTrue(config.use_json_logging)
+
+    def test_test_set_and_get_use_json_logging_false_str(self):
+        config = ClusterConfiguration({})
+        config.use_json_logging = "false"
+        self.assertFalse(config.debug)
 
 
 class TestClusterConfigurationGRUBRoot(MAASTestCase):

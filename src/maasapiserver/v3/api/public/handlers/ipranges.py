@@ -32,7 +32,6 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import (
-    BadRequestException,
     BaseExceptionDetail,
     ForbiddenException,
     NotFoundException,
@@ -141,7 +140,7 @@ class IPRangesHandler(Handler):
             and iprange_request.owner_id is not None
             and iprange_request.owner_id != authenticated_user.id
         ):
-            raise BadRequestException(
+            raise ForbiddenException(
                 details=[
                     BaseExceptionDetail(
                         type=INVALID_ARGUMENT_VIOLATION_TYPE,
@@ -322,7 +321,7 @@ class IPRangesHandler(Handler):
             not authenticated_user.is_admin()
             and iprange_request.owner_id != authenticated_user.id
         ):
-            raise BadRequestException(
+            raise ForbiddenException(
                 details=[
                     BaseExceptionDetail(
                         type=INVALID_ARGUMENT_VIOLATION_TYPE,

@@ -1,8 +1,9 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Testing helpers for `provisioningserver.logger`."""
 
+import json
 import random
 import re
 import time
@@ -49,9 +50,43 @@ find_log_lines_re = re.compile(
 )
 
 
-def find_log_lines(text):
+def find_log_lines(text, use_json_logging):
     """Find logs in `text` that match `find_log_lines_re`.
 
     Checks for well-formed date/times but throws them away.
     """
+    if use_json_logging:
+        results = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                # Try to match json, it should come from twisted.
+                data = json.loads(line)
+                name = data.get("name")
+                level = data.get("level").lower()
+                message = data.get("message")
+                assert (
+                    "twisted.logger" in message
+                    or "twisted.python.log" in message
+                    or "Printing" in message
+                    or "UserWarning" in message
+                ), (
+                    f"The message {message} is not expected to be in a JSON format"
+                )
+                results.append((name, level, message))
+            except json.JSONDecodeError:
+                # Try to match plaintext, should come from syslog.
+                groups = find_log_lines_re.findall(line)
+                if groups:
+                    message = groups[0]
+                    assert (
+                        "get_maas_logger" in message[2]
+                        or "logging" in message[2]
+                    ), (
+                        "Only maassyslog and logging are supposed to be in plaintext."
+                    )
+                    results.append(message)
+        return results
     return find_log_lines_re.findall(text)

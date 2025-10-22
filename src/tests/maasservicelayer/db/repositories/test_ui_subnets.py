@@ -80,6 +80,12 @@ class TestUISubnetsClauseFactory:
             == "CAST(maasserver_ui_subnet_view.cidr AS VARCHAR) LIKE '%' || '192.168' || '%'"
         )
 
+    def test_with_subnet_ids(self):
+        clause = UISubnetsClauseFactory.with_subnet_ids([100, 200])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_ui_subnet_view.id IN (100, 200)")
+
 
 class TestUISubnetsRepository(ReadOnlyRepositoryCommonTests[UISubnet]):
     @pytest.fixture

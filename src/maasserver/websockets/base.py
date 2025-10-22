@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The base class that all handlers must extend."""
@@ -23,6 +23,7 @@ from django.http import QueryDict
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 
+from maascommon.tracing import regenerate_trace_id
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
 from maasserver.prometheus.middleware import wrap_query_counter_cursor
@@ -405,6 +406,11 @@ class Handler(metaclass=HandlerMetaclass):
         Checks to make sure the method is valid and allowed perform executing
         the method.
         """
+
+        # The websocket connection is handled by one single task, so every handler comes with the same trace id. This is where
+        # we regenerate the trace id for this specific execution
+        regenerate_trace_id()
+
         if method_name in self._meta.allowed_methods:
             try:
                 method = getattr(self, method_name)

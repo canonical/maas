@@ -3,7 +3,6 @@
 
 import http.client
 import json
-import logging
 import random
 
 from crochet import TimeoutError
@@ -11,8 +10,8 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
-from fixtures import FakeLogger
 
+from maascommon.tracing import set_trace_id
 from maasserver import middleware as middleware_module
 from maasserver.exceptions import MAASAPIException, MAASAPINotFound
 from maasserver.middleware import (
@@ -26,6 +25,7 @@ from maasserver.middleware import (
     RBACMiddleware,
     RPCErrorsMiddleware,
     ServiceLayerMiddleware,
+    TracingMiddleware,
 )
 from maasserver.rbac import rbac
 from maasserver.secrets import SecretManager
@@ -51,6 +51,37 @@ class TestIsPublicPath(MAASServerTestCase):
     def test_path_not_public(self):
         self.assertFalse(is_public_path("/"))
         self.assertFalse(is_public_path("/MAAS/"))
+
+
+class TestTracingMiddleware(MAASServerTestCase):
+    def process_request(self, request, response=None):
+        def get_response(_):
+            if response:
+                return response
+            else:
+                return HttpResponse(status=200)
+
+        middleware = TracingMiddleware(get_response)
+        return middleware(request)
+
+    def test_trace_id_is_taken_from_request(self):
+        self.addCleanup(set_trace_id, "")
+        request = factory.make_fake_request(
+            "/", headers={"MAAS-trace-id": "my-trace-id"}
+        )
+        self.assertEqual(
+            "my-trace-id",
+            self.process_request(request).headers["MAAS-trace-id"],
+        )
+
+    def test_trace_id_is_taken_from_context(self):
+        self.addCleanup(set_trace_id, "")
+        set_trace_id("existing-trace-id")
+        request = factory.make_fake_request("/")
+        self.assertEqual(
+            "existing-trace-id",
+            self.process_request(request).headers["MAAS-trace-id"],
+        )
 
 
 class TestAccessMiddleware(MAASServerTestCase):
@@ -196,20 +227,24 @@ class TestExceptionMiddleware(MAASServerTestCase):
         )
 
     def test_api_500_error_is_logged(self):
-        logger = self.useFixture(FakeLogger("maasserver"))
+        logger = self.patch(middleware_module, "logger")
         error_text = factory.make_string()
         exception = MAASAPIException(error_text)
         request = self.make_fake_request()
         self.process_exception(request, exception)
-        self.assertIn(error_text, logger.output)
+        logger.error.assert_called()
+        args, _ = logger.error.call_args
+        self.assertIn(error_text, args[0])
 
     def test_generic_500_error_is_logged(self):
-        logger = self.useFixture(FakeLogger("maasserver"))
+        logger = self.patch(middleware_module, "logger")
         error_text = factory.make_string()
         exception = Exception(error_text)
         request = self.make_fake_request()
         self.process_exception(request, exception)
-        self.assertIn(error_text, logger.output)
+        logger.error.assert_called()
+        args, _ = logger.error.call_args
+        self.assertIn(error_text, args[0])
 
     def test_reports_ExternalProcessError_as_ServiceUnavailable(self):
         error_text = factory.make_string()
@@ -265,58 +300,51 @@ class TestDebuggingLoggerMiddleware(MAASServerTestCase):
         middleware = DebuggingLoggerMiddleware(get_response)
         return middleware(request)
 
-    def test_debugging_logger_does_not_log_response_if_info_level(self):
-        logger = self.useFixture(FakeLogger("maasserver", logging.INFO))
-        request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
-        response = HttpResponse(
-            content="test content", content_type=b"text/plain; charset=utf-8"
-        )
-        self.process_request(request, response)
-        debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
-        self.assertNotIn(debug_output, logger.output)
-
     def test_debugging_logger_does_not_log_response_if_no_debug_http(self):
-        logger = self.useFixture(FakeLogger("maasserver", logging.DEBUG))
+        logger = self.patch(middleware_module, "logger")
         request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
         response = HttpResponse(
             content="test content", content_type=b"text/plain; charset=utf-8"
         )
         self.process_request(request, response)
-        debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
-        self.assertNotIn(debug_output, logger.output)
+        logger.debug.assert_not_called()
+        logger.info.assert_not_called()
 
     def test_debugging_logger_logs_request(self):
         self.patch(settings, "DEBUG_HTTP", True)
-        logger = self.useFixture(FakeLogger("maasserver", logging.DEBUG))
+        logger = self.patch(middleware_module, "logger")
         request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
         request.content = "test content"
         self.process_request(request)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
-        self.assertIn(debug_output, logger.output)
+        calls = logger.debug.call_args_list
+        self.assertIn(debug_output, calls[0][0][0])
 
     def test_debugging_logger_logs_response(self):
         self.patch(settings, "DEBUG_HTTP", True)
-        logger = self.useFixture(FakeLogger("maasserver", logging.DEBUG))
+        logger = self.patch(middleware_module, "logger")
         request = factory.make_fake_request("foo")
         response = HttpResponse(
             content="test content", content_type=b"text/plain; charset=utf-8"
         )
         self.process_request(request, response)
+        calls = logger.debug.call_args_list
         self.assertIn(
             response.content.decode(settings.DEFAULT_CHARSET),
-            logger.output,
+            calls[1][0][0],
         )
 
     def test_debugging_logger_logs_binary_response(self):
         self.patch(settings, "DEBUG_HTTP", True)
-        logger = self.useFixture(FakeLogger("maasserver", logging.DEBUG))
+        logger = self.patch(middleware_module, "logger")
         request = factory.make_fake_request("foo")
         response = HttpResponse(
             content=sample_binary_data,
             content_type=b"application/octet-stream",
         )
         self.process_request(request, response)
-        self.assertIn("non-utf-8 (binary?) content", logger.output)
+        calls = logger.debug.call_args_list
+        self.assertIn("non-utf-8 (binary?) content", calls[1][0][0])
 
 
 class TestRPCErrorsMiddleware(MAASServerTestCase):

@@ -34,17 +34,29 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"maas.io/core/src/maasagent/internal/cluster"
+	"maas.io/core/src/maasagent/internal/dhcpd"
 )
+
+type MockLeaseReporter struct {
+	notifications []*dhcpd.Notification
+}
+
+func (m *MockLeaseReporter) EnqueueLeaseNotification(_ context.Context, n *dhcpd.Notification) error {
+	m.notifications = append(m.notifications, n)
+
+	return nil
+}
 
 func TestDORAHandlerServeDHCP4(t *testing.T) {
 	hostname, hostnameErr := os.Hostname()
 	require.NoError(t, hostnameErr)
 
 	testcases := map[string]struct {
-		data string
-		in   Message
-		out  *dhcpv4.DHCPv4
-		err  error
+		data            string
+		in              Message
+		out             *dhcpv4.DHCPv4
+		notificationOut *dhcpd.Notification
+		err             error
 	}{
 		"discover": {
 			data: fmt.Sprintf(`
@@ -129,6 +141,13 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 					uint8(dhcpv4.OptionRouter):             []byte(net.ParseIP("10.0.0.1").To4()),
 				},
 			},
+			notificationOut: &dhcpd.Notification{
+				Action:    "commit",
+				IPFamily:  "ipv4",
+				IP:        "10.0.0.2",
+				MAC:       "ab:cd:ef:00:11:22",
+				LeaseTime: 30,
+			},
 		},
 		"decline": {
 			in: Message{
@@ -167,12 +186,19 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 					ClientHWAddr:  net.HardwareAddr{0xab, 0xcd, 0xef, 0x00, 0x11, 0x22},
 					ClientIPAddr:  net.ParseIP("0.0.0.0").To4(),
 					ServerIPAddr:  net.ParseIP("255.255.255.255").To4(),
+					YourIPAddr:    net.ParseIP("10.0.0.2").To4(),
 					TransactionID: [4]byte{0x01, 0x02, 0x03, 0x04},
 					Options: dhcpv4.Options{
 						uint8(dhcpv4.OptionDHCPMessageType):    []byte{byte(dhcpv4.MessageTypeRelease)},
 						uint8(dhcpv4.OptionRequestedIPAddress): []byte(net.ParseIP("10.0.0.2").To4()),
 					},
 				},
+			},
+			notificationOut: &dhcpd.Notification{
+				Action:   "release",
+				IPFamily: "ipv4",
+				IP:       "10.0.0.2",
+				MAC:      "ab:cd:ef:00:11:22",
 			},
 		},
 		"inform": {
@@ -298,7 +324,10 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 							return nil
 						}
 
-						handler := NewDORAHandler(allocator, s)
+						leaseReporter := &MockLeaseReporter{}
+
+						handler := NewDORAHandler(allocator, leaseReporter)
+						handler.SetClusterState(s)
 
 						handler.discoverReplyOverride = func(ctx context.Context, ifaceIdx int, resp *dhcpv4.DHCPv4) error {
 							assert.Equal(t, resp, tc.out)
@@ -325,6 +354,20 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 							errChan <- err
 						}
 
+						if tc.notificationOut != nil {
+							notification := leaseReporter.notifications[len(leaseReporter.notifications)-1]
+							notification.Timestamp = 0 // always time.Now().Unix(), set to 0 for comparison
+
+							assert.Equal(
+								t,
+								tc.notificationOut,
+								notification,
+							)
+						}
+
+						return nil
+					},
+					PostBootstrap: func(_ context.Context, _ state.State, cfg map[string]string) error {
 						return nil
 					},
 				},
@@ -337,5 +380,133 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 		})
 
 		i++
+	}
+}
+
+func TestOptionMarshalers(t *testing.T) {
+	testcases := map[string]struct {
+		inType  int
+		inValue string
+		out     []byte
+		err     error
+	}{
+		"uint8": {
+			inType:  OptionTypeUint8,
+			inValue: "6",
+			out:     []byte{0x06},
+		},
+		"uint8 overflow": {
+			inType:  OptionTypeUint8,
+			inValue: "300",
+			err:     ErrInvalidOptionValue,
+		},
+		"uint16": {
+			inType:  OptionTypeUint16,
+			inValue: "300",
+			out:     []byte{0x01, 0x2c},
+		},
+		"uint16 overflow": {
+			inType:  OptionTypeUint16,
+			inValue: "70000",
+			err:     ErrInvalidOptionValue,
+		},
+		"uint32": {
+			inType:  OptionTypeUint32,
+			inValue: "70000",
+			out:     []byte{0x00, 0x01, 0x11, 0x70},
+		},
+		"uint32 overflow": {
+			inType:  OptionTypeUint32,
+			inValue: "4294967298",
+			err:     ErrInvalidOptionValue,
+		},
+		"uint64": {
+			inType:  OptionTypeUint64,
+			inValue: "4294967298",
+			out:     []byte{0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02},
+		},
+		"ipv4": {
+			inType:  OptionTypeIPv4,
+			inValue: "10.0.0.1",
+			out:     []byte{0x0A, 0x00, 0x00, 0x01},
+		},
+		"ipv6 for ipv4": {
+			inType:  OptionTypeIPv4,
+			inValue: "ffff:efef::1",
+			err:     ErrInvalidOptionValue,
+		},
+		"ipv6": {
+			inType:  OptionTypeIPv6,
+			inValue: "ffff:efef::1",
+			out:     []byte{0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+		},
+		"ipv4 for ipv6": {
+			inType:  OptionTypeIPv6,
+			inValue: "::FFFF:10.11.12.13",
+			out:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x0A, 0x0B, 0x0C, 0x0D},
+		},
+		"ipv4 list": {
+			inType:  OptionTypeIPv4List,
+			inValue: "10.0.0.1,10.0.0.2",
+			out:     []byte{0x0A, 0x00, 0x00, 0x01, 0x0A, 0x00, 0x00, 0x02},
+		},
+		"ipv4 list with spaces": {
+			inType:  OptionTypeIPv4List,
+			inValue: "10.0.0.1, 10.0.0.2",
+			out:     []byte{0x0A, 0x00, 0x00, 0x01, 0x0A, 0x00, 0x00, 0x02},
+		},
+		"ipv6 list": {
+			inType:  OptionTypeIPv6List,
+			inValue: "ffff:efef::1,ffff:efef::2",
+			out: []byte{
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
+			},
+		},
+		"ipv6 list with spaces": {
+			inType:  OptionTypeIPv6List,
+			inValue: "ffff:efef::1, ffff:efef::2",
+			out: []byte{
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
+			},
+		},
+		"mixed ip list for ipv4": {
+			inType:  OptionTypeIPv4List,
+			inValue: "ffff:efef::1,10.0.0.1",
+			err:     ErrInvalidOptionValue,
+		},
+		"mixed ip list for ipv6": {
+			inType:  OptionTypeIPv6List,
+			inValue: "ffff:efef::1,10.0.0.1",
+			out: []byte{
+				0xFF, 0xFF, 0xEF, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x0A, 0x00, 0x00, 0x01,
+			},
+		},
+		"hex": {
+			inType:  OptionTypeHex,
+			inValue: "ffff",
+			out:     []byte{0xff, 0xff},
+		},
+	}
+
+	for tname, tc := range testcases {
+		t.Run(tname, func(t *testing.T) {
+			marshaler, ok := optionMarshalers[tc.inType]
+			require.True(t, ok)
+
+			result, err := marshaler(tc.inValue)
+			if err != nil {
+				if tc.err != nil {
+					assert.ErrorIs(t, err, tc.err)
+					return
+				}
+
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, tc.out, result)
+		})
 	}
 }

@@ -23,26 +23,33 @@ from maasservicelayer.auth.macaroons.macaroon_client import (
     RbacAsyncClient,
 )
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
+    ExternalOAuthRepository,
 )
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
+    ConflictException,
     DischargeRequiredException,
     UnauthorizedException,
 )
-from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
+    INVALID_TOKEN_VIOLATION_TYPE,
+)
+from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.models.secrets import (
     ExternalAuthSecret,
     MacaroonKeySecret,
     RootKeyMaterialSecret,
 )
 from maasservicelayer.models.users import User
-from maasservicelayer.services.base import Service, ServiceCache
+from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
@@ -353,3 +360,47 @@ class ExternalAuthService(Service, RootKeyStore):
         # auth_config.url comes with a /auth suffix used for some macaroon internals.
         # We don't want to diverge too much from the structure we have in maasserver, hence we simply remove the suffix here.
         return RbacAsyncClient(auth_config.url.rstrip("/auth"), auth_info)
+
+
+class ExternalOAuthService(
+    BaseService[OAuthProvider, ExternalOAuthRepository, OAuthProviderBuilder]
+):
+    def __init__(self, external_oauth_repository: ExternalOAuthRepository):
+        self.repository = external_oauth_repository
+
+    async def pre_create_hook(self, builder) -> None:
+        existing_enabled = await self.get_provider()
+        if existing_enabled and builder.enabled is True:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message="An enabled OIDC provider already exists. Please disable it first.",
+                    )
+                ]
+            )
+
+    async def get_provider(self) -> OAuthProvider | None:
+        return await self.repository.get_provider()
+
+    async def update_provider(
+        self, id: int, builder: OAuthProviderBuilder
+    ) -> OAuthProvider | None:
+        enable_requested = builder.enabled is True
+        existing_enabled = await self.get_provider()
+
+        if (
+            not enable_requested
+            or not existing_enabled
+            or existing_enabled.id == id
+        ):
+            return await self.update_by_id(id=id, builder=builder)
+
+        raise ConflictException(
+            details=[
+                BaseExceptionDetail(
+                    type=CONFLICT_VIOLATION_TYPE,
+                    message="An enabled OIDC provider already exists. Please disable it first.",
+                )
+            ]
+        )

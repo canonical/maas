@@ -54,6 +54,7 @@ apps:
       - network-observe
       - snap-refresh-control
       - system-observe
+      - system-trace # allows for the running of eBPF programs
       - time-control
 
   maas:
@@ -121,6 +122,7 @@ parts:
       - python3-alembic
       - python3-asyncpg
       - python3-attr
+      - python3-authlib
       - python3-babel
       - python3-bson
       - python3-certifi # for macaroonbakery

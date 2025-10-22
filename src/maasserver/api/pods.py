@@ -52,8 +52,7 @@ class VmHostHandler(OperationsHandler):
     A VM host is identified by its id.
     """
 
-    api_doc_section_name = "Virtual machine host"
-
+    api_doc_section_name = "vm host"
     create = None
     model = Pod
     fields = DISPLAYED_POD_FIELDS
@@ -446,7 +445,7 @@ class VmHostsHandler(OperationsHandler):
     Manage the collection of all the VM hosts in MAAS.
     """
 
-    api_doc_section_name = "Virtual machine hosts"
+    api_doc_section_name = "vm hosts"
     update = delete = None
 
     @classmethod

@@ -17,7 +17,11 @@ from django.conf import settings
 from django.urls import reverse
 import yaml
 
-from maascommon.osystem import BOOT_IMAGE_PURPOSE, OperatingSystemRegistry
+from maascommon.osystem import (
+    BOOT_IMAGE_PURPOSE,
+    LINUX_OSYSTEMS,
+    OperatingSystemRegistry,
+)
 from maascommon.osystem.custom import CustomOS
 from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import preseed as preseed_module
@@ -32,7 +36,6 @@ from maasserver.enum import (
 from maasserver.exceptions import MissingBootImage
 from maasserver.models import BootResource, Config, NodeKey, PackageRepository
 from maasserver.models import dnspublication as dnspublications_module
-from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.preseed import (
     compose_curtin_archive_config,
     compose_curtin_cloud_config,

@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration for the MAAS cluster.
@@ -812,6 +812,14 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "debug",
         "Enable debug mode for detailed error and log reporting.",
         OneWayStringBool(if_missing=False),
+    )
+
+    use_json_logging = ConfigurationOption(
+        "use_json_logging",
+        "Control JSON-formatted log output for rackd."
+        "When enabled, rackd log statements as structured JSON objects."
+        "When disabled, logs are emitted in plaintext format.",
+        OneWayStringBool(if_missing=True),
     )
 
     # MAAS Agent options

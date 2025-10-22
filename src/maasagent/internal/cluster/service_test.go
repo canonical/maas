@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/canonical/microcluster/v2/state"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,9 +34,19 @@ func TestConfigurationWorkflow(t *testing.T) {
 	systemID := strings.ReplaceAll(t.Name(), "/", "-")
 	dataPath := t.TempDir()
 
-	svc, err := NewClusterService(systemID,
+	var (
+		svc *ClusterService
+		err error
+	)
+
+	svc, err = NewClusterService(systemID,
 		WithDataPathFactory(func(path string) string {
 			return filepath.Join(dataPath, path)
+		}),
+		WithClusterHooks(&state.Hooks{
+			OnStart: func(ctx context.Context, _ state.State) error {
+				return svc.OnStart(ctx)
+			},
 		}),
 	)
 
@@ -55,6 +66,9 @@ func TestConfigurationWorkflow(t *testing.T) {
 	env.ExecuteWorkflow(svc.ConfigurationWorkflows()["configure-cluster-service"],
 		ClusterServiceConfigParam{})
 	assert.NoError(t, env.GetWorkflowError())
+
+	err = svc.cluster.Ready(context.TODO())
+	require.NoError(t, err)
 
 	_, batch, err := svc.cluster.SQL(context.TODO(), "select name from core_cluster_members")
 

@@ -9,6 +9,7 @@ INVALID_TOKEN_VIOLATION_TYPE = "InvalidTokenViolation"
 MISSING_PERMISSIONS_VIOLATION_TYPE = "MissingPermissionViolation"
 NOT_AUTHENTICATED_VIOLATION_TYPE = "NotAuthenticatedViolation"
 USER_EXTERNAL_VALIDATION_FAILED = "UserExternalValidationFailed"
+MISSING_PROVIDER_CONFIG_VIOLATION_TYPE = "MissingProviderConfigViolation"
 
 # Domains
 CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE = (
@@ -52,3 +53,6 @@ CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE = "CannotDeleteDefaultZoneViolation"
 CANNOT_DELETE_DEFAULT_PACKAGE_REPO_VIOLATION_TYPE = (
     "CannotDeleteDefaultPackageRepositoryViolation"
 )
+
+# Boot resources
+MISSING_FILE_CONTENT_VIOLATION_TYPE = "MissingFileContentViolationType"

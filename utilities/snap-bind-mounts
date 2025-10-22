@@ -33,7 +33,7 @@ GIT_BASE_PATHS = [
 
 
 def get_snap_base_path():
-    return Path("/snap/maas/current/lib/python3.10/site-packages").resolve()
+    return Path("/snap/maas/current/lib/python3.12/site-packages").resolve()
 
 
 def get_installed_revision():
