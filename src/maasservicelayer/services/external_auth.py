@@ -36,11 +36,13 @@ from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
     DischargeRequiredException,
+    PreconditionFailedException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     INVALID_TOKEN_VIOLATION_TYPE,
+    PRECONDITION_FAILED,
 )
 from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.models.secrets import (
@@ -376,6 +378,19 @@ class ExternalOAuthService(
                     BaseExceptionDetail(
                         type=CONFLICT_VIOLATION_TYPE,
                         message="An enabled OIDC provider already exists. Please disable it first.",
+                    )
+                ]
+            )
+
+    async def pre_delete_hook(
+        self, resource_to_be_deleted: OAuthProvider
+    ) -> None:
+        if resource_to_be_deleted.enabled is True:
+            raise PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PRECONDITION_FAILED,
+                        message="This OIDC provider is enabled. Please disable it first.",
                     )
                 ]
             )

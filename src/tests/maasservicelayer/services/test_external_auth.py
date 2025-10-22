@@ -30,6 +30,7 @@ from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     ConflictException,
     DischargeRequiredException,
+    PreconditionFailedException,
     UnauthorizedException,
 )
 from maasservicelayer.models.external_auth import OAuthProvider, RootKey
@@ -892,4 +893,44 @@ class TestExternalOAuthService(ServiceCommonTests):
         assert (
             exc_info.value.details[0].message
             == "An enabled OIDC provider already exists. Please disable it first."
+        )
+
+    async def test_delete_by_id(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ):
+        test_instance.enabled = False
+        return await super().test_delete_by_id(service_instance, test_instance)
+
+    async def test_delete_by_id_precondition_failed(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ):
+        with pytest.raises(PreconditionFailedException) as exc_info:
+            await super().test_delete_by_id(service_instance, test_instance)
+        assert (
+            exc_info.value.details[0].message
+            == "This OIDC provider is enabled. Please disable it first."
+        )
+
+    async def test_delete_one(self, service_instance, test_instance):
+        test_instance.enabled = False
+        return await super().test_delete_one(service_instance, test_instance)
+
+    async def test_delete_one_etag_match(
+        self, service_instance, test_instance
+    ):
+        test_instance.enabled = False
+        return await super().test_delete_one_etag_match(
+            service_instance, test_instance
+        )
+
+    async def test_delete_by_id_etag_match(
+        self, service_instance, test_instance
+    ):
+        test_instance.enabled = False
+        return await super().test_delete_by_id_etag_match(
+            service_instance, test_instance
         )

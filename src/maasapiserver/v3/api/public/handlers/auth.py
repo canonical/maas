@@ -15,15 +15,18 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
 )
+from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
     AuthProviderInfoResponse,
     OAuthProviderResponse,
+    OAuthProvidersListResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
     get_authenticated_user,
 )
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -134,7 +137,37 @@ class AuthHandler(Handler):
         )
 
     @handler(
-        path="/auth/oauth/{provider_id}",
+        path="/auth/oauth/providers",
+        methods=["GET"],
+        tags=TAGS,
+        responses={200: {"model": OAuthProvidersListResponse}},
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def list_oauth_providers(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        providers = await services.external_oauth.list(
+            page=pagination_params.page, size=pagination_params.size
+        )
+        next_link = None
+        if providers.has_next(pagination_params.page, pagination_params.size):
+            next_link = f"{V3_API_PREFIX}/auth/oauth/providers?{pagination_params.to_next_href_format()}"
+        return OAuthProvidersListResponse(
+            items=[
+                OAuthProviderResponse.from_model(provider)
+                for provider in providers.items
+            ],
+            total=providers.total,
+            next=next_link,
+        )
+
+    @handler(
+        path="/auth/oauth/providers/{provider_id}",
         methods=["PUT"],
         tags=TAGS,
         responses={
@@ -142,6 +175,9 @@ class AuthHandler(Handler):
             404: {"model": NotFoundBodyResponse},
         },
         status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
     )
     async def update_oauth_provider(
         self,
@@ -200,7 +236,7 @@ class AuthHandler(Handler):
         )
 
     @handler(
-        path="/auth/oauth",
+        path="/auth/oauth/providers",
         methods=["POST"],
         tags=TAGS,
         responses={
@@ -208,6 +244,9 @@ class AuthHandler(Handler):
             409: {"model": ConflictBodyResponse},
         },
         status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
     )
     async def create_oauth_provider(
         self,
@@ -219,7 +258,7 @@ class AuthHandler(Handler):
         return OAuthProviderResponse.from_model(provider=provider)
 
     @handler(
-        path="/auth/oauth/{provider_id}",
+        path="/auth/oauth/providers/{provider_id}",
         methods=["DELETE"],
         tags=TAGS,
         responses={
@@ -227,6 +266,9 @@ class AuthHandler(Handler):
             404: {"model": NotFoundBodyResponse},
         },
         status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
     )
     async def delete_oauth_provider(
         self,
