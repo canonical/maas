@@ -20,11 +20,21 @@ from django.http import (
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 
+from maascommon.logging.security import (
+    ADMIN,
+    AUTHN_LOGIN_SUCCESSFUL,
+    AUTHN_LOGIN_UNSUCCESSFUL,
+    SECURITY,
+    USER,
+)
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.models.userprofile import UserProfile
 from provisioningserver.events import EVENT_TYPES
+from provisioningserver.logger import LegacyLogger
+
+logger = LegacyLogger()
 
 
 @csrf_exempt
@@ -45,7 +55,18 @@ def login(request):
                     % ("admin" if request.user.is_superuser else "user")
                 ),
             )
+            logger.info(
+                AUTHN_LOGIN_SUCCESSFUL,
+                type=SECURITY,
+                userID=request.user.username,
+                role=ADMIN if request.user.is_superuser else USER,
+            )
             return HttpResponse(status=204)
+        logger.info(
+            AUTHN_LOGIN_UNSUCCESSFUL,
+            type=SECURITY,
+            userID=request.POST.get("username"),
+        )
         return HttpResponseBadRequest(
             json.dumps(form.errors), content_type="application/json"
         )

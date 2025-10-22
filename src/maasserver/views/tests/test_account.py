@@ -3,12 +3,18 @@
 
 from http import HTTPStatus
 import http.client
+from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.urls import reverse
 
 from maascommon.events import AUDIT
+from maascommon.logging.security import (
+    AUTHN_LOGIN_SUCCESSFUL,
+    AUTHN_LOGIN_UNSUCCESSFUL,
+    SECURITY,
+)
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.secrets import SecretManager
@@ -117,6 +123,35 @@ class TestLogin(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Logged in user.")
+
+    def test_login_creates_log(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        with patch("maasserver.views.account.logger") as mock_logger:
+            self.client.post(
+                reverse("login"),
+                {"username": user.username, "password": password},
+            )
+        mock_logger.info.assert_called_once_with(
+            AUTHN_LOGIN_SUCCESSFUL,
+            type=SECURITY,
+            userID=user.username,
+            role="User",
+        )
+
+    def test_failed_login_creates_log(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        with patch("maasserver.views.account.logger") as mock_logger:
+            self.client.post(
+                reverse("login"),
+                {"username": user.username, "password": "wrong"},
+            )
+        mock_logger.info.assert_called_once_with(
+            AUTHN_LOGIN_UNSUCCESSFUL,
+            type=SECURITY,
+            userID=user.username,
+        )
 
 
 class TestLogout(MAASServerTestCase):
