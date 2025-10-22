@@ -27,18 +27,29 @@ from maascommon.workflows.msm import (
     MachinesCountByStatus,
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
+    MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
     MSM_TOKEN_REFRESH_WORKFLOW_NAME,
-    MSM_WITHDRAW_WORKFLOW_NAME,
     MSMConnectorParam,
     MSMDeleteBootSourcesParam,
+    MSMDeleteSelectionsParam,
     MSMEnrolParam,
+    MSMGetMSMBootSourceParam,
     MSMHeartbeatParam,
+    MSMRestoreDefaultBootSourceParam,
     MSMSetBootSourceParam,
     MSMTokenRefreshParam,
 )
 from maasservicelayer.db import Database
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
+from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -71,6 +82,11 @@ MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
 MSM_GET_BOOT_SOURCES_ACTIVITY_NAME = "msm-get-bootsources"
 MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
+MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
+    "msm-restore-default-bootsource"
+)
+MSM_DELETE_SELECTIONS_ACTIVITY_NAME = "msm-delete-selections"
+MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME = "msm-get-msm-boot-source"
 
 
 # Activities parameters
@@ -251,6 +267,42 @@ class MSMConnectorActivity(ActivityBase):
                 boot_sources = await response.json()
                 return [bs["id"] for bs in boot_sources]
 
+    @activity_defn_with_context(name=MSM_DELETE_SELECTIONS_ACTIVITY_NAME)
+    async def delete_selections(self, input: MSMDeleteSelectionsParam) -> None:
+        """Delete boot source selections."""
+        async with self.start_transaction() as services:
+            await services.boot_source_selections.delete_many(
+                QuerySpec(
+                    BootSourceSelectionClauseFactory.with_boot_source_id(
+                        input.boot_source_id
+                    )
+                )
+            )
+
+    @activity_defn_with_context(name=MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME)
+    async def get_msm_boot_source_id(
+        self, input: MSMGetMSMBootSourceParam
+    ) -> int:
+        """Retrieve the boot source ID of MSM."""
+        async with self.start_transaction() as services:
+            source_url = input.sm_url + MSM_SS_EP
+            boot_source = await services.boot_sources.get_one(
+                QuerySpec(BootSourcesClauseFactory.with_url(source_url))
+            )
+            if boot_source is None:
+                raise ApplicationError(
+                    f"Could not retrieve MSM boot source (url {source_url})"
+                )
+            return boot_source.id
+
+    @activity_defn_with_context(
+        name=MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME
+    )
+    async def restore_default_boot_source(self) -> None:
+        """Restore the boot source and selections data to the default value."""
+        async with self.start_transaction() as services:
+            await services.image_sync.ensure_boot_source_definition()
+
     @activity_defn_with_context(name=MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME)
     async def delete_bootsources(
         self, input: MSMDeleteBootSourcesParam
@@ -339,6 +391,7 @@ class MSMConnectorActivity(ActivityBase):
         headers = {
             "Authorization": f"bearer {input.jwt}",
         }
+        assert input.status is not None
         data = {
             "name": input.site_name,
             "url": input.site_url,
@@ -504,7 +557,7 @@ class MSMEnrolSiteWorkflow:
                 site_url=input.site_url,
                 rotation_interval_minutes=rotation_interval_minutes,
             ),
-            id="msm-heartbeat:region",
+            id=f"{MSM_HEARTBEAT_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
             parent_close_policy=ParentClosePolicy.ABANDON,
         )
@@ -515,7 +568,7 @@ class MSMEnrolSiteWorkflow:
                 jwt=new_jwt,
                 rotation_interval_minutes=rotation_interval_minutes,
             ),
-            id="msm-token-refresh:region",
+            id=f"{MSM_TOKEN_REFRESH_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
             parent_close_policy=ParentClosePolicy.ABANDON,
         )
@@ -531,17 +584,33 @@ class MSMEnrolSiteWorkflow:
         return self._enrolment_error
 
 
-@workflow.defn(name=MSM_WITHDRAW_WORKFLOW_NAME, sandboxed=False)
-class MSMWithdrawWorkflow:
-    """Withdraw this site from MSM."""
+@workflow.defn(
+    name=MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME, sandboxed=False
+)
+class MSMRestoreDefaultBootSourceWorkflow:
+    """Restore the default boot source and selections."""
 
     @workflow_run_with_context
-    async def run(self, input: MSMConnectorParam) -> None:
-        """Run workflow.
-
-        Args:
-            input (MSMConnectorParam): Withdraw data
-        """
+    async def run(self, input: MSMRestoreDefaultBootSourceParam) -> None:
+        msm_source_id = await workflow.execute_activity(
+            MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME,
+            MSMGetMSMBootSourceParam(sm_url=input.sm_url),
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
+        await workflow.execute_activity(
+            MSM_DELETE_SELECTIONS_ACTIVITY_NAME,
+            MSMDeleteSelectionsParam(boot_source_id=msm_source_id),
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
+        await workflow.execute_activity(
+            MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
+            MSMDeleteBootSourcesParam(ids=[msm_source_id]),
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
+        await workflow.execute_activity(
+            MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME,
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
 
 
 @workflow.defn(name=MSM_HEARTBEAT_WORKFLOW_NAME, sandboxed=False)
@@ -582,6 +651,13 @@ class MSMHeartbeatWorkflow:
             if next_update > 0:
                 await asyncio.sleep(next_update)
         self._running = False
+        await workflow.start_child_workflow(
+            MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+            MSMRestoreDefaultBootSourceParam(sm_url=input.sm_url),
+            id=f"{MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            parent_close_policy=ParentClosePolicy.ABANDON,
+        )
 
     @workflow.query(name="is-running")
     def is_running(self) -> bool:

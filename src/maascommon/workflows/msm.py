@@ -7,7 +7,9 @@ import dataclasses
 MSM_ENROL_SITE_WORKFLOW_NAME = "msm-enrol-site"
 MSM_TOKEN_REFRESH_WORKFLOW_NAME = "msm-token-refresh"
 MSM_HEARTBEAT_WORKFLOW_NAME = "msm-heartbeat"
-MSM_WITHDRAW_WORKFLOW_NAME = "msm-withdraw"
+MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME = (
+    "msm-restore-default-boot-source"
+)
 
 
 # Workflows parameters
@@ -64,3 +66,18 @@ class MSMSetBootSourceParam:
 @dataclasses.dataclass
 class MSMDeleteBootSourcesParam:
     ids: list[int]
+
+
+@dataclasses.dataclass
+class MSMDeleteSelectionsParam:
+    boot_source_id: int
+
+
+@dataclasses.dataclass
+class MSMGetMSMBootSourceParam:
+    sm_url: str
+
+
+@dataclasses.dataclass
+class MSMRestoreDefaultBootSourceParam:
+    sm_url: str
