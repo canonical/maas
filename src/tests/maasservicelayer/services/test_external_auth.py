@@ -806,7 +806,8 @@ class TestExternalOAuthService(ServiceCommonTests):
     @pytest.fixture
     def service_instance(self) -> BaseService:
         return ExternalOAuthService(
-            external_oauth_repository=Mock(ExternalOAuthRepository)
+            context=Context(),
+            external_oauth_repository=Mock(ExternalOAuthRepository),
         )
 
     @pytest.fixture

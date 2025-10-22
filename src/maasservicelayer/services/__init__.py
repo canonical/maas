@@ -577,7 +577,8 @@ class ServiceCollectionV3:
             ),  # type: ignore
         )
         services.external_oauth = ExternalOAuthService(
-            external_oauth_repository=ExternalOAuthRepository(context)
+            context=context,
+            external_oauth_repository=ExternalOAuthRepository(context),
         )
         services.agents = AgentsService(
             context=context,

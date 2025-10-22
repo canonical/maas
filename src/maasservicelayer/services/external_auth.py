@@ -367,8 +367,12 @@ class ExternalAuthService(Service, RootKeyStore):
 class ExternalOAuthService(
     BaseService[OAuthProvider, ExternalOAuthRepository, OAuthProviderBuilder]
 ):
-    def __init__(self, external_oauth_repository: ExternalOAuthRepository):
-        self.repository = external_oauth_repository
+    def __init__(
+        self,
+        context: Context,
+        external_oauth_repository: ExternalOAuthRepository,
+    ):
+        super().__init__(context, external_oauth_repository)
 
     async def pre_create_hook(self, builder) -> None:
         existing_enabled = await self.get_provider()
