@@ -596,6 +596,7 @@ class TestAuthApi:
             "redirect_uri": created_provider.redirect_uri,
             "scopes": created_provider.scopes,
             "enabled": created_provider.enabled,
+            "id": created_provider.id,
         }
 
     async def test_get_active_oauth_provider_not_found(

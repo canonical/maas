@@ -39,6 +39,7 @@ class OAuthProviderResponse(BaseModel):
     redirect_uri: str
     scopes: str
     enabled: bool
+    id: int
 
     @classmethod
     def from_model(cls, provider: OAuthProvider) -> typing.Self:
@@ -50,6 +51,7 @@ class OAuthProviderResponse(BaseModel):
             redirect_uri=provider.redirect_uri,
             scopes=provider.scopes,
             enabled=provider.enabled,
+            id=provider.id,
         )
 
 
