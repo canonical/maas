@@ -30,6 +30,8 @@ logger = structlog.getLogger()
 class BootSourcesService(
     BaseService[BootSource, BootSourcesRepository, BootSourceBuilder]
 ):
+    resource_logging_name = "bootsource"
+
     def __init__(
         self,
         context: Context,

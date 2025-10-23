@@ -14,6 +14,8 @@ from maasservicelayer.services.vlans import VlansService
 
 
 class SpacesService(BaseService[Space, SpacesRepository, SpaceBuilder]):
+    resource_logging_name = "space"
+
     def __init__(
         self,
         context: Context,

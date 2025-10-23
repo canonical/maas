@@ -26,6 +26,8 @@ class ZonesServiceCache(ServiceCache):
 
 
 class ZonesService(BaseService[Zone, ZonesRepository, ZoneBuilder]):
+    resource_logging_name = "zone"
+
     def __init__(
         self,
         context: Context,

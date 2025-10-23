@@ -5,6 +5,15 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Generic, List, Tuple, TypeVar
 
+import structlog
+
+from maascommon.logging.security import (
+    AUTHZ_ADMIN,
+    CREATED,
+    DELETED,
+    SECURITY,
+    UPDATED,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import (
@@ -25,6 +34,8 @@ from maasservicelayer.models.base import (
     MaasBaseModel,
     ResourceBuilder,
 )
+
+logger = structlog.getLogger()
 
 
 @dataclass(slots=True)
@@ -137,6 +148,8 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
     Extends `ReadOnlyService` and adds the create, update and delete methods.
     """
 
+    resource_logging_name = None
+
     def __init__(
         self,
         context: Context,
@@ -144,6 +157,11 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         cache: ServiceCache | None = None,
     ):
         super().__init__(context, repository, cache)
+        self.log = (
+            self._log
+            if self.resource_logging_name is not None
+            else self._not_log
+        )
 
     def etag_check(self, model: M, etag_if_match: str | None = None):
         """
@@ -168,6 +186,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
     async def create(self, builder: B) -> M:
         await self.pre_create_hook(builder)
         created_resource = await self.repository.create(builder=builder)
+        self.log(CREATED, created_resource.id)
         await self.post_create_hook(created_resource)
         return created_resource
 
@@ -209,6 +228,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         updated_resources = await self.repository.update_many(
             query=query, builder=builder
         )
+        self.log(UPDATED, [resource.id for resource in updated_resources])
         await self.post_update_many_hook(updated_resources)
         return updated_resources
 
@@ -271,6 +291,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         updated_resource = await self.repository.update_by_id(
             id=existing_resource.id, builder=builder
         )
+        self.log(UPDATED, updated_resource.id)
         await self.post_update_hook(existing_resource, updated_resource)
         return updated_resource
 
@@ -290,6 +311,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         resources = await self.get_many(query)
         await self.pre_delete_many_hook(resources)
         resources = await self.repository.delete_many(query=query)
+        self.log(DELETED, [resource.id for resource in resources])
         await self.post_delete_many_hook(resources)
         return resources
 
@@ -370,5 +392,15 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
 
         deleted_resource = await self.repository.delete_by_id(id=resource.id)
         if deleted_resource is not None:
+            self.log(DELETED, deleted_resource.id)
             await self.post_delete_hook(deleted_resource)
         return deleted_resource
+
+    def _log(self, action: str, resource_id: int | List[int]):
+        logger.info(
+            f"{AUTHZ_ADMIN}:{self.resource_logging_name}:{action}:{resource_id}",
+            type=SECURITY,
+        )
+
+    def _not_log(self, *args, **kwargs):
+        pass

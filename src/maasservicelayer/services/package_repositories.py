@@ -31,6 +31,8 @@ class PackageRepositoriesService(
         PackageRepositoryBuilder,
     ]
 ):
+    resource_logging_name = "packagerepository"
+
     def __init__(
         self,
         context: Context,

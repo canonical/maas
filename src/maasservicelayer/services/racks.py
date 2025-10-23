@@ -35,6 +35,8 @@ INTERNAL_API_PORT = 5242
 
 
 class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
+    resource_logging_name = "rack"
+
     def __init__(
         self,
         context: Context,

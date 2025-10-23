@@ -13,6 +13,7 @@ AUTHN_PASSWORD_CHANGED = "AUTHN_password_changed"
 
 # Authorization
 AUTHZ_FAIL = "AUTHZ_fail"
+AUTHZ_ADMIN = "AUTHZ_administrative"
 
 # Users
 USER_CREATED = "USER_created"
@@ -20,3 +21,8 @@ USER_DELETED = "USER_deleted"
 USER_UPDATED = "USER_updated"
 ADMIN = "Admin"
 USER = "User"
+
+# Resources
+CREATED = "created"
+UPDATED = "updated"
+DELETED = "deleted"

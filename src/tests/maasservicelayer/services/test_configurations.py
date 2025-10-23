@@ -2,10 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
+from maascommon.logging.security import AUTHZ_ADMIN, SECURITY
 from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
@@ -342,9 +343,16 @@ class TestConfigurationsService:
             secrets_service=Mock(SecretsService),
             events_service=Mock(EventsService),
         )
-        await service.set(name=MAASNameConfig.name, value="bar")
+        with patch(
+            "maasservicelayer.services.configurations.logger"
+        ) as mock_logger:
+            await service.set(name=MAASNameConfig.name, value="bar")
         service.database_configurations_service.create_or_update.assert_called_once_with(
             DatabaseConfigurationBuilder(name=MAASNameConfig.name, value="bar")
+        )
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHZ_ADMIN}:configuration:set:{MAASNameConfig.name}",
+            type=SECURITY,
         )
 
     async def test_set_secret_setting(self):

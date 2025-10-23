@@ -31,6 +31,8 @@ from maasservicelayer.services.vlans import (
 
 
 class FabricsService(BaseService[Fabric, FabricsRepository, FabricBuilder]):
+    resource_logging_name = "fabric"
+
     def __init__(
         self,
         context: Context,

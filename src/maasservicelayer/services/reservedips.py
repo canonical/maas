@@ -21,6 +21,8 @@ from maasservicelayer.services.temporal import TemporalService
 class ReservedIPsService(
     BaseService[ReservedIP, ReservedIPsRepository, ReservedIPBuilder]
 ):
+    resource_logging_name = "reservedip"
+
     def __init__(
         self,
         context: Context,

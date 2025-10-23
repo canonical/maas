@@ -24,6 +24,8 @@ from maasservicelayer.services.base import BaseService, ServiceCache
 class NotificationsService(
     BaseService[Notification, NotificationsRepository, NotificationBuilder]
 ):
+    resource_logging_name = "notification"
+
     def __init__(
         self,
         context: Context,

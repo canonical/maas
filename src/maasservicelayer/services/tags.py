@@ -20,6 +20,8 @@ from maasservicelayer.services.temporal import TemporalService
 
 
 class TagsService(BaseService[Tag, TagsRepository, TagBuilder]):
+    resource_logging_name = "tag"
+
     def __init__(
         self,
         context: Context,

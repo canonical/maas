@@ -44,6 +44,8 @@ NAMESPEC = rf"({LABEL}[.])*{LABEL}[.]?"
 
 
 class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
+    resource_logging_name = "domain"
+
     def __init__(
         self,
         context: Context,

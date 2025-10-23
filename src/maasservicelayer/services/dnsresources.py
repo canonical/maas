@@ -32,6 +32,8 @@ class NoDNSResourceException(Exception):
 class DNSResourcesService(
     BaseService[DNSResource, DNSResourceRepository, DNSResourceBuilder]
 ):
+    resource_logging_name = "dnsresource"
+
     def __init__(
         self,
         context: Context,

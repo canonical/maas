@@ -2,12 +2,19 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Type
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from pydantic import Field
 import pytest
 from sqlalchemy import Table
 
+from maascommon.logging.security import (
+    AUTHZ_ADMIN,
+    CREATED,
+    DELETED,
+    SECURITY,
+    UPDATED,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
@@ -45,6 +52,8 @@ class DummyRepository(BaseRepository[DummyMaasBaseModel]):
 class DummyService(
     BaseService[DummyMaasBaseModel, DummyRepository, DummyMaasBaseModelBuilder]
 ):
+    resource_logging_name = "testresource"
+
     def __init__(self, context: Context, repository: DummyRepository):
         super().__init__(context, repository)
 
@@ -91,10 +100,15 @@ class TestBaseService:
         resource = DummyMaasBaseModel(id=0)
         repository_mock.create.return_value = resource
         builder = ResourceBuilder()
-        result = await service.create(builder)
+        with patch("maasservicelayer.services.base.logger") as mock_logger:
+            result = await service.create(builder)
 
         repository_mock.create.assert_awaited_once_with(builder=builder)
         assert result == resource
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHZ_ADMIN}:{service.resource_logging_name}:{CREATED}:{resource.id}",
+            type=SECURITY,
+        )
 
     async def test_get_or_create_is_created_if_dont_exist(
         self, repository_mock, service
@@ -146,12 +160,17 @@ class TestBaseService:
         repository_mock.update_by_id.return_value = resource
         builder = ResourceBuilder()
         query = QuerySpec()
-        result = await service.update_one(query, builder)
+        with patch("maasservicelayer.services.base.logger") as mock_logger:
+            result = await service.update_one(query, builder)
         repository_mock.get_one.assert_awaited_once_with(query=query)
         repository_mock.update_by_id.assert_awaited_once_with(
             id=0, builder=builder
         )
         assert result == resource
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHZ_ADMIN}:{service.resource_logging_name}:{UPDATED}:{resource.id}",
+            type=SECURITY,
+        )
 
     async def test_update_one_not_found(self, repository_mock, service):
         resource = DummyMaasBaseModel(id=0)
@@ -274,22 +293,32 @@ class TestBaseService:
         repository_mock.update_many.return_value = resources
         builder = ResourceBuilder()
         query = QuerySpec()
-        results = await service.update_many(query, builder)
+        with patch("maasservicelayer.services.base.logger") as mock_logger:
+            results = await service.update_many(query, builder)
 
         repository_mock.update_many.assert_awaited_once_with(
             query=query, builder=builder
         )
         assert results == resources
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHZ_ADMIN}:{service.resource_logging_name}:{UPDATED}:{[resource.id for resource in resources]}",
+            type=SECURITY,
+        )
 
     async def test_delete_one(self, repository_mock, service):
         resource = DummyMaasBaseModel(id=0)
         repository_mock.get_one.return_value = resource
         repository_mock.delete_by_id.return_value = resource
         query = QuerySpec()
-        result = await service.delete_one(query)
+        with patch("maasservicelayer.services.base.logger") as mock_logger:
+            result = await service.delete_one(query)
         repository_mock.get_one.assert_awaited_once_with(query=query)
         repository_mock.delete_by_id.assert_awaited_once_with(id=0)
         assert result == resource
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHZ_ADMIN}:{service.resource_logging_name}:{DELETED}:{resource.id}",
+            type=SECURITY,
+        )
 
     async def test_delete_one_force(self, repository_mock, service):
         resource = DummyMaasBaseModel(id=0)
@@ -423,7 +452,12 @@ class TestBaseService:
         resources = [DummyMaasBaseModel(id=0)]
         repository_mock.delete_many.return_value = resources
         query = QuerySpec()
-        results = await service.delete_many(query)
+        with patch("maasservicelayer.services.base.logger") as mock_logger:
+            results = await service.delete_many(query)
 
         repository_mock.delete_many.assert_awaited_once_with(query=query)
         assert results == resources
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHZ_ADMIN}:{service.resource_logging_name}:{DELETED}:{[resource.id for resource in resources]}",
+            type=SECURITY,
+        )

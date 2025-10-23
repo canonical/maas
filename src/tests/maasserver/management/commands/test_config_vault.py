@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.core.management import CommandError
 import pytest
@@ -385,6 +385,7 @@ class TestStatus:
         region_two = factory.make_RegionController(hostname="two")
         ControllerInfo(node=region_one, vault_configured=True).save()
         ControllerInfo(node=region_two, vault_configured=True).save()
-        Config.objects.set_config("vault_enabled", True)
-        Command()._handle_status({})
+        with patch("maasservicelayer.services.configurations.logger"):
+            Config.objects.set_config("vault_enabled", True)
+            Command()._handle_status({})
         assert yaml.safe_load(capsys.readouterr().out) == {"status": "enabled"}
