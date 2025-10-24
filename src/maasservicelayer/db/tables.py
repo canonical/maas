@@ -27,7 +27,6 @@ from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB, OID
 
 METADATA = MetaData()
 
-
 # NOTE:
 # Alembic autogeneration compares index names, and Django uses its own naming
 # convention for indexes—especially for pattern ops (e.g., LIKE indexes).
@@ -51,13 +50,21 @@ AgentTable = Table(
     Column(
         "rack_id",
         BigInteger,
-        ForeignKey("maasserver_rack.id"),
+        ForeignKey(
+            "maasserver_rack.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=False,
     ),
     Column(
         "rackcontroller_id",
         BigInteger,
-        ForeignKey("maasserver_node.id"),
+        ForeignKey(
+            "maasserver_node.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True,  # WIP: change to False once MAE is complete
     ),
     UniqueConstraint("rack_id", "rackcontroller_id"),
