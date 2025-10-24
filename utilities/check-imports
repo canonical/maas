@@ -193,10 +193,12 @@ APIServerRule = Rule(
     Allow("aiofiles.os"),
     Allow("aiohttp|aiohttp.**"),
     Allow("asyncpg|asyncpg.**"),
+    Allow("cryptography|cryptography.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("django.conf.*"),
     Allow("django.contrib.auth.hashers.*"),
     Allow("fastapi|fastapi.**"),
+    Allow("h11"),
     Allow("jose|jose.**"),
     Allow("lxml|lxml.**"),
     Allow("maasapiserver|maasapiserver.**"),
@@ -229,7 +231,7 @@ APIServerRule = Rule(
     Allow("structlog|structlog.**"),
     Allow("starlette|starlette.**"),
     Allow("temporalio.client.**"),
-    Allow("uvicorn"),
+    Allow("uvicorn|uvicorn.**"),
     Allow("yaml"),
     Allow(StandardLibraries),
 )

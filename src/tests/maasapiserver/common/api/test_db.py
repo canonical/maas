@@ -1,9 +1,11 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import AsyncIterator
 
 from fastapi import FastAPI
 from httpx import AsyncClient
 import pytest
-from pytest_mock import MockerFixture
 from sqlalchemy import (
     Column,
     insert,
@@ -18,8 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.requests import Request
 
 from maasapiserver.common.api.base import API, Handler, handler
-from maasapiserver.main import create_app
-from maasapiserver.settings import Config
+from maasapiserver.main import craft_public_app
 from maasservicelayer.db import Database
 
 METADATA = MetaData()
@@ -39,10 +40,8 @@ class MyException(Exception):
 
 @pytest.fixture
 async def insert_app(
-    test_config: Config,
     db: Database,
     db_connection: AsyncConnection,
-    mocker: MockerFixture,
 ) -> FastAPI:
     class InsertHandler(Handler):
         @handler(path="/success", methods=["GET"])
@@ -58,7 +57,7 @@ async def insert_app(
             )
             raise MyException("boom")
 
-    api_app = await create_app(config=test_config, db=db)
+    api_app = craft_public_app(db=db).fastapi_app
     api = API(prefix="/insert", handlers=[InsertHandler()])
     api.register(api_app.router)
 
