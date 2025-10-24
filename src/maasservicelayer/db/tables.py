@@ -871,6 +871,24 @@ GlobalDefaultTable = Table(
     Index("maasserver_globaldefault_domain_id_11c3ee74", "domain_id"),
 )
 
+ImageManifestTable = Table(
+    "maasserver_imagemanifest",
+    METADATA,
+    Column(
+        "boot_source_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_bootsource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+        unique=True,
+    ),
+    Column("manifest", JSONB, nullable=False),
+    Column("last_update", DateTime(timezone=True), nullable=False),
+)
+
 InterfaceIPAddressTable = Table(
     "maasserver_interface_ip_addresses",
     METADATA,

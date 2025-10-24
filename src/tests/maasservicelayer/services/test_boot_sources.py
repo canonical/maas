@@ -20,8 +20,8 @@ from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
-from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.events import EventsService
+from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -35,7 +35,7 @@ class TestBootSourcesService(ServiceCommonTests):
             repository=Mock(BootSourcesRepository),
             boot_source_cache_service=Mock(BootSourceCacheService),
             boot_source_selections_service=Mock(BootSourceSelectionsService),
-            configuration_service=Mock(ConfigurationsService),
+            image_manifests_service=Mock(ImageManifestsService),
             events_service=Mock(EventsService),
         )
 
@@ -62,7 +62,7 @@ class TestBootSourcesService(ServiceCommonTests):
 
         boot_source_cache_service_mock = Mock(BootSourceCacheService)
         boot_source_selections_service_mock = Mock(BootSourceSelectionsService)
-        configuration_service_mock = Mock(ConfigurationsService)
+        image_manifests_service = Mock(ImageManifestsService)
         events_service_mock = Mock(EventsService)
 
         boot_source_service = BootSourcesService(
@@ -70,7 +70,7 @@ class TestBootSourcesService(ServiceCommonTests):
             repository=repository_mock,
             boot_source_cache_service=boot_source_cache_service_mock,
             boot_source_selections_service=boot_source_selections_service_mock,
-            configuration_service=configuration_service_mock,
+            image_manifests_service=image_manifests_service,
             events_service=events_service_mock,
         )
 
@@ -93,3 +93,4 @@ class TestBootSourcesService(ServiceCommonTests):
                 )
             )
         )
+        image_manifests_service.delete.assert_called_once_with(boot_source.id)

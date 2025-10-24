@@ -43,7 +43,7 @@ from maasserver.websockets.handlers import bootresource
 import maasserver.websockets.handlers.bootresource as bootresource_module
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from maasservicelayer.models.bootsources import SourceAvailableImage
-from maasservicelayer.services.image_sync import ImageSyncService
+from maasservicelayer.services.image_manifests import ImageManifestsService
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.events import EVENT_TYPES
 
@@ -1187,11 +1187,11 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(
-            ImageSyncService
-        )
+        self.patch(
+            service_layer.services, "image_manifests"
+        ).return_value = Mock(ImageManifestsService)
         mock_download = self.patch(
-            service_layer.services.image_sync, "fetch_image_metadata"
+            service_layer.services.image_manifests, "fetch_image_metadata"
         )
         mock_download.return_value = []
         url = factory.make_url(
@@ -1224,11 +1224,11 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(
-            ImageSyncService
-        )
+        self.patch(
+            service_layer.services, "image_manifests"
+        ).return_value = Mock(ImageManifestsService)
         mock_download = self.patch(
-            service_layer.services.image_sync, "fetch_image_metadata"
+            service_layer.services.image_manifests, "fetch_image_metadata"
         )
         mock_download.return_value = []
         url = "http://example.com"
@@ -1254,11 +1254,11 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(
-            ImageSyncService
-        )
+        self.patch(
+            service_layer.services, "image_manifests"
+        ).return_value = Mock(ImageManifestsService)
         mock_download = self.patch(
-            service_layer.services.image_sync, "fetch_image_metadata"
+            service_layer.services.image_manifests, "fetch_image_metadata"
         )
         exc = factory.make_exception()
         mock_download.side_effect = exc
@@ -1276,11 +1276,11 @@ class TestBootResourceFetch(MAASServerTestCase):
         handler = BootResourceHandler(owner, {}, None)
         self.patch(bootresource, "set_simplestreams_env")
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(
-            ImageSyncService
-        )
+        self.patch(
+            service_layer.services, "image_manifests"
+        ).return_value = Mock(ImageManifestsService)
         mock_download = self.patch(
-            service_layer.services.image_sync, "fetch_image_metadata"
+            service_layer.services.image_manifests, "fetch_image_metadata"
         )
 
         # Only centos image is present.
@@ -1318,11 +1318,11 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(
-            ImageSyncService
-        )
+        self.patch(
+            service_layer.services, "image_manifests"
+        ).return_value = Mock(ImageManifestsService)
         mock_download = self.patch(
-            service_layer.services.image_sync, "fetch_image_metadata"
+            service_layer.services.image_manifests, "fetch_image_metadata"
         )
 
         # Make releases and arches.
@@ -1371,11 +1371,11 @@ class TestBootResourceFetch(MAASServerTestCase):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
 
-        self.patch(service_layer.services, "image_sync").return_value = Mock(
-            ImageSyncService
-        )
+        self.patch(
+            service_layer.services, "image_manifests"
+        ).return_value = Mock(ImageManifestsService)
         mock_download = self.patch(
-            service_layer.services.image_sync, "fetch_image_metadata"
+            service_layer.services.image_manifests, "fetch_image_metadata"
         )
 
         # Make releases and arches.

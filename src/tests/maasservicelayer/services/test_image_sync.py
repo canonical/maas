@@ -4,7 +4,6 @@
 import json
 from unittest.mock import ANY, AsyncMock, call, Mock
 
-import aiofiles
 import pytest
 
 from maascommon.constants import (
@@ -16,7 +15,6 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
-from maascommon.enums.events import EventTypeEnum
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maascommon.workflows.bootresource import (
@@ -35,9 +33,6 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFileClauseFactory,
 )
-from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
-)
 from maasservicelayer.db.repositories.bootsources import (
     BootSourcesClauseFactory,
 )
@@ -48,8 +43,6 @@ from maasservicelayer.db.tables import (
     BootResourceFileTable,
     BootResourceSetTable,
     BootResourceTable,
-    BootSourceCacheTable,
-    NotificationTable,
 )
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
@@ -57,11 +50,6 @@ from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
-from maasservicelayer.models.configurations import (
-    CommissioningDistroSeriesConfig,
-    CommissioningOSystemConfig,
-    EnableHttpProxyConfig,
-)
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootresourcefiles import (
@@ -74,15 +62,10 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
 from maasservicelayer.services.configurations import ConfigurationsService
-from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.msm import MSMService, MSMStatus
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.temporal import TemporalService
-from maasservicelayer.simplestreams.client import (
-    SIGNED_INDEX_PATH,
-    SimpleStreamsClient,
-)
 from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
     BootloaderVersion,
@@ -90,10 +73,13 @@ from maasservicelayer.simplestreams.models import (
     MultiFileImageVersion,
     MultiFileProduct,
     SimpleStreamsBootloaderProductList,
+    SimpleStreamsManifest,
     SimpleStreamsMultiFileProductList,
+    SimpleStreamsProductListFactory,
     SimpleStreamsSingleFileProductList,
     SingleFileProduct,
 )
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures import get_test_data_file
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.fixtures.factories.bootresourcefiles import (
@@ -111,7 +97,6 @@ from tests.fixtures.factories.bootresourcesets import (
 from tests.fixtures.factories.bootsourceselections import (
     create_test_bootsourceselection_entry,
 )
-from tests.fixtures.factories.configuration import create_test_configuration
 from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -325,7 +310,6 @@ class TestImageSyncService:
         self.boot_resource_sets_service = Mock(BootResourceSetsService)
         self.boot_resource_files_service = Mock(BootResourceFilesService)
         self.msm_service = Mock(MSMService)
-        self.events_service = Mock(EventsService)
         self.configurations_service = Mock(ConfigurationsService)
         self.notifications_service = Mock(NotificationsService)
 
@@ -338,7 +322,6 @@ class TestImageSyncService:
             boot_resource_sets_service=self.boot_resource_sets_service,
             boot_resource_files_service=self.boot_resource_files_service,
             msm_service=self.msm_service,
-            events_service=self.events_service,
             configurations_service=self.configurations_service,
             notifications_service=self.notifications_service,
         )
@@ -559,159 +542,6 @@ class TestImageSyncService:
         self.boot_source_selections_service.exists.assert_not_awaited()
         self.boot_source_selections_service.create.assert_not_awaited()
 
-    @pytest.mark.parametrize(
-        "config_values, expected",
-        # 3 calls to the configurations service:
-        # 1) EnableHttpProxyConfig
-        # 2) BootImagesNoProxyConfig
-        # 3) HttpProxyConfig
-        [
-            ([True, False, "http://myproxy.com"], "http://myproxy.com"),
-            ([False, False, "http://myproxy.com"], None),
-            ([True, True, "http://myproxy.com"], None),
-        ],
-    )
-    async def test_get_http_proxy__enabled(
-        self, config_values: list, expected: str | None
-    ):
-        self.configurations_service.get.side_effect = config_values
-        proxy = await self.service._get_http_proxy()
-        assert proxy == expected
-
-    async def test_get_keyring_file_writes_data(self, mocker) -> None:
-        async with self.service._get_keyring_file(
-            keyring_path=None, keyring_data=b"abc123"
-        ) as keyring_path:
-            async with aiofiles.open(
-                keyring_path, "rb"
-            ) as written_keyring_file:
-                written_contents = await written_keyring_file.read()
-                assert written_contents == b"abc123"
-
-    async def test_get_keyring_file_yields_keyring_path(self, mocker) -> None:
-        mock_file = AsyncMock()
-        mocker.patch(
-            "aiofiles.tempfile._temporary_file"
-        ).return_value = mock_file
-        async with self.service._get_keyring_file(
-            keyring_path="path/to/file", keyring_data=None
-        ) as path:
-            assert path == "path/to/file"
-        mock_file.write.assert_not_called()
-
-    async def test_fetch_image_metadata(self, mocker) -> None:
-        # don't use a proxy
-        self.configurations_service.get.return_value = False
-        # patch the file check on simplestreams client
-        mocker.patch("os.path.exists").return_value = True
-        # patch the get_all_products method
-        ss_client_mock = Mock(SimpleStreamsClient)
-        ss_client_mock.get_all_products = AsyncMock(return_value=[])
-        mocker.patch(
-            "maasservicelayer.simplestreams.client.SimpleStreamsClient.__aenter__"
-        ).return_value = ss_client_mock
-
-        await self.service.fetch_image_metadata(
-            "http://source.com", "/path/to/file"
-        )
-        ss_client_mock.get_all_products.assert_awaited_once()
-
-    async def test_fetch_images_metadata(self, mocker) -> None:
-        # don't use a proxy
-        self.configurations_service.get.return_value = False
-        # patch the file check on simplestreams client
-        mocker.patch("os.path.exists").return_value = True
-        # patch the get_all_products method
-        ss_client_mock = Mock(SimpleStreamsClient)
-        ss_client_mock.get_all_products = AsyncMock(return_value=[])
-        mocker.patch(
-            "maasservicelayer.simplestreams.client.SimpleStreamsClient.__aenter__"
-        ).return_value = ss_client_mock
-
-        self.boot_sources_service.get_many.return_value = [
-            BOOT_SOURCE_1,
-            BOOT_SOURCE_2,
-        ]
-
-        # return a mocked file to assert that data has been written
-        mock_file = AsyncMock()
-        mocker.patch(
-            "aiofiles.tempfile._temporary_file"
-        ).return_value = mock_file
-        mocker.patch("aiofiles.os.unlink").return_value = None
-
-        mapping = await self.service.fetch_images_metadata()
-
-        assert mapping == {BOOT_SOURCE_1: [], BOOT_SOURCE_2: []}
-        # BOOT_SOURCE_2 has keyring_data while BOOT_SOURCE_1 has a keyring_filename
-        mock_file.write.assert_called_once_with(BOOT_SOURCE_2.keyring_data)
-        ss_client_mock.get_all_products.assert_has_awaits([call(), call()])
-
-        # both the sources have an empty list of images, two events should be recorded
-        self.events_service.record_event.assert_has_awaits(
-            [
-                call(
-                    event_type=EventTypeEnum.REGION_IMPORT_WARNING,
-                    event_description=f"Unable to import boot images from {boot_source.url}. No image descriptions available.",
-                )
-                for boot_source in [BOOT_SOURCE_1, BOOT_SOURCE_2]
-            ]
-        )
-
-    async def test_cache_boot_sources_from_simplestreams_product(self) -> None:
-        self.boot_source_cache_service.create_or_update.return_value = (
-            BootSourceCache(
-                id=1,
-                os="grub-efi-signed",
-                arch="amd64",
-                subarch="generic",
-                release="grub-efi-signed",
-                label="stable",
-                bootloader_type="uefi",
-                boot_source_id=1,
-                extra={},
-            )
-        )
-
-        ss_product_list = [
-            SimpleStreamsBootloaderProductList(
-                content_id="com.ubuntu.maas:stable:1:bootloader-download",
-                datatype=Datatype.image_ids,
-                format="products:1.0",
-                updated=None,
-                products=[BOOTLOADER_PRODUCT],
-            )
-        ]
-
-        await self.service.cache_boot_source_from_simplestreams_products(
-            1, ss_product_list
-        )
-        self.boot_source_cache_service.create_or_update.assert_awaited_once()
-        self.boot_source_cache_service.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
-                    [
-                        BootSourceCacheClauseFactory.with_boot_source_id(1),
-                        BootSourceCacheClauseFactory.not_clause(
-                            BootSourceCacheClauseFactory.with_ids({1})
-                        ),
-                    ]
-                )
-            )
-        )
-
-    async def test_cache_boot_sources_from_simplestreams_product__no_products(
-        self,
-    ) -> None:
-        await self.service.cache_boot_source_from_simplestreams_products(1, [])
-
-        self.boot_source_cache_service.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootSourceCacheClauseFactory.with_boot_source_id(1)
-            )
-        )
-        self.boot_source_cache_service.create_or_update.assert_not_awaited()
-
     async def test_check_commissioning_series_selected__no_selection(
         self,
     ) -> None:
@@ -888,17 +718,18 @@ class TestImageSyncService:
         assert match is False
 
     async def test_filter_products_for_selection(self) -> None:
+        updated = utcnow()
         product_list = [
             SimpleStreamsMultiFileProductList(
                 content_id="com.ubuntu.maas:stable:v3:download",
                 datatype=Datatype.image_ids,
                 format="products:1.0",
-                updated=None,
+                updated=updated,
                 products=[MULTIFILE_PRODUCT_NOBLE, MULTIFILE_PRODUCT_ORACULAR],
             )
         ]
 
-        result = await self.service.filter_products_for_selection(
+        result = self.service.filter_products_for_selection(
             BOOT_SELECTION_NOBLE_SOURCE_1, product_list
         )
         expected = [
@@ -906,14 +737,14 @@ class TestImageSyncService:
                 content_id="com.ubuntu.maas:stable:v3:download",
                 datatype=Datatype.image_ids,
                 format="products:1.0",
-                updated=None,
+                updated=updated,
                 products=[MULTIFILE_PRODUCT_NOBLE],
             )
         ]
 
         assert result == expected
 
-        result = await self.service.filter_products_for_selection(
+        result = self.service.filter_products_for_selection(
             BOOT_SELECTION_ORACULAR_SOURCE_1, product_list
         )
         expected = [
@@ -921,7 +752,7 @@ class TestImageSyncService:
                 content_id="com.ubuntu.maas:stable:v3:download",
                 datatype=Datatype.image_ids,
                 format="products:1.0",
-                updated=None,
+                updated=updated,
                 products=[MULTIFILE_PRODUCT_ORACULAR],
             )
         ]
@@ -1130,7 +961,7 @@ class TestImageSyncService:
             content_id="com.ubuntu.maas:stable:1:bootloader-download",
             datatype=Datatype.image_ids,
             format="products:1.0",
-            updated=None,
+            updated=utcnow(),
             products=[BOOTLOADER_PRODUCT, BOOTLOADER_PRODUCT],
         )
 
@@ -1141,7 +972,7 @@ class TestImageSyncService:
         )
 
         assert len(resources_to_download) == 1
-        assert resources_to_download["0" * 64] == ResourceDownloadParam(
+        assert resources_to_download[0] == ResourceDownloadParam(
             rfile_ids=[1, 2],
             source_list=[
                 "http://source-1.com/file-1",
@@ -1174,21 +1005,10 @@ class TestIntegrationImageSyncService:
             skip_keyring_verification=True,
         )
 
-    async def _setup_mocked_simplestreams_client(
+    @pytest.fixture
+    async def manifest(
         self,
-        fixture: Fixture,
-        boot_sources: list[BootSource],
-        mocker,
-        mock_aioresponse,
-    ) -> None:
-        # no proxy
-        await create_test_configuration(
-            fixture, name=EnableHttpProxyConfig.name, value=False
-        )
-        # skip keyring file checks
-        mocker.patch("os.path.exists").return_value = True
-
-        ss_index = json.loads(get_test_data_file("simplestreams_index.json"))
+    ) -> SimpleStreamsManifest:
         bootloader_products = json.loads(
             get_test_data_file("simplestreams_bootloaders.json")
         )
@@ -1200,65 +1020,24 @@ class TestIntegrationImageSyncService:
         centos_products = json.loads(
             get_test_data_file("simplestreams_centos.json")
         )
-        for boot_source in boot_sources:
-            mock_aioresponse.get(
-                f"{boot_source.url}/{SIGNED_INDEX_PATH}", payload=ss_index
-            )
-            product_paths = [v["path"] for v in ss_index["index"].values()]
-            for path, product in zip(
-                product_paths,
-                [bootloader_products, ubuntu_products, centos_products],
-            ):
-                mock_aioresponse.get(
-                    f"{boot_source.url}/{path}", payload=product
-                )
+        return [
+            SimpleStreamsProductListFactory.produce(p)
+            for p in (bootloader_products, ubuntu_products, centos_products)
+        ]
 
     async def test_get_resources_to_download_single_boot_source(
         self,
         fixture: Fixture,
         services: ServiceCollectionV3,
         test_boot_source_1: BootSource,
-        mocker,
-        mock_aioresponse,
+        manifest: SimpleStreamsManifest,
     ) -> None:
         """Tests the following flow:
 
-        1. Fetch data from simplestreams
-        2. Cache boot sources
-        3. Check the commissioning series
-        4. Filter products
-        5. Get files to be downloaded
+        Given a manifest for a boot_source, and a selection:
+            - Filter products for a selection
+            - Get files to be downloaded
         """
-        await self._setup_mocked_simplestreams_client(
-            fixture, [test_boot_source_1], mocker, mock_aioresponse
-        )
-        # 1.
-        mapping = await services.image_sync.fetch_images_metadata()
-        assert mapping[test_boot_source_1] != []
-
-        # 2.
-        boot_source_caches = await fixture.get(BootSourceCacheTable.name)
-        assert boot_source_caches == []
-        created_boot_sources = []
-        for bs, products_list in mapping.items():
-            created_boot_sources.extend(
-                await services.image_sync.cache_boot_source_from_simplestreams_products(
-                    bs.id, products_list
-                )
-            )
-        boot_source_caches = await fixture.get_typed(
-            BootSourceCacheTable.name, BootSourceCache
-        )
-        assert sorted(boot_source_caches, key=lambda x: x.id) == sorted(
-            created_boot_sources, key=lambda x: x.id
-        )
-
-        await create_test_configuration(
-            fixture, name=CommissioningOSystemConfig.name, value="ubuntu"
-        )
-        await create_test_configuration(
-            fixture, name=CommissioningDistroSeriesConfig.name, value="noble"
-        )
         selection_noble_amd = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
@@ -1267,15 +1046,10 @@ class TestIntegrationImageSyncService:
             arch="amd64",
         )
 
-        # 3.
-        await services.image_sync.check_commissioning_series_selected()
-        notifications = await fixture.get(NotificationTable.name)
-        assert notifications == []
-
         # 4.
         filtered_products_list = (
-            await services.image_sync.filter_products_for_selection(
-                selection_noble_amd, mapping[test_boot_source_1]
+            services.image_sync.filter_products_for_selection(
+                selection_noble_amd, manifest
             )
         )
         for product_list in filtered_products_list:
@@ -1319,182 +1093,7 @@ class TestIntegrationImageSyncService:
             for product in products_list.products
             for file in product.get_latest_version().get_downloadable_files()
         }
-        assert set(resources_to_download.keys()) == sha256s
-
-    async def test_get_resources_to_download_multiple_boot_sources(
-        self,
-        fixture: Fixture,
-        services: ServiceCollectionV3,
-        test_boot_source_1: BootSource,
-        test_boot_source_2: BootSource,
-        mocker,
-        mock_aioresponse,
-    ) -> None:
-        """Tests the following flow:
-
-        1. Fetch data from simplestreams
-        2. Cache boot sources
-        3. Check the commissioning series
-        4. Filter products
-        5. Get files to be downloaded
-        """
-        boot_sources = [test_boot_source_1, test_boot_source_2]
-
-        await self._setup_mocked_simplestreams_client(
-            fixture, boot_sources, mocker, mock_aioresponse
-        )
-        # 1.
-        mapping = await services.image_sync.fetch_images_metadata()
-        for boot_source in boot_sources:
-            assert mapping[boot_source] != []
-
-        # 2.
-        boot_source_caches = await fixture.get(BootSourceCacheTable.name)
-        assert boot_source_caches == []
-        created_boot_sources = []
-        for boot_source, products_list in mapping.items():
-            created_boot_sources.extend(
-                await services.image_sync.cache_boot_source_from_simplestreams_products(
-                    boot_source.id, products_list
-                )
-            )
-        boot_source_caches = await fixture.get_typed(
-            BootSourceCacheTable.name, BootSourceCache
-        )
-        assert sorted(boot_source_caches, key=lambda x: x.id) == sorted(
-            created_boot_sources, key=lambda x: x.id
-        )
-
-        await create_test_configuration(
-            fixture, name=CommissioningOSystemConfig.name, value="ubuntu"
-        )
-        await create_test_configuration(
-            fixture, name=CommissioningDistroSeriesConfig.name, value="noble"
-        )
-        # remember: test_boot_source_2 has higher priority
-        noble_amd_source2 = await create_test_bootsourceselection_entry(
-            fixture,
-            os="ubuntu",
-            release="noble",
-            boot_source_id=test_boot_source_2.id,
-            arch="amd64",
-        )
-        noble_amd_source1 = await create_test_bootsourceselection_entry(
-            fixture,
-            os="ubuntu",
-            release="noble",
-            boot_source_id=test_boot_source_1.id,
-            arch="amd64",
-        )
-        noble_arm_source1 = await create_test_bootsourceselection_entry(
-            fixture,
-            os="ubuntu",
-            release="noble",
-            boot_source_id=test_boot_source_1.id,
-            arch="arm64",
-        )
-
-        # 3.
-        await services.image_sync.check_commissioning_series_selected()
-        notifications = await fixture.get(NotificationTable.name)
-        assert notifications == []
-
-        # 4.
-        selections = (
-            await services.boot_source_selections.get_all_highest_priority()
-        )
-        assert len(selections) == 2
-        assert noble_amd_source1 not in selections
-        assert noble_arm_source1 in selections
-        assert noble_amd_source2 in selections
-
-        # selection for ubuntu/noble/arm64 boot_source 1
-        filtered_products_list_noble_arm = (
-            await services.image_sync.filter_products_for_selection(
-                noble_arm_source1, mapping[test_boot_source_1]
-            )
-        )
-
-        for product_list in filtered_products_list_noble_arm:
-            if isinstance(product_list, SimpleStreamsBootloaderProductList):
-                assert len(product_list.products) == 4
-                os_arch = [(p.os, p.arch) for p in product_list.products]
-                assert os_arch == [
-                    ("grub-efi-signed", "amd64"),
-                    ("grub-efi", "arm64"),
-                    ("grub-ieee1275", "ppc64el"),
-                    ("pxelinux", "i386"),
-                ]
-            elif isinstance(product_list, SimpleStreamsMultiFileProductList):
-                assert len(product_list.products) == 1
-                os_release_arch_subarch = [
-                    (p.os, p.release, p.arch, p.subarch)
-                    for p in product_list.products
-                ]
-                assert os_release_arch_subarch == [
-                    ("ubuntu", "noble", "arm64", "ga-24.04"),
-                ]
-            elif isinstance(product_list, SimpleStreamsSingleFileProductList):
-                assert len(product_list.products) == 0
-
-        # selection for ubuntu/noble/amd64 boot_source 2
-        filtered_products_list_noble_amd = (
-            await services.image_sync.filter_products_for_selection(
-                noble_amd_source2, mapping[test_boot_source_2]
-            )
-        )
-
-        for product_list in filtered_products_list_noble_amd:
-            if isinstance(product_list, SimpleStreamsBootloaderProductList):
-                assert len(product_list.products) == 4
-                os_arch = [(p.os, p.arch) for p in product_list.products]
-                assert os_arch == [
-                    ("grub-efi-signed", "amd64"),
-                    ("grub-efi", "arm64"),
-                    ("grub-ieee1275", "ppc64el"),
-                    ("pxelinux", "i386"),
-                ]
-            elif isinstance(product_list, SimpleStreamsMultiFileProductList):
-                assert len(product_list.products) == 1
-                os_release_arch_subarch = [
-                    (p.os, p.release, p.arch, p.subarch)
-                    for p in product_list.products
-                ]
-                assert os_release_arch_subarch == [
-                    ("ubuntu", "noble", "amd64", "ga-24.04"),
-                ]
-            elif isinstance(product_list, SimpleStreamsSingleFileProductList):
-                assert len(product_list.products) == 0
-
-        # 5.
-        existing_boot_resources = await fixture.get(BootResourceTable.name)
-        assert existing_boot_resources == []
-        resources_to_download_1 = (
-            await services.image_sync.get_files_to_download_from_product_list(
-                test_boot_source_1, filtered_products_list_noble_arm
-            )
-        )
-        resources_to_download_2 = (
-            await services.image_sync.get_files_to_download_from_product_list(
-                test_boot_source_2, filtered_products_list_noble_amd
-            )
-        )
-
-        sha256_source_1 = {
-            file.sha256
-            for products_list in filtered_products_list_noble_arm
-            for product in products_list.products
-            for file in product.get_latest_version().get_downloadable_files()
-        }
-        assert set(resources_to_download_1.keys()) == sha256_source_1
-        sha256_source_2 = {
-            file.sha256
-            for products_list in filtered_products_list_noble_amd
-            for product in products_list.products
-            for file in product.get_latest_version().get_downloadable_files()
-        }
-
-        assert set(resources_to_download_2.keys()) == sha256_source_2
+        assert {r.sha256 for r in resources_to_download} == sha256s
 
     async def test_delete_old_boot_resource_sets_for_selection(
         self,

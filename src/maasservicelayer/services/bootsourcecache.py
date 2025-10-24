@@ -14,6 +14,7 @@ from maasservicelayer.models.bootsources import (
     BootSourceAvailableImage,
     BootSourceCacheOSRelease,
 )
+from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.services.base import BaseService, ServiceCache
 
 
@@ -65,6 +66,49 @@ class BootSourceCacheService(
         if existing:
             return await self._update_resource(existing, builder)
         return await self.create(builder)
+
+    async def update_from_image_manifest(
+        self, image_manifest: ImageManifest
+    ) -> list[BootSourceCache]:
+        """Update the boot source cache based on the image_manifest's manifest.
+
+        Args:
+            - image_manifest: the ImageManifest object to update from
+
+        Returns:
+            A list of the new boot source caches.
+        """
+        boot_source_caches: list[BootSourceCache] = []
+        boot_source_cache_builders = set()
+        for product_list in image_manifest.manifest:
+            boot_source_cache_builders |= (
+                BootSourceCacheBuilder.from_simplestreams_product_list(
+                    product_list, image_manifest.boot_source_id
+                )
+            )
+
+        for builder in boot_source_cache_builders:
+            boot_source_caches.append(await self.create_or_update(builder))
+
+        # delete the old boot source caches, i.e. the ones that weren't created
+        # or updated.
+        await self.delete_many(
+            query=QuerySpec(
+                where=BootSourceCacheClauseFactory.and_clauses(
+                    [
+                        BootSourceCacheClauseFactory.with_boot_source_id(
+                            image_manifest.boot_source_id
+                        ),
+                        BootSourceCacheClauseFactory.not_clause(
+                            BootSourceCacheClauseFactory.with_ids(
+                                {cache.id for cache in boot_source_caches}
+                            )
+                        ),
+                    ]
+                )
+            )
+        )
+        return boot_source_caches
 
     async def get_available_lts_releases(self) -> list[str]:
         return await self.repository.get_available_lts_releases()

@@ -25,8 +25,6 @@ from maascommon.enums.notifications import (
 from maascommon.workflows.bootresource import (
     CleanupOldBootResourceSetsParam,
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
-    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-    FetchManifestReturnValue,
     GetFilesToDownloadForSelectionParam,
     GetFilesToDownloadReturnValue,
     ResourceDeleteParam,
@@ -46,21 +44,23 @@ from maasservicelayer.db.repositories.notifications import (
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
+from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootresourcefilesync import (
     BootResourceFileSyncService,
 )
+from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
-from maasservicelayer.services.events import EventsService
+from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
-    SimpleStreamsProductList,
+    SimpleStreamsProductListType,
 )
 from maasservicelayer.utils.image_local_files import (
     AsyncLocalBootResourceFile,
@@ -75,7 +75,6 @@ from maastemporalworker.worker import (
 from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
-    BootSourceProductsMapping,
     CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
     DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
     DeleteBootResourceWorkflow,
@@ -574,24 +573,24 @@ class TestDeleteBootresourcefileActivity:
 
 
 class TestFetchManifestAndUpdateCacheActivity:
-    async def test_calls_image_sync_service(
+    async def test_calls_service_layer(
         self,
         boot_activities: BootResourcesActivity,
         services_mock: ServiceCollectionV3,
         activity_env: ActivityEnvironment,
     ) -> None:
         mock_boot_source = Mock(BootSource)
-        mock_boot_source.id = 1
-        mock_ss_products_list = Mock(SimpleStreamsProductList)
+        mock_ss_products_list = Mock(SimpleStreamsProductListType)
         mock_ss_products_list.products = [Mock(BootloaderProduct)]
         services_mock.image_sync = Mock(ImageSyncService)
-        services_mock.image_sync.fetch_images_metadata.return_value = {
-            mock_boot_source: [mock_ss_products_list]
-        }
         services_mock.image_sync.check_commissioning_series_selected.return_value = True
-        services_mock.image_sync.filter_products_for_selection.return_value = {
-            mock_boot_source: mock_ss_products_list
-        }
+        services_mock.image_sync.filter_products_for_selection.return_value = [
+            mock_ss_products_list
+        ]
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_many.return_value = [mock_boot_source]
+        services_mock.image_manifests = Mock(ImageManifestsService)
+        services_mock.boot_source_cache = Mock(BootSourceCacheService)
 
         heartbeats = []
         activity_env.on_heartbeat = lambda *args: heartbeats.append(args[0])
@@ -599,14 +598,15 @@ class TestFetchManifestAndUpdateCacheActivity:
 
         assert heartbeats == ["Downloaded images descriptions"]
         services_mock.image_sync.ensure_boot_source_definition.assert_awaited_once()
-        services_mock.image_sync.fetch_images_metadata.assert_awaited_once()
-        services_mock.image_sync.cache_boot_source_from_simplestreams_products.assert_awaited_once()
+        services_mock.boot_sources.get_many.assert_awaited_once()
+        services_mock.image_manifests.fetch_and_update.assert_awaited_once()
+        services_mock.boot_source_cache.update_from_image_manifest.assert_awaited_once()
         services_mock.image_sync.sync_boot_source_selections_from_msm.assert_awaited_once()
         services_mock.image_sync.check_commissioning_series_selected.assert_awaited_once()
 
 
 class TestGetFilesToDownloadForSelectionActivity:
-    async def test_calls_image_sync_service(
+    async def test_calls_service_layer(
         self,
         boot_activities: BootResourcesActivity,
         services_mock: ServiceCollectionV3,
@@ -629,9 +629,12 @@ class TestGetFilesToDownloadForSelectionActivity:
         )
 
         mock_product = Mock(BootloaderProduct)
-        mock_ss_products_list = Mock(SimpleStreamsProductList)
+        mock_ss_products_list = Mock(SimpleStreamsProductListType)
         mock_ss_products_list.products = [mock_product]
-        services_mock.events = Mock(EventsService)
+
+        image_manifest = Mock(ImageManifest)
+        image_manifest.manifest = [mock_ss_products_list]
+
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -640,30 +643,27 @@ class TestGetFilesToDownloadForSelectionActivity:
         )
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_by_id.return_value = boot_source
+        services_mock.image_manifests = Mock(ImageManifestsService)
+        services_mock.image_manifests.get_or_fetch.return_value = (
+            image_manifest,
+            False,
+        )
         services_mock.image_sync = Mock(ImageSyncService)
-        services_mock.image_sync.filter_products_for_selection.return_value = {
-            boot_source: mock_ss_products_list
-        }
+        services_mock.image_sync.filter_products_for_selection.return_value = [
+            mock_ss_products_list
+        ]
         services_mock.image_sync.get_files_to_download_from_product_list.return_value = {
-            "some-fake-sha": mock_product
+            mock_product
         }
 
-        heartbeats = []
-        activity_env.on_heartbeat = lambda *args: heartbeats.append(args[0])
         await activity_env.run(
             boot_activities.get_files_to_download_for_selection,
             GetFilesToDownloadForSelectionParam(
                 selection_id=1,
-                mapping=[
-                    BootSourceProductsMapping(
-                        boot_source_id=boot_source.id,
-                        products_list=mock_ss_products_list,
-                    )
-                ],
             ),
         )
 
-        services_mock.image_sync.filter_products_for_selection.assert_awaited_once()
+        services_mock.image_sync.filter_products_for_selection.assert_called_once()
         services_mock.image_sync.get_files_to_download_from_product_list.assert_awaited_once()
 
 
@@ -806,9 +806,6 @@ class MockActivities:
                 )
             ),
         }
-        self.fetch_manifest_and_update_cache_result = FetchManifestReturnValue(
-            mapping=[]
-        )
         self.delete_bootresourcefile_result = True
 
     @activity.defn(name=GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME)
@@ -828,8 +825,8 @@ class MockActivities:
     @activity.defn(name=FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME)
     async def fetch_manifest_and_update_cache(
         self,
-    ) -> FetchManifestReturnValue:
-        return self.fetch_manifest_and_update_cache_result
+    ) -> None:
+        return None
 
     @activity.defn(name=GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME)
     async def get_all_highest_priority_selections(self) -> list[int]:
@@ -1227,7 +1224,6 @@ class TestSyncSelectionWorkflow:
 
         temporal_calls.assert_activity_calls(
             [
-                FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,  # FetchManifest wf
                 GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncBootResources wf
                 GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,  # SyncBootResources wf
@@ -1237,7 +1233,6 @@ class TestSyncSelectionWorkflow:
 
         temporal_calls.assert_child_workflow_calls(
             [
-                FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
                 SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
                 DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
                 SYNC_BOOTRESOURCES_WORKFLOW_NAME,
@@ -1265,7 +1260,6 @@ class TestSyncSelectionWorkflow:
 
         temporal_calls.assert_activity_calls(
             [
-                FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,  # FetchManifest wf
                 GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncRemoteBootResources wf
                 GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,  # SyncBootResources wf
@@ -1278,7 +1272,6 @@ class TestSyncSelectionWorkflow:
 
         temporal_calls.assert_child_workflow_calls(
             [
-                FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
                 SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
                 DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
                 SYNC_BOOTRESOURCES_WORKFLOW_NAME,
@@ -1391,9 +1384,6 @@ class TestMasterImageSyncWorkflow:
             task_queue=REGION_TASK_QUEUE,
         )
 
-        temporal_calls.assert_child_workflow_called_times(
-            FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME, times=2
-        )
         temporal_calls.assert_child_workflow_called_times(
             SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME, times=2
         )

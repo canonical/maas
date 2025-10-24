@@ -21,8 +21,8 @@ from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
-from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.events import EventsService
+from maasservicelayer.services.image_manifests import ImageManifestsService
 
 logger = structlog.getLogger()
 
@@ -36,14 +36,14 @@ class BootSourcesService(
         repository: BootSourcesRepository,
         boot_source_cache_service: BootSourceCacheService,
         boot_source_selections_service: BootSourceSelectionsService,
-        configuration_service: ConfigurationsService,
+        image_manifests_service: ImageManifestsService,
         events_service: EventsService,
     ) -> None:
         super().__init__(context, repository)
         self.boot_source_cache_service = boot_source_cache_service
         self.boot_source_selections_service = boot_source_selections_service
         self.events_service = events_service
-        self.configuration_service = configuration_service
+        self.image_manifests_service = image_manifests_service
 
     async def post_create_hook(self, resource: BootSource) -> None:
         await super().post_create_hook(resource)
@@ -80,6 +80,8 @@ class BootSourcesService(
                 )
             )
         )
+
+        await self.image_manifests_service.delete(resource.id)
 
         await self.events_service.record_event(
             event_type=EventTypeEnum.BOOT_SOURCE,

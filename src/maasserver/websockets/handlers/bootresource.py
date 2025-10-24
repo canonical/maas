@@ -811,7 +811,7 @@ class BootResourceHandler(Handler):
 
         try:
             image_list = (
-                service_layer.services.image_sync.fetch_image_metadata(
+                service_layer.services.image_manifests.fetch_image_metadata(
                     source_url=str(boot_source.url),
                     keyring_path=str(boot_source.keyring_filename) or None,
                     keyring_data=boot_source.keyring_data or None,

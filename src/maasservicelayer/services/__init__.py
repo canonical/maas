@@ -51,6 +51,9 @@ from maasservicelayer.db.repositories.external_auth import (
 )
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.db.repositories.filestorage import FileStorageRepository
+from maasservicelayer.db.repositories.image_manifests import (
+    ImageManifestsRepository,
+)
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.db.repositories.machines import MachinesRepository
@@ -139,6 +142,7 @@ from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.hooked_configurations import (
     HookedConfigurationsService,
 )
+from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
@@ -240,6 +244,7 @@ class ServiceCollectionV3:
     fabrics: FabricsService
     filestorage: FileStorageService
     hooked_configurations: HookedConfigurationsService
+    image_manifests: ImageManifestsService
     image_sync: ImageSyncService
     interfaces: InterfacesService
     ipranges: IPRangesService
@@ -350,6 +355,11 @@ class ServiceCollectionV3:
             dnspublications_service=services.dnspublications,
             nodes_repository=NodesRepository(context),
         )
+        services.image_manifests = ImageManifestsService(
+            context=context,
+            configurations_service=services.configurations,
+            repository=ImageManifestsRepository(context),
+        )
         services.boot_resource_file_sync = BootResourceFileSyncService(
             context=context,
             repository=BootResourceFileSyncRepository(context),
@@ -388,7 +398,7 @@ class ServiceCollectionV3:
             repository=BootSourcesRepository(context),
             boot_source_cache_service=services.boot_source_cache,
             boot_source_selections_service=services.boot_source_selections,
-            configuration_service=services.configurations,
+            image_manifests_service=services.image_manifests,
             events_service=services.events,
         )
         services.image_sync = ImageSyncService(
@@ -399,7 +409,6 @@ class ServiceCollectionV3:
             boot_resources_service=services.boot_resources,
             boot_resource_sets_service=services.boot_resource_sets,
             boot_resource_files_service=services.boot_resource_files,
-            events_service=services.events,
             configurations_service=services.configurations,
             notifications_service=services.notifications,
             msm_service=services.msm,

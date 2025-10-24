@@ -33,9 +33,9 @@ through the use of pydantic validators. See the preprocess_* validators.
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
-from enum import Enum
-from typing import List, Optional, override, Type
+from datetime import date, datetime
+from enum import StrEnum
+from typing import List, Optional, override, Type, Union
 
 from pydantic import (
     BaseModel,
@@ -46,27 +46,29 @@ from pydantic import (
 )
 
 
-def updated_validator(v: str | None) -> datetime | None:
-    if v is not None and not isinstance(v, datetime):
+def updated_validator(v: str | datetime) -> datetime:
+    if isinstance(v, datetime):
+        return v
+    try:
+        return datetime.strptime(v, "%a, %d %b %Y %H:%M:%S %z")
+    except ValueError:
+        # when serializing the object, the date will be in ISO format.
+        return datetime.fromisoformat(v)
+
+
+def support_eol_validator(v: str | None) -> date | None:
+    if v is not None and not isinstance(v, date):
         try:
-            return datetime.strptime(v, "%a, %d %b %Y %H:%M:%S %z")
+            # date is a string in the format YYYY-MM-DD
+            year, month, day = [int(value) for value in v.split("-")]
+            return date(year, month, day)
         except ValueError:
             # when serializing the object, the date will be in ISO format.
-            return datetime.fromisoformat(v)
+            return date.fromisoformat(v)
     return v
 
 
-def support_eol_validator(v: str | None) -> datetime | None:
-    if v is not None and not isinstance(v, datetime):
-        try:
-            return datetime.strptime(v, "%Y-%m-%d")
-        except ValueError:
-            # when serializing the object, the date will be in ISO format.
-            return datetime.fromisoformat(v)
-    return v
-
-
-class Datatype(Enum):
+class Datatype(StrEnum):
     image_ids = "image-ids"
     image_downloads = "image-downloads"
 
@@ -74,7 +76,7 @@ class Datatype(Enum):
 class IndexContent(BaseModel):
     name: str
     path: str
-    updated: datetime | None
+    updated: datetime
     datatype: Optional[Datatype]
     format: str = "products:1.0"
     products: List[str]
@@ -86,7 +88,7 @@ class IndexContent(BaseModel):
 
 
 class SimpleStreamsIndexList(BaseModel):
-    updated: datetime | None
+    updated: datetime
     format: str = "index:1.0"
     indexes: list[IndexContent]
 
@@ -178,8 +180,8 @@ class BootloaderVersion(Version):
 
 
 class MultiFileImageVersion(Version):
-    support_eol: datetime | None
-    support_esm_eol: datetime | None
+    support_eol: date | None
+    support_esm_eol: date | None
     boot_initrd: ImageFile = Field(..., alias="boot-initrd")
     boot_kernel: ImageFile = Field(..., alias="boot-kernel")
     manifest: ImageFile
@@ -283,7 +285,7 @@ class ImageProduct(Product):
     release_title: str
     subarch: str
     subarches: str
-    support_eol: datetime | None
+    support_eol: date | None
     version: str
 
     # TODO: switch to field_validator when we migrate to pydantic 2.x
@@ -320,7 +322,7 @@ class SimpleStreamsProductList(BaseModel, ABC):
     content_id: str
     datatype: Datatype
     format: str = "products:1.0"
-    updated: datetime | None
+    updated: datetime
     products: list
 
     # TODO: switch to field_validator when we migrate to pydantic 2.x
@@ -381,9 +383,20 @@ class SimpleStreamsSingleFileProductList(SimpleStreamsProductList):
         return SingleFileProduct
 
 
+# TypeVar for concrete SimpleStreams product list types
+SimpleStreamsProductListType = Union[
+    SimpleStreamsBootloaderProductList,
+    SimpleStreamsSingleFileProductList,
+    SimpleStreamsMultiFileProductList,
+]
+
+# Define a manifest as a list of SimpleStreams product lists
+SimpleStreamsManifest = list[SimpleStreamsProductListType]
+
+
 class SimpleStreamsProductListFactory:
     @staticmethod
-    def produce(data) -> SimpleStreamsProductList:
+    def produce(data) -> SimpleStreamsProductListType:
         product = None
         try:
             product = SimpleStreamsBootloaderProductList(**data)

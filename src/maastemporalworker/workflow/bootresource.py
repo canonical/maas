@@ -29,7 +29,6 @@ from maascommon.enums.notifications import (
     NotificationComponent,
 )
 from maascommon.workflows.bootresource import (
-    BootSourceProductsMapping,
     CLEANUP_TIMEOUT,
     CleanupOldBootResourceSetsParam,
     DELETE_BOOTRESOURCE_WORKFLOW_NAME,
@@ -38,7 +37,6 @@ from maascommon.workflows.bootresource import (
     DOWNLOAD_TIMEOUT,
     FETCH_IMAGE_METADATA_TIMEOUT,
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-    FetchManifestReturnValue,
     GetFilesToDownloadForSelectionParam,
     GetFilesToDownloadReturnValue,
     HEARTBEAT_TIMEOUT,
@@ -283,34 +281,33 @@ class BootResourcesActivity(ActivityBase):
     )
     async def fetch_manifest_and_update_cache(
         self,
-    ) -> FetchManifestReturnValue:
+    ):
+        """Fetch the latest manifest for all the boot sources and updates both
+        the manifests and the boot source caches.
+        """
         async with self.start_transaction() as services:
             await services.image_sync.ensure_boot_source_definition()
-            boot_source_products_mapping = (
-                await services.image_sync.fetch_images_metadata()
+            boot_sources = await services.boot_sources.get_many(
+                query=QuerySpec()
             )
-            activity.heartbeat("Downloaded images descriptions")
-            for (
-                boot_source,
-                products_list,
-            ) in boot_source_products_mapping.items():
-                await services.image_sync.cache_boot_source_from_simplestreams_products(
-                    boot_source.id, products_list
+
+            for boot_source in boot_sources:
+                image_manifest = (
+                    await services.image_manifests.fetch_and_update(
+                        boot_source
+                    )
+                )
+                activity.heartbeat("Downloaded images descriptions")
+                await services.boot_source_cache.update_from_image_manifest(
+                    image_manifest
                 )
 
             await services.image_sync.sync_boot_source_selections_from_msm(
-                list(boot_source_products_mapping.keys())
+                boot_sources
             )
 
             # don't raise an exception, just create the notification
             await services.image_sync.check_commissioning_series_selected()
-            mapping = [
-                BootSourceProductsMapping(
-                    boot_source_id=source.id, products_list=products_list
-                )
-                for source, products_list in boot_source_products_mapping.items()
-            ]
-            return FetchManifestReturnValue(mapping=mapping)
 
     @activity_defn_with_context(
         name=GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME
@@ -337,17 +334,14 @@ class BootResourcesActivity(ActivityBase):
             )
             assert boot_source is not None
 
-            # Find the simplestreams data related to this boot source
-            mapping = next(
-                filter(
-                    lambda x: x.boot_source_id == boot_source.id, param.mapping
-                )
+            image_manifest, _ = await services.image_manifests.get_or_fetch(
+                boot_source
             )
 
             filtered_products_list = (
-                await services.image_sync.filter_products_for_selection(
+                services.image_sync.filter_products_for_selection(
                     selection=selection,
-                    products_list=mapping.products_list,
+                    products_list=image_manifest.manifest,
                 )
             )
             resources_to_download = await services.image_sync.get_files_to_download_from_product_list(
@@ -355,7 +349,7 @@ class BootResourcesActivity(ActivityBase):
             )
 
             return GetFilesToDownloadReturnValue(
-                resources=list(resources_to_download.values()),
+                resources=resources_to_download,
             )
 
     @activity_defn_with_context(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
@@ -554,9 +548,7 @@ class DeleteBootResourceWorkflow:
 )
 class FetchManifestWorkflow:
     @workflow_run_with_context
-    async def run(
-        self,
-    ) -> FetchManifestReturnValue:  # list[BootSourceProductsMapping]:
+    async def run(self) -> None:
         return await workflow.execute_activity(
             FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
             start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
@@ -585,25 +577,11 @@ class SyncSelectionWorkflow:
 
     @workflow_run_with_context
     async def run(self, param: SyncSelectionParam) -> None:
-        # This is currently being called in every SyncSelection workflow. In the
-        # next MPs we will store the simplestream manifest in the db, so to avoid
-        # re-fetching it from the simplestream server every time.
-        fetch_manifest_result: FetchManifestReturnValue = (
-            await workflow.execute_child_workflow(
-                FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-                id=f"fetch-manifest:{param.selection_id}",
-                run_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
-                task_queue=REGION_TASK_QUEUE,
-                result_type=FetchManifestReturnValue,
-            )
-        )
-
         result: GetFilesToDownloadReturnValue = (
             await workflow.execute_activity(
                 GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
                 arg=GetFilesToDownloadForSelectionParam(
                     selection_id=param.selection_id,
-                    mapping=fetch_manifest_result.mapping,
                 ),
                 start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
                 heartbeat_timeout=timedelta(seconds=30),

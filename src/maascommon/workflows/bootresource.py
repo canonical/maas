@@ -5,12 +5,6 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Sequence
 
-from maasservicelayer.simplestreams.models import (
-    SimpleStreamsBootloaderProductList,
-    SimpleStreamsMultiFileProductList,
-    SimpleStreamsSingleFileProductList,
-)
-
 REPORT_INTERVAL = timedelta(seconds=10)
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
 DISK_TIMEOUT = timedelta(minutes=15)
@@ -58,25 +52,8 @@ class ResourceDeleteParam:
 
 
 @dataclass
-class BootSourceProductsMapping:
-    boot_source_id: int
-    # Ugly, but temporal needs concrete classes to convert json to python
-    products_list: list[
-        SimpleStreamsSingleFileProductList
-        | SimpleStreamsMultiFileProductList
-        | SimpleStreamsBootloaderProductList
-    ]
-
-
-@dataclass
-class FetchManifestReturnValue:
-    mapping: list[BootSourceProductsMapping]
-
-
-@dataclass
 class GetFilesToDownloadForSelectionParam:
     selection_id: int
-    mapping: list[BootSourceProductsMapping]
 
 
 @dataclass

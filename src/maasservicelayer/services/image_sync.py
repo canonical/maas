@@ -1,11 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-from contextlib import asynccontextmanager
 import os
 import re
-from typing import AsyncIterator
 
-import aiofiles
 from structlog import get_logger
 
 from maascommon.constants import (
@@ -17,13 +14,11 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
-from maascommon.enums.events import EventTypeEnum
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maascommon.osystem.ubuntu import UbuntuOS
 from maascommon.workflows.bootresource import ResourceDownloadParam
 from maasservicelayer.builders.bootresources import BootResourceBuilder
-from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
@@ -53,18 +48,11 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
-from maasservicelayer.models.bootsourcecache import BootSourceCache
-from maasservicelayer.models.bootsources import (
-    BootSource,
-    SourceAvailableImage,
-)
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.configurations import (
-    BootImagesNoProxyConfig,
     CommissioningDistroSeriesConfig,
     CommissioningOSystemConfig,
-    EnableHttpProxyConfig,
-    HttpProxyConfig,
 )
 from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.boot_sources import BootSourcesService
@@ -78,16 +66,14 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
 from maasservicelayer.services.configurations import ConfigurationsService
-from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.msm import MSMService
 from maasservicelayer.services.notifications import NotificationsService
-from maasservicelayer.simplestreams.client import SimpleStreamsClient
 from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
     ImageProduct,
     MultiFileProduct,
     Product,
-    SimpleStreamsProductList,
+    SimpleStreamsManifest,
     SingleFileProduct,
 )
 from provisioningserver.utils.arch import get_architecture
@@ -122,7 +108,6 @@ class ImageSyncService(Service):
         boot_resources_service: BootResourceService,
         boot_resource_sets_service: BootResourceSetsService,
         boot_resource_files_service: BootResourceFilesService,
-        events_service: EventsService,
         configurations_service: ConfigurationsService,
         notifications_service: NotificationsService,
         msm_service: MSMService,
@@ -134,7 +119,6 @@ class ImageSyncService(Service):
         self.boot_resources_service = boot_resources_service
         self.boot_resource_sets_service = boot_resource_sets_service
         self.boot_resource_files_service = boot_resource_files_service
-        self.events_service = events_service
         self.configurations_service = configurations_service
         self.notifications_service = notifications_service
         self.msm_service = msm_service
@@ -252,170 +236,6 @@ class ImageSyncService(Service):
                                 arch=cache.arch,
                             )
                         )
-
-    async def _get_http_proxy(self) -> str | None:
-        """Returns the http proxy to be used to download images metadata."""
-        if not await self.configurations_service.get(
-            EnableHttpProxyConfig.name
-        ) or await self.configurations_service.get(
-            BootImagesNoProxyConfig.name
-        ):
-            return None
-        return await self.configurations_service.get(HttpProxyConfig.name)
-
-    @asynccontextmanager
-    async def _get_keyring_file(
-        self, keyring_path: str | None, keyring_data: bytes | None
-    ) -> AsyncIterator[str]:
-        """Context manager to handle a keyring file.
-
-        Creates a temporary file with the content in keyring_data and deletes
-        the file on context exit. If `keyring_data` is None, `keyring_path` is
-        returned.
-
-        Args:
-            - keyring_path: path to the keyring file on disk
-            - keyring_data: bytes to be written in a temporary file
-
-        Yields:
-            The path of the keyring file.
-        """
-        if keyring_data:
-            async with (
-                aiofiles.tempfile.NamedTemporaryFile() as tmp_keyring_file
-            ):
-                await tmp_keyring_file.write(keyring_data)
-                await tmp_keyring_file.flush()
-                yield str(tmp_keyring_file.name)
-        else:
-            assert keyring_path is not None
-            yield keyring_path
-
-    async def fetch_image_metadata(
-        self,
-        source_url: str,
-        keyring_path: str | None = None,
-        keyring_data: bytes | None = None,
-    ) -> list[SourceAvailableImage]:
-        http_proxy = await self._get_http_proxy()
-
-        async with self._get_keyring_file(
-            keyring_path, keyring_data
-        ) as keyring_file:
-            async with SimpleStreamsClient(
-                url=source_url,
-                http_proxy=http_proxy,
-                keyring_file=keyring_file,
-            ) as client:
-                products_list = await client.get_all_products()
-
-        return [
-            SourceAvailableImage.from_simplestreams_product(image)
-            for product_list in products_list
-            # we will have duplicates (lots of subarches)
-            for image in set(product_list.products)
-        ]
-
-    async def fetch_images_metadata(
-        self,
-    ) -> dict[BootSource, list[SimpleStreamsProductList]]:
-        """Fetch the images metadata from the simplestreams server for each boot source.
-
-        For each boot source it will fetch the simplestreams data (based on the
-        boot source url) using `SimpleStreamsClient`. If the boot source specifies
-        keyring_data, it will write that into a temporary file.
-
-        Returns:
-            A dict mapping boot_sources to their corresponding simplestreams products.
-        """
-        boot_sources = await self.boot_sources_service.get_many(
-            query=QuerySpec()
-        )
-        boot_source_products_mapping = {}
-
-        http_proxy = await self._get_http_proxy()
-
-        for boot_source in boot_sources:
-            async with self._get_keyring_file(
-                boot_source.keyring_filename, boot_source.keyring_data
-            ) as keyring_file:
-                async with SimpleStreamsClient(
-                    url=boot_source.url,
-                    http_proxy=http_proxy,
-                    keyring_file=keyring_file,
-                    skip_pgp_verification=boot_source.skip_keyring_verification,
-                ) as client:
-                    boot_source_products_mapping[
-                        boot_source
-                    ] = await client.get_all_products()
-
-            if not boot_source_products_mapping[boot_source]:
-                await self.events_service.record_event(
-                    event_type=EventTypeEnum.REGION_IMPORT_WARNING,
-                    event_description=f"Unable to import boot images from {boot_source.url}. "
-                    "No image descriptions available.",
-                )
-
-        return boot_source_products_mapping
-
-    async def cache_boot_source_from_simplestreams_products(
-        self,
-        boot_source_id: int,
-        products_list: list[SimpleStreamsProductList],
-    ) -> list[BootSourceCache]:
-        """Update the boot source cache based on the simplestreams products_list.
-
-        If the list of product is empty, delete the cache.
-
-        Args:
-            - boot_source_id: the boot source from where the simplestreams products come from
-            - products_list: list of simplestreams products associated with the boot source
-
-        Returns:
-            A list of the new boot source caches.
-        """
-        boot_source_caches = []
-        if len(products_list) == 0:
-            await self.boot_source_cache_service.delete_many(
-                query=QuerySpec(
-                    where=BootSourceCacheClauseFactory.with_boot_source_id(
-                        boot_source_id
-                    )
-                )
-            )
-            return []
-        boot_source_cache_builders = set()
-        for product_list in products_list:
-            boot_source_cache_builders |= (
-                BootSourceCacheBuilder.from_simplestreams_product_list(
-                    product_list, boot_source_id
-                )
-            )
-
-        for builder in boot_source_cache_builders:
-            boot_source_caches.append(
-                await self.boot_source_cache_service.create_or_update(builder)
-            )
-
-        # delete the old boot source caches, i.e. the ones that weren't created
-        # or updated.
-        await self.boot_source_cache_service.delete_many(
-            query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
-                    [
-                        BootSourceCacheClauseFactory.with_boot_source_id(
-                            boot_source_id
-                        ),
-                        BootSourceCacheClauseFactory.not_clause(
-                            BootSourceCacheClauseFactory.with_ids(
-                                {cache.id for cache in boot_source_caches}
-                            )
-                        ),
-                    ]
-                )
-            )
-        )
-        return boot_source_caches
 
     async def check_commissioning_series_selected(self) -> bool:
         """Creates an error notification if the commissioning os and the commissioning
@@ -559,50 +379,49 @@ class ImageSyncService(Service):
             )
         return match
 
-    async def filter_products_for_selection(
+    def filter_products_for_selection(
         self,
         selection: BootSourceSelection,
-        products_list: list[SimpleStreamsProductList],
-    ) -> list[SimpleStreamsProductList]:
+        manifest: SimpleStreamsManifest,
+    ) -> SimpleStreamsManifest:
         """Filter simplestreams products to be downloaded for a selection.
 
         For each product list it will only keep the products that match the selection.
 
         Args:
             - selection: the `BootSourceSelection` to filter by
-            - products_list: the simplestreams product list to be filtered.
+            - manifest: the simplestreams manifest to be filtered
 
         Returns:
             The updated simplestreams product list, containing only the products
             that must be downloaded.
 
         """
-        filtered_products_list = [ss_list.copy() for ss_list in products_list]
-        for product_list in filtered_products_list:
+        filtered_manifest = [ss_list.copy() for ss_list in manifest]
+        for product_list in filtered_manifest:
             new_product_list = []
             for product in product_list.products:
                 if self.product_matches_selection(product, selection):
                     new_product_list.append(product)
             product_list.products = new_product_list
-        return filtered_products_list
+        return filtered_manifest
 
     async def get_files_to_download_from_product_list(
         self,
         boot_source: BootSource,
-        filtered_products_list: list[SimpleStreamsProductList],
-    ) -> dict[str, ResourceDownloadParam]:
+        filtered_manifest: SimpleStreamsManifest,
+    ) -> list[ResourceDownloadParam]:
         """Get all the files that must be downloaded from simplestreams for this boot source.
 
         Args:
             - boot_source: The boot source
-            - filtered_products_list: The filtered list of simplestreams products for this source
+            - filtered_manifest: The filtered list of simplestreams products for this source
 
         Returns:
-            A  dict mapping the sha256 to the corresponding ResourceDownloadParam
-            (to be later supplied to the Temporal workflow)
+            A list of ResourceDownloadParam (to be later supplied to the Temporal workflow)
         """
         resources_to_download: dict[str, ResourceDownloadParam] = {}
-        for product_list in filtered_products_list:
+        for product_list in filtered_manifest:
             for product in product_list.products:
                 to_download = await self.get_files_to_download_from_product(
                     boot_source,
@@ -618,7 +437,7 @@ class ImageSyncService(Service):
                     else:
                         resources_to_download[resource.sha256] = resource
 
-        return resources_to_download
+        return list(resources_to_download.values())
 
     async def get_files_to_download_from_product(
         self,

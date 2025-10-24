@@ -48,7 +48,7 @@ from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
-from maasservicelayer.services.image_sync import ImageSyncService
+from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -317,8 +317,8 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.image_sync = Mock(ImageSyncService)
-        services_mock.image_sync.fetch_image_metadata.return_value = []
+        services_mock.image_manifests = Mock(ImageManifestsService)
+        services_mock.image_manifests.fetch_image_metadata.return_value = []
 
         request = BootSourceFetchRequest(
             url="https://path/to/images/server",
@@ -331,7 +331,7 @@ class TestBootSourcesApi(ApiCommonTests):
 
         assert response.status_code == 200
 
-        services_mock.image_sync.fetch_image_metadata.assert_called_once_with(
+        services_mock.image_manifests.fetch_image_metadata.assert_called_once_with(
             source_url=request.url,
             keyring_path=request.keyring_path,
             keyring_data=None,
@@ -347,8 +347,8 @@ class TestBootSourcesApi(ApiCommonTests):
 
         expected_bytes = b64decode(keyring_data_str)
 
-        services_mock.image_sync = Mock(ImageSyncService)
-        services_mock.image_sync.fetch_image_metadata.return_value = []
+        services_mock.image_manifests = Mock(ImageManifestsService)
+        services_mock.image_manifests.fetch_image_metadata.return_value = []
 
         request = BootSourceFetchRequest(
             url=images_server_url,
@@ -362,7 +362,7 @@ class TestBootSourcesApi(ApiCommonTests):
 
         assert response.status_code == 200
 
-        services_mock.image_sync.fetch_image_metadata.assert_called_once_with(
+        services_mock.image_manifests.fetch_image_metadata.assert_called_once_with(
             source_url=images_server_url,
             keyring_path=None,
             keyring_data=expected_bytes,

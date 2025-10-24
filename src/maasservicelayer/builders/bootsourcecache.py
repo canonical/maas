@@ -11,7 +11,7 @@ from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
     MultiFileProduct,
     Product,
-    SimpleStreamsProductList,
+    SimpleStreamsProductListType,
     SingleFileProduct,
 )
 
@@ -151,7 +151,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
 
     @classmethod
     def from_simplestreams_product_list(
-        cls, product_list: SimpleStreamsProductList, boot_source_id: int
+        cls, product_list: SimpleStreamsProductListType, boot_source_id: int
     ) -> set[Self]:
         builders = set()
         for product in product_list.products:
