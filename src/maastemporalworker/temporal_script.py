@@ -17,6 +17,7 @@ from maasservicelayer.services.temporal import (
     TemporalService,
     TemporalServiceCache,
 )
+from maastemporalworker.schedules import setup_schedules
 from maastemporalworker.worker import get_client_async, REGION_TASK_QUEUE
 from maastemporalworker.worker import Worker as TemporalWorker
 from maastemporalworker.workflow.bootresource import (
@@ -266,6 +267,9 @@ async def main() -> None:
                 _stop_temporal_workers(temporal_workers)
             ),
         )
+
+    log.info("Setting up schedules")
+    await setup_schedules(temporal_client)
 
     log.info("temporal-worker started")
     await _start_temporal_workers(temporal_workers)

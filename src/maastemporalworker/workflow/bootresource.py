@@ -341,7 +341,7 @@ class BootResourcesActivity(ActivityBase):
             filtered_products_list = (
                 services.image_sync.filter_products_for_selection(
                     selection=selection,
-                    products_list=image_manifest.manifest,
+                    manifest=image_manifest.manifest,
                 )
             )
             resources_to_download = await services.image_sync.get_files_to_download_from_product_list(
