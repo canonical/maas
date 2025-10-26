@@ -339,7 +339,6 @@ class ServiceCollectionV3:
         )
         services.dnspublications = DNSPublicationsService(
             context=context,
-            temporal_service=services.temporal,
             dnspublication_repository=DNSPublicationRepository(context),
         )
         services.nodes = NodesService(

@@ -45,10 +45,6 @@ from maastemporalworker.workflow.dhcp import (
     ConfigureDHCPWorkflow,
     DHCPConfigActivity,
 )
-from maastemporalworker.workflow.dns import (
-    ConfigureDNSWorkflow,
-    DNSConfigActivity,
-)
 from maastemporalworker.workflow.msm import (
     MSMConnectorActivity,
     MSMEnrolSiteWorkflow,
@@ -150,7 +146,6 @@ async def main() -> None:
     )
     deploy_activity = DeployActivity(db, services_cache, temporal_client)
     dhcp_activity = DHCPConfigActivity(db, services_cache, temporal_client)
-    dns_activity = DNSConfigActivity(db, services_cache, temporal_client)
     power_activity = PowerActivity(db, services_cache, temporal_client)
 
     temporal_workers = [
@@ -175,7 +170,6 @@ async def main() -> None:
                 ConfigureAgentWorkflow,
                 ConfigureDHCPWorkflow,
                 ConfigureDHCPForAgentWorkflow,
-                ConfigureDNSWorkflow,
                 # Lifecycle workflows
                 DeployManyWorkflow,
                 DeployWorkflow,
@@ -220,8 +214,6 @@ async def main() -> None:
                 dhcp_activity.fetch_hosts_for_update,
                 dhcp_activity.get_omapi_key,
                 dhcp_activity.get_dhcp_data_for_agent,
-                # DNS activities
-                dns_activity.get_region_controllers,
                 # MSM connector activities,
                 msm_activity.check_enrol,
                 msm_activity.get_enrol,
@@ -257,11 +249,6 @@ async def main() -> None:
                 boot_res_activity.delete_bootresourcefile,
                 boot_res_activity.download_bootresourcefile,
                 boot_res_activity.check_disk_space,
-                # dns activities
-                dns_activity.get_changes_since_current_serial,
-                dns_activity.full_reload_dns_configuration,
-                dns_activity.dynamic_update_dns_configuration,
-                dns_activity.check_serial_update,
             ],
         ),
     ]

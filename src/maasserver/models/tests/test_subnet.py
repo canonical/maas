@@ -4,13 +4,11 @@
 from datetime import timedelta
 import random
 import re
-from unittest.mock import call
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 from fixtures import FakeLogger
 from netaddr import AddrFormatError, IPAddress, IPNetwork
-from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.utils.network import (
     inet_ntop,
@@ -22,10 +20,6 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
 )
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-)
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -35,7 +29,6 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import Config, Notification, Space
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import subnet as subnet_module
 from maasserver.models.subnet import (
     create_cidr,
@@ -788,30 +781,6 @@ class TestSubnet(MAASServerTestCase):
             task_queue="region",
         )
 
-    def test_save_calls_configure_dns_workflow(self):
-        vlan = factory.make_VLAN()
-        subnet = Subnet(
-            cidr="10.0.0.0/24",
-            vlan=vlan,
-            allow_dns=True,
-            rdns_mode=RDNS_MODE.ENABLED,
-        )
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            subnet.save()
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=True),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
-
     def test_overlapping_subnets_not_allowed(self):
         vlan = factory.make_VLAN()
         subnet = Subnet(
@@ -926,45 +895,6 @@ class TestSubnet(MAASServerTestCase):
         subnet.cidr = "10.1.1.0/24"
         with post_commit_hooks:
             subnet.save()
-
-    def test_delete_calls_configure_dhcp_workflow(self):
-        mock_start_workflow = self.patch(subnet_module, "start_workflow")
-        subnet = factory.make_Subnet()
-
-        vlan_id = subnet.vlan_id
-
-        with post_commit_hooks:
-            subnet.vlan.dhcp_on = True
-            subnet.vlan.save()
-            subnet.delete()
-
-        self.assertIn(
-            call(
-                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=ConfigureDHCPParam(vlan_ids=[vlan_id]),
-                task_queue="region",
-            ),
-            mock_start_workflow.mock_calls,
-        )
-
-    def test_delete_calls_dns_workflow(self):
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan)
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            subnet.delete()
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=True),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
 
 
 class TestGetBestSubnetForIP(MAASServerTestCase):

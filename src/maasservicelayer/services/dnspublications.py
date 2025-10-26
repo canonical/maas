@@ -1,17 +1,10 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
 from typing import Optional
 
-from temporalio.common import WorkflowIDReusePolicy
-
 from maascommon.enums.dns import DnsUpdateAction
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-    merge_configure_dns_params,
-)
 from maasservicelayer.builders.dnspublications import DNSPublicationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnspublications import (
@@ -19,7 +12,6 @@ from maasservicelayer.db.repositories.dnspublications import (
 )
 from maasservicelayer.models.dnspublications import DNSPublication
 from maasservicelayer.services.base import BaseService
-from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 
 
@@ -35,11 +27,9 @@ class DNSPublicationsService(
     def __init__(
         self,
         context: Context,
-        temporal_service: TemporalService,
         dnspublication_repository: DNSPublicationRepository,
     ):
         super().__init__(context, dnspublication_repository)
-        self.temporal_service = temporal_service
 
     async def create_for_config_update(
         self,
@@ -67,17 +57,6 @@ class DNSPublicationsService(
         if not timestamp:
             timestamp = utcnow()
 
-        self.temporal_service.register_or_update_workflow_call(
-            CONFIGURE_DNS_WORKFLOW_NAME,
-            ConfigureDNSParam(
-                need_full_reload=action == DnsUpdateAction.RELOAD
-            ),
-            parameter_merge_func=merge_configure_dns_params,
-            wait=False,
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
-
         return await self.create(
             DNSPublicationBuilder(
                 source=source,
@@ -86,15 +65,3 @@ class DNSPublicationsService(
                 created=timestamp,
             )
         )
-
-    async def get_publications_since_serial(
-        self, serial: int
-    ) -> list[DNSPublication]:
-        return await self.repository.get_publications_since_serial(serial)
-
-    async def get_latest(self) -> DNSPublication:
-        return await self.repository.get_latest()
-
-    async def get_latest_serial(self) -> int:
-        result = await self.get_latest()
-        return result.serial

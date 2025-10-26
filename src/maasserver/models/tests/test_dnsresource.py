@@ -5,14 +5,8 @@
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from temporalio.common import WorkflowIDReusePolicy
 
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-)
 from maasserver.enum import IPADDRESS_TYPE
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import StaticIPAddress
 from maasserver.models.dnsresource import DNSResource, separate_fqdn
 from maasserver.permissions import NodePermission
@@ -354,88 +348,6 @@ class TestDNSResource(MAASServerTestCase):
 
         assert StaticIPAddress.objects.filter(ip=sip.get_ip()).exists()
         assert DNSResource.objects.filter(id=dnsresource2.id).exists()
-
-    def test_save_calls_dns_workflow_on_create(self):
-        domain = factory.make_Domain(authoritative=True)
-        dnsresource = DNSResource(name=factory.make_name(), domain=domain)
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            dnsresource.save()
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=False),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
-
-    def test_delete_calls_dns_workflow(self):
-        domain = factory.make_Domain(authoritative=True)
-        dnsresource = factory.make_DNSResource(
-            domain=domain, ip_addresses=None
-        )
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            dnsresource.delete()
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=False),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
-
-    def test_adding_an_ip_calls_dns_workflow(self):
-        domain = factory.make_Domain(authoritative=True)
-        dnsresource = factory.make_DNSResource(domain=domain)
-        sip = factory.make_StaticIPAddress()
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(sip)
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=False),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
-
-    def test_removing_an_ip_calls_dns_workflow(self):
-        domain = factory.make_Domain(authoritative=True)
-        sip = factory.make_StaticIPAddress()
-        dnsresource = factory.make_DNSResource(
-            domain=domain, ip_addresses=[sip]
-        )
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.remove(sip)
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=False),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
 
 
 class TestStaticIPAddressSignals(MAASServerTestCase):
