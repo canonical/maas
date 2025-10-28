@@ -5,7 +5,7 @@ import asyncio
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import shutil
-from typing import Any, Coroutine
+from typing import Any, Coroutine, Union
 
 import httpx
 import structlog
@@ -89,6 +89,13 @@ from maastemporalworker.workflow.utils import (
 )
 from provisioningserver.utils.url import compose_URL
 
+# TypeVar for concrete SimpleStreams product list types
+SimpleStreamsProductListType = Union[
+    SimpleStreamsBootloaderProductList,
+    SimpleStreamsSingleFileProductList,
+    SimpleStreamsMultiFileProductList,
+]
+
 CHECK_DISK_SPACE_ACTIVITY_NAME = "check-disk-space"
 GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME = "get-bootresourcefile-endpoints"
 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME = "download-bootresourcefile"
@@ -112,11 +119,7 @@ DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME = "discard-error-notification"
 class BootSourceProductsMapping:
     boot_source_id: int
     # Ugly, but temporal needs concrete classes to convert json to python
-    products_list: list[
-        SimpleStreamsSingleFileProductList
-        | SimpleStreamsMultiFileProductList
-        | SimpleStreamsBootloaderProductList
-    ]
+    products_list: list[SimpleStreamsProductListType]
 
 
 logger = structlog.get_logger()
@@ -163,6 +166,7 @@ class BootResourcesActivity(ActivityBase):
             required = param.total_resources_size
         else:
             required = param.min_free_space
+            assert required is not None
         if free > required:
             return True
         else:
@@ -284,15 +288,12 @@ class BootResourcesActivity(ActivityBase):
             if ex.errno == 28:
                 lfile.unlink()
                 await self.report_progress(param.rfile_ids, 0)
-                logger.error(
-                    ex.strerror
-                    if ex.strerror is not None
-                    else "No space left on device"
-                )
+                logger.error(ex.strerror if ex.strerror else str(ex))
                 return False
 
             raise ApplicationError(
-                ex.strerror, type=ex.__class__.__name__
+                ex.strerror if ex.strerror else str(ex),
+                type=ex.__class__.__name__,
             ) from None
         except (
             httpx.HTTPError,
@@ -358,7 +359,8 @@ class BootResourcesActivity(ActivityBase):
             await services.image_sync.check_commissioning_series_selected()
             return [
                 BootSourceProductsMapping(
-                    boot_source_id=source.id, products_list=products_list
+                    boot_source_id=source.id,
+                    products_list=products_list,  # type: ignore
                 )
                 for source, products_list in boot_source_products_mapping.items()
             ]

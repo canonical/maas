@@ -115,6 +115,7 @@ async def main() -> None:
 
     log.info("starting region temporal-worker process")
     log.debug("connecting to MAAS DB")
+    assert config.db is not None
     db = Database(config.db, echo=config.debug_queries)
 
     # In maasserver we have a startup lock. If it is set, we have to wait to start the worker as well.

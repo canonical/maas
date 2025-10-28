@@ -316,6 +316,7 @@ def convert_power_action_to_power_workflow(
     Power is an 'umbrella' workflow that allows execution of multiple Power
     commands at once.
     """
+    assert extra_params is not None
 
     match power_action:
         case PowerAction.POWER_ON.value:

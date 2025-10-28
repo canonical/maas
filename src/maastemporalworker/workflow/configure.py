@@ -147,6 +147,7 @@ class ConfigureAgentActivity(ActivityBase):
 
             # TODO remove BIND check once recursive resolver is fully functional
             # and BIND can be removed from the rack controller
+            assert agent_node is not None
             if (
                 agent_node.node_type == NodeTypeEnum.REGION_CONTROLLER
                 or agent_node.node_type

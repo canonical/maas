@@ -113,7 +113,7 @@ class DynamicDNSUpdate:
         return self.answer_as_ip is not None
 
 
-def get_dns_config_dir():
+def get_dns_config_dir() -> str:
     """Location of MAAS' bind configuration files."""
     setting = os.getenv(
         "MAAS_DNS_CONFIG_DIR", locate_config(os.path.pardir, "bind", "maas")

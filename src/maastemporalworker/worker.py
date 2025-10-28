@@ -13,8 +13,8 @@ from temporalio.api.workflowservice.v1 import (
     DescribeNamespaceRequest,
     RegisterNamespaceRequest,
 )
-from temporalio.client import Client, TLSConfig
-from temporalio.service import RPCError, RPCStatusCode
+from temporalio.client import Client
+from temporalio.service import RPCError, RPCStatusCode, TLSConfig
 from temporalio.worker import Worker as TemporalWorker
 from temporalio.worker.workflow_sandbox import (
     SandboxedWorkflowRunner,
@@ -40,8 +40,11 @@ TEMPORAL_NAMESPACE = "default"
 @async_retry()
 async def get_client_async() -> Client:
     maas_id = MAAS_ID.get()
+    assert maas_id is not None
     pid = os.getpid()
-    cert_file, key_file, cacert_file = get_maas_cluster_cert_paths()
+    cert_paths = get_maas_cluster_cert_paths()
+    assert cert_paths is not None
+    cert_file, key_file, cacert_file = cert_paths
 
     with open(cert_file, "rb") as f:
         cert = f.read()
@@ -50,13 +53,15 @@ async def get_client_async() -> Client:
     with open(cacert_file, "rb") as f:
         cacert = f.read()
 
+    shared_secret = MAAS_SHARED_SECRET.get()
+    assert shared_secret is not None
     return await Client.connect(
         f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
         identity=f"{maas_id}@region:{pid}",
         data_converter=dataclasses.replace(
             # TODO: Replace this when we switch to Pydantic 2.x
             pydantic_data_converter,
-            payload_codec=EncryptionCodec(MAAS_SHARED_SECRET.get().encode()),
+            payload_codec=EncryptionCodec(shared_secret.encode()),
         ),
         tls=TLSConfig(
             domain="maas",
@@ -96,13 +101,13 @@ class Worker:
 
     def __init__(
         self,
-        client: Client | None = None,
+        client: Client,
         task_queue: str = REGION_TASK_QUEUE,
         workflows: list[Any] | None = None,
         activities: list[Any] | None = None,
     ):
         self._worker = None
-        self._client = client
+        self._client: Client = client
         self._task_queue = task_queue
         self._workflows = workflows or []
         self._activities = activities or []
@@ -129,7 +134,6 @@ class Worker:
                 raise e
 
     async def run(self) -> None:
-        self._client = self._client or await get_client_async()
         await self._setup_namespace()
         self._worker = TemporalWorker(
             self._client,

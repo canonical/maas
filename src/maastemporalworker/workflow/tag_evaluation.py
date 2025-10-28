@@ -70,14 +70,23 @@ class TagEvaluationWorkflow:
     @workflow_run_with_context
     async def run(self, param: TagEvaluationParam) -> None:
         logger.info(f"Tag (id={param.tag_id}) evaluation starts.")
-        result: TagEvaluationResult = await workflow.execute_activity(
-            TagEvaluationActivity.evaluate_tag,
+        result = await workflow.execute_activity(
+            "evaluate-tag",
             arg=param,
             retry_policy=RetryPolicy(maximum_attempts=3),
             start_to_close_timeout=TAG_EVALUATION_ACTIVITY_TIMEOUT,
         )
+
+        # Handle both dict and TagEvaluationResult object cases
+        if isinstance(result, dict):
+            inserted = result.get("inserted", 0)
+            deleted = result.get("deleted", 0)
+        else:
+            inserted = result.inserted
+            deleted = result.deleted
+
         logger.info(
-            f"Tag (id={param.tag_id}) evaluation ends: {result.inserted} nodes were tagged and {result.deleted} nodes were untagged"
+            f"Tag (id={param.tag_id}) evaluation ends: {inserted} nodes were tagged and {deleted} nodes were untagged"
         )
 
 

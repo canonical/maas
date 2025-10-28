@@ -311,7 +311,7 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
 
     async def get_forwarded_domains(
         self,
-    ) -> List[tuple[Domain, ForwardDNSServer]]:
+    ) -> List[tuple[Domain, list[ForwardDNSServer]]]:
         return await self.repository.get_forwarded_domains()
 
     async def get_domain_for_node(self, node: Node) -> Domain:

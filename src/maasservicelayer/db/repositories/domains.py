@@ -726,7 +726,7 @@ class DomainsRepository(BaseRepository[Domain]):
 
     async def get_forwarded_domains(
         self,
-    ) -> list[tuple[Domain, ForwardDNSServer]]:
+    ) -> list[tuple[Domain, list[ForwardDNSServer]]]:
         stmt = (
             select(
                 DomainTable,
