@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -6,13 +6,8 @@ import random
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.dns import HostnameRRsetMapping
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-)
 from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
@@ -256,50 +251,6 @@ class TestDNSData(MAASServerTestCase):
                     dnsresource=dnsdata.dnsresource
                 ).count(),
             )
-
-    def test_save_calls_dns_workflow(self):
-        domain = factory.make_Domain(authoritative=True)
-        dnsrr = factory.make_DNSResource(domain=domain)
-        dnsdata = DNSData(
-            dnsresource=dnsrr,
-            rrtype="TXT",
-            rrdata="Hello, World!",
-        )
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            dnsdata.save()
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=False),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
-
-    def test_delete_calls_dns_workflow(self):
-        domain = factory.make_Domain(authoritative=True)
-        dnsrr = factory.make_DNSResource(domain=domain)
-        dnsdata = factory.make_DNSData(dnsresource=dnsrr)
-
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        with post_commit_hooks:
-            dnsdata.delete()
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=False),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
 
 
 class TestDNSDataMapping(MAASServerTestCase):

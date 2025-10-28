@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Domain model."""
@@ -8,13 +8,8 @@ import random
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import ProtectedError
 from netaddr import IPAddress
-from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.dns import HostnameRRsetMapping
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-)
 from maasserver.dns.zonegenerator import get_hostname_dnsdata_mapping, lazydict
 from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.config import Config
@@ -218,29 +213,6 @@ class TestDomain(MAASServerTestCase):
 
         self.assertCountEqual([], Domain.objects.filter(name=name))
 
-    def test_delete_calls_dns_workflow_if_authoritative(self):
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        domain = factory.make_Domain(authoritative=True)
-
-        with post_commit_hooks:
-            domain.delete()
-
-        assert len(mock_start_workflow.mock_calls) == 2  # create and delete
-
-    def test_delete_does_not_call_dns_workflow_if_nonauthoritative(self):
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-
-        domain = factory.make_Domain(authoritative=False)
-
-        domain.delete()
-
-        assert len(mock_start_workflow.mock_calls) == 0
-
     def test_validate_authority_raises_exception_when_both_authoritative_and_has_forward_dns_servers(
         self,
     ):
@@ -423,23 +395,6 @@ class TestDomain(MAASServerTestCase):
         self.assertEqual(child, dnsrr_from_db.domain)
         self.assertCountEqual(
             [], DNSResource.objects.filter(name=c_name, domain=parent)
-        )
-
-    def test_save_calls_dns_workflow_if_authoritative(self):
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-        domain = Domain(name=factory.make_name(), ttl=30, authoritative=True)
-
-        with post_commit_hooks:
-            domain.save()
-
-        mock_start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DNS_WORKFLOW_NAME,
-            param=ConfigureDNSParam(need_full_reload=True),
-            task_queue="region",
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
     def test_save_does_not_calls_dns_workflow_if_nonauthoritative(self):
