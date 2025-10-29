@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 
 from django.db import transaction
 from twisted.application.internet import TimerService
-from twisted.internet.defer import fail
+from twisted.internet.defer import fail, succeed
 
 from maasserver import bootresources
 from maasserver.components import (
@@ -78,12 +78,15 @@ class TestImportResourcesService(MAASTestCase):
         )
 
     def test_maybe_import_resources_does_not_error(self):
+        retry_patch = self.patch(bootresources, "retry")
+        retry_patch.return_value = succeed(None)
         service = bootresources.ImportResourcesService()
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         exception_type = factory.make_exception_type()
         deferToDatabase.return_value = fail(exception_type())
         d = service.maybe_import_resources()
         self.assertIsNone(extract_result(d))
+        retry_patch.assert_any_call(service._fetch_manifest, timeout=60)
 
 
 class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
@@ -92,6 +95,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
     def test_imports_resources_in_thread_if_auto(self):
         self.patch(bootresources, "import_resources")
         self.patch(bootresources, "is_dev_environment").return_value = False
+        self.patch(bootresources, "execute_workflow")
 
         with transaction.atomic():
             Config.objects.set_config("boot_images_auto_import", True)
@@ -104,6 +108,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 
     def test_no_auto_import_if_dev(self):
         self.patch(bootresources, "import_resources")
+        self.patch(bootresources, "execute_workflow")
 
         with transaction.atomic():
             Config.objects.set_config("boot_images_auto_import", True)
@@ -116,6 +121,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 
     def test_does_not_import_resources_in_thread_if_not_auto(self):
         self.patch(bootresources, "import_resources")
+        self.patch(bootresources, "execute_workflow")
 
         with transaction.atomic():
             Config.objects.set_config("boot_images_auto_import", False)
@@ -127,6 +133,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
         bootresources.import_resources.assert_not_called()
 
     def test_maybe_import_resources_logs_errback_on_failure(self):
+        self.patch(bootresources, "execute_workflow")
         with transaction.atomic():
             Config.objects.set_config("boot_images_auto_import", True)
 

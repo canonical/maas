@@ -82,6 +82,13 @@ class MAASIDNotAvailableYetError(Exception):
 log = structlog.getLogger()
 
 
+async def _setup_temporal_namespace(workers: list[TemporalWorker]) -> None:
+    tasks = []
+    for w in workers:
+        tasks.append(asyncio.create_task(w._setup_namespace()))
+    await asyncio.wait(tasks)
+
+
 async def _start_temporal_workers(workers: list[TemporalWorker]) -> None:
     tasks = []
     for w in workers:
@@ -267,6 +274,9 @@ async def main() -> None:
                 _stop_temporal_workers(temporal_workers)
             ),
         )
+
+    # The temporal namespace must exist to be able to register schedules.
+    await _setup_temporal_namespace(temporal_workers)
 
     log.info("Setting up schedules")
     await setup_schedules(temporal_client)
