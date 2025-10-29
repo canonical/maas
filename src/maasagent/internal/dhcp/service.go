@@ -58,6 +58,7 @@ const (
 	dhcpdOMAPIV6Endpoint        = "localhost:7912"
 	dhcpdNotificationSocketName = "dhcpd.sock"
 	flushInterval               = 5 * time.Second
+	expirationInterval          = time.Second
 )
 
 var (
@@ -121,6 +122,7 @@ type DHCPService struct {
 	runningV6          *atomic.Bool
 	dataPathFactory    dataPathFactory
 	server             *Server
+	expirationHandler  *ExpirationHandler
 	notificationCancel context.CancelFunc
 	serverCancel       context.CancelFunc
 	omapiConnFactory   omapiConnFactory
@@ -349,6 +351,10 @@ func (s *DHCPService) handleClusterStateUpdate(ctx context.Context, st state.Sta
 		// TODO set handler6 cluster state
 	}
 
+	if s.expirationHandler != nil {
+		s.expirationHandler.SetClusterState(st)
+	}
+
 	return nil
 }
 
@@ -392,8 +398,17 @@ func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter)
 		return err
 	}
 
+	s.expirationHandler = newExpirationHandler(expirationInterval)
+
 	go func() {
 		err := s.server.Serve(ctx)
+		if err != nil {
+			log.Err(err).Send()
+		}
+	}()
+
+	go func() {
+		err := s.expirationHandler.Start(ctx)
 		if err != nil {
 			log.Err(err).Send()
 		}

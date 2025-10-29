@@ -3,6 +3,7 @@ module maas.io/core/src/maasagent
 go 1.24.4
 
 require (
+	github.com/canonical/go-dqlite/v2 v2.0.0
 	github.com/canonical/lxd v0.0.0-20250312164442-b13c4f528bf7
 	github.com/canonical/microcluster/v2 v2.1.1-0.20250331093222-1e95efcf4f08
 	github.com/canonical/pebble v1.10.2
@@ -39,7 +40,6 @@ require (
 	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/armon/go-proxyproto v0.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/canonical/go-dqlite/v2 v2.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
