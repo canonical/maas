@@ -24,6 +24,7 @@ from temporalio.workflow import (
     random,
 )
 
+from maascommon.enums.boot_resources import BootResourceType
 from maascommon.enums.notifications import (
     NotificationCategoryEnum,
     NotificationComponent,
@@ -39,6 +40,7 @@ from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     GetFilesToDownloadForSelectionParam,
     GetFilesToDownloadReturnValue,
+    GetLocalBootResourcesParamReturnValue,
     HEARTBEAT_TIMEOUT,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
     MAX_SOURCES,
@@ -46,6 +48,7 @@ from maascommon.workflows.bootresource import (
     ResourceDeleteParam,
     ResourceDownloadParam,
     short_sha,
+    SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
     SYNC_SELECTION_WORKFLOW_NAME,
@@ -54,6 +57,9 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootresources import (
+    BootResourceClauseFactory,
+)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
@@ -87,6 +93,7 @@ GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME = (
 GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME = (
     "get-files-to-download-for-selection"
 )
+GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME = "get-local-boot-resources"
 CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME = "cleanup-old-boot-resources"
 GET_SYNCED_REGIONS_ACTIVITY_NAME = "get-synced-regions"
 REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME = "register-error-notification"
@@ -352,6 +359,42 @@ class BootResourcesActivity(ActivityBase):
                 resources=resources_to_download,
             )
 
+    @activity_defn_with_context(
+        name=GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+    )
+    async def get_manually_uploaded_resources(
+        self,
+    ) -> GetLocalBootResourcesParamReturnValue:
+        async with self.start_transaction() as services:
+            boot_resources = await services.boot_resources.get_many(
+                query=QuerySpec(
+                    where=BootResourceClauseFactory.with_rtype(
+                        BootResourceType.UPLOADED
+                    )
+                )
+            )
+
+            resources: list[ResourceDownloadParam] = []
+            for boot_resource in boot_resources:
+                resource_set = await services.boot_resource_sets.get_latest_for_boot_resource(
+                    boot_resource.id
+                )
+                assert resource_set is not None
+                files = await services.boot_resource_files.get_files_in_resource_set(
+                    resource_set.id
+                )
+                for file in files:
+                    resources.append(
+                        ResourceDownloadParam(
+                            rfile_ids=[file.id],
+                            source_list=[],  # this will get overridden with the region url
+                            sha256=file.sha256,
+                            filename_on_disk=file.filename_on_disk,
+                            total_size=file.size,
+                        )
+                    )
+            return GetLocalBootResourcesParamReturnValue(resources=resources)
+
     @activity_defn_with_context(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
     async def cleanup_old_boot_resource_sets_for_selection(
         self,
@@ -448,6 +491,43 @@ class SyncRemoteBootResourcesWorkflow:
         )
 
         logger.info(f"Sync complete for file {input.resource.sha256}")
+
+
+@workflow.defn(
+    name=SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME, sandboxed=False
+)
+class SyncAllLocalBootResourcesWorkflow:
+    """Synchronize all the manually uploaded boot resources among regions.
+
+    To be exclusively used in the `MasterImageSyncWorkflow`.
+
+    If you have to sync a new uploaded boot resource from the API you have to
+    use the `SyncBootResourcesWorkflow`.
+    """
+
+    @workflow_run_with_context
+    async def run(self) -> None:
+        resources_to_sync: GetLocalBootResourcesParamReturnValue = (
+            await workflow.execute_activity(
+                GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME,
+                start_to_close_timeout=timedelta(seconds=30),
+                result_type=GetLocalBootResourcesParamReturnValue,
+            )
+        )
+
+        if not resources_to_sync.resources:
+            return
+
+        sync_boot_resourcs_jobs = [
+            workflow.execute_child_workflow(
+                SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+                arg=SyncRequestParam(resource=resource),
+                id=f"sync-bootresources:{short_sha(resource.sha256)}",
+            )
+            for resource in resources_to_sync.resources
+        ]
+
+        await asyncio.gather(*sync_boot_resourcs_jobs)
 
 
 @workflow.defn(name=SYNC_BOOTRESOURCES_WORKFLOW_NAME, sandboxed=False)
@@ -656,8 +736,12 @@ class MasterImageSyncWorkflow:
             ]
 
             await asyncio.gather(*sync_jobs)
-            # TODO: Sync also the local boot resources. This covers the edge case
-            # when a region is added after images have been synchronized.
+            # Sync the local boot resources. This covers the edge case when a
+            # region is added after images have been synchronized.
+            await workflow.execute_child_workflow(
+                SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+                task_queue=REGION_TASK_QUEUE,
+            )
 
         except (ActivityError, ChildWorkflowError, WorkflowFailureError) as ex:
             # catch any error from activities/child workflows and report that to the user

@@ -16,6 +16,7 @@ MAX_SOURCES = 5
 DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME = "download-bootresource"
 SYNC_BOOTRESOURCES_WORKFLOW_NAME = "sync-bootresources"
 SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME = "sync-remote-bootresources"
+SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME = "sync-all-local-bootresources"
 DELETE_BOOTRESOURCE_WORKFLOW_NAME = "delete-bootresource"
 SYNC_SELECTION_WORKFLOW_NAME = "sync-selection"
 MASTER_IMAGE_SYNC_WORKFLOW_NAME = "master-image-sync"
@@ -58,6 +59,11 @@ class GetFilesToDownloadForSelectionParam:
 
 @dataclass
 class GetFilesToDownloadReturnValue:
+    resources: list[ResourceDownloadParam]
+
+
+@dataclass
+class GetLocalBootResourcesParamReturnValue:
     resources: list[ResourceDownloadParam]
 
 

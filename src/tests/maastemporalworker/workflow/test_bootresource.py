@@ -18,6 +18,10 @@ from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
+from maascommon.enums.boot_resources import (
+    BootResourceFileType,
+    BootResourceType,
+)
 from maascommon.enums.notifications import (
     NotificationCategoryEnum,
     NotificationComponent,
@@ -27,9 +31,11 @@ from maascommon.workflows.bootresource import (
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
     GetFilesToDownloadForSelectionParam,
     GetFilesToDownloadReturnValue,
+    GetLocalBootResourcesParamReturnValue,
     ResourceDeleteParam,
     ResourceDownloadParam,
     ResourceIdentifier,
+    SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
     SYNC_SELECTION_WORKFLOW_NAME,
@@ -39,17 +45,28 @@ from maascommon.workflows.bootresource import (
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootresources import (
+    BootResourceClauseFactory,
+)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
+from maasservicelayer.models.bootresourcefiles import BootResourceFile
+from maasservicelayer.models.bootresources import BootResource
+from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.bootresourcefiles import (
+    BootResourceFilesService,
+)
 from maasservicelayer.services.bootresourcefilesync import (
     BootResourceFileSyncService,
 )
+from maasservicelayer.services.bootresources import BootResourceService
+from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
@@ -86,10 +103,12 @@ from maastemporalworker.workflow.bootresource import (
     GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,
     GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
     GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME,
+    GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME,
     GET_SYNCED_REGIONS_ACTIVITY_NAME,
     MasterImageSyncWorkflow,
     REGION_TASK_QUEUE,
     REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
+    SyncAllLocalBootResourcesWorkflow,
     SyncBootResourcesWorkflow,
     SyncRemoteBootResourcesWorkflow,
     SyncSelectionWorkflow,
@@ -667,6 +686,85 @@ class TestGetFilesToDownloadForSelectionActivity:
         services_mock.image_sync.get_files_to_download_from_product_list.assert_awaited_once()
 
 
+class TestGetManuallyUploadedResourcesActivity:
+    async def test_calls_service_layer(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+        activity_env: ActivityEnvironment,
+    ) -> None:
+        boot_resource = BootResource(
+            id=1,
+            rtype=BootResourceType.UPLOADED,
+            name="test",
+            architecture="amd64/generic",
+            extra={},
+            rolling=False,
+            base_image="",
+        )
+        boot_resource_set = BootResourceSet(
+            id=1,
+            version="20251028",
+            label="uploaded",
+            resource_id=boot_resource.id,
+        )
+        boot_resource_files = [
+            BootResourceFile(
+                id=i,
+                filename=f"test-{i}",
+                filetype=BootResourceFileType.SQUASHFS_IMAGE,
+                sha256=str(i) * 64,
+                size=100,
+                extra={},
+                filename_on_disk=str(i) * 7,
+            )
+            for i in range(3)
+        ]
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_many = AsyncMock(
+            return_value=[boot_resource]
+        )
+
+        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
+        services_mock.boot_resource_sets.get_latest_for_boot_resource = (
+            AsyncMock(return_value=boot_resource_set)
+        )
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.get_files_in_resource_set = (
+            AsyncMock(return_value=boot_resource_files)
+        )
+
+        resources_result = await activity_env.run(
+            boot_activities.get_manually_uploaded_resources
+        )
+
+        assert resources_result.resources == [
+            ResourceDownloadParam(
+                rfile_ids=[file.id],
+                source_list=[],  # this will get overridden with the region url
+                sha256=file.sha256,
+                filename_on_disk=file.filename_on_disk,
+                total_size=file.size,
+            )
+            for file in boot_resource_files
+        ]
+
+        services_mock.boot_resources.get_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_rtype(
+                    BootResourceType.UPLOADED
+                )
+            )
+        )
+
+        services_mock.boot_resource_sets.get_latest_for_boot_resource.assert_awaited_once_with(
+            boot_resource.id
+        )
+        services_mock.boot_resource_files.get_files_in_resource_set.assert_awaited_once_with(
+            boot_resource_set.id
+        )
+
+
 class TestCleanupOldBootResourcesActivity:
     async def test_calls_image_sync_service(
         self,
@@ -778,6 +876,9 @@ class MockActivities:
         self.download_bootresourcefile_result = True
         self.get_synced_regions_for_file_result = []
         self.get_all_highest_priority_selections_result = [1, 2]
+        self.get_manually_uploaded_resources_result = (
+            GetLocalBootResourcesParamReturnValue(resources=[])
+        )
         self.get_files_to_download_for_selection_result = {
             1: (
                 GetFilesToDownloadReturnValue(
@@ -839,6 +940,12 @@ class MockActivities:
         return self.get_files_to_download_for_selection_result[
             param.selection_id
         ]
+
+    @activity.defn(name=GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME)
+    async def get_manually_uploaded_resources(
+        self,
+    ) -> GetLocalBootResourcesParamReturnValue:
+        return self.get_manually_uploaded_resources_result
 
     @activity.defn(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
     async def cleanup_old_boot_resource_sets_for_selection(
@@ -931,6 +1038,7 @@ async def _shared_queue_worker(
             SyncRemoteBootResourcesWorkflow,
             SyncBootResourcesWorkflow,
             SyncSelectionWorkflow,
+            SyncAllLocalBootResourcesWorkflow,
             MasterImageSyncWorkflow,
             FetchManifestWorkflow,
         ],
@@ -1281,6 +1389,91 @@ class TestSyncSelectionWorkflow:
         )
 
 
+class TestSyncAllBootResourcesWorkflow:
+    async def test_no_local_resources(
+        self,
+        client: Client,
+        single_region_workers,
+        temporal_calls: TemporalCalls,
+    ) -> None:
+        await client.execute_workflow(
+            SyncAllLocalBootResourcesWorkflow.run,
+            id="test-sync-all-local",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        temporal_calls.assert_activity_called_once(
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+        )
+        temporal_calls.assert_child_workflow_not_called(
+            SYNC_BOOTRESOURCES_WORKFLOW_NAME
+        )
+
+    async def test_single_region(
+        self,
+        client: Client,
+        single_region_workers,
+        temporal_calls: TemporalCalls,
+        mock_activities: MockActivities,
+        resource_download_param: ResourceDownloadParam,
+    ) -> None:
+        mock_activities.get_manually_uploaded_resources_result = (
+            GetLocalBootResourcesParamReturnValue(
+                resources=[resource_download_param]
+            )
+        )
+        await client.execute_workflow(
+            SyncAllLocalBootResourcesWorkflow.run,
+            id="test-sync-all-local",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        temporal_calls.assert_activity_called_once(
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+        )
+        temporal_calls.assert_child_workflow_called_once(
+            SYNC_BOOTRESOURCES_WORKFLOW_NAME
+        )
+        # Single region, nothing to sync
+        temporal_calls.assert_child_workflow_not_called(
+            DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME
+        )
+
+    async def test_three_region(
+        self,
+        client: Client,
+        three_region_workers,
+        temporal_calls: TemporalCalls,
+        region1_system_id: str,
+        mock_activities: MockActivities,
+        resource_download_param: ResourceDownloadParam,
+    ) -> None:
+        mock_activities.get_manually_uploaded_resources_result = (
+            GetLocalBootResourcesParamReturnValue(
+                resources=[resource_download_param]
+            )
+        )
+        mock_activities.get_synced_regions_for_file_result = [
+            region1_system_id
+        ]
+        await client.execute_workflow(
+            SyncAllLocalBootResourcesWorkflow.run,
+            id="test-sync-all-local",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        temporal_calls.assert_activity_called_once(
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+        )
+        temporal_calls.assert_child_workflow_called_once(
+            SYNC_BOOTRESOURCES_WORKFLOW_NAME
+        )
+        # two regions need the file
+        temporal_calls.assert_child_workflow_called_times(
+            DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, times=2
+        )
+
+
 class TestMasterImageSyncWorkflow:
     """Tests for MasterImageSyncWorkflow"""
 
@@ -1307,6 +1500,9 @@ class TestMasterImageSyncWorkflow:
         )
         temporal_calls.assert_activity_called_once(
             DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME
+        )
+        temporal_calls.assert_child_workflow_called_once(
+            SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME
         )
 
     @pytest.mark.asyncio
@@ -1337,6 +1533,9 @@ class TestMasterImageSyncWorkflow:
         )
         temporal_calls.assert_activity_called_once(
             DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME
+        )
+        temporal_calls.assert_child_workflow_called_once(
+            SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME
         )
 
     @pytest.mark.asyncio
