@@ -610,7 +610,12 @@ class BootResourceStore(ObjectStore):
         self._content_to_finalize.clear()
 
     def _get_http_proxy(self) -> str | None:
-        cfg = Config.objects.get_configs(["enable_http_proxy", "http_proxy"])
+        cfg = Config.objects.get_configs(
+            ["enable_http_proxy", "http_proxy", "boot_images_no_proxy"]
+        )
+        if cfg["boot_images_no_proxy"] is True:
+            # We don't have to use a proxy for downloading images
+            return None
         return cfg["http_proxy"] if cfg["enable_http_proxy"] else None
 
     def calc_storage_size(self) -> int:
