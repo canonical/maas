@@ -10,7 +10,7 @@ NODEJS_VERSION := 20.9.0
 YARN_VERSION := 1.22.17
 
 UI_REVISION := $(shell git -C $(SRC_DIR) rev-parse HEAD)
-TARBALL_NAME := maas_ui_$(UI_REVISION)_tar.gz
+TARBALL_NAME := maas_ui_$(UI_REVISION).tgz
 
 .DEFAULT_GOAL := build
 
