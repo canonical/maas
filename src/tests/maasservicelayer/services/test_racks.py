@@ -231,3 +231,12 @@ class TestRacksService(ServiceCommonTests):
             name="maas_url"
         )
         mock_get_maas_cluster_cert_paths.assert_called_once()
+
+    async def test_list_with_summary_calls_repository(
+        self, service_instance: RacksService
+    ) -> None:
+        mock_repository = Mock(RacksRepository)
+        service_instance.repository = mock_repository
+        await service_instance.list_with_summary(1, 20)
+
+        mock_repository.list_with_summary.assert_called_once_with(1, 20)

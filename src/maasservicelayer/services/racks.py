@@ -17,8 +17,9 @@ from maasservicelayer.db.repositories.bootstraptokens import (
     BootstrapTokensClauseFactory,
 )
 from maasservicelayer.db.repositories.racks import RacksRepository
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.configurations import MAASUrlConfig
-from maasservicelayer.models.racks import Rack
+from maasservicelayer.models.racks import Rack, RackWithSummary
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
@@ -162,3 +163,8 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
         await self.bootstraptokens_service.create(bootstraptoken_builder)
 
         return token
+
+    async def list_with_summary(
+        self, page: int, size: int
+    ) -> ListResult[RackWithSummary]:
+        return await self.repository.list_with_summary(page, size)

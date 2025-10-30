@@ -3,7 +3,7 @@
 
 from base64 import b64encode
 import json
-from typing import Self
+from typing import List, Self
 
 from pydantic import BaseModel
 
@@ -13,7 +13,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maasservicelayer.models.racks import Rack
+from maasservicelayer.models.racks import Rack, RackWithSummary
 
 
 class RackResponse(HalResponse[BaseHal]):
@@ -47,3 +47,29 @@ class RackBootstrapTokenResponse(BaseModel):
         token_b64_bytes = b64encode(json.dumps(token).encode("utf-8"))
         token_b64_str = token_b64_bytes.decode("utf-8")
         return cls(token=token_b64_str)
+
+
+class RackWithSummaryResponse(HalResponse[BaseHal]):
+    kind = "RackWithSummary"
+    id: int
+    name: str
+    registered_agents_system_ids: List[str]
+
+    @classmethod
+    def from_model(
+        cls, rack: RackWithSummary, self_base_hyperlink: str
+    ) -> Self:
+        return cls(
+            id=rack.id,
+            name=rack.name,
+            registered_agents_system_ids=rack.registered_agents_system_ids,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{rack.id}"
+                )
+            ),
+        )
+
+
+class RackWithSummaryListResponse(PaginatedResponse[RackWithSummaryResponse]):
+    kind = "RackWithSummaryList"

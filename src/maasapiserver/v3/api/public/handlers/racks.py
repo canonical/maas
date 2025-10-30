@@ -21,6 +21,8 @@ from maasapiserver.v3.api.public.models.responses.racks import (
     RackBootstrapTokenResponse,
     RackListResponse,
     RackResponse,
+    RackWithSummaryListResponse,
+    RackWithSummaryResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -66,6 +68,46 @@ class RacksHandler(Handler):
             total=racks.total,
             next=(
                 f"{V3_API_PREFIX}/racks?"
+                f"{pagination_params.to_next_href_format()}"
+                if racks.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+        )
+
+    @handler(
+        path="/racks_with_summary",
+        methods=["GET"],
+        summary="List racks with a summary.",
+        tags=TAGS,
+        responses={200: {"model": RackWithSummaryListResponse}},
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_racks_with_summary(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        racks = await services.racks.list_with_summary(
+            page=pagination_params.page, size=pagination_params.size
+        )
+
+        return RackWithSummaryListResponse(
+            items=[
+                RackWithSummaryResponse.from_model(
+                    rack=rack,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/racks",
+                )
+                for rack in racks.items
+            ],
+            total=racks.total,
+            next=(
+                f"{V3_API_PREFIX}/racks_with_summary?"
                 f"{pagination_params.to_next_href_format()}"
                 if racks.has_next(
                     pagination_params.page, pagination_params.size
