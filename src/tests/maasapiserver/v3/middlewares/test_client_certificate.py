@@ -18,6 +18,7 @@ def middleware():
     return RequireClientCertMiddleware(Mock(ASGIApp))
 
 
+@pytest.mark.asyncio
 class TestRequireClientCertMiddleware:
     async def test_missing_client_cert_returns_403(self, middleware):
         mock_scope = {
@@ -25,7 +26,7 @@ class TestRequireClientCertMiddleware:
             "method": "GET",
             "path": "/secure-endpoint",
             "headers": [],
-            "extensions": {},
+            "extensions": {"tls": {"tls_used": True, "client_cert_chain": []}},
         }
         mock_request = Request(mock_scope)
 
@@ -37,7 +38,6 @@ class TestRequireClientCertMiddleware:
         assert response.status_code == 403
         assert response.body == b'{"detail":"Client certificate required."}'
 
-    @pytest.mark.asyncio
     async def test_valid_client_cert_allows_request(self, middleware):
         mock_scope = {
             "type": "http",
@@ -45,7 +45,7 @@ class TestRequireClientCertMiddleware:
             "path": "/secure-endpoint",
             "headers": [],
             "extensions": {
-                "tls": {"CN": "01f09d32-f508-6064-bd1c-c025a58dd068"},
+                "tls": {"client_cn": "01f09d32-f508-6064-bd1c-c025a58dd068"},
             },
         }
         mock_request = Request(mock_scope)

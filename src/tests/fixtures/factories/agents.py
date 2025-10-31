@@ -11,7 +11,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_agents_entry(
     fixture: Fixture,
     uuid: str,
-    rack_id: str,
+    rack_id: int,
     rackcontroller_id: int,
     **extra_details,
 ) -> Agent:

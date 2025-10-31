@@ -318,7 +318,7 @@ class DeployManyWorkflow:
 
     @workflow_run_with_context
     async def run(self, params: DeployManyParam) -> None:
-        pending: list[workflow.ChildWorkflowHandle] = []
+        pending: set[workflow.ChildWorkflowHandle] = set()
 
         for param in params.params:
             wf = await workflow.start_child_workflow(
@@ -331,7 +331,7 @@ class DeployManyWorkflow:
                 ),
                 execution_timeout=timedelta(minutes=param.timeout),
             )
-            pending.append(wf)
+            pending.add(wf)
 
         while pending:
             done, pending = await asyncio.wait(

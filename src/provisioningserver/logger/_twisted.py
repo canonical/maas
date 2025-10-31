@@ -170,17 +170,33 @@ class LogFormatter:
             else self.__plaintext_formatter
         )
 
-    def __json_formatter(self, record: dict) -> str:
-        return json.dumps(record)
+    def __json_formatter(self, event) -> str:
+        log_record = {
+            "level": self.__get_event_level(event),
+            "message": self.__get_event_text(event),
+            "name": self.__get_event_system(event),
+            "trace_id": get_trace_id(),
+            "thread": f"{threading.current_thread().name}:{threading.current_thread().ident}",
+        }
+        # Add security logging items if they exist
+        security_items = ["type", "userID", "role"]
+        extra_records = {
+            item: event[item] for item in security_items if item in event
+        }
+        log_record.update(extra_records)
+        return json.dumps(log_record)
 
-    def __plaintext_formatter(self, record: dict):
+    def __plaintext_formatter(self, event):
         return DEFAULT_LOG_FORMAT % {
-            "levelname": record["level"],
-            "message": record["message"],
-            "name": record["name"],
+            "levelname": self.__get_event_level(event),
+            "message": self.__get_event_text(event),
+            "name": self.__get_event_system(event),
         }
 
     def __call__(self, event):
+        return self._formatter(event) + "\n"
+
+    def __get_event_text(self, event) -> str:
         """Format a "modern" event according to MAAS's conventions."""
         text = twistedModern.formatEvent(event)
         if "log_failure" in event:
@@ -189,20 +205,17 @@ class LogFormatter:
             except Exception:
                 traceback = "(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
             text = "\n".join((text, traceback))
+        return "-" if text is None else text.replace("\n", "\n\t")
+
+    def __get_event_level(self, event) -> str:
         level = event["log_level"] if "log_level" in event else None
+        return "-" if level is None else level.name
+
+    def __get_event_system(self, event) -> str:
         system = event["log_system"] if "log_system" in event else None
         if system is None and "log_namespace" in event:
             system = _getSystemName(event["log_namespace"])
-
-        log_record = {
-            "level": "-" if level is None else level.name,
-            "message": "-" if text is None else text.replace("\n", "\n\t"),
-            "name": "-" if system is None else system,
-            "trace_id": get_trace_id(),
-            "thread": f"{threading.current_thread().name}:{threading.current_thread().ident}",
-        }
-
-        return self._formatter(log_record) + "\n"
+        return "-" if system is None else system
 
 
 def _getSystemName(system):

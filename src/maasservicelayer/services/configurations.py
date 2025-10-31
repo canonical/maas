@@ -6,6 +6,7 @@ from typing import Any, TypeVar
 
 import structlog
 
+from maascommon.logging.security import AUTHZ_ADMIN, SECURITY
 from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
@@ -165,6 +166,7 @@ class ConfigurationsService(Service):
             logger.warn(
                 f"The configuration '{name}' is not known. Anyways, it's going to be stored in the DB."
             )
+        logger.info(f"{AUTHZ_ADMIN}:configuration:set:{name}", type=SECURITY)
         if config_model and (config_model.hook_required and hook_guard):
             raise RuntimeError(
                 f"The configuration '{name}' requires a hook but the check is not bypassed. This is likely to be a programming error. Please use HookedConfigurationService instead."

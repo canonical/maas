@@ -1,10 +1,12 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+import typing
 
 import typing
 
 from pydantic import BaseModel
 
+from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse
 from maasservicelayer.models.external_auth import OAuthProvider
 
 
@@ -39,6 +41,7 @@ class OAuthProviderResponse(BaseModel):
     redirect_uri: str
     scopes: str
     enabled: bool
+    id: int
 
     @classmethod
     def from_model(cls, provider: OAuthProvider) -> typing.Self:
@@ -50,4 +53,9 @@ class OAuthProviderResponse(BaseModel):
             redirect_uri=provider.redirect_uri,
             scopes=provider.scopes,
             enabled=provider.enabled,
+            id=provider.id,
         )
+
+
+class OAuthProvidersListResponse(PaginatedResponse[OAuthProviderResponse]):
+    kind = "AuthProvidersList"

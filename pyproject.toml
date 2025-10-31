@@ -189,7 +189,7 @@ filterwarnings = "error::BytesWarning"
 testpaths = [ "src/tests" ]
 
 [tool.pyright]
-include = [ "src/maascommon", "src/maasservicelayer", "src/maasapiserver" ]
+include = [ "src/maascommon", "src/maasservicelayer", "src/maasapiserver", "src/maastemporalworker" ]
 exclude = [ "src/maasservicelayer/auth/macaroons", "src/maasservicelayer/services/machines_v2.py" ]
 
 executionEnvironments = [

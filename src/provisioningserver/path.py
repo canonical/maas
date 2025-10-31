@@ -19,7 +19,7 @@ def get_path_env(env):
         return path
 
 
-def get_tentative_data_path(*path_elements):
+def get_tentative_data_path(*path_elements) -> str:
     """Return an absolute path based on the `MAAS_ROOT` environment variable.
 
     Use this to compute paths like ``/var/lib/maas/gnupg``, so that snap, demo,

@@ -48,10 +48,14 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["rack_id"],
             ["maasserver_rack.id"],
+            initially="DEFERRED",
+            deferrable=True,
         ),
         sa.ForeignKeyConstraint(
             ["rackcontroller_id"],
             ["maasserver_node.id"],
+            initially="DEFERRED",
+            deferrable=True,
         ),
         sa.UniqueConstraint("uuid"),
         sa.UniqueConstraint("rack_id", "rackcontroller_id"),

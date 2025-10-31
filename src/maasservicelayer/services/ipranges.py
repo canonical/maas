@@ -36,6 +36,8 @@ from maasservicelayer.services.temporal import TemporalService
 class IPRangesService(
     BaseService[IPRange, IPRangesRepository, IPRangeBuilder]
 ):
+    resource_logging_name = "iprange"
+
     def __init__(
         self,
         context: Context,

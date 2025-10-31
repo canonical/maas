@@ -8,11 +8,15 @@ from urllib.parse import urlparse
 from jose import jwt
 import pytest
 from temporalio.client import Client, WorkflowExecutionDescription
+from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.workflows.msm import (
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
+    MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+    MSM_TOKEN_REFRESH_WORKFLOW_NAME,
+    MSMRestoreDefaultBootSourceParam,
 )
 from maasserver.workflow import REGION_TASK_QUEUE
 from maasservicelayer.models.configurations import (
@@ -29,6 +33,7 @@ from maasservicelayer.services.msm import (
     MSMTemporalQuery,
     SITE_AUDIENCE,
 )
+from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.configuration import create_test_configuration
@@ -267,4 +272,40 @@ class TestMSMStatus:
                     MSMTemporalQuery.IS_RUNNING,
                 ),
             ]
+        )
+
+
+class TestMSMWithdraw:
+    async def test_withdraw(self, services, temporal_client_mock):
+        expected_url = "http://test-msm.dev"
+        secret = {
+            "url": expected_url,
+        }
+        services.msm.secrets_service = Mock(SecretsService)
+        services.msm.secrets_service.get_composite_secret = AsyncMock(
+            return_value=secret
+        )
+        services.msm.temporal_service.get_temporal_client = AsyncMock(
+            return_value=temporal_client_mock
+        )
+        services.msm.temporal_service.cancel_workflow = AsyncMock()
+
+        await services.msm.withdraw()
+
+        expected_wf_cancels = [
+            f"{MSM_ENROL_SITE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            f"{MSM_HEARTBEAT_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            f"{MSM_TOKEN_REFRESH_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+        ]
+        expected_calls = [call(wf_id) for wf_id in expected_wf_cancels]
+        assert (
+            services.msm.temporal_service.cancel_workflow.call_args_list
+            == expected_calls
+        )
+        temporal_client_mock.start_workflow.assert_called_once_with(
+            MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+            arg=MSMRestoreDefaultBootSourceParam(sm_url=secret["url"]),
+            id=f"{MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            task_queue=REGION_TASK_QUEUE,
+            id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
         )

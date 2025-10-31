@@ -245,6 +245,12 @@ def make_VaultSecretsCleanupService():
     return VaultSecretsCleanupService(reactor)
 
 
+def make_DNSReloadService():
+    from maasserver.regiondservices import dns
+
+    return dns.DNSReloadService(reactor)
+
+
 class MAASServices(MultiService):
     def __init__(self, eventloop):
         self.eventloop = eventloop
@@ -436,6 +442,11 @@ class RegionEventLoop:
         "temporal": {
             "only_on_master": True,
             "factory": make_TemporalService,
+            "requires": [],
+        },
+        "dns-reload": {
+            "only_on_master": True,
+            "factory": make_DNSReloadService,
             "requires": [],
         },
     }

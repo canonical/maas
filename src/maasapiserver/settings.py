@@ -18,7 +18,7 @@ logger = structlog.getLogger()
 
 @dataclass
 class Config:
-    db: DatabaseConfig | None
+    db: DatabaseConfig
     debug: bool = False
     debug_queries: bool = False
     debug_http: bool = False
@@ -88,23 +88,12 @@ async def _get_default_db_config(
 
 
 async def read_config() -> Config:
-    try:
-        with RegionConfiguration.open() as config:
-            database_config = await _get_default_db_config(config)
-            debug = config.debug
-            debug_queries = debug or config.debug_queries
-            debug_http = debug or config.debug_http
-            num_workers = config.num_workers
-    except (FileNotFoundError, KeyError, ValueError):
-        # The regiond.conf will attempt to be loaded when the 'maas' command
-        # is read by a standard user. We allow this to fail and miss configure the
-        # database information. Django will still complain since no 'default'
-        # connection is defined.
-        database_config = None
-        debug = False
-        debug_queries = False
-        debug_http = False
-        num_workers = 4
+    with RegionConfiguration.open() as config:
+        database_config = await _get_default_db_config(config)
+        debug = config.debug
+        debug_queries = debug or config.debug_queries
+        debug_http = debug or config.debug_http
+        num_workers = config.num_workers
 
     return Config(
         db=database_config,

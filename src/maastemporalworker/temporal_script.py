@@ -46,16 +46,12 @@ from maastemporalworker.workflow.dhcp import (
     ConfigureDHCPWorkflow,
     DHCPConfigActivity,
 )
-from maastemporalworker.workflow.dns import (
-    ConfigureDNSWorkflow,
-    DNSConfigActivity,
-)
 from maastemporalworker.workflow.msm import (
     MSMConnectorActivity,
     MSMEnrolSiteWorkflow,
     MSMHeartbeatWorkflow,
+    MSMRestoreDefaultBootSourceWorkflow,
     MSMTokenRefreshWorkflow,
-    MSMWithdrawWorkflow,
 )
 from maastemporalworker.workflow.power import (
     PowerActivity,
@@ -127,6 +123,7 @@ async def main() -> None:
 
     log.info("starting region temporal-worker process")
     log.debug("connecting to MAAS DB")
+    assert config.db is not None
     db = Database(config.db, echo=config.debug_queries)
 
     # In maasserver we have a startup lock. If it is set, we have to wait to start the worker as well.
@@ -158,7 +155,6 @@ async def main() -> None:
     )
     deploy_activity = DeployActivity(db, services_cache, temporal_client)
     dhcp_activity = DHCPConfigActivity(db, services_cache, temporal_client)
-    dns_activity = DNSConfigActivity(db, services_cache, temporal_client)
     power_activity = PowerActivity(db, services_cache, temporal_client)
 
     temporal_workers = [
@@ -183,14 +179,13 @@ async def main() -> None:
                 ConfigureAgentWorkflow,
                 ConfigureDHCPWorkflow,
                 ConfigureDHCPForAgentWorkflow,
-                ConfigureDNSWorkflow,
                 # Lifecycle workflows
                 DeployManyWorkflow,
                 DeployWorkflow,
                 CommissionNWorkflow,
                 # MSM Connector service
                 MSMEnrolSiteWorkflow,
-                MSMWithdrawWorkflow,
+                MSMRestoreDefaultBootSourceWorkflow,
                 MSMHeartbeatWorkflow,
                 MSMTokenRefreshWorkflow,
                 # Power workflows
@@ -228,8 +223,6 @@ async def main() -> None:
                 dhcp_activity.fetch_hosts_for_update,
                 dhcp_activity.get_omapi_key,
                 dhcp_activity.get_dhcp_data_for_agent,
-                # DNS activities
-                dns_activity.get_region_controllers,
                 # MSM connector activities,
                 msm_activity.check_enrol,
                 msm_activity.get_enrol,
@@ -242,6 +235,9 @@ async def main() -> None:
                 msm_activity.set_bootsource,
                 msm_activity.get_bootsources,
                 msm_activity.delete_bootsources,
+                msm_activity.delete_selections,
+                msm_activity.get_msm_boot_source_id,
+                msm_activity.restore_default_boot_source,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities
@@ -260,11 +256,6 @@ async def main() -> None:
                 # Boot resources activities
                 boot_res_activity.delete_bootresourcefile,
                 boot_res_activity.download_bootresourcefile,
-                # dns activities
-                dns_activity.get_changes_since_current_serial,
-                dns_activity.full_reload_dns_configuration,
-                dns_activity.dynamic_update_dns_configuration,
-                dns_activity.check_serial_update,
             ],
         ),
     ]

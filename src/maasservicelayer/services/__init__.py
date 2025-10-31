@@ -344,7 +344,6 @@ class ServiceCollectionV3:
         )
         services.dnspublications = DNSPublicationsService(
             context=context,
-            temporal_service=services.temporal,
             dnspublication_repository=DNSPublicationRepository(context),
         )
         services.nodes = NodesService(
@@ -587,7 +586,8 @@ class ServiceCollectionV3:
             ),  # type: ignore
         )
         services.external_oauth = ExternalOAuthService(
-            external_oauth_repository=ExternalOAuthRepository(context)
+            context=context,
+            external_oauth_repository=ExternalOAuthRepository(context),
         )
         services.agents = AgentsService(
             context=context,

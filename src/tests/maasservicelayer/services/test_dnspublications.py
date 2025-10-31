@@ -4,14 +4,8 @@
 from unittest.mock import Mock
 
 import pytest
-from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.dns import DnsUpdateAction
-from maascommon.workflows.dns import (
-    CONFIGURE_DNS_WORKFLOW_NAME,
-    ConfigureDNSParam,
-    merge_configure_dns_params,
-)
 from maasservicelayer.builders.dnspublications import DNSPublicationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.dnspublications import (
@@ -21,7 +15,6 @@ from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.dnspublications import DNSPublication
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
-from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -32,7 +25,6 @@ class TestDNSPublicationsService(ServiceCommonTests):
     def service_instance(self) -> BaseService:
         return DNSPublicationsService(
             context=Context(),
-            temporal_service=Mock(TemporalService),
             dnspublication_repository=Mock(DNSPublicationRepository),
         )
 
@@ -46,25 +38,13 @@ class TestDNSPublicationsService(ServiceCommonTests):
         dnspublication_repository = Mock(DNSPublicationRepository)
         dnspublication_repository.get_latest_serial.return_value = 1
 
-        temporal_service = Mock(TemporalService)
-
         service = DNSPublicationsService(
             context=Context(),
-            temporal_service=temporal_service,
             dnspublication_repository=dnspublication_repository,
         )
 
         await service.create_for_config_update(
             source="", action=DnsUpdateAction.RELOAD, timestamp=now
-        )
-
-        temporal_service.register_or_update_workflow_call.assert_called_once_with(
-            CONFIGURE_DNS_WORKFLOW_NAME,
-            ConfigureDNSParam(need_full_reload=True),
-            parameter_merge_func=merge_configure_dns_params,
-            wait=False,
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
 
         dnspublication_repository.create.assert_called_once_with(
@@ -82,11 +62,8 @@ class TestDNSPublicationsService(ServiceCommonTests):
         dnspublication_repository = Mock(DNSPublicationRepository)
         dnspublication_repository.get_latest_serial.return_value = 1
 
-        temporal_service = Mock(TemporalService)
-
         service = DNSPublicationsService(
             context=Context(),
-            temporal_service=temporal_service,
             dnspublication_repository=dnspublication_repository,
         )
 
@@ -101,15 +78,6 @@ class TestDNSPublicationsService(ServiceCommonTests):
             timestamp=now,
         )
 
-        temporal_service.register_or_update_workflow_call.assert_called_once_with(
-            CONFIGURE_DNS_WORKFLOW_NAME,
-            ConfigureDNSParam(need_full_reload=False),
-            parameter_merge_func=merge_configure_dns_params,
-            wait=False,
-            workflow_id="configure-dns",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
-
         dnspublication_repository.create.assert_called_once_with(
             builder=DNSPublicationBuilder(
                 serial=1,
@@ -117,19 +85,4 @@ class TestDNSPublicationsService(ServiceCommonTests):
                 update="INSERT example.com test A 30 1.1.1.1",
                 created=now,
             )
-        )
-
-    async def test_get_publications_since_serial(self):
-        dnspublication_repository = Mock(DNSPublicationRepository)
-
-        service = DNSPublicationsService(
-            context=Context(),
-            temporal_service=Mock(TemporalService),
-            dnspublication_repository=dnspublication_repository,
-        )
-
-        await service.get_publications_since_serial(1)
-
-        dnspublication_repository.get_publications_since_serial.assert_called_once_with(
-            1
         )

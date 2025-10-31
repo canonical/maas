@@ -25,6 +25,8 @@ from maasservicelayer.services.base import BaseService
 class ResourcePoolsService(
     BaseService[ResourcePool, ResourcePoolRepository, ResourcePoolBuilder]
 ):
+    resource_logging_name = "resourcepool"
+
     def __init__(
         self,
         context: Context,

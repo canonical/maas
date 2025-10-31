@@ -9,12 +9,16 @@ from jose import jwt
 from jose.exceptions import JWTClaimsError
 import structlog
 from temporalio.common import WorkflowIDReusePolicy
+from temporalio.service import RPCError
 
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.workflows.msm import (
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
+    MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+    MSM_TOKEN_REFRESH_WORKFLOW_NAME,
     MSMEnrolParam,
+    MSMRestoreDefaultBootSourceParam,
 )
 from maasservicelayer.context import Context
 from maasservicelayer.models.configurations import (
@@ -196,6 +200,33 @@ class MSMService(Service):
         )
 
     async def withdraw(self) -> None:
-        await self.temporal_service.cancel_workflow(
-            f"{MSM_ENROL_SITE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}"
+        """
+        Cancel any running MSM workflows, and run a workflow to restore
+        the boot source back to the default.
+        """
+        workflows_to_cancel = [
+            f"{MSM_ENROL_SITE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            f"{MSM_HEARTBEAT_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            f"{MSM_TOKEN_REFRESH_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+        ]
+        for wf in workflows_to_cancel:
+            try:
+                await self.temporal_service.cancel_workflow(wf)
+            except RPCError:
+                # some of these workflows may be done or not started,
+                # simply continue if they don't exist.
+                continue
+        msm_creds = await self.secrets_service.get_composite_secret(
+            MSMConnectorSecret(), default=None
+        )
+        if not msm_creds:
+            return None
+        client = await self.temporal_service.get_temporal_client()
+        param = MSMRestoreDefaultBootSourceParam(sm_url=msm_creds["url"])
+        await client.start_workflow(
+            MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+            arg=param,
+            id=f"{MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            task_queue=REGION_TASK_QUEUE,
+            id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
         )

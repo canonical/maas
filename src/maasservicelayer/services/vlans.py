@@ -32,6 +32,8 @@ DEFAULT_MTU = 1500
 
 
 class VlansService(BaseService[Vlan, VlansRepository, VlanBuilder]):
+    resource_logging_name = "vlan"
+
     def __init__(
         self,
         context: Context,

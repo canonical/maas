@@ -14,7 +14,7 @@ import tempita
 from provisioningserver.utils import snap
 
 
-def locate_config(*path: Tuple[str]):
+def locate_config(*path: Tuple[str]) -> str:
     """Return the location of a given config file or directory.
 
     :param path: Path elements to resolve relative to `${MAAS_ROOT}/etc/maas`.

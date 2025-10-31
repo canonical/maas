@@ -18,6 +18,7 @@ from maasapiserver.v3.api.public.models.responses.racks import (
     RackBootstrapTokenResponse,
     RackListResponse,
     RackResponse,
+    RackWithSummaryListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
@@ -33,7 +34,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.racks import Rack
+from maasservicelayer.models.racks import Rack, RackWithSummary
 from maasservicelayer.services import AgentsService, ServiceCollectionV3
 from maasservicelayer.services.racks import RacksService
 from maasservicelayer.utils.date import utcnow
@@ -126,6 +127,70 @@ class TestRacksApi(ApiCommonTests):
         assert len(racks_response.items) == 2
         assert racks_response.total == 2
         assert racks_response.next == f"{self.BASE_PATH}?page=2&size=1"
+
+    async def test_list_with_summary_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.racks = Mock(RacksService)
+        services_mock.racks.list_with_summary.return_value = ListResult(
+            items=[
+                RackWithSummary(
+                    id=1,
+                    name=TEST_RACK_1.name,
+                    registered_agents_system_ids=["abc123"],
+                )
+            ],
+            total=1,
+        )
+
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}_with_summary?page=1&size=20"
+        )
+
+        assert response.status_code == 200
+        summary_response = RackWithSummaryListResponse(**response.json())
+        assert summary_response.next is None
+        assert summary_response.kind == "RackWithSummaryList"
+        assert summary_response.total == 1
+        assert len(summary_response.items[0].registered_agents_system_ids) == 1
+
+    async def test_list_with_summary_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.racks = Mock(RacksService)
+        services_mock.racks.list_with_summary.return_value = ListResult(
+            items=[
+                RackWithSummary(
+                    id=1,
+                    name=TEST_RACK_1.name,
+                    registered_agents_system_ids=["abc123"],
+                ),
+                RackWithSummary(
+                    id=2,
+                    name=TEST_RACK_2.name,
+                    registered_agents_system_ids=["def123"],
+                ),
+            ],
+            total=2,
+        )
+
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}_with_summary?page=1&size=1"
+        )
+
+        assert response.status_code == 200
+        summary_response = RackWithSummaryListResponse(**response.json())
+        assert (
+            summary_response.next
+            == f"{self.BASE_PATH}_with_summary?page=2&size=1"
+        )
+        assert summary_response.kind == "RackWithSummaryList"
+        assert summary_response.total == 2
+        assert len(summary_response.items[0].registered_agents_system_ids) == 1
 
     async def test_get_200(
         self,

@@ -424,7 +424,7 @@ class TestLogFormatter(MAASTestCase):
         self.addCleanup(set_trace_id, "")
         set_trace_id("test_trace_id")
         log_system = factory.make_name("system")
-        log_format = "test"
+        log_format = "{test}"
         log_time = pick_log_time()
         self.assertEqual(
             {

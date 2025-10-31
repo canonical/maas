@@ -32,11 +32,12 @@ from provisioningserver.dns.actions import (
 )
 from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.dns.zoneconfig import DNSReverseZoneConfig
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.shell import ExternalProcessError
 
 maaslog = get_maas_logger("dns")
+log = LegacyLogger()
 
 
 def current_zone_serial():
@@ -78,6 +79,7 @@ def dns_update_all_zones(
     reload_timeout=2,
     dynamic_updates=None,
     requires_reload=False,
+    serial=None,
 ):
     """Update all zone files for all domains.
 
@@ -100,6 +102,8 @@ def dns_update_all_zones(
     if not is_dns_enabled():
         return
 
+    log.info("Starting DNS update and reload...")
+
     if not dynamic_updates:
         dynamic_updates = []
 
@@ -110,7 +114,8 @@ def dns_update_all_zones(
     )
     subnets = Subnet.objects.exclude(rdns_mode=RDNS_MODE.DISABLED)
     default_ttl = Config.objects.get_config("default_dns_ttl")
-    serial = current_zone_serial()
+    if serial is None:
+        serial = current_zone_serial()
     zones = ZoneGenerator(
         domains,
         subnets,
@@ -161,6 +166,7 @@ def dns_update_all_zones(
         else:
             reloaded = bind_reload(timeout=reload_timeout)
 
+    log.info("DNS update and reload complete.")
     # Return the current serial and list of domain names.
     return serial, reloaded, [domain.name for domain in domains]
 

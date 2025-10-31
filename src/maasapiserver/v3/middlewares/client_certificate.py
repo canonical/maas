@@ -33,13 +33,14 @@ class RequireClientCertMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
 
-        if (
-            "extensions" in request.scope
-            and request.scope["extensions"].get("tls", {}).get("CN") is None
-        ):
+        # The internal API server is using a special version of uvicorn to always include the tls info inside the context,
+        # so we can assume it's there.
+        cn = request.scope["extensions"].get("tls", {}).get("client_cn", None)
+        if cn is None:
             return JSONResponse(
                 {"detail": "Client certificate required."},
                 status_code=403,
             )
 
+        request.scope["client_cn"] = cn
         return await call_next(request)

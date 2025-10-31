@@ -18,22 +18,39 @@ from temporalio.worker import Worker
 import yaml
 
 from maascommon.enums.node import NodeStatus
+from maascommon.workflows.msm import MSMRestoreDefaultBootSourceParam
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
+from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.bootsourceselections import (
+    BootSourceSelectionsService,
+)
+from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
     MachinesCountByStatus,
     MSM_CHECK_ENROL_ACTIVITY_NAME,
     MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
+    MSM_DELETE_SELECTIONS_ACTIVITY_NAME,
     MSM_DETAIL_EP,
     MSM_ENROL_EP,
     MSM_GET_BOOT_SOURCES_ACTIVITY_NAME,
     MSM_GET_ENROL_ACTIVITY_NAME,
     MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
+    MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
     MSM_REFRESH_EP,
+    MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_SEND_ENROL_ACTIVITY_NAME,
     MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
     MSM_SET_BOOT_SOURCE_ACTIVITY_NAME,
@@ -44,21 +61,26 @@ from maastemporalworker.workflow.msm import (
     MSMConnectorActivity,
     MSMConnectorParam,
     MSMDeleteBootSourcesParam,
+    MSMDeleteSelectionsParam,
     MSMEnrolParam,
     MSMEnrolSiteWorkflow,
+    MSMGetMSMBootSourceParam,
     MSMHeartbeatParam,
     MSMHeartbeatWorkflow,
+    MSMRestoreDefaultBootSourceWorkflow,
     MSMSetBootSourceParam,
     MSMTokenRefreshParam,
     MSMTokenRefreshWorkflow,
     MSMTokenVerifyParam,
 )
+from tests.fixtures import AsyncContextManagerMock
 from tests.fixtures.factories.node import create_test_machine_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
 _MAAS_SITE_NAME = "maas-site"
 _MAAS_URL = "http://maas.local/"
 _MSM_BASE_URL = "http://msm.local/ingress"
+_MSM_BOOT_SOURCE_URL = f"{_MSM_BASE_URL}{MSM_SS_EP}"
 _MSM_ENROL_URL = f"{_MSM_BASE_URL}{MSM_ENROL_EP}"
 _MSM_DETAIL_URL = f"{_MSM_BASE_URL}{MSM_DETAIL_EP}"
 _JWT_ENROL = "headers.claims.signature"
@@ -126,6 +148,13 @@ def verify_param() -> MSMTokenVerifyParam:
     return MSMTokenVerifyParam(
         sm_url=_MSM_BASE_URL,
         jwt=_JWT_ACCESS,
+    )
+
+
+@pytest.fixture
+def restore_param() -> MSMRestoreDefaultBootSourceParam:
+    return MSMRestoreDefaultBootSourceParam(
+        sm_url=_MSM_BASE_URL,
     )
 
 
@@ -481,6 +510,68 @@ class TestMSMActivities:
         assert "/api/2.0/boot-sources/1" in args[0]
         assert "/api/2.0/boot-sources/2" in args[1]
 
+    async def test_restore_default_bootsource_activity(
+        self,
+        mocker,
+        msm_act,
+        services_mock,
+    ):
+        services_mock.image_sync = Mock(ImageSyncService)
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        await env.run(msm_act.restore_default_boot_source)
+        services_mock.image_sync.ensure_boot_source_definition.assert_called_once()
+
+    async def test_get_msm_boot_source_id(
+        self,
+        mocker,
+        msm_act,
+        services_mock,
+    ):
+        mock_boot_source = Mock(BootSource)
+        mock_boot_source.id = 1
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = mock_boot_source
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        result = await env.run(
+            msm_act.get_msm_boot_source_id,
+            MSMGetMSMBootSourceParam(sm_url=_MSM_BASE_URL),
+        )
+        assert result == mock_boot_source.id
+        services_mock.boot_sources.get_one.assert_called_with(
+            QuerySpec(BootSourcesClauseFactory.with_url(_MSM_BOOT_SOURCE_URL))
+        )
+
+    async def test_delete_selections(
+        self,
+        mocker,
+        msm_act,
+        services_mock,
+    ):
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        await env.run(
+            msm_act.delete_selections,
+            MSMDeleteSelectionsParam(boot_source_id=1),
+        )
+        services_mock.boot_source_selections.delete_many.assert_called_once_with(
+            QuerySpec(
+                BootSourceSelectionClauseFactory.with_boot_source_id(
+                    1,
+                )
+            )
+        )
+
 
 class TestMSMEnrolWorkflow:
     async def test_enrolment(self, enrol_param):
@@ -488,7 +579,9 @@ class TestMSMEnrolWorkflow:
         calls = defaultdict(list)
 
         @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
-        async def send_enrol(input: MSMEnrolParam) -> bool:
+        async def send_enrol(
+            input: MSMEnrolParam,
+        ) -> tuple[bool, dict[str, Any] | None]:
             calls["msm-send-enrol"].append(replace(input))
             return True, None
 
@@ -562,12 +655,14 @@ class TestMSMEnrolWorkflow:
         calls = defaultdict(list)
 
         @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
-        async def send_enrol(input: MSMEnrolParam) -> bool:
+        async def send_enrol(
+            input: MSMEnrolParam,
+        ) -> tuple[bool, dict[str, Any] | None]:
             calls["msm-send-enrol"].append(replace(input))
             return False, {"status": 401, "reason": "Unauthorized"}
 
         @activity.defn(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
-        async def check_enrol(input: MSMEnrolParam) -> tuple[str, int]:
+        async def check_enrol(input: MSMEnrolParam) -> tuple[str | None, int]:
             calls["msm-check-enrol"].append(replace(input))
             return None, -1
 
@@ -595,12 +690,14 @@ class TestMSMEnrolWorkflow:
         calls = defaultdict(list)
 
         @activity.defn(name=MSM_SEND_ENROL_ACTIVITY_NAME)
-        async def send_enrol(input: MSMEnrolParam) -> bool:
+        async def send_enrol(
+            input: MSMEnrolParam,
+        ) -> tuple[bool, dict[str, Any] | None]:
             calls["msm-send-enrol"].append(replace(input))
             return True, None
 
         @activity.defn(name=MSM_CHECK_ENROL_ACTIVITY_NAME)
-        async def check_enrol(input: MSMEnrolParam) -> tuple[str, int]:
+        async def check_enrol(input: MSMEnrolParam) -> tuple[str | None, int]:
             calls["msm-check-enrol"].append(replace(input))
             if len(calls["msm-check-enrol"]) < POLL_CALL_COUNT:
                 raise ApplicationError("waiting for MSM enrolment")
@@ -756,3 +853,50 @@ class TestMSMTokenRefreshWorkflow:
 
         assert len(calls["msm-get-token-refresh"]) == 1
         assert len(calls["msm-set-enrol"]) == 0
+
+
+class TestRestoreDefaultBootSourceWorkflow:
+    async def test_restore_default_boot_source(self, restore_param):
+        calls = defaultdict(list)
+
+        @activity.defn(name=MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME)
+        async def get_msm_source(
+            input: MSMGetMSMBootSourceParam,
+        ) -> int:
+            calls["msm-get-msm-boot-source"].append(input.sm_url)
+            return 1
+
+        @activity.defn(name=MSM_DELETE_SELECTIONS_ACTIVITY_NAME)
+        async def delete_selections(input: MSMDeleteSelectionsParam) -> None:
+            calls["msm-delete-selections"].append(input.boot_source_id)
+
+        @activity.defn(name=MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME)
+        async def delete_sources(input: MSMDeleteBootSourcesParam) -> None:
+            calls["msm-delete-boot-sources"].append(input.ids)
+
+        @activity.defn(name=MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME)
+        async def restore_default_source() -> None:
+            calls["msm-restore-default-source"].append(True)
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="abcd:region",
+                workflows=[MSMRestoreDefaultBootSourceWorkflow],
+                activities=[
+                    get_msm_source,
+                    delete_selections,
+                    delete_sources,
+                    restore_default_source,
+                ],
+            ) as worker:
+                await env.client.execute_workflow(
+                    MSMRestoreDefaultBootSourceWorkflow.run,
+                    restore_param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+        assert calls["msm-get-msm-boot-source"] == [_MSM_BASE_URL]
+        assert calls["msm-delete-selections"] == [1]
+        assert calls["msm-delete-boot-sources"] == [[1]]
+        assert len(calls["msm-restore-default-source"]) == 1

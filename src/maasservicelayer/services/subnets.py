@@ -51,6 +51,8 @@ from maasservicelayer.services.temporal import TemporalService
 
 
 class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
+    resource_logging_name = "subnet"
+
     def __init__(
         self,
         context: Context,

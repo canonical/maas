@@ -135,7 +135,7 @@ class ActiveInterfacesForAgentResult:
 class VlanData:
     id: int
     vid: int
-    relayed_vlan_id: int
+    relayed_vlan_id: int | None
     mtu: int
 
 
@@ -144,7 +144,7 @@ class SubnetData:
     id: int
     cidr: str
     gateway_ip: str
-    dns_servers: list[str]
+    dns_servers: list[str] | None
     allow_dns: bool
     vlan_id: int
 
@@ -530,6 +530,8 @@ class DHCPConfigActivity(ActivityBase):
                     where=NodeClauseFactory.with_system_id(param.system_id)
                 )
             )
+            assert node is not None
+            assert node.current_config_id is not None
             ifaces = await svc.interfaces.get_many(
                 query=QuerySpec(
                     where=InterfaceClauseFactory.and_clauses(
@@ -621,6 +623,7 @@ class DHCPConfigActivity(ActivityBase):
                             )
                         )
                     )
+                    assert node is not None
                     if node.node_type in (
                         NodeTypeEnum.RACK_CONTROLLER,
                         NodeTypeEnum.REGION_CONTROLLER,
@@ -632,12 +635,14 @@ class DHCPConfigActivity(ActivityBase):
 
                 domain = None
 
-                if node.domain_id in seen_domains:
-                    domain = seen_domains[node.domain_id]
-                else:
-                    domain = await svc.domains.get_by_id(node.domain_id)
-                    seen_domains[node.domain_id] = domain
+                if node.domain_id is not None:
+                    if node.domain_id in seen_domains:
+                        domain = seen_domains[node.domain_id]
+                    else:
+                        domain = await svc.domains.get_by_id(node.domain_id)
+                        seen_domains[node.domain_id] = domain
 
+                assert node.hostname is not None
                 hosts.append(
                     HostReservationData(
                         mac_address=interface.mac_address,
@@ -673,6 +678,8 @@ class DHCPConfigActivity(ActivityBase):
                     where=NodeClauseFactory.with_system_id(param.system_id)
                 )
             )
+            assert node is not None
+            assert node.current_config_id is not None
             ifaces = await svc.interfaces.get_many(
                 query=QuerySpec(
                     where=InterfaceClauseFactory.and_clauses(
@@ -702,6 +709,7 @@ class DHCPConfigActivity(ActivityBase):
                 )
             )
 
+            assert node.system_id is not None
             rack_ips = await svc.staticipaddress.get_for_nodes(
                 query=QuerySpec(
                     where=StaticIPAddressClauseFactory.and_clauses(
@@ -754,6 +762,7 @@ class DHCPConfigActivity(ActivityBase):
                         id=iface.id, name=iface.name, vlan_id=iface.vlan_id
                     )
                     for iface in ifaces
+                    if iface.vlan_id is not None
                 ],
                 vlans=[
                     VlanData(

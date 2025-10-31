@@ -20,6 +20,8 @@ from maasservicelayer.utils.date import utcnow
 class BootResourceService(
     BaseService[BootResource, BootResourcesRepository, BootResourceBuilder]
 ):
+    resource_logging_name = "bootresources"
+
     def __init__(
         self,
         context: Context,

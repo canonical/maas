@@ -1,3 +1,6 @@
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from datetime import timedelta
 from typing import AsyncIterator, Awaitable, Callable, Iterator
 from unittest.mock import Mock
@@ -16,7 +19,7 @@ from maasapiserver.common.middlewares.exceptions import (
     ExceptionHandlers,
     ExceptionMiddleware,
 )
-from maasapiserver.main import create_app
+from maasapiserver.main import craft_public_app
 from maasapiserver.settings import Config
 from maasapiserver.v3.api.internal.handlers import APIv3Internal
 from maasapiserver.v3.api.public.handlers import APIv3, APIv3UI
@@ -251,12 +254,8 @@ async def api_app(
     db: Database,
 ) -> Iterator[FastAPI]:
     """The API application."""
-
-    yield await create_app(
-        config=test_config,
-        transaction_middleware_class=transaction_middleware_class,
-        db=db,
-    )
+    app = craft_public_app(db)
+    yield app.fastapi_app
 
 
 @pytest.fixture
