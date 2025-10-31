@@ -7,6 +7,7 @@
 import os
 import random
 from textwrap import dedent
+from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -120,82 +121,65 @@ class TestRunningInContainer(MAASTestCase):
 
 
 class TestGetRunningPIDsWithCommand(MAASTestCase):
-    def make_process(self, proc_path, pid, in_container=False, command=None):
-        cgroup = NOT_IN_CONTAINER
-        if in_container:
-            cgroup = random.choice([IN_DOCKER_CONTAINER, IN_LXC_CONTAINER])
-        pid_path = os.path.join(proc_path, str(pid))
-        os.mkdir(pid_path)
-        atomic_write(cgroup.encode("ascii"), os.path.join(pid_path, "cgroup"))
-        if command is not None:
-            atomic_write(
-                command.encode("ascii"), os.path.join(pid_path, "comm")
-            )
-
-    def make_init_process(self, proc_path, in_container=False):
-        self.make_process(proc_path, 1, in_container=in_container)
-
     def test_returns_processes_running_on_host_not_container(self):
-        proc_path = self.make_dir()
-        self.make_init_process(proc_path)
         command = factory.make_name("command")
-        pids_running_command = random.sample(range(2, 1000), 3)
-        for pid in pids_running_command:
-            self.make_process(proc_path, pid, command=command)
-        pids_not_running_command = random.sample(range(1000, 2000), 3)
-        for pid in pids_not_running_command:
-            self.make_process(
-                proc_path, pid, command=factory.make_name("command")
-            )
-        pids_running_command_in_container = random.sample(range(2000, 3000), 3)
-        for pid in pids_running_command_in_container:
-            self.make_process(
-                proc_path, pid, in_container=True, command=command
-            )
+
+        ps_output = (
+            "  PID COMMAND\n"
+            "   1 init\n"
+            "   malformedline\n"
+            "   malformed line\n"
+            "   10 othercmd\n"
+            "   20 %s\n"
+            "   30 %s\n"
+            "   40 %s\n"
+            "   50 anothercmd\n" % (command, command, command)
+        )
+
+        mock_run_command = self.patch(ps_module, "run_command")
+        mock_run_command.return_value = Mock(stdout=ps_output, returncode=0)
+
         mock_running_in_container = self.patch(
             ps_module, "running_in_container"
         )
         mock_running_in_container.return_value = False
-        self.assertCountEqual(
-            pids_running_command,
-            get_running_pids_with_command(command, proc_path=proc_path),
-        )
 
-    def test_ignores_process_that_have_been_removed(self):
-        proc_path = self.make_dir()
-        self.make_init_process(proc_path)
-        command = factory.make_name("command")
-        pids_running_command = random.sample(range(2, 1000), 3)
-        for pid in pids_running_command:
-            self.make_process(proc_path, pid, command=command)
-            # Remove the comm file to test the exception handling.
-            os.remove(os.path.join(proc_path, str(pid), "comm"))
-        self.assertEqual(
-            [], get_running_pids_with_command(command, proc_path=proc_path)
-        )
+        mock_is_pid_in_container = self.patch(ps_module, "is_pid_in_container")
+        mock_is_pid_in_container.side_effect = (
+            lambda pid, proc_path: pid == 30
+        )  # Simulate PID 30 is in a container
+
+        result = get_running_pids_with_command(command)
+
+        self.assertCountEqual(result, [20, 40])
+
+        mock_run_command.assert_called_once_with("ps", "-eo", "pid,comm")
 
     def test_returns_processes_when_running_in_container(self):
-        proc_path = self.make_dir()
-        self.make_init_process(proc_path, in_container=True)
         command = factory.make_name("command")
-        pids_running_command = random.sample(range(2, 1000), 3)
-        for pid in pids_running_command:
-            self.make_process(
-                proc_path, pid, in_container=True, command=command
-            )
-        pids_not_running_command = random.sample(range(1000, 2000), 3)
-        for pid in pids_not_running_command:
-            self.make_process(
-                proc_path,
-                pid,
-                in_container=True,
-                command=factory.make_name("command"),
-            )
+
+        ps_output = (
+            "  PID COMMAND\n"
+            "   10 %s\n"
+            "   20 %s\n"
+            "   30 %s\n"
+            "   40 othercmd\n"
+            "   50 anothercmd\n" % (command, command, command)
+        )
+
+        mock_run_command = self.patch(ps_module, "run_command")
+        mock_run_command.return_value = Mock(stdout=ps_output, returncode=0)
+
         mock_running_in_container = self.patch(
             ps_module, "running_in_container"
         )
         mock_running_in_container.return_value = True
-        self.assertCountEqual(
-            pids_running_command,
-            get_running_pids_with_command(command, proc_path=proc_path),
-        )
+
+        mock_is_pid_in_container = self.patch(ps_module, "is_pid_in_container")
+
+        result = get_running_pids_with_command(command)
+
+        self.assertCountEqual(result, [10, 20, 30])
+
+        mock_run_command.assert_called_once_with("ps", "-eo", "pid,comm")
+        mock_is_pid_in_container.assert_not_called()
