@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import typing
 
-import typing
-
 from pydantic import BaseModel
 
 from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse

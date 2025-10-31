@@ -7,8 +7,6 @@ from typing import List, Self
 
 from pydantic import BaseModel
 
-from pydantic import BaseModel
-
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,

@@ -685,10 +685,6 @@ class TestGetFilesToDownloadForSelectionActivity:
                 selection_id=1,
             ),
         )
-        services_mock.configurations = Mock(ConfigurationsService)
-        services_mock.configurations.get.return_value = [
-            "http://internal-proxy/"
-        ]
 
         resources_to_download = result.resources
         assert len(resources_to_download) == 1
