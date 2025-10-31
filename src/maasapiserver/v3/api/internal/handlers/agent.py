@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
 
@@ -155,13 +155,14 @@ class AgentHandler(Handler):
         signed_cert = await asyncio.to_thread(
             sign_certificate_request, ca_cert, agent_enroll_request.csr
         )
-        common_name = request.scope["extensions"].get("tls", {}).get("CN")
+
+        agent_common_name = signed_cert.cert.get_subject().CN
         cert_pem_bytes = crypto.dump_certificate(
             crypto.FILETYPE_PEM, signed_cert.cert
         )
 
         # create Agent (bootstrap token is deleted once the agent is enrolled)
-        a_builder = AgentBuilder(uuid=common_name, rack_id=rack.id)
+        a_builder = AgentBuilder(uuid=agent_common_name, rack_id=rack.id)
         agent = await services.agents.create(a_builder)
         await services.bootstraptokens.delete_one(query_bootstraptoken)
 

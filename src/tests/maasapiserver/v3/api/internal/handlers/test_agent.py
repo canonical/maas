@@ -72,6 +72,7 @@ class InjectFakeTLSCN(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+@pytest.mark.asyncio
 class TestAgentsApi:
     BASE_PATH = f"{V3_INTERNAL_API_PREFIX}/agents"
 
