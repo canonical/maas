@@ -53,6 +53,17 @@ class BootSourceSelection(CleanSave, TimestampedModel):
             "arch": self.arch,
         }
 
+    def force_delete(self):
+        """Delete without checking if this selection is the one used for commissioning."""
+        boot_resources_to_delete = BootResource.objects.filter(
+            boot_source_selection=self
+        )
+        BootResourceFile.objects.filestore_remove_resources(
+            boot_resources_to_delete
+        )
+        boot_resources_to_delete.delete()
+        return super().delete()
+
     def delete(self, *args, **kwargs):
         commissioning_osystem = Config.objects.get_config(
             name="commissioning_osystem"
@@ -69,11 +80,4 @@ class BootSourceSelection(CleanSave, TimestampedModel):
                 "It is the operating system used for commissioning."
             )
         else:
-            boot_resources_to_delete = BootResource.objects.filter(
-                boot_source_selection_id=self.id
-            )
-            BootResourceFile.objects.filestore_remove_resources(
-                boot_resources_to_delete
-            )
-            boot_resources_to_delete.delete()
-            return super().delete(*args, **kwargs)
+            return self.force_delete()

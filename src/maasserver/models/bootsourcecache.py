@@ -12,7 +12,6 @@ from django.db.models import (
     Manager,
 )
 
-from maasserver.models.bootsource import BootSource
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -48,7 +47,9 @@ class BootSourceCache(CleanSave, TimestampedModel):
 
     objects = BootSourceCacheManager()
 
-    boot_source = ForeignKey(BootSource, blank=False, on_delete=CASCADE)
+    boot_source = ForeignKey(
+        "maasserver.BootSource", blank=False, on_delete=CASCADE
+    )
 
     os = CharField(max_length=32, blank=False, null=False)
 

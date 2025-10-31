@@ -624,12 +624,15 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.image_sync.check_commissioning_series_selected.assert_awaited_once()
 
 
+@pytest.mark.parametrize("http_proxy", ["http://proxy.com", None])
 class TestGetFilesToDownloadForSelectionActivity:
     async def test_calls_service_layer(
         self,
         boot_activities: BootResourcesActivity,
         services_mock: ServiceCollectionV3,
         activity_env: ActivityEnvironment,
+        resource_download_param: ResourceDownloadParam,
+        http_proxy: str | None,
     ) -> None:
         boot_source = BootSource(
             id=1,
@@ -667,23 +670,36 @@ class TestGetFilesToDownloadForSelectionActivity:
             image_manifest,
             False,
         )
+        services_mock.image_manifests._get_http_proxy.return_value = http_proxy
         services_mock.image_sync = Mock(ImageSyncService)
         services_mock.image_sync.filter_products_for_selection.return_value = [
             mock_ss_products_list
         ]
-        services_mock.image_sync.get_files_to_download_from_product_list.return_value = {
-            mock_product
-        }
+        services_mock.image_sync.get_files_to_download_from_product_list.return_value = [
+            resource_download_param
+        ]
 
-        await activity_env.run(
+        result = await activity_env.run(
             boot_activities.get_files_to_download_for_selection,
             GetFilesToDownloadForSelectionParam(
                 selection_id=1,
             ),
         )
 
+        resources_to_download = result.resources
+        assert len(resources_to_download) == 1
+        assert resources_to_download[0].http_proxy == http_proxy
+
+        services_mock.boot_source_selections.get_by_id.assert_awaited_once_with(
+            1
+        )
+        services_mock.boot_sources.get_by_id.assert_awaited_once_with(1)
+        services_mock.image_manifests.get_or_fetch.assert_awaited_once_with(
+            boot_source
+        )
         services_mock.image_sync.filter_products_for_selection.assert_called_once()
         services_mock.image_sync.get_files_to_download_from_product_list.assert_awaited_once()
+        services_mock.image_manifests._get_http_proxy.assert_awaited_once()
 
 
 class TestGetManuallyUploadedResourcesActivity:

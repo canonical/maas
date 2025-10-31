@@ -138,19 +138,13 @@ class BootSourceSelectionsHandler(OperationsHandler):
 
         @param (string) "{boot_source_id}" [required=true] A boot-source id.
 
-        @param (string) "os" [required=false] The OS (e.g. ubuntu, centos) for
+        @param (string) "os" [required=true] The OS (e.g. ubuntu, centos) for
         which to import resources.
 
-        @param (string) "release" [required=false] The release for which to
+        @param (string) "release" [required=true] The release for which to
         import resources.
 
-        @param (string) "arches" [required=false] The architecture list for
-        which to import resources.
-
-        @param (string) "subarches" [required=false] The subarchitecture list
-        for which to import resources.
-
-        @param (string) "labels" [required=false] The label lists for which to
+        @param (string) "arch" [required=true] The architecture for which to
         import resources.
 
         @success (http-status-code) "server-success" 200

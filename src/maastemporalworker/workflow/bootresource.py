@@ -355,6 +355,13 @@ class BootResourcesActivity(ActivityBase):
                 boot_source, filtered_products_list
             )
 
+            # get the http proxy to use and update the resources
+            if http_proxy := await services.image_manifests._get_http_proxy():
+                resources_to_download = [
+                    replace(r, http_proxy=http_proxy)
+                    for r in resources_to_download
+                ]
+
             return GetFilesToDownloadReturnValue(
                 resources=resources_to_download,
             )

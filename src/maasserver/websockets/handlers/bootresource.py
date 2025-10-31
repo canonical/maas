@@ -656,7 +656,11 @@ class BootResourceHandler(Handler):
                 # This was a new source, make sure its the only source in the
                 # database. This is because the UI only supports handling one
                 # source at a time.
-                BootSource.objects.exclude(id=source.id).delete()
+                boot_sources_to_delete = BootSource.objects.exclude(
+                    id=source.id
+                )
+                for boot_source in boot_sources_to_delete:
+                    boot_source.delete()
                 create_audit_event(
                     event_type=EVENT_TYPES.BOOT_SOURCE,
                     endpoint=ENDPOINT.UI,

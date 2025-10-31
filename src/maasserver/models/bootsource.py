@@ -8,14 +8,28 @@ from django.core.validators import MinValueValidator
 from django.db.models import (
     BinaryField,
     BooleanField,
+    CASCADE,
     CharField,
+    ForeignKey,
     IntegerField,
+    JSONField,
     Max,
+    Model,
     URLField,
 )
 
+from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+
+
+class ImageManifest(Model):
+    boot_source = ForeignKey(
+        "maasserver.BootSource",
+        on_delete=CASCADE,
+    )
+
+    manifest = JSONField()
 
 
 class BootSource(CleanSave, TimestampedModel):
@@ -177,3 +191,12 @@ class BootSource(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        related_selections = BootSourceSelection.objects.filter(
+            boot_source=self
+        )
+        for selection in related_selections:
+            selection.force_delete()
+
+        return super().delete(*args, **kwargs)
