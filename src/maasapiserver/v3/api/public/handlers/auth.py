@@ -97,7 +97,7 @@ class AuthHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def access_token(
+    async def get_access_token(
         self,
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user

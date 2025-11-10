@@ -7,6 +7,7 @@ import ssl
 from typing import Callable, Type
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 import uvicorn
 from uvicorn.config import HTTPProtocolType
 
@@ -50,6 +51,20 @@ class ServerConfig:
     http: type[asyncio.Protocol] | HTTPProtocolType = "auto"
 
 
+def custom_openapi(app: FastAPI):
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="MAAS API v3",
+        version="0.1.0",
+        openapi_version="3.0.3",
+        summary="Beta version of the MAAS API v3",
+        routes=app.routes,
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
 class App:
     def __init__(
         self,
@@ -76,10 +91,10 @@ class App:
         app = FastAPI(
             title=self._app_title,
             name=self._name,
+            docs_url=f"{API_PREFIX}/docs",
             openapi_url=f"{API_PREFIX}/openapi.json",
-            # The SwaggerUI page is provided by the APICommon router.
-            docs_url=None,
         )
+        app.openapi = lambda: custom_openapi(app)
 
         for api in self._api:
             api.register(app.router)

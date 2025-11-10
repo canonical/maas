@@ -163,7 +163,7 @@ class SSLKeysHandler(Handler):
             200: {
                 "model": SSLKeyResponse,
                 "headers": {
-                    "ETag": {"description": "The ETag for the resource"}
+                    "ETag": OPENAPI_ETAG_HEADER,
                 },
             },
             404: {"model": NotFoundBodyResponse},
