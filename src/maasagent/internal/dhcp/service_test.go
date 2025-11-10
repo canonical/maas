@@ -522,6 +522,53 @@ func (s *DHCPServiceTestSuite) TestRestartDHCPServiceV6() {
 	s.False(controllerV6.restarted)
 }
 
+func (s *DHCPServiceTestSuite) ReturnsConfigOnSuccessfulRequest() {
+	s.configAPIResponse = []byte(`{
+		"dhcpd": "Y29uZmlndXJhdGlvbl92NA==",
+		"dhcpd_interfaces": "aW50ZXJmYWNlc192NA==",
+		"dhcpd6": "Y29uZmlndXJhdGlvbl92Ng==",
+		"dhcpd6_interfaces": "cjAwdGEncyBlZ2ch"
+	}`)
+
+	config, err := s.svc.getConfig(s.T().Context())
+
+	s.NoError(err)
+	s.Equal("Y29uZmlndXJhdGlvbl92NA==", config.DHCPv4Config)
+	s.Equal("aW50ZXJmYWNlc192NA==", config.DHCPv4Interfaces)
+	s.Equal("Y29uZmlndXJhdGlvbl92Ng==", config.DHCPv6Config)
+	s.Equal("cjAwdGEncyBlZ2ch", config.DHCPv6Interfaces)
+}
+
+func (s *DHCPServiceTestSuite) ReturnsErrorOnRequestFailure() {
+	s.configHTTPServer.Close() // server unavailable
+
+	config, err := s.svc.getConfig(s.T().Context())
+
+	s.Nil(config)
+	s.Error(err)
+}
+
+func (s *DHCPServiceTestSuite) ReturnsErrorOnNon200StatusCode() {
+	s.configHTTPServer.Config.Handler = http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusInternalServerError)
+	})
+
+	config, err := s.svc.getConfig(s.T().Context())
+
+	s.Nil(config)
+	s.Error(err)
+	s.Contains(err.Error(), "unexpected status code")
+}
+
+func (s *DHCPServiceTestSuite) ReturnsErrorOnInvalidJSONResponse() {
+	s.configAPIResponse = []byte(`invalid-json`)
+
+	config, err := s.svc.getConfig(s.T().Context())
+
+	s.Nil(config)
+	s.Error(err)
+}
+
 type mockRoundTripper struct {
 	calledOnce bool
 	Error      error
