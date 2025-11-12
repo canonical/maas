@@ -1,10 +1,12 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import base64
 from datetime import timedelta
 import os
 from unittest.mock import ANY, AsyncMock, call, Mock, patch
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
 from pymacaroons import Macaroon
@@ -12,6 +14,7 @@ import pytest
 
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import ExternalAuthType
+from maasservicelayer.auth.external_oauth import OAuth2Client
 from maasservicelayer.auth.macaroons.checker import (
     AsyncAuthChecker,
     AsyncChecker,
@@ -43,7 +46,9 @@ from maasservicelayer.services.external_auth import (
     ExternalAuthServiceCache,
     ExternalOAuthService,
 )
+from maasservicelayer.services.secrets import SecretNotFound
 from maasservicelayer.utils.date import utcnow
+from maasservicelayer.utils.encryptor import Encryptor
 from provisioningserver.security import to_bin, to_hex
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -808,6 +813,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         return ExternalOAuthService(
             context=Context(),
             external_oauth_repository=Mock(ExternalOAuthRepository),
+            secrets_service=Mock(SecretsService),
         )
 
     @pytest.fixture
@@ -842,6 +848,29 @@ class TestExternalOAuthService(ServiceCommonTests):
 
         assert provider is not None
         assert provider.name == "test_provider"
+
+    async def test_get_client_success(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.get_provider = AsyncMock(return_value=test_instance)
+
+        client = await service_instance.get_client()
+
+        assert isinstance(client, OAuth2Client)
+        assert client.provider.name == test_instance.name
+        assert client.provider.client_id == test_instance.client_id
+
+    async def test_get_client_not_found(
+        self,
+        service_instance: ExternalOAuthService,
+    ) -> None:
+        service_instance.get_provider = AsyncMock(return_value=None)
+
+        client = await service_instance.get_client()
+
+        assert client is None
 
     async def test_update_provider_success(
         self,
@@ -935,3 +964,56 @@ class TestExternalOAuthService(ServiceCommonTests):
         return await super().test_delete_by_id_etag_match(
             service_instance, test_instance
         )
+
+    async def test_get_encryptor(self, service_instance: ExternalOAuthService):
+        service_instance._get_or_create_cached_encryption_key = AsyncMock(
+            return_value=b"0" * 32
+        )
+        encryptor = await service_instance.get_encryptor()
+
+        assert isinstance(encryptor, Encryptor)
+
+    async def test__get_or_create_cached_encryption_key_cached(
+        self, service_instance: ExternalOAuthService
+    ):
+        key = b"0" * 32
+        service_instance.ENCRYPTION_SECRET_KEY = key
+
+        received_key = (
+            await service_instance._get_or_create_cached_encryption_key()
+        )
+
+        assert received_key == key
+
+    async def test__get_or_create_cached_encryption_key_get(
+        self, service_instance: ExternalOAuthService
+    ):
+        key_bytes = AESGCM.generate_key(128)
+        key_b64 = base64.b64encode(key_bytes).decode("utf-8")
+        service_instance.ENCRYPTION_SECRET_KEY = None
+
+        service_instance.secrets_service.get_simple_secret = AsyncMock(
+            return_value=key_b64
+        )
+        received_key = (
+            await service_instance._get_or_create_cached_encryption_key()
+        )
+
+        assert received_key == key_bytes
+        assert service_instance.ENCRYPTION_SECRET_KEY == key_bytes
+
+    async def test__get_or_create_cached_encryption_key_create(
+        self, service_instance: ExternalOAuthService
+    ):
+        service_instance.ENCRYPTION_SECRET_KEY = None
+        service_instance.secrets_service.get_simple_secret = AsyncMock(
+            side_effect=SecretNotFound("/")
+        )
+        service_instance.secrets_service.set_simple_secret = AsyncMock()
+
+        key = await service_instance._get_or_create_cached_encryption_key()
+
+        assert key is not None
+        assert service_instance.ENCRYPTION_SECRET_KEY is not None
+        assert isinstance(key, bytes)
+        assert isinstance(service_instance.ENCRYPTION_SECRET_KEY, bytes)

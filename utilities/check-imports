@@ -469,6 +469,8 @@ ServiceLayerRule = Rule(
     Allow("asyncpg|asyncpg.**"),
     Allow("aiohttp|aiohttp.**"),
     Allow("aiofiles|aiofiles.**"),
+    Allow("authlib|authlib.**"),
+    Allow("cryptography.hazmat.primitives.ciphers.aead.AESGCM"),
     Allow(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),

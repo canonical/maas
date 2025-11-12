@@ -64,6 +64,10 @@ class VCenterPasswordSecret(GlobalSecret):
     secret_name = "vcenter-password"
 
 
+class V3OAuthEncryptionSecret(GlobalSecret):
+    secret_name = "v3-oauth-encryption-key"
+
+
 class V3JWTKeySecret(GlobalSecret):
     secret_name = "v3-jwt-key"
 

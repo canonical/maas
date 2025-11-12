@@ -22,6 +22,7 @@ python3-alembic
 python3-apt
 python3-asyncpg
 python3-attr
+python3-authlib
 python3-bson
 python3-crochet
 python3-cssselect

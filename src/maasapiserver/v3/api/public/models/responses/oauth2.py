@@ -23,12 +23,6 @@ class AuthProviderInfoResponse(BaseModel):
     auth_url: str
     provider_name: str
 
-    @classmethod
-    def from_model(cls, provider: OAuthProvider) -> typing.Self:
-        return cls(
-            provider_name=provider.name, auth_url=provider.build_auth_url()
-        )
-
 
 class OAuthProviderResponse(BaseModel):
     kind = "AuthProvider"

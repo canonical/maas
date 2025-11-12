@@ -11,7 +11,7 @@ from maasapiserver.common.api.models.responses.errors import (
     UnauthorizedBodyResponse,
 )
 from maasapiserver.common.utils.http import extract_absolute_uri
-from maasapiserver.v3.api import services
+from maasapiserver.v3.api import cookie_manager, services
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
 )
@@ -25,6 +25,10 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
 from maasapiserver.v3.auth.base import (
     check_permissions,
     get_authenticated_user,
+)
+from maasapiserver.v3.auth.cookie_manager import (
+    EncryptedCookieManager,
+    MAASOAuth2Cookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
@@ -111,7 +115,7 @@ class AuthHandler(Handler):
         )
 
     @handler(
-        path="/auth/oauth/initiate",
+        path="/auth/oauth/authorization_url",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -120,20 +124,32 @@ class AuthHandler(Handler):
         },
         status_code=200,
     )
-    async def oauth_initiate(
+    async def initiate_oauth_flow(
         self,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
     ):
-        if provider := await services.external_oauth.get_provider():
-            return AuthProviderInfoResponse.from_model(provider)
-
-        raise NotFoundException(
-            details=[
-                BaseExceptionDetail(
-                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                    message="No external OAuth provider is configured.",
-                )
-            ]
+        """Initiate the OAuth flow by generating the authorization URL and setting the necessary security cookies."""
+        client = await services.external_oauth.get_client()
+        if not client:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                        message="No external OAuth provider is configured.",
+                    )
+                ]
+            )
+        data = client.generate_authorization_url()
+        cookie_manager.set_auth_cookie(
+            value=data.state, key=MAASOAuth2Cookie.AUTH_STATE
+        )
+        cookie_manager.set_auth_cookie(
+            value=data.nonce, key=MAASOAuth2Cookie.AUTH_NONCE
+        )
+        return AuthProviderInfoResponse(
+            auth_url=data.authorization_url,
+            provider_name=client.get_provider_name(),
         )
 
     @handler(
