@@ -21,6 +21,7 @@ class MAASSiteManagerHandler(Handler):
         if not status:
             return {
                 "sm_url": None,
+                "sm_jwt": None,
                 "start_time": None,
                 "running": MSMStatusEnum.NOT_CONNECTED,
             }

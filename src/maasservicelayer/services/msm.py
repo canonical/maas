@@ -53,6 +53,7 @@ class MSMTemporalQuery(StrEnum):
 @dataclass
 class MSMStatus:
     sm_url: str
+    sm_jwt: str
     running: MSMStatusEnum
     start_time: str | None
 
@@ -173,6 +174,7 @@ class MSMService(Service):
         if pending:
             return MSMStatus(
                 sm_url=msm_creds["url"],
+                sm_jwt="",
                 running=MSMStatusEnum.PENDING,
                 start_time=description.start_time.isoformat()
                 if description
@@ -186,6 +188,7 @@ class MSMService(Service):
         if running:
             return MSMStatus(
                 sm_url=msm_creds["url"],
+                sm_jwt=msm_creds["jwt"],
                 running=MSMStatusEnum.CONNECTED,
                 start_time=description.start_time.isoformat()
                 if description
@@ -193,6 +196,7 @@ class MSMService(Service):
             )
         return MSMStatus(
             sm_url=msm_creds["url"],
+            sm_jwt="",
             running=MSMStatusEnum.NOT_CONNECTED,
             start_time=description.start_time.isoformat()
             if description

@@ -68,7 +68,7 @@ MSM_ENROL_EP = "/site/v1/enroll"
 MSM_DETAIL_EP = "/site/v1/details"
 MSM_REFRESH_EP = "/site/v1/enroll/refresh"
 MSM_VERIFY_EP = "/site/v1/enroll/verify"
-MSM_SS_EP = "/api/v1/images/latest/stable/streams/v1/index.json"
+MSM_SS_EP = "/site/v1/images/latest/stable/streams/v1/index.json"
 
 # Activities names
 MSM_CHECK_ENROL_ACTIVITY_NAME = "msm-check-enrol"

@@ -189,7 +189,10 @@ class TestMSMEnrol:
     ):
         services.msm.get_status = AsyncMock(
             return_value=MSMStatus(
-                sm_url="", running=MSMStatusEnum.PENDING, start_time=None
+                sm_url="",
+                sm_jwt="",
+                running=MSMStatusEnum.PENDING,
+                start_time=None,
             )
         )
         encoded = jwt.encode(

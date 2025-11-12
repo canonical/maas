@@ -51,6 +51,7 @@ class SimpleStreamsClient:
         skip_pgp_verification: If True, skips PGP verification of the data.
         keyring_file: Path to the keyring file used for verifying signed data.
         http_proxy: Optional HTTP proxy to use when connecting to the mirror.
+        bearer_auth: Optional bearer token for authentication.
 
     Raises:
         SimpleStreamsClientException: the path to the keyring_file doesn't exist
@@ -63,6 +64,7 @@ class SimpleStreamsClient:
         skip_pgp_verification: bool = False,
         keyring_file: str | None = None,
         http_proxy: str | None = None,
+        bearer_auth: str | None = None,
     ):
         if keyring_file and not os.path.exists(keyring_file):
             raise SimpleStreamsClientException(
@@ -81,15 +83,23 @@ class SimpleStreamsClient:
             self._index_path = SIGNED_INDEX_PATH
 
         self.http_proxy = http_proxy
+        self.bearer_auth = bearer_auth
         self._session = self._get_session()
         self.keyring_file = keyring_file
         self.skip_pgp_verification = skip_pgp_verification
+
+    def _get_headers(self) -> dict[str, str] | None:
+        if self.bearer_auth:
+            return {"Authorization": f"bearer {self.bearer_auth}"}
+        return None
 
     def _get_session(self) -> ClientSession:
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         # TODO: set proxy on the session when we upgrade aiohttp to v3.11+
-        return ClientSession(trust_env=True, connector=tcp_conn)
+        return ClientSession(
+            trust_env=True, connector=tcp_conn, headers=self._get_headers()
+        )
 
     async def _validate_pgp_signature(self, content: str):
         if shutil.which("gpgv"):

@@ -26,8 +26,9 @@ class MAASAPIClient:
             headers["User-Agent"] = self.user_agent
         return httpx.AsyncClient(transport=transport, headers=headers)
 
-    def _create_client(self, http_proxy: str | None) -> httpx.AsyncClient:
-        headers = {}
+    def _create_client(
+        self, http_proxy: str | None, headers: dict[str, str]
+    ) -> httpx.AsyncClient:
         if self.user_agent:
             headers["User-Agent"] = self.user_agent
 
@@ -47,8 +48,10 @@ class MAASAPIClient:
     def unix_client(self) -> httpx.AsyncClient:
         return self._unix_client
 
-    def make_client(self, http_proxy: str | None) -> httpx.AsyncClient:
-        return self._create_client(http_proxy)
+    def make_client(
+        self, http_proxy: str | None, headers: dict[str, str] | None = None
+    ) -> httpx.AsyncClient:
+        return self._create_client(http_proxy, headers or {})
 
     async def request_async(
         self,

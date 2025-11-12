@@ -126,6 +126,8 @@ from tests.fixtures.factories.configuration import create_test_configuration
 from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
+MSM_SS_EP = "site/v1/images/latest/stable/streams/v1/index.json"
+
 BOOT_SOURCE_1 = BootSource(
     id=1,
     url="http://source-1.com",
@@ -137,6 +139,14 @@ BOOT_SOURCE_1 = BootSource(
 BOOT_SOURCE_2 = BootSource(
     id=2,
     url="http://source-2.com",
+    keyring_filename=None,
+    keyring_data=b"some bytes",
+    priority=2,
+    skip_keyring_verification=True,
+)
+BOOT_SOURCE_MSM = BootSource(
+    id=2,
+    url=f"http://maas-site-manager.io/{MSM_SS_EP}",
     keyring_filename=None,
     keyring_data=b"some bytes",
     priority=2,
@@ -501,13 +511,14 @@ class TestImageSyncService:
     async def test_sync_boot_source_selections_from_msm(self) -> None:
         self.msm_service.get_status.return_value = MSMStatus(
             sm_url="http://maas-site-manager.io",
+            sm_jwt="some-token",
             running=MSMStatusEnum.CONNECTED,
             start_time=None,
         )
         boot_sources = [
             BootSource(
                 id=100,
-                url="http://maas-site-manager.io/images",
+                url=f"http://maas-site-manager.io/{MSM_SS_EP}",
                 keyring_filename="",
                 keyring_data=None,
                 priority=1,
@@ -547,11 +558,13 @@ class TestImageSyncService:
             None,
             MSMStatus(
                 sm_url="http://maas-site-manager.io",
+                sm_jwt="",
                 running=MSMStatusEnum.PENDING,
                 start_time=None,
             ),
             MSMStatus(
                 sm_url="http://maas-site-manager.io",
+                sm_jwt="",
                 running=MSMStatusEnum.NOT_CONNECTED,
                 start_time=None,
             ),
@@ -625,6 +638,39 @@ class TestImageSyncService:
         )
         ss_client_mock.get_all_products.assert_awaited_once()
 
+    async def test_fetch_image_metadata_from_msm(self, mocker) -> None:
+        self.msm_service.get_status.return_value = MSMStatus(
+            sm_url="http://maas-site-manager.io",
+            sm_jwt="some-token",
+            running=MSMStatusEnum.CONNECTED,
+            start_time=None,
+        )
+        # don't use a proxy
+        self.configurations_service.get.return_value = False
+        # patch the file check on simplestreams client
+        mocker.patch("os.path.exists").return_value = True
+        # patch SimpleStreamsClient
+        ss_client_cls_mock = mocker.patch(
+            "maasservicelayer.services.image_sync.SimpleStreamsClient",
+            autospec=True,
+        )
+        ss_client_instance_mock = ss_client_cls_mock.return_value
+        ss_client_instance_mock.get_all_products.return_value = []
+        ss_client_instance_mock.__aenter__.return_value = (
+            ss_client_instance_mock
+        )
+
+        await self.service.fetch_image_metadata(
+            f"http://maas-site-manager.io/{MSM_SS_EP}",
+            "/path/to/file",
+        )
+
+        assert (
+            ss_client_cls_mock.mock_calls[0].kwargs["bearer_auth"]
+            == "some-token"
+        )
+        ss_client_instance_mock.get_all_products.assert_awaited_once()
+
     async def test_fetch_images_metadata(self, mocker) -> None:
         # don't use a proxy
         self.configurations_service.get.return_value = False
@@ -665,6 +711,47 @@ class TestImageSyncService:
                 )
                 for boot_source in [BOOT_SOURCE_1, BOOT_SOURCE_2]
             ]
+        )
+
+    async def test_fetch_images_metadata_from_msm(self, mocker) -> None:
+        self.msm_service.get_status.return_value = MSMStatus(
+            sm_url="http://maas-site-manager.io",
+            sm_jwt="some-token",
+            running=MSMStatusEnum.CONNECTED,
+            start_time=None,
+        )
+        # don't use a proxy
+        self.configurations_service.get.return_value = False
+        # patch the file check on simplestreams client
+        mocker.patch("os.path.exists").return_value = True
+        # patch SimpleStreamsClient
+        ss_client_cls_mock = mocker.patch(
+            "maasservicelayer.services.image_sync.SimpleStreamsClient",
+            autospec=True,
+        )
+        ss_client_instance_mock = ss_client_cls_mock.return_value
+        ss_client_instance_mock.get_all_products.return_value = []
+        ss_client_instance_mock.__aenter__.return_value = (
+            ss_client_instance_mock
+        )
+
+        self.boot_sources_service.get_many.return_value = [
+            BOOT_SOURCE_MSM,
+        ]
+
+        # return a mocked file to assert that data has been written
+        mock_file = AsyncMock()
+        mocker.patch(
+            "aiofiles.tempfile._temporary_file"
+        ).return_value = mock_file
+        mocker.patch("aiofiles.os.unlink").return_value = None
+
+        mapping = await self.service.fetch_images_metadata()
+
+        assert mapping == {BOOT_SOURCE_MSM: []}
+        assert (
+            ss_client_cls_mock.mock_calls[0].kwargs["bearer_auth"]
+            == "some-token"
         )
 
     async def test_cache_boot_sources_from_simplestreams_product(self) -> None:

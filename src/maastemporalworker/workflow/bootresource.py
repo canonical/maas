@@ -26,6 +26,7 @@ from temporalio.workflow import (
 )
 
 from maascommon.enums.events import EventTypeEnum
+from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import (
     NotificationCategoryEnum,
     NotificationComponent,
@@ -136,6 +137,18 @@ class BootResourcesActivity(ActivityBase):
                 url=maas_url, token=token, user_agent=user_agent
             )
 
+    async def _get_extra_http_headers(self, url: str) -> dict[str, str]:
+        headers: dict[str, str] = {}
+        async with self.start_transaction() as services:
+            msm_status = await services.msm.get_status()
+            if (
+                msm_status
+                and msm_status.running == MSMStatusEnum.CONNECTED
+                and url.startswith(msm_status.sm_url)
+            ):
+                headers["Authorization"] = f"bearer {msm_status.sm_jwt}"
+        return headers
+
     async def report_progress(self, rfiles: list[int], size: int):
         """Report progress back to MAAS
 
@@ -237,8 +250,10 @@ class BootResourcesActivity(ActivityBase):
                 await self.report_progress(param.rfile_ids, lfile.size)
                 return True
 
+            headers = await self._get_extra_http_headers(url)
+
             async with (
-                self.apiclient.make_client(param.http_proxy).stream(
+                self.apiclient.make_client(param.http_proxy, headers).stream(
                     "GET", url
                 ) as response,
                 lfile.astore(autocommit=False) as store,

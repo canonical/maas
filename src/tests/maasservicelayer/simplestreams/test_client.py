@@ -290,6 +290,26 @@ class TestSimpleStreamsClient:
             method="GET",
         )
 
+    async def test_get_index_with_auth(self, mocker, mock_aioresponse) -> None:
+        mocker.patch("os.path.exists").return_value = True
+        url = "http://foo.com"
+        mock_aioresponse.get(
+            f"{url}/{SIGNED_INDEX_PATH}", body=SIGNED_SAMPLE_INDEX
+        )
+        async with SimpleStreamsClient(
+            url=url, keyring_file="/path/to/keyring", bearer_auth="auth-token"
+        ) as client:
+            mocker.patch.object(
+                client, "_validate_pgp_signature"
+            ).return_value = None
+            await client.get_index()
+        mock_aioresponse.assert_called_with(
+            url=f"{url}/{SIGNED_INDEX_PATH}",
+            proxy=None,
+            headers={"Authorization": "bearer auth-token"},
+            method="GET",
+        )
+
     async def test_get_product(self, mocker, mock_aioresponse) -> None:
         mocker.patch("os.path.exists").return_value = True
         url = "http://foo.com"
@@ -311,6 +331,33 @@ class TestSimpleStreamsClient:
         mock_aioresponse.assert_called_with(
             url=f"{url}/{product_path}",
             proxy=None,
+            method="GET",
+        )
+
+    async def test_get_product_with_auth(
+        self, mocker, mock_aioresponse
+    ) -> None:
+        mocker.patch("os.path.exists").return_value = True
+        url = "http://foo.com"
+        product_path = (
+            "streams/v1/com.ubuntu.maas:stable:1:bootloader-download.sjson"
+        )
+        mock_aioresponse.get(f"{url}/{product_path}", payload={})
+        # patch the factory to not raise errors as there are no products
+        mocker.patch.object(
+            SimpleStreamsProductListFactory, "produce"
+        ).return_value = None
+        async with SimpleStreamsClient(
+            url=url, keyring_file="/path/to/keyring", bearer_auth="auth-token"
+        ) as client:
+            mocker.patch.object(
+                client, "_validate_pgp_signature"
+            ).return_value = None
+            await client.get_product(product_path)
+        mock_aioresponse.assert_called_with(
+            url=f"{url}/{product_path}",
+            proxy=None,
+            headers={"Authorization": "bearer auth-token"},
             method="GET",
         )
 

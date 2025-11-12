@@ -304,6 +304,16 @@ class ImageSyncService(Service):
         keyring_data: bytes | None = None,
     ) -> list[SourceAvailableImage]:
         http_proxy = await self._get_http_proxy()
+        msm_status = await self.msm_service.get_status()
+
+        if (
+            msm_status
+            and msm_status.running == MSMStatusEnum.CONNECTED
+            and source_url.startswith(msm_status.sm_url)
+        ):
+            bearer_token = msm_status.sm_jwt
+        else:
+            bearer_token = None
 
         async with self._get_keyring_file(
             keyring_path, keyring_data
@@ -312,6 +322,7 @@ class ImageSyncService(Service):
                 url=source_url,
                 http_proxy=http_proxy,
                 keyring_file=keyring_file,
+                bearer_auth=bearer_token,
             ) as client:
                 products_list = await client.get_all_products()
 
@@ -340,16 +351,27 @@ class ImageSyncService(Service):
         boot_source_products_mapping = {}
 
         http_proxy = await self._get_http_proxy()
+        msm_status = await self.msm_service.get_status()
 
         for boot_source in boot_sources:
             async with self._get_keyring_file(
                 boot_source.keyring_filename, boot_source.keyring_data
             ) as keyring_file:
+                if (
+                    msm_status
+                    and msm_status.running == MSMStatusEnum.CONNECTED
+                    and boot_source.url.startswith(msm_status.sm_url)
+                ):
+                    bearer_token = msm_status.sm_jwt
+                else:
+                    bearer_token = None
+
                 async with SimpleStreamsClient(
                     url=boot_source.url,
                     http_proxy=http_proxy,
                     keyring_file=keyring_file,
                     skip_pgp_verification=boot_source.skip_keyring_verification,
+                    bearer_auth=bearer_token,
                 ) as client:
                     boot_source_products_mapping[
                         boot_source
