@@ -102,7 +102,10 @@ class TestAgentsApi:
         internal_api_headers: dict,
     ) -> None:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
-        mock_dump_certificate.return_value = b"cert_pem_bytes"
+        mock_dump_certificate.side_effect = [
+            b"signed_cert_pem_bytes",
+            b"ca_cert_pem_bytes",
+        ]
 
         mock_x509name = Mock(crypto.X509Name)
         mock_x509name.CN = UUID
@@ -111,6 +114,10 @@ class TestAgentsApi:
         mock_certificate = Mock(Certificate)
         mock_certificate.cert = mock_x509
         mock_sign_certificate_request.return_value = mock_certificate
+
+        mock_ca_certificate = Mock(Certificate)
+        mock_ca_certificate.cert = Mock(crypto.X509)
+        mock_fetch_maas_ca_cert.return_value = mock_ca_certificate
 
         services_mock.bootstraptokens = Mock(BootstrapTokensService)
         mock_token = BootstrapToken(
@@ -142,8 +149,14 @@ class TestAgentsApi:
             json=request_data,
         )
         assert response.status_code == 201
-        assert "certificate" in response.json()
+        response_json = response.json()
+        assert "certificate" in response_json
+        assert "ca" in response_json
+        assert response_json["certificate"] == "signed_cert_pem_bytes"
+        assert response_json["ca"] == "ca_cert_pem_bytes"
         assert "ETag" in response.headers
+
+        assert mock_dump_certificate.call_count == 2
         services_mock.bootstraptokens.delete_one.assert_called_once()
 
     async def test_agent_enrollment_failed_with_not_found_secret(

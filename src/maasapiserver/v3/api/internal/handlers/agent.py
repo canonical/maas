@@ -169,5 +169,8 @@ class AgentHandler(Handler):
         response.headers["ETag"] = agent.etag()
         return AgentSignedCertificateResponse.from_model(
             certificate=cert_pem_bytes.decode("utf-8"),
+            ca=crypto.dump_certificate(
+                crypto.FILETYPE_PEM, ca_cert.cert
+            ).decode("utf-8"),
             self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents:enroll",
         )

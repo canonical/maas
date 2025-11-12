@@ -10,9 +10,11 @@ from maasapiserver.v3.constants import V3_INTERNAL_API_PREFIX
 class TestAgentSignedCertificateResponse:
     def test_from_model(self) -> None:
         certificate = "certificate"
+        ca = "ca"
 
         agent_cs_response = AgentSignedCertificateResponse.from_model(
             certificate=certificate,
+            ca=ca,
             self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents:enroll",
         )
 
