@@ -436,6 +436,9 @@ class DNSConfig:
             does not exist.
         """
         trusted_networks = kwargs.pop("trusted_networks", "")
+        allow_only_trusted_transfers = kwargs.pop(
+            "allow_only_trusted_transfers", False
+        )
         context = {
             "zones": self.zones,
             "forwarded_zones": self.forwarded_zones,
@@ -444,6 +447,7 @@ class DNSConfig:
             "nsupdate_keys_conf_path": get_nsupdate_key_path(),
             "trusted_networks": trusted_networks,
             "modified": str(datetime.today()),
+            "allow_only_trusted_transfers": allow_only_trusted_transfers,
         }
         content = render_dns_template(self.template_file_name, kwargs, context)
         # The rendered configuration is Unicode text but should contain only
