@@ -1,0 +1,136 @@
+{% if overview %}{{ overview }}
+{% endif %}
+
+```bash
+{{ usage }}
+```
+
+{% if positional_args %}
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+{% for arg in positional_args %}
+| {{ arg }} | {% if arg in positional_arg_descriptions %}{{ positional_arg_descriptions[arg] }}{% else %}The {{ arg }} parameter{% endif %} |
+{% endfor %}
+
+{% endif %}
+
+{% if options %}
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+{% for row in options %}
+| {{ row.option }} | {{ row.effect }} |
+{% endfor %}
+
+{% endif %}
+
+{% if keywords_text or (keywords and (keywords.lead or keywords.params)) %}
+#### **Keywords**
+{% if keywords and keywords.lead %}{{ keywords.lead|safe }}
+
+{% elif keywords_text %}{{ keywords_text|safe }}
+
+{% endif %}
+{% if keywords and keywords.params %}
+{% for p in keywords.params %}
+##### Keyword "{{ p.name }}"
+{% if p.type %}Optional {{ p.type }}.{% else %}Optional.{% endif %} {{ p.desc|safe }}
+
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if additional_sections %}
+{% for section in additional_sections %}
+{% if section.title == "run modes" %}
+#### **Run modes**
+{% set lines = section.content.split('\n') %}
+{% set ns = namespace(started=false) %}
+{% for line in lines %}
+{% set line_stripped = line.strip() %}
+{% set ns.is_excluded = false %}
+{% for prefix in run_modes_excluded_prefixes %}
+  {% if line_stripped.startswith(prefix) %}
+    {% set ns.is_excluded = true %}
+  {% endif %}
+{% endfor %}
+{% if line_stripped and not ns.is_excluded %}
+{% if not ns.started %}
+| Mode | Effect |
+|---|---|
+{% set ns.started = true %}
+{% endif %}
+{% set parts = line_stripped.split(' ', 1) %}
+{% if parts|length == 2 %}
+| {{ parts[0] }} | {{ parts[1] }} |
+{% else %}
+| {{ line_stripped }} |  |
+{% endif %}
+{% endif %}
+{% endfor %}
+
+When installing region or rack+region modes, MAAS needs a PostgreSQL database to connect to.
+
+If you want to set up PostgreSQL for a non-production deployment on this machine, and configure it for use with MAAS, you can install the `maas-test-db` snap before running `maas init`:
+
+{% elif section.title == "positional arguments" %}
+
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+{% set lines = section.content.split('\n') %}
+{% for line in lines %}
+{% set line_stripped = line.strip() %}
+{% set ns = namespace(is_excluded=false) %}
+{% for prefix in positional_args_excluded_prefixes %}
+  {% if line_stripped.startswith(prefix) %}
+    {% set ns.is_excluded = true %}
+  {% endif %}
+{% endfor %}
+{% if line_stripped and not ns.is_excluded %}
+{% set parts = line_stripped.split('  ', 1) %}
+{% if parts|length == 2 %}
+| {{ parts[0] }} | {{ parts[1] }} |
+{% else %}
+| {{ line_stripped }} |  |
+{% endif %}
+{% endif %}
+{% endfor %}
+
+{% elif section.title == "additional_info" %}
+{{ section.content|safe }}
+{% elif section.title == "drill down" %}
+
+#### **Drill down**
+| Command | Effect |
+|---|---|
+{% for l in section.content.split('\n') %}
+{% set t = l.rstrip() %}
+{% if t and t.strip() != 'COMMAND' %}
+{% set s = t.strip() %}
+{% if '  ' in s %}
+{% set p = s.split('  ', 1) %}
+| {{ p[0] }} | {{ p[1].strip() }} |
+{% endif %}
+{% endif %}
+{% endfor %}
+
+{% elif section.title == "the maas-test-db snap before running 'maas init'" %}
+
+```bash
+{{ section.content | replace('    ', '') | trim }}
+```
+
+{% else %}
+
+#### **{{ section.title|safe }}**
+{{ section.content|safe }}
+
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if accepts_json or returns_json %}
+Note: This command{% if accepts_json %} accepts JSON{% endif %}{% if accepts_json and returns_json %} and{% endif %}{% if returns_json %} returns JSON{% endif %}.
+{% endif %}

@@ -1,0 +1,26 @@
+# Top-level CLI commands
+src/maascli/cli.py
+src/maascli/snap.py
+
+# Django management commands (all files in this directory)
+src/maasserver/management/commands/*.py
+
+# Profile commands
+src/maascli/api.py
+src/maascli/config.py
+
+# Resource command infrastructure
+src/maasserver/api/doc_handler.py
+src/maasserver/api/doc.py
+src/maasserver/urls_api.py
+
+# All individual API commands (all files in this directory)
+src/maasserver/api/*.py
+
+# Help text processing infrastructure
+src/maascli/utils.py
+
+# Documentation generation tools
+docs/usr/tools/generate.py
+docs/usr/tools/maas_cli_introspection.py
+docs/usr/tools/cli_page.md.j2
