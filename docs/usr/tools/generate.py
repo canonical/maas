@@ -68,11 +68,73 @@ TOP_LEVEL = {
 }
 
 
+def _normalize_period_spacing(text: str) -> str:
+    """Normalize spacing after periods to single space."""
+    # Replace multiple spaces after periods with single space
+    # But preserve <br> tags and other HTML entities
+    text = re.sub(r'\.\s{2,}', '. ', text)
+    return text
+
+
+def _fix_ellipsis(text: str) -> str:
+    """Replace '...' with proper ellipsis symbol '…'."""
+    # Replace three dots with ellipsis, but not in code blocks or URLs
+    # Don't replace if it's part of a number or in specific contexts
+    text = re.sub(r'\.\.\.(?!\w)', '…', text)
+    return text
+
+
+def _fix_lexical_illusions(text: str) -> str:
+    """Remove repeated words (lexical illusions)."""
+    text = re.sub(r'(\d+)\*(\d+)\*(\d+)', r'\1 * \2 * \3', text)
+    if re.search(r'[*+\-=/]\s*\d+\s*[*+\-=/]', text):
+        return text
+    text = re.sub(r'\bOptional\s+\w+\.\s+Optional\.\s+Optional\s+', 
+                  lambda m: m.group(0).replace(' Optional. Optional ', ' '), text, flags=re.IGNORECASE)
+    text = re.sub(r'\bOptional\s+\w+\.\s+Optional\.\s+Optional\b', 
+                  lambda m: m.group(0).replace(' Optional. Optional', ''), text, flags=re.IGNORECASE)
+    text = re.sub(r'\bOptional\s+\w+\.\s+Optional\.', 
+                  lambda m: m.group(0).replace(' Optional.', ''), text, flags=re.IGNORECASE)
+    text = re.sub(r'\bOptional\.\s+Optional\.', 'Optional.', text, flags=re.IGNORECASE)
+    text = re.sub(r'\balso\s+also\b', 'also', text, flags=re.IGNORECASE)
+    text = re.sub(r'\band\s+and\b', 'and', text, flags=re.IGNORECASE)
+    text = re.sub(r'\b(the|a|an|is|are|was|were)\s+\1\b', r'\1', text, flags=re.IGNORECASE)
+    return text
+
+
+def _fix_curly_quotes(text: str) -> str:
+    """Replace straight quotes with curly quotes."""
+    if '<br>' in text or '`' not in text:
+        left_quote = "\u201C"
+        right_quote = "\u201D"
+        text = re.sub(r'"([a-zA-Z0-9\-]+)"', left_quote + r'\1' + right_quote, text)
+        text = re.sub(r'"(\d+-\w+)"', left_quote + r'\1' + right_quote, text)
+    return text
+
+
+def _fix_weasel_words(text: str) -> str:
+    """Remove or replace weasel words like 'very'."""
+    return re.sub(r'\bvery\s+', '', text, flags=re.IGNORECASE)
+
+
+def _apply_all_text_fixes(text: str) -> str:
+    """Apply all text normalization fixes."""
+    if not text:
+        return ""
+    text = _normalize_period_spacing(text)
+    text = _fix_ellipsis(text)
+    text = _fix_lexical_illusions(text)
+    text = _fix_curly_quotes(text)
+    text = _fix_weasel_words(text)
+    return text
+
+
 def normalize_text(text: str) -> str:
     """Normalize text for Markdown output."""
     if not text:
         return ""
-    return re.sub(r"\r\n|\r|\n", "<br>", text.strip()).replace("|", "\\|")
+    text = re.sub(r"\r\n|\r|\n", "<br>", text.strip()).replace("|", "\\|")
+    return _apply_all_text_fixes(text)
 
 
 def escape_md(text: str) -> str:
@@ -137,6 +199,7 @@ def _format_keyword_text(text: str) -> str:
         text = re.sub(r"(?m)^:([a-z0-9_\-]+):", r"**:\1:**", text)
     except Exception:
         pass
+    text = _apply_all_text_fixes(text)
     return "<br>".join(text.splitlines()) if text else ""
 
 
@@ -163,6 +226,52 @@ def _has_positional_section(additional_sections: List[Dict[str, Any]]) -> bool:
     )
 
 
+def _is_sentence_fragment(sent: str, prev_sentences: List[str], index: int) -> bool:
+    """Check if a sentence is a fragment that should be removed."""
+    sent_lower = sent.lower()
+    for prev_sent in prev_sentences:
+        prev_lower = prev_sent.lower()
+        if sent_lower in prev_lower or prev_lower in sent_lower:
+            if abs(len(sent_lower) - len(prev_lower)) > 10:
+                return True
+    if index > 0 and not sent[0].isupper():
+        if re.match(r'^(mode|and|or|the|a|an|to|for|with|in|on|at)\s+', sent_lower):
+            return True
+    return False
+
+
+def _remove_duplicate_sentences(text: str) -> str:
+    """Remove duplicate sentences and fragments from text."""
+    sentences = re.split(r'\.\s+', text)
+    seen = set()
+    cleaned = []
+    for i, sent in enumerate(sentences):
+        sent = sent.strip()
+        if not sent:
+            continue
+        sent_lower = sent.lower()
+        if sent_lower not in seen and not _is_sentence_fragment(sent, cleaned, i):
+            seen.add(sent_lower)
+            cleaned.append(sent)
+    if cleaned:
+        result = '. '.join(cleaned)
+        if not result.endswith('.'):
+            result += '.'
+        return result.strip()
+    return text
+
+
+def _extract_option_text(opt_text: str, eff_text: str) -> Tuple[str, str]:
+    """Extract option and effect text from potentially malformed input."""
+    if not eff_text and opt_text:
+        if m := re.match(r"^(?P<opt>\S(?:.*?\S)?)\s{2,}(?P<desc>.+)$", opt_text):
+            return m.group("opt"), m.group("desc").strip()
+    if (not eff_text) or eff_text.startswith("Running") or eff_text.startswith("Usage"):
+        if m := re.match(r"^(?P<opt>-?\w+(?:,\s*--\w+)?)\s{2,}(?P<desc>.+)$", opt_text):
+            return m.group("opt"), m.group("desc").strip()
+    return opt_text, eff_text
+
+
 def _normalize_options_list(options: List[Dict[str, Any]]) -> Tuple[List[Dict[str, str]], List[str]]:
     """Normalize options rows and extract moved notes."""
     normalized: List[Dict[str, str]] = []
@@ -171,15 +280,7 @@ def _normalize_options_list(options: List[Dict[str, Any]]) -> Tuple[List[Dict[st
         opt_text = str(row.get("option", "")).rstrip()
         eff_text = str(row.get("effect", "")).strip()
 
-        if not eff_text and opt_text:
-            if m := re.match(r"^(?P<opt>\S(?:.*?\S)?)\s{2,}(?P<desc>.+)$", opt_text):
-                opt_text = m.group("opt")
-                eff_text = m.group("desc").strip()
-
-        if (not eff_text) or eff_text.startswith("Running") or eff_text.startswith("Usage"):
-            if m := re.match(r"^(?P<opt>-?\w+(?:,\s*--\w+)?)\s{2,}(?P<desc>.+)$", opt_text):
-                opt_text = m.group("opt")
-                eff_text = m.group("desc").strip()
+        opt_text, eff_text = _extract_option_text(opt_text, eff_text)
 
         if eff_text and "|" in eff_text:
             eff_text = eff_text.split("|", 1)[0].strip()
@@ -193,10 +294,77 @@ def _normalize_options_list(options: List[Dict[str, Any]]) -> Tuple[List[Dict[st
             )
             eff_text = eff_text.split("If credentials are not provided", 1)[0].rstrip()
 
+        if eff_text:
+            eff_text = _apply_all_text_fixes(eff_text)
+            eff_text = _remove_duplicate_sentences(eff_text)
+
         if opt_text:
             normalized.append({"option": opt_text, "effect": eff_text})
 
     return normalized, moved_notes
+
+
+def _remove_optional_prefix(text: str) -> str:
+    """Remove leading Optional/Required prefixes from descriptions."""
+    while re.match(r'^(Optional|Required)\.\s+', text, flags=re.IGNORECASE):
+        text = re.sub(r'^(Optional|Required)\.\s+', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'^Optional\s+', '', text, flags=re.IGNORECASE)
+    return text
+
+
+def _clean_lead_text(lead_lines: List[str], parsed_param_names: set) -> str:
+    """Remove parsed :param/:type lines from lead text."""
+    cleaned = []
+    for line in lead_lines:
+        line_stripped = line.strip()
+        if line_stripped.startswith(":param "):
+            parsed = _parse_param_or_type_line(line_stripped, ":param ")
+            if parsed and parsed[0] in parsed_param_names:
+                continue
+        if line_stripped.startswith(":type "):
+            parsed = _parse_param_or_type_line(line_stripped, ":type ")
+            if parsed and parsed[0] in parsed_param_names:
+                continue
+        cleaned.append(line)
+    lead = "\n".join(cleaned).strip()
+    lead = re.sub(r'(:param\s+\w+:\s+(?:Optional|Required))\.\s{2,}', r'\1. ', lead, flags=re.IGNORECASE)
+    lead = _apply_all_text_fixes(lead)
+    return _format_keyword_text(lead)
+
+
+def _parse_param_line(lines: List[str], i: int, params: Dict[str, Dict[str, str]], 
+                      param_order: List[str], parsed_param_names: set) -> Tuple[int, Optional[str]]:
+    """Parse a :param line and return next index and current param name."""
+    raw = lines[i]
+    line = raw.strip()
+    parsed = _parse_param_or_type_line(line, ":param ")
+    if parsed is None:
+        return i + 1, None
+    name, desc = parsed
+    parsed_param_names.add(name)
+    if name not in params:
+        params[name] = {"name": name, "desc": "", "type": ""}
+        param_order.append(name)
+    entry = params[name]
+    entry_desc_lines = [desc]
+    continuation_lines, next_idx = _collect_continuation_lines(lines, i)
+    entry_desc_lines.extend(continuation_lines)
+    desc_text = "\n".join(entry_desc_lines).strip()
+    entry["desc"] = _normalize_period_spacing(desc_text)
+    return next_idx, name
+
+
+def _parse_type_line(line: str, params: Dict[str, Dict[str, str]], param_order: List[str]) -> bool:
+    """Parse a :type line. Returns True if parsed successfully."""
+    parsed = _parse_param_or_type_line(line, ":type ")
+    if parsed is None:
+        return False
+    name, typ = parsed
+    if name not in params:
+        params[name] = {"name": name, "desc": "", "type": ""}
+        param_order.append(name)
+    params[name]["type"] = typ
+    return True
 
 
 def parse_keywords_text(keywords_text: str) -> Dict[str, Any]:
@@ -210,12 +378,7 @@ def parse_keywords_text(keywords_text: str) -> Dict[str, Any]:
     params: Dict[str, Dict[str, str]] = {}
     param_order: List[str] = []
     current_param: Optional[str] = None
-
-    def get_or_create(name: str) -> Dict[str, str]:
-        if name not in params:
-            params[name] = {"name": name, "desc": "", "type": ""}
-            param_order.append(name)
-        return params[name]
+    parsed_param_names = set()
 
     i = 0
     while i < len(lines):
@@ -223,53 +386,43 @@ def parse_keywords_text(keywords_text: str) -> Dict[str, Any]:
         line = raw.strip()
         
         if line.startswith(":param "):
-            parsed = _parse_param_or_type_line(line, ":param ")
-            if parsed is None:
-                lead_lines.append(raw)
-                i += 1
+            next_idx, param_name = _parse_param_line(lines, i, params, param_order, parsed_param_names)
+            if param_name:
+                current_param = param_name
+                i = next_idx
                 continue
-            name, desc = parsed
-            entry = get_or_create(name)
-            entry_desc_lines = [desc]
-            continuation_lines, next_idx = _collect_continuation_lines(lines, i)
-            entry_desc_lines.extend(continuation_lines)
-            entry["desc"] = "\n".join(entry_desc_lines).strip()
-            current_param = name
-            i = next_idx
-            continue
-        elif line.startswith(":type "):
-            parsed = _parse_param_or_type_line(line, ":type ")
-            if parsed is None:
-                lead_lines.append(raw)
-                i += 1
-                continue
-            name, typ = parsed
-            entry = get_or_create(name)
-            entry["type"] = typ
+            lead_lines.append(raw)
             i += 1
-            continue
+        elif line.startswith(":type "):
+            if _parse_type_line(line, params, param_order):
+                i += 1
+                continue
+            lead_lines.append(raw)
+            i += 1
         else:
             if current_param is None:
+                if line.startswith(":param "):
+                    parsed = _parse_param_or_type_line(line, ":param ")
+                    if parsed and parsed[0] in parsed_param_names:
+                        i += 1
+                        continue
                 lead_lines.append(raw)
             else:
                 if re.match(r"^\s", raw):
-                    entry = get_or_create(current_param)
-                    entry["desc"] = (
-                        entry.get("desc", "") + "\n" + raw.rstrip()
-                    ).strip()
+                    entry = params.get(current_param, {})
+                    desc_text = (entry.get("desc", "") + "\n" + raw.rstrip()).strip()
+                    entry["desc"] = _normalize_period_spacing(desc_text)
+                    params[current_param] = entry
                 else:
                     lead_lines.append(raw)
             i += 1
-            continue
 
-    # Build ordered params list using param_order
     ordered_params = [params[name] for name in param_order]
-
-    lead = "\n".join(lead_lines).strip()
-    lead = _format_keyword_text(lead)
+    lead = _clean_lead_text(lead_lines, parsed_param_names)
     
     for e in ordered_params:
-        desc_text = e.get("desc", "").strip()
+        desc_text = _remove_optional_prefix(e.get("desc", "").strip())
+        desc_text = _apply_all_text_fixes(desc_text)
         e["desc"] = _format_keyword_text(desc_text)
         e["type"] = escape_md(e.get("type", "")).strip()
 
@@ -376,6 +529,35 @@ def format_positional_args(args: List[str]) -> str:
     return markdown
 
 
+def _is_malformed_content(content: str) -> bool:
+    """Check if content looks like malformed concatenated text."""
+    if re.match(r'^\[--[\w-]+', content.strip()):
+        return True
+    if len(content) > 500 and not any(marker in content for marker in ['. ', '.\n', '<br>', '\n\n']):
+        return True
+    return False
+
+
+def _clean_additional_sections(additional_sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Filter and clean additional sections."""
+    cleaned = []
+    try:
+        for sec in additional_sections:
+            if isinstance(sec, dict) and isinstance(sec.get("content"), str):
+                content = sec["content"]
+                if sec.get("title") == "additional_info" and _is_malformed_content(content):
+                    continue
+                content = _apply_all_text_fixes(content)
+                sec["content"] = bold_list_leaders(content)
+                if sec["content"].strip():
+                    cleaned.append(sec)
+            else:
+                cleaned.append(sec)
+    except Exception:
+        return additional_sections
+    return cleaned
+
+
 def render_with_template(env: Any, context: Dict[str, Any]) -> str:
     template = env.get_template("cli_page.md.j2")
     return template.render(**context)
@@ -428,17 +610,13 @@ def generate_command_markdown(
             {"title": "additional_info", "content": "\n".join(moved_notes)}
         )
 
-    if keywords_text:
+    if keywords_text and not (keywords.get("params") or keywords.get("lead")):
+        keywords_text = _apply_all_text_fixes(keywords_text)
         keywords_text = _bold_sphinx_directives(keywords_text)
+    else:
+        keywords_text = ""
 
-
-    try:
-        for sec in additional_sections:
-            if isinstance(sec, dict) and isinstance(sec.get("content"), str):
-                sec["content"] = bold_list_leaders(sec["content"])
-    except Exception:
-        # Non-fatal formatting; proceed even if it fails
-        pass
+    additional_sections = _clean_additional_sections(additional_sections)
 
     context = {
         "overview": overview,

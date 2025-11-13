@@ -1,8 +1,12 @@
+{# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+#}
 {% if overview %}{{ overview }}
 {% endif %}
 
 ```bash
 {{ usage }}
+
 ```
 
 {% if positional_args %}
@@ -35,7 +39,8 @@
 {% if keywords and keywords.params %}
 {% for p in keywords.params %}
 ##### Keyword "{{ p.name }}"
-{% if p.type %}Optional {{ p.type }}.{% else %}Optional.{% endif %} {{ p.desc|safe }}
+{% set desc_trimmed = (p.desc|trim) if p.desc else '' %}
+{% if p.type %}Optional {{ p.type }}.{% else %}Optional.{% endif %}{% if desc_trimmed %} {{ desc_trimmed|safe }}{% endif %}
 
 {% endfor %}
 {% endif %}
@@ -120,6 +125,7 @@ If you want to set up PostgreSQL for a non-production deployment on this machine
 
 ```bash
 {{ section.content | replace('    ', '') | trim }}
+
 ```
 
 {% else %}
