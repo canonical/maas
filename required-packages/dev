@@ -6,6 +6,7 @@ dos2unix
 git
 libnss-wrapper
 psmisc
+python3-jinja2
 python3-django-nose
 python3-dnspython
 python3-nose-exclude

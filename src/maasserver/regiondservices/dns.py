@@ -11,6 +11,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from maasserver.dns.config import current_zone_serial, dns_update_all_zones
 from maasserver.models import Config
+from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.dns.config import get_zone_file_config_dir
 from provisioningserver.logger import LegacyLogger
@@ -49,9 +50,10 @@ class DNSReloadService(TimerService):
             self.update_running = False
 
     @synchronous
+    @transactional
     def _run(self) -> str | None:
         """
-        Returns the current serial if found, None otherwise.
+        Full reload bind if there is a mismatch between the local serial and the latest published dns update in the database.
         """
         internal_domain = Config.objects.get_config("maas_internal_domain")
 

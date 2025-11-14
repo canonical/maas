@@ -588,6 +588,7 @@ class ServiceCollectionV3:
         services.external_oauth = ExternalOAuthService(
             context=context,
             external_oauth_repository=ExternalOAuthRepository(context),
+            secrets_service=services.secrets,
         )
         services.agents = AgentsService(
             context=context,

@@ -22,6 +22,7 @@ class TestMSMHandler:
         handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
         assert result["sm_url"] is None
+        assert result["sm_jwt"] is None
         assert result["start_time"] is None
         assert result["running"] == MSMStatusEnum.NOT_CONNECTED
 
@@ -36,6 +37,7 @@ class TestMSMHandler:
             "get_status",
             return_value=MSMStatus(
                 sm_url=expected_url,
+                sm_jwt="",
                 running=MSMStatusEnum.PENDING,
                 start_time=expected_started,
             ),
@@ -43,6 +45,7 @@ class TestMSMHandler:
         handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
         assert result["sm_url"] == expected_url
+        assert result["sm_jwt"] == ""
         assert result["start_time"] == expected_started
         assert result["running"] == MSMStatusEnum.PENDING
 
@@ -52,11 +55,13 @@ class TestMSMHandler:
             "%a %d %b %Y, %I:%M%p"
         )
         expected_url = "http://test-maas"
+        expected_jwt = "some-token"
         mocker.patch.object(
             MSMService,
             "get_status",
             return_value=MSMStatus(
                 sm_url=expected_url,
+                sm_jwt=expected_jwt,
                 running=MSMStatusEnum.CONNECTED,
                 start_time=expected_started,
             ),
@@ -64,5 +69,6 @@ class TestMSMHandler:
         handler = msm.MAASSiteManagerHandler(owner, {}, None)
         result = handler.status({})
         assert result["sm_url"] == expected_url
+        assert result["sm_jwt"] == expected_jwt
         assert result["start_time"] == expected_started
         assert result["running"] == MSMStatusEnum.CONNECTED

@@ -1050,6 +1050,10 @@ func (s *DHCPService) getConfig(ctx context.Context) (*dhcpConfig, error) {
 	//nolint:errcheck // should be safe to ignore an error from Close()
 	defer resp.Body.Close()
 
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("unexpected status code fetching DHCP config: %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

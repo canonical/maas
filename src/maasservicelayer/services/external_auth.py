@@ -1,10 +1,12 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import base64
 from dataclasses import dataclass, field
 from datetime import timedelta
 import os
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from macaroonbakery import bakery, checkers, httpbakery
 from macaroonbakery.bakery._store import RootKeyStore
 from macaroonbakery.httpbakery.agent import Agent, AuthInfo
@@ -16,6 +18,7 @@ from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
+from maasservicelayer.auth.external_oauth import OAuth2Client
 from maasservicelayer.auth.macaroons.checker import AsyncChecker
 from maasservicelayer.auth.macaroons.locator import AsyncThirdPartyLocator
 from maasservicelayer.auth.macaroons.macaroon_client import (
@@ -49,12 +52,14 @@ from maasservicelayer.models.secrets import (
     ExternalAuthSecret,
     MacaroonKeySecret,
     RootKeyMaterialSecret,
+    V3OAuthEncryptionSecret,
 )
 from maasservicelayer.models.users import User
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
-from maasservicelayer.services.secrets import SecretsService
+from maasservicelayer.services.secrets import SecretNotFound, SecretsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
+from maasservicelayer.utils.encryptor import Encryptor
 from provisioningserver.security import to_bin, to_hex
 
 MACAROON_LIFESPAN = timedelta(days=1)
@@ -367,12 +372,18 @@ class ExternalAuthService(Service, RootKeyStore):
 class ExternalOAuthService(
     BaseService[OAuthProvider, ExternalOAuthRepository, OAuthProviderBuilder]
 ):
+    MAAS_V3_ENCRYPTION_KEY_SECRET = V3OAuthEncryptionSecret()
+    ENCRYPTION_SECRET_KEY_BYTES = 128
+    ENCRYPTION_SECRET_KEY = None
+
     def __init__(
         self,
         context: Context,
         external_oauth_repository: ExternalOAuthRepository,
+        secrets_service: SecretsService,
     ):
         super().__init__(context, external_oauth_repository)
+        self.secrets_service = secrets_service
 
     async def pre_create_hook(self, builder) -> None:
         existing_enabled = await self.get_provider()
@@ -402,6 +413,12 @@ class ExternalOAuthService(
     async def get_provider(self) -> OAuthProvider | None:
         return await self.repository.get_provider()
 
+    async def get_client(self) -> OAuth2Client | None:
+        provider = await self.get_provider()
+        if not provider:
+            return None
+        return OAuth2Client(provider)
+
     async def update_provider(
         self, id: int, builder: OAuthProviderBuilder
     ) -> OAuthProvider | None:
@@ -423,3 +440,23 @@ class ExternalOAuthService(
                 )
             ]
         )
+
+    async def get_encryptor(self) -> Encryptor:
+        encryption_key = await self._get_or_create_cached_encryption_key()
+        return Encryptor(encryption_key)
+
+    async def _get_or_create_cached_encryption_key(self) -> bytes:
+        if not self.ENCRYPTION_SECRET_KEY:
+            try:
+                key_b64 = await self.secrets_service.get_simple_secret(
+                    self.MAAS_V3_ENCRYPTION_KEY_SECRET
+                )
+                key = base64.b64decode(key_b64)
+            except SecretNotFound:
+                key = AESGCM.generate_key(self.ENCRYPTION_SECRET_KEY_BYTES)
+                key_b64 = base64.b64encode(key).decode("utf-8")
+                await self.secrets_service.set_simple_secret(
+                    self.MAAS_V3_ENCRYPTION_KEY_SECRET, key_b64
+                )
+            self.ENCRYPTION_SECRET_KEY = key
+        return self.ENCRYPTION_SECRET_KEY  # type: ignore

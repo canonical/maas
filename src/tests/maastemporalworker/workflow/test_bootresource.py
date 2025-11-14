@@ -22,6 +22,7 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
+from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import (
     NotificationCategoryEnum,
     NotificationComponent,
@@ -73,6 +74,7 @@ from maasservicelayer.services.bootsourceselections import (
 )
 from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.services.image_sync import ImageSyncService
+from maasservicelayer.services.msm import MSMService, MSMStatus
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.simplestreams.models import (
@@ -174,6 +176,7 @@ def boot_activities(
     act.apiclient = mock_apiclient
     act.region_id = controller.system_id
     act.report_progress = AsyncMock(return_value=None)
+    services_mock.msm = Mock(MSMService)
     mocker.patch.object(
         act, "start_transaction"
     ).return_value = AsyncContextManagerMock(services_mock)
@@ -399,10 +402,67 @@ class TestDownloadBootresourcefileActivity:
         boot_activities.report_progress.assert_awaited_once_with(
             param.rfile_ids, mock_local_file.total_size
         )
-        mock_apiclient.make_client.assert_called_once_with(None)
+        mock_apiclient.make_client.assert_called_once_with(None, {})
         mock_apiclient._mocked_client.stream.assert_called_once_with(
             "GET",
             "http://maas-image-stream.io",
+        )
+
+    async def test_download_file_from_msm(
+        self,
+        mock_local_file: Mock,
+        boot_activities: BootResourcesActivity,
+        mock_apiclient: Mock,
+        services_mock: ServiceCollectionV3,
+    ) -> None:
+        mock_local_file.valid.side_effect = [False, True]
+        chunked_data = [b"foo", b"bar", b""]
+
+        mock_http_response = Mock(httpx.Response)
+        mock_http_response.aiter_bytes.return_value = AsyncIteratorMock(
+            chunked_data
+        )
+        mock_apiclient._mocked_client.stream.return_value = (
+            AsyncContextManagerMock(mock_http_response)
+        )
+        mock_store = Mock(AsyncBufferedIOBase)
+        mock_local_file.store.return_value = AsyncContextManagerMock(
+            mock_store
+        )
+        services_mock.msm.get_status.return_value = MSMStatus(
+            sm_url="http://site-manager.io",
+            sm_jwt="jwt_token",
+            running=MSMStatusEnum.CONNECTED,
+            start_time=None,
+        )
+
+        heartbeats = []
+        env = ActivityEnvironment()
+        env.payload_converter = pydantic_data_converter
+        env.on_heartbeat = lambda *args: heartbeats.append(args[0])
+        param = ResourceDownloadParam(
+            rfile_ids=[1],
+            source_list=["http://site-manager.io/site/images/squashfs"],
+            sha256="0" * 64,
+            filename_on_disk="0" * 7,
+            total_size=100,
+        )
+        res = await env.run(boot_activities.download_bootresourcefile, param)
+        assert res is True
+
+        assert heartbeats == [
+            "Downloaded chunk",
+            "Downloaded chunk",
+            "Downloaded chunk",
+            "Download finished",
+        ]
+
+        mock_apiclient.make_client.assert_called_once_with(
+            None, {"Authorization": "bearer jwt_token"}
+        )
+        mock_apiclient._mocked_client.stream.assert_called_once_with(
+            "GET",
+            "http://site-manager.io/site/images/squashfs",
         )
 
     async def test_download_file_fails_checksum_check(

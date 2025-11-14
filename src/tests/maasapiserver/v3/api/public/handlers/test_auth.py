@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from json import dumps as _dumps
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -20,7 +20,12 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
     OAuthProviderResponse,
     OAuthProvidersListResponse,
 )
+from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.auth.external_oauth import (
+    OAuth2Client,
+    OAuthInitiateData,
+)
 from maasservicelayer.auth.jwt import JWT, UserRole
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
@@ -223,25 +228,45 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 401
 
-    # GET /auth/oauth/initiate
+    # GET /auth/oauth/authorization_url
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
+    )
     async def test_get_oauth_initiate_success(
         self,
+        cookie_manager_set_auth_cookie: MagicMock,
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
+        cookie_manager_set_auth_cookie.return_value = None
         services_mock.external_oauth = Mock(ExternalOAuthService)
-        services_mock.external_oauth.get_provider.return_value = (
-            TEST_PROVIDER_1
+        client_mock = Mock(OAuth2Client(TEST_PROVIDER_1))
+        returned_data = OAuthInitiateData(
+            authorization_url="https://example.com/auth?state=abc123&nonce=def123",
+            state="abc123",
+            nonce="def123",
         )
+        client_mock.generate_authorization_url.return_value = returned_data
+        client_mock.get_provider_name.return_value = TEST_PROVIDER_1.name
+        services_mock.external_oauth.get_client.return_value = client_mock
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/initiate"
+            f"{self.BASE_PATH}/oauth/authorization_url"
         )
 
         assert response.status_code == 200
-        provider_info = response.json()
-        assert provider_info["auth_url"] == TEST_PROVIDER_1.build_auth_url()
-        assert provider_info["provider_name"] == TEST_PROVIDER_1.name
+        data = response.json()
+        assert (
+            data["auth_url"]
+            == "https://example.com/auth?state=abc123&nonce=def123"
+        )
+        assert data["provider_name"] == TEST_PROVIDER_1.name
+        cookie_manager_set_auth_cookie.assert_any_call(
+            value="abc123", key=MAASOAuth2Cookie.AUTH_STATE
+        )
+        cookie_manager_set_auth_cookie.assert_any_call(
+            value="def123", key=MAASOAuth2Cookie.AUTH_NONCE
+        )
 
     async def test_get_oauth_initiate_not_configured(
         self,
@@ -249,10 +274,10 @@ class TestAuthApi:
         mocked_api_client: AsyncClient,
     ):
         services_mock.external_oauth = Mock(ExternalOAuthService)
-        services_mock.external_oauth.get_provider.return_value = None
+        services_mock.external_oauth.get_client.return_value = None
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/initiate"
+            f"{self.BASE_PATH}/oauth/authorization_url"
         )
 
         assert response.status_code == 404

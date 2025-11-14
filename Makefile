@@ -494,3 +494,24 @@ snap-tree-sync: $(UI_BUILD) clean-agent go-bins $(SNAP_UNPACKED_DIR_MARKER)
 # Used by maas-release-tools to check variable value
 print-%:
 	@echo $* = $($*)
+
+
+
+cli-docs-introspect:
+	@cd docs/usr/tools \
+		&& PYTHONPATH=$(PWD)/src \
+		   PATH="/snap/bin:$(PWD)/$(VENV)/bin:$(PWD)/$(BIN_DIR):$$PATH" \
+		   $(python) maas_cli_introspection.py > $(PWD)/cli.json
+.PHONY: cli-docs-introspect
+
+cli-docs-generate:
+	@PYTHONPATH=$(PWD)/src \
+	  PATH="$(PWD)/$(VENV)/bin:$(PWD)/$(BIN_DIR):$$PATH" \
+	  $(python) docs/usr/tools/generate.py \
+	    --source cli.json \
+	    --out docs/usr/markdown \
+	    --template-dir docs/usr/tools
+.PHONY: cli-docs-generate
+
+cli-docs: cli-docs-introspect cli-docs-generate
+.PHONY: cli-docs
