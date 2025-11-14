@@ -26,7 +26,6 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
-from maascommon.enums.dns import DnsUpdateAction
 from maascommon.utils.network import MAASIPSet
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -46,7 +45,6 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import CIDRField
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
@@ -497,15 +495,6 @@ class Subnet(CleanSave, TimestampedModel):
     def delete(self, *args, **kwargs):
         from maasserver.models.staticipaddress import FreeIPAddress
 
-        if self.rdns_mode != RDNS_MODE.DISABLED:
-            DNSPublication.objects.create_for_config_update(
-                source=f"removed subnet {self.cidr}",
-                action=DnsUpdateAction.RELOAD,
-                zone="",
-                label="",
-                rtype="",
-            )
-
         # Check if DHCP is enabled on the VLAN this subnet is attached to.
         if self.vlan.dhcp_on and self.get_dynamic_ranges().exists():
             raise ValidationError(
@@ -862,47 +851,6 @@ class Subnet(CleanSave, TimestampedModel):
             notification.delete()
 
     def save(self, *args, **kwargs):
-        if self.id is None and self.rdns_mode != RDNS_MODE.DISABLED:
-            DNSPublication.objects.create_for_config_update(
-                source=f"added subnet {self.cidr}",
-                action=DnsUpdateAction.RELOAD,
-                zone="",
-                label="",
-                rtype="",
-            )
-        else:
-            # each change creates a new dnspublication
-            if self._previous_cidr and self._previous_cidr != self.cidr:
-                DNSPublication.objects.create_for_config_update(
-                    source=f"subnet {self._previous_cidr} changed to {self.cidr}",
-                    action=DnsUpdateAction.RELOAD,
-                    zone="",
-                    label="",
-                    rtype="",
-                )
-            if (
-                self._previous_rdns_mode is not None
-                and self._previous_rdns_mode != self.rdns_mode
-            ):
-                DNSPublication.objects.create_for_config_update(
-                    source=f"subnet {self.cidr} rdns changed to {self.rdns_mode}",
-                    action=DnsUpdateAction.RELOAD,
-                    zone="",
-                    label="",
-                    rtype="",
-                )
-            if (
-                self._previous_allow_dns is not None
-                and self._previous_allow_dns != self.allow_dns
-            ):
-                DNSPublication.objects.create_for_config_update(
-                    source=f"subnet {self.cidr} allow_dns changed to {self.allow_dns}",
-                    action=DnsUpdateAction.RELOAD,
-                    zone="",
-                    label="",
-                    rtype="",
-                )
-
         super().save(*args, **kwargs)
 
         param = ConfigureDHCPParam(subnet_ids=[self.id])

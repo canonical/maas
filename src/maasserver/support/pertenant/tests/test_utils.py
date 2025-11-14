@@ -1,11 +1,10 @@
-# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the utilities of the per-tenant file storage work."""
 
 from django.urls import reverse
 
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.support.pertenant.utils import (
     extract_bootstrap_node_system_id,
     get_bootstrap_node_owner,
@@ -53,10 +52,6 @@ class TestExtractBootstrapNodeSystemId(MAASServerTestCase):
 
 
 class TestGetBootstrapNodeOwner(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_returns_None_if_no_provider_state_file(self):
         self.assertIsNone(get_bootstrap_node_owner())
 

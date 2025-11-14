@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `RegionRackRPCConnection`."""
@@ -7,7 +7,6 @@ import random
 
 from django.core.exceptions import ValidationError
 
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
@@ -19,10 +18,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestRegionRackRPCConnection(MAASServerTestCase):
     """Tests for the `RegionRackRPCConnection` model."""
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_endpoint_rack_controller_are_unique(self):
         region = factory.make_RegionController()

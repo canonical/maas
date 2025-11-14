@@ -8,7 +8,6 @@ import re
 from django.core.exceptions import PermissionDenied, ValidationError
 
 from maascommon.dns import HostnameRRsetMapping
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.domain import Domain
@@ -17,7 +16,6 @@ from maasserver.permissions import NodePermission
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks
 
 # duplicated from dnsdata.py so as to not export them
 INVALID_CNAME_MSG = "Invalid CNAME: Should be '<server>'."
@@ -203,18 +201,15 @@ class TestDNSData(MAASServerTestCase):
         target = factory.make_name("target")
         domain = factory.make_Domain()
         dnsrr = factory.make_DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsrr.save()
+        dnsrr.save()
 
         dnsdata = DNSData(dnsresource=dnsrr, rrtype="CNAME", rrdata=target)
 
-        with post_commit_hooks:
-            with self.assertRaisesRegex(
-                ValidationError,
-                re.escape("{'__all__': ['%s']}" % CNAME_AND_OTHER_MSG),
-            ):
-                dnsdata.save()
+        with self.assertRaisesRegex(
+            ValidationError,
+            re.escape("{'__all__': ['%s']}" % CNAME_AND_OTHER_MSG),
+        ):
+            dnsdata.save()
 
     def test_rejects_cname_with_other_data(self):
         name = factory.make_name("name")
@@ -359,8 +354,6 @@ class TestDNSDataMapping(MAASServerTestCase):
         self.assertEqual(expected_parent, actual_parent)
 
     def test_get_hostname_dnsdata_mapping_handles_ttl(self):
-        self.patch(dnspublication_module, "post_commit_do")
-
         # We create 2 domains, one with a ttl, one withoout.
         # Within each domain, create an RRset with and without ttl.
         global_ttl = random.randint(1, 99)
@@ -383,8 +376,6 @@ class TestDNSDataMapping(MAASServerTestCase):
             self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_returns_raw_ttl(self):
-        self.patch(dnspublication_module, "post_commit_do")
-
         # We create 2 domains, one with a ttl, one withoout.
         # Within each domain, create an RRset with and without ttl.
         # We then query with raw_ttl=True, and confirm that nothing is

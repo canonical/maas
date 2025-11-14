@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Signals coming off models."""
@@ -9,10 +9,14 @@ __all__ = [
     "bootsources",
     "controllerinfo",
     "dhcpsnippet",
+    "dnsdata",
+    "dnsresource",
+    "domain",
     "events",
     "interfaces",
     "iprange",
     "nodes",
+    "regionrackrpcconnection",
     "partitions",
     "podhints",
     "power",
@@ -28,6 +32,9 @@ from maasserver.models.signals import (
     bootsources,
     controllerinfo,
     dhcpsnippet,
+    dnsdata,
+    dnsresource,
+    domain,
     events,
     interfaces,
     iprange,
@@ -35,6 +42,7 @@ from maasserver.models.signals import (
     partitions,
     podhints,
     power,
+    regionrackrpcconnection,
     scriptresult,
     services,
     staticipaddress,

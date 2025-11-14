@@ -1,9 +1,10 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Respond to staticipaddress changes."""
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import connection
 from django.db.models.signals import (
     post_delete,
     post_init,
@@ -12,7 +13,8 @@ from django.db.models.signals import (
     pre_save,
 )
 
-from maasserver.models import StaticIPAddress
+from maascommon.enums.dns import DnsUpdateAction
+from maasserver.models import DNSPublication, StaticIPAddress
 from maasserver.utils.signals import SignalsManager
 from provisioningserver.logger import LegacyLogger
 
@@ -177,6 +179,60 @@ signals.watch(
     post_delete, post_delete_check_range_utilization, sender=StaticIPAddress
 )
 
+
+def emit_dnspublication_on_change(instance, old_values, **kwargs):
+    [old_ip, old_temp_expires_on, old_alloc_type] = old_values
+
+    changes = []
+    if old_ip != instance.ip:
+        changes.append(f"ip {old_ip} changed to {instance.ip}")
+    if old_temp_expires_on != instance.temp_expires_on:
+        changes.append(
+            f"temp_expires_on changed to {instance.temp_expires_on}"
+        )
+    if old_alloc_type != instance.alloc_type:
+        changes.append(f"alloc_type changed to {instance.alloc_type}")
+    if changes:
+        with connection.cursor() as cursor:
+            sql_query = """
+            SELECT EXISTS (
+                SELECT
+                  domain.id
+                FROM maasserver_staticipaddress AS staticipaddress
+                LEFT JOIN (
+                  maasserver_interface_ip_addresses AS iia
+                  JOIN maasserver_interface AS interface ON
+                    iia.interface_id = interface.id
+                  JOIN maasserver_nodeconfig AS nodeconfig ON
+                    nodeconfig.id = interface.node_config_id
+                  JOIN maasserver_node AS node ON
+                    node.id = nodeconfig.node_id) ON
+                  iia.staticipaddress_id = staticipaddress.id
+                LEFT JOIN (
+                  maasserver_dnsresource_ip_addresses AS dia
+                  JOIN maasserver_dnsresource AS dnsresource ON
+                    dia.dnsresource_id = dnsresource.id) ON
+                  dia.staticipaddress_id = staticipaddress.id
+                JOIN maasserver_domain AS domain ON
+                  domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+                WHERE
+                  domain.authoritative = TRUE AND staticipaddress.id = %s
+            )
+            """
+            cursor.execute(sql_query, [instance.id])
+            if cursor.fetchone()[0]:
+                DNSPublication.objects.create_for_config_update(
+                    source=f"ip {instance.ip} changes: {', '.join(changes)}",
+                    action=DnsUpdateAction.RELOAD,
+                )
+
+
+signals.watch_fields(
+    emit_dnspublication_on_change,
+    StaticIPAddress,
+    ["ip", "temp_expires_on", "alloc_type"],
+    delete=False,
+)
 
 # Enable all signals by default.
 signals.enable()

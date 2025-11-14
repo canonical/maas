@@ -1,4 +1,4 @@
-# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import base64
@@ -28,7 +28,6 @@ from twisted.internet.defer import succeed
 from twisted.internet.error import ConnectionDone
 import yaml
 
-from maascommon.enums.dns import DnsUpdateAction
 from maascommon.utils.network import inet_ntop
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -72,7 +71,6 @@ from maasserver.models import (
     Config,
     Controller,
     Device,
-    DNSPublication,
     Domain,
     Event,
     EventType,
@@ -101,7 +99,6 @@ from maasserver.models import (
     VolumeGroup,
 )
 from maasserver.models import bmc as bmc_module
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import node as node_module
 from maasserver.models.config import NetworkDiscoveryConfig
 import maasserver.models.interface as interface_module
@@ -859,7 +856,6 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         node_module.gethostname.return_value = hostname
         self.patch_autospec(node_module, "get_mac_addresses")
         node_module.get_mac_addresses.return_value = []
-        self.patch(dnspublication_module, "post_commit_do")
 
     def set_hostname_to_match(self, node):
         node_module.gethostname.return_value = node.hostname
@@ -1006,7 +1002,6 @@ class TestNode(MAASServerTestCase):
         self.patch_autospec(
             node_module, "get_temporal_task_queue_for_bmc"
         ).return_value = ""
-        self.patch(dnspublication_module, "post_commit_do")
 
     def disable_node_query(self):
         self.addCleanup(node_query.signals.enable)
@@ -6157,63 +6152,6 @@ class TestNode(MAASServerTestCase):
             task_queue="region",
         )
 
-    def test_save_creates_dnspublication_if_hostname_changes(self):
-        mock_create_for_config_update = self.patch(
-            DNSPublication.objects, "create_for_config_update"
-        )
-        node = factory.make_Node()
-        old_hostname = node.hostname
-        node.hostname = factory.make_name()
-
-        with post_commit_hooks:
-            node.save()
-
-        mock_create_for_config_update.assert_called_once_with(
-            action=DnsUpdateAction.RELOAD,
-            source=f"node {old_hostname} renamed to {node.hostname}",
-        )
-
-    def test_save_creates_dnspublication_if_boot_interface_changes(self):
-        node = factory.make_Node()
-        interface1 = factory.make_Interface(node=node)
-        interface2 = factory.make_Interface(node=node)
-        node.boot_interface = interface1
-
-        mock_create_for_config_update = self.patch(
-            DNSPublication.objects, "create_for_config_update"
-        )
-
-        with post_commit_hooks:
-            node.save()
-
-        mock_create_for_config_update.assert_not_called()
-
-        node.boot_interface = interface2
-
-        with post_commit_hooks:
-            node.save()
-
-        mock_create_for_config_update.assert_called_once_with(
-            action=DnsUpdateAction.RELOAD,
-            source=f"node {node.hostname} changed boot interface to {interface2.name}",
-        )
-
-    def test_save_creates_dnspublication_if_domain_changes(self):
-        node = factory.make_Node()
-        domain = factory.make_Domain()
-        node.domain = domain
-        mock_create_for_config_update = self.patch(
-            DNSPublication.objects, "create_for_config_update"
-        )
-
-        with post_commit_hooks:
-            node.save()
-
-        mock_create_for_config_update.assert_called_once_with(
-            action=DnsUpdateAction.RELOAD,
-            source=f"node {node.hostname} moved to zone {domain.name}",
-        )
-
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):
@@ -6896,10 +6834,6 @@ class TestDecomposeMachineMixin:
 
 class TestDecomposeMachine(MAASServerTestCase, TestDecomposeMachineMixin):
     """Test that a machine in a composable pod is decomposed."""
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_does_nothing_unless_machine(self):
         pod = self.make_composable_pod()
@@ -7865,10 +7799,6 @@ class TestNodeErase(MAASServerTestCase):
 
 
 class TestNodeParentRelationShip(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_children_field_returns_children(self):
         parent = factory.make_Node()
         # Create other node.
@@ -8650,10 +8580,6 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
 
 
 class TestGetGatewaysByPriority(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def assertGatewayPriorities(self, expected, actual):
         """Verifies the IPv4 and IPv6 gateways are in the correct order."""
         for expected_gw in expected:
@@ -9391,7 +9317,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.patch_autospec(
             node_module, "get_temporal_task_queue_for_bmc"
         ).return_value = ""
-        self.patch(dnspublication_module, "post_commit_do")
 
     def make_acquired_node_with_interface(
         self,
@@ -10540,7 +10465,6 @@ class TestNode_Stop(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
-        self.patch(dnspublication_module, "post_commit_do")
 
     def make_acquired_node_with_interface(
         self, user, bmc_connected_to=None, power_type="virsh"
@@ -10712,10 +10636,6 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
 
 class TestNode_PowerCycle(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def make_acquired_node_with_interface(
         self, user, bmc_connected_to=None, power_type="virsh"
     ):
@@ -11233,10 +11153,6 @@ class TestNode_Delete_With_Transactional_Events(MAASTransactionServerTestCase):
 
 
 class TestController(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_should_be_dynamically_deleted_false(self):
         rack = factory.make_RackController(status=NODE_STATUS.DEPLOYED)
         rack.bmc = factory.make_BMC()
@@ -11252,10 +11168,6 @@ class TestController(MAASServerTestCase):
 
 
 class TestControllerUpdateDiscoveryState(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_calls_update_discovery_state_per_interface(self):
         controller = factory.make_RegionRackController()
         eth1 = factory.make_Interface(
@@ -11440,10 +11352,6 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
 
 
 class TestRackController(MAASTransactionServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_add_chassis_issues_rpc_call(self):
         rackcontroller = factory.make_RackController()
 
@@ -11803,10 +11711,6 @@ class TestRackController(MAASTransactionServerTestCase):
 
 
 class TestRegionController(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_delete_prevented_when_running(self):
         region = factory.make_RegionController()
         factory.make_RegionControllerProcess(region=region)

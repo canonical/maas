@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from base64 import b64encode
 import http.client
@@ -44,7 +44,6 @@ from maasserver.models import (
     ScriptSet,
     StaticIPAddress,
 )
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import node as node_module
 from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models.bmc import Pod
@@ -125,7 +124,6 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(node_module.Node, "_pc_power_control_node")
         self.patch(node_module.Node, "_temporal_deploy")
         self.patch(staticipaddress_module, "post_commit_do")
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_handler_path(self):
         self.assertEqual(
@@ -3844,11 +3842,6 @@ class TestGetCurtinConfig(APITestCase.ForUser):
 class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
     """Tests for
     /api/2.0/machines/<machine>/?op=restore_networking_configuration"""
-
-    def setUp(self):
-        super().setUp()
-        self.patch(staticipaddress_module, "post_commit_do")
-        self.patch(dnspublication_module, "post_commit_do")
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""

@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Iterable
@@ -14,7 +14,6 @@ from django.utils import timezone
 from fixtures import FakeLogger
 from netaddr import EUI, IPAddress, IPNetwork
 
-from maascommon.enums.dns import DnsUpdateAction
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -34,9 +33,8 @@ from maasserver.exceptions import (
     StaticIPAddressReservedIPConflict,
     StaticIPAddressUnavailable,
 )
+from maasserver.models import interface as interface_module
 from maasserver.models import (
-    Config,
-    DNSPublication,
     MDNS,
     Neighbour,
     Space,
@@ -44,8 +42,6 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
-from maasserver.models import dnspublication as dnspublication_module
-from maasserver.models import interface as interface_module
 from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.interface import (
     BondInterface,
@@ -1388,11 +1384,6 @@ class TestUpdateInterfaceParentsOnSave(MAASServerTestCase):
         ("bond", {"iftype": INTERFACE_TYPE.BOND}),
         ("bridge", {"iftype": INTERFACE_TYPE.BRIDGE}),
     )
-
-    def setup(self, *args, **kwargs):
-        super.setup(*args, **kwargs)
-        self.patch(dnspublication_module, "start_workflow")
-        self.patch(dnspublication_module, "post_commit_hook_do")
 
     def test_updates_parents_vlan(self):
         node_config = factory.make_NodeConfig()
@@ -3382,11 +3373,6 @@ class TestUnlinkSubnet(MAASServerTestCase):
 class TestUpdateIPAddress(MAASTransactionServerTestCase):
     """Tests for `Interface.update_ip_address`."""
 
-    def setup(self, *args, **kwargs):
-        super.setup(*args, **kwargs)
-        self.patch(dnspublication_module, "start_workflow")
-        self.patch(dnspublication_module, "post_commit_hook_do")
-
     def test_switch_dhcp_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -3690,13 +3676,12 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
         with self.assertRaisesRegex(
             StaticIPAddressUnavailable, r"IP address is already in use\."
         ):
-            with post_commit_hooks:
-                interface.update_ip_address(
-                    static_ip,
-                    INTERFACE_LINK_TYPE.STATIC,
-                    subnet,
-                    ip_address=used_ip_address,
-                )
+            interface.update_ip_address(
+                static_ip,
+                INTERFACE_LINK_TYPE.STATIC,
+                subnet,
+                ip_address=used_ip_address,
+            )
 
     def test_switch_static_to_same_subnet_with_different_ip(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -3823,11 +3808,6 @@ class TestUpdateLinkById(MAASServerTestCase):
 class TestClaimAutoIPs(MAASTransactionServerTestCase):
     """Tests for `Interface.claim_auto_ips`."""
 
-    def setup(self, *args, **kwargs):
-        super.setup(*args, **kwargs)
-        self.patch(dnspublication_module, "start_workflow")
-        self.patch(dnspublication_module, "post_commit_hook_do")
-
     def test_claims_all_auto_ip_addresses(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -3856,31 +3836,6 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             "Should have 3 AUTO IP addresses with an IP address assigned.",
         )
         self.assertEqual(assigned_addresses, observed)
-
-    def test_claim_auto_ips_adds_dnspublication(self):
-        node = factory.make_Node()
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        subnet = factory.make_Subnet()
-
-        mock_create_for_config_update = self.patch(
-            DNSPublication.objects, "create_for_config_update"
-        )
-
-        with transaction.atomic():
-            interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
-            with post_commit_hooks:
-                ips = interface.claim_auto_ips()
-
-        mock_create_for_config_update.assert_called_once_with(
-            source=f"ip {ips[0].ip} linked to {interface.name} on node {node.hostname}",
-            action=DnsUpdateAction.INSERT,
-            label=f"{interface.name}.{node.hostname}",
-            rtype="A" if IPAddress(ips[0].ip).version == 4 else "AAAA",
-            zone=node.domain.name
-            if node.domain
-            else Config.objects.get_config("default_domain").name,
-            answer=str(ips[0].ip),
-        )
 
     def test_keeps_ip_address_ids_consistent(self):
         auto_ip_ids = []

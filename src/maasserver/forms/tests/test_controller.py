@@ -1,20 +1,15 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for controller forms."""
 
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.forms import ControllerForm
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestControllerForm(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_Contains_limited_set_of_fields(self):
         form = ControllerForm()
 
