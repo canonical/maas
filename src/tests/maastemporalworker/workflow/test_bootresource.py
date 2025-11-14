@@ -890,7 +890,7 @@ class TestRegisterNotificationErrorActivity:
             boot_activities.register_error_notification, "error message"
         )
 
-        services_mock.notifications.get_or_create.assert_awaited_once_with(
+        services_mock.notifications.create_or_update.assert_awaited_once_with(
             query=QuerySpec(
                 where=NotificationsClauseFactory.with_ident(
                     NotificationComponent.REGION_IMAGE_SYNC
@@ -1125,6 +1125,7 @@ async def _shared_queue_worker(
             mock_activities.get_files_to_download_for_selection,
             mock_activities.get_synced_regions_for_file,
             mock_activities.get_all_highest_priority_selections,
+            mock_activities.get_manually_uploaded_resources,
             mock_activities.cleanup_old_boot_resource_sets_for_selection,
             mock_activities.register_error_notification,
             mock_activities.discard_error_notification,
@@ -1518,7 +1519,7 @@ class TestSyncAllBootResourcesWorkflow:
     async def test_three_region(
         self,
         client: Client,
-        three_region_workers,
+        three_regions_workers,
         temporal_calls: TemporalCalls,
         region1_system_id: str,
         mock_activities: MockActivities,

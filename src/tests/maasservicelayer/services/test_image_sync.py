@@ -816,7 +816,10 @@ class TestImageSyncService:
             file_squashfs,
         ]
 
-        self.boot_resources_service.create_or_update_from_simplestreams_product.return_value = boot_resource
+        self.boot_resources_service.get_or_create.return_value = (
+            boot_resource,
+            False,
+        )
         self.boot_source_selections_service.get_one.return_value = (
             BOOT_SELECTION_ORACULAR_SOURCE_1
         )
@@ -849,10 +852,9 @@ class TestImageSyncService:
             )
         ]
 
-        self.boot_resources_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
-            product
-        )
-        self.boot_source_selections_service.get_one.assert_awaited_once()
+        self.boot_resources_service.get_or_create.assert_awaited_once()
+        # boot resource already had the selection id
+        self.boot_source_selections_service.get_one.assert_not_awaited()
         self.boot_resource_sets_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product, boot_resource.id
         )
@@ -908,7 +910,10 @@ class TestImageSyncService:
 
         resource_files = [file_grub2_signed, file_shim_signed]
 
-        self.boot_resources_service.create_or_update_from_simplestreams_product.return_value = boot_resource
+        self.boot_resources_service.get_or_create.return_value = (
+            boot_resource,
+            False,
+        )
         self.boot_resource_sets_service.create_or_update_from_simplestreams_product.return_value = boot_resource_set
         self.boot_resource_files_service.get_or_create_from_simplestreams_file.side_effect = resource_files
         # mark all the files as not complete
@@ -939,9 +944,7 @@ class TestImageSyncService:
             )
         ]
 
-        self.boot_resources_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
-            product
-        )
+        self.boot_resources_service.get_or_create.assert_awaited_once()
         self.boot_source_selections_service.get_one.assert_not_awaited()
         self.boot_resource_sets_service.create_or_update_from_simplestreams_product.assert_awaited_once_with(
             product, boot_resource.id

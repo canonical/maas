@@ -456,11 +456,46 @@ class ImageSyncService(Service):
         Returns:
             A list of `ResourceDownloadParam`
         """
-        boot_resource = await self.boot_resources_service.create_or_update_from_simplestreams_product(
+        boot_resource_builder = BootResourceBuilder.from_simplestreams_product(
             product
         )
+        (
+            boot_resource,
+            _,
+        ) = await self.boot_resources_service.get_or_create(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_rtype(
+                            boot_resource_builder.ensure_set(
+                                boot_resource_builder.rtype
+                            )
+                        ),
+                        BootResourceClauseFactory.with_name(
+                            boot_resource_builder.ensure_set(
+                                boot_resource_builder.name
+                            )
+                        ),
+                        BootResourceClauseFactory.with_architecture(
+                            boot_resource_builder.ensure_set(
+                                boot_resource_builder.architecture
+                            )
+                        ),
+                        BootResourceClauseFactory.with_alias(
+                            boot_resource_builder.ensure_set(
+                                boot_resource_builder.alias
+                            )
+                        ),
+                    ]
+                )
+            ),
+            builder=boot_resource_builder,
+        )
 
-        if boot_resource.bootloader_type is None:
+        if (
+            boot_resource.bootloader_type is None
+            and boot_resource.selection_id is None
+        ):
             # Add the selection id only to the non-bootloader images
             osystem, release = boot_resource.name.split("/")
             arch, _ = boot_resource.architecture.split("/", maxsplit=1)

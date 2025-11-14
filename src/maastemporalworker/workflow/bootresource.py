@@ -78,6 +78,7 @@ from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
+    get_error_message_from_temporal_exc,
     workflow_run_with_context,
 )
 from provisioningserver.utils.url import compose_URL
@@ -432,7 +433,7 @@ class BootResourcesActivity(ActivityBase):
     @activity_defn_with_context(name=REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME)
     async def register_error_notification(self, err_msg: str) -> None:
         async with self.start_transaction() as services:
-            await services.notifications.get_or_create(
+            await services.notifications.create_or_update(
                 query=QuerySpec(
                     where=NotificationsClauseFactory.with_ident(
                         NotificationComponent.REGION_IMAGE_SYNC
@@ -767,9 +768,10 @@ class MasterImageSyncWorkflow:
 
         except (ActivityError, ChildWorkflowError, WorkflowFailureError) as ex:
             # catch any error from activities/child workflows and report that to the user
+            message = get_error_message_from_temporal_exc(ex)
             await workflow.execute_activity(
                 REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
-                arg=str(ex.cause),
+                arg=message,
                 start_to_close_timeout=timedelta(seconds=10),
             )
         else:
