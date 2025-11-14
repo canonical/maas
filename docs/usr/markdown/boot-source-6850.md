@@ -1,106 +1,139 @@
-Enter keyword arguments in the form `key=value`.
-
-## Delete a boot source
+Delete a boot source
 
 ```bash
-maas $PROFILE boot-source delete [--help] [-d] [-k] id [data ...] 
+maas $PROFILE boot-source delete [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Delete a boot source with the given id.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Read a boot source
+
+
+
+Read a boot source
 
 ```bash
-maas $PROFILE boot-source read [--help] [-d] [-k] id [data ...] 
+maas $PROFILE boot-source read [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Read a boot source with the given id.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Update a boot source
+
+
+
+Update a boot source
 
 ```bash
-maas $PROFILE boot-source update [--help] [-d] [-k] id [data ...] 
+maas $PROFILE boot-source update [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Update a boot source with the given id.
 
-#### Keyword "url"
+##### Keyword "url"
 Optional String. The URL of the BootSource.
+##### Keyword "keyring_filename"
+Optional String. The path to the<br>keyring file for this BootSource.
+##### Keyword "keyring_data"
+Optional String. The GPG keyring for<br>this BootSource, base64-encoded data.
 
-#### Keyword "keyring_filename"
-Optional String. The path to the keyring file for this BootSource.
 
-#### Keyword "keyring_data"
-Optional String. The GPG keyring for this BootSource, base64-encoded data.
+Note: This command accepts JSON.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Create a boot source
+Create a boot source
 
 ```bash
-maas $PROFILE boot-sources create [--help] [-d] [-k] [data ...] 
+maas $PROFILE boot-sources create [--help] [-d] [-k] [data ...]
+
 ```
 
-Create a new boot source. 
 
-Note that in addition to ``url``, you must supply either ``keyring_data`` or ``keyring_filename``.
-
-#### Keyword "url"
-Required String. The URL of the BootSource.
-
-#### Keyword "keyring_filename"
-Optional String. The path to the keyring file for this BootSource.
-
-#### Keyword "keyring_data"
-Optional String. The GPG keyring for this BootSource, base64-encoded.
-
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## List boot sources
+
+#### **Keywords**
+Create a new boot source. Note that in addition to<br>``url``, you must supply either ``keyring_data`` or<br>``keyring_filename``.
+
+##### Keyword "url"
+Optional String. The URL of the BootSource.
+##### Keyword "keyring_filename"
+Optional String. The path to the<br>keyring file for this BootSource.
+##### Keyword "keyring_data"
+Optional String. The GPG keyring for<br>this BootSource, base64-encoded.
+
+
+Note: This command accepts JSON.
+
+
+List boot sources
 
 ```bash
-maas $PROFILE boot-sources read [--help] [-d] [-k] [data ...] 
+maas $PROFILE boot-sources read [--help] [-d] [-k]
+
 ```
 
-List all boot sources. 
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
+List all boot sources.

@@ -33,9 +33,9 @@ Rack controllers manage machines and their connected networks.
 ```shell
 maas $PROFILE rack-controllers read | grep hostname | cut -d '"' -f 4
 ```
-Multiple racks are required for HA. Ensure VM hosts can reach each rack controller.
+Multiple racks are required for HA.  Ensure VM hosts can reach each rack controller.
 
-Multiple racks are required for HA. Ensure VM hosts can communicate with new rack controllers.
+Multiple racks are required for HA.  Ensure VM hosts can communicate with new rack controllers.
 
 ### Delete a rack controller
 
@@ -48,22 +48,22 @@ CLI:
 maas $PROFILE rack-controller delete $SYSTEM_ID
 ```
 
-Deleting a DHCP HA rack controller requires disabling DHCP HA first. If software is not removed, a reboot reinstates the rack controller.
+Deleting a DHCP HA rack controller requires disabling DHCP HA first.  If software is not removed, a reboot reinstates the rack controller.
 
 ### Move a rack controller
 
-Moving a rack controller between MAAS instances or versions is unsupported and may cause data loss. Instead:
+Moving a rack controller between MAAS instances or versions is unsupported and may cause data loss.  Instead:
 
-1. Delete the rack controller:
+1.  Delete the rack controller:
 
 ### Move a rack controller
-Moving between MAAS instances or versions is not supported and risks data loss. Instead:
-1. Delete the old controller.
+Moving between MAAS instances or versions is not supported and risks data loss.  Instead:
+1.  Delete the old controller.
    ```shell
    maas $PROFILE rack-controller delete $SYSTEM_ID
    ```
 
-2. Register a new one:
+2.  Register a new one:
 
    ```shell
    sudo maas-rack register --url $NEW_MAAS_URL --secret $NEW_SECRET
@@ -102,17 +102,17 @@ sudo systemctl start maas-regiond
 ```
 Check logs for errors.
 
-### Enable highly-available PostgreSQL
+### Enable highly available PostgreSQL
 
 All region controllers must connect to the same PostgreSQL database.
 
-1. Allow each API server:
+1.  Allow each API server:
    ```shell
    echo "host maasdb maas $API_IP/32 scram-sha-256" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf
    sudo systemctl restart postgresql
    ```
 
-2. Add a region controller:
+2.  Add a region controller:
 
 **Snap**
    ```shell
@@ -125,7 +125,7 @@ All region controllers must connect to the same PostgreSQL database.
    sudo apt install maas-region-api
    ```
 
-3. Configure it:
+3.  Configure it:
 
 **Snap**
    ```shell
@@ -151,18 +151,18 @@ Increase `num_workers` in `/etc/maas/regiond.conf` for better performance:
 ```yaml
 num_workers: 8
 ```
-Each worker requires 11 PostgreSQL connections. Recommended: one per CPU, max 8.
+Each worker requires 11 PostgreSQL connections.  Recommended: one per CPU, max 8.
 
-Each worker requires 11 additional PostgreSQL connections. Recommended: 1 worker per CPU, up to 8 total.
+Each worker requires 11 additional PostgreSQL connections.  Recommended: 1 worker per CPU, up to 8 total.
 
 ## Load balancing and HA for services
 
 Adding a second rack controller enables automatic BMC load balancing.
 
 ### DHCP HA
-Rack controllers replicate DHCP leases. No user action is required.
+Rack controllers replicate DHCP leases.  No user action is required.
 
-Rack controllers replicate DHCP leases, improving failover. DHCP HA setup:
+Rack controllers replicate DHCP leases, improving failover.  DHCP HA setup:
 
 ```yaml
 failover peer "failover-partner" {
@@ -192,7 +192,7 @@ maas maas vlan update $fabric_id $vid primary_rack=$(hostname) dhcp_on=true
 
 ### Define multiple region endpoints
 
-MAAS discovers and connects to available region controllers. You can manually define multiple endpoints in:
+MAAS discovers and connects to available region controllers.  You can manually define multiple endpoints in:
 
 - `/var/snap/maas/current/rackd.conf` (Snap)
 - `/etc/maas/rackd.conf` (Package)
@@ -205,17 +205,17 @@ maas_url:
   - http://<ip2>:<port>/MAAS/
 ```
 
-### Enable highly-available region controllers
+### Enable highly available region controllers
 
-Load balancing region controllers is recommended.  MAAS requires PostgreSQL HA for true region HA. Follow the [PostgreSQL HA guide](https://www.postgresql.org/docs/9.5/static/high-availability.html).
+Load balancing region controllers is recommended.  MAAS requires PostgreSQL HA for true region HA.  Follow the [PostgreSQL HA guide](https://www.postgresql.org/docs/9.5/static/high-availability.html).
 
-Each region controller requires 40 database connections under high load. Increase `max_connections` accordingly.
+Each region controller requires 40 database connections under high load.  Increase `max_connections` accordingly.
 
-## Configure a highly-available API
+## Configure a highly available API
 
-Install and configure HAProxy to enable a highly-available MAAS API:
+Install and configure HAProxy to enable a highly available MAAS API:
 
-### Highly-available API with HAProxy
+### Highly available API with HAProxy
 Install HAProxy:
 ```shell
 sudo apt install haproxy

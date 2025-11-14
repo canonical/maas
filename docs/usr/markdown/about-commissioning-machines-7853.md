@@ -1,4 +1,4 @@
-Commissioning profiles machine hardware (vendor, BIOS, network, CPU, storage, USB/PCI) to tailor deployment. A commissioning failure is low-stakes -- it prevents deployment, avoiding errors.  Successful commissioning tests the hardware and sets the machine to "Ready," meaning  successful deployment is likely.
+Commissioning profiles machine hardware (vendor, BIOS, network, CPU, storage, USB/PCI) to tailor deployment.  A commissioning failure is low-stakes -- it prevents deployment, avoiding errors.  Successful commissioning tests the hardware and sets the machine to "Ready," meaning  successful deployment is likely.
 
 MAAS commissions a machine like this:
 
@@ -33,7 +33,7 @@ MAAS extracts four additional scripts from the database and runs them in alphabe
 
 - **20-maas-02-dhcp-unconfigured-ifaces:** PXE comes online during boot; this script identifies other attached networks.
 
-- **50-maas-01-commissioning:** gathers information on machine resources, such as storage, network devices, CPU, RAM, and attached USB and PCI devices. Also recognizes virtual machines.
+- **50-maas-01-commissioning:** gathers information on machine resources, such as storage, network devices, CPU, RAM, and attached USB and PCI devices.  Also recognizes virtual machines.
 
 - **maas-kernel-cmdline:** update the boot devices to use the correct boot interface.
 
@@ -51,19 +51,19 @@ Note that commissioning runs only on machines that have a *New* status.
 
 Change how commissioning runs with the following options:
 
-- **`enable_ssh`**: Optional integer to enable SSH for the commissioning environment using the user's SSH key(s). '1' == True, '0' == False. Roughly equivalent to the *Allow SSH access and prevent machine powering off* option in the web UI.
+- **`enable_ssh`**: Optional integer to enable SSH for the commissioning environment using the user's SSH key(s). '1' == True, '0' == False.  Roughly equivalent to the *Allow SSH access and prevent machine powering off* option in the web UI.
 
 - **`skip_bmc_config`**: Optional integer to skip re-configuration of the BMC for IPMI based machines. '1' == True, '0' == False.
 
-- **`skip_networking`**: Optional integer to skip re-configuring the networking on the machine after the commissioning has completed. '1' == True, '0' == False. Roughly equivalent to *Retain network configuration* in the web UI.
+- **`skip_networking`**: Optional integer to skip re-configuring the networking on the machine after the commissioning has completed. '1' == True, '0' == False.  Roughly equivalent to *Retain network configuration* in the web UI.
 
-- **`skip_storage`**: Optional integer to skip re-configuring the storage on the machine after the commissioning has completed. '1' == True, '0' == False. Roughly equivalent to *Retain storage configuration* in the web UI.
+- **`skip_storage`**: Optional integer to skip re-configuring the storage on the machine after the commissioning has completed. '1' == True, '0' == False.  Roughly equivalent to *Retain storage configuration* in the web UI.
 
-- **`commissioning_scripts`**: Optional string. A comma separated list of commissioning script names and tags to be run. By default all custom commissioning scripts are run. Built-in commissioning scripts always run. Selecting `update_firmware` or `configure_hba` will run firmware updates or configure HBA's on matching machines.
+- **`commissioning_scripts`**: Optional string.  A comma separated list of commissioning script names and tags to be run.  By default all custom commissioning scripts are run.  Built-in commissioning scripts always run.  Selecting `update_firmware` or `configure_hba` will run firmware updates or configure HBA's on matching machines.
 
-- **`testing_scripts`**: Optional string. A comma separated list of testing script names and tags to be run. By default all tests tagged `commissioning` will be run. Set to `none` to disable running tests.
+- **`testing_scripts`**: Optional string.  A comma separated list of testing script names and tags to be run.  By default all tests tagged `commissioning` will be run.  Set to `none` to disable running tests.
 
-- **`parameters`**: Optional string. Scripts selected to run can define their own parameters. These parameters are passed using the parameter name. A parameter can have the script name prepended to have that parameter only apply to that specific script.
+- **`parameters`**: Optional string.  Scripts selected to run can define their own parameters.  These parameters are passed using the parameter name.  A parameter can have the script name prepended to have that parameter only apply to that specific script.
 
 ## Commissioning logs 
 
@@ -71,29 +71,29 @@ MAAS logs timestamped records of commissioning events for every machine.  If com
 
 ## Debugging scripts 
 
-Scripts log full results regardless of success or failure. For more details, choose the option to leave the machine on after commissioning. You can then connect to the machine and examine its logs. 
+Scripts log full results regardless of success or failure.  For more details, choose the option to leave the machine on after commissioning.  You can then connect to the machine and examine its logs. 
 
-If you've added your [SSH key](https://canonical.com/maas/docs/sshkey) to MAAS, you may connect with SSH to the machine's IP with a username of `ubuntu`. Enter `sudo -i` to get root access.
+If you've added your [SSH key](https://canonical.com/maas/docs/sshkey) to MAAS, you may connect with SSH to the machine's IP with a username of `ubuntu`.  Enter `sudo -i` to get root access.
 
 ## Automatic selection 
 
-When selecting multiple machines, scripts declaring the `for_hardware` field will run only on machines with matching hardware. To automatically run a script when *Update firmware* or *Configure HBA* is selected, you must tag the script appropriately. Command-line scripts that specify `for_hardware` also run only on matching hardware.
+When selecting multiple machines, scripts declaring the `for_hardware` field will run only on machines with matching hardware.  To automatically run a script when *Update firmware* or *Configure HBA* is selected, you must tag the script appropriately.  Command-line scripts that specify `for_hardware` also run only on matching hardware.
 
 ## NUMA and SR-IOV 
 
-MAAS assigns machines to a single NUMA node by default to avoid latency. Match VM boundaries to NUMA boundaries for best results.  Specify a node index for interfaces and physical block devices. 
+MAAS assigns machines to a single NUMA node by default to avoid latency.  Match VM boundaries to NUMA boundaries for best results.  Specify a node index for interfaces and physical block devices. 
 
-MAAS reports NUMA node details, such as the index, node count, CPU cores, memory, NICs, and node spaces. You can filter machines by CPU cores, memory, subnet, VLAN, fabric, space, storage, and RAID.
+MAAS reports NUMA node details, such as the index, node count, CPU cores, memory, NICs, and node spaces.  You can filter machines by CPU cores, memory, subnet, VLAN, fabric, space, storage, and RAID.
 
 ## Disabling boot methods 
 
-You can disable individual boot methods with the MAAS CLI on a VLAN/subnet basis. MAAS-provided DHCP will not respond to the associated boot architecture code for disabled methods. External DHCP servers must be configured manually.
+You can disable individual boot methods with the MAAS CLI on a VLAN/subnet basis.  MAAS-provided DHCP will not respond to the associated boot architecture code for disabled methods.  External DHCP servers must be configured manually.
 
 ## Interpreting scripts 
 
-Scripts write results to a YAML file in `RESULT_PATH` before exiting. The YAML file has two fields:
+Scripts write results to a YAML file in `RESULT_PATH` before exiting.  The YAML file has two fields:
 
-1. `result`: The completion status of the script: `passed`, `failed`, `degraded`, or `skipped`. Some scripts return `0` or non-zero values for "failed" and "passed," respectively.
+1. `result`: The completion status of the script: `passed`, `failed`, `degraded`, or `skipped`.  Some scripts return `0` or non-zero values for "failed" and "passed," respectively.
 
 2. `results`: A dictionary of results, presented as strings.
 
@@ -112,8 +112,8 @@ Here is an example of "degrade detection":
  name: example
  results:
 . memspeed:
-.   title: Memory Speed
-.   description: Bandwidth speed of memory while performing random read writes
+.  title: Memory Speed
+.  description: Bandwidth speed of memory while performing random read writes
  --- End MAAS 1.0 script metadata ---
 
 import os
@@ -139,7 +139,7 @@ if result_path is not None:
 
 ## Tagging scripts 
 
-Tags make scripts easier to manage. These tags group together commissioning and testing scripts:
+Tags make scripts easier to manage.  These tags group together commissioning and testing scripts:
 
 ```nohighlight
 maas $PROFILE node-script add-tag $SCRIPT_NAME tag=$TAG
@@ -164,16 +164,16 @@ Any testing scripts tagged with `commissioning` will also run during commissioni
 
 ## Testing hardware 
 
-You can test machine hardware using any available Linux utility. You can create your own testing scripts and read their logs. MAAS tests machines that that are **Ready**, **Broken**, or **Deployed**. If the hardware tests fail, you can't deploy the machine. Testing scripts don't always work with virtual machines.
+You can test machine hardware using any available Linux utility.  You can create your own testing scripts and read their logs.  MAAS tests machines that that are **Ready**, **Broken**, or **Deployed**.  If the hardware tests fail, you can't deploy the machine.  Testing scripts don't always work with virtual machines.
 
 ## Interpreting logs 
 
-You can also examine log details on any particular tests or just review the raw log output. Help interpreting these logs can be found under the [Logging](https://canonical.com/maas/docs/about-maas-logging) section of this documentation.
+You can also examine log details on any particular tests or just review the raw log output.  Help interpreting these logs can be found under the [Logging](https://canonical.com/maas/docs/about-maas-logging) section of this documentation.
 
 ## Testing networks 
 
-MAAS can test networks and links, including connection status and link speeds. You can test Internet connectivity against a user-provided list of URLs or IP addresses. Bonded NICS are separated during this testing to check each side of a dual interface. You can also provide custom scxripts with no restrictions.
+MAAS can test networks and links, including connection status and link speeds.  You can test Internet connectivity against a user-provided list of URLs or IP addresses.  Bonded NICS are separated during this testing to check each side of a dual interface.  You can also provide custom scripts with no restrictions.
 
 ## Delayed NW config 
 
-Once commissioned, you can configure the machine's network interface(s). Specifically, when a machine's status is either "Ready" or "Broken", interfaces can be added/removed, attached to a fabric or subnet, and provided an IP assignment mode. Tags can also be assigned to specific network interfaces.
+Once commissioned, you can configure the machine's network interface(s).  Specifically, when a machine's status is either "Ready" or "Broken", interfaces can be added/removed, attached to a fabric or subnet, and provided an IP assignment mode.  Tags can also be assigned to specific network interfaces.

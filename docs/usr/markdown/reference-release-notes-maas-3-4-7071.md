@@ -1,4 +1,4 @@
-> *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://canonical.com/maas/docs/what-is-new-with-maas-3-4" target = "_blank">Let us know.</a>*
+> *Errors or typos?  Topics missing?  Hard to read?  Please report issues through the [MAAS Discourse forum](https://discourse.maas.io/).*
 
 ## Release history
 
@@ -41,7 +41,7 @@ We are happy to announce that MAAS 3.4.6 has been released, with the following b
 
 We are happy to announce that MAAS 3.4.5 has been released, with the following bug fixes
 - [2004661](https://bugs.launchpad.net/bugs/2004661): MAAS deployment failures on server with Redfish
-- [2024242](https://bugs.launchpad.net/bugs/2024242): Unable to Deploy Machines; get() returned more than one Neighbour -- it returned 2!
+- [2024242](https://bugs.launchpad.net/bugs/2024242): Unable to Deploy Machines; get() returned more than one Neighbour -- it returned 2.
 - [2052503](https://bugs.launchpad.net/bugs/2052503): Additional Power States in Redfish Schema
 - [2079797](https://bugs.launchpad.net/bugs/2079797): Redfish powerdriver should be able to handle the reset power status
 
@@ -76,7 +76,7 @@ We are happy to announce that MAAS 3.4.2 has been released, with the following b
 
 ### MAAS 3.4.1 has been released
 
-We are happy to announce that MAAS 3.4.1 has been released, with a large number of bug fixes:
+We are happy to announce that MAAS 3.4.1 has been released, with many bug fixes:
 
 - [2053033](https://bugs.launchpad.net/maas/+bug/2053033): Creating MAAS Virsh VM does not work (libvirt: error)
 - [2033505](https://bugs.launchpad.net/maas/+bug/2033505): Failed to update regiond's processes and endpoints
@@ -108,53 +108,53 @@ MAAS 3.4 provides several new features.
 
 ### Redesigned UI
 
-The MAAS User Interface (UI) has undergone a significant redesign, introducing the MAAS UI new layout. This new layout incorporates various features and improvements aimed at enhancing the user experience for MAAS users and operators who primarily interact with the UI.  The MAAS UI new layout introduces several enhancements that aim to improve usability, customisation, and navigation within the application
+The MAAS User Interface (UI) has undergone a significant redesign, introducing the MAAS UI new layout.  This new layout incorporates various features and improvements aimed at enhancing the user experience for MAAS users and operators who primarily interact with the UI.  The MAAS UI new layout introduces several enhancements that aim to improve usability, customization, and navigation within the application
 
-- Customised column visibility: One of the major improvements in the MAAS UI new layout is the ability for users to customize the visibility of columns on the machine list. This feature empowers users to focus on the specific information they need, while hiding irrelevant columns. By allowing users to tailor their view, this enhancement improves readability, reduces clutter, and provides a more personalised experience.
+- customized column visibility: One of the major improvements in the MAAS UI new layout is the ability for users to customize the visibility of columns on the machine list.  This feature empowers users to focus on the specific information they need, while hiding irrelevant columns.  By allowing users to tailor their view, this enhancement improves readability, reduces clutter, and provides a more personalised experience.
 
-- Action forms in side panel: Previously, the action forms in MAAS were located in the header section, which made it less intuitive for users to access and interact with them. The redesigned UI moves these action forms to the side panel, providing a more logical placement and easy access to perform actions on machines. This change enhances the usability of the forms and improves the overall workflow for users.
+- Action forms in side panel: Previously, the action forms in MAAS were located in the header section, which made it less intuitive for users to access and interact with them.  The redesigned UI moves these action forms to the side panel, providing a more logical placement and easy access to perform actions on machines.  This change enhances the usability of the forms and improves the overall workflow for users.
 
-- Streamlined action button group: The introduction of a new action button group eliminates the need for the previous "Take action" menu. Users can now directly access commonly used actions for machines, both in the details view and the machine list. This streamlines the workflow and simplifies the process of performing actions on machines, saving users time and effort.
+- Streamlined action button group: The introduction of a new action button group eliminates the need for the previous "Take action" menu.  Users can now directly access commonly used actions for machines, both in the details view and the machine list.  This streamlines the workflow and simplifies the process of performing actions on machines, saving users time and effort.
 
-- Improved side navigation: To enhance navigation within the application, the MAAS UI new layout implements a new side navigation system. Users can conveniently navigate through different sections of the app using the side panel. Additionally, the inclusion of a secondary side navigation specifically for settings and account pages improves the organisation and accessibility of these sections.
+- Improved side navigation: To enhance navigation within the application, the MAAS UI new layout implements a new side navigation system.  Users can conveniently navigate through different sections of the app using the side panel.  Additionally, the inclusion of a secondary side navigation specifically for settings and account pages improves the organisation and accessibility of these sections.
 
 #### Intended Benefits
 
 The MAAS UI was redesigned with several user benefits in mind.
 
-- Enhanced table interaction: Users can now customize their views by selecting the columns they care about the most. This modular table feature allows for a personalised experience, ensuring users can focus on the information that matters to them.
+- Enhanced table interaction: Users can now customize their views by selecting the columns they care about the most.  This modular table feature allows for a personalised experience, ensuring users can focus on the information that matters to them.
 
-- Improved form interaction: Forms in the MAAS UI have been redesigned to scale with the content. By migrating all forms into panels, users have more space to view other components such as the machine list, resulting in a more comfortable and efficient form interaction experience.
+- Improved form interaction: Forms in the MAAS UI have been redesigned to scale with the content.  By migrating all forms into panels, users have more space to view other components such as the machine list, resulting in a more comfortable and efficient form interaction experience.
 
-- Efficient navigation: The new layout addresses the challenges posed by a growing navigation menu. With the introduction of the side panel navigation, users can easily explore different sections of the app, providing a scalable and user-friendly navigation experience.
+- Efficient navigation: The new layout addresses the challenges posed by a growing navigation menu.  With the introduction of the side panel navigation, users can easily explore different sections of the app, providing a scalable and user-friendly navigation experience.
 
-- Enhanced search capability: The MAAS UI new layout improves the efficiency of the search feature. Users can search for machines based on conventions and tags, making it easier to find specific machines and take actions. The new layout also provides clearer feedback when the "take action" button is disabled, enhancing the overall search and interaction experience.
+- Enhanced search capability: The MAAS UI new layout improves the efficiency of the search feature.  Users can search for machines based on conventions and tags, making it easier to find specific machines and take actions.  The new layout also provides clearer feedback when the "take action" button is disabled, enhancing the overall search and interaction experience.
 
-- Performance improvements based on user feedback: Based on user feedback received through Discourse, several performance issues have been identified and addressed. The MAAS team has worked diligently to optimise machine information loading times and resolve delays encountered while opening machine pages. These performance improvements ensure a smoother and faster user experience when interacting with the MAAS UI.
+- Performance improvements based on user feedback: Based on user feedback received through Discourse, several performance issues have been identified and addressed.  The MAAS team has worked diligently to optimise machine information loading times and resolve delays encountered while opening machine pages.  These performance improvements ensure a smoother and faster user experience when interacting with the MAAS UI.
 
-The MAAS UI new layout introduces a redesigned interface with enhanced features to provide a more efficient and user-friendly experience for MAAS users and operators. By allowing users to customize their views, streamlining form interactions
+The MAAS UI new layout introduces a redesigned interface with enhanced features to provide a more efficient and user-friendly experience for MAAS users and operators.  By allowing users to customize their views, streamlining form interactions
 
 <!--
-- DGX kernel support: There’s ongoing work from Canonical to provide an optimised kernel for Nvidia DGX machines. We want to promote that and make sure that DGX machines use that optimised kernel by default, without the user having to do any special configuration.
+- DGX kernel support: There’s ongoing work from Canonical to provide an optimised kernel for Nvidia DGX machines.  We want to promote that and make sure that DGX machines use that optimised kernel by default, without the user having to do any special configuration.
 -->
 
 ### Configurable session timeout
 
-In MAAS 3.4, we've introduced the Configurable Session Timeout feature, offering better control over session length. This feature allows you to set a personalised duration for your sessions, hopefully avoiding abrupt disconnections or lingering sessions.  If you're a user who has login repeatedly, due to short session defaults, or you're concerned about leaving your session accessible for too long, setting a custom timeout is useful and potentially more secure.
+In MAAS 3.4, we've introduced the Configurable Session Timeout feature, offering better control over session length.  This feature allows you to set a personalised duration for your sessions, reducing unexpected disconnections or lingering sessions.  If you're a user who has to log in repeatedly, due to short session defaults, or you're concerned about leaving your session accessible for too long, setting a custom timeout is useful and potentially more secure.
 
 ### Packer MAAS - SLES
 
-The MAAS 3.4 release expands Packer support to include SUSE Linux Enterprise Server (SLES), expanding the the list of deployable Linux distributions.  We also support openSUSE and openSUSE Tumbleweed. And we’ve added a template for Red Hat Enterprise Linux (RHEL) version 9.
+The MAAS 3.4 release expands Packer support to include SUSE Linux Enterprise Server (SLES), expanding the list of deployable Linux distributions.  We also support openSUSE and openSUSE Tumbleweed.  And we've added a template for Red Hat Enterprise Linux (RHEL) version 9.
 
 ## Installation
 
-MAAS will run on [just about any modern hardware configuration](/t/installation-requirements/6233).
+MAAS will run on [just about any modern hardware configuration](https://canonical.com/maas/docs/installation-requirements).
 
-- [How to do a fresh install of MAAS 3.4](/t/how-to-install-maas/5128): Use the tabs to select snaps or packages.
+- [How to do a fresh install of MAAS 3.4](https://canonical.com/maas/docs/how-to-install-maas): Use the tabs to select snaps or packages.
 
-- [How to upgrade from an earlier version to MAAS 3.4](/t/how-to-upgrade-maas/5436): Use the tabs to select snaps or packages.
+- [How to upgrade from an earlier version to MAAS 3.4](https://canonical.com/maas/docs/how-to-upgrade-maas): Use the tabs to select snaps or packages.
 
-- [Initialise MAAS for a production configuration](/t/how-to-install-maas/5128#heading--init-maas-production)
+- [Initialise MAAS for a production configuration](https://canonical.com/maas/docs/how-to-install-maas#heading--init-maas-production)
 
 ## Bug fixes
 

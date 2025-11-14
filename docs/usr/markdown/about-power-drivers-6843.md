@@ -6,7 +6,7 @@ Many machines have a separate CPU called Baseboard Management Controller (BMC) t
 
 ## Identifying the right power driver
 
-MAAS provides a [library of drivers](https://canonical.com/maas/docs/reference-power-drivers), from the obscure to the widely-used IPMI and Redfish drivers. This library likely has the driver you need. If not, a custom power driver using the WebHook module may help. WebHook supports more obscure BMC protocols and manual power types.
+MAAS provides a [library of drivers](https://canonical.com/maas/docs/reference-power-drivers), from the obscure to the widely used IPMI and Redfish drivers.  This library likely has the driver you need.  If not, a custom power driver using the WebHook module may help.  WebHook supports more obscure BMC protocols and manual power types.
 
 The library's catalog includes instructions that help discover the right settings.  Regardless of power type, though, you build the command the same way.  Once you've identified the correct driver, [these instructions](https://canonical.com/maas/docs/how-to-set-up-power-drivers) will help you issue the right CLI or UI instruction.
 

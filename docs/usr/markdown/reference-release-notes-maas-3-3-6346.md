@@ -9,7 +9,7 @@ This section recaps the version history of MAAS version 3.3.
 We are happy to announce  that MAAS 3.3.9 has been released.
 This  is  a  maintenance  release,  with  no  new  features, providing the following bug fixes:
 
-- [2004661](https://bugs.launchpad.net/maas/+bug/2004661): implement exponential backoff retry in the redfish power driver. We retry up to 6 times the requests to redfish before giving up. With this change the rackd is going to be more fault tolerant to whatever failure might happen.
+- [2004661](https://bugs.launchpad.net/maas/+bug/2004661): implement exponential backoff retry in the redfish power driver.  We retry up to 6 times the requests to redfish before giving up.  With this change the rackd is going to be more fault tolerant to whatever failure might happen.
 - [2058063](https://bugs.launchpad.net/maas/+bug/2058063): regiond and rackd showing different versions
 - [2040324](https://bugs.launchpad.net/maas/+bug/2040324):  distro_series and osystem check based on node status
 
@@ -51,7 +51,7 @@ providing the following bug fixes:
 
 ### MAAS 3.3.5 has been released
 
-We are happy to announce that MAAS 3.3.5 has been released. This is a maintenance release, with no new features, providing the following bug fixes:
+We are happy to announce that MAAS 3.3.5 has been released.  This is a maintenance release, with no new features, providing the following bug fixes:
 
 - [2013120](https://bugs.launchpad.net/maas/+bug/2013120): Incorrect Nginx Logging Configuration on MAAS Snap
 - [2026802](https://bugs.launchpad.net/maas/+bug/2026802): MAAS 3.4 installed with deb fails to start the rack due to permission error
@@ -61,7 +61,7 @@ We are happy to announce that MAAS 3.3.5 has been released. This is a maintenanc
 - [1914812](https://bugs.launchpad.net/maas/+bug/1914812): curtin fails to deploy centos 8 on nvme with multipath from ubuntu 20.04
 - [1996204](https://bugs.launchpad.net/maas/+bug/1996204): failing metrics cause 500 error
 - [1999668](https://bugs.launchpad.net/maas/+bug/1999668): reverse DNS not working for CIDR with non 0 last octet
-- [2012801](https://bugs.launchpad.net/maas/+bug/2012801): MAAS rDNS returns two hostnames that lead to Services not running...
+- [2012801](https://bugs.launchpad.net/maas/+bug/2012801): MAAS rDNS returns two hostnames that lead to Services not running…
 - [2015411](https://bugs.launchpad.net/maas/+bug/2015411): StaticIPAddress matching query does not exist.
 - [2020397](https://bugs.launchpad.net/maas/+bug/2020397): Custom images which worked ok is not working with 3.2
 - [2022926](https://bugs.launchpad.net/maas/+bug/2022926): Wrong metadata url in enlist cloud-config
@@ -81,7 +81,7 @@ We are happy to announce that MAAS 3.3.5 has been released. This is a maintenanc
 
 ### MAAS 3.3.4 has been released
 
-We are happy to announce that MAAS 3.3.4 has been released. This is a maintenance release, with no new features, providing the following bug fixes:
+We are happy to announce that MAAS 3.3.4 has been released.  This is a maintenance release, with no new features, providing the following bug fixes:
 
 - [1998615](https://bugs.launchpad.net/maas/+bug/1998615): Rack controller status flapping when "ClusterClient connection lost" messages in rackd.log
 - [2013476](https://bugs.launchpad.net/maas/+bug/2013476): 3.3/UI: Machines page is flapping once the machine operation in progress 
@@ -90,7 +90,7 @@ We are happy to announce that MAAS 3.3.4 has been released. This is a maintenanc
 
 ### MAAS 3.3.3 has been released
 
-We are happy to announce that MAAS 3.3.3 has been released. This is a maintenance release, with no new features, providing the following bug fixes:
+We are happy to announce that MAAS 3.3.3 has been released.  This is a maintenance release, with no new features, providing the following bug fixes:
 
 - [1959648](https://bugs.launchpad.net/maas/+bug/1959648): Websocket vlan handler should include associated subnet ids
 - [1979403](https://bugs.launchpad.net/maas/+bug/1979403): commission failed with MAAS 3.1 when BMC has multiple channels but the first channel is disabled
@@ -104,7 +104,7 @@ We are happy to announce that MAAS 3.3.3 has been released. This is a maintenanc
 
 We are happy to announce that MAAS 3.3.2 has been release with the following bug fixes:
 
-- [1990867](https://bugs.launchpad.net/maas/+bug/1990867T): TestImportBootImages - test_update_last_image_sync_end_to_end_import_not_performed
+- [1990867](https://bugs.launchpad.net/maas/+bug/1990867): TestImportBootImages - test_update_last_image_sync_end_to_end_import_not_performed
 - [1990872](https://bugs.launchpad.net/maas/+bug/1990872): Flaky test: TestClusterClient - test_registerRackWithRegion_end_to_end
 - [2011822](https://bugs.launchpad.net/maas/+bug/2011822): Reverse DNS resolution fails for some machines
 - [2012139](https://bugs.launchpad.net/maas/+bug/2012139): maas commands occasionally fail with NO_CERTIFICATE_OR_CRL_FOUND when TLS is enabled
@@ -126,7 +126,7 @@ We are happy to announce that MAAS 3.3.1 has been released with the following bu
 
 ### MAAS 3.3 has been released
 
-We are happy to announce that MAAS 3.3 has been released, with [one additional bug fix](#heading--MAAS-3-3-bug-list). MAAS 3.3 is a concerted effort to improve MAAS on multiple fronts, including a large number of bug fixes. 
+We are happy to announce that MAAS 3.3 has been released, with [one additional bug fix](#heading--MAAS-3-3-bug-list).  MAAS 3.3 is a concerted effort to improve MAAS on multiple fronts, including many bug fixes. 
 
 ## Features
 
@@ -140,17 +140,17 @@ Improved capabilities include the following:
 
 - [Native support for 22.04 LTS and core22](#heading--22-04-support): We've removed the requirement to use snaps on 22.04 (Jammy Jellyfish); you now can load MAAS 3.3 on 22.04 using packages.
 
-- [UI performance improvements for large machine counts](#heading--UI-performance-improvements): We've improved the performance of the UI machine list for large (>10000 machines) MAAS instances. The machine list now goes live just a few seconds after the first visible page loads, with the rest of the list loading in background.
+- [UI performance improvements for large machine counts](#heading--UI-performance-improvements): We've improved the performance of the UI machine list for large (>10000 machines) MAAS instances.  The machine list now goes live just a few seconds after the first visible page loads, with the rest of the list loading in background.
 
-- [Enhanced MIB support for Windows OS images](#heading--Enhanced-MIB-support-for-Windows-OS-images): The [procedure](/t/customising-images-for-specific-needs/5104#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
+- [Enhanced MIB support for Windows OS images](#heading--Enhanced-MIB-support-for-Windows-OS-images): The [procedure](https://canonical.com/maas/docs/customising-images-for-specific-needs#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
 
 Greatly expanded documentation sections include:
 
-- [MAAS configuration settings reference](#heading--maas-config-settings-ref): There is now one reference page that addresses all MAAS settings in one place. Other references throughout the document are preserved for now.
+- [MAAS configuration settings reference](#heading--maas-config-settings-ref): There is now one reference page that addresses all MAAS settings in one place.  Other references during the document are preserved for now.
 
-- [Improved MAAS event documentation](#heading--Improved-MAAS-event-documentation): MAAS event documentation has been expanded to include [much better explanations](/t/an-overview-of-maas-events/6510) of MAAS events, including many examples.
+- [Improved MAAS event documentation](#heading--Improved-MAAS-event-documentation): MAAS event documentation has been expanded to include [much better explanations](https://canonical.com/maas/docs/an-overview-of-maas-events) of MAAS events, including many examples.
 
-- [Improved MAAS audit event documentation](#heading--Improved-MAAS-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include [much better explanations](/t/understanding-audit-events/6372) of MAAS audit events, including many examples and use cases.
+- [Improved MAAS audit event documentation](#heading--Improved-MAAS-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include [much better explanations](https://canonical.com/maas/docs/understanding-audit-events) of MAAS audit events, including many examples and use cases.
 
 Several forward-looking improvements are included as well:
 
@@ -162,7 +162,7 @@ Several forward-looking improvements are included as well:
 
 These will be documented later in blog posts.
 
-This release also includes well over one-hundred [bug fixes](#heading--MAAS-3.3-bug-list). Read on to catch up with what we've done so far this cycle.
+This release also includes well over one-hundred [bug fixes](#heading--MAAS-3.3-bug-list).  Read on to catch up with what we've done so far this cycle.
 
 ### Improved machine list filtering
 
@@ -174,13 +174,13 @@ You can filter machines mere seconds after one page loads.
 
 #### How list filtering is improved
 
-> **NOTE** that this feature is still in development, so some of the feature-set described in this section may not be fully operational yet. As always, we reserve the right to change this feature-set until the final release of MAAS 3.3. These release notes will be updated as the feature develops.
+> **NOTE** that this feature is still in development, so some of the feature-set described in this section may not be fully operational yet.  As always, we reserve the right to change this feature-set until the final release of MAAS 3.3.  These release notes will be updated as the feature develops.
 
 MAAS 3.3 enhances the way you can filter the machine list, in two ways:
 
-1. You may begin filtering within a very short time after the first page of the machine list loads, even if you have more than 10,000 machines in the list. 
+1.  You may begin filtering within a short time after the first page of the machine list loads, even if you have more than 10,000 machines in the list. 
 
-2. You have a wider range of filter choices, as described in the table below.
+2.  You have a wider range of filter choices, as described in the table below.
 
 Note that with this version of MAAS, matching machine counts have been removed from the filter list for better performance.
 
@@ -193,10 +193,10 @@ The following table describes the expanded filter set for the MAAS machine list:
 - Items marked "Grp" can be used to group machines, instead of the default machine status.
 - Items marked "Man" must be manually entered, i.e., they are not in the UI filter drop-down, but can be entered in the "Search" box if properly formatted (as in the examples given).
 
-See [How to search MAAS](/t/locating-and-searching-for-machines/5192) for more details on how to use these parameters.
+See [How to search MAAS](https://canonical.com/maas/docs/locating-and-searching-for-machines) for more details on how to use these parameters.
 
 
-| Parameter (bold) w/example           | Shows nodes...                  | Dyn | Grp | Man |
+| Parameter (bold) w/example           | Shows nodes…  | Dyn | Grp | Man |
 |--------------------------------------|----------------------------------|-----|-----|-----|
 | **arch**:(=architecture)             | with "architecture"              |     | Grp |     |
 | arch:(!=architecture)                | NOT with "architecture"          | Dyn |     |     |
@@ -275,18 +275,18 @@ MAAS packages now run on Ubuntu 22.04, aka Jammy Jellyfish.
 
 #### Notes on 22.04 LTS MAAS packages
 
-MAAS users want to install MAAS on a 22.04 LTS system via deb packages, as well as upgrade machines currently running MAAS on Ubuntu 20.04 LTS to 22.04 LTS. With the advent of MAAS 3.3, we have created an appropriate PPA with all required dependencies. This PPA can be directly installed on Ubuntu 22.04, Jammy Jellyfish, with no requirement to use snaps.
+MAAS users want to install MAAS on a 22.04 LTS system via deb packages, as well as upgrade machines currently running MAAS on Ubuntu 20.04 LTS to 22.04 LTS.  With the advent of MAAS 3.3, we have created an appropriate PPA with all required dependencies.  This PPA can be directly installed on Ubuntu 22.04, Jammy Jellyfish, with no requirement to use snaps.
 
-Note that the upgrade procedure will require a release upgrade from previous Ubuntu versions to Ubuntu 22.04. Also note that, with this version of MAAS, PostgreSQL 12 is deprecated and should be upgraded to PostgreSQL 14. The [installation guide](/t/fresh-installation-of-maas/5128) provides the necessary details.
+Note that the upgrade procedure will require a release upgrade from previous Ubuntu versions to Ubuntu 22.04.  Also note that, with this version of MAAS, PostgreSQL 12 is deprecated and should be upgraded to PostgreSQL 14.  The [installation guide](https://canonical.com/maas/docs/fresh-installation-of-maas) provides the necessary details.
 
 <!--
 ### Reliability improvements for simultaneous machine deployments
 
-MAAS 3.3 brings some behind-the-scenes performance improvements to the product. When you deploy many machines, you expect them all deploy reliably, with IPs allocated in bulk, and no DNS delays or RPC timeouts. Within our development system, we've added system tests and metrics to track any failures or latency when large numbers of machines are being deployed. We've then used these new data to lower the failure rate and reduce latency in those situations.
+MAAS 3.3 brings some behind-the-scenes performance improvements to the product.  When you deploy many machines, you expect them all deploy reliably, with IPs allocated in bulk, and no DNS delays or RPC timeouts.  Within our development system, we've added system tests and metrics to track any failures or latency when large numbers of machines are being deployed.  We've then used these new data to lower the failure rate and reduce latency in those situations.
 
 ### The first phase of Nvidia DPU support
 
-Long-term, we know that MAAS administrators want to enlist and use DPUs with MAAS. The Nvidia DPU is a complex machine with a tremendous amount of capability, so this cycle, we made the first steps toward supporting them. Details will follow in a forward-looking blog post sometime after the MAAS 3.3 release.
+Long-term, we know that MAAS administrators want to enlist and use DPUs with MAAS.  The Nvidia DPU is a complex machine with a tremendous amount of capability, so this cycle, we made the first steps toward supporting them.  Details will follow in a forward-looking blog post sometime after the MAAS 3.3 release.
 -->
 
 ### UI performance improvements
@@ -299,11 +299,11 @@ We're working on making large machine lists load in background.
 
 #### Background performance work
 
-In MAAS 3.2 and earlier, machine search and filter requires that all machines be fetched by the UI client before it becomes usable. For smaller MAASes this may not be an issue, but when considering MAASes with 1000 machines or more this can make the user wait an unacceptably long time before they can search and filter. With the release of MAAS 3.3, when a MAAS UI user wants to find a particular machine, they do not have to wait for all their machines data to load before they can start searching. The user can start searching for machines within a short time after the visible page of the machine list has fully loaded on the UI screen. See [Improved machine list filtering](#heading--Improved-machine-list-filtering), in these release notes, for details on the enhanced filtering capabilities that were included in this work.
+In MAAS 3.2 and earlier, machine search and filter requires that all machines be fetched by the UI client before it becomes usable.  For smaller MAASes this may not be an issue, but when considering MAASes with 1000 machines or more this can make the user wait an unacceptably long time before they can search and filter.  With the release of MAAS 3.3, when a MAAS UI user wants to find a particular machine, they do not have to wait for all their machines data to load before they can start searching.  The user can start searching for machines within a short time after the visible page of the machine list has fully loaded on the UI screen.  See [Improved machine list filtering](#heading--Improved-machine-list-filtering), in these release notes, for details on the enhanced filtering capabilities that were included in this work.
 
 ### Enhanced MIB support for Windows OS images
 
-The [procedure](/t/customising-images-for-specific-needs/5104#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
+The [procedure](https://canonical.com/maas/docs/customising-images-for-specific-needs#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
 
 #### Ten words or less
 
@@ -311,7 +311,7 @@ MAAS custom Windows images now support most releases and options.
 
 #### What has been added to Windows custom images
 
-Specifically, MIB now supports a much wider range of Windows images. Previously, only 2012 and 2106 Windows versions were supported with MIB. Now the list is much longer, bringing deployable MAAS versions up to date with the current Windows releases:
+Specifically, MIB now supports a much wider range of Windows images.  Previously, only 2012 and 2106 Windows versions were supported with MIB.  Now the list is much longer, bringing deployable MAAS versions up to date with the current Windows releases:
 
  - win2008r2
  - win2008hvr2
@@ -335,7 +335,7 @@ Specifically, MIB now supports a much wider range of Windows images. Previously,
 
 There are also special instructions for using both UEFI and BIOS bootloaders, as well as instructions for using LXD containers with custom-built Windows images. 
 
-Finally, MIB has been extended to accept a much wider range of options for windows builds. Some of the new Windows-specific options include:
+Finally, MIB has been extended to accept a much wider range of options for windows builds.  Some of the new Windows-specific options include:
 
  - --windows-iso: path to the Windows ISO image.
  - --windows-edition: identifier for the Windows edition/option being installed (see above).
@@ -356,11 +356,11 @@ This update should make it much simpler to use custom-built Windows images with 
 
 ### Shifting the MAAS API documentation to OpenAPI standards
 
-MAAS API User want to experience the MAAS API in a more standard way, along the lines of the OpenAPI definition. MAAS 3.3 begins this process by providing most of the MAAS API functionality in a discover-able form. You should now be able to easily retrieve human-readable service documentation and API definitions using standard methods. Consult [the API documentation](https://canonical.com/maas/docs/api) for details.
+MAAS API User want to experience the MAAS API in a more standard way, along the lines of the OpenAPI definition.  MAAS 3.3 begins this process by providing most of the MAAS API functionality in a discover-able form.  You should now be able to easily retrieve human-readable service documentation and API definitions using standard methods.  Consult [the API documentation](https://canonical.com/maas/docs/api) for details.
 
 ### MAAS configuration settings reference
 
-MAAS 3.3 documentation consolidates configuration settings in one article, in addition to their other mentions throughout the documentation set.
+MAAS 3.3 documentation consolidates configuration settings in one article, in addition to their other mentions during the documentation set.
 
 #### Ten words or less
 
@@ -368,7 +368,7 @@ MAAS 3.3 documentation consolidates configuration settings in one article, in ad
 
 #### What is new about this update
 
-MAAS configuration settings are scattered in various (generally relevant) places throughout the documentation, but there has never been one reference page that addresses all settings in one place. MAAS 3.3 remedies this by adding the [Configuration settings reference](/t/maas-settings/6347).
+MAAS configuration settings are scattered in various (generally relevant) places during the documentation, but there has never been one reference page that addresses all settings in one place.  MAAS 3.3 remedies this by adding the [Configuration settings reference](https://canonical.com/maas/docs/maas-settings).
 
 A minor new feature added with MAAS 3.3 is MAAS site identity, which enables some new configuration parameters:
 
@@ -382,7 +382,7 @@ These enhancements were made available to assist users who have more than one in
 
 ### Improved MAAS event documentation
 
-MAAS event documentation has been expanded to include [much better explanations](/t/an-overview-of-maas-events/6510) of MAAS events, including many examples.
+MAAS event documentation has been expanded to include [much better explanations](https://canonical.com/maas/docs/an-overview-of-maas-events) of MAAS events, including many examples.
 
 #### Ten words or less
 
@@ -390,39 +390,39 @@ We've finally documented MAAS events, making them easier to decode.
 
 #### Understanding MAAS events
 
-Events are state changes that happen to MAAS elements, caused by MAAS itself, an external agent, or a users. Understanding events is an essential debugging skill. But events appear in three different places in MAAS, each presentation providing slightly different information. These screens are usually dense and hard to search.
+Events are state changes that happen to MAAS elements, caused by MAAS itself, an external agent, or a users.  Understanding events is an essential debugging skill.  But events appear in three different places in MAAS, each presentation providing slightly different information.  These screens are usually dense and hard to search.
 
-In this major documentation update, we've standardised on the MAAS CLI events query command as the best way to review, filter, and summarise events. We've summarised the six main event types:
+In this major documentation update, we've standardised on the MAAS CLI events query command as the best way to review, filter, and summarise events.  We've summarised the six main event types:
 
- - INFO: the default, used if no level= is specified; shows INFO and ERROR events. A typical INFO event is “Ready”, indicating that a machine has reached the “Ready” state.
+ - INFO: the default, used if no level= is specified; shows INFO and ERROR events.  A typical INFO event is “Ready”, indicating that a machine has reached the “Ready” state.
 
- - CRITICAL: critical MAAS failures; shows only CRITICAL events. These events usually represent severe error conditions that should be immediately remedied.
+ - CRITICAL: critical MAAS failures; shows only CRITICAL events.  These events usually represent severe error conditions that should be immediately remedied.
 
- - ERROR: MAAS errors; shows only ERROR events. Typical ERROR events include such things as power on/off failures, commissioning timeouts, and image import failures.
+ - ERROR: MAAS errors; shows only ERROR events.  Typical ERROR events include such things as power on/off failures, commissioning timeouts, and image import failures.
 
- - WARNING: failures which may or may not affect MAAS performance; shows WARNING and ERROR events. A typical warning event, for example, might include the inability to find and boot a machine.
+ - WARNING: failures which may or may not affect MAAS performance; shows WARNING and ERROR events.  A typical warning event, for example, might include the inability to find and boot a machine.
 
- - DEBUG: information which would help debug MAAS behaviour; shows DEBUG and INFO events. Typical DEBUG events involve routine image import activities, for example.
+ - DEBUG: information which would help debug MAAS behaviour; shows DEBUG and INFO events.  Typical DEBUG events involve routine image import activities, for example.
 
- - AUDIT: information which helps determine settings and user actions in MAAS; shows only AUDIT events. They are covered in more detail elsewhere.
+ - AUDIT: information which helps determine settings and user actions in MAAS; shows only AUDIT events.  They are covered in more detail elsewhere.
 
-In addition, the new document explains how these event types tend to overlap when queried. We've also provide detailed instructions on how to use the most common filters:
+In addition, the new document explains how these event types tend to overlap when queried.  We've also provide detailed instructions on how to use the most common filters:
 
- - hostname: Only events relating to the node with the matching hostname will be returned. This can be specified multiple times to get events relating to more than one node.
+ - hostname: Only events relating to the node with the matching hostname will be returned.  This can be specified multiple times to get events relating to more than one node.
 
- - mac_address: Only nodes with matching MAC addresses will be returned. Note that MAC address is not part of the standard output, so you’d need to look it up elsewhere.
+ - mac_address: Only nodes with matching MAC addresses will be returned.  Note that MAC address is not part of the standard output, so you’d need to look it up elsewhere.
 
- - id: Only nodes with matching system IDs will be returned. This corresponds to the node parameter in the JSON listing, not the id parameter there, which is a serial event number.
+ - id: Only nodes with matching system IDs will be returned.  This corresponds to the node parameter in the JSON listing, not the id parameter there, which is a serial event number.
 
- - zone: Only nodes in the zone will be returned. Note that zones are not part of the standard output, so you’d need to look these up elsewhere.
+ - zone: Only nodes in the zone will be returned.  Note that zones are not part of the standard output, so you’d need to look these up elsewhere.
 
- - level: The event level to capture. You can choose from AUDIT, CRITICAL, DEBUG, ERROR, INFO, or WARNING. The default is INFO.
+ - level: The event level to capture.  You can choose from AUDIT, CRITICAL, DEBUG, ERROR, INFO, or WARNING.  The default is INFO.
 
- - limit: Number of events to return. The default is 100, the maximum in one command is 1000.
+ - limit: Number of events to return.  The default is 100, the maximum in one command is 1000.
 
- - before: Defines an event id to start returning older events. This is the “id” part of the JSON, not the system ID or “node”. Note that before and after cannot be used together, as the results are unpredictable.
+ - before: Defines an event id to start returning older events.  This is the “id” part of the JSON, not the system ID or “node”.  Note that before and after cannot be used together, as the results are unpredictable.
 
- - after: Defines an event id to start returning newer events. This is the “id” part of the JSON, not the system ID or “node”. Note that before and after cannot be used together, as the results are unpredictable.
+ - after: Defines an event id to start returning newer events.  This is the “id” part of the JSON, not the system ID or “node”.  Note that before and after cannot be used together, as the results are unpredictable.
 
 Since the MAAS CLI returns JSON -- which is hard to humans to parse -- we've included some exemplary `jq` predicates of the form:
 
@@ -434,7 +434,7 @@ maas $PROFILE events query limit=20 \
 | @tsv' | column -t -s\t'
 ```
 
-And finally, we provided some detailed usage examples. For instance, we walked a MAAS machine called `fun-zebra` through the following states:
+And finally, we provided some detailed usage examples.  For instance, we walked a MAAS machine called `fun-zebra` through the following states:
 
  - Commissioning
  - Allocation
@@ -491,7 +491,7 @@ Additional examples and techniques are provided as part of this new documentatio
 
 ### Improved MAAS audit event documentation
 
-MAAS audit event documentation has been greatly expanded to include [much better explanations](/t/understanding-audit-events/6372) of MAAS audit events, including [detailed examples of how to reconstruct machine life-cycles](/t/auditing-maas-operations/5987#heading--How-to-audit-a-machines-life-cycle-with-audit-events) in the updated version of "[How to work with audit event logs](/t/auditing-maas-operations/5987)".
+MAAS audit event documentation has been greatly expanded to include [much better explanations](https://canonical.com/maas/docs/understanding-audit-events) of MAAS audit events, including [detailed examples of how to reconstruct machine life-cycles](https://canonical.com/maas/docs/auditing-maas-operations#heading--How-to-audit-a-machines-life-cycle-with-audit-events) in the updated version of "[How to work with audit event logs](https://canonical.com/maas/docs/auditing-maas-operations)".
 
 #### Ten words or less
 
@@ -499,9 +499,9 @@ We've finally offered details about how you should audit MAAS.
 
 #### Understanding how audit events explain MAAS internal operations
 
-There's probably no limit to what you can figure out if you use audit events properly. The problems are: (1) a lot goes on in MAAS, and (2) you need more than just the explicit audit events to get a clear picture of what's happening. We've tried to address this by taking a deeper look at the auditing process (not just the events). 
+There's probably no limit to what you can figure out if you use audit events properly.  The problems are: (1) a lot goes on in MAAS, and (2) you need more than just the explicit audit events to get a clear picture of what's happening.  We've tried to address this by taking a deeper look at the auditing process (not just the events). 
 
-As you may know, an audit event is just a [MAAS event](/t/an-overview-of-maas-events/6510) tagged with `AUDIT`. It generally captures changes to the MAAS configuration and machine states. These events provide valuable oversight of user actions and automated updates -- and their effects -- especially when multiple users are interacting with multiple machines. 
+As you may know, an audit event is just a [MAAS event](https://canonical.com/maas/docs/an-overview-of-maas-events) tagged with `AUDIT`.  It generally captures changes to the MAAS configuration and machine states.  These events provide valuable oversight of user actions and automated updates -- and their effects -- especially when multiple users are interacting with multiple machines. 
 
 #### Viewing events
 
@@ -548,27 +548,27 @@ admin     unknown      Thu, 21 Apr. 2022 19:20:47  Updated configuration setting
 admin     unknown      Thu, 21 Apr. 2022 19:20:24  Logged in admin.
 ```
 
-You can, of course, use the [various event filters](/t/an-overview-of-maas-events/6510#heading--filter-parameters) with `level=AUDIT` to further restrict your output.
+You can, of course, use the [various event filters](https://canonical.com/maas/docs/an-overview-of-maas-events#heading--filter-parameters) with `level=AUDIT` to further restrict your output.
 
 #### The meaning of audit events
 
-Later on in the documentation, we walk through a sample of audit events and demonstrate how to interpret and use them. This includes detailed examples of various audit event queries, walking through real-world examples to answer questions like:
+Later on in the documentation, we walk through a sample of audit events and demonstrate how to interpret and use them.  This includes detailed examples of various audit event queries, walking through real-world examples to answer questions like:
 
-1. Who deployed `comic-muskox`? 
+1.  Who deployed `comic-muskox`? 
 
-2. What happened to `sweet-urchin`?
+2.  What happened to `sweet-urchin`?
 
-3. Why is `fleet-calf` in rescue mode?
+3.  Why is `fleet-calf` in rescue mode?
 
-4. Where did these changes come from in `setup.sh`?
+4.  Where did these changes come from in `setup.sh`?
 
-5. What caused `ruling-bobcat` to be marked as broken?
+5.  What caused `ruling-bobcat` to be marked as broken?
 
-6. Who's responsible for the DHCP snippet called `foo`?
+6.  Who's responsible for the DHCP snippet called `foo`?
 
 #### Auditing with finesse
 
-As part of the updates to our "[How to work with audit event logs](/t/auditing-maas-operations/5987)", we've tried to offer you some finesse in reconstructing machine life-cycles. We've shown how to combine various levels of MAAS event queries with standard command line utilities to produce clear audit trails such as this one:
+As part of the updates to our "[How to work with audit event logs](https://canonical.com/maas/docs/auditing-maas-operations)", we've tried to offer you some finesse in reconstructing machine life-cycles.  We've shown how to combine various levels of MAAS event queries with standard command line utilities to produce clear audit trails such as this one:
 
 ```nohighlight
 418606  ERROR    Marking node broken               Wed, 17 Nov. 2021 00:02:52  A Physical Interface requires a MAC address.
@@ -582,20 +582,20 @@ As part of the updates to our "[How to work with audit event logs](/t/auditing-m
 418617  INFO     Deploying                         Wed, 17 Nov. 2021 00:04:51  
 418618  AUDIT    Node                              Wed, 17 Nov. 2021 00:04:51  Started deploying 'ruling-bobcat'.
 418619  INFO     Powering on                       Wed, 17 Nov. 2021 00:04:55  
-418625  ERROR    Marking node failed               Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node's BMC: Failed to power pbpncx. BMC never transitioned from off to on.
+418625  ERROR    Marking node failed               Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node's BMC: Failed to power pbpncx.  BMC never transitioned from off to on.
 418626  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:05:32  From 'Deploying' to 'Failed deployment'
-418627  ERROR    Failed to power on node           Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node's BMC: Failed to power pbpncx. BMC never transitioned from off to on.
+418627  ERROR    Failed to power on node           Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node's BMC: Failed to power pbpncx.  BMC never transitioned from off to on.
 ```
 
-In this case, we managed to recognise, rather quickly, that no physical interface had been defined for `ruling-bobcat`, hence deployment fails because MAAS can't communicate with the node's BMC. There are many other issues you can recognise with careful use of MAAS events to audit machine behaviours. We welcome your feedback on this new documentation endeavour.
+In this case, we managed to recognise, rather quickly, that no physical interface had been defined for `ruling-bobcat`, hence deployment fails because MAAS can't communicate with the node's BMC.  There are many other issues you can recognise with careful use of MAAS events to audit machine behaviors.  We welcome your feedback on this new documentation endeavour.
 
 
 ## Installation
 
-MAAS will run on just about any modern hardware configuration, even a development laptop. If you're not sure whether your target server will handle MAAS, [you can always double-check](/t/installation-requirements/6233).
+MAAS will run on just about any modern hardware configuration, even a development laptop.  If you're not sure whether your target server will handle MAAS, [you can always double-check](https://canonical.com/maas/docs/installation-requirements).
 
 
-**NOTE** that PostgreSQL 12 is deprecated with the release of MAAS 3.3, in favour of PostgreSQL 14. Support for PostgreSQL 12 will be discontinued in MAAS 3.4. Also note, though, that Postgres 14 does not run on Focal 20.04 LTS.
+**NOTE** that PostgreSQL 12 is deprecated with the release of MAAS 3.3, in favour of PostgreSQL 14.  Support for PostgreSQL 12 will be discontinued in MAAS 3.4.  Also note, though, that Postgres 14 does not run on Focal 20.04 LTS.
 
 
 ### How to do a fresh snap install of MAAS 3.3
@@ -612,13 +612,13 @@ Maybe instead of a fresh install, you want to upgrade from a earlier snap versio
 
     $ sudo snap refresh --channel=3.3 maas
 
-After entering your password, the snap will refresh from the 3.3 candidate channel. You will **not** need to re-initialise MAAS.
+After entering your password, the snap will refresh from the 3.3 candidate channel.  You will **not** need to re-initialise MAAS.
 
 If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.
 
 ### How to initialise MAAS 3.3 snap for a test or POC environment
 
-You can initialise MAAS as a compact version for testing. To achieve this, we provide a separate snap, called `maas-test-db`, which contains a PostgreSQL database for use in testing and evaluating MAAS.  The following instructions will help you take advantage of this test configuration.
+You can initialise MAAS as a compact version for testing.  To achieve this, we provide a separate snap, called `maas-test-db`, which contains a PostgreSQL database for use in testing and evaluating MAAS.  The following instructions will help you take advantage of this test configuration.
 
 Once MAAS is installed, you can use the `--help` flag with `maas init` to get relevant instructions:
  
@@ -645,11 +645,11 @@ Once MAAS is installed, you can use the `--help` flag with `maas init` to get re
         sudo snap install maas-test-db
         sudo maas init region+rack --database-uri maas-test-db:///
 
-We'll quickly walk through these instructions to confirm your understanding. First, install the `maas-test-db` snap:
+We'll quickly walk through these instructions to confirm your understanding.  First, install the `maas-test-db` snap:
  
     sudo snap install maas-test-db
 
-Note that this step installs a a running PostgreSQL and a MAAS-ready database instantiation. When it's done, you can double check with a built-in PostgreSQL shell:
+Note that this step installs a running PostgreSQL and a MAAS-ready database instantiation.  When it's done, you can double check with a built-in PostgreSQL shell:
 
     $ sudo maas-test-db.psql
     psql (12.4)
@@ -657,7 +657,7 @@ Note that this step installs a a running PostgreSQL and a MAAS-ready database in
 
     postgres=# \l
 
-This will produce a list of databases, one of which will be `maasdb`, owned by `maas`. Note that this database is still empty because MAAS is not yet initialised and, hence, is not yet using the database. Once this is done, you can run the `maas init` command:
+This will produce a list of databases, one of which will be `maasdb`, owned by `maas`.  Note that this database is still empty because MAAS is not yet initialised and, hence, is not yet using the database.  Once this is done, you can run the `maas init` command:
 
     sudo maas init region+rack --database-uri maas-test-db:///
 
@@ -687,7 +687,7 @@ Let's assume you just want a local testing user named `admin`:
     Email: admin@example.com
     Import SSH keys [] (lp:user-id or gh:user-id): gh:yourusername
 
-At this point, MAAS is basically set up and running. You can confirm this with `sudo maas status`. If you need an API key, you can obtain this with `sudo maas apikey --username yourusername`. Now you will be able to test and evaluate MAAS by going to the URL you entered or accepted above and entering your `admin` username and password.
+At this point, MAAS is basically set up and running.  You can confirm this with `sudo maas status`.  If you need an API key, you can obtain this with `sudo maas apikey --username yourusername`.  Now you will be able to test and evaluate MAAS by going to the URL you entered or accepted above and entering your `admin` username and password.
 
 ### Initialise MAAS for a production configuration
 
@@ -697,24 +697,24 @@ To install MAAS in a production configuration, you need to setup PostgreSQL, as 
 
 To set up PostgreSQL, even if it's running on a different machine, you can use the following procedure:
 
-1. You will need to install PostgreSQL on the machine where you want to keep the database. This can be the same machine as the MAAS region/rack controllers or a totally separate machine. If PostgreSQL (version 14) is already running on your target machine, you can skip this step. To install PostgreSQL, run these commands:
+1.  You will need to install PostgreSQL on the machine where you want to keep the database.  This can be the same machine as the MAAS region/rack controllers or a totally separate machine.  If PostgreSQL (version 14) is already running on your target machine, you can skip this step.  To install PostgreSQL, run these commands:
 
         sudo apt update
         sudo apt install -y postgresql
 
-2. You want to make sure you have a suitable PostgreSQL user, which can be accomplished with the following command, where `$MAAS_DBUSER` is your desired database username, and `$MAAS_DBPASS` is the intended password for that username. Note that if you're executing this step in a LXD container (as root, which is the default), you may get a minor error, but the operation will still complete correctly.
+2.  You want to make sure you have a suitable PostgreSQL user, which can be accomplished with the following command, where `$MAAS_DBUSER` is your desired database username, and `$MAAS_DBPASS` is the intended password for that username.  Note that if you're executing this step in a LXD container (as root, which is the default), you may get a minor error, but the operation will still complete correctly.
 
         sudo -u postgres psql -c "CREATE USER \"$MAAS_DBUSER\" WITH ENCRYPTED PASSWORD '$MAAS_DBPASS'"
 
-3. Create the MAAS database with the following command, where `$MAAS_DBNAME` is your desired name for the MAAS database (typically known as `maas`). Again, if you're executing this step in a LXD container as root, you can ignore the minor error that results.
+3.  Create the MAAS database with the following command, where `$MAAS_DBNAME` is your desired name for the MAAS database (typically known as `maas`).  Again, if you're executing this step in a LXD container as root, you can ignore the minor error that results.
 
         sudo -u postgres createdb -O "$MAAS_DBUSER" "$MAAS_DBNAME"
 
-4. Edit `/etc/postgresql/14/main/pg_hba.conf` and add a line for the newly created database, replacing the variables with actual  names. You can limit access to a specific network by using a different CIDR than `0/0`.
+4.  Edit `/etc/postgresql/14/main/pg_hba.conf` and add a line for the newly created database, replacing the variables with actual  names.  You can limit access to a specific network by using a different CIDR than `0/0`.
 
         host    $MAAS_DBNAME    $MAAS_DBUSER    0/0     md5
 
-5. You can then initialise MAAS via the following command:
+5.  You can then initialise MAAS via the following command:
 
         sudo maas init region+rack --database-uri "postgres://$MAAS_DBUSER:$MAAS_DBPASS@$HOSTNAME/$MAAS_DBNAME"
 
@@ -724,7 +724,7 @@ Don't worry; if you leave out any of the database parameters, you'll be prompted
 
 ### How to do a fresh install of MAAS 3.3 from packages
 
-MAAS 3.3 from packages runs on 22.04 LTS only. The recommended way to set up an initial MAAS environment is to put everything on one machine:
+MAAS 3.3 from packages runs on 22.04 LTS only.  The recommended way to set up an initial MAAS environment is to put everything on one machine:
 
 ``` bash
 sudo apt-add-repository ppa:maas/3.3
@@ -732,7 +732,7 @@ sudo apt update
 sudo apt-get -y install maas
 ```
 
-Executing this command leads you to a list of dependent packages to be installed, and a summary prompt that lets you choose whether to continue with the install. Choosing "Y" proceeds with a standard <code>apt</code> package install.
+Executing this command leads you to a list of dependent packages to be installed, and a summary prompt that lets you choose whether to continue with the install.  Choosing "Y" proceeds with a standard <code>apt</code> package install.
 
 ### Distributed environment 
 
@@ -753,7 +753,7 @@ These two steps will lead you through two similar <code>apt</code> install seque
 
 ### How to upgrade from 3.2 or lower to MAAS 3.3
 
-If you are running MAAS 3.2 or lower, you can upgrade directly to MAAS 3.3. You must first make sure that the target system is running Ubuntu 22.04 LTS by executing the following command:
+If you are running MAAS 3.2 or lower, you can upgrade directly to MAAS 3.3.  You must first make sure that the target system is running Ubuntu 22.04 LTS by executing the following command:
 
 ```nohighlight
 lsb_release -a
@@ -796,9 +796,9 @@ Release:	20.04
 Codename:	focal
 ```
 
-If you’re upgrading from MAAS version 2.8 or lower to version 3.3: While the following procedures should work, note that they are untested. Use at your own risk. Start by making a verifiable backup; see step 1, below.
+If you’re upgrading from MAAS version 2.8 or lower to version 3.3: While the following procedures should work, note that they are untested.  Use at your own risk.  Start by making a verifiable backup; see step 1, below.
 
-Back up your MAAS server completely; the tools and media are left entirely to your discretion. Just be sure that you can definitely restore your previous configuration, should this procedure fail to work correctly.
+Back up your MAAS server completely; the tools and media are left entirely to your discretion.  Just be sure that you can definitely restore your previous configuration, should this procedure fail to work correctly.
 
 Add the MAAS 3.3 PPA to your repository list with the following command, ignoring any apparent error messages:
 
@@ -818,7 +818,7 @@ Check whether your upgrade has been successful by entering:
 lsb_release -a
 ```
 
-If the ugprade was successful, this command should yield output similar to the following:
+If the upgrade was successful, this command should yield output similar to the following:
 
 ```nohighlight
 No LSB modules are available.
@@ -928,7 +928,7 @@ So far in MAAS 3.3, we've fixed well over 100 bugs:
 - [1984994](https://bugs.launchpad.net/bugs/1984994): machine.list fails for some group_key values
 - [1985741](https://bugs.launchpad.net/bugs/1985741): Commissioning script 'maas-kernel-cmdline' fails with bonded interfaces
 - [1986372](https://bugs.launchpad.net/bugs/1986372): UI: Setting Default minimum kernel version for commissioning blocks deployments
-- [1987874](https://bugs.launchpad.net/bugs/1987874): interface.update_ip_addresses raise an Exception when exsits multiple StaticIPAddress
+- [1987874](https://bugs.launchpad.net/bugs/1987874): interface.update_ip_addresses raise an Exception when exists multiple StaticIPAddress
 - [1988543](https://bugs.launchpad.net/bugs/1988543): VM Discovery fails, resulting in " Error: An architecture is required." when composing a LXD VM
 - [1988759](https://bugs.launchpad.net/bugs/1988759): Provisioning LXD vmhost fails
 - [1988769](https://bugs.launchpad.net/bugs/1988769): The ppc64 machine in our lab fails during commissioning

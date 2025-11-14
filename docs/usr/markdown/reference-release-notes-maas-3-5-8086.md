@@ -75,37 +75,37 @@ MAAS 3.5 delivers substantial improvements in core functionality.  We've integra
 
 ### Faster and more efficient image storage and sync
 
-MAAS previously stored the boot resources (boot-loaders, kernels and disk images) in the MAAS database, and then replicated them on all Rack controllers. This make operations difficult and slow, as the database quickly became huge and files had to be transferred to all Racks before they were available for use. To address this issue, we have moved the resource storage from the database to the Region controller, and repurposed the storage in the Rack.
+MAAS previously stored the boot resources (boot-loaders, kernels and disk images) in the MAAS database, and then replicated them on all Rack controllers.  This make operations difficult and slow, as the database quickly became huge and files had to be transferred to all Racks before they were available for use.  To address this issue, we have moved the resource storage from the database to the Region controller, and repurposed the storage in the Rack.
 
 #### Storing boot resources in the Region Controllers
 
-All boot resources are stored in the local disk in each Controller host (`/var/lib/maas/image-storage` for *deb* or `$SNAP_COMMON/maas/image-storage` for *snap*). MAAS checks the contents of these directories on every start-up, removing unknown/stale files and downloading any missing resource. 
+All boot resources are stored in the local disk in each Controller host (`/var/lib/maas/image-storage` for *deb* or `$SNAP_COMMON/maas/image-storage` for *snap*).  MAAS checks the contents of these directories on every start-up, removing unknown/stale files and downloading any missing resource. 
 
-MAAS checks the amount of disk space available before downloading any resource, and stops synchronising files if there isn't enough free space. This error will be reported in the logs and a banner in the Web UI.
+MAAS checks the amount of disk space available before downloading any resource, and stops synchronising files if there isn't enough free space.  This error will be reported in the logs and a banner in the Web UI.
 
 #### Storage use by the Rack Controller 
 
-Images are no longer copied from the MAAS database to the rack. Instead, the rack downloads images from the region on-demand.  This works well with the redesign of the rack controller (now known as the *MAAS agent*), which has been re-imagined as a 4G LRU caching agent.  The MAAS agent has limited storage space, managing cache carefully, but it is possible to configure the size of this cache if you need to do so.
+Images are no longer copied from the MAAS database to the rack.  Instead, the rack downloads images from the region on-demand.  This works well with the redesign of the rack controller (now known as the *MAAS agent*), which has been re-imagined as a 4G LRU caching agent.  The MAAS agent has limited storage space, managing cache carefully, but it is possible to configure the size of this cache if you need to do so.
 
-As boot resources are now downloaded from a Region controller on-demand, a fast and reliable network connection between Regions and Racks is essential for a smooth operation. Adjusting the cache size might also be important for performance if you regularly deploy a large number of different systems.
+As boot resources are now downloaded from a Region controller on-demand, a fast and reliable network connection between Regions and Racks is essential for a smooth operation.  Adjusting the cache size might also be important for performance if you regularly deploy many different systems.
 
 #### One-time image migration process
 
-The first Region controller that upgrades will try to move all images out of the database. This is a background operation performed after all database migrations are applied, and **it's not reversible**. This is also a blocking operation, so MAAS might be un-available for some time (i.e., you should plan for some downtime during the upgrade process). 
+The first Region controller that upgrades will try to move all images out of the database.  This is a background operation performed after all database migrations are applied, and **it's not reversible**.  This is also a blocking operation, so MAAS might be un-available for some time (i.e., you should plan for some downtime during the upgrade process). 
 
-MAAS will check if the host has enough disk space before starting to export the resources, and it will not proceed otherwise. In order to discover how much disk space you need for all your images, you can run the following SQL query in MAAS database before upgrading:
+MAAS will check if the host has enough disk space before starting to export the resources, and it will not proceed otherwise.  In order to discover how much disk space you need for all your images, you can run the following SQL query in MAAS database before upgrading:
 
 ```sql
 select sum(n."size") from (select distinct on (f."sha256") f."size" from maasserver_bootresourcefile f order by f."sha256") n;
 ```
 
-The controllers are no longer capable of serving boot resources directly from the database, and won't be able to commission or to deploy machines until this migration succeeds. If the process fails, you must free enough disk space and restart the controller for the migration to be attempted again.
+The controllers are no longer capable of serving boot resources directly from the database, and won't be able to commission or to deploy machines until this migration succeeds.  If the process fails, you must free enough disk space and restart the controller for the migration to be attempted again.
 
 #### Sync works differently
 
-When downloading boot resources from an upstream source (e.g. images.maas.io), MAAS divides the workload between all Region controllers available, so each file is downloaded only once, but not all by the same controller. After all external files were fetched, the controllers synchronise files among them in a peer-to-peer fashion. This requires **direct communication between Regions to be allowed**, so you should review your firewall rules before upgrading.
+When downloading boot resources from an upstream source (e.g. images.maas.io), MAAS divides the workload between all Region controllers available, so each file is downloaded only once, but not all by the same controller.  After all external files were fetched, the controllers synchronise files among them in a peer-to-peer fashion.  This requires **direct communication between Regions to be allowed**, so you should review your firewall rules before upgrading.
 
-In this new model, a given image is *only* available for deployment after *all* regions have it, although stale versions can be used until everyone is up to date. This differs from previous versions where the boot resource needed to be copied to all Rack controllers before it was available, meaning that the images should be ready for use sooner.
+In this new model, a given image is *only* available for deployment after *all* regions have it, although stale versions can be used until everyone is up to date.  This differs from previous versions where the boot resource needed to be copied to all Rack controllers before it was available, meaning that the images should be ready for use sooner.
 
 ### Faster machine listing when deploying many machines
 
@@ -151,11 +151,11 @@ This should improve the user's ability to monitor MAAS.
 
 #### Monitoring setup sequence updated
 
-Also, the monitoring setup sequence for MAAS [has changed](/t/how-to-monitor-maas/5204).
+Also, the monitoring setup sequence for MAAS [has changed](https://canonical.com/maas/docs/how-to-monitor-maas).
 
 ### Logs collapsed into system log files
 
-With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files.  See [How to use MAAS systemd logs](/t/how-to-use-maas-systemd-logs/8103) in the documentation set for details.
+With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files.  See [How to use logging](https://canonical.com/maas/docs/how-to-use-logging) in the documentation set for details.
 
 ### Deployment of Oracle Linux 8 and 9 on MAAS machines
 
@@ -163,7 +163,7 @@ Concurrent with the release of MAAS 3.5, we have added Oracle Linux 8 and Oracle
 
 ### Ephemeral OS deployments
 
-With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images should succeed.  Networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
+With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images should succeed.  Networking is only set up for Ubuntu images.  For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS.  All other interfaces need to be configured manually after deployment.
 
 You can choose an ephemeral OS deployment from the deployment configuration screen in the machine list: Just select the "Deploy in memory" option and deploy as normal.
 
@@ -229,7 +229,7 @@ You can check your uploaded release scripts like this:
 maas $PROFILE node-scripts read type=release
 ```
 
-Among listed scripts you might see one named `wipe-disks`. This is the script that comes with MAAS to support the *Disk Erase* functionality.
+Among listed scripts you might see one named `wipe-disks`.  This is the script that comes with MAAS to support the *Disk Erase* functionality.
 
 Once you have your script uploaded to MAAS, you can pass it as a parameter to the MAAS CLI:
 
@@ -271,7 +271,7 @@ MAAS 3.5 makes some internal changes to improve the operation of MAAS, including
 
 - using a product called Temporal to improve process management and scheduling.
 
-There are no exposed controls, and there is no need for users to take any action on these changes. You will, though, see two new services in *Controllers > <controller> > Services: "agent" and "temporal."
+There are no exposed controls, and there is no need for users to take any action on these changes.  You will, though, see two new services in *Controllers > <controller> > Services: "agent" and "temporal."
 
 ## UI bug fixes
 

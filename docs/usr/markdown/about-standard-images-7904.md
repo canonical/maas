@@ -2,27 +2,27 @@ MAAS can deploy standard (Ubuntu) or custom images.
 
 ## Standard images
 
-MAAS standard images come from a SimpleStreams source. Canonical provides two SimpleStreams for MAAS images: candidate and stable. Both streams contain Ubuntu images, CentOS images, bootloaders extracted from the Ubuntu archive, and release notifications. Either stream can be used in any version of MAAS greater than 2.1 -- but not all images are supported in older versions.
+MAAS standard images come from a SimpleStreams source.  Canonical provides two SimpleStreams for MAAS images: candidate and stable.  Both streams contain Ubuntu images, CentOS images, bootloaders extracted from the Ubuntu archive, and release notifications.  Either stream can be used in any version of MAAS greater than 2.1 -- but not all images are supported in older versions.
 
 ### The stable stream
 
-The stable stream contains images and bootloaders which have been tested with the latest version of MAAS. This is the default stream which should be used in production environments.  
+The stable stream contains images and bootloaders which have been tested with the latest version of MAAS.  This is the default stream which should be used in production environments.  
 
 This stream is available [here](http://images.maas.io/ephemeral-v3/stable).
 
 ### The candidate stream
 
-The candidate stream contains images and bootloaders which have not been explicitly tested with MAAS. Canonical's automated build process publishes all these files here before they are tested with MAAS. This stream is useful when testing a bug fix before an image or bootloader has been promoted to stable. Think of the candidate stream as a preview: it should never be used in a production environment; and users are encouraged to provide feedback on any issues they find with this stream.
+The candidate stream contains images and bootloaders which have not been explicitly tested with MAAS.  Canonical's automated build process publishes all these files here before they are tested with MAAS.  This stream is useful when testing a bug fix before an image or bootloader has been promoted to stable.  Think of the candidate stream as a preview: it should never be used in a production environment; and users are encouraged to provide feedback on any issues they find with this stream.
 
 This stream is available [here](http://images.maas.io/ephemeral-v3/candidate).
 
 ### The retired daily stream
 
-Previously there was only one MAAS stream available, daily. This stream has been replaced by the stable stream. Any client using this stream will be automatically redirected to the stable stream.
+Previously there was only one MAAS stream available, daily.  This stream has been replaced by the stable stream.  Any client using this stream will be automatically redirected to the stable stream.
 
 ## Custom images
 
-MAAS allows you to upload and deploy custom images beyond the [MAAS image repository](http://images.maas.io). However, generic ISO images require modifications before they can be used. A valid MAAS image must include:  
+MAAS allows you to upload and deploy custom images beyond the [MAAS image repository](http://images.maas.io).  However, generic ISO images require modifications before they can be used.  A valid MAAS image must include:  
 
 - A **curtin hook script** to write and boot the image.  
 - **Cloud-init** (or equivalent) for provisioning network, storage, users, and software.  
@@ -34,9 +34,9 @@ You can create MAAS-compatible images in two ways:
 1. **Hand-build images** (requires deep understanding of curtin/cloud-init).  
 2. **Use [Packer](https://www.packer.io)** to automate the process.  
 
-The former is the recommenced way of building images. For selected operating systems, Canonical provides [Packer templates](https://github.com/canonical/packer-maas) to easy the process. 
+The former is the recommenced way of building images.  For selected operating systems, Canonical provides [Packer templates](https://github.com/canonical/packer-maas) to easy the process. 
 
-Custom images cannot be distributed by Canonical due to licensing. The users must build these and upload them to MAAS themselves. These templates are available in a *as-is* basis.
+Custom images cannot be distributed by Canonical due to licensing.  The users must build these and upload them to MAAS themselves.  These templates are available in a *as-is* basis.
 
 ### How MAAS handles custom images  
 
@@ -66,9 +66,9 @@ The MAAS dashboard tracks the number of deployed static images.
 
 ## Packer  
 
-[Packer](https://www.packer.io/docs) automates OS image creation for MAAS deployment. It uses **HCL2 templates** to define build, provisioning, and post-processing steps.  
+[Packer](https://www.packer.io/docs) automates OS image creation for MAAS deployment.  It uses **HCL2 templates** to define build, provisioning, and post-processing steps.  
 
-> *Note: Packer is the recommended approach to build custom images. Use `cloud-init` or `curtin` instead of custom images for minimal customizations.*
+> *Note: Packer is the recommended approach to build custom images.  Use `cloud-init` or `curtin` instead of custom images for minimal customizations.*
 ### Packer workflow  
 
 1. **Define a template** (HCL2 format).  
@@ -76,7 +76,7 @@ The MAAS dashboard tracks the number of deployed static images.
 3. **Run provisioners** (install software, configure settings).  
 4. **Apply post-processors** (e.g., compressing into `.tar.gz`).  
 
-Packer outputs **artifacts** (loadable images). In MAAS, these are simply called **images**.  
+Packer outputs **artifacts** (loadable images).  In MAAS, these are simply called **images**.  
 
 ### Packer image creation process  
 
@@ -94,14 +94,14 @@ sudo apt install qemu-utils qemu-system ovmf cloud-image-utils
 
 ### Packer templates  
 
-A [Packer template](https://github.com/canonical/packer-maas) (written in HCL2) defines the entire image-building process. It includes:  
+A [Packer template](https://github.com/canonical/packer-maas) (written in HCL2) defines the entire image-building process.  It includes:  
 
 - **Variables** (image type, architecture, file paths).  
 - **Source declaration** (how the image is built).  
 - **Provisioners** (installation/configuration scripts).  
 - **Post-processors** (final adjustments before deployment).  
 
-Most templates supplied by Canonical also include a `Makefile` file. It's strongly advised to use these files to to build the image.
+Most templates supplied by Canonical also include a `Makefile` file.  It's strongly advised to use these files to build the image.
 
 #### Example: Ubuntu packer template  
 

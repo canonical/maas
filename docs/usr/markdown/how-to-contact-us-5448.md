@@ -1,5 +1,5 @@
 
-Your experience helps shape the future of MAAS. Whether you’re troubleshooting, proposing features, or exploring enterprise adoption, there are several ways to engage with the team and the wider community.
+Your experience helps shape the future of MAAS.  Whether you’re troubleshooting, proposing features, or exploring enterprise adoption, there are several ways to engage with the team and the wider community.
 
 
 ## Join the community
@@ -14,7 +14,7 @@ Your experience helps shape the future of MAAS. Whether you’re troubleshooting
 ## Work with Canonical
 
 - Business & partnerships
-  If you’re exploring MAAS for enterprise use or partnership opportunities, use the [Contact Canonical form](https://canonical.com/maas/contact-us). A team member will follow up within one working day.
+  If you’re exploring MAAS for enterprise use or partnership opportunities, use the [Contact Canonical form](https://canonical.com/maas/contact-us).  A team member will follow up within one working day.
 
 - Premium support
   Organisations that need professional services or enterprise-grade support can visit the [Ubuntu Pro shop](https://buy.ubuntu.com/) to explore tailored support options.

@@ -1,14 +1,13 @@
-Delete a bcache set
+Delete a reserved IP
 
 ```bash
-maas $PROFILE bcache-cache-set delete [--help] [-d] [-k] system_id id
+maas $PROFILE reserved-ip delete [--help] [-d] [-k] id
 
 ```
 
 #### **Positional arguments**
 | Argument | Effect |
 |---|---|
-| system_id | The system ID of the machine/device (e.g., `abc123`) |
 | id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
@@ -21,23 +20,22 @@ maas $PROFILE bcache-cache-set delete [--help] [-d] [-k] system_id id
 
 
 #### **Keywords**
-Delete bcache cache set on a machine.
+Delete a reserved IP given its ID.
 
 
 
 
 
-Read a bcache cache set
+Read a Reserved IP
 
 ```bash
-maas $PROFILE bcache-cache-set read [--help] [-d] [-k] system_id id
+maas $PROFILE reserved-ip read [--help] [-d] [-k] id
 
 ```
 
 #### **Positional arguments**
 | Argument | Effect |
 |---|---|
-| system_id | The system ID of the machine/device (e.g., `abc123`) |
 | id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
@@ -50,23 +48,22 @@ maas $PROFILE bcache-cache-set read [--help] [-d] [-k] system_id id
 
 
 #### **Keywords**
-Read bcache cache set on a machine.
+Read a reserved IP given its ID.
 
 
 
 
 
-Update a bcache set
+Update a reserved IP
 
 ```bash
-maas $PROFILE bcache-cache-set update [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE reserved-ip update [--help] [-d] [-k] id [data ...]
 
 ```
 
 #### **Positional arguments**
 | Argument | Effect |
 |---|---|
-| system_id | The system ID of the machine/device (e.g., `abc123`) |
 | id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
@@ -79,28 +76,21 @@ maas $PROFILE bcache-cache-set update [--help] [-d] [-k] system_id id [data ...]
 
 
 #### **Keywords**
-Update bcache cache set on a machine. Note: specifying both a cache_device and a cache_partition is not<br>allowed.
+Update a reserved IP given its ID.
 
-##### Keyword "cache_device"
-Optional String. Cache block device to<br>replace current one.
-##### Keyword "cache_partition"
-Optional String. Cache partition to<br>replace current one.
+##### Keyword "comment"
+Optional String. A description of this<br>reserved IP.
 
 
 Note: This command accepts JSON.
 
 
-Creates a bcache cache set
+Create a Reserved IP
 
 ```bash
-maas $PROFILE bcache-cache-sets create [--help] [-d] [-k] system_id [data ...]
+maas $PROFILE reserved-ips create [--help] [-d] [-k] [data ...]
 
 ```
-
-#### **Positional arguments**
-| Argument | Effect |
-|---|---|
-| system_id | The system ID of the machine/device (e.g., `abc123`) |
 
 
 #### **Command-line options**
@@ -112,28 +102,27 @@ maas $PROFILE bcache-cache-sets create [--help] [-d] [-k] system_id [data ...]
 
 
 #### **Keywords**
-Creates a bcache cache set. Note: specifying both a cache_device and a cache_partition is not<br>allowed.
+Create a new Reserved IP.
 
-##### Keyword "cache_device"
-Optional String. Cache block device.
-##### Keyword "cache_partition"
-Optional String. Cache partition.
+##### Keyword "ip"
+Optional String. The IP to be reserved.
+##### Keyword "subnet"
+Optional Int. ID of the subnet associated with<br>the IP to be reserved.
+##### Keyword "mac_address"
+Optional String. The MAC address that<br>should be linked to the reserved IP.
+##### Keyword "comment"
+Optional String. A description of this<br>reserved IP.
 
 
 Note: This command accepts JSON.
 
 
-List bcache sets
+List all available Reserved IPs
 
 ```bash
-maas $PROFILE bcache-cache-sets read [--help] [-d] [-k] system_id
+maas $PROFILE reserved-ips read [--help] [-d] [-k]
 
 ```
-
-#### **Positional arguments**
-| Argument | Effect |
-|---|---|
-| system_id | The system ID of the machine/device (e.g., `abc123`) |
 
 
 #### **Command-line options**
@@ -145,4 +134,4 @@ maas $PROFILE bcache-cache-sets read [--help] [-d] [-k] system_id
 
 
 #### **Keywords**
-List all bcache cache sets belonging to a machine.
+List all IPs that have been reserved in MAAS.

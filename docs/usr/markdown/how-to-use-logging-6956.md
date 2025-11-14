@@ -1,4 +1,4 @@
-This guide explains how to find, read, and filter MAAS logs. Logs are essential for troubleshooting, auditing, and understanding MAAS operations. You can access several types of logs:
+This guide explains how to find, read, and filter MAAS logs.  Logs are essential for troubleshooting, auditing, and understanding MAAS operations.  You can access several types of logs:
 
 - System logs: General controller and service behavior.
 - Event logs: User and system actions, useful for debugging.
@@ -12,7 +12,7 @@ This guide explains how to find, read, and filter MAAS logs. Logs are essential 
 
 ### MAAS 3.5 and newer (systemd journal)
 
-From version 3.5 onward, MAAS uses the `systemd` journal instead of writing logs to disk. This provides a centralized, real-time view.
+From version 3.5 onward, MAAS uses the `systemd` journal instead of writing logs to disk.  This provides a centralized, real-time view.
 
 #### Region controller
 
@@ -67,7 +67,7 @@ journalctl -u snap.maas.pebble -t maas-machine --since "-15m" MAAS_MACHINE_HOSTN
 
 ### MAAS versions earlier than 3.5 (log files)
 
-Before 3.5, MAAS wrote logs to files. Common locations include:
+Before 3.5, MAAS wrote logs to files.  Common locations include:
 
 - Region controller: `/var/snap/maas/common/log/regiond.log` or `/var/log/maas/regiond.log`
 - Rack controller: `/var/snap/maas/common/log/rackd.log` or `/var/log/maas/rackd.log`
@@ -84,9 +84,9 @@ less /var/snap/maas/common/log/regiond.log
 Event logs track system and user activity, helping you trace what happened in MAAS.
 
 ### Using the UI
-1. Open *Machines*.
-2. Select a machine and open the *Events* tab.
-3. Click *View full history* for more detail.
+1.  Open *Machines*.
+2.  Select a machine and open the *Events* tab.
+3.  Click *View full history* for more detail.
 
 ### Using the CLI
 
@@ -103,11 +103,11 @@ maas $PROFILE events query | jq -r '(["HOSTNAME","TIMESTAMP","TYPE","DESCRIPTION
 
 ## Commissioning logs
 
-Commissioning verifies whether MAAS can successfully interact with a machine, gather specs, and run setup tasks. Check these logs when a machine fails commissioning or stays stuck in Ready, hardware details are missing/incorrect, PXE boots fail, or custom commissioning scripts error out.
+Commissioning verifies whether MAAS can successfully interact with a machine, gather specs, and run setup tasks.  Check these logs when a machine fails commissioning or stays stuck in Ready, hardware details are missing/incorrect, PXE boots fail, or custom commissioning scripts error out.
 
 ### Using the UI
-1. Go to the machine’s Commissioning tab.
-2. Click the log links for details.
+1.  Go to the machine’s Commissioning tab.
+2.  Click the log links for details.
 
 ### Using the CLI
 ```bash
@@ -117,7 +117,7 @@ maas $PROFILE node-script-result read $SYSTEM_ID $RESULTS
 
 ## Testing logs
 
-Testing validates whether a machine is production-ready. Logs confirm hardware health and firmware/kernel compatibility.
+Testing validates whether a machine is production-ready.  Logs confirm hardware health and firmware/kernel compatibility.
 
 ### Using the CLI
 ```bash
@@ -127,9 +127,9 @@ maas $PROFILE node-script-result read $SYSTEM_ID type=smartctl-validate
 
 ## Audit logs (including OS image changes)
 
-Audit logs track user actions and configuration changes. Use them to investigate failures or changes, monitor who modified settings, and support compliance.
+Audit logs track user actions and configuration changes.  Use them to investigate failures or changes, monitor who modified settings, and support compliance.
 
-> Note: New audit events exist for OS image auditing. Include these examples to track image imports, deletions, or changes to boot resources.
+> Note: New audit events exist for OS image auditing.  Include these examples to track image imports, deletions, or changes to boot resources.
 
 ### Query audit events
 
@@ -174,7 +174,7 @@ Filter audit logs:
 
 ### OS image auditing examples
 
-Common descriptions/types you may see include image import, deletion, sync, and boot-resource updates. Examples:
+Common descriptions/types you may see include image import, deletion, sync, and boot-resource updates.  Examples:
 
 ```bash
 # Show recent audit events related to images or boot resources (adjust regex as needed)
@@ -249,7 +249,7 @@ maas $PROFILE events query machine=$SYS limit=50 | jq -r '.events[] | "\(.create
 
 Success criteria: You see event types like *Commissioning*, *Commissioning complete*, *Testing* (if selected), with current timestamps.
 
-If commissioning doesn’t produce logs: verify the machine PXE boots into the ephemeral image, and that rack connectivity to region is healthy.
+If commissioning does not’t produce logs: verify the machine PXE boots into the ephemeral image, and that rack connectivity to region is healthy.
 
 3) Run audit queries and verify expected user activity
 

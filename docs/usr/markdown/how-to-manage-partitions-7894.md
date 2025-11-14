@@ -47,7 +47,7 @@ To create a new partition on a block device, use the 'create' API call:
 maas admin partitions create <node-id> 10 size=5360320512
 ```
 
-In addition to bytes, as shown above, the 'size' of a partition can also be defined with a 'G' for gigabytes or 'M' for megabytes. The output from the previous command will look like this:
+In addition to bytes, as shown above, the 'size' of a partition can also be defined with a 'G' for gigabytes or 'M' for megabytes.  The output from the previous command will look like this:
 
 ```nohighlight
 Success.
@@ -67,7 +67,7 @@ Machine-readable output follows:
 
 ## Delete partition
 
-Partitions can be deleted from a block device with the 'delete' API call. Make sure you double check the partition details as the partition is deleted immediately, with no further confirmation:
+Partitions can be deleted from a block device with the 'delete' API call.  Make sure you double check the partition details as the partition is deleted immediately, with no further confirmation:
 
 ```nohighlight
 maas admin partition delete <node-id> 10 9

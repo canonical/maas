@@ -1,4 +1,4 @@
-Real-time (RT) kernels reduce latency for workloads where timing is critical, such as telecom, financial services, and robotics. MAAS can deploy RT kernels by combining Ubuntu Pro with cloud-init.
+Real-time (RT) kernels reduce latency for workloads where timing is critical, such as telecom, financial services, and robotics.  MAAS can deploy RT kernels by combining Ubuntu Pro with cloud-init.
 
 Learn more about [the Ubuntu RT kernel](https://documentation.ubuntu.com/real-time/latest/reference/releases/).
 
@@ -12,24 +12,24 @@ Before you begin, make sure you have:
 * A machine that is already enlisted and commissioned in MAAS.
 * Internet access (offline installation is not supported).
 
-> If you are not familiar with Ubuntu Pro in MAAS, see [How to enable Ubuntu Pro on a deployed machine](https://canonical.com/maas/docs/how-to-enable-ubuntu-pro).
+> If you are not familiar with Ubuntu Pro in MAAS, review the [Ubuntu Pro overview](https://ubuntu.com/pro) before you start.
 
 ## How it works
 
-The RT kernel is not built into MAAS images. Instead:
+The RT kernel is not built into MAAS images.  Instead:
 
-1. MAAS deploys the machine with a generic Ubuntu kernel.
+1.  MAAS deploys the machine with a generic Ubuntu kernel.
 2. cloud-init attaches the machine to Ubuntu Pro and enables the RT kernel.
-3. The machine reboots, and the new RT kernel is activated.
+3.  The machine reboots, and the new RT kernel is activated.
 
 ## Steps to deploy
 
-1. Select the machine in the MAAS UI
+1.  Select the machine in the MAAS UI
 
    * Enlist and commission as usual if you haven’t already.
    * Choose *Deploy*.
 
-2. Choose operating system
+2.  Choose operating system
 
    * Select [one of the valid kernels](https://documentation.ubuntu.com/real-time/latest/reference/releases/).
 
@@ -44,7 +44,7 @@ Use this simple rule based on the **Ubuntu series you’re deploying** (per curr
 - **20.04 (Focal) and newer (22.04 Jammy, 24.04 Noble, etc.)** → use the **`ubuntu_pro`** block.
 - **18.04 (Bionic) and older** → use the **`runcmd`** block.
 
-> If you’ve customised images or aren’t sure, you can confirm your version with:
+> If you’ve customized images or aren’t sure, you can confirm your version with:
 > ```bash
 > cloud-init --version
 > ```
@@ -70,7 +70,7 @@ runcmd:
   - yes | pro enable fips-updates
 ```
 
-4. Start deployment
+4.  Start deployment
 
    * Click *Start deployment*.
    * Be aware: MAAS may show the machine as *Deployed* before cloud-init finishes the kernel change and the reboot.
@@ -79,7 +79,7 @@ runcmd:
 
 After the machine finishes rebooting, verify the RT kernel is active:
 
-1. Check Ubuntu Pro status:
+1.  Check Ubuntu Pro status:
 
 ```bash
 sudo pro status
@@ -87,7 +87,7 @@ sudo pro status
 
 Look for `realtime-kernel` in the list of enabled services.
 
-2. Check kernel version:
+2.  Check kernel version:
 
 ```bash
 uname -a

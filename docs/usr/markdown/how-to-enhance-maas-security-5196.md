@@ -13,7 +13,7 @@
 | Users | UI: *Settings* > *Users* <br> CLI: `maas $PROFILE users create ...` | Manage carefully; add SSH/API keys as needed |
 | Vault | `sudo maas config-vault configure ...` then `maas config-vault migrate` | Integrates MAAS with HashiCorp Vault for secrets |
 
-Security underpins everything MAAS does: deploying machines, managing networks, and serving API calls. Strong encryption, careful logging, and user access management reduce the chance of compromise.
+Security underpins everything MAAS does: deploying machines, managing networks, and serving API calls.  Strong encryption, careful logging, and user access management reduce the chance of compromise.
 
 This guide shows how to:
 - Enable and verify TLS (native in 3.3+, proxied in earlier versions).
@@ -39,7 +39,7 @@ maas config-tls disable
 - `--cacert`: include full certificate chain when using non-self-signed certs.
 
 ### High availability (HA)
-All region/rack controllers in HA must share the same certificate. Use Subject Alternative Names (SANs) to cover multiple DNS names or IPs:
+All region/rack controllers in HA must share the same certificate.  Use Subject Alternative Names (SANs) to cover multiple DNS names or IPs:
 
 ```nohighlight
 X509v3 Subject Alternative Name:
@@ -89,7 +89,7 @@ Append root and intermediate CA certs if required.
 
 ## Use TLS (3.2 and earlier)
 
-Older MAAS releases do not support native TLS. Use a reverse proxy.
+Older MAAS releases do not support native TLS.  Use a reverse proxy.
 
 ### nginx example
 ```nohighlight
@@ -148,12 +148,12 @@ See [port reference](https://canonical.com/maas/docs/configuration-reference#p-1
 
 Use HAProxy for TLS termination, load balancing, and high availability.
 
-1. Install HAProxy:
+1.  Install HAProxy:
    ```nohighlight
    sudo apt install haproxy
    ```
 
-2. Update `/etc/haproxy/haproxy.cfg`:
+2.  Update `/etc/haproxy/haproxy.cfg`:
    ```nohighlight
    global
      maxconn 2000
@@ -176,7 +176,7 @@ Use HAProxy for TLS termination, load balancing, and high availability.
      server maas-api-2 10.0.0.12:5240 check
    ```
 
-3. Restart:
+3.  Restart:
    ```nohighlight
    sudo systemctl restart haproxy
    ```
@@ -224,11 +224,11 @@ Admins can reset any password.
 
 Use [HashiCorp Vault](https://developer.hashicorp.com/vault/docs) to centralize secrets.
 
-1. Enable `approle` and KV v2 in Vault.
-2. Write a policy allowing MAAS access.
-3. Assign a role to each region controller.
-4. Generate role ID and wrapped secret.
-5. Configure MAAS:
+1.  Enable `approle` and KV v2 in Vault.
+2.  Write a policy allowing MAAS access.
+3.  Assign a role to each region controller.
+4.  Generate role ID and wrapped secret.
+5.  Configure MAAS:
    ```nohighlight
    sudo maas config-vault configure $URL $ROLE_ID $WRAPPED_TOKEN $SECRETS_PATH --mount $MOUNT
    sudo maas config-vault migrate

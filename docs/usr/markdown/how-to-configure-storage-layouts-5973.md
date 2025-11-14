@@ -7,7 +7,7 @@
 | VMFS6 | VMware ESXi hosts | Creates OS + VMFS datastore automatically |
 | Blank | Custom/manual setups | Wipes disks, must configure storage manually |
 
-MAAS lets you choose different storage layouts when deploying machines. These layouts affect performance, flexibility, and compatibility (e.g. UEFI vs. non-UEFI). Picking the right one ensures deployments succeed and fit your workload.
+MAAS lets you choose different storage layouts when deploying machines.  These layouts affect performance, flexibility, and compatibility (e.g.  UEFI vs. non-UEFI).  Picking the right one ensures deployments succeed and fit your workload.
 
 You can configure layouts when:
 - Commissioning a new machine.
@@ -21,7 +21,7 @@ In the CLI: use `maas $PROFILE machine set-storage-layout`.
 ## Flat layout
 
 What it is:
-A simple setup where the entire disk is one root filesystem. Good for small or simple systems.
+A simple setup where the entire disk is one root filesystem.  Good for small or simple systems.
 
 | Name  | Size       | Type | Filesystem | Mount point |
 | sda   | -          | disk | -          | -           |
@@ -36,7 +36,7 @@ How to configure:
   ```
 
 Options:
-- `boot_size`: Size of `/boot`. Default is 0 (combined with `/`).
+- `boot_size`: Size of `/boot`.  Default is 0 (combined with `/`).
 - `root_device`: Device to hold the root partition (default: boot disk).
 - `root_size`: Size of root partition (default: 100%).
 
@@ -97,7 +97,7 @@ If no SSD is present, bcache layout will fail.
 ## VMFS6 layout
 
 What it is:
-Required for VMware ESXi deployments. Sets up both the OS and VMFS datastore.
+Required for VMware ESXi deployments.  Sets up both the OS and VMFS datastore.
 
 | Name  | Size        | Type       | Use                |
 | sda   | -           | disk       | -                  |
@@ -119,7 +119,7 @@ Options:
 ## Blank layout
 
 What it is:
-Wipes the disk and leaves storage unconfigured. Use this if you want to manually define partitions, filesystems, or RAIDs before deployment.
+Wipes the disk and leaves storage unconfigured.  Use this if you want to manually define partitions, filesystems, or RAIDs before deployment.
 
 How to configure:
 - UI: Select Blank in storage layout.

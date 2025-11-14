@@ -1,6 +1,6 @@
-Understanding controllers within the MAAS ecosystem helps to metal infrastructure. You may find it useful to [tweak your controller settings](https://canonical.com/maas/docs/how-to-manage-controllers) based on your specific network and machine count. Even consider opting for a [high availability setup](https://canonical.com/maas/docs/how-to-manage-controllers#p-9026-enable-ha) for robustness.
+Understanding controllers within the MAAS ecosystem helps to metal infrastructure.  You may find it useful to [tweak your controller settings](https://canonical.com/maas/docs/how-to-manage-controllers) based on your specific network and machine count.  Even consider opting for a [high availability setup](https://canonical.com/maas/docs/how-to-manage-controllers#p-9026-enable-ha) for robustness.
 
-At the core of MAAS are its controllers: region controllers and rack controllers. While the region controller is the interaction hub for operators, the rack controller focuses on delivering high-bandwidth services to the machines.
+At the core of MAAS are its controllers: region controllers and rack controllers.  While the region controller is the interaction hub for operators, the rack controller focuses on delivering high-bandwidth services to the machines.
 
 ## Region controllers
 
@@ -12,7 +12,7 @@ A region controller provides several services:
 * caching HTTP proxy
 * Web UI
 
-It manages either an entire data centre or a specific region and orchestrates a myriad of tasks from API request routing to keeping DNS records up to date.
+It manages either an entire data center or a specific region and orchestrates a myriad of tasks from API request routing to keeping DNS records up to date.
 
 ## Rack controllers
 
@@ -35,7 +35,7 @@ The hierarchy of communication in MAAS flows from the UI/API to the region contr
 
 ## Racks to machines
 
-All communications from machines route through rack controllers. This includes everything from DNS lookups to APT cache-and-forward proxies via Squid. A unique DNS resource is created for each subnet, which machines use to find an available rack controller.
+All communications from machines route through rack controllers.  This includes everything from DNS lookups to APT cache-and-forward proxies via Squid.  A unique DNS resource is created for each subnet, which machines use to find an available rack controller.
 
 ## Region and rack
 
@@ -43,7 +43,7 @@ Messaging between the region and rack controllers involves multiple steps.
 
 <details><summary>Tell me about the DHCP "next-server" statement</summary>
 
-The `next-server` directive specifies the host from which a machine should load its initial boot file. In the context of MAAS, the rack controller serving DHCP roles as this host, acting as a broker for boot file delivery.
+The `next-server` directive specifies the host from which a machine should load its initial boot file.  In the context of MAAS, the rack controller serving DHCP roles as this host, acting as a broker for boot file delivery.
 </details>
 
 ![MAAS Architecture](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/1X/02a7ca58b989c67c74421b9d5e0c8b32907a2de1.jpeg)

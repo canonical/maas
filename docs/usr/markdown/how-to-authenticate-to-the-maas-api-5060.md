@@ -1,4 +1,4 @@
-The MAAS API uses 0-legged OAuth for authentication. Some endpoints can be accessed anonymously, but most require authenticated requests. This page shows how to make authenticated API calls in different languages and tools.
+The MAAS API uses 0-legged OAuth for authentication.  Some endpoints can be accessed anonymously, but most require authenticated requests.  This page shows how to make authenticated API calls in different languages and tools.
 
 
 ## Your API key
@@ -12,7 +12,7 @@ Split this key into its components and pass them to your client library or tool.
 
 
 ## Python example
-This example uses the `fades` library, but you can also use `requests_oauthlib` and `oauthlib`. Replace `<MAAS_SERVER_IP>` and `<API-KEY>` with your own values.
+This example uses the `fades` library, but you can also use `requests_oauthlib` and `oauthlib`.  Replace `<MAAS_SERVER_IP>` and `<API-KEY>` with your own values.
 
 ```nohighlight
 from oauthlib.oauth1 import SIGNATURE_PLAINTEXT

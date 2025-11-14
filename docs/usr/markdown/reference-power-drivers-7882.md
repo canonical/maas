@@ -1,4 +1,4 @@
-The following page catalogs the fields in the "create machine" dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice.  In the next section we introduce configuring power drivers using the UI. In "CLI parameter expressions," you will find how to configure them using the CLI.
+The following page catalogs the fields in the "create machine" dialogue for each supported power driver.  Note that most of the multiple-choice fields have drop-down menus to assist with your choice.  In the next section we introduce configuring power drivers using the UI.  In "CLI parameter expressions," you will find how to configure them using the CLI.
 
 ## UI parameter expressions 
 ### Intel AMT
@@ -16,7 +16,7 @@ The following page catalogs the fields in the "create machine" dialogue for each
 | APU PDU node outlet number (1-16) | PDU node outlet number | Required |
 | Power ON outlet delay (seconds) | outlet power ON delay | Optional, default=5 |
 
-### Digital Loggers, Inc. PDU
+### Digital Loggers, Inc.  PDU
 
 | Form field | Description | Required |
 |:-----|:-----|:-----|
@@ -120,10 +120,10 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Host name or IP | Power address for the Proxmox driver | Required |
 | Username, including realm | Power user, along with realm (i.e., Username@Realm | Required |
 | Password | Required if a token name and secret aren't given | Provisional |
-| API token name | Token name: must include Username without realm (i.e., Username!Token-name | Provisional |
+| API token name | Token name: must include Username without realm followed by an exclamation mark and the token label (for example, `Username` plus `Token-name`) | Provisional |
 | API token secret | Token secret | Provisional |
 | Node ID | VM name or ID | Optional |
-| Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
+| Verify SSL connections… | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
 ### OpenBMC Power Driver
 
@@ -205,17 +205,17 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 ### Virsh power type (UI)
 
-Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selected, and the 'Power address' of `qemu+ssh://ubuntu@192.168.1.2/system` has been entered (replace values as appropriate). The value of 'Power ID' is the VM domain (guest) name, here `node2`.
+Consider a machine backed by VM.  Below, a 'Power type' of `Virsh` has been selected, and the 'Power address' of `qemu+ssh://ubuntu@192.168.1.2/system` has been entered (replace values as appropriate).  The value of 'Power ID' is the VM domain (guest) name, here `node2`.
 
-<a href="https://assets.ubuntu.com/v1/c75e00a8-nodes-power-types__2.4_example-virsh.png" target = "_blank"><img src="upload://srGpNVADogLofh3aNSB9rBKX95C.png"></a>
+![Virsh power type example](https://assets.ubuntu.com/v1/c75e00a8-nodes-power-types__2.4_example-virsh.png)
 
-> **Pro tip**: The machine's hostname -- according to MAAS -- is a randomly chosen string (here `dear.ant`). You should change this hostname to something descriptive, that helps you remember why this machine is in your MAAS network.
+> **Pro tip**: The machine's hostname -- according to MAAS -- is a randomly chosen string (here `dear.ant`).  You should change this hostname to something descriptive, that helps you remember why this machine is in your MAAS network.
 
 ### Webhook
 
-It's important to understand that the Webhook power driver is more generic than other drivers, so it has some flexibility that the underlying power driver may not support. For example, Webhook doesn't require a username or password for the power driver, because not all power drivers work that way. Nevertheless, the power driver you're connecting to Webhook may actually require a username and/or password. Understanding and implementing these fields correctly for the chosen back-end power driver is the user's responsibility.
+It's important to understand that the Webhook power driver is more generic than other drivers, so it has some flexibility that the underlying power driver may not support.  For example, Webhook doesn't require a username or password for the power driver, because not all power drivers work that way.  Nevertheless, the power driver you're connecting to Webhook may actually require a username and/or password.  Understanding and implementing these fields correctly for the chosen back-end power driver is the user's responsibility.
 
-To that end, the "Required" column for this driver refers only to whether Webhook requires a value in each field. Just because a field is optional for Webhook itself does not mean that the underlying power driver will ultimately allow that field to be unspecified.
+To that end, the "Required" column for this driver refers only to whether Webhook requires a value in each field.  Just because a field is optional for Webhook itself does not mean that the underlying power driver will ultimately allow that field to be unspecified.
 
 | Form field | Description | Required (by Webhook) |
 |:-----|:-----|:-----|
@@ -228,12 +228,12 @@ To that end, the "Required" column for this driver refers only to whether Webhoo
 | Power user | Username to log into the power driver | Optional |
 | Power password | Password to access unit | Optional |
 | Power token | Power driver API token (used instead of user and password, if set) | Optional |
-| Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
+| Verify SSL connections… | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
 ## CLI parameter expressions
 ### Intel AMT
 
-All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=amt`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -243,7 +243,7 @@ All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI 
 
 ### American Power Conversion (APC) PDU
 
-All parameters are entered as `key=value`, e.g., `power_type=apc`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=apc`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -252,9 +252,9 @@ All parameters are entered as `key=value`, e.g., `power_type=apc`. The MAAS CLI 
 | `node_outlet` | PDU node outlet number | Required |
 | `power_on_delay` | outlet power ON delay | Optional, default=5 |
 
-### Digital Loggers, Inc. PDU
+### Digital Loggers, Inc.  PDU
 
-All parameters are entered as `key=value`, e.g., `power_type=dli`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=dli`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -266,7 +266,7 @@ All parameters are entered as `key=value`, e.g., `power_type=dli`. The MAAS CLI 
 
 ### Eaton PDU
 
-All parameters are entered as `key=value`, e.g., `power_type=eaton`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=eaton`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -277,7 +277,7 @@ All parameters are entered as `key=value`, e.g., `power_type=eaton`. The MAAS CL
 
 ### IBM Hardware Management Console (HMC)
 
-All parameters are entered as `key=value`, e.g., `power_type=hmc`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=hmc`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -290,7 +290,7 @@ All parameters are entered as `key=value`, e.g., `power_type=hmc`. The MAAS CLI 
 
 ### LXD VMs
 
-All parameters are entered as `key=value`, e.g., `power_type=lxd`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=lxd`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -301,7 +301,7 @@ All parameters are entered as `key=value`, e.g., `power_type=lxd`. The MAAS CLI 
 
 ### IPMI
 
-All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded. Power driver specific parameters should be prefixed with `power_parameters_{key}`.
+All parameters are entered as `key=value`, e.g., `power_type=amt`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.  Power driver specific parameters should be prefixed with `power_parameters_{key}`.
 
 Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
 
@@ -328,11 +328,11 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 ### Manual power configuration
 
-Manual power configuration means exactly that -- manually configured at the unit. The only MAAS CLI parameter is `power_type=amt`. 
+Manual power configuration means exactly that -- manually configured at the unit.  The only MAAS CLI parameter is `power_type=amt`. 
 
 ### HP Moonshot - iLO4 (IPMI)
 
-All parameters are entered as `key=value`, e.g., `power_type=moonshot`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=moonshot`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -344,7 +344,7 @@ All parameters are entered as `key=value`, e.g., `power_type=moonshot`. The MAAS
 
 ### HP Moonshot - iLO Chassis Manager
 
-All parameters are entered as `key=value`, e.g., `power_type=mscm`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=mscm`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -358,7 +358,7 @@ All parameters are entered as `key=value`, e.g., `power_type=mscm`. The MAAS CLI
 
 ### Microsoft OCS - Chassis Manager
 
-All parameters are entered as `key=value`, e.g., `power_type=msftocs`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=msftocs`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -371,7 +371,7 @@ All parameters are entered as `key=value`, e.g., `power_type=msftocs`. The MAAS 
 
 ### OpenStack Nova
 
-All parameters are entered as `key=value`, e.g., `power_type=nova`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=nova`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -384,7 +384,7 @@ All parameters are entered as `key=value`, e.g., `power_type=nova`. The MAAS CLI
 
 ### OpenBMC Power Driver
 
-All parameters are entered as `key=value`, e.g., `power_type=openbmc`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=openbmc`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -395,7 +395,7 @@ All parameters are entered as `key=value`, e.g., `power_type=openbmc`. The MAAS 
 
 ### Christmann RECS-Box Power Driver
 
-All parameters are entered as `key=value`, e.g., `power_type=recs_box`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=recs_box`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -408,7 +408,7 @@ All parameters are entered as `key=value`, e.g., `power_type=recs_box`. The MAAS
 
 ### Redfish
 
-All parameters are entered as `key=value`, e.g., `power_type=redfish`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=redfish`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -420,7 +420,7 @@ All parameters are entered as `key=value`, e.g., `power_type=redfish`. The MAAS 
 
 ### SeaMicro 15000
 
-All parameters are entered as `key=value`, e.g., `power_type=sm15k`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=sm15k`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
 
@@ -437,7 +437,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 ### Cisco UCS Manager
 
-All parameters are entered as `key=value`, e.g., `power_type=ucsm`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=ucsm`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -449,7 +449,7 @@ All parameters are entered as `key=value`, e.g., `power_type=ucsm`. The MAAS CLI
 
 ### virsh - libvirt KVM
 
-All parameters are entered as `key=value`, e.g., `power_type=virsh`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=virsh`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -460,7 +460,7 @@ All parameters are entered as `key=value`, e.g., `power_type=virsh`. The MAAS CL
 
 ### VMware
 
-All parameters are entered as `key=value`, e.g., `power_type=vmware`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=vmware`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -475,7 +475,7 @@ All parameters are entered as `key=value`, e.g., `power_type=vmware`. The MAAS C
 
 ### Facebook's Wedge
 
-All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=amt`.  The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -488,7 +488,7 @@ All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI 
 
 ### Virsh power type (CLI)
 
-Consider a machine backed by a KVM, accessed via `virsh`. You can create a corresponding MAAS machine and set its power parameters with a command like this one:
+Consider a machine backed by a KVM, accessed via `virsh`.  You can create a corresponding MAAS machine and set its power parameters with a command like this one:
 
     maas admin machines create \
     architecture=amd64 \
@@ -502,7 +502,7 @@ If successful, this will return:
 
     Success.
 
-Machine-readable output follows this announcement. The JSON generated by this command is shown in the detail block.
+Machine-readable output follows this announcement.  The JSON generated by this command is shown in the detail block.
 
 <details><summary>MAAS command JSON response</summary>
 ```

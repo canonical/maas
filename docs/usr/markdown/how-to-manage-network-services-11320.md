@@ -1,8 +1,8 @@
-MAAS-configured network services simplify deployment and reduce setup friction by automating DHCP, DNS, and time sync. But while enabling these services is straightforward, it helps to understand when, why, and how to configure them --- especially in environments where external services already exist or where high availability matters.
+MAAS-configured network services simplify deployment and reduce setup friction by automating DHCP, DNS, and time sync.  But while enabling these services is straightforward, it helps to understand when, why, and how to configure them --- especially in environments where external services already exist or where high availability matters.
 
 This guide walks through MAAS-managed DHCP, DNS, NTP, and network snippets, offering both UI and CLI examples ---  along with a quick breakdown of the risks and trade-offs for each.
 
-MAAS can provide DHCP for each VLAN it manages, allowing automated address assignment during machine enlistment, commissioning, and deployment. This eliminates the need for an external DHCP server — but you must ensure **only one DHCP service** is active on any given subnet to avoid conflicts.
+MAAS can provide DHCP for each VLAN it manages, allowing automated address assignment during machine enlistment, commissioning, and deployment.  This eliminates the need for an external DHCP server — but you must ensure **only one DHCP service** is active on any given subnet to avoid conflicts.
 
 ## Enable MAAS DHCP
 
@@ -16,13 +16,13 @@ Generally, only use this when MAAS is the only DHCP provider for the VLAN.  You 
 maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY_RACK
 ```
 
-Enabling MAAS DHCP on a VLAN already served by another DHCP server (like your router or a VM host) can lead to conflicts and failed deployments.   
+Enabling MAAS DHCP on a VLAN already served by another DHCP server (like your router or a VM host) can lead to conflicts and failed deployments.  
 
 ### An example
 
 Let's say you're using both MAAS DHCP and a relay from your corporate DHCP server.  You're suprised to find that machines PXE boot intermittently.  
 
-In this case, the corporate DHCP server may not be setting DHCP Option 66 (TFTP server) or Option 67 (Network Boot Package filename).  As a result, if a machine accepts an offer from your DHCP relay, it has an IP address, but it can't go any farther because it doesn't know that it's supposed to do so.   To make this configuration work, you'd need to add the IP address of the TFTP server as Option 66 for your corporate DHCP server, and the name of a valid NBP file as Option 67.  
+In this case, the corporate DHCP server may not be setting DHCP Option 66 (TFTP server) or Option 67 (Network Boot Package filename).  As a result, if a machine accepts an offer from your DHCP relay, it has an IP address, but it can't go any farther because it doesn't know that it's supposed to do so.  To make this configuration work, you'd need to add the IP address of the TFTP server as Option 66 for your corporate DHCP server, and the name of a valid NBP file as Option 67.  
 
 ### Enable DHCP for HA
 
@@ -33,7 +33,7 @@ maas $PROFILE vlan update $FABRIC_ID $VLAN_ID \
   dhcp_on=True primary_rack=$PRIMARY_RACK secondary_rack=$SECONDARY_RACK
 ```
 
-This enables ISC DHCP failover between two racks. You’ll still need to configure lease syncing manually if you're customizing the DHCP config directly.
+This enables ISC DHCP failover between two racks.  You’ll still need to configure lease syncing manually if you're customizing the DHCP config directly.
 
 ### Set up a DHCP relay
 
@@ -49,17 +49,17 @@ maas $PROFILE vlan update $FABRIC_ID $VLAN_VID_SRC relay_vlan=$VLAN_ID_TARGET
 
 ## Manage DHCP snippets
 
-Use snippets to customize the DHCP configuration — globally, per-subnet, or per-node. This is useful when:
+Use snippets to customize the DHCP configuration — globally, per-subnet, or per-node.  This is useful when:
 
 * You need to inject custom options (like PXE boot settings)
 * You’re integrating with existing infrastructure
 * You need fine-grained control over leases or classes
 
-Note that malformed snippets can break DHCP service on the rack controller. Always test in a development environment first.
+Note that malformed snippets can break DHCP service on the rack controller.  Always test in a development environment first.
 
 ## Manage NTP
 
-If your machines need to maintain accurate time (they usually do), MAAS can configure NTP automatically using its own services or upstream servers. This helps with:
+If your machines need to maintain accurate time (they usually do), MAAS can configure NTP automatically using its own services or upstream servers.  This helps with:
 
 * Certificate trust
 * Coordinated logs
@@ -76,7 +76,7 @@ maas $PROFILE maas set-config name=ntp_external_only value=true
 
 ## Manage DNS
 
-MAAS runs an internal DNS server to track nodes, domains, and records. This works best when MAAS owns the DNS zone (e.g., `maas.internal`) or when integrated into your broader DNS setup via forwarders.
+MAAS runs an internal DNS server to track nodes, domains, and records.  This works best when MAAS owns the DNS zone (e.g., `maas.internal`) or when integrated into your broader DNS setup via forwarders.
 
 ### Create a DNS resource
 

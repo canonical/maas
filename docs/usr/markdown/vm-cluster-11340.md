@@ -1,67 +1,108 @@
-Enter keyword arguments in the form `key=value`.
-
-## Deletes a VM cluster
+Deletes a VM cluster
 
 ```bash
-maas $PROFILE vm-cluster delete [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-cluster delete [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Deletes a VM cluster with the given ID.
 
-#### Keyword "decompose"
-Optional Boolean. Whether to also decompose all machines in the VM cluster on removal. If not provided, machines will not be removed.
+##### Keyword "decompose"
+Optional Boolean. Whether to also<br>decompose all machines in the VM cluster on removal. If not provided, machines<br>will not be removed.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
 
-## This operation has been deprecated in favor of 'Virtual-machine-host read'.
+Note: This command accepts JSON.
+
+
 
 ```bash
-maas $PROFILE vm-cluster read [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-cluster read [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
 
-## Update a VM cluster
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+
+
+
+
+Update VMCluster
 
 ```bash
-maas $PROFILE vm-cluster update [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-cluster update [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
-Update a specific VM cluster by ID.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-#### Keyword "name"
-Optional String. The VM cluster's name.
 
-#### Keyword "pool"
-Optional String. The name of the resource pool associated with this VM Cluster -- this change is propagated to VM hosts
+#### **Keywords**
+Update a specific VMCluster by ID.
 
-#### Keyword "zone"
-Optional String. The VM cluster's zone.
+##### Keyword "name"
+Optional String. The VMCluster's name.
+##### Keyword "pool"
+Optional String. The name of the resource pool<br>associated with this VM Cluster -- this change is propagated to VMHosts
+##### Keyword "zone"
+Optional String. The VMCluster's zone.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
+
+Note: This command accepts JSON.
+
+
+List VM Clusters
+
+```bash
+maas $PROFILE vm-clusters read [--help] [-d] [-k]
+
+```
+
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
+Get a listing of all VM Clusters

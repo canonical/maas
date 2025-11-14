@@ -33,7 +33,7 @@ Follow the PostgreSQL [setup](https://www.postgresql.org/docs/16/runtime.html) d
 
 ### Migrate the configuration files
 
-The `pg_upgrade` command will write some files in the directory of execution. This command must be run by the `postgres` user, so run it a permitted directory (such as `/tmp`).
+The `pg_upgrade` command will write some files in the directory of execution.  This command must be run by the `postgres` user, so run it a permitted directory (such as `/tmp`).
 
 ```bash
     cd /tmp

@@ -1,7 +1,7 @@
-Configure MAAS Region Vault integration.
+Configure enrolment with a Site Manager instance
 
 ```bash
-maas config-vault [-h] COMMAND ...
+maas msm [-h] COMMAND ...
 
 ```
 
@@ -17,34 +17,30 @@ maas config-vault [-h] COMMAND ...
 #### **Drill down**
 | Command | Effect |
 |---|---|
-| configure | Update MAAS configuration to use Vault secret storage. |
-| migrate | Migrate secrets to Vault |
-| status | Report status of Vault integration |
+| enrol | Enrol to a Site Manager instance. |
+| status | Check the status of enrolment with a Site Manager instance. |
+| withdraw | Withdraw an enrolment request with a Site Manager instance. |
 
 
 
 
 
 ```bash
-maas config-vault configure [-h] [--mount MOUNT] [--yes]
+maas msm enrol [-h] [--yes] enrolment-token [config-file]
 
 ```
 
 #### **Positional arguments**
 | Argument | Effect |
 |---|---|
-| url | The url parameter |
-| role_id | The role_id parameter |
-| wrapped_token | The wrapped_token parameter |
-| secrets_path | The secrets_path parameter |
+| enrolment-token | The enrolment-token parameter |
 
 
 #### **Command-line options**
 | Option | Effect |
 |---|---|
 | -h, --help | show this help message and exit. |
-| --mount | Vault KV mount path. |
-| --yes | Skip interactive confirmation. |
+| --yes | Enable non-interactive mode. |
 
 
 
@@ -53,7 +49,7 @@ maas config-vault configure [-h] [--mount MOUNT] [--yes]
 
 
 ```bash
-maas config-vault migrate [-h]
+maas msm status [-h]
 
 ```
 
@@ -70,7 +66,7 @@ maas config-vault migrate [-h]
 
 
 ```bash
-maas config-vault status [-h]
+maas msm withdraw [-h]
 
 ```
 

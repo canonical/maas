@@ -55,14 +55,14 @@ sudo -u postgres pg_dumpall > backup.sql
 
 ## Reset user passwords
 
-PostgreSQL v14 defaults to `scram-sha-256` for password hashing. Redefine all existing passwords.
+PostgreSQL v14 defaults to `scram-sha-256` for password hashing.  Redefine all existing passwords.
 
 ```nohighlight
 sudo -u postgres psql
 postgres=# \password $USER
 ```
 
-Or, modify `/etc/postgresql/14/main/pg_hba.conf` to switch back to `md5`. But be cautious, as future versions may not support MD5.
+Or, modify `/etc/postgresql/14/main/pg_hba.conf` to switch back to `md5`.  But be cautious, as future versions may not support MD5.
 
 ## Remove old version
 

@@ -1,143 +1,198 @@
-Enter keyword arguments in the form `key=value`.
-
-## Delete domain
+Delete domain
 
 ```bash
-maas $PROFILE domain delete [--help] [-d] [-k] id [data ...] 
+maas $PROFILE domain delete [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Delete a domain with the given id.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Read domain
+
+
+
+Read domain
 
 ```bash
-maas $PROFILE domain read [--help] [-d] [-k] id [data ...] 
+maas $PROFILE domain read [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Read a domain with the given id.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Set domain as default
+
+
+
+Set domain as default
 
 ```bash
-maas $PROFILE domain set-default [--help] [-d] [-k] id [data ...] 
+maas $PROFILE domain set-default [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Set the specified domain to be the default.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Update a domain
+
+
+
+Update a domain
 
 ```bash
-maas $PROFILE domain update [--help] [-d] [-k] id [data ...] 
+maas $PROFILE domain update [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Update a domain with the given id.
 
-#### Keyword "name"
-Required String. Name of the domain.
-
-#### Keyword "authoritative"
-Optional String. True if we are authoritative for this domain.
-
-#### Keyword "ttl"
+##### Keyword "name"
+Optional String. Name of the domain.
+##### Keyword "authoritative"
+Optional String. True if we are<br>authoritative for this domain.
+##### Keyword "ttl"
 Optional String. The default TTL for this domain.
+##### Keyword "forward_dns_servers"
+Optional String. List of IP addresses for<br>forward DNS servers when MAAS is not authoritative for this domain.
 
-#### Keyword "forward_dns_servers"
-Optional String. List of IP addresses for forward DNS servers when MAAS is not authoritative for this domain.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+Note: This command accepts JSON.
 
-## Create a domain
+
+Create a domain
 
 ```bash
-maas $PROFILE domains create [--help] [-d] [-k] [data ...] 
+maas $PROFILE domains create [--help] [-d] [-k] [data ...]
+
 ```
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Create a domain.
 
-#### Keyword "name"
-Required String. Name of the domain.
+##### Keyword "name"
+Optional String. Name of the domain.
+##### Keyword "authoritative"
+Optional String. Class type of the<br>domain.
+##### Keyword "forward_dns_servers"
+Optional String. List of forward dns<br>server IP addresses when MAAS is not authoritative.
 
-#### Keyword "authoritative"
-Optional String. Class type of the domain.
 
-#### Keyword "forward_dns_servers"
-Optional String. List of forward dns server IP addresses when MAAS is not authorititative.
+Note: This command accepts JSON.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## List all domains
+List all domains
 
 ```bash
-maas $PROFILE domains read [--help] [-d] [-k] [data ...] 
+maas $PROFILE domains read [--help] [-d] [-k]
+
 ```
 
-List all domains. 
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Set the SOA serial number
+
+#### **Keywords**
+List all domains.
+
+
+
+
+
+Set the SOA serial number
 
 ```bash
-maas $PROFILE domains set-serial [--help] [-d] [-k] [data ...] 
+maas $PROFILE domains set-serial [--help] [-d] [-k] [data ...]
+
 ```
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Set the SOA serial number for all DNS zones.
 
-#### Keyword "serial"
-Required Int. Serial number to use next.
+##### Keyword "serial"
+Optional Int. Serial number to use next.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+
+Note: This command accepts JSON.

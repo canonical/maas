@@ -1,5 +1,5 @@
 
-Observability makes MAAS transparent. With metrics, logs, and alerts, you can see the system’s internal state, detect failures quickly, and tune performance. MAAS integrates with Prometheus, Loki, Grafana, and Alertmanager, either via Canonical Observability Stack (COS) or your own deployment.
+Observability makes MAAS transparent.  With metrics, logs, and alerts, you can see the system’s internal state, detect failures quickly, and tune performance.  MAAS integrates with Prometheus, Loki, Grafana, and Alertmanager, either via Canonical Observability Stack (COS) or your own deployment.
 
 This guide shows how to:
 
@@ -242,7 +242,7 @@ All other steps (VM launch, config creation, starting services, exporting teleme
 
 ## Basic O11y (MAAS 3.1 and earlier)
 
-Older versions expose Prometheus endpoints directly (`/metrics`). Install `python3-prometheus-client` (Deb only) and restart `maas-rackd` / `maas-regiond`.
+Older versions expose Prometheus endpoints directly (`/metrics`).  Install `python3-prometheus-client` (Deb only) and restart `maas-rackd` / `maas-regiond`.
 
 Enable optional stats:
 ```bash
@@ -281,15 +281,15 @@ If MAAS stats are enabled:
 
 The [MAAS performance repo](https://git.launchpad.net/~maas-committers/maas/+git/maas-performance) provides a `deploy-stack` script to spin up Prometheus + Grafana on LXD containers.
 
-1. Install Juju:
+1.  Install Juju:
    ```bash
    sudo snap install --classic juju
    ```
-2. Run the deploy script:
+2.  Run the deploy script:
    ```bash
    grafana/deploy-stack <MAAS-IP>
    ```
-3. Monitor deployment:
+3.  Monitor deployment:
    ```bash
    watch -c juju status --color
    ```

@@ -1,5 +1,5 @@
 
-MAAS deploys machines from a repository of operating system images called a SimpleStreams source. There are two image streams:
+MAAS deploys machines from a repository of operating system images called a SimpleStreams source.  There are two image streams:
 
 - Stable – fully tested, production-ready (default).
 - Candidate – newer, less tested; use when you need support for a newer OS not yet in stable.
@@ -28,7 +28,7 @@ BOOT_SOURCE_ID=$(maas $PROFILE boot-sources read)
 
 ## Manage images
 
-Images must be downloaded before deployment. Choose which ones to keep locally.
+Images must be downloaded before deployment.  Choose which ones to keep locally.
 
 UI
 - *Main menu* > *Images* > *Select/Unselect* > *Save selection*

@@ -1,5 +1,5 @@
 
-MAAS gives you end-to-end control of machines: from discovery and commissioning to deployment, configuration, troubleshooting, and eventual release. This applies to bare metal servers, virtual machines (VMs), or pre-deployed systems.
+MAAS gives you end-to-end control of machines: from discovery and commissioning to deployment, configuration, troubleshooting, and eventual release.  This applies to bare metal servers, virtual machines (VMs), or pre-deployed systems.
 
 This page is your one-stop reference for managing machines in MAAS.
 
@@ -29,8 +29,8 @@ MAAS monitors network traffic to find connected devices (machines, switches, bri
 - Show a specific machine
   - **UI**:
     1. *Machines* > *[machine]*
-    2. URL shows: `/machine/<SYSTEM_ID>/summary`
-    3. Select *Summary* for details
+    2.  URL shows: `/machine/<SYSTEM_ID>/summary`
+    3.  Select *Summary* for details
   - **CLI**:
     ```bash
     maas admin machines read | jq -r '(["HOSTNAME","SYSID"] | (., map(length*"-"))),(.[] | [.hostname, .system_id]) | @tsv' | column -t
@@ -54,7 +54,7 @@ Use MAAS search syntax:
 
 ### Filter by parameters
 - **UI**: *Hardware* > *Machines* > *Filters*
-- **Notes**: MAAS builds the search terms for you. You can copy and re-use them for future searches.
+- **Notes**: MAAS builds the search terms for you.  You can copy and re-use them for future searches.
 
 
 ## Enable new machines
@@ -93,7 +93,7 @@ Duplicate configuration.
 ### Use LXD VMs
 Provision VMs with LXD.
 
-1. Set up LXD
+1.  Set up LXD
    - Remove old versions, install, initialize, and disable DHCP on bridges.
    - **CLI only**:
      ```bash
@@ -106,21 +106,21 @@ Provision VMs with LXD.
      lxc network set lxdbr0 ipv6.dhcp=false
      ```
 
-2. Add a VM host:
+2.  Add a VM host:
    - **UI**: *KVM* > *LXD* > *Add LXD host* > enter details > run trust command > *Save LXD host*
    - **CLI**:
      ```bash
      maas $PROFILE vm-hosts create type=lxd power_address=$LXD_ADDRESS project=$PROJECT_NAME
      ```
 
-3. Add VMs:
+3.  Add VMs:
    - **UI**: *KVM* > *VM host* > *Add VM* > fill in cores, RAM, disks > *Compose machine*
    - **CLI**:
      ```bash
      maas $PROFILE vm-host compose $VM_HOST_ID cores=4 memory=8G disks=1:size=20G
      ```
 
-4. Move or delete VMs:
+4.  Move or delete VMs:
    - **UI**: *Machines* > *[VM]* > *Take action* > *Delete*
    - **CLI**:
      ```bash
@@ -257,7 +257,7 @@ maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=bcache
 ```
 
 #### VMFS6/VMFS7 layouts
-For VMware ESXi hosts. Automates required datastore creation.
+For VMware ESXi hosts.  Automates required datastore creation.
 ```bash
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=vmfs6
 maas $PROFILE machine set-storage-layout $SYSTEM_ID storage_layout=vmfs7

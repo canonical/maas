@@ -1,12 +1,12 @@
-Cloud-init is a powerful part of the MAAS customization suite.  This article walks through specific usage of cloud-init scripts to customize and automate MAAS instances. Cloud-init helps you set up machines automatically; here are some common examples.
+Cloud-init is a powerful part of the MAAS customization suite.  This article walks through specific usage of cloud-init scripts to customize and automate MAAS instances.  Cloud-init helps you set up machines automatically; here are some common examples.
 
 ## What is cloud-init?
 
-Cloud-init automatically configures machines after bootup. It can create users, install software, and set up networking. When you're using MAAS, cloud-init can ensure that each machine is ready to use when deployed. If you're relatively new to cloud-init, we recommend you consult [the cloud-init documentation](https://cloudinit.readthedocs.io/en/latest/) before trying these examples.
+Cloud-init automatically configures machines after bootup.  It can create users, install software, and set up networking.  When you're using MAAS, cloud-init can ensure that each machine is ready to use when deployed.  If you're relatively new to cloud-init, we recommend you consult [the cloud-init documentation](https://cloudinit.readthedocs.io/en/latest/) before trying these examples.
 
 ## Basic cloud-init configurations for MAAS
 
-Cloud-init can get very complicated, very fast, so let's start small and build.  Here are some basic templates and examples for you to try with MAAS.
+Cloud-init can get complicated, fast, so let's start small and build.  Here are some basic templates and examples for you to try with MAAS.
 
 ### Creating a user and installing basic packages
 
@@ -19,7 +19,7 @@ Here's a basic cloud-init script that does just that:
 users:
   - name: maas_user
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3Nz... user@domain
+      - ssh-rsa AAAAB3Nz… user@domain
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     groups: sudo
     shell: /bin/bash
@@ -30,9 +30,9 @@ packages:
 
 What this script does:
 
-1. Creates a user named `maas_user`.
-2. Adds an SSH key to allow secure remote login.
-3. Installs packages like `git` (a version control tool) and `htop` (a system monitor).
+1.  Creates a user named `maas_user`.
+2.  Adds an SSH key to allow secure remote login.
+3.  Installs packages like `git` (a version control tool) and `htop` (a system monitor).
 
 How you can test it:
 
@@ -54,36 +54,36 @@ users:
   - name: admin_user
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3Nz... admin@domain
+      - ssh-rsa AAAAB3Nz… admin@domain
     groups: sudo
     shell: /bin/bash
 
   - name: dev_user
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3Nz... dev@domain
+      - ssh-rsa AAAAB3Nz… dev@domain
     groups: sudo
     shell: /bin/bash
 ```
 
 What this script does:
 
-1. Creates two users: `admin_user` and `dev_user`.
-2. Grants both users sudo privileges without requiring a password.
+1.  Creates two users: `admin_user` and `dev_user`.
+2.  Grants both users sudo privileges without requiring a password.
 
 How to test it:
 
-1. Depending on what you ran last on your host, you might need to update the `known_hosts` file like this:
+1.  Depending on what you ran last on your host, you might need to update the `known_hosts` file like this:
 
 ```nohighlight
 ssh-keygen -f "/path/to/.ssh/known_hosts" -R "<ip_address>"
 
-2. You'll login as before, with a command like this:
+2.  You'll login as before, with a command like this:
 
 ```nohighlight
 ssh -i /.ssh/id_rsa maas_user@10.192.226.195
 ```
-3. When logged in, you can try a few commands that require `sudo` to verify that your `cloud-init` was successful.
+3.  When logged in, you can try a few commands that require `sudo` to verify that your `cloud-init` was successful.
 
 ### Setting up SSH keys for multiple users
 
@@ -95,28 +95,28 @@ users:
   - default
   - name: user1
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3Nz... user1@domain
+      - ssh-rsa AAAAB3Nz… user1@domain
   - name: user2
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3Nz... user2@domain
+      - ssh-rsa AAAAB3Nz… user2@domain
 ```
 
 What this script does:
 
-1. Sets up a default user.
-2. Creates `user1` and `user2` with their own SSH keys for secure login.
+1.  Sets up a default user.
+2.  Creates `user1` and `user2` with their own SSH keys for secure login.
 
 How to use it:
 
-- Copy any of these scripts and paste them into the “User Data” field when deploying a machine in MAAS. The setup will automatically run when the machine starts up, making it ready for use.
+- Copy any of these scripts and paste them into the “User Data” field when deploying a machine in MAAS.  The setup will automatically run when the machine starts up, making it ready for use.
 
 ## Disk and filesystem management
 
-Sometimes, you need specific disk setups, like creating custom partitions or using RAID. Ideally, you'd use `curtin` for this, but here’s how to do it with `cloud-init`:
+Sometimes, you need specific disk setups, like creating custom partitions or using RAID.  Ideally, you'd use `curtin` for this, but here’s how to do it with `cloud-init`:
 
 ## Automating software deployment
 
-You can use `cloud-init` to automatically install and configure software. This is the most common usage with MAAS, and you can effect it like this:
+You can use `cloud-init` to automatically install and configure software.  This is the most common usage with MAAS, and you can effect it like this:
 
 ### Installing Docker
 
@@ -131,12 +131,12 @@ runcmd:
 
 What this script does:
 
-1. Installs Docker on the machine.
-2. Enables and starts Docker to make sure it’s running whenever the machine boots up.
+1.  Installs Docker on the machine.
+2.  Enables and starts Docker to make sure it’s running whenever the machine boots up.
 
 ### Installing a LAMP stack (Linux, Apache, MySQL, PHP)
 
-A LAMP stack is commonly used for hosting websites and web applications. Here’s how to set it up:
+A LAMP stack is commonly used for hosting websites and web applications.  Here’s how to set it up:
 
 ```yaml
 #cloud-config
@@ -153,8 +153,8 @@ runcmd:
 
 What this script does:
 
-1. Installs Apache, MySQL, and PHP.
-2. Enables and starts Apache and MySQL services.
+1.  Installs Apache, MySQL, and PHP.
+2.  Enables and starts Apache and MySQL services.
 
 ### Setting up Node.js and Nginx
 
@@ -173,16 +173,16 @@ runcmd:
 
 What this script does:
 
-1. Installs Nginx, Node.js, and npm (Node Package Manager).
-2. Enables and starts Nginx to serve web applications.
+1.  Installs Nginx, Node.js, and npm (Node Package Manager).
+2.  Enables and starts Nginx to serve web applications.
 
 How to use it:
 
-- Use these scripts in MAAS to automatically install and start various software. This is perfect for setting up a new server to run specific applications or services.
+- Use these scripts in MAAS to automatically install and start various software.  This is perfect for setting up a new server to run specific applications or services.
 
 ## Security configurations
 
-Keeping your servers secure is crucial. Here’s how to use `cloud-init` to help with that:
+Keeping your servers secure is crucial.  Here’s how to use `cloud-init` to help with that:
 
 ### Setting up a firewall with UFW
 
@@ -198,9 +198,9 @@ runcmd:
 
 What this script does:
 
-1. Updates the package list to make sure all software is up to date.
-2. Installs UFW (Uncomplicated Firewall).
-3. Configures UFW to allow SSH connections and then enables the firewall.
+1.  Updates the package list to make sure all software is up to date.
+2.  Installs UFW (Uncomplicated Firewall).
+3.  Configures UFW to allow SSH connections and then enables the firewall.
 
 ### Enforcing strong password policies
 
@@ -217,12 +217,12 @@ chpasswd:
 
 What this script does:
 
-1. Sets passwords for `user1` and `user2`.
-2. Forces these passwords to expire, requiring users to change them on first login.
+1.  Sets passwords for `user1` and `user2`.
+2.  Forces these passwords to expire, requiring users to change them on first login.
 
 ### Disabling unused services
 
-For security, it's a good idea to disable services you don't need. Here’s how to do it:
+For security, it's a good idea to disable services you don't need.  Here’s how to do it:
 
 ```yaml
 #cloud-config
@@ -233,8 +233,8 @@ runcmd:
 
 What this script does:
 
-1. Stops the Bluetooth service.
-2. Disables the Bluetooth service to prevent it from starting on boot.
+1.  Stops the Bluetooth service.
+2.  Disables the Bluetooth service to prevent it from starting on boot.
 
 How to use it:
 
@@ -257,8 +257,8 @@ runcmd:
 
 What this script does:
 
-1. Installs Prometheus Node Exporter, a monitoring tool that helps track server metrics like CPU and memory usage.
-2. Enables and starts the Prometheus Node Exporter service.
+1.  Installs Prometheus Node Exporter, a monitoring tool that helps track server metrics like CPU and memory usage.
+2.  Enables and starts the Prometheus Node Exporter service.
 
 ### Installing and configuring ELK Stack
 
@@ -281,8 +281,8 @@ runcmd:
 
 What this script does:
 
-1. Installs Elasticsearch, Logstash, and Kibana.
-2. Enables and starts all three services to collect, store, and visualize logs.
+1.  Installs Elasticsearch, Logstash, and Kibana.
+2.  Enables and starts all three services to collect, store, and visualize logs.
 
 ### Setting up Grafana for monitoring dashboards
 
@@ -299,12 +299,12 @@ runcmd:
 
 What this script does:
 
-1. Installs Grafana on the server.
-2. Enables and starts the Grafana server to provide monitoring dashboards.
+1.  Installs Grafana on the server.
+2.  Enables and starts the Grafana server to provide monitoring dashboards.
 
 How to use it:
 
-- Add these scripts to MAAS to automatically set up logging and monitoring on new servers. It’s a great way to keep an eye on performance and detect any issues early.
+- Add these scripts to MAAS to automatically set up logging and monitoring on new servers.  It's an effective way to monitor performance and detect any issues early.
 
 ## Example templates for common use cases
 
@@ -367,15 +367,15 @@ runcmd:
 
 How to use them:
 
-- Pick a template based on your needs and copy it into MAAS. These templates help you quickly deploy common server types with minimal manual effort.
+- Pick a template based on your needs and copy it into MAAS.  These templates help you quickly deploy common server types with minimal manual effort.
 
 ## Debugging and error handling
 
-Sometimes, things don’t go as planned. Here’s how to debug cloud-init configurations:
+Sometimes, things don’t go as planned.  Here’s how to debug cloud-init configurations:
 
 ### Checking cloud-init logs
 
-- After deploying a machine, connect to it and check the cloud-init logs located at `/var/log/cloud-init.log` and `/var/log/cloud-init-output.log`. These logs will show you what happened during the cloud-init process and can help you find and fix any issues.
+- After deploying a machine, connect to it and check the cloud-init logs located at `/var/log/cloud-init.log` and `/var/log/cloud-init-output.log`.  These logs will show you what happened during the cloud-init process and can help you find and fix any issues.
 
 ### Using cloud-init to write custom logs
 
@@ -390,8 +390,8 @@ runcmd:
 
 What this script does:
 
-1. Starts a custom log file at `/var/log/custom-init.log`.
-2. Logs
+1.  Starts a custom log file at `/var/log/custom-init.log`.
+2.  Logs
 
  the output of `some-command` to this custom log file for easier debugging.
 
@@ -407,8 +407,8 @@ runcmd:
 
 What this script does:
 
-1. Tries to run `some-command` up to five times.
-2. Waits for 2 seconds between each try if the command fails.
+1.  Tries to run `some-command` up to five times.
+2.  Waits for 2 seconds between each try if the command fails.
 
 How to use it:
 
@@ -416,4 +416,4 @@ How to use it:
 
 ## Conclusion
 
-By using these cloud-init scripts, you can easily automate and customize your machines in MAAS, making deployments faster and more efficient. Feel free to mix and match the examples to fit your needs, and remember that cloud-init is a powerful tool that can help you manage your servers more effectively. Happy deploying!
+By using these cloud-init scripts, you can easily automate and customize your machines in MAAS, making deployments faster and more efficient.  Feel free to mix and match the examples to fit your needs, and remember that cloud-init is a powerful tool that can help you manage your servers more effectively.  Happy deploying.

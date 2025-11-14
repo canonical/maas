@@ -1,150 +1,176 @@
-Enter keyword arguments in the form `key=value`.
-
-## Delete script results
+Delete script results
 
 ```bash
-maas $PROFILE node-script-result delete [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE node-script-result delete [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-Delete script results from the given system_id with the given id.
 
-"id" can either by the script set id, ``current-commissioning``, ``current-testing``, or ``current-installation``.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
 
-## Download script results
+#### **Keywords**
+Delete script results from the given system_id with the<br>given id. "id" can either by the script set id, ``current-commissioning``,<br>``current-testing``, or ``current-installation``.
+
+
+
+
+
+Download script results
 
 ```bash
 maas $PROFILE node-script-result download [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
-Download a compressed tar containing all results from the given system_id with the given id.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-"id" can either by the script set id, ``current-commissioning``, ``current-testing``, or ``current-installation``.
 
-#### Keyword "hardware_type"
-Optional String.  Only return scripts for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or ``storage``.  Defaults to all.
+#### **Keywords**
+Download a compressed tar containing all results from the<br>given system_id with the given id. "id" can either by the script set id, ``current-commissioning``,<br>``current-testing``, or ``current-installation``.
 
-#### Keyword "filters"
-Optional String. A comma seperated list to show only results that ran with a script name or tag.
+##### Keyword "hardware_type"
+Optional String. Only return scripts<br>for the given hardware type. Can be ``node``, ``cpu``, ``memory``, or<br>``storage``. Defaults to all.
+##### Keyword "filters"
+Optional String. A comma separated list to<br>show only results that ran with a script name or tag.
+##### Keyword "output"
+Optional String. Can be either ``combined``,<br>``stdout``, ``stderr``, or ``all``. By default only the combined output<br>is returned.
+##### Keyword "filetype"
+Optional String. Filetype to output, can be<br>``txt`` or ``tar.xz``.
 
-#### Keyword "output"
-Optional String.  Can be either ``combined``, ``stdout``, ``stderr``, or ``all``. By default only the combined output is returned.
 
-#### Keyword "filetype"
-Optional String. Filetype to output, can be ``txt`` or ``tar.xz``.
+Note: This command accepts JSON.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
 
-## Get specific script result
+Get specific script result
 
 ```bash
 maas $PROFILE node-script-result read [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
-View a set of test results for a given system_id and script id.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-"id" can either by the script set id, ``current-commissioning``, ``current-testing``, or ``current-installation``.
 
-#### Keyword "hardware_type"
-Optional String.  Only return scripts for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or ``storage``.  Defaults to all.
+#### **Keywords**
+View a set of test results for a given system_id and<br>script id. "id" can either by the script set id, ``current-commissioning``,<br>``current-testing``, or ``current-installation``.
 
-#### Keyword "include_output"
-Optional.  Include the base64 encoded output from the script if any value for include_output is given.
+##### Keyword "hardware_type"
+Optional String. Only return scripts<br>for the given hardware type. Can be ``node``, ``cpu``, ``memory``, or<br>``storage``. Defaults to all.
+##### Keyword "include_output"
+Optional String. Include the base64<br>encoded output from the script if any value for include_output is<br>given.
+##### Keyword "filters"
+Optional String. A comma separated list to<br>show only results that ran with a script name, tag, or id.
 
-#### Keyword "filters"
-Optional String. A comma seperated list to show only results that ran with a script name, tag, or id.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
+Note: This command accepts JSON.
 
-## Update specific script result
+
+Update specific script result
 
 ```bash
 maas $PROFILE node-script-result update [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-Update a set of test results for a given system_id and script id.
 
-"id" can either be the script set id, ``current-commissioning``, ``current-testing``, or ``current-installation``.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-#### Keyword "hardware_type"
-Optional String.  Only return scripts for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or ``storage``.  Defaults to all.
 
-#### Keyword "filters"
-Optional String. A comma seperated list to show only results that ran with a script name, tag, or id.
+#### **Keywords**
+Update a set of test results for a given system_id and<br>script id. "id" can either be the script set id, ``current-commissioning``,<br>``current-testing``, or ``current-installation``.
 
-#### Keyword "include_output"
-Optional String.  Include the base64 encoded output from the script if any value for include_output is given.
+##### Keyword "hardware_type"
+Optional String. Only return scripts<br>for the given hardware type. Can be ``node``, ``cpu``, ``memory``, or<br>``storage``. Defaults to all.
+##### Keyword "filters"
+Optional String. A comma separated list to<br>show only results that ran with a script name, tag, or id.
+##### Keyword "include_output"
+Optional String. Include the base64<br>encoded output from the script if any value for include_output is<br>given.
+##### Keyword "suppressed"
+Optional Boolean. Set whether or not<br>this script result should be suppressed using 'true' or 'false'.
 
-#### Keyword "suppressed"
-Optional Boolean. Set whether or not this script result should be suppressed using 'true' or 'false'.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
+Note: This command accepts JSON.
 
-## Return script results
+
+Return script results
 
 ```bash
 maas $PROFILE node-script-results read [--help] [-d] [-k] system_id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
 
-Return a list of script results grouped by run for the given system_id.
 
-#### Keyword "type"
-Optional String.  Only return scripts with the given type. This can be ``commissioning``, ``testing``, ``installion`` or ``release``. Defaults to showing all.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-#### Keyword "hardware_type"
-Optional String.  Only return scripts for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or ``storage``.  Defaults to all.
 
-#### Keyword "include_output"
-Optional String.  Include base64 encoded output from the script. Note that any value of include_output will include the encoded output from the script.
+#### **Keywords**
+Return a list of script results grouped by run for the<br>given system_id.
 
-#### Keyword "filters"
-Optional String. A comma seperated list to show only results with a script name or tag.
+##### Keyword "type"
+Optional String. Only return scripts with the<br>given type. This can be ``commissioning``, ``testing``, ``installion``<br>or ``release``. Defaults to showing all.
+##### Keyword "hardware_type"
+Optional String. Only return scripts<br>for the given hardware type. Can be ``node``, ``cpu``, ``memory``, or<br>``storage``. Defaults to all.
+##### Keyword "include_output"
+Optional String. Include base64<br>encoded output from the script. Note that any value of include_output<br>will include the encoded output from the script.
+##### Keyword "filters"
+Optional String. A comma separated list to<br>show only results with a script name or tag.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit.              |
-| -d, --debug    | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check                 |
+
+Note: This command accepts JSON.

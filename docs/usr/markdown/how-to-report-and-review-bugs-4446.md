@@ -1,4 +1,4 @@
-Bugs are inevitable in complex systems. A well-written bug report makes it faster for developers and support engineers to reproduce, diagnose, and fix your issue.
+Bugs are inevitable in complex systems.  A well-written bug report makes it faster for developers and support engineers to reproduce, diagnose, and fix your issue.
 
 This page shows you how to prepare bug information, gather logs, and submit a Launchpad report that others can review and act on.
 
@@ -25,7 +25,7 @@ Keep these details in a text editor so you can paste them quickly into the bug f
 
 ### MAAS 3.5 and later (journald)
 
-Logs are stored in `systemd`’s journal. Export them like this:
+Logs are stored in `systemd`’s journal.  Export them like this:
 
 ```bash
 journalctl --since "1 hour ago" -o json | xz > maas-log.json.xz
@@ -39,7 +39,7 @@ Tips:
 
 ### MAAS 3.4 and earlier (log files)
 
-Logs are stored on disk. Collect:
+Logs are stored on disk.  Collect:
 
 * `maas.log`
 * `regiond.log`
@@ -52,7 +52,7 @@ Default locations:
 
 ### Using `sosreport`
 
-`sos` can gather MAAS logs and system data in one package. Requires sosreport 4.8.0 or newer.
+`sos` can gather MAAS logs and system data in one package.  Requires sosreport 4.8.0 or newer.
 
 ```bash
 sudo sos report -o maas --all-logs
@@ -85,9 +85,9 @@ Once submitted:
 
 ## Safety nets
 
-* Missing logs? Reproduce the issue and rerun the log collection step.
-* Confidential data? Strip or redact before posting.
-* Can’t access Launchpad? Contact Canonical support if you have a subscription.
+* Missing logs?  Reproduce the issue and rerun the log collection step.
+* Confidential data?  Strip or redact before posting.
+* Can't access Launchpad?  Contact Canonical support if you have a subscription.
 
 
 ## Next steps

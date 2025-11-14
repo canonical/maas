@@ -1,139 +1,186 @@
-Enter keyword arguments in the form `key=value`.
-
-## Delete a boot resource
+Delete a boot resource
 
 ```bash
-maas $PROFILE boot-resource delete [--help] [-d] [-k] id [data ...] 
+maas $PROFILE boot-resource delete [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Delete a boot resource by id.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Read a boot resource
+
+
+
+Read a boot resource
 
 ```bash
-maas $PROFILE boot-resource read [--help] [-d] [-k] id [data ...] 
+maas $PROFILE boot-resource read [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Reads a boot resource by id
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Upload a new boot resource
+
+
+
+Upload a new boot resource
 
 ```bash
-maas $PROFILE boot-resources create [--help] [-d] [-k] [data ...] 
+maas $PROFILE boot-resources create [--help] [-d] [-k] [data ...]
+
 ```
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Uploads a new boot resource.
 
-#### Keyword "name"
-Required String. Name of the boot resource.
-
-#### Keyword "architecture"
-Required String. Architecture the boot resource supports.
-
-#### Keyword "sha256"
-Required String.  The ``sha256`` hash of the resource.
-
-#### Keyword "size"
-Required String. The size of the resource in bytes.
-
-#### Keyword "title"
+##### Keyword "name"
+Optional String. Name of the boot resource.
+##### Keyword "architecture"
+Optional String. Architecture the boot<br>resource supports.
+##### Keyword "sha256"
+Optional String. The ``sha256`` hash of the<br>resource.
+##### Keyword "size"
+Optional String. The size of the resource in<br>bytes.
+##### Keyword "title"
 Optional String. Title for the boot resource.
+##### Keyword "filetype"
+Optional String. Filetype for uploaded<br>content. (Default: ``tgz``. Supported: ``tgz``, ``tbz``, ``txz``,<br>``ddtgz``, ``ddtbz``, ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``,<br>``ddxz``, ``ddraw``)
+##### Keyword "base_image"
+Optional String. The Base OS image a<br>custom image is built on top of. Only required for custom image.
+##### Keyword "content"
+Optional String. Image content. Note: this is<br>not a normal parameter, but an ``application/octet-stream`` file<br>upload.
 
-#### Keyword "filetype"
-Optional String..  Filetype for uploaded content. (Default: ``tgz``. Supported: ``tgz``, ``tbz``, ``txz``, ``ddtgz``, ``ddtbz``, ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``, ``ddxz``, ``ddraw``)
 
-#### Keyword "base_image"
-Optional String. The Base OS image a custom image is built on top of. Only required for custom image.
+Note: This command accepts JSON.
 
-#### Keyword "content"
-Optional String..  Image content. Note: this is not a normal parameter, but an ``application/octet-stream`` file upload.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
-
-## Import boot resources
+Import boot resources
 
 ```bash
-maas $PROFILE boot-resources import [--help] [-d] [-k] [data ...] 
+maas $PROFILE boot-resources import [--help] [-d] [-k]
+
 ```
 
-Import the boot resources. 
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Importing status
+
+#### **Keywords**
+Import the boot resources.
+
+
+
+
+
+Importing status
 
 ```bash
-maas $PROFILE boot-resources is-importing [--help] [-d] [-k] [data ...] 
+maas $PROFILE boot-resources is-importing [--help] [-d] [-k]
+
 ```
 
-Get the status of importing resources. 
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## List boot resources
+
+#### **Keywords**
+Get the status of importing resources.
+
+
+
+
+
+List boot resources
 
 ```bash
-maas $PROFILE boot-resources read [--help] [-d] [-k] [data ...] 
+maas $PROFILE boot-resources read [--help] [-d] [-k] [data ...]
+
 ```
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 List all boot resources
 
-#### Keyword "type"
-Optional String. Type of boot resources to list. If not provided, returns all types.
+##### Keyword "type"
+Optional String. Type of boot resources to list.<br>If not provided, returns all types.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Stop import boot resources
+Note: This command accepts JSON.
+
+
+Stop import boot resources
 
 ```bash
-maas $PROFILE boot-resources stop-import [--help] [-d] [-k] [data ...] 
+maas $PROFILE boot-resources stop-import [--help] [-d] [-k]
+
 ```
 
-Stop import the boot resources. 
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
+Stop import the boot resources.
