@@ -437,7 +437,7 @@ class DNSConfig:
         """
         trusted_networks = kwargs.pop("trusted_networks", "")
         allow_only_trusted_transfers = kwargs.pop(
-            "allow_only_trusted_transfers", False
+            "allow_only_trusted_transfers", True
         )
         context = {
             "zones": self.zones,
