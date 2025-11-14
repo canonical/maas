@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test Service model and manager."""
@@ -6,7 +6,6 @@
 import random
 
 from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.service import (
     DEAD_STATUSES,
     RACK_SERVICES,
@@ -19,10 +18,6 @@ from maasserver.utils.orm import reload_object
 
 
 class TestServiceManager(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_create_services_for_machine(self):
         machine = factory.make_Node()
         Service.objects.create_services_for(machine)

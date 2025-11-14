@@ -1,14 +1,23 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Respond to node changes."""
 
-from django.db.models.signals import post_init, post_save, pre_delete, pre_save
+from django.db.models.signals import (
+    post_delete,
+    post_init,
+    post_save,
+    pre_delete,
+    pre_save,
+)
 
+from maascommon.enums.dns import DnsUpdateAction
 from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Controller,
     Device,
+    DNSPublication,
+    Domain,
     Machine,
     Node,
     RackController,
@@ -40,8 +49,51 @@ def pre_delete_update_events(sender, instance, **kwargs):
     )
 
 
+def post_delete_dns_publication(sender, instance, **kwargs):
+    if instance.domain.authoritative:
+        DNSPublication.objects.create_for_config_update(
+            source=f"removed node {instance.hostname}",
+            action=DnsUpdateAction.RELOAD,
+        )
+
+
+def emit_dnspublication_on_change(instance, old_values, **kwargs):
+    [old_hostname, old_domain_id] = old_values
+
+    changes = []
+
+    # If the linked domain was not authoritative before, and still isn't, do nothing.
+    if (
+        not instance.domain.authoritative
+        and not Domain.objects.filter(
+            pk=old_domain_id, authoritative=True
+        ).exists()
+    ):
+        return
+
+    if old_hostname != instance.hostname:
+        changes.append(
+            f"node {old_hostname} changed hostname to {instance.hostname}"
+        )
+    if old_domain_id != instance.domain_id:
+        changes.append(
+            f"node {instance.hostname} changed zone to {instance.domain.name}"
+        )
+    DNSPublication.objects.create_for_config_update(
+        source=f"node changes: {', '.join(changes)}",
+        action=DnsUpdateAction.RELOAD,
+    )
+
+
 for klass in NODE_CLASSES:
     signals.watch(pre_delete, pre_delete_update_events, sender=klass)
+    signals.watch(post_delete, post_delete_dns_publication, sender=klass)
+    signals.watch_fields(
+        emit_dnspublication_on_change,
+        klass,
+        ["hostname", "domain_id"],
+        delete=False,
+    )
 
 
 def post_init_store_previous_status(sender, instance, **kwargs):

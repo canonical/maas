@@ -30,7 +30,6 @@ from maasserver.dns.zonegenerator import (
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, RDNS_MODE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import Config, Domain, Subnet
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -229,10 +228,6 @@ class TestLazyDict(TestCase):
 class TestGetHostnameMapping(MAASServerTestCase):
     """Test for `get_hostname_ip_mapping`."""
 
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_get_hostname_ip_mapping_containts_both_static_and_dynamic(self):
         node1 = factory.make_Node(interface=True)
         node1_interface = node1.get_boot_interface()
@@ -313,7 +308,6 @@ class TestZoneGenerator(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(RegionConfigurationFixture())
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_empty_yields_nothing(self):
         self.assertEqual(
@@ -534,9 +528,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_parent_of_default_domain_gets_glue(self):
         default_domain = Domain.objects.get_default_domain()
         default_domain.name = "maas.example.com"
-
-        with post_commit_hooks:
-            default_domain.save()
+        default_domain.save()
 
         domains = [default_domain, factory.make_Domain("example.com")]
         self.patch(zonegenerator, "get_dns_server_addresses").return_value = [
@@ -686,14 +678,10 @@ class TestZoneGenerator(MAASServerTestCase):
         return None
 
     def test_zone_generator_handles_rdns_mode_equal_enabled(self):
-        with post_commit_hooks:
-            Domain.objects.get_or_create(name="one")
-
+        Domain.objects.get_or_create(name="one")
         subnet = factory.make_Subnet(cidr="10.0.0.0/29")
         subnet.rdns_mode = RDNS_MODE.ENABLED
-
-        with post_commit_hooks:
-            subnet.save()
+        subnet.save()
         default_domain = Domain.objects.get_default_domain()
         domains = Domain.objects.filter(name="one")
         subnets = Subnet.objects.all()
@@ -749,10 +737,6 @@ class TestZoneGenerator(MAASServerTestCase):
 class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
     """Tests for TTL in :class:ZoneGenerator`."""
 
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     @transactional
     def test_domain_ttl_overrides_global(self):
         global_ttl = random.randint(100, 199)
@@ -763,7 +747,8 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             status=NODE_STATUS.READY, subnet=subnet, domain=domain
         )
         boot_iface = node.get_boot_interface()
-        [boot_ip] = boot_iface.claim_auto_ips()
+        with post_commit_hooks:
+            [boot_ip] = boot_iface.claim_auto_ips()
         expected_forward = {
             node.hostname: HostnameIPMapping(
                 node.system_id,
@@ -802,7 +787,8 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             address_ttl=random.randint(300, 399),
         )
         boot_iface = node.get_boot_interface()
-        [boot_ip] = boot_iface.claim_auto_ips()
+        with post_commit_hooks:
+            [boot_ip] = boot_iface.claim_auto_ips()
         expected_forward = {
             node.hostname: HostnameIPMapping(
                 node.system_id,
@@ -906,7 +892,6 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             address_ttl=random.randint(300, 399),
         )
         boot_iface = node.get_boot_interface()
-
         with post_commit_hooks:
             [boot_ip] = boot_iface.claim_auto_ips()
         dnsrr = factory.make_DNSResource(

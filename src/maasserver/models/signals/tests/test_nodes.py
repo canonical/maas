@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -11,8 +11,12 @@ from maasserver.enum import (
     NODE_TYPE,
     NODE_TYPE_CHOICES,
 )
-from maasserver.models import dnspublication as dnspublication_module
-from maasserver.models import Node, RackController, StaticIPAddress
+from maasserver.models import (
+    DNSPublication,
+    Node,
+    RackController,
+    StaticIPAddress,
+)
 from maasserver.models.nodekey import NodeKey
 from maasserver.models.service import RACK_SERVICES, REGION_SERVICES, Service
 from maasserver.models.signals import power
@@ -27,7 +31,6 @@ class TestNodeDeletion(MAASServerTestCase):
     def test_deleting_node_updates_event_node_hostname(self):
         """Test that event's `node_hostname` is set when the node is going to be
         deleted."""
-        self.patch(dnspublication_module, "post_commit_do")
         node = factory.make_Node()
         node_hostname = node.hostname
         events = [factory.make_Event(node=node) for _ in range(3)]
@@ -36,13 +39,76 @@ class TestNodeDeletion(MAASServerTestCase):
             self.assertEqual(event.node_hostname, node_hostname)
 
     def test_deleting_node_sets_node_to_null(self):
-        self.patch(dnspublication_module, "post_commit_do")
         node = factory.make_Node()
         events = [factory.make_Event(node=node) for _ in range(3)]
         node.delete()
         for event in events:
             event = reload_object(event)
             self.assertIsNone(event.node)
+
+    def test_deleting_node_creates_dnspublication(self):
+        domain = factory.make_Domain("example.com", authoritative=True)
+        node = factory.make_Node(domain=domain)
+        node.delete()
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertIn(f"removed node {node.hostname}", dnspublication.source)
+
+    def test_deleting_node_does_not_create_dnspublication_if_domain_is_not_authoritative(
+        self,
+    ):
+        domain = factory.make_Domain("example.com", authoritative=False)
+        node = factory.make_Node(domain=domain)
+        node.delete()
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertNotIn(
+            f"removed node {node.hostname}", dnspublication.source
+        )
+
+
+class TestNodeUpdateEmitsDNSPublication(MAASServerTestCase):
+    def test_updating_node_hostname_emits_dnspublication(self):
+        domain = factory.make_Domain("example.com", authoritative=True)
+        node = factory.make_Node(domain=domain, hostname="old-hostname")
+        node.hostname = "new-hostname"
+        with post_commit_hooks:
+            node.save()
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertIn(
+            "node old-hostname changed hostname to new-hostname",
+            dnspublication.source,
+        )
+
+    def test_updating_node_domain_emits_dnspublication(self):
+        old_domain = factory.make_Domain("old-example.com", authoritative=True)
+        new_domain = factory.make_Domain("new-example.com", authoritative=True)
+        node = factory.make_Node(domain=old_domain)
+        node.domain = new_domain
+        with post_commit_hooks:
+            node.save()
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertIn(
+            f"node {node.hostname} changed zone to new-example.com",
+            dnspublication.source,
+        )
+
+    def test_updating_node_does_not_emit_dnspublication_if_domain_is_not_authoritative(
+        self,
+    ):
+        old_domain = factory.make_Domain(
+            "old-example.com", authoritative=False
+        )
+        new_domain = factory.make_Domain(
+            "new-example.com", authoritative=False
+        )
+        node = factory.make_Node(domain=old_domain)
+        node.domain = new_domain
+        with post_commit_hooks:
+            node.save()
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertNotIn(
+            f"node {node.hostname} changed zone to new-example.com",
+            dnspublication.source,
+        )
 
 
 class TestNodePreviousStatus(MAASServerTestCase):
@@ -163,10 +229,6 @@ class TestNodeCreateServices(MAASServerTestCase):
     """Test that services are created when a node is created
     or node_type changes.
     """
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_doesnt_create_services_for_machine(self):
         machine = factory.make_Node()
@@ -299,9 +361,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine.power_state = factory.pick_choice(
             POWER_STATE_CHOICES, but_not=[POWER_STATE.OFF]
         )
-
-        with post_commit_hooks:
-            machine.save()
+        machine.save()
 
         for ip in StaticIPAddress.objects.filter(
             interface__node_config__node=machine,
@@ -324,9 +384,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         )
         machine = reload_object(machine)
         machine.power_state = POWER_STATE.OFF
-
-        with post_commit_hooks:
-            machine.save()
+        machine.save()
 
         for ip in StaticIPAddress.objects.filter(
             interface__node_config__node=machine,
@@ -351,9 +409,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         Node.objects.filter(id=node.id).update(status=self.status)
         node = reload_object(node)
         node.power_state = POWER_STATE.OFF
-
-        with post_commit_hooks:
-            node.save()
+        node.save()
 
         for ip in StaticIPAddress.objects.filter(
             interface__node_config__node=node, alloc_type=IPADDRESS_TYPE.AUTO

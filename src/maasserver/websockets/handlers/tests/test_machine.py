@@ -1,4 +1,4 @@
-# Copyright 2016-2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
@@ -53,7 +53,6 @@ from maasserver.models import (
     RAID,
     VolumeGroup,
 )
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.nodekey import NodeKey
 from maasserver.models.nodeprobeddetails import (
@@ -585,10 +584,6 @@ class TestMachineHandlerUtils:
 
 class TestMachineHandler(MAASServerTestCase):
     maxDiff = None
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_allowed_methods(self):
         not_allowed_methods = [

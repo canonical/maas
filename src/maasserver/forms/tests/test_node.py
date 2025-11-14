@@ -1,10 +1,9 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node forms."""
 
 from maasserver.forms import AdminNodeForm, NodeForm
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -15,10 +14,6 @@ from maasserver.utils.orm import post_commit_hooks, reload_object
 
 
 class TestNodeForm(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_contains_limited_set_of_fields(self):
         form = NodeForm()
 

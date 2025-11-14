@@ -1,11 +1,11 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
 from unittest.mock import call
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
-from maasserver.models import Controller, Interface
+from maasserver.models import Controller, DNSPublication, Interface
 from maasserver.models.config import Config, NetworkDiscoveryConfig
 from maasserver.models.signals.interfaces import ensure_link_up
 from maasserver.testing.factory import factory
@@ -16,6 +16,60 @@ from maasserver.utils.orm import post_commit_hooks, reload_object
 def _mock_ensure_link_up(self):
     """Mock method to test the 'visited' pattern for recursion prevention."""
     ensure_link_up(self)
+
+
+class TestStaticIPAddressLinkToInterfaceSignal(MAASServerTestCase):
+    def test_link_static_ipaddress_creates_dnspublication(self):
+        domain = factory.make_Domain("example.com", authoritative=True)
+        node = factory.make_Node(domain=domain, interface=True)
+        static_ip = factory.make_StaticIPAddress(
+            ip="192.168.1.1", alloc_type=IPADDRESS_TYPE.STICKY
+        )
+
+        node.get_boot_interface().ip_addresses.add(static_ip)
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertIn("192.168.1.1 connected to", dnspublication.source)
+
+    def test_link_static_ipaddress_does_not_create_dnspublication_if_domain_is_not_authoritative(
+        self,
+    ):
+        domain = factory.make_Domain("example.com", authoritative=False)
+        node = factory.make_Node(domain=domain, interface=True)
+        static_ip = factory.make_StaticIPAddress(
+            ip="192.168.1.1", alloc_type=IPADDRESS_TYPE.STICKY
+        )
+
+        node.get_boot_interface().ip_addresses.add(static_ip)
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertNotIn("192.168.1.1 connected to", dnspublication.source)
+
+    def test_unlink_static_ipaddress_creates_dnspublication(self):
+        domain = factory.make_Domain("example.com", authoritative=True)
+        node = factory.make_Node(domain=domain, interface=True)
+        static_ip = factory.make_StaticIPAddress(
+            ip="192.168.1.1", alloc_type=IPADDRESS_TYPE.STICKY
+        )
+
+        node.get_boot_interface().ip_addresses.add(static_ip)
+        node.get_boot_interface().ip_addresses.remove(static_ip)
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertIn("192.168.1.1 disconnected from", dnspublication.source)
+
+    def test_create_static_ipaddress_does_not_create_link_ipaddress_if_domain_is_not_authoritative(
+        self,
+    ):
+        domain = factory.make_Domain("example.com", authoritative=False)
+        node = factory.make_Node(domain=domain, interface=True)
+        static_ip = factory.make_StaticIPAddress(
+            ip="192.168.1.1", alloc_type=IPADDRESS_TYPE.STICKY
+        )
+
+        node.get_boot_interface().ip_addresses.add(static_ip)
+        node.get_boot_interface().ip_addresses.remove(static_ip)
+        dnspublication = DNSPublication.objects.get_most_recent()
+        self.assertNotIn(
+            "192.168.1.1 disconnected from", dnspublication.source
+        )
 
 
 class TestEnableAndDisableInterface(MAASServerTestCase):

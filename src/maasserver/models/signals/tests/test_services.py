@@ -1,17 +1,12 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import RackController, RegionRackRPCConnection, Service
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestRegionRackRPCConnection(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_calls_create_services_for_on_create(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()
         rack_controller = factory.make_RackController()

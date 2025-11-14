@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import base64
@@ -43,7 +43,6 @@ from maasserver.models import (
     SSHKey,
     VersionedTextFile,
 )
-import maasserver.models.dnspublication as dnspublication_module
 import maasserver.models.node as node_module
 from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
@@ -101,10 +100,6 @@ from provisioningserver.utils.network import get_source_address
 
 class TestHelpers(MAASServerTestCase):
     """Tests for the API helper functions."""
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def fake_request(self, **kwargs):
         """Produce a cheap fake request, fresh from the sweat shop.
@@ -3933,10 +3928,6 @@ class TestRescueModeAPI(MAASServerTestCase):
 
 
 class TestByMACMetadataAPI(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_api_retrieves_node_metadata_by_mac(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         iface = node.get_boot_interface()

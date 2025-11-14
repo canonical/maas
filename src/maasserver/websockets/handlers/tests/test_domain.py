@@ -145,11 +145,7 @@ class TestDomainHandler(MAASServerTestCase):
         domain = Domain.objects.get_default_domain()
         new_name = factory.make_hostname()
         handler = DomainHandler(user, {}, None)
-
-        with post_commit_hooks:
-            returned_domain = handler.update(
-                {"id": domain.id, "name": new_name}
-            )
+        returned_domain = handler.update({"id": domain.id, "name": new_name})
 
         domain = reload_object(domain)
         self.assertEqual(returned_domain, self.dehydrate_domain(domain))
@@ -159,9 +155,7 @@ class TestDomainHandler(MAASServerTestCase):
         domain = Domain.objects.get_default_domain()
         new_name = factory.make_hostname()
         handler = DomainHandler(user, {}, None)
-
-        with post_commit_hooks:
-            handler.update({"id": domain.id, "name": new_name})
+        handler.update({"id": domain.id, "name": new_name})
 
         domain = reload_object(domain)
         self.assertEqual(new_name, domain.name)
@@ -183,11 +177,7 @@ class TestDomainHandler(MAASServerTestCase):
         domain = factory.make_Domain(authoritative=choice([True, False]))
         handler = DomainHandler(user, {}, None)
         new_authoritative = not domain.authoritative
-
-        with post_commit_hooks:
-            handler.update(
-                {"id": domain.id, "authoritative": new_authoritative}
-            )
+        handler.update({"id": domain.id, "authoritative": new_authoritative})
 
         domain = reload_object(domain)
         self.assertEqual(new_authoritative, domain.authoritative)
@@ -219,9 +209,7 @@ class TestDomainHandlerDelete(MAASServerTestCase):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
-
-        with post_commit_hooks:
-            handler.delete({"id": domain.id})
+        handler.delete({"id": domain.id})
 
         domain = reload_object(domain)
         self.assertIsNone(domain)
@@ -308,12 +296,9 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
-
-        with post_commit_hooks:
-            handler.delete_dnsresource(
-                {"domain": domain.id, "dnsresource_id": resource.id}
-            )
-
+        handler.delete_dnsresource(
+            {"domain": domain.id, "dnsresource_id": resource.id}
+        )
         self.assertIsNone(reload_object(resource))
 
     def test_add_resource_as_non_admin_fails(self):
@@ -371,18 +356,15 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
-
-        with post_commit_hooks:
-            handler.create_dnsdata(
-                {
-                    "domain": domain.id,
-                    "name": name,
-                    "ttl": ttl,
-                    "rrtype": "TXT",
-                    "rrdata": "turtles all the way down",
-                }
-            )
-
+        handler.create_dnsdata(
+            {
+                "domain": domain.id,
+                "name": name,
+                "ttl": ttl,
+                "rrtype": "TXT",
+                "rrdata": "turtles all the way down",
+            }
+        )
         dnsresource = DNSResource.objects.get(domain=domain, name=name)
         # Expect that a single DNSData object is associated with the resource.
         [dnsdata] = dnsresource.dnsdata_set.all()
@@ -422,17 +404,15 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         name = factory.make_hostname()
         dnsresource = factory.make_DNSResource(domain=domain, name=name)
         ttl = randint(1, 3600)
-
-        with post_commit_hooks:
-            handler.create_dnsdata(
-                {
-                    "domain": domain.id,
-                    "name": name,
-                    "ttl": ttl,
-                    "rrtype": "TXT",
-                    "rrdata": "turtles all the way down",
-                }
-            )
+        handler.create_dnsdata(
+            {
+                "domain": domain.id,
+                "name": name,
+                "ttl": ttl,
+                "rrtype": "TXT",
+                "rrdata": "turtles all the way down",
+            }
+        )
 
         # Expect that a single DNSData object is associated with the resource.
         [dnsdata] = dnsresource.dnsdata_set.all()
@@ -469,17 +449,14 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         dnsdata = factory.make_DNSData(
             dnsresource, rrtype="TXT", rrdata="original"
         )
-
-        with post_commit_hooks:
-            handler.update_dnsdata(
-                {
-                    "domain": domain.id,
-                    "dnsresource_id": dnsresource.id,
-                    "dnsdata_id": dnsdata.id,
-                    "rrdata": "updated",
-                }
-            )
-
+        handler.update_dnsdata(
+            {
+                "domain": domain.id,
+                "dnsresource_id": dnsresource.id,
+                "dnsdata_id": dnsdata.id,
+                "rrdata": "updated",
+            }
+        )
         dnsdata = reload_object(dnsdata)
         self.assertEqual("updated", dnsdata.rrdata)
 
@@ -510,12 +487,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(dnsresource)
-
-        with post_commit_hooks:
-            handler.delete_dnsdata(
-                {"domain": domain.id, "dnsdata_id": dnsdata.id}
-            )
-
+        handler.delete_dnsdata({"domain": domain.id, "dnsdata_id": dnsdata.id})
         dnsdata = reload_object(dnsdata)
         self.assertIsNone(dnsdata)
 
@@ -592,17 +564,15 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
         handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_name("invalid_name")
-
-        with post_commit_hooks:
-            self.assertRaises(
-                ValidationError,
-                handler.create_address_record,
-                {
-                    "domain": domain.id,
-                    "name": name,
-                    "ip_addresses": [factory.make_ip_address()],
-                },
-            )
+        self.assertRaises(
+            ValidationError,
+            handler.create_address_record,
+            {
+                "domain": domain.id,
+                "name": name,
+                "ip_addresses": [factory.make_ip_address()],
+            },
+        )
 
     def test_update_address__updates_single_address(self):
         user = factory.make_admin()
