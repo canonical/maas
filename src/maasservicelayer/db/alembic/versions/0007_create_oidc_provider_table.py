@@ -13,6 +13,7 @@ from typing import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "0007"
@@ -36,6 +37,9 @@ def upgrade() -> None:
         sa.Column("redirect_uri", sa.Text(), nullable=False),
         sa.Column("scopes", sa.String(length=255), nullable=False),
         sa.Column("enabled", sa.Boolean(), nullable=False),
+        sa.Column(
+            "metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
     )

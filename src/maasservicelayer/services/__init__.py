@@ -579,6 +579,10 @@ class ServiceCollectionV3:
             context=context,
             external_oauth_repository=ExternalOAuthRepository(context),
             secrets_service=services.secrets,
+            cache=cache.get(
+                ExternalOAuthService.__name__,
+                ExternalOAuthService.build_cache_object,
+            ),  # type: ignore
         )
         services.agents = AgentsService(
             context=context,

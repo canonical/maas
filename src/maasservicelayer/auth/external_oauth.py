@@ -32,8 +32,10 @@ class OAuth2Client:
 
     def generate_authorization_url(self) -> OAuthInitiateData:
         nonce = generate_token()
+
         auth_url, state = self.client.create_authorization_url(
-            url=f"{self.provider.issuer_url}/authorize", nonce=nonce
+            url=self.provider.metadata.authorization_endpoint,
+            nonce=nonce,
         )
         return OAuthInitiateData(
             authorization_url=auth_url,

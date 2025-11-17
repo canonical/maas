@@ -474,6 +474,7 @@ ServiceLayerRule = Rule(
     Allow(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),
+    Allow("httpx|httpx.**"),
     Allow("jose|jose.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("maascommon|maascommon.**"),

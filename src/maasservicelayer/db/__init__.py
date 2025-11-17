@@ -2,7 +2,9 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
+import json
 
+from pydantic.json import pydantic_encoder
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -27,6 +29,10 @@ class DatabaseConfig:
         )
 
 
+def custom_json_serializer(*args, **kwargs):
+    return json.dumps(*args, default=pydantic_encoder, **kwargs)
+
+
 class Database:
     def __init__(self, config: DatabaseConfig, echo: bool = False):
         self.config = config
@@ -36,4 +42,6 @@ class Database:
             isolation_level="REPEATABLE READ",
             # Limit the connection pool size to 3 for the time being.
             pool_size=3,
+            # Custom json serializer to handle pydantic models
+            json_serializer=custom_json_serializer,
         )

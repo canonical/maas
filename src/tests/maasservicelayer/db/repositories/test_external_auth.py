@@ -14,7 +14,10 @@ from maasservicelayer.db.repositories.external_auth import (
     ExternalOAuthRepository,
 )
 from maasservicelayer.db.tables import RootKeyTable
-from maasservicelayer.models.external_auth import OAuthProvider
+from maasservicelayer.models.external_auth import (
+    OAuthProvider,
+    ProviderMetadata,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.external_auth import (
     create_provider,
@@ -195,6 +198,11 @@ class TestExternalOAuthRepository(RepositoryCommonTests[OAuthProvider]):
             name="SampleOIDCProvider",
             redirect_uri="https://myapp.com/oauth/callback",
             scopes="openid profile email",
+            metadata=ProviderMetadata(
+                authorization_endpoint="",
+                token_endpoint="",
+                jwks_uri="",
+            ),
         )
 
     @pytest.fixture

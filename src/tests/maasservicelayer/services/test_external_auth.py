@@ -7,6 +7,8 @@ import os
 from unittest.mock import ANY, AsyncMock, call, Mock, patch
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from httpx import AsyncClient, HTTPError, Response
+from httpx import Request as HTTPXRequest
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
 from pymacaroons import Macaroon
@@ -31,12 +33,20 @@ from maasservicelayer.db.repositories.external_auth import (
 )
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
+    BadGatewayException,
     ConflictException,
     DischargeRequiredException,
     PreconditionFailedException,
     UnauthorizedException,
 )
-from maasservicelayer.models.external_auth import OAuthProvider, RootKey
+from maasservicelayer.exceptions.constants import (
+    PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+)
+from maasservicelayer.models.external_auth import (
+    OAuthProvider,
+    ProviderMetadata,
+    RootKey,
+)
 from maasservicelayer.models.secrets import RootKeyMaterialSecret
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import SecretsService, UsersService
@@ -45,6 +55,7 @@ from maasservicelayer.services.external_auth import (
     ExternalAuthService,
     ExternalAuthServiceCache,
     ExternalOAuthService,
+    ExternalOAuthServiceCache,
 )
 from maasservicelayer.services.secrets import SecretNotFound
 from maasservicelayer.utils.date import utcnow
@@ -814,6 +825,7 @@ class TestExternalOAuthService(ServiceCommonTests):
             context=Context(),
             external_oauth_repository=Mock(ExternalOAuthRepository),
             secrets_service=Mock(SecretsService),
+            cache=Mock(ExternalOAuthServiceCache),
         )
 
     @pytest.fixture
@@ -833,6 +845,66 @@ class TestExternalOAuthService(ServiceCommonTests):
             enabled=True,
             created=utcnow(),
             updated=utcnow(),
+            metadata=ProviderMetadata(
+                authorization_endpoint="https://example.com/auth",
+                token_endpoint="https://example.com/token",
+                jwks_uri="https://example.com/jwks",
+            ),
+        )
+
+    async def test_create(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+        builder_model: OAuthProviderBuilder,
+    ) -> None:
+        metadata_raw = {
+            "authorization_endpoint": "https://example.com/auth",
+            "token_endpoint": "https://example.com/token",
+            "userinfo_endpoint": "https://example.com/userinfo",
+            "jwks_uri": "https://example.com/jwks",
+            "introspection_endpoint": "",
+        }
+        provider_metadata = ProviderMetadata(**metadata_raw)
+        test_instance.metadata = provider_metadata
+        service_instance.repository.create = AsyncMock(
+            return_value=test_instance
+        )
+        service_instance.get_provider = AsyncMock(return_value=None)
+        service_instance.get_provider_metadata = AsyncMock(
+            return_value=provider_metadata
+        )
+
+        builder = OAuthProviderBuilder(
+            name=test_instance.name,
+            client_id=test_instance.client_id,
+            client_secret=test_instance.client_secret,
+            issuer_url=test_instance.issuer_url,
+            redirect_uri=test_instance.redirect_uri,
+            scopes=test_instance.scopes,
+            enabled=test_instance.enabled,
+            metadata=provider_metadata,
+        )
+
+        created_provider = await service_instance.create(builder=builder)
+
+        assert created_provider is not None
+        assert created_provider == test_instance
+        assert created_provider.metadata == provider_metadata
+
+    async def test_create_conflict(
+        self,
+        service_instance: ExternalOAuthService,
+        builder_model: OAuthProviderBuilder,
+        test_instance: OAuthProvider,
+    ) -> None:
+        builder_model.enabled = True
+        service_instance.get_provider = AsyncMock(return_value=test_instance)
+        with pytest.raises(ConflictException) as exc_info:
+            await service_instance.create(builder=builder_model)
+        assert (
+            exc_info.value.details[0].message
+            == "An enabled OIDC provider already exists. Please disable it first."
         )
 
     async def test_get_provider(
@@ -854,6 +926,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
     ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
         service_instance.get_provider = AsyncMock(return_value=test_instance)
 
         client = await service_instance.get_client()
@@ -866,6 +939,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         self,
         service_instance: ExternalOAuthService,
     ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
         service_instance.get_provider = AsyncMock(return_value=None)
 
         client = await service_instance.get_client()
@@ -1017,3 +1091,108 @@ class TestExternalOAuthService(ServiceCommonTests):
         assert service_instance.ENCRYPTION_SECRET_KEY is not None
         assert isinstance(key, bytes)
         assert isinstance(service_instance.ENCRYPTION_SECRET_KEY, bytes)
+
+    async def test_get_provider_metadata_success(
+        self,
+        service_instance: ExternalOAuthService,
+    ) -> None:
+        metadata_raw = {
+            "authorization_endpoint": "https://issuer.example.com/auth",
+            "token_endpoint": "https://issuer.example.com/token",
+            "jwks_uri": "https://issuer.example.com/jwks",
+        }
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            return_value=Response(status_code=200, json=metadata_raw)
+        )
+        service_instance.get_httpx_client = AsyncMock(return_value=mock_client)
+
+        expected_metadata = ProviderMetadata(**metadata_raw)
+        builder = OAuthProviderBuilder(
+            name="provider_name",
+            client_id="client123",
+            client_secret="secret123",
+            issuer_url="https://issuer.example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+            metadata=expected_metadata,
+        )
+
+        received_metadata = await service_instance.get_provider_metadata(
+            builder
+        )
+        assert received_metadata == expected_metadata
+        service_instance.get_httpx_client.assert_awaited_once()
+
+    async def test_get_provider_metadata_failure(
+        self,
+        service_instance: ExternalOAuthService,
+    ) -> None:
+        metadata_raw = {
+            "authorization_endpoint": "https://issuer.example.com/auth",
+            "token_endpoint": "https://issuer.example.com/token",
+            "jwks_uri": "https://issuer.example.com/jwks",
+        }
+        mock_response = Response(
+            status_code=500,
+            request=HTTPXRequest(
+                "GET",
+                "https://issuer.example.com/.well-known/openid-configuration",
+            ),
+        )
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        service_instance.get_httpx_client = AsyncMock(return_value=mock_client)
+
+        expected_metadata = ProviderMetadata(**metadata_raw)
+        builder = OAuthProviderBuilder(
+            name="provider_name",
+            client_id="client123",
+            client_secret="secret123",
+            issuer_url="https://issuer.example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+            metadata=expected_metadata,
+        )
+
+        with pytest.raises(BadGatewayException) as exc_info:
+            await service_instance.get_provider_metadata(builder)
+        assert (
+            exc_info.value.details[0].message  # type: ignore
+            == "OIDC server returned an unexpected response with status code: 500."
+        )
+        assert (
+            exc_info.value.details[0].type  # type: ignore
+            == PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE
+        )
+
+        mock_client.get = AsyncMock(side_effect=HTTPError("Connection error"))
+        service_instance.get_httpx_client = AsyncMock(return_value=mock_client)
+
+        with pytest.raises(BadGatewayException) as exc_info:
+            await service_instance.get_provider_metadata(builder)
+        assert (
+            exc_info.value.details[0].message  # type: ignore
+            == "A network error occurred while trying to reach the OIDC server."
+        )
+        assert (
+            exc_info.value.details[0].type  # type: ignore
+            == PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE
+        )
+
+    async def test_get_httpx_client(
+        self, service_instance: ExternalOAuthService
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        client = await service_instance.get_httpx_client()
+        assert isinstance(client, AsyncClient)
+
+    async def test_get_httpx_client_cached(
+        self, service_instance: ExternalOAuthService
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        client1 = await service_instance.get_httpx_client()
+        client2 = await service_instance.get_httpx_client()
+        assert client1 is client2

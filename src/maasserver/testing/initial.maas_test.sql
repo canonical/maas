@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict RSOZzgtFPWtlvg4bHqEXDybi2NT8bcf4cX6b7pMQrQ9kmKwYyCcH8fee7cjA8Tk
+\restrict F0E8d2LjPm7ZceMPRJZfqlKkrLG3hIazrY1jFSxBYr5EgSgic28IjKmDVtIYhkc
 
 -- Dumped from database version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
@@ -6233,7 +6233,8 @@ CREATE TABLE public.maasserver_oidc_provider (
     issuer_url character varying(512) NOT NULL,
     redirect_uri text NOT NULL,
     scopes character varying(255) NOT NULL,
-    enabled boolean NOT NULL
+    enabled boolean NOT NULL,
+    metadata jsonb NOT NULL
 );
 
 
@@ -8164,7 +8165,6 @@ COPY public.alembic_version (version_num) FROM stdin;
 0007
 \.
 
-
 --
 -- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -9224,7 +9224,7 @@ COPY public.maasserver_numanodehugepages (id, created, updated, page_size, total
 -- Data for Name: maasserver_oidc_provider; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_oidc_provider (id, created, updated, name, client_id, client_secret, issuer_url, redirect_uri, scopes, enabled) FROM stdin;
+COPY public.maasserver_oidc_provider (id, created, updated, name, client_id, client_secret, issuer_url, redirect_uri, scopes, enabled, metadata) FROM stdin;
 \.
 
 
@@ -16524,5 +16524,5 @@ ALTER TABLE ONLY public.piston3_token
 -- PostgreSQL database dump complete
 --
 
-\unrestrict RSOZzgtFPWtlvg4bHqEXDybi2NT8bcf4cX6b7pMQrQ9kmKwYyCcH8fee7cjA8Tk
+\unrestrict F0E8d2LjPm7ZceMPRJZfqlKkrLG3hIazrY1jFSxBYr5EgSgic28IjKmDVtIYhkc
 

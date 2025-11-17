@@ -4,7 +4,11 @@
 from datetime import timedelta
 from typing import Any
 
-from maasservicelayer.models.external_auth import OAuthProvider, RootKey
+from maasservicelayer.models.external_auth import (
+    OAuthProvider,
+    ProviderMetadata,
+    RootKey,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -43,6 +47,11 @@ async def create_provider(
         "redirect_uri": "https://example.com/callback",
         "scopes": "openid email profile",
         "enabled": True,
+        "metadata": ProviderMetadata(
+            authorization_endpoint="",
+            token_endpoint="",
+            jwks_uri="",
+        ),
     }
 
     provider.update(extra_details)

@@ -1598,6 +1598,7 @@ OIDCProviderTable = Table(
     Column("redirect_uri", Text, nullable=False),
     Column("scopes", String(255), nullable=False),
     Column("enabled", Boolean, nullable=False),
+    Column("metadata", JSONB, nullable=False),
 )
 
 PackageRepositoryTable = Table(

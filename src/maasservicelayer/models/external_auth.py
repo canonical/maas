@@ -2,7 +2,8 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from urllib.parse import urlencode
+
+from pydantic import BaseModel
 
 from maasservicelayer.models.base import (
     generate_builder,
@@ -14,6 +15,16 @@ class RootKey(MaasTimestampedBaseModel):
     expiration: datetime
 
 
+class ProviderMetadata(BaseModel):
+    # These fields are based on the OpenID Connect Discovery specification (https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata)
+    # We only include the fields that are relevant for our use case, but additional fields can be added as needed.
+    authorization_endpoint: str
+    token_endpoint: str
+    userinfo_endpoint: str | None = None
+    introspection_endpoint: str | None = None
+    jwks_uri: str
+
+
 @generate_builder()
 class OAuthProvider(MaasTimestampedBaseModel):
     issuer_url: str
@@ -23,13 +34,4 @@ class OAuthProvider(MaasTimestampedBaseModel):
     redirect_uri: str
     scopes: str
     enabled: bool
-
-    def build_auth_url(self):
-        params = {
-            "response_type": "code",
-            "client_id": self.client_id,
-            "redirect_uri": self.redirect_uri,
-            "scope": self.scopes,
-        }
-
-        return f"{self.issuer_url.rstrip('/')}/authorize?{urlencode(params)}"
+    metadata: ProviderMetadata
