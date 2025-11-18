@@ -24,6 +24,7 @@ __all__ = [
     "services",
     "staticipaddress",
     "subnet",
+    "vlan",
 ]
 
 from maasserver.models.signals import (
@@ -47,4 +48,5 @@ from maasserver.models.signals import (
     services,
     staticipaddress,
     subnet,
+    vlan,
 )

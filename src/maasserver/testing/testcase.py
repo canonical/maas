@@ -33,8 +33,8 @@ from maasserver.models import interface as interface_module
 from maasserver.models import iprange as iprange_module
 from maasserver.models import node as node_module
 from maasserver.models import staticipaddress as staticipaddress_module
-from maasserver.models import subnet as subnet_module
-from maasserver.models import vlan as vlan_module
+from maasserver.models.signals import subnet as subnet_signals_module
+from maasserver.models.signals import vlan as vlan_signals_module
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,
@@ -94,8 +94,8 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
 
         # DHCP workflow calls
         self.patch(node_module, "start_workflow")
-        self.patch(vlan_module, "start_workflow")
-        self.patch(subnet_module, "start_workflow")
+        self.patch(vlan_signals_module, "start_workflow")
+        self.patch(subnet_signals_module, "start_workflow")
         self.patch(iprange_module, "start_workflow")
         self.patch(staticipaddress_module, "start_workflow")
         self.patch(interface_module, "start_workflow")

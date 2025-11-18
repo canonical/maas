@@ -11,7 +11,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.models import Space, VLAN
-from maasserver.models import vlan as vlan_module
+from maasserver.models.signals import vlan as vlan_signals_module
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.utils.orm import post_commit_hooks, reload_object
@@ -35,7 +35,7 @@ def get_vlan_uri(vlan, fabric=None):
 class TestVlansAPI(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
-        self.patch(vlan_module, "post_commit_do")
+        self.patch(vlan_signals_module, "post_commit_do")
 
     def test_handler_path(self):
         fabric = factory.make_Fabric()

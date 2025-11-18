@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Fabric API."""
@@ -8,8 +8,8 @@ import random
 
 from django.urls import reverse
 
-from maasserver.models import vlan as vlan_module
 from maasserver.models.fabric import Fabric
+from maasserver.models.signals import vlan as vlan_signals_module
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -48,7 +48,7 @@ def make_complex_fabric():
 class TestFabricsAPI(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
-        self.patch(vlan_module, "post_commit_do")
+        self.patch(vlan_signals_module, "post_commit_do")
 
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/fabrics/", get_fabrics_uri())
