@@ -3,7 +3,6 @@
 
 """Configuration items."""
 
-
 from collections import defaultdict, namedtuple
 from contextlib import suppress
 import copy
@@ -53,6 +52,7 @@ def get_default_config():
     """
     return {
         # Ubuntu section configuration.
+        "allow_only_trusted_transfers": False,
         "commissioning_osystem": DEFAULT_OS.name,
         "commissioning_distro_series": DEFAULT_OS.get_default_commissioning_release(),
         "default_dns_ttl": 30,

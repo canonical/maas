@@ -227,7 +227,7 @@ class RackDNS(RackOnlyExternalService):
 
         # No zones on the rack controller.
         bind_write_configuration(
-            [], list(sorted(configuration.trusted_networks))
+            [], list(sorted(configuration.trusted_networks)), False
         )
 
     def _bindReload(self):

@@ -151,7 +151,9 @@ def bind_reload_zones(zone_list):
     return ret
 
 
-def bind_write_configuration(zones, trusted_networks, forwarded_zones=None):
+def bind_write_configuration(
+    zones, trusted_networks, allow_only_trusted_transfers, forwarded_zones=None
+):
     """Write BIND's configuration.
 
     :param zones: Those zones to include in main config.
@@ -167,7 +169,10 @@ def bind_write_configuration(zones, trusted_networks, forwarded_zones=None):
     assert isinstance(trusted_networks, Sequence)
 
     dns_config = DNSConfig(zones=zones, forwarded_zones=forwarded_zones)
-    dns_config.write_config(trusted_networks=trusted_networks)
+    dns_config.write_config(
+        trusted_networks=trusted_networks,
+        allow_only_trusted_transfers=allow_only_trusted_transfers,
+    )
 
 
 def bind_write_options(upstream_dns, dnssec_validation):

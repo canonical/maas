@@ -505,6 +505,20 @@ CONFIG_ITEMS = {
             ),
         },
     },
+    "allow_only_trusted_transfers": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Allow only trusted zone transfers",
+            "required": False,
+            "help_text": normalise_whitespace(
+                """\
+                A boolean value to allow only zone transfers from trusted sources.
+                If set to false, zone transfers from all sources will be allowed.
+                """
+            ),
+        },
+    },
     "remote_syslog": {
         "default": None,
         "form": RemoteSyslogField,

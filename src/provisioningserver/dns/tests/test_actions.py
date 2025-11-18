@@ -200,7 +200,9 @@ class TestConfiguration(MAASTestCase):
                 network=factory.make_ipv6_network(),
             ),
         ]
-        actions.bind_write_configuration(zones=zones, trusted_networks=[])
+        actions.bind_write_configuration(
+            zones=zones, trusted_networks=[], allow_only_trusted_transfers=True
+        )
         self.assertTrue(
             os.path.exists(
                 os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME)
@@ -213,7 +215,9 @@ class TestConfiguration(MAASTestCase):
             factory.make_ipv6_network(),
         ]
         actions.bind_write_configuration(
-            zones=[], trusted_networks=trusted_networks
+            zones=[],
+            trusted_networks=trusted_networks,
+            allow_only_trusted_transfers=True,
         )
         expected_file = os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME)
         self.assertTrue(os.path.exists(expected_file))

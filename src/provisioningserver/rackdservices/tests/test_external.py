@@ -480,7 +480,7 @@ class TestRackDNS(MAASTestCase):
             upstream_dns=sorted(region_ips), dnssec_validation="no"
         )
         bind_write_configuration.assert_called_once_with(
-            [], sorted(trusted_networks)
+            [], sorted(trusted_networks), False
         )
         mock_ensureService.assert_called_once_with("dns_rack")
         bind_reload_with_retries.assert_called_once_with()
@@ -491,7 +491,7 @@ class TestRackDNS(MAASTestCase):
             upstream_dns=list(sorted(region_ips)), dnssec_validation="no"
         )
         bind_write_configuration.assert_called_once_with(
-            [], list(sorted(trusted_networks))
+            [], list(sorted(trusted_networks)), False
         )
         mock_ensureService.assert_called_once_with("dns_rack")
         bind_reload_with_retries.assert_called_once_with()
