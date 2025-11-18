@@ -290,7 +290,8 @@ class TestVLANForm(MAASServerTestCase):
         relay_vlan = factory.make_VLAN()
         form = VLANForm(instance=vlan, data={"relay_vlan": relay_vlan.id})
         self.assertTrue(form.is_valid(), form.errors)
-        form.save()
+        with post_commit_hooks:
+            form.save()
         vlan = reload_object(vlan)
         self.assertEqual(relay_vlan.id, vlan.relay_vlan.id)
 
