@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """VLAN objects."""
@@ -21,18 +21,13 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from netaddr import AddrFormatError
 
-from maascommon.workflows.dhcp import (
-    CONFIGURE_DHCP_WORKFLOW_NAME,
-    ConfigureDHCPParam,
-)
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import VLANInterface
 from maasserver.models.notification import Notification
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
-from maasserver.workflow import start_workflow
+from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.utils.network import parse_integer
 
 DEFAULT_VLAN_NAME = "Default VLAN"

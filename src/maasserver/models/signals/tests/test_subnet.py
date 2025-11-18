@@ -245,7 +245,7 @@ class TestSubnetDHCPSignal(MAASServerTestCase):
 
         subnet_start_workflow_mock.assert_called_once_with(
             workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(vlan_ids=[vlan.id, new_vlan.id]),
+            param=ConfigureDHCPParam(vlan_ids=[new_vlan.id, vlan.id]),
             task_queue="region",
         )
 

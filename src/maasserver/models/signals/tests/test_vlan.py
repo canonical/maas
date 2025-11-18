@@ -7,7 +7,6 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
 )
-from maasserver.models import DNSPublication
 import maasserver.models.signals.vlan as vlan_signals_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
