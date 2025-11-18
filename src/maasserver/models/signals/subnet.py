@@ -108,11 +108,13 @@ def emit_dnspublication_on_change(instance, old_values, **kwargs):
 def update_dhcp(instance, old_values, **kwargs):
     [old_vlan_id] = old_values
 
-    old_vlan = VLAN.objects.get(id=old_vlan_id)
+    old_vlan = None
+    if old_vlan_id:
+        old_vlan = VLAN.objects.get(id=old_vlan_id)
 
     vlans_to_update = set()
 
-    if old_vlan.dhcp_on or old_vlan.relay_vlan_id:
+    if old_vlan and (old_vlan.dhcp_on or old_vlan.relay_vlan_id):
         vlans_to_update.add(old_vlan_id)
     if instance.vlan.dhcp_on or instance.vlan.relay_vlan_id:
         vlans_to_update.add(instance.vlan.id)
