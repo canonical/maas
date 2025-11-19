@@ -1,4 +1,4 @@
-# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -9,8 +9,8 @@ from django.utils.http import urlencode
 
 from maasserver.api import rackcontrollers
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
-from maasserver.models import vlan as vlan_module
 from maasserver.models.bmc import Pod
+from maasserver.models.signals import vlan as vlan_signals_module
 from maasserver.testing.api import (
     APITestCase,
     APITransactionTestCase,
@@ -26,7 +26,7 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
 
     def setUp(self):
         super().setUp()
-        self.patch(vlan_module, "post_commit_do")
+        self.patch(vlan_signals_module, "post_commit_do")
 
     def test_handler_path(self):
         self.assertEqual(
@@ -240,7 +240,7 @@ class TestRackControllersAPI(APITestCase.ForUser):
 
     def setUp(self):
         super().setUp()
-        self.patch(vlan_module, "post_commit_do")
+        self.patch(vlan_signals_module, "post_commit_do")
 
     @staticmethod
     def get_rack_uri():
