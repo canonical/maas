@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for IP addresses API."""
@@ -12,7 +12,7 @@ from netaddr import IPAddress
 from maasserver.enum import INTERFACE_LINK_TYPE, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import DNSResource, StaticIPAddress
 from maasserver.models import staticipaddress as staticipaddress_module
-from maasserver.models import vlan as vlan_module
+from maasserver.models.signals import vlan as vlan_signals_module
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -22,7 +22,7 @@ from maasserver.utils.orm import reload_object, transactional
 class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
     def setUp(self):
         super().setUp()
-        self.patch(vlan_module, "post_commit_do")
+        self.patch(vlan_signals_module, "post_commit_do")
         self.patch(staticipaddress_module, "post_commit_do")
 
     def test_handler_path(self):
@@ -236,7 +236,7 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
 
     def setUp(self):
         super().setUp()
-        self.patch(vlan_module, "post_commit_do")
+        self.patch(vlan_signals_module, "post_commit_do")
         self.patch(staticipaddress_module, "post_commit_do")
 
     @property
@@ -460,7 +460,7 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
 
     def setUp(self):
         super().setUp()
-        self.patch(vlan_module, "post_commit_do")
+        self.patch(vlan_signals_module, "post_commit_do")
         self.patch(staticipaddress_module, "post_commit_do")
 
     def post_reservation_request(

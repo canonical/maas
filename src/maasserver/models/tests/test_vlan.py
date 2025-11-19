@@ -2,17 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
-from unittest.mock import call
 
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 
-from maascommon.workflows.dhcp import (
-    CONFIGURE_DHCP_WORKFLOW_NAME,
-    ConfigureDHCPParam,
-)
 from maasserver.enum import INTERFACE_TYPE
-from maasserver.models import vlan as vlan_module
 from maasserver.models.interface import PhysicalInterface, VLANInterface
 from maasserver.models.notification import Notification
 from maasserver.models.vlan import VLAN
@@ -106,23 +100,6 @@ class TestVLANManager(MAASServerTestCase):
                 "fabric:%s,vid:%d" % (fabric.name, vlan.vid)
             ),
             [vlan],
-        )
-
-    def test_create_calls_configure_dhcp_workflow_if_dhcp_on(self):
-        with post_commit_hooks:
-            fabric = factory.make_Fabric()
-            start_workflow = self.patch(
-                vlan_module, "start_workflow"
-            )  # patching here to ignore default VLAN created with fabric
-            VLAN.objects.create(dhcp_on=False, vid=1, fabric_id=fabric.id)
-            start_workflow.assert_not_called()
-            vlan = VLAN.objects.create(
-                dhcp_on=True, vid=2, fabric_id=fabric.id
-            )
-        start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(system_ids=[], vlan_ids=[vlan.id]),
-            task_queue="region",
         )
 
 
@@ -269,63 +246,6 @@ class TestVLAN(MAASServerTestCase):
             vlan = factory.make_VLAN()
             racks = [factory.make_RackController(vlan=vlan) for _ in range(3)]
         self.assertCountEqual(racks, vlan.connected_rack_controllers())
-
-    def test_update_calls_configure_dhcp_workflow(self):
-        start_workflow = self.patch(vlan_module, "start_workflow")
-        vlan = factory.make_VLAN(dhcp_on=False)
-        vlan.dhcp_on = True
-        vlan.mtu = 1800
-        with post_commit_hooks:
-            vlan.save()
-        start_workflow.assert_called_once_with(
-            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(system_ids=[], vlan_ids=[vlan.id]),
-            task_queue="region",
-        )
-
-    def test_disabling_dhcp_includes_previous_rack_ids(self):
-        start_workflow = self.patch(vlan_module, "start_workflow")
-        rack1 = factory.make_RackController()
-        rack2 = factory.make_RackController()
-        vlan = factory.make_VLAN(
-            dhcp_on=True, primary_rack=rack1, secondary_rack=rack2
-        )
-        vlan.dhcp_on = False
-        vlan.primary_rack_id = None
-        vlan.secondary_rack_id = None
-        with post_commit_hooks:
-            vlan.save()
-        self.assertIn(
-            call(
-                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=ConfigureDHCPParam(
-                    system_ids=[rack1.system_id, rack2.system_id],
-                    vlan_ids=[vlan.id],
-                ),
-                task_queue="region",
-            ),
-            start_workflow.mock_calls,
-        )
-
-    def test_delete_calls_configure_dhcp_workflow(self):
-        start_workflow = self.patch(vlan_module, "start_workflow")
-        primary_rack = factory.make_RackController()
-        secondary_rack = factory.make_RackController()
-        with post_commit_hooks:
-            vlan = factory.make_VLAN(
-                dhcp_on=True,
-                primary_rack=primary_rack,
-                secondary_rack=secondary_rack,
-            )
-            vlan.delete()
-
-        start_workflow.assert_called_with(
-            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(
-                system_ids=[primary_rack.system_id, secondary_rack.system_id]
-            ),
-            task_queue="region",
-        )
 
 
 class TestVLANVidValidation(MAASServerTestCase):

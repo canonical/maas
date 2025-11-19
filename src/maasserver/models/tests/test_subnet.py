@@ -16,10 +16,6 @@ from maascommon.utils.network import (
     MAASIPRange,
     MAASIPSet,
 )
-from maascommon.workflows.dhcp import (
-    CONFIGURE_DHCP_WORKFLOW_NAME,
-    ConfigureDHCPParam,
-)
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -29,7 +25,6 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import Config, Notification, Space
-from maasserver.models import subnet as subnet_module
 from maasserver.models.subnet import (
     create_cidr,
     get_allocated_ips,
@@ -748,38 +743,6 @@ class TestSubnet(MAASServerTestCase):
                 ValidationError, "servicing a dynamic"
             ):
                 subnet.delete()
-
-    def test_save_calls_configure_dhcp_workflow(self):
-        mock_start_workflow = self.patch(subnet_module, "start_workflow")
-        subnet = factory.make_Subnet()
-
-        with post_commit_hooks:
-            subnet.vlan.dhcp_on = True
-            subnet.vlan.save()
-            subnet.name = "test-subnet"
-            subnet.save()
-        mock_start_workflow.assert_any_call(
-            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(subnet_ids=[subnet.id]),
-            task_queue="region",
-        )
-
-    def test_save_calls_configure_dhcp_workflow_with_new_vlan(self):
-        mock_start_workflow = self.patch(subnet_module, "start_workflow")
-        new_vlan = factory.make_VLAN(dhcp_on=True)
-        subnet = factory.make_Subnet()
-        old_vlan_id = subnet.vlan_id
-
-        with post_commit_hooks:
-            subnet.vlan = new_vlan
-            subnet.save()
-        mock_start_workflow.assert_any_call(
-            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(
-                subnet_ids=[subnet.id], vlan_ids=[old_vlan_id]
-            ),
-            task_queue="region",
-        )
 
     def test_overlapping_subnets_not_allowed(self):
         vlan = factory.make_VLAN()

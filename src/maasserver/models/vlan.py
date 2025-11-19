@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """VLAN objects."""
@@ -21,18 +21,13 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from netaddr import AddrFormatError
 
-from maascommon.workflows.dhcp import (
-    CONFIGURE_DHCP_WORKFLOW_NAME,
-    ConfigureDHCPParam,
-)
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import VLANInterface
 from maasserver.models.notification import Notification
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
-from maasserver.workflow import start_workflow
+from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.utils.network import parse_integer
 
 DEFAULT_VLAN_NAME = "Default VLAN"
@@ -207,24 +202,6 @@ class VLAN(CleanSave, TimestampedModel):
         "Space", editable=True, blank=True, null=True, on_delete=SET_NULL
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._previous_dhcp_on = None
-        self._previous_relay_vlan_id = None
-        self._previous_mtu = None
-        self._previous_primary_rack_id = None
-        self._previous_secondary_rack_id = None
-        self._updated = False
-
-    def __setattr__(self, name, value):
-        if (
-            hasattr(self, f"_previous_{name}")
-            and getattr(self, f"_previous_{name}") is None
-        ):
-            setattr(self, f"_previous_{name}", getattr(self, name))
-            self._updated = True
-        super().__setattr__(name, value)
-
     def __str__(self):
         return f"{self.fabric.get_name()}.{self.get_name()}"
 
@@ -282,21 +259,6 @@ class VLAN(CleanSave, TimestampedModel):
         else:
             return super().unique_error_message(model_class, unique_check)
 
-    def _needs_dhcp_update(self):
-        return self._updated and (
-            self._previous_dhcp_on != self.dhcp_on
-            or self._previous_relay_vlan_id != self.relay_vlan_id
-            or (
-                (self.dhcp_on or self.relay_vlan_id)
-                and (
-                    self._previous_mtu != self.mtu
-                    or self._previous_primary_rack_id != self.primary_rack_id
-                    or self._previous_secondary_rack_id
-                    != self.secondary_rack_id
-                )
-            )
-        )
-
     def delete(self):
         if self.is_fabric_default():
             raise ValidationError(
@@ -305,29 +267,7 @@ class VLAN(CleanSave, TimestampedModel):
             )
         self.manage_connected_interfaces()
         self.manage_connected_subnets()
-
-        needs_dhcp_update = self.dhcp_on or self.relay_vlan_id
-        rack_controller_system_ids = []
-
-        if needs_dhcp_update:
-            if self.primary_rack:
-                rack_controller_system_ids.append(self.primary_rack.system_id)
-            if self.secondary_rack:
-                rack_controller_system_ids.append(
-                    self.secondary_rack.system_id
-                )
-
         super().delete()
-
-        if needs_dhcp_update:
-            post_commit_do(
-                start_workflow,
-                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=ConfigureDHCPParam(
-                    system_ids=rack_controller_system_ids
-                ),
-                task_queue="region",
-            )
 
     def save(self, *args, **kwargs):
         # Bug 1555759: Raise a Notification if there are no VLANs with DHCP
@@ -349,7 +289,6 @@ class VLAN(CleanSave, TimestampedModel):
                 ident="dhcp_disabled_all_vlans",
             )
 
-        created = self.id is None
         super().save(*args, **kwargs)
         # Circular dependencies.
         from maasserver.models import Fabric
@@ -359,31 +298,6 @@ class VLAN(CleanSave, TimestampedModel):
             vlan_count=Count("vlan")
         )
         fabrics_with_vlan_count.filter(vlan_count=0).delete()
-
-        if created and not (self.dhcp_on or self.relay_vlan_id):
-            return
-
-        elif created or self._needs_dhcp_update():
-            from maasserver.models import RackController
-
-            param = ConfigureDHCPParam(system_ids=[], vlan_ids=[self.id])
-            if self._previous_primary_rack_id:
-                prev_primary = RackController.objects.get(
-                    id=self._previous_primary_rack_id
-                )
-                param.system_ids.append(prev_primary.system_id)
-            if self._previous_secondary_rack_id:
-                prev_secondary = RackController.objects.get(
-                    id=self._previous_secondary_rack_id
-                )
-                param.system_ids.append(prev_secondary.system_id)
-
-            post_commit_do(
-                start_workflow,
-                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=param,
-                task_queue="region",
-            )
 
     def connected_rack_controllers(self, exclude_racks=None):
         """Return list of rack controllers that are connected to this VLAN.

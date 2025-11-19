@@ -27,10 +27,6 @@ from django.db.models.query import QuerySet
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 
 from maascommon.utils.network import IPRangeStatistics, MAASIPSet
-from maascommon.workflows.dhcp import (
-    CONFIGURE_DHCP_WORKFLOW_NAME,
-    ConfigureDHCPParam,
-)
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -47,8 +43,7 @@ from maasserver.fields import CIDRField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.sqlalchemy import service_layer
-from maasserver.utils.orm import MAASQueriesMixin, post_commit_do
-from maasserver.workflow import start_workflow
+from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
     make_ipaddress,
@@ -329,10 +324,6 @@ class Subnet(CleanSave, TimestampedModel):
     def __init__(self, *args, **kwargs):
         assert "space" not in kwargs, "Subnets can no longer be in spaces."
         super().__init__(*args, **kwargs)
-        self._previous_vlan_id = None
-        self._previous_cidr = None
-        self._previous_rdns_mode = None
-        self._previous_allow_dns = None
 
     objects = SubnetManager()
 
@@ -397,11 +388,6 @@ class Subnet(CleanSave, TimestampedModel):
         null=False,
         default=list,
     )
-
-    def __setattr__(self, name, value):
-        if hasattr(self, f"_previous_{name}"):
-            setattr(self, f"_previous_{name}", getattr(self, name))
-        super().__setattr__(name, value)
 
     @property
     def label(self):
@@ -501,17 +487,7 @@ class Subnet(CleanSave, TimestampedModel):
                 "IP range. (Delete the dynamic range or disable DHCP first.)"
             )
         FreeIPAddress.remove_cache(self)
-        vlan_id = self.vlan_id
-        dhcp_enabled = self.vlan.dhcp_on
         super().delete(*args, **kwargs)
-
-        if dhcp_enabled:
-            post_commit_do(
-                start_workflow,
-                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=ConfigureDHCPParam(vlan_ids=[vlan_id]),
-                task_queue="region",
-            )
 
     def get_allocated_ips(self):
         """Get all the IPs for the given subnets
@@ -848,23 +824,6 @@ class Subnet(CleanSave, TimestampedModel):
             delete_notification = True
         if notification is not None and delete_notification:
             notification.delete()
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        param = ConfigureDHCPParam(subnet_ids=[self.id])
-        if self._previous_vlan_id and self._previous_vlan_id != self.vlan_id:
-            param.vlan_ids = [self._previous_vlan_id]  # handle moving VLANs
-
-        if self.vlan.dhcp_on or (
-            self._previous_vlan_id and self._previous_vlan_id != self.vlan_id
-        ):
-            post_commit_do(
-                start_workflow,
-                workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=param,
-                task_queue="region",
-            )
 
 
 def get_allocated_ips(subnets):
