@@ -115,7 +115,7 @@ class BootResourceSetsService(
             return resource_set
         return None
 
-    async def create_or_update_from_simplestreams_product(
+    async def get_or_create_from_simplestreams_product(
         self, product: Product, boot_resource_id: int
     ) -> BootResourceSet:
         latest_version = product.get_latest_version().version_name

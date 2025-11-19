@@ -524,7 +524,7 @@ class ImageSyncService(Service):
                 BootResourceBuilder(selection_id=related_selection.id),
             )
 
-        boot_resource_set = await self.boot_resource_sets_service.create_or_update_from_simplestreams_product(
+        boot_resource_set = await self.boot_resource_sets_service.get_or_create_from_simplestreams_product(
             product, boot_resource.id
         )
 
