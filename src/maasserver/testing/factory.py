@@ -817,9 +817,7 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = self.make_name("domain")
         domain = Domain(name=name, ttl=ttl, authoritative=authoritative)
-
-        with post_commit_hooks:
-            domain.save()
+        domain.save()
         return domain
 
     def make_ForwardDNSServer(self, ip_address=None, domains=None):
@@ -895,10 +893,7 @@ class Factory(maastesting.factory.Factory):
         dnsdata = DNSData(
             dnsresource=dnsresource, ttl=ttl, rrtype=rrtype, rrdata=rrdata
         )
-
-        with post_commit_hooks:
-            dnsdata.save()
-
+        dnsdata.save()
         return dnsdata
 
     def make_DNSResource(
@@ -936,16 +931,13 @@ class Factory(maastesting.factory.Factory):
                 )
                 for ip in ip_addresses
             ]
-
-        with post_commit_hooks:
-            dnsrr, _ = DNSResource.objects.get_or_create(
-                name=name, address_ttl=address_ttl, domain=domain
-            )
-            dnsrr.save()
-            if ip_addresses:
-                dnsrr.ip_addresses.set(ip_addresses)
-                dnsrr.save(force_update=True)
-
+        dnsrr, _ = DNSResource.objects.get_or_create(
+            name=name, address_ttl=address_ttl, domain=domain
+        )
+        dnsrr.save()
+        if ip_addresses:
+            dnsrr.ip_addresses.set(ip_addresses)
+            dnsrr.save(force_update=True)
         return dnsrr
 
     def make_Script(
@@ -1361,9 +1353,8 @@ class Factory(maastesting.factory.Factory):
                 interface.ip_addresses.add(ipaddress)
                 interface.save(force_update=True)
         if dnsresource is not None:
-            with post_commit_hooks:
-                dnsresource.ip_addresses.add(ipaddress)
-                dnsresource.save(force_update=True)
+            dnsresource.ip_addresses.add(ipaddress)
+            dnsresource.save(force_update=True)
         if hostname is not None:
             if not isinstance(hostname, (tuple, list)):
                 hostname = [hostname]
@@ -1374,11 +1365,10 @@ class Factory(maastesting.factory.Factory):
                 else:
                     domain = None
 
-                with post_commit_hooks:
-                    dnsrr, created = DNSResource.objects.get_or_create(
-                        name=name, domain=domain
-                    )
-                    ipaddress.dnsresource_set.add(dnsrr)
+                dnsrr, created = DNSResource.objects.get_or_create(
+                    name=name, domain=domain
+                )
+                ipaddress.dnsresource_set.add(dnsrr)
         return reload_object(ipaddress)
 
     def make_email(self):

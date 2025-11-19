@@ -6,6 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadGatewayErrorBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
     UnauthorizedBodyResponse,
@@ -258,6 +259,7 @@ class AuthHandler(Handler):
         responses={
             200: {"model": OAuthProviderResponse},
             409: {"model": ConflictBodyResponse},
+            502: {"model": BadGatewayErrorBodyResponse},
         },
         status_code=200,
         dependencies=[

@@ -117,6 +117,33 @@ def _fix_weasel_words(text: str) -> str:
     return re.sub(r'\bvery\s+', '', text, flags=re.IGNORECASE)
 
 
+def _fix_common_misspellings(text: str) -> str:
+    """Fix common misspellings found in generated documentation."""
+    # Dictionary of common misspellings: wrong -> correct
+    misspellings = {
+        'intented': 'intended',
+        'sensative': 'sensitive',
+        'authorititative': 'authoritative',
+        'conntected': 'connected',
+        'freqeuncy': 'frequency',
+        'inteface': 'interface',
+        'adddress': 'address',
+        'contoller': 'controller',
+        'identifing': 'identifying',
+        'seperated': 'separated',
+        'specifed': 'specified',
+        'assoicated': 'associated',
+        'dimissing': 'dismissing',
+        'transfered': 'transferred',
+    }
+    
+    # Use word boundaries to avoid partial matches
+    for wrong, correct in misspellings.items():
+        text = re.sub(r'\b' + re.escape(wrong) + r'\b', correct, text, flags=re.IGNORECASE)
+    
+    return text
+
+
 def _apply_all_text_fixes(text: str) -> str:
     """Apply all text normalization fixes."""
     if not text:
@@ -126,6 +153,7 @@ def _apply_all_text_fixes(text: str) -> str:
     text = _fix_lexical_illusions(text)
     text = _fix_curly_quotes(text)
     text = _fix_weasel_words(text)
+    text = _fix_common_misspellings(text)
     return text
 
 

@@ -12,7 +12,7 @@ Starting from 3.3, with MAAS running on 22.04, the default 22.04 version of Post
 
 PostgreSQL 12-based installs of 3.3 will still work correctly, but support for version 12 will be dropped in MAAS 3.5.
 
-See [the upgrade procedure](/t/how-to-upgrade-postgresql-v12-to-v14/7203) for a detailed description on how to perform the PostgreSQL upgrade.
+See [the upgrade procedure](https://canonical.com/maas/docs/how-to-upgrade-postgresql-v12-to-v14) for a detailed description on how to perform the PostgreSQL upgrade.
 
 ## Use of MAAS database owned by 'postgres' user is deprecated in MAAS 3.4
 

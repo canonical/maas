@@ -11,7 +11,6 @@ from netaddr import IPAddress
 
 from maascommon.dns import HostnameRRsetMapping
 from maasserver.dns.zonegenerator import get_hostname_dnsdata_mapping, lazydict
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
@@ -20,7 +19,6 @@ from maasserver.permissions import NodePermission
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks
 
 
 class TestDomainManagerGetDomainOr404(MAASServerTestCase):
@@ -149,20 +147,14 @@ class TestDomain(MAASServerTestCase):
     def test_creates_domain(self):
         name = factory.make_name("name")
         domain = Domain(name=name)
-
-        with post_commit_hooks:
-            domain.save()
-
+        domain.save()
         domain_from_db = Domain.objects.get(name=name)
         self.assertEqual(domain_from_db.name, name)
 
     def test_create_strips_trailing_dot(self):
         name = factory.make_name("name")
         domain = Domain(name=name + ".")
-
-        with post_commit_hooks:
-            domain.save()
-
+        domain.save()
         domain_from_db = Domain.objects.get(name=name)
         self.assertEqual(domain_from_db.name, name)
 
@@ -183,7 +175,6 @@ class TestDomain(MAASServerTestCase):
         )
 
     def test_setting_internal_name_allows_old_internal_domain_name(self):
-        self.patch(dnspublication_module, "post_commit_do")
         internal_domain_old = Config.objects.get_config("maas_internal_domain")
         internal_domain_new = factory.make_name("internal")
         Config.objects.set_config("maas_internal_domain", internal_domain_new)
@@ -207,10 +198,7 @@ class TestDomain(MAASServerTestCase):
     def test_can_be_deleted_if_does_not_contain_resources(self):
         name = factory.make_name("name")
         domain = factory.make_Domain(name=name)
-
-        with post_commit_hooks:
-            domain.delete()
-
+        domain.delete()
         self.assertCountEqual([], Domain.objects.filter(name=name))
 
     def test_validate_authority_raises_exception_when_both_authoritative_and_has_forward_dns_servers(
@@ -227,9 +215,7 @@ class TestDomain(MAASServerTestCase):
     def test_cant_be_deleted_if_contains_resources(self):
         domain = factory.make_Domain()
         factory.make_DNSResource(domain=domain)
-
-        with post_commit_hooks:
-            self.assertRaises(ProtectedError, domain.delete)
+        self.assertRaises(ProtectedError, domain.delete)
 
     def test_add_delegations_may_do_nothing(self):
         domain = factory.make_Domain()
@@ -397,16 +383,6 @@ class TestDomain(MAASServerTestCase):
             [], DNSResource.objects.filter(name=c_name, domain=parent)
         )
 
-    def test_save_does_not_calls_dns_workflow_if_nonauthoritative(self):
-        mock_start_workflow = self.patch(
-            dnspublication_module, "start_workflow"
-        )
-        domain = Domain(name=factory.make_name(), ttl=30, authoritative=False)
-
-        domain.save()
-
-        mock_start_workflow.assert_not_called()
-
     def test_update_kms_srv_deletes_srv_records(self):
         domain = factory.make_Domain()
         target = f"{factory.make_name()}.{factory.make_name()}"
@@ -424,10 +400,7 @@ class TestDomain(MAASServerTestCase):
     def test_update_kms_srv_creates_srv_records(self):
         domain = factory.make_Domain()
         target = f"{factory.make_name()}.{factory.make_name()}"
-
-        with post_commit_hooks:
-            domain.update_kms_srv(target)
-
+        domain.update_kms_srv(target)
         srvrr = DNSData.objects.get(
             rrtype="SRV",
             dnsresource__name="_vlmcs._tcp",
@@ -438,10 +411,7 @@ class TestDomain(MAASServerTestCase):
     def test_update_kms_srv_creates_srv_records_on_all_domains(self):
         domains = [factory.make_Domain() for _ in range(random.randint(1, 10))]
         target = f"{factory.make_name()}.{factory.make_name()}"
-
-        with post_commit_hooks:
-            Config.objects.set_config("windows_kms_host", target)
-
+        Config.objects.set_config("windows_kms_host", target)
         for domain in domains:
             srvrr = DNSData.objects.get(
                 rrtype="SRV",

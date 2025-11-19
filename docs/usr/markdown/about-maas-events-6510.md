@@ -1,5 +1,5 @@
 
-Events in MAAS record what’s happening inside the system — from machine state changes to user actions and configuration updates. Understanding them helps you:
+Events in MAAS record what’s happening inside the system — from machine state changes to user actions and configuration updates.  Understanding them helps you:
 
 - Debug commissioning and deployment issues.
 - Verify that operations completed as expected.
@@ -16,7 +16,7 @@ Events can be triggered by:
 You can explore events in three different ways, depending on how much detail you need:
 
 - MAAS logs (raw detail)
-  Directly from the file system, with full context. Best for deep troubleshooting.
+  Directly from the file system, with full context.  Best for deep troubleshooting.
 
 - CLI `events query` command (structured JSON)
   A quick way to filter and script against event data.

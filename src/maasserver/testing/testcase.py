@@ -29,7 +29,6 @@ from django.db.utils import IntegrityError, OperationalError
 
 from maasserver import bootsources as bootsources_module
 from maasserver.models import dhcpsnippet as snippet_module
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import interface as interface_module
 from maasserver.models import iprange as iprange_module
 from maasserver.models import node as node_module
@@ -102,8 +101,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         self.patch(interface_module, "start_workflow")
         self.patch(snippet_module, "start_workflow")
 
-        # DNS workflow calls
-        self.patch(dnspublication_module, "start_workflow")
         if self.mock_cache_boot_source:
             self.patch(bootsources_module, "post_commit_do")
 

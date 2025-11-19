@@ -1,298 +1,385 @@
-Enter keyword arguments in the form `key=value`.
-
-## Add a tag
+Add a tag
 
 ```bash
 maas $PROFILE block-device add-tag [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Add a tag to block device on a given machine.
 
-#### Keyword "tag"
-Required String. The tag being added.
+##### Keyword "tag"
+Optional String. The tag being added.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Delete a block device
+Note: This command accepts JSON.
+
+
+Delete a block device
 
 ```bash
-maas $PROFILE block-device delete [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE block-device delete [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-Delete block device on a given machine.
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Format block device
+
+#### **Keywords**
+Delete block device on a given machine.
+
+
+
+
+
+Format block device
 
 ```bash
 maas $PROFILE block-device format [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
-Format block device with filesystem.
-
-#### Keyword "fstype"
-Required String. Type of filesystem.
-
-#### Keyword "uuid"
-Optional String. UUID of the filesystem.
-
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Mount a filesystem
+
+#### **Keywords**
+Format block device with filesystem.
+
+##### Keyword "fstype"
+Optional String. Type of filesystem.
+##### Keyword "uuid"
+Optional String. UUID of the filesystem.
+
+
+Note: This command accepts JSON.
+
+
+Mount a filesystem
 
 ```bash
 maas $PROFILE block-device mount [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Mount the filesystem on block device.
 
-#### Keyword "mount_point"
-Required String. Path on the filesystem to mount.
+##### Keyword "mount_point"
+Optional String. Path on the filesystem<br>to mount.
+##### Keyword "mount_options"
+Optional String. Options to pass to<br>mount(8).
 
-#### Keyword "mount_options"
-Optional String. Options to pass to mount(8).
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+Note: This command accepts JSON.
 
-## Read a block device
+
+Read a block device
 
 ```bash
-maas $PROFILE block-device read [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE block-device read [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-Read a block device on a given machine.
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Remove a tag
+
+#### **Keywords**
+Read a block device on a given machine.
+
+
+
+
+
+Remove a tag
 
 ```bash
 maas $PROFILE block-device remove-tag [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Remove a tag from block device on a given machine.
 
-#### Keyword "tag"
+##### Keyword "tag"
 Optional String. The tag being removed.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Set boot disk
+Note: This command accepts JSON.
+
+
+Set boot disk
 
 ```bash
-maas $PROFILE block-device set-boot-disk [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE block-device set-boot-disk [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Set a block device as the boot disk for the machine.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Unformat a block device
+
+
+
+Unformat a block device
 
 ```bash
-maas $PROFILE block-device unformat [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE block-device unformat [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Unformat a previously formatted block device.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Unmount a filesystem
+
+
+
+Unmount a filesystem
 
 ```bash
-maas $PROFILE block-device unmount [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE block-device unmount [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-Unmount the filesystem on block device.
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Update a block device
+
+#### **Keywords**
+Unmount the filesystem on block device.
+
+
+
+
+
+Update a block device
 
 ```bash
 maas $PROFILE block-device update [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
-Update block device on a given machine.
-
-Machines must have a status of Ready to have access to all options. Machines with Deployed status can only have the name, model, serial, and/or id_path updated for a block device. This is intented to allow a bad block device to be replaced while the machine remains deployed.
-
-#### Keyword "name"
-Optional String. (Physical devices) Name of the block device.
-
-#### Keyword "model"
-Optional String. (Physical devices) Model of the block device.
-
-#### Keyword "serial"
-Optional String. (Physical devices) Serial number of the block device.
-
-#### Keyword "id_path"
-Optional String (physical device). Only used if model and serial cannot be provided. This should be a path that is fixed and doesn't change depending on the boot order or kernel version.
-
-#### Keyword "size"
-Optional String. (Physical devices) Size of the block device.
-
-#### Keyword "block_size"
-Optional String. (Physical devices) Block size of the block device.
-
-#### Keyword "name"
-Optional String. (Virtual devices) Name of the block device.
-
-#### Keyword "uuid"
-Optional String. (Virtual devices) UUID of the block device.
-
-#### Keyword "size"
-Optional String. (Virtual devices) Size of the block device. (Only allowed for logical volumes.)
-
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Create a block device
+
+#### **Keywords**
+Update block device on a given machine. Machines must have a status of Ready to have access to all options.<br>Machines with Deployed status can only have the name, model, serial,<br>and/or id_path updated for a block device. This is intended to allow a<br>bad block device to be replaced while the machine remains deployed.
+
+##### Keyword "name"
+Optional String. (Virtual devices) Name of<br>the block device.
+##### Keyword "model"
+Optional String. (Physical devices) Model of<br>the block device.
+##### Keyword "serial"
+Optional String. (Physical devices) Serial<br>number of the block device.
+##### Keyword "id_path"
+Optional String. (Physical devices) Only used<br>if model and serial cannot be provided. This should be a path that is<br>fixed and doesn't change depending on the boot order or kernel version.
+##### Keyword "size"
+Optional String. (Virtual devices) Size of<br>the block device. (Only allowed for logical volumes.)
+##### Keyword "block_size"
+Optional String. (Physical devices) Block<br>size of the block device.
+##### Keyword "uuid"
+Optional String. (Virtual devices) UUID of<br>the block device.
+
+
+Note: This command accepts JSON.
+
+
+Create a block device
 
 ```bash
 maas $PROFILE block-devices create [--help] [-d] [-k] system_id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Create a physical block device.
 
-#### Keyword "name"
-Required String. Name of the block device.
-
-#### Keyword "model"
+##### Keyword "name"
+Optional String. Name of the block device.
+##### Keyword "model"
 Optional String. Model of the block device.
+##### Keyword "serial"
+Optional String. Serial number of the block<br>device.
+##### Keyword "id_path"
+Optional String. Only used if model and<br>serial cannot be provided. This should be a path that is fixed and<br>doesn't change depending on the boot order or kernel version.
+##### Keyword "size"
+Optional String. Size of the block device.
+##### Keyword "block_size"
+Optional String. Block size of the block<br>device.
 
-#### Keyword "serial"
-Optional String. Serial number of the block device.
 
-#### Keyword "id_path"
-Optional String.  Only used if model and serial cannot be provided. This should be a path that is fixed and doesn't change depending on the boot order or kernel version.
+Note: This command accepts JSON.
 
-#### Keyword "size"
-Required String. Size of the block device.
 
-#### Keyword "block_size"
-Required String. Block size of the block device.
-
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
-
-## List block devices
+List block devices
 
 ```bash
-maas $PROFILE block-devices read [--help] [-d] [-k] system_id [data ...]
+maas $PROFILE block-devices read [--help] [-d] [-k] system_id
+
 ```
 
-#### Positional arguments
-- system_id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
 
-List all block devices belonging to a machine.
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
+List all block devices belonging to a machine.

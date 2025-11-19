@@ -1,4 +1,4 @@
-# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from argparse import ArgumentParser
@@ -30,12 +30,10 @@ from maasserver.dns.zonegenerator import InternalDomainResourseRecord
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.listener import PostgresListenerService
 from maasserver.models import Config, Domain
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.dns.commands import get_named_conf, setup_dns
 from provisioningserver.dns.config import (
     compose_config_path,
@@ -295,10 +293,6 @@ class TestDNSServer(MAASServerTestCase):
 
 
 class TestDNSConfigModifications(TestDNSServer):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_dns_update_all_zones_loads_full_dns_config(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
@@ -509,10 +503,6 @@ class TestIPv6DNS(TestDNSServer):
 class TestGetUpstreamDNS(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_upstream_dns()"""
 
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_returns_empty_list_if_not_set(self):
         self.assertEqual([], get_upstream_dns())
 
@@ -532,7 +522,6 @@ class TestGetTrustedAcls(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
         self.useFixture(RegionConfigurationFixture())
 
     def test_returns_empty_string_if_no_networks(self):
@@ -588,10 +577,6 @@ class TestGetTrustedNetworks(MAASServerTestCase):
 
 class TestGetInternalDomain(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_internal_domain()"""
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_uses_maas_internal_domain_config(self):
         internal_domain = factory.make_name("internal")
@@ -773,10 +758,6 @@ class TestGetResourceNameForSubnet(MAASServerTestCase):
 
 
 class TestProcessDNSUpdateNotify(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_insert(self):
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
@@ -871,14 +852,9 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
         ip2 = factory.make_StaticIPAddress(
             subnet=subnet, ip=subnet.get_next_ip_for_allocation()[0]
         )
-
-        with post_commit_hooks:
-            resource.ip_addresses.add(ip2)
-
+        resource.ip_addresses.add(ip2)
         message = f"DELETE-IP {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
-
-        with post_commit_hooks:
-            resource.ip_addresses.first().delete()
+        resource.ip_addresses.first().delete()
 
         result, _ = process_dns_update_notify(message)
         self.assertCountEqual(

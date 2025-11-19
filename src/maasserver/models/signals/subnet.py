@@ -1,12 +1,13 @@
-# Copyright 2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2019-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Respond to Subnet CIDR changes."""
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 
-from maasserver.enum import IPADDRESS_TYPE
-from maasserver.models import StaticIPAddress, Subnet
+from maascommon.enums.dns import DnsUpdateAction
+from maasserver.enum import IPADDRESS_TYPE, RDNS_MODE
+from maasserver.models import DNSPublication, StaticIPAddress, Subnet
 from maasserver.utils.signals import SignalsManager
 
 signals = SignalsManager()
@@ -35,13 +36,52 @@ def post_created(sender, instance, created, **kwargs):
     if created:
         update_referenced_ip_addresses(instance)
 
+        if instance.rdns_mode != RDNS_MODE.DISABLED:
+            DNSPublication.objects.create_for_config_update(
+                source=f"added subnet {instance.cidr}",
+                action=DnsUpdateAction.RELOAD,
+            )
+
+
+def post_delete_dns_publication(sender, instance, **kwargs):
+    if instance.rdns_mode != RDNS_MODE.DISABLED:
+        DNSPublication.objects.create_for_config_update(
+            source=f"removed subnet {instance.cidr}",
+            action=DnsUpdateAction.RELOAD,
+        )
+
 
 def updated_cidr(instance, old_values, **kwargs):
     update_referenced_ip_addresses(instance)
 
 
+def emit_dnspublication_on_change(instance, old_values, **kwargs):
+    [old_cidr, old_rdns_mode, old_allow_dns] = old_values
+
+    changes = []
+
+    if old_cidr != instance.cidr:
+        changes.append(f"cidr changed to {instance.cidr}")
+    if old_rdns_mode != instance.rdns_mode:
+        changes.append(f"rdns changed to {instance.cidr}")
+    if old_allow_dns != instance.allow_dns:
+        changes.append(f"allow_dns changed to {instance.allow_dns}")
+    if changes:
+        DNSPublication.objects.create_for_config_update(
+            source=f"subnet {instance.cidr} changes: {', '.join(changes)}",
+            action=DnsUpdateAction.RELOAD,
+        )
+
+
 signals.watch(post_save, post_created, sender=Subnet)
+signals.watch(post_delete, post_delete_dns_publication, sender=Subnet)
 signals.watch_fields(updated_cidr, Subnet, ["cidr"], delete=False)
+signals.watch_fields(
+    emit_dnspublication_on_change,
+    Subnet,
+    ["cidr", "rdns_mode", "allow_dns"],
+    delete=False,
+)
 
 # Enable all signals by default.
 signals.enable()

@@ -1,310 +1,339 @@
-Enter keyword arguments in the form `key=value`.
-
-## Add a tag to a VM host
+Add a tag to a VM host
 
 ```bash
-maas $PROFILE vm-host add-tag [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host add-tag [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Adds a tag to a given VM host.
 
-#### Keyword "tag"
-Required String. The tag to add.
+##### Keyword "tag"
+Optional String. The tag to add.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
 
-## Compose a virtual machine on the host.
+Note: This command accepts JSON.
+
+
+Compose a virtual machine on the host.
 
 ```bash
-maas $PROFILE vm-host compose [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host compose [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Compose a new machine from a VM host.
 
-#### Keyword "cores"
+##### Keyword "cores"
 Optional Int. The minimum number of CPU cores.
+##### Keyword "memory"
+Optional Int. The minimum amount of memory,<br>specified in MiB (e.g. 2 MiB == 2 * 1024 * 1024).
+##### Keyword "hugepages_backed"
+Optional Boolean. Whether to request<br>hugepages backing for the machine.
+##### Keyword "pinned_cores"
+Optional Int. List of host CPU cores<br>to pin the VM to. If this is passed, the “cores” parameter is ignored.
+##### Keyword "cpu_speed"
+Optional Int. The minimum CPU speed,<br>specified in MHz.
+##### Keyword "architecture"
+Optional String. The architecture of<br>the new machine (e.g. amd64). This must be an architecture the VM host<br>supports.
+##### Keyword "storage"
+Optional String. A list of storage<br>constraint identifiers in the form ``label:size(tag,tag,…),<br>label:size(tag,tag,…)``. For more information please see the CLI<br>VM host management page of the official MAAS documentation.
+##### Keyword "interfaces"
+Optional String. A<br>labeled constraint map associating constraint labels with desired<br>interface properties. MAAS will assign interfaces that match the<br>given interface properties. Format: ``label:key=value,key=value,…``<br><br>Keys:<br><br>- ``id``: Matches an interface with the specific id<br>- ``fabric``: Matches an interface attached to the specified fabric.<br>- ``fabric_class``: Matches an interface attached to a fabric<br>with the specified class.<br>- ``ip``: Matches an interface whose VLAN is on the subnet implied by<br>the given IP address, and allocates the specified IP address for<br>the machine on that interface (if it is available).<br>- ``mode``: Matches an interface with the specified mode. (Currently,<br>the only supported mode is "unconfigured".)<br>- ``name``: Matches an interface with the specified name.<br>(For example, "eth0".)<br>- ``hostname``: Matches an interface attached to the node with<br>the specified hostname.<br>- ``subnet``: Matches an interface attached to the specified subnet.<br>- ``space``: Matches an interface attached to the specified space.<br>- ``subnet_cidr``: Matches an interface attached to the specified<br>subnet CIDR. (For example, "192.168.0.0/24".)<br>- ``type``: Matches an interface of the specified type. (Valid<br>types: "physical", "vlan", "bond", "bridge", or "unknown".)<br>- ``vlan``: Matches an interface on the specified VLAN.<br>- ``vid``: Matches an interface on a VLAN with the specified VID.<br>- ``tag``: Matches an interface tagged with the specified tag.
+##### Keyword "hostname"
+Optional String. The hostname of the newly<br>composed machine.
+##### Keyword "domain"
+Optional Int. The ID of the domain in which<br>to put the newly composed machine.
+##### Keyword "zone"
+Optional Int. The ID of the zone in which to<br>put the newly composed machine.
+##### Keyword "pool"
+Optional Int. The ID of the pool in which to<br>put the newly composed machine.
 
-#### Keyword "memory"
-Optional Int. The minimum amount of memory, specified in MiB (e.g. 2 MiB == 2*1024*1024).
 
-#### Keyword "hugepages_backed"
-Optional Boolean. Whether to request hugepages backing for the machine.
+Note: This command accepts JSON.
 
-#### Keyword "pinned_cores"
-Optional Int. List of host CPU cores to pin the VM to. If this is passed, the "cores" parameter is ignored.
 
-#### Keyword "cpu_speed"
-Optional Int. The minimum CPU speed, specified in MHz.
-
-#### Keyword "architecture"
-Optional String. The architecture of the new machine (e.g. amd64). This must be an architecture the VM host supports.
-
-#### Keyword "storage"
-Optional String. A list of storage constraint identifiers in the form ``label:size(tag,tag,), label:size(tag,tag,)``. For more information please see the CLI VM host management page of the official MAAS documentation.
-
-#### Keyword "interfaces"
-Optional. A labeled constraint map associating constraint labels with desired interface properties. MAAS will assign interfaces that match the given interface properties.
-
-Format: ``label:key=value,key=value,``
-
-Keys:
-
-- ``id``: Matches an interface with the specific id
-- ``fabric``: Matches an interface attached to the specified fabric.
-- ``fabric_class``: Matches an interface attached to a fabric with the specified class.
-- ``ip``: Matches an interface whose VLAN is on the subnet implied by the given IP address, and allocates the specified IP address for the machine on that interface (if it is available).
-- ``mode``: Matches an interface with the specified mode. (Currently, the only supported mode is "unconfigured".)
-- ``name``: Matches an interface with the specified name. (For example, "eth0".)
-- ``hostname``: Matches an interface attached to the node with the specified hostname.
-- ``subnet``: Matches an interface attached to the specified subnet.
-- ``space``: Matches an interface attached to the specified space.
-- ``subnet_cidr``: Matches an interface attached to the specified subnet CIDR. (For example, "192.168.0.0/24".)
-- ``type``: Matches an interface of the specified type. (Valid types: "physical", "vlan", "bond", "bridge", or "unknown".)
-- ``vlan``: Matches an interface on the specified VLAN.
-- ``vid``: Matches an interface on a VLAN with the specified VID.
-- ``tag``: Matches an interface tagged with the specified tag.
-
-#### Keyword "hostname"
-Optional String. The hostname of the newly composed machine.
-
-#### Keyword "domain"
-Optional Int. The ID of the domain in which to put the newly composed machine.
-
-#### Keyword "zone"
-Optional Int. The ID of the zone in which to put the newly composed machine.
-
-#### Keyword "pool"
-Optional Int. The ID of the pool in which to put the newly composed machine.
-
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
-
-## Deletes a VM host
+Deletes a VM host
 
 ```bash
-maas $PROFILE vm-host delete [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host delete [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Deletes a VM host with the given ID.
 
-#### Keyword "decompose"
-Optional Boolean. Whether to also decompose all machines in the VM host on removal. If not provided, machines will not be removed.
+##### Keyword "decompose"
+Optional Boolean. Whether to also<br>decompose all machines in the VM host on removal. If not provided, machines<br>will not be removed.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
 
-## Obtain VM host parameters
+Note: This command accepts JSON.
+
+
+Obtain VM host parameters
 
 ```bash
-maas $PROFILE vm-host parameters [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host parameters [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-This returns a VM host's configuration parameters. For some types of VM host, this will include private information such as passwords and secret keys.
 
-Note: This method is reserved for admin users.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
 
-## This operation has been deprecated in favor of 'Virtual-machine-host read'.
+#### **Keywords**
+This returns a VM host's configuration parameters. For some<br>types of VM host, this will include private information such as passwords<br>and secret keys. Note: This method is reserved for admin users.
+
+
+
+
+
 
 ```bash
-maas $PROFILE vm-host read [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host read [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
 
-## Refresh a VM host
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+
+
+
+
+Refresh a VM host
 
 ```bash
-maas $PROFILE vm-host refresh [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host refresh [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-Performs VM host discovery and updates all discovered information and discovered machines.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Remove a tag from a VM host
+
+#### **Keywords**
+Performs VM host discovery and updates all discovered<br>information and discovered machines.
+
+
+
+
+
+Remove a tag from a VM host
 
 ```bash
-maas $PROFILE vm-host remove-tag [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host remove-tag [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Removes a given tag from a VM host.
 
-#### Keyword "tag"
-Required String. The tag to add.
+##### Keyword "tag"
+Optional String. The tag to add.
 
-#### Command-line options
-| Option         | Effect                                        |
-|----------------|-----------------------------------------------|
-| --help, -h     | Show this help message and exit|
-| -d, --debug    | Display more information about API responses|
-| -k, --insecure | Disable SSL certificate check                 |
 
-## Update a specific VM host
+Note: This command accepts JSON.
+
+
+Update a specific VM host
 
 ```bash
-maas $PROFILE vm-host update [--help] [-d] [-k] id [data ...] 
+maas $PROFILE vm-host update [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
-Update a specific VM host by ID.
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
 
-Note: A VM host's 'type' cannot be updated. The VM host must be deleted and re-added to change the type.
 
-#### Keyword "name"
+#### **Keywords**
+Update a specific VM host by ID. Note: A VM host's 'type' cannot be updated. The VM host must be deleted<br>and re-added to change the type.
+
+##### Keyword "name"
 Optional String. The VM host's name.
-
-#### Keyword "pool"
-Optional String. The name of the resource pool associated with this VM host -- composed machines will be assigned to this resource pool by default.
-
-#### Keyword "cpu_over_commit_ratio"
-Optional Int. CPU overcommit ratio (0-10)
-
-#### Keyword "memory_over_commit_ratio"
-Optional Int. CPU overcommit ratio (0-10)
-
-#### Keyword "default_storage_pool"
-Optional String. Default KVM storage pool to use when the VM host has storage pools.
-
-#### Keyword "power_address"
-Optional String. Address for power control of the VM host.
-
-#### Keyword "power_pass"
-Optional String. Password for access to power control of the VM host.
-
-#### Keyword "zone"
+##### Keyword "pool"
+Optional String. The name of the resource pool<br>associated with this VM host -- composed machines will be assigned to this<br>resource pool by default.
+##### Keyword "cpu_over_commit_ratio"
+Optional Int. CPU overcommit<br>ratio (0-10)
+##### Keyword "memory_over_commit_ratio"
+Optional Int. CPU overcommit<br>ratio (0-10)
+##### Keyword "default_storage_pool"
+Optional String. Default KVM<br>storage pool to use when the VM host has storage pools.
+##### Keyword "power_address"
+Optional String. Address for power<br>control of the VM host.
+##### Keyword "power_pass"
+Optional String. Password for access to<br>power control of the VM host.
+##### Keyword "zone"
 Optional String. The VM host's zone.
+##### Keyword "default_macvlan_mode"
+Optional String. Default macvlan<br>mode for VM hosts that use it: bridge, passthru, private, vepa.
+##### Keyword "tags"
+Optional String. Tag or tags (command separated)<br>associated with the VM host.
 
-#### Keyword "default_macvlan_mode"
-Optional String. Default macvlan mode for VM hosts that use it: bridge, passthru, private, vepa.
 
-#### Keyword "tags"
-Optional String. Tag or tags (command separated) associated with the VM host.
+Note: This command accepts JSON.
 
-#### Command-line options
-| Option         | Effect                                       |
-|----------------|----------------------------------------------|
-| --help, -h     | Show this help message and exit              |
-| -d, --debug    | Display more information about API responses |
-| -k, --insecure | Disable SSL certificate check                |
-|                |                                              |
 
-## Create a VM host
+Create a VM host
 
 ```bash
-maas $PROFILE vm-hosts create [--help] [-d] [-k] [data ...] 
+maas $PROFILE vm-hosts create [--help] [-d] [-k] [data ...]
+
 ```
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Create or discover a new VM host.
 
-#### Keyword "type"
-Required String. The type of VM host to create: ``lxd`` or ``virsh``.
-
-#### Keyword "power_address"
-Required String. Address that gives MAAS access to the VM host power control. For example, for virsh ``qemu+ssh://172.16.99.2/system`` For ``lxd``, this is just the address of the host.
-
-#### Keyword "power_user"
-Required String. Username to use for power control of the VM host. Required for ``virsh`` VM hosts that do not have SSH set up for public-key authentication.
-
-#### Keyword "power_pass"
-Required String. Password to use for power control of the VM host. Required ``virsh`` VM hosts that do not have SSH set up for public-key authentication and for ``lxd`` if the MAAS certificate is not registered already in the LXD server.
-
-#### Keyword "name"
+##### Keyword "type"
+Optional String. The type of VM host to create:<br>``lxd`` or ``virsh``.
+##### Keyword "power_address"
+Optional String. Address that gives<br>MAAS access to the VM host power control. For example, for virsh<br>``qemu+ssh://172.16.99.2/system``<br>For ``lxd``, this is just the address of the host.
+##### Keyword "power_user"
+Optional String. Username to use for<br>power control of the VM host. Required for ``virsh``<br>VM hosts that do not have SSH set up for public-key authentication.
+##### Keyword "power_pass"
+Optional String. Password to use for<br>power control of the VM host. Required ``virsh`` VM hosts that do<br>not have SSH set up for public-key authentication and for ``lxd``<br>if the MAAS certificate is not registered already in the LXD server.
+##### Keyword "name"
 Optional String. The new VM host's name.
-
-#### Keyword "zone"
+##### Keyword "zone"
 Optional String. The new VM host's zone.
+##### Keyword "pool"
+Optional String. The name of the resource<br>pool the new VM host will belong to. Machines composed from this VM host<br>will be assigned to this resource pool by default.
+##### Keyword "tags"
+Optional String. A tag or list of tags (<br>comma delimited) to assign to the new VM host.
+##### Keyword "project"
+Optional String. For ``lxd`` VM hosts, the<br>project that MAAS will manage. If not provided, the ``default`` project<br>will be used. If a nonexistent name is given, a new project with that<br>name will be created.
+##### Keyword "certificate"
+Optional String. X.509 certificate used<br>to verify the identity of the user. If ``certificate`` and ``key`` are<br>not provided, and the VM created is LXD type, a X.509 certificate will<br>be created.
+##### Keyword "key"
+Optional String. private key used for<br>authentication. If ``certificate`` and ``key`` are not provided, and<br>the VM created is LXD type, a RSA key will be created.
 
-#### Keyword "pool"
-Optional String. The name of the resource pool the new VM host will belong to. Machines composed from this VM host will be assigned to this resource pool by default.
 
-#### Keyword "tags"
-Optional String. A tag or list of tags ( comma delimited) to assign to the new VM host.
+Note: This command accepts JSON.
 
-#### Keyword "project"
-Optional String. For ``lxd`` VM hosts, the project that MAAS will manage. If not provided, the ``default`` project will be used. If a nonexistent name is given, a new project with that name will be created.
 
-#### Keyword "certificate"
-Optional. X.509 certificate used to verify the identity of the user. If ``certificate`` and ``key`` are not provided, and the VM created is LXD type, a X.509 certificate will be created.
-
-#### Keyword "key"
-Optional String. private key used for authentication. If ``certificate`` and ``key`` are not provided, and the VM created is LXD type, a RSA key will be created.
-
-#### Command-line options
-| Option         | Effect                                       |
-|----------------|----------------------------------------------|
-| --help, -h     | Show this help message and exit              |
-| -d, --debug    | Display more information about API responses |
-| -k, --insecure | Disable SSL certificate check                |
-
-## List VM hosts
+List VM hosts
 
 ```bash
-maas $PROFILE vm-hosts read [--help] [-d] [-k] [data ...] 
+maas $PROFILE vm-hosts read [--help] [-d] [-k]
+
 ```
 
-Get a listing of all VM hosts. 
 
-#### Command-line options
-| Option         | Effect                                       |
-|----------------|----------------------------------------------|
-| --help, -h     | Show this help message and exit              |
-| -d, --debug    | Display more information about API responses |
-| -k, --insecure | Disable SSL certificate check                |
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
+Get a listing of all VM hosts.

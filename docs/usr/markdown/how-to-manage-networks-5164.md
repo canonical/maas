@@ -2,25 +2,25 @@ MAAS provides pre-configured [networks](https://canonical.com/maas/docs/about-ma
 
 ## Manage interfaces 
 
-MAAS gives you detailed control over network interfaces for each machine — including physical NICs, VLANs, bonds, and bridges. These interfaces form the backbone of your deployment topology. Learn how to create, view, and manage them using the MAAS UI and CLI.
+MAAS gives you detailed control over network interfaces for each machine — including physical NICs, VLANs, bonds, and bridges.  These interfaces form the backbone of your deployment topology.  Learn how to create, view, and manage them using the MAAS UI and CLI.
 
 ### Create an interface 
 
-Interfaces define how a machine connects to your network. You can create physical, VLAN, bond, or bridge interfaces — each with its own use case. Begin with the most basic type: the physical interface.
+Interfaces define how a machine connects to your network.  You can create physical, VLAN, bond, or bridge interfaces — each with its own use case.  Begin with the most basic type: the physical interface.
 
 #### Create a physical interface
 
-A physical interface represents a hardware NIC on the machine. MAAS usually detects these automatically during commissioning. You only need to create one if you are:
+A physical interface represents a hardware NIC on the machine.  MAAS usually detects these automatically during commissioning.  You only need to create one if you are:
 
 - manually re-creating the interface layout
 - automating machine configuration post-commissioning
 - scripting complex interface setups
 
-If the machine is already deployed, you won’t be able to modify or add physical interfaces. Bring it to a “Ready” or “Broken” state first.
+If the machine is already deployed, you won’t be able to modify or add physical interfaces.  Bring it to a “Ready” or “Broken” state first.
 
 **CLI**
 ```bash 
-maas $PROFILE interfaces create-physical $SYSTEM_ID (key=value)....
+maas $PROFILE interfaces create-physical $SYSTEM_ID (key=value)….
 ```
 
 Use key-value pairs to set interface properties like:
@@ -48,7 +48,7 @@ In MAAS, a VLAN is a virtual interface associated with:
 You can create a VLAN interface with a command of the form:
 
 ```bash
-maas $PROFILE interfaces create-vlan $SYSTEM_ID key=value...
+maas $PROFILE interfaces create-vlan $SYSTEM_ID key=value…
 ```
 
 This command has two required keys and several optional key-value pairs.
@@ -107,7 +107,7 @@ maas $PROFILE interfaces create-bond $SYSTEM_ID name=$BOND_NAME parents=$IFACE1_
 
 Note that `parents` refer to the IDs of the physical interfaces you want to bond.
 
-Every bond must have a mode, though `bonding_mode` is optional in this command. For MAAS, the default bonding mode is `balance_rr`, which transmits packets sequentially from the first available slave through the last. This mode is chosen as default because it provides load balancing and fault tolerance.
+Every bond must have a mode, though `bonding_mode` is optional in this command.  For MAAS, the default bonding mode is `balance_rr`, which transmits packets sequentially from the first available slave through the last.  This mode is chosen as default because it provides load balancing and fault tolerance.
 
 Refer to the [interface CLI reference page](https://canonical.com/maas/docs/interface#p-23244-create-a-bond-interface) for detailed instruction on how to use the CLI command and other bonding mode choices.
 
@@ -128,13 +128,13 @@ Bridge interfaces come in handy in when you're:
 - using KVM, LXD, or libvirt and they require a bridge
 - attaching multiple NICs with routes, but without bonding
 
-A bridge interface is a virtual network switch that connects one or more physical or VLAN interfaces together. It can also be used to:
+A bridge interface is a virtual network switch that connects one or more physical or VLAN interfaces together.  It can also be used to:
 
 - Allow VMs or containers to share a physical NIC
 - Support PXE boot with a bridged external connection
 - Route between subnets or bonding multiple interfaces under one IP
 
-Bridging is often confused with bonding. Bonding is about failover or speed; bridging is about routing traffic through multiple interfaces.
+Bridging is often confused with bonding.  Bonding is about failover or speed; bridging is about routing traffic through multiple interfaces.
 
 To create a bridge interface:
 
@@ -179,7 +179,7 @@ maas $PROFILE interface link-subnet $SYSTEM_ID $BRIDGE_ID subnet=$SUBNET_ID mode
 
 ##### Common issues
 
-- This command only works in "Ready" or "Broken" states. No interface changes are allowed on deployed machines.
+- This command only works in "Ready" or "Broken" states.  No interface changes are allowed on deployed machines.
 - The parent interface must not already be part of a bond or another bridge.
 - The subnet must be managed by MAAS if you're assigning static IPs.
 - You need the correct subnet ID, which may require filtering by CIDR and `managed=true`.
@@ -209,7 +209,7 @@ sudo netplan apply
 ```
 
 ### View and maintain interfaces
- Once created, MAAS interfaces can be listed, reviewed, updated, or deleted. The machine must be in the correct state (`Ready` or `Broken`) to allow most changes. Deployed machines can only be updated in limited ways (e.g., changing MAC addresses for replacement).
+ Once created, MAAS interfaces can be listed, reviewed, updated, or deleted.  The machine must be in the correct state (`Ready` or `Broken`) to allow most changes.  Deployed machines can only be updated in limited ways (e.g., changing MAC addresses for replacement).
  
 See the [CLI reference](https://canonical.com/maas/docs/interface) for more details.
 
@@ -239,7 +239,7 @@ maas $PROFILE interface read $SYSTEM_ID $INTERFACE_ID
 
 #### Update an interface
 
-Update interface parameters — but only if the machine is in `Ready` or `Broken` state. If the machine is `Deployed`, you can update only:
+Update interface parameters — but only if the machine is in `Ready` or `Broken` state.  If the machine is `Deployed`, you can update only:
 
 - `name`
 - `mac_address`
@@ -248,7 +248,7 @@ This allows field-replacement of broken NICs without full re-commissioning.
 
 **CLI**
 ```bash
-maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID (key=value)...
+maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID (key=value)…
 ```
 
 Use the appropriate parameter set for the interface type (physical, bridge, bond, VLAN, etc.).
@@ -257,7 +257,7 @@ See [the CLI subcommand reference](https://canonical.com/maas/docs/interface#p-2
 
 #### Delete an interface
 
-Remove an interface that is no longer needed. This is typically used when rolling back a misconfiguration or cleaning up testing setups.
+Remove an interface that is no longer needed.  This is typically used when rolling back a misconfiguration or cleaning up testing setups.
 
 **CLI**
 ```bash
@@ -266,13 +266,13 @@ maas $PROFILE interface delete $SYSTEM_ID $INTERFACE_ID
 
 ### Manage routes and links
 
-Routing and subnet linking are crucial for machine connectivity. MAAS allows interfaces to be connected, disconnected, or routed with custom logic — via both UI and CLI. 
+Routing and subnet linking are crucial for machine connectivity.  MAAS allows interfaces to be connected, disconnected, or routed with custom logic — via both UI and CLI. 
 
-This section shows how to disconnect interfaces, link or unlink them to subnets, assign gateways, and add static routes. It also explains how to set up loopback interfaces.
+This section shows how to disconnect interfaces, link or unlink them to subnets, assign gateways, and add static routes.  It also explains how to set up loopback interfaces.
 
 #### Disconnect an interface
 
-You can disconnect a given interface from its current network configuration. This action:
+You can disconnect a given interface from its current network configuration.  This action:
 
 - Unlinks any connected subnets
 - Removes assigned IP addresses
@@ -287,7 +287,7 @@ maas $PROFILE interface disconnect $SYSTEM_ID $INTERFACE_ID
 
 #### Link an interface to a subnet
 
-You can connect an interface to a known subnet. This enables traffic routing and IP assignment. The subnet must exist and be discoverable by MAAS.
+You can connect an interface to a known subnet.  This enables traffic routing and IP assignment.  The subnet must exist and be discoverable by MAAS.
 
 **CLI**
 ```bash
@@ -311,7 +311,7 @@ maas $PROFILE interface unlink-subnet $SYSTEM_ID $INTERFACE_ID
 
 #### Set the default gateway
 
-You can update the gateway for a specific subnet. This is a subnet-level setting that affects routing behavior for all devices on that subnet.
+You can update the gateway for a specific subnet.  This is a subnet-level setting that affects routing behavior for all devices on that subnet.
 
 **CLI**
 ```bash
@@ -320,7 +320,7 @@ maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
 
 #### Add a static route
 
-Route specific traffic between source and destination subnets through a defined gateway. Useful for custom networking setups or multi-NIC systems.
+Route specific traffic between source and destination subnets through a defined gateway.  Useful for custom networking setups or multi-NIC systems.
 
 **UI**
 *Networking > Subnets > (Select subnet) > Add static route > Fill fields > Save*
@@ -332,7 +332,7 @@ maas $PROFILE static-routes create source=$SOURCE_SUBNET destination=$DEST_SUBNE
 
 #### Configure a loopback interface
 
-Loopback interfaces can be added after commissioning, using a placeholder MAC address (`00:00:00:00:00:00`). This allows MAAS to recognize it as an intentional loopback, not a misconfigured NIC.
+Loopback interfaces can be added after commissioning, using a placeholder MAC address (`00:00:00:00:00:00`).  This allows MAAS to recognize it as an intentional loopback, not a misconfigured NIC.
 
 To automate loopback setup, use `cloud-init`.
 
@@ -371,7 +371,7 @@ maas $PROFILE interface read $SYSTEM_ID $INTERFACE_ID
 
 ### Manage dual NICs
 
-Some deployments require dual NIC configurations — for example, separating public internet traffic from private internal communication. MAAS supports this setup via UI, CLI, or external tools like Netplan.
+Some deployments require dual NIC configurations — for example, separating public internet traffic from private internal communication.  MAAS supports this setup via UI, CLI, or external tools like Netplan.
 
 #### Set up dual NICs with MAAS
 
@@ -412,7 +412,7 @@ sudo netplan apply
 
 ### Manage network discovery
 
-MAAS can automatically detect devices on your network, including those it doesn’t manage — like switches, routers, IoT.
+MAAS can automatically detect devices on your network, including those it does not’t manage — like switches, routers, IoT.
 
 Use network discovery to:
 
@@ -559,7 +559,7 @@ maas $PROFILE discoveries clear mdns=true
 
 ## Manage subnets
 
-The following instructions are based on MAAS 3.4. For earlier versions, the UI element names may differ.*
+The following instructions are based on MAAS 3.4.  For earlier versions, the UI element names may differ.*
 
 ### Examine subnets
 

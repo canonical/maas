@@ -1,4 +1,4 @@
-In the MAAS CLI, an **API profile** represents a stored set of credentials and connection details for a specific MAAS server. Profiles enable users to manage multiple MAAS environments efficiently by maintaining separate authentication contexts.
+In the MAAS CLI, an **API profile** represents a stored set of credentials and connection details for a specific MAAS server.  Profiles enable users to manage multiple MAAS environments efficiently by maintaining separate authentication contexts.
 
 ## Managing API profiles:
 

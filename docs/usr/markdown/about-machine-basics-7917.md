@@ -1,4 +1,4 @@
-In MAAS, a machine is a physical or virtual server that MAAS can provision, configure, and manage. To understand how MAAS treats machines, it helps to start with the basics: what a machine is at the hardware level, how it boots, how it is controlled, and how MAAS represents those components.
+In MAAS, a machine is a physical or virtual server that MAAS can provision, configure, and manage.  To understand how MAAS treats machines, it helps to start with the basics: what a machine is at the hardware level, how it boots, how it is controlled, and how MAAS represents those components.
 
 
 ## What is a machine?
@@ -40,7 +40,7 @@ At every step, MAAS uses the BMC interface to ensure the machine can be powered 
 
 ## Machines in the MAAS UI
 
-In the web UI, machines appear in the *Machines* list, with columns for status, power state, owner, pool, zone, and tags. From here, you can:
+In the web UI, machines appear in the *Machines* list, with columns for status, power state, owner, pool, zone, and tags.  From here, you can:
 
 - Filter and search for machines.
 - Add new hardware manually or via chassis import.
@@ -59,7 +59,7 @@ Clicking a machine opens its summary, which shows:
 
 ## CLI equivalent
 
-The same data can be retrieved programmatically. For example:
+The same data can be retrieved programmatically.  For example:
 
 ```bash
 maas $PROFILE machines read | jq -r '(["FQDN","POWER","STATUS","OWNER","POOL","ZONE"] | (., map(length*"-"))),
@@ -81,7 +81,7 @@ Once integrated into MAAS, machines follow a consistent lifecycle:
 
 ## Key takeaway
 
-A machine in MAAS is not just an entry in a table. It’s a full representation of a server: its hardware, network identity, power controls, and configuration. By abstracting these details, MAAS makes it possible to provision and manage fleets of servers as easily as you might manage VMs in a cloud.
+A machine in MAAS is not just an entry in a table.  It’s a full representation of a server: its hardware, network identity, power controls, and configuration.  By abstracting these details, MAAS makes it possible to provision and manage fleets of servers as easily as you might manage VMs in a cloud.
 
 ## Next steps
 

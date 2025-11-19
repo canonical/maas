@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.base`"""
@@ -12,7 +12,6 @@ from twisted.internet.defer import succeed
 
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models.node import Device, Node
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.vlan import VLAN
@@ -165,10 +164,6 @@ class FakeNodesHandlerMixin:
 
 
 class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_full_dehydrate_only_includes_allowed_fields(self):
         handler = self.make_nodes_handler(fields=["hostname", "cpu_count"])
         node = factory.make_Node()

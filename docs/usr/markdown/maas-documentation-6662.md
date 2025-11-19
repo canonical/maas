@@ -1,6 +1,6 @@
-**What is MAAS?** MAAS (Metal as a Service) is Canonical’s private cloud infrastructure management system. It enables physical servers to behave like cloud instances: deploy, manage, and scale your infrastructure through automated, repeatable processes.
+**What is MAAS?** MAAS (Metal as a Service) is Canonical’s private cloud infrastructure management system.  It enables physical servers to behave like cloud instances: deploy, manage, and scale your infrastructure through automated, repeatable processes.
 
-**How does MAAS work?** MAAS discovers your hardware and allows you to configure and deploy operating systems with API-driven workflows. It integrates tightly with DNS, DHCP, and image management, and supports complex networking and storage scenarios.
+**How does MAAS work?** MAAS discovers your hardware and allows you to configure and deploy operating systems with API-driven workflows.  It integrates tightly with DNS, DHCP, and image management, and supports complex networking and storage scenarios.
 
 **Who is MAAS for?**  MAAS is built for DevOps teams, system administrators and data center architects — anyone provisioning bare-metal at scale.
 
@@ -14,24 +14,24 @@
 ## In this documentation
 | | |
 |----|----|
-| [Tutorial](/t/-/5360)</br>  Hands-on introduction to MAAS features       | [How-to guides](/t/how-to-guides/6663) </br> Step-by-step guides covering key operations |
-| [Explanation](/t/explanation/6141) </br> Detailed theory on the inner workings of MAAS  | [Reference](/t/reference/6143) </br> Technical specifications |
+| [Tutorial](https://canonical.com/maas/docs/maas-in-thirty-minutes)</br>  Hands-on introduction to MAAS features       | [How-to guides](https://canonical.com/maas/docs/how-to-guides) </br> Step-by-step guides covering key operations |
+| [Explanation](https://canonical.com/maas/docs/explanation) </br> Detailed theory on the inner workings of MAAS  | [Reference](https://canonical.com/maas/docs/reference) </br> Technical specifications |
 
 
 ## Project and community
 
-MAAS is a member of the Ubuntu family. It is an open source project that warmly welcomes community projects, contributions, suggestions, fixes and constructive feedback.
+MAAS is a member of the Ubuntu family.  It is an open source project that warmly welcomes community projects, contributions, suggestions, fixes and constructive feedback.
 
 - [Read our code of conduct](https://ubuntu.com/community/code-of-conduct)
 - [Get support](https://ubuntu.com/pro)
-- [Learn about MAAS performance](/t/about-maas-performance/6178)
-- [Join our forum](/t/how-to-engage-on-the-discourse-forum/6802)
+- [Learn about MAAS performance](https://canonical.com/maas/docs/about-maas-performance)
+- [Join our forum](https://canonical.com/maas/docs/how-to-engage-on-the-discourse-forum)
 - [Contribute code](https://launchpad.net/maas)
-- [Improve our documentation](/t/how-to-contribute-to-maas-documentation/6949)
-- [Request a feature](/t/how-to-request-features/4447)
-- [Report a bug](/t/how-to-report-and-review-bugs/4446)
+- [Improve our documentation](https://canonical.com/maas/docs/how-to-contribute-to-maas-documentation)
+- [Request a feature](https://canonical.com/maas/docs/how-to-request-features)
+- [Report a bug](https://canonical.com/maas/docs/how-to-report-and-review-bugs)
 
-Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448)
+Considering MAAS for your next project? [Get in touch](https://canonical.com/maas/docs/how-to-contact-us)
 
 
 ## Navigation
@@ -39,155 +39,155 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 [details=Navigation items]
 |Level | Path | Navlink|
 |--- | --- | ---|
-|0 | / | [Home](/t/-/6662)|
+|0 | / | [Home](https://canonical.com/maas/docs)|
 |0 |  | |
-|1 | maas-in-thirty-minutes | [Tutorial](/t/-/5360)|
-|1 | how-to-guides | [How-to guides](/t/-/6663)|
-|2 | how-to-get-maas-up-and-running | [Get MAAS up and running](/t/-/5128)|
-|2 | how-to-back-up-maas | [Back up MAAS](/t/-/5096)|
-|2 | how-to-manage-networks | [Manage networks](/t/-/5164)|
-|2 | how-to-manage-network-services | [Manage network services](/t/-/11320)|
-|2 | how-to-manage-machines | [Manage machines](/t/-/5172)|
-|2 | how-to-manage-machine-groups | [Manage machine groups](/t/-/8833)|
-|2 | how-to-manage-images | [Manage images](/t/-/5124)|
-|2 | how-to-build-ubuntu-images | [Build Ubuntu images](/t/-/7873)|
-|2 | how-to-build-custom-images | [Build custom images](/t/-/7872)|
-|2 | how-to-manage-high-availability | [Manage high-availability](/t/-/5120)|
-|2 | how-to-use-logging | [Use logging](/t/-/6956)|
-|2 | how-to-monitor-maas | [Monitor MAAS](/t/-/5204)|
-|2 | how-to-enhance-maas-security | [Enhance MAAS security](/t/-/5196)|
-|2 | how-to-deploy-a-real-time-kernel | [Deploy a real-time kernel](/t/-/6658)|
-|2 | how-to-deploy-a-fips-compliant-kernel | [Deploy a FIPS kernel](/t/-/7743)|
-|2 | how-to-set-up-air-gapped-maas | [Set up air-gapped MAAS](/t/-/5212)|
-|2 | how-to-script-maas-with-python | [Script MAAS with Python](/t/-/5404)|
-|2 | how-to-deploy-vms-on-ibm-z | [Deploy VMs on IBM Z](/t/-/7885)|
-|1 | reference | [Reference](/t/-/6143)|
-|2 | release-notes-and-upgrade-instructions | [Release notes](/t/-/5292)|
-|2 | supported-maas-versions | [Supported MAAS versions](/t/-/11980)|
+|1 | maas-in-thirty-minutes | [Tutorial](https://canonical.com/maas/docs/maas-in-thirty-minutes)|
+|1 | how-to-guides | [How-to guides](https://canonical.com/maas/docs/how-to-guides)|
+|2 | how-to-get-maas-up-and-running | [Get MAAS up and running](https://canonical.com/maas/docs/how-to-get-maas-up-and-running)|
+|2 | how-to-back-up-maas | [Back up MAAS](https://canonical.com/maas/docs/how-to-back-up-maas)|
+|2 | how-to-manage-networks | [Manage networks](https://canonical.com/maas/docs/how-to-manage-networks)|
+|2 | how-to-manage-network-services | [Manage network services](https://canonical.com/maas/docs/how-to-manage-network-services)|
+|2 | how-to-manage-machines | [Manage machines](https://canonical.com/maas/docs/how-to-manage-machines)|
+|2 | how-to-manage-machine-groups | [Manage machine groups](https://canonical.com/maas/docs/how-to-manage-machine-groups)|
+|2 | how-to-manage-images | [Manage images](https://canonical.com/maas/docs/how-to-manage-images)|
+|2 | how-to-build-ubuntu-images | [Build Ubuntu images](https://canonical.com/maas/docs/how-to-build-ubuntu-images)|
+|2 | how-to-build-custom-images | [Build custom images](https://canonical.com/maas/docs/how-to-build-custom-images)|
+|2 | how-to-manage-high-availability | [Manage high-availability](https://canonical.com/maas/docs/how-to-manage-high-availability)|
+|2 | how-to-use-logging | [Use logging](https://canonical.com/maas/docs/how-to-use-logging)|
+|2 | how-to-monitor-maas | [Monitor MAAS](https://canonical.com/maas/docs/how-to-monitor-maas)|
+|2 | how-to-enhance-maas-security | [Enhance MAAS security](https://canonical.com/maas/docs/how-to-enhance-maas-security)|
+|2 | how-to-deploy-a-real-time-kernel | [Deploy a real-time kernel](https://canonical.com/maas/docs/how-to-deploy-a-real-time-kernel)|
+|2 | how-to-deploy-a-fips-compliant-kernel | [Deploy a FIPS kernel](https://canonical.com/maas/docs/how-to-deploy-a-fips-compliant-kernel)|
+|2 | how-to-set-up-air-gapped-maas | [Set up air-gapped MAAS](https://canonical.com/maas/docs/how-to-set-up-air-gapped-maas)|
+|2 | how-to-script-maas-with-python | [Script MAAS with Python](https://canonical.com/maas/docs/how-to-script-maas-with-python)|
+|2 | how-to-deploy-vms-on-ibm-z | [Deploy VMs on IBM Z](https://canonical.com/maas/docs/how-to-deploy-vms-on-ibm-z)|
+|1 | reference | [Reference](https://canonical.com/maas/docs/reference)|
+|2 | release-notes-and-upgrade-instructions | [Release notes](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions)|
+|2 | supported-maas-versions | [Supported MAAS versions](https://canonical.com/maas/docs/supported-maas-versions)|
 |2 |  | API reference|
-|3 | how-to-authenticate-to-the-maas-api | [API login](/t/-/5060)|
-|3 | profile | [API profile](/t/-/11347)|
-|3 | reference-api-documentation | [API reference](/maas/docs/api)|
+|3 | how-to-authenticate-to-the-maas-api | [API login](https://canonical.com/maas/docs/how-to-authenticate-to-the-maas-api)|
+|3 | profile | [API profile](https://canonical.com/maas/docs/profile)|
+|3 | reference-api-documentation | [API reference](https://canonical.com/maas/docs/api)|
 |2 |  | CLI reference|
-|3 | account | [account](/t/-/3205)|
-|3 | apikey | [apikey](/t/-/11400)|
-|3 | bcache | [bcache](/t/-/6836)|
-|3 | bcache-cache-set | [bcache-cache-set](/t/-/11401)|
-|3 | block-device | [block-device](/t/-/2357)|
-|3 | boot-resource | [boot-resource](/t/-/11355)|
-|3 | boot-source-selection | [boot-source-selection](/t/-/11402)|
-|3 | boot-source | [boot-source](/t/-/6850)|
-|3 | changepassword | [changepassword](/t/-/11380)|
-|3 | commissioning-scripts | [commissioning-scripts](/t/-/6605)|
-|3 | configauth | [configauth](/t/-/11378)|
-|3 | config | [config](/t/-/11403)|
-|3 | config-tls | [config-tls](/t/-/11351)|
-|3 | config-vault | [config-vault](/t/-/11348)|
-|3 | createadmin | [createadmin](/t/-/11379)|
-|3 | device | [device](/t/-/11356)|
-|3 | dhcp-snippet | [dhcp-snippet](/t/-/11357)|
-|3 | discovery | [discovery](/t/-/758)|
-|3 | dnsresource-records | [dnsresource-records](/t/-/11404)|
-|3 | dnsresource | [dnsresource](/t/-/11352)|
-|3 | domain | [domain](/t/-/11405)|
-|3 | events | [events](/t/-/6373)|
-|3 | fabric | [fabric](/t/-/11359)|
-|3 | file | [file](/t/-/11360)|
-|3 | init | [init](/t/-/11350)|
-|3 | interface | [interface](/t/-/11364)|
-|3 | ipaddresses | [ipaddresses](/t/-/761)|
-|3 | iprange | [iprange](/t/-/760)|
-|3 | license-key | [license-key](/t/-/11362)|
-|3 | list | [list](/t/-/11406)|
-|3 | login | [login](/t/-/11345)|
-|3 | logout | [logout](/t/-/11407)|
-|3 | maas | [maas](/t/-/11408)|
-|3 | machine | [machine](/t/-/11365)|
-|3 | migrate | [migrate](/t/-/11381)|
-|3 | network | [network](/t/-/11409)|
-|3 | node | [node](/t/-/11431)|
-|3 | node-device | [node-device](/t/-/11410)|
-|3 | node-result | [node-result](/t/-/11411)|
-|3 | node-script-result | [node-script-result](/t/-/11412)|
-|3 | node-script | [node-script](/t/-/11413)|
-|3 | notification | [notification](/t/-/11366)|
-|3 | package-repository | [package-repository](/t/-/814)|
-|3 | partition | [partition](/t/-/11367)|
-|3 | pod | [pod](/t/-/823)|
-|3 | cli-rack-controller | [rack-controller](/t/-/11415)|
-|3 | raid | [raid](/t/-/11369)|
-|3 | refresh | [refresh](/t/-/11414)|
-|3 | cli-region-controller | [region-controller](/t/-/11344)|
-|3 | resource-pool | [resource-pool](/t/-/3089)|
-|3 | space | [space](/t/-/11370)|
-|3 | sshkey | [sshkey](/t/-/11371)|
-|3 | sslkey | [sslkey](/t/-/11342)|
-|3 | static-route | [static-route](/t/-/11372)|
-|3 | status | [status](/t/-/11349)|
-|3 | subnet | [subnet](/t/-/766)|
-|3 | tag | [tag](/t/-/6941)|
-|3 | user | [user](/t/-/11374)|
-|3 | version | [version](/t/-/11341)|
-|3 | vlan | [vlan](/t/-/11375)|
-|3 | vm-cluster | [vm-cluster](/t/-/11340)|
-|3 | vmfs-datastores | [vmfs-datastores](/t/-/780)|
-|3 | vm-host | [vm-host](/t/-/11376)|
-|3 | volume-group | [volume-group](/t/-/11339)|
-|3 | zone | [zone](/t/-/11377)|
+|3 | account | [account](https://canonical.com/maas/docs/account)|
+|3 | apikey | [apikey](https://canonical.com/maas/docs/apikey)|
+|3 | bcache | [bcache](https://canonical.com/maas/docs/bcache)|
+|3 | bcache-cache-set | [bcache-cache-set](https://canonical.com/maas/docs/bcache-cache-set)|
+|3 | block-device | [block-device](https://canonical.com/maas/docs/block-device)|
+|3 | boot-resource | [boot-resource](https://canonical.com/maas/docs/boot-resource)|
+|3 | boot-source-selection | [boot-source-selection](https://canonical.com/maas/docs/boot-source-selection)|
+|3 | boot-source | [boot-source](https://canonical.com/maas/docs/boot-source)|
+|3 | change password | [change password](https://canonical.com/maas/docs/changepassword)|
+|3 | commissioning-scripts | [commissioning-scripts](https://canonical.com/maas/docs/commissioning-scripts)|
+|3 | configauth | [configauth](https://canonical.com/maas/docs/configauth)|
+|3 | config | [config](https://canonical.com/maas/docs/config)|
+|3 | config-tls | [config-tls](https://canonical.com/maas/docs/config-tls)|
+|3 | config-vault | [config-vault](https://canonical.com/maas/docs/config-vault)|
+|3 | createadmin | [createadmin](https://canonical.com/maas/docs/createadmin)|
+|3 | device | [device](https://canonical.com/maas/docs/device)|
+|3 | dhcp-snippet | [dhcp-snippet](https://canonical.com/maas/docs/dhcp-snippet)|
+|3 | discovery | [discovery](https://canonical.com/maas/docs/discovery)|
+|3 | dnsresource-records | [dnsresource-records](https://canonical.com/maas/docs/dnsresource)|
+|3 | dnsresource | [dnsresource](https://canonical.com/maas/docs/dnsresource)|
+|3 | domain | [domain](https://canonical.com/maas/docs/domain)|
+|3 | events | [events](https://canonical.com/maas/docs/events)|
+|3 | fabric | [fabric](https://discourse.maas.io/t/-/11359)|
+|3 | file | [file](https://canonical.com/maas/docs/file)|
+|3 | init | [init](https://canonical.com/maas/docs/init)|
+|3 | interface | [interface](https://canonical.com/maas/docs/interface)|
+|3 | ipaddresses | [ipaddresses](https://canonical.com/maas/docs/ipaddresses)|
+|3 | iprange | [iprange](https://canonical.com/maas/docs/iprange)|
+|3 | license-key | [license-key](https://canonical.com/maas/docs/license-key)|
+|3 | list | [list](https://canonical.com/maas/docs/list)|
+|3 | login | [login](https://canonical.com/maas/docs/login)|
+|3 | logout | [logout](https://canonical.com/maas/docs/logout)|
+|3 | maas | [maas](https://canonical.com/maas/docs/maas)|
+|3 | machine | [machine](https://canonical.com/maas/docs/machine)|
+|3 | migrate | [migrate](https://canonical.com/maas/docs/migrate)|
+|3 | network | [network](https://canonical.com/maas/docs/network)|
+|3 | node | [node](https://canonical.com/maas/docs/node)|
+|3 | node-device | [node-device](https://canonical.com/maas/docs/node-device)|
+|3 | node-result | [node-result](https://canonical.com/maas/docs/node-result)|
+|3 | node-script-result | [node-script-result](https://canonical.com/maas/docs/node-script-result)|
+|3 | node-script | [node-script](https://canonical.com/maas/docs/node-script)|
+|3 | notification | [notification](https://canonical.com/maas/docs/notification)|
+|3 | package-repository | [package-repository](https://canonical.com/maas/docs/package-repository)|
+|3 | partition | [partition](https://canonical.com/maas/docs/partition)|
+|3 | pod | [pod](https://canonical.com/maas/docs/pod)|
+|3 | cli-rack-controller | [rack-controller](https://canonical.com/maas/docs/rack-controller)|
+|3 | raid | [raid](https://canonical.com/maas/docs/raid)|
+|3 | refresh | [refresh](https://canonical.com/maas/docs/refresh)|
+|3 | cli-region-controller | [region-controller](https://canonical.com/maas/docs/region-controller)|
+|3 | resource-pool | [resource-pool](https://canonical.com/maas/docs/resource-pool)|
+|3 | space | [space](https://canonical.com/maas/docs/space)|
+|3 | sshkey | [sshkey](https://canonical.com/maas/docs/sshkey)|
+|3 | sslkey | [sslkey](https://canonical.com/maas/docs/sslkey)|
+|3 | static-route | [static-route](https://canonical.com/maas/docs/static-route)|
+|3 | status | [status](https://canonical.com/maas/docs/status)|
+|3 | subnet | [subnet](https://canonical.com/maas/docs/subnet)|
+|3 | tag | [tag](https://canonical.com/maas/docs/tag)|
+|3 | user | [user](https://canonical.com/maas/docs/user)|
+|3 | version | [version](https://canonical.com/maas/docs/version)|
+|3 | vlan | [vlan](https://canonical.com/maas/docs/vlan)|
+|3 | vm-cluster | [vm-cluster](https://canonical.com/maas/docs/vm-cluster)|
+|3 | vmfs-datastores | [vmfs-datastores](https://canonical.com/maas/docs/vmfs-datastores)|
+|3 | vm-host | [vm-host](https://canonical.com/maas/docs/vm-host)|
+|3 | volume-group | [volume-group](https://canonical.com/maas/docs/volume-group)|
+|3 | zone | [zone](https://canonical.com/maas/docs/zone)|
 |2 |  | Configuration guides|
-|3 | installation-requirements | [Installation requirements](/t/-/6233)|
-|3 | how-to-use-cloud-init-with-maas | [Cloud-init](/t/-/9122)|
-|3 | configuration-reference | [Configuration tables](/t/-/8035)|
-|3 | reference-hardware-test-scripts | [Hardware test scripts](/t/-/5392)|
-|3 | maas-logging-reference | [Logging](/t/-/10405)|
-|3 | reference-maas-metrics | [Metrics](/t/-/7268)|
-|3 | reference-power-drivers | [Power drivers](/t/-/7882)|
-|3 | reference-maas-storage | [Storage](/t/-/7898)|
-|3 | reference-terraform | [Terraform](/t/-/6327)|
-|3 | maas-troubleshooting-guide | [Troubleshooting](/t/-/5333)|
-|1 | explanation | [Explanation](/t/-/6141)|
-|2 | about-machine-basics | [Machine basics](/t/-/7917)|
-|2 | about-the-machine-life-cycle | [The machine life-cycle](/t/-/7847)|
-|2 | about-commissioning-machines | [Commissioning machines](/t/-/7853)|
-|2 | reference-commissioning-scripts | [Commissioning scripts](/t/-/11432)|
-|2 | about-machine-customization | [Machine customization](/t/-/7902)|
-|2 | about-deploying-machines | [Deploying machines](/t/-/7901)|
-|2 | about-deploying-running-machines | [Deploying running machines](/t/-/7903)|
-|2 | about-lxd-projects | [LXD projects](/t/-/7869)|
-|2 | about-machine-groups | [Machine groups](/t/-/11160)|
-|2 | about-maas-networking | [Networking](/t/-/9620)|
-|2 | about-controllers | [Controllers](/t/-/6690)|
-|2 | about-images | [Images](/t/-/7904)|
-|2 | about-maas-performance | [Performance](/t/-/6178)|
-|2 | about-maas-events | [Events](/t/-/6510)|
-|2 | about-maas-logging | [Logging](/t/-/5240)|
-|2 | about-maas-security | [Security](/t/-/6719)|
+|3 | installation-requirements | [Installation requirements](https://canonical.com/maas/docs/reference-installation-requirements)|
+|3 | how-to-use-cloud-init-with-maas | [Cloud-init](https://canonical.com/maas/docs/how-to-use-cloud-init-with-maas)|
+|3 | configuration-reference | [Configuration tables](https://canonical.com/maas/docs/configuration-reference)|
+|3 | reference-hardware-test-scripts | [Hardware test scripts](https://canonical.com/maas/docs/reference-hardware-test-scripts)|
+|3 | maas-logging-reference | [Logging](https://canonical.com/maas/docs/maas-logging-reference)|
+|3 | reference-maas-metrics | [Metrics](https://canonical.com/maas/docs/reference-maas-metrics)|
+|3 | reference-power-drivers | [Power drivers](https://canonical.com/maas/docs/reference-power-drivers)|
+|3 | reference-maas-storage | [Storage](https://canonical.com/maas/docs/reference-maas-storage)|
+|3 | reference-terraform | [Terraform](https://canonical.com/maas/docs/reference-terraform)|
+|3 | maas-troubleshooting-guide | [Troubleshooting](https://discourse.maas.io/t/-/5333)|
+|1 | explanation | [Explanation](https://canonical.com/maas/docs/explanation)|
+|2 | about-machine-basics | [Machine basics](https://canonical.com/maas/docs/about-machine-basics)|
+|2 | about-the-machine-life-cycle | [The machine life-cycle](https://canonical.com/maas/docs/about-the-machine-life-cycle)|
+|2 | about-commissioning-machines | [Commissioning machines](https://canonical.com/maas/docs/about-commissioning-machines)|
+|2 | reference-commissioning-scripts | [Commissioning scripts](https://canonical.com/maas/docs/commissioning-scripts)|
+|2 | about-machine-customization | [Machine customization](https://canonical.com/maas/docs/about-machine-customization)|
+|2 | about-deploying-machines | [Deploying machines](https://canonical.com/maas/docs/about-deploying-machines)|
+|2 | about-deploying-running-machines | [Deploying running machines](https://canonical.com/maas/docs/about-deploying-running-machines)|
+|2 | about-lxd-projects | [LXD projects](https://canonical.com/maas/docs/about-lxd-projects)|
+|2 | about-machine-groups | [Machine groups](https://canonical.com/maas/docs/about-machine-groups)|
+|2 | about-maas-networking | [Networking](https://canonical.com/maas/docs/about-maas-networking)|
+|2 | about-controllers | [Controllers](https://canonical.com/maas/docs/about-controllers)|
+|2 | about-images | [Images](https://canonical.com/maas/docs/about-standard-images)|
+|2 | about-maas-performance | [Performance](https://canonical.com/maas/docs/about-maas-performance)|
+|2 | about-maas-events | [Events](https://canonical.com/maas/docs/about-maas-events)|
+|2 | about-maas-logging | [Logging](https://canonical.com/maas/docs/about-maas-logging)|
+|2 | about-maas-security | [Security](https://canonical.com/maas/docs/about-maas-security)|
 |0 |  | |
-| | reference-maas-glossary | [MAAS glossary](/t/-/5416)|
-| | how-to-engage-on-the-discourse-forum | [Join our forum](/t/-/6802)|
-| | how-to-contribute-to-maas-documentation | [Improve our documentation](/t/-/6949)|
-| | how-to-request-features | [Request a feature](/t/-/4447)|
-| | how-to-report-and-review-bugs | [Report a bug](/t/-/4446)|
-| | how-to-contact-us | [Contact us](/t/-/5448)|
-| | postgresql-deprecation-notices | [PostgreSQL deprecation notices](/t/-/8089)|
-| | how-to-manage-block-devices | [Manage block devices](/t/-/7893)|
-| | how-to-manage-partitions | [Manage partitions](/t/-/7894)|
-| | how-to-manage-vmfs-datastores | [Manage VMFS datastores](/t/-/7895)|
-| | how-to-configure-storage-layouts | [Configure storage](/t/-/5973)|
-| | how-to-create-custom-storage | [Create custom storage](/t/-/7896)|
-| | reference-release-notes-maas-3-5 | [MAAS 3.5 release notes](/t/-/8086)|
-| | reference-release-notes-maas-3-4 | [MAAS 3.4 release notes](/t/-/7071)|
-| | reference-release-notes-maas-3-3 | [MAAS 3.3 release notes](/t/-/6346)|
-| | reference-release-notes-maas-3-2 | [MAAS 3.2 release notes](/t/-/5962)|
-| | reference-release-notes-maas-3-1 | [MAAS 3.1 release notes](/t/-/5964)|
-| | reference-release-notes-maas-3-0 | [MAAS 3.0 release notes](/t/-/5963)|
-| | reference-release-notes-maas-2-9 | [MAAS 2.9 release notes](/t/-/5961)|
-| | reference-release-notes-maas-2-8 | [MAAS 2.8 release notes](/t/-/5994)|
-| | reference-release-notes-maas-2-7 | [MAAS 2.7 release notes](/t/-/5993)|
-| | how-to-upgrade-from-postgresql-v14-to-v16 | [Upgrade to PostgreSQL v16](/t/-/11178)|
-| | how-to-upgrade-postgresql-v12-to-v14 | [Upgrade to PostgreSQL v14](/t/-/7203)|
-| | maas-documentation-style-guide | [MAAS documentation style guide](/t/-/4186)|
-| | maas-documentation-test-page-please-ignore | [MAAS test page](/t/-/4917)|
+| | reference-maas-glossary | [MAAS glossary](https://canonical.com/maas/docs/reference-maas-glossary)|
+| | how-to-engage-on-the-discourse-forum | [Join our forum](https://canonical.com/maas/docs/how-to-engage-on-the-discourse-forum)|
+| | how-to-contribute-to-maas-documentation | [Improve our documentation](https://canonical.com/maas/docs/how-to-contribute-to-maas-documentation)|
+| | how-to-request-features | [Request a feature](https://canonical.com/maas/docs/how-to-request-features)|
+| | how-to-report-and-review-bugs | [Report a bug](https://canonical.com/maas/docs/how-to-report-and-review-bugs)|
+| | how-to-contact-us | [Contact us](https://canonical.com/maas/docs/how-to-contact-us)|
+| | postgresql-deprecation-notices | [PostgreSQL deprecation notices](https://canonical.com/maas/docs/postgresql-deprecation-notices)|
+| | how-to-manage-block-devices | [Manage block devices](https://canonical.com/maas/docs/how-to-manage-block-devices)|
+| | how-to-manage-partitions | [Manage partitions](https://canonical.com/maas/docs/how-to-manage-partitions)|
+| | how-to-manage-vmfs-datastores | [Manage VMFS datastores](https://canonical.com/maas/docs/how-to-manage-vmfs-datastores)|
+| | how-to-configure-storage-layouts | [Configure storage](https://canonical.com/maas/docs/how-to-configure-storage-layouts)|
+| | how-to-create-custom-storage | [Create custom storage](https://canonical.com/maas/docs/how-to-create-custom-storage)|
+| | reference-release-notes-maas-3-5 | [MAAS 3.5 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-5)|
+| | reference-release-notes-maas-3-4 | [MAAS 3.4 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-4)|
+| | reference-release-notes-maas-3-3 | [MAAS 3.3 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-3)|
+| | reference-release-notes-maas-3-2 | [MAAS 3.2 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-2)|
+| | reference-release-notes-maas-3-1 | [MAAS 3.1 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-1)|
+| | reference-release-notes-maas-3-0 | [MAAS 3.0 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-3-0)|
+| | reference-release-notes-maas-2-9 | [MAAS 2.9 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-2-9)|
+| | reference-release-notes-maas-2-8 | [MAAS 2.8 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-2-8)|
+| | reference-release-notes-maas-2-7 | [MAAS 2.7 release notes](https://canonical.com/maas/docs/reference-release-notes-maas-2-7)|
+| | how-to-upgrade-from-postgresql-v14-to-v16 | [Upgrade to PostgreSQL v16](https://canonical.com/maas/docs/how-to-upgrade-from-postgresql-v14-to-v16)|
+| | how-to-upgrade-postgresql-v12-to-v14 | [Upgrade to PostgreSQL v14](https://canonical.com/maas/docs/how-to-upgrade-postgresql-v12-to-v14)|
+| | maas-documentation-style-guide | [MAAS documentation style guide](https://discourse.maas.io/t/-/4186)|
+| | maas-documentation-test-page-please-ignore | [MAAS test page](https://canonical.com/maas/docs/maas-documentation-test-page-please-ignore)|
 [/details]
 
 ## Redirects
@@ -197,7 +197,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 |--- | ---|
 |/maas/docs/reference-release-notes-maas-3-5 | /maas/docs/release-notes-and-upgrade-instructions|
 |/maas/docs/reference-release-notes-maas-3-4 | /maas/docs/release-notes-and-upgrade-instructions|
-|/maas/docs/about-machine-customisation | /maas/docs/about-machine-customization|
+|/maas/docs/about-machine-customization | /maas/docs/about-machine-customization|
 |/maas/docs/maas-documentation | /maas/docs|
 |/maas/docs/snap/2.7/ui/networking | /maas/docs/about-maas-networking|
 |/maas/docs/snap/2.7/ui/machines | /maas/docs/about-machine-basics|
@@ -205,7 +205,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 |/maas/docs/snap/2.7/cli/installation | /maas/docs/how-to-get-maas-up-and-running|
 |/maas/docs/snap/2.7/cli/vm-host-networking | /maas/docs/how-to-manage-machines#p-9078-use-lxd-vms|
 |/maas/docs/how-to-tag-machiness | /maas/docs/how-to-manage-machine-groups#p-19384-tags-and-annotations|
-|/maas/docs/postgresql-ha-hot-standby | /maas/docs/how-to-manage-high-availability#p-9026-enable-highly-available-postgresql|
+|/maas/docs/postgresql-ha-hot-standby | /maas/docs/how-to-manage-high-availability#p-9026-enable-highly available-postgresql|
 |/maas/docs/how-to-manage-vm-hoss | /maas/docs/how-to-manage-machines|
 |/maas/docs/snap/2.7/cli/networking | /maas/docs/about-maas-networking|
 |/maas/docs/commissioning-log-reference | /maas/docs/maas-logging-reference|
@@ -348,7 +348,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 |/maas/docs/snap/2.7/cli/machines | /maas/docs/about-machine-basics|
 |/maas/docs/storage | /maas/docs/about-machine-basics|
 |/maas/docs/about-customising-machines | /maas/docs/about-machine-customization|
-|/maas/docs/machine-customisations | /maas/docs/about-machine-customization|
+|/maas/docs/machine-customizations | /maas/docs/about-machine-customization|
 |/maas/docs/about-device-labels | /maas/docs/about-machine-groups|
 |/maas/docs/device-labelling-reference | /maas/docs/about-machine-groups|
 |/maas/docs/device-labels-reference | /maas/docs/about-machine-groups|
@@ -489,21 +489,21 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 |/maas/docs/how-to-adjust-your-controllers | /maas/docs/how-to-manage-controllers|
 |/maas/docs/how-to-configure-controllers | /maas/docs/how-to-manage-controllers|
 |/maas/docs/how-to-tune-controllers | /maas/docs/how-to-manage-controllers|
-|/maas/docs/deb/2.9/cli/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly-available-api|
-|/maas/docs/deb/2.9/ui/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly-available-api|
-|/maas/docs/deb/3.0/cli/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly-available-api|
-|/maas/docs/deb/3.0/ui/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly-available-api|
-|/maas/docs/deb/3.1/cli/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly-available-api|
-|/maas/docs/deb/3.1/ui/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly-available-api|
+|/maas/docs/deb/2.9/cli/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly available-api|
+|/maas/docs/deb/2.9/ui/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly available-api|
+|/maas/docs/deb/3.0/cli/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly available-api|
+|/maas/docs/deb/3.0/ui/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly available-api|
+|/maas/docs/deb/3.1/cli/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly available-api|
+|/maas/docs/deb/3.1/ui/proxy | /maas/docs/how-to-manage-controllers#p-9026-configure-a-highly available-api|
 |/maas/docs/ensuring-high-availability-for-controllers | /maas/docs/how-to-manage-controllers#p-9026-enable-ha|
 |/maas/docs/how-to-enable-high-availability | /maas/docs/how-to-manage-controllers#p-9026-enable-ha|
 |/maas/docs/about-high-availability | /maas/docs/how-to-manage-controllers#p-9026-enable-ha|
-|/maas/docs/manage-ha-postgresql | /maas/docs/how-to-manage-controllers#p-9026-enable-highly-available-postgresql|
+|/maas/docs/manage-ha-postgresql | /maas/docs/how-to-manage-controllers#p-9026-enable-highly available-postgresql|
 |/maas/docs/how-to-manage-racks | /maas/docs/how-to-manage-controllers#p-9026-manage-rack-controllers|
 |/maas/docs/how-to-manage-regions | /maas/docs/how-to-manage-controllers#p-9026-manage-region-controllers|
 |/maas/docs/how-to-use-images | /maas/docs/how-to-manage-images|
 |/maas/docs/how-to-use-standard-images | /maas/docs/how-to-manage-images|
-|/maas/docs/image-management-and-customisation | /maas/docs/how-to-manage-images|
+|/maas/docs/image-management-and-customization | /maas/docs/how-to-manage-images|
 |/maas/docs/working-with-standard-images | /maas/docs/how-to-manage-images|
 |/maas/docs/how-to-choose-images | /maas/docs/how-to-manage-images#p-9030-add-a-new-boot-source|
 |/maas/docs/how-to-choose-os-images | /maas/docs/how-to-manage-images#p-9030-add-a-new-boot-source|
@@ -752,7 +752,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 |/maas/docs/configuring-storage-layouts | /maas/docs/reference-maas-storage|
 |/maas/docs/storage-reference | /maas/docs/reference-maas-storage|
 |/maas/docs/machine-parameters-reference | /maas/docs/reference-power-drivers|
-|/maas/docs/power-catalogue | /maas/docs/reference-power-drivers|
+|/maas/docs/power-catalog | /maas/docs/reference-power-drivers|
 |/maas/docs/power-drivers-reference | /maas/docs/reference-power-drivers|
 |/maas/docs/power-management-reference | /maas/docs/reference-power-drivers|
 |/maas/docs/reference-bmc-drivers | /maas/docs/reference-power-drivers|

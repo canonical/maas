@@ -1,4 +1,4 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -17,7 +17,6 @@ from maasserver.api import events as events_module
 from maasserver.api.events import DATETIME_FORMAT, event_to_dict
 from maasserver.api.tests.test_nodes import RequestFixture
 from maasserver.enum import NODE_TYPE
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
@@ -47,10 +46,6 @@ def shuffled(things):
 
 class TestEventToDict(APITestCase.ForUser):
     """Test for `event_to_dict` function."""
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_node_not_None(self):
         event = factory.make_Event()

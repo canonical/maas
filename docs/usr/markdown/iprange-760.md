@@ -1,110 +1,143 @@
-Enter keyword arguments in the form `key=value`.
-
-## Delete an IP range
+Delete an IP range
 
 ```bash
-maas $PROFILE iprange delete [--help] [-d] [-k] id [data ...] 
+maas $PROFILE iprange delete [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Delete an IP range with the given id.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Read an IP range
+
+
+
+Read an IP range
 
 ```bash
-maas $PROFILE iprange read [--help] [-d] [-k] id [data ...] 
+maas $PROFILE iprange read [--help] [-d] [-k] id
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Read an IP range with the given id.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Update an IP range
+
+
+
+Update an IP range
 
 ```bash
-maas $PROFILE iprange update [--help] [-d] [-k] id [data ...] 
+maas $PROFILE iprange update [--help] [-d] [-k] id [data ...]
+
 ```
 
-#### Positional arguments
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Update an IP range with the given id.
 
-#### Keyword "start_ip"
-Optional String. Start IP address of this range (inclusive).
+##### Keyword "start_ip"
+Optional String. Start IP address of this<br>range (inclusive).
+##### Keyword "end_ip"
+Optional String. End IP address of this range<br>(inclusive).
+##### Keyword "comment"
+Optional String. A description of this range.<br>(optional)
 
-#### Keyword "end_ip"
-Optional String. End IP address of this range (inclusive).
 
-#### Keyword "comment"
-Optional String. A description of this range. (optional)
+Note: This command accepts JSON.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Create an IP range
+Create an IP range
 
 ```bash
-maas $PROFILE ipranges create [--help] [-d] [-k] [data ...] 
+maas $PROFILE ipranges create [--help] [-d] [-k] [data ...]
+
 ```
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Create a new IP range.
 
-#### Keyword "type"
-Required String. Type of this range. (``dynamic`` or ``reserved``)
-
-#### Keyword "start_ip"
-Required String. Start IP address of this range (inclusive).
-
-#### Keyword "end_ip"
-Required String. End IP address of this range (inclusive).
-
-#### Keyword "subnet"
-Required Int. Subnet associated with this range.
-
-#### Keyword "comment"
+##### Keyword "type"
+Optional String. Type of this range. (``dynamic``<br>or ``reserved``)
+##### Keyword "start_ip"
+Optional String. Start IP address of this<br>range (inclusive).
+##### Keyword "end_ip"
+Optional String. End IP address of this range<br>(inclusive).
+##### Keyword "subnet"
+Optional Int. Subnet associated with this<br>range.
+##### Keyword "comment"
 Optional String. A description of this range.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## List all IP ranges
+Note: This command accepts JSON.
+
+
+List all IP ranges
 
 ```bash
-maas $PROFILE ipranges read [--help] [-d] [-k] [data ...] 
+maas $PROFILE ipranges read [--help] [-d] [-k]
+
 ```
 
-List all available IP ranges. 
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
+List all available IP ranges.

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Respond to interface changes."""
@@ -6,10 +6,12 @@
 from django.db.models import Count
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 
+from maascommon.enums.dns import DnsUpdateAction
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import (
     BondInterface,
     BridgeInterface,
+    DNSPublication,
     Fabric,
     Interface,
     NodeConfig,
@@ -310,31 +312,77 @@ for klass in INTERFACE_CLASSES:
     signals.watch(post_save, resave_children_interface_handler, klass)
 
 
-def remove_gateway_link_when_ip_address_removed_from_interface(
+def interface_ip_link_events(
     sender, instance, action, model, pk_set, **kwargs
 ):
-    """When an IP address is removed from an interface it is possible that
-    the IP address was not deleted just moved. In that case we need to removed
-    the gateway links on the node model."""
     if model == StaticIPAddress and action == "post_remove":
+        # Remove gateway link when ip address is removed from interface
         try:
             node_config = instance.node_config
         except NodeConfig.DoesNotExist:
             return
-        if node_config is not None:
-            node = node_config.node
-            for pk in pk_set:
-                if node.gateway_link_ipv4_id == pk:
-                    node.gateway_link_ipv4_id = None
-                    node.save(update_fields=["gateway_link_ipv4_id"])
-                if node.gateway_link_ipv6_id == pk:
-                    node.gateway_link_ipv6_id = None
-                    node.save(update_fields=["gateway_link_ipv6_id"])
+        if node_config is None:
+            return
+        node = node_config.node
+
+        # Remove gateway links.
+        for pk in pk_set:
+            if node.gateway_link_ipv4_id == pk:
+                node.gateway_link_ipv4_id = None
+                node.save(update_fields=["gateway_link_ipv4_id"])
+            if node.gateway_link_ipv6_id == pk:
+                node.gateway_link_ipv6_id = None
+                node.save(update_fields=["gateway_link_ipv6_id"])
+
+        # Publish DNS update for authoritative domains.
+        domain = getattr(node, "domain", None)
+        if domain and domain.authoritative:
+            for ip_obj in StaticIPAddress.objects.filter(pk__in=pk_set):
+                if (
+                    ip_obj.ip
+                    and ip_obj.temp_expires_on is None
+                    and str(ip_obj.ip).strip() != ""
+                ):
+                    DNSPublication.objects.create_for_config_update(
+                        source=(
+                            f"ip {ip_obj.ip} disconnected from "
+                            f"{node.hostname} on {instance.name}"
+                        ),
+                        action=DnsUpdateAction.RELOAD,
+                    )
+        return
+
+    # Create a new DNSPublication when a static IP address is added to the interface if the domain is authoritative
+    if model == StaticIPAddress and action == "post_add":
+        try:
+            node_config = instance.node_config
+        except NodeConfig.DoesNotExist:
+            return
+        if node_config is None:
+            return
+        node = node_config.node
+        if not node.domain.authoritative:
+            return
+
+        ips = StaticIPAddress.objects.filter(pk__in=pk_set)
+        for ip_obj in ips:
+            if (
+                ip_obj.ip
+                and ip_obj.temp_expires_on is None
+                and str(ip_obj.ip).strip() != ""
+            ):
+                DNSPublication.objects.create_for_config_update(
+                    source=(
+                        f"ip {ip_obj.ip} connected to "
+                        f"{node.hostname} on {instance.name}"
+                    ),
+                    action=DnsUpdateAction.RELOAD,
+                )
 
 
 signals.watch(
     m2m_changed,
-    remove_gateway_link_when_ip_address_removed_from_interface,
+    interface_ip_link_events,
     Interface.ip_addresses.through,
 )
 

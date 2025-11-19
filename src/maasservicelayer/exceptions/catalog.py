@@ -107,3 +107,8 @@ class DischargeRequiredException(BaseException):
     ):
         super().__init__("Macaroon discharge required.", details)
         self.macaroon = macaroon
+
+
+class BadGatewayException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__("Bad gateway.", details)

@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import json
@@ -7,7 +7,6 @@ from django.urls import reverse
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import eventloop, ipc
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -25,7 +24,6 @@ class TestRPCView(MAASTransactionServerTestCase):
         self.patch(
             ipc, "get_all_interface_source_addresses"
         ).return_value = set()
-        self.patch(dnspublication_module, "post_commit_do")
         load_builtin_scripts()
 
     def test_rpc_info_empty(self):

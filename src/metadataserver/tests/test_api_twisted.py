@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -18,7 +18,6 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import Event, Node, NodeKey, Pod
 from maasserver.models import node as node_module
 from maasserver.models.signals.testing import SignalsDisabled
@@ -371,7 +370,6 @@ class TestStatusWorkerService(MAASServerTestCase):
         )
 
     def test_process_message_returns_false_when_node_deleted(self):
-        self.patch(dnspublication_module, "post_commit_do")
         node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         node1.delete()
         payload = {
@@ -1192,7 +1190,6 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         self.mock_discover_and_sync = self.patch(
             api_twisted_module, "discover_and_sync_vmhost"
         )
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_marks_failed_if_no_creds_install_kvm(self):
         node = factory.make_Node(

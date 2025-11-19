@@ -29,6 +29,7 @@ from maasservicelayer.auth.external_oauth import (
 from maasservicelayer.auth.jwt import JWT, UserRole
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
+    BadGatewayException,
     BaseExceptionDetail,
     ConflictException,
     DischargeRequiredException,
@@ -38,11 +39,15 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
+    PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.external_auth import OAuthProvider
+from maasservicelayer.models.external_auth import (
+    OAuthProvider,
+    ProviderMetadata,
+)
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.external_auth import (
@@ -62,6 +67,11 @@ TEST_PROVIDER_1 = OAuthProvider(
     redirect_uri="https://example.com/callback",
     scopes="openid email profile",
     enabled=True,
+    metadata=ProviderMetadata(
+        authorization_endpoint="",
+        token_endpoint="",
+        jwks_uri="",
+    ),
 )
 
 TEST_PROVIDER_2 = OAuthProvider(
@@ -75,6 +85,11 @@ TEST_PROVIDER_2 = OAuthProvider(
     redirect_uri="https://example2.com/callback",
     scopes="openid email profile",
     enabled=True,
+    metadata=ProviderMetadata(
+        authorization_endpoint="https://example2.com/authorize",
+        token_endpoint="https://example2.com/token",
+        jwks_uri="https://example2.com/.well-known/jwks.json",
+    ),
 )
 
 
@@ -362,6 +377,11 @@ class TestAuthApi:
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
             enabled=True,
+            metadata=ProviderMetadata(
+                authorization_endpoint="",
+                token_endpoint="",
+                jwks_uri="",
+            ),
         )
         services_mock.external_oauth.update_provider.return_value = (
             updated_provider
@@ -531,6 +551,39 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 409
 
+    async def test_create_oauth_provider_bad_gateway(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.create.side_effect = BadGatewayException(
+            details=[
+                BaseExceptionDetail(
+                    type=PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+                    message="Failed to fetch provider metadata from OIDC server.",
+                )
+            ]
+        )
+        request_body = OAuthProviderRequest(
+            name="test_provider",
+            client_id="test_client_id",
+            client_secret="test_secret",
+            issuer_url="https://example.com",
+            redirect_uri="https://example.com/callback",
+            scopes="openid email profile",
+            enabled=True,
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/oauth/providers",
+            json=jsonable_encoder(request_body.dict()),
+        )
+        assert response.status_code == 502
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 502
+
     # DELETE /auth/oauth/:provider_id
     async def test_delete_oauth_provider(
         self,
@@ -602,6 +655,11 @@ class TestAuthApi:
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
             enabled=True,
+            metadata=ProviderMetadata(
+                authorization_endpoint="",
+                token_endpoint="",
+                jwks_uri="",
+            ),
         )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.get_provider.return_value = (
@@ -622,6 +680,7 @@ class TestAuthApi:
             "scopes": created_provider.scopes,
             "enabled": created_provider.enabled,
             "id": created_provider.id,
+            "metadata": created_provider.metadata,
         }
 
     async def test_get_active_oauth_provider_not_found(

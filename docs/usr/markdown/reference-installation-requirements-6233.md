@@ -1,4 +1,4 @@
-Confirm that your system has adequate resources for your use-case, prior to installation. Proof-of-concept and production setups are available.
+Confirm that your system has adequate resources for your use-case, prior to installation.  Proof-of-concept and production setups are available.
 
 ## LXD
 
@@ -34,7 +34,7 @@ grep 'max_connections' /var/lib/pgsql/{version_number}/data/postgresql.conf
 
 ### Increasing maximum connections
 
-If `max_connections` is `100`, you need to increase that number. Refer to [these best practices](https://www.postgresql.org/docs/14/runtime-config-connection.html) for details.
+If `max_connections` is `100`, you need to increase that number.  Refer to [these best practices](https://www.postgresql.org/docs/16/runtime-config-connection.html) for details.
 
 ### Symptoms of an issue
 
@@ -48,7 +48,7 @@ Too few database connections tend do produce errors:
 
 ## MAAS, NTP, and chrony
 
-Conflicts can arise between Ubuntu's default `systemd-timesyncd` and MAAS `chrony`. Consult the MAAS [installation guide](https://canonical.com/maas/docs/how-to-install-maas) for solutions.
+Conflicts can arise between Ubuntu's default `systemd-timesyncd` and MAAS `chrony`.  Consult the MAAS [installation guide](https://canonical.com/maas/docs/how-to-install-maas) for solutions.
 
 ## Test environment
 

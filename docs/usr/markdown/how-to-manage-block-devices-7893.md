@@ -2,7 +2,7 @@ You can manipulate machine block storage devices with the MAAS CLI.  Note that b
 
 ## List block devices
 
-To view all block devices on a machine use the read operation. This list both physical and virtual block devices, as you can see in the output from the following command:
+To view all block devices on a machine use the read operation.  This list both physical and virtual block devices, as you can see in the output from the following command:
 
 ```nohighlight
 maas admin block-devices read <node-id>
@@ -85,7 +85,7 @@ Machine-readable output follows:
 
 ## Read block device
 
-If you want to read just one block device instead of listing all block devices the read operation on the block device endpoint provides that information. To display the details on device '11' from the previous output, for example, we could enter:
+If you want to read just one block device instead of listing all block devices the read operation on the block device endpoint provides that information.  To display the details on device '11' from the previous output, for example, we could enter:
 
 ```nohighlight
 maas admin block-device read <node-id> 11
@@ -130,11 +130,11 @@ It is also possible to use the name of the block device, such as 'sda' or 'vda',
 s admin block-device read <node-id> vda
 ```
 
-> MAAS allows the name of a block device to be changed. If the block device name has changed then the API call needs to use the new name. Using the ID is safer as it never changes.
+> MAAS allows the name of a block device to be changed.  If the block device name has changed then the API call needs to use the new name.  Using the ID is safer as it never changes.
 
 ## Create block device
 
-MAAS gathers the required information itself on block devices when re- commissioning a machine. If this doesn't provide the required information, it is also possible - though not recommended - for an administrator to use the API to manually add a physical block device to a machine.
+MAAS gathers the required information itself on block devices when re- commissioning a machine.  If this doesn't provide the required information, it is also possible - though not recommended - for an administrator to use the API to manually add a physical block device to a machine.
 
 ```nohighlight
 maas admin block-devices create <node-id> name=vdb model="QEMU" serial="QM00001" size=21474836480 block_size=4096
@@ -167,7 +167,7 @@ Machine-readable output follows:
 }
 ```
 
-> The serial number is what MAAS will use when a machine is deployed to find the specific block device. It's important that this be correct. In a rare chance that your block device does not provide a model or serial number you can provide an id_path. The id_path should be a path that is always the same, no matter the kernel version.
+> The serial number is what MAAS will use when a machine is deployed to find the specific block device.  It's important that this be correct.  In a rare chance that your block device does not provide a model or serial number you can provide an id_path.  The id_path should be a path that is always the same, no matter the kernel version.
 
 ## Update block device
 
@@ -374,10 +374,10 @@ Machine-readable output follows:
 
 ## Boot from block device
 
-By default, MAAS picks the first added block device to the machine as the boot disk. In most cases this works as expected as the BIOS usually enumerates the boot disk as the first block device. There are cases where this fails and the boot disk needs to be set to another disk. This API allow setting which block device on a machine MAAS should use as the boot disk.:
+By default, MAAS picks the first added block device to the machine as the boot disk.  In most cases this works as expected as the BIOS usually enumerates the boot disk as the first block device.  There are cases where this fails and the boot disk needs to be set to another disk.  This API allow setting which block device on a machine MAAS should use as the boot disk.:
 
 ```nohighlight
 maas admin block-device set-boot-disk <node-id> 10
 ```
 
-> Only an administrator can set which block device should be used as the boot disk and only a physical block device can be set as as the boot disk. This operation should be done before a machine is allocated or the storage layout will be applied to the previous boot disk.
+> Only an administrator can set which block device should be used as the boot disk and only a physical block device can be set as the boot disk.  This operation should be done before a machine is allocated or the storage layout will be applied to the previous boot disk.

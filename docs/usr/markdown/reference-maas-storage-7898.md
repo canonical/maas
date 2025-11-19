@@ -2,11 +2,11 @@ This page describes standard and custom storage layouts available in MAAS.
 
 ## Standard storage layouts
 
-The layout descriptions below will include the EFI partition. If your system is not using UEFI, regard `sda2` as `sda1` (with an additional 512 MB available to it).
+The layout descriptions below will include the EFI partition.  If your system is not using UEFI, regard `sda2` as `sda1` (with an additional 512 MB available to it).
 
 ### Flat layout
 
-With the Flat layout, a partition spans the entire boot disk. The partition is formatted with the ext4 filesystem and uses the `/` mount point:
+With the Flat layout, a partition spans the entire boot disk.  The partition is formatted with the ext4 filesystem and uses the `/` mount point:
 
 | Name | Size        | Type | Filesystem | Mount point |
 |:----:|------------:|:----:|:----------:|:------------|
@@ -16,15 +16,15 @@ With the Flat layout, a partition spans the entire boot disk. The partition is f
 
 The following three options are supported:
 
-1. `boot_size`: Size of the boot partition on the boot disk. Default is 0, meaning not to create the boot partition. The '/boot' will be placed on the root filesystem.
+1. `boot_size`: Size of the boot partition on the boot disk.  Default is 0, meaning not to create the boot partition.  The '/boot' will be placed on the root filesystem.
 
-2. `root_device`: The block device on which to place the root partition. The default is the boot disk.
+2. `root_device`: The block device on which to place the root partition.  The default is the boot disk.
 
-3. `root_size`: Size of the root partition. Default is 100%, meaning the entire size of the root device.
+3. `root_size`: Size of the root partition.  Default is 100%, meaning the entire size of the root device.
 
 ### LVM layout
 
-The LVM layout creates the volume group `vgroot` on a partition that spans the entire boot disk. A logical volume `lvroot` is created for the full size of the volume group; is formatted with the ext4 filesystem; and uses the `/` mount point:
+The LVM layout creates the volume group `vgroot` on a partition that spans the entire boot disk.  A logical volume `lvroot` is created for the full size of the volume group; is formatted with the ext4 filesystem; and uses the `/` mount point:
 
 | Name   | Size        | Type | Filesystem     | Mount point |
 |:----:|------------:|:----:|:----------:|:------------|
@@ -36,16 +36,16 @@ The LVM layout creates the volume group `vgroot` on a partition that spans the e
 
 The following six options are supported:
 
-1. `boot_size`: Size of the boot partition on the boot disk. Default is 0, meaning not to create the boot partition. The '/boot' will be placed on the root filesystem.
-2. `root_device`: The block device on which to place the root partition. The default is the boot disk.
-3. `root_size`: Size of the root partition. Default is 100%, meaning the entire size of the root device.
-4. `vg_name`: Name of the created volume group. Default is `vgroot`.
-5. `lv_name`: Name of the created logical volume. Default is `lvroot`.
-6. `lv_size`: Size of the created logical volume. Default is 100%, meaning the entire size of the volume group.
+1. `boot_size`: Size of the boot partition on the boot disk.  Default is 0, meaning not to create the boot partition.  The '/boot' will be placed on the root filesystem.
+2. `root_device`: The block device on which to place the root partition.  The default is the boot disk.
+3. `root_size`: Size of the root partition.  Default is 100%, meaning the entire size of the root device.
+4. `vg_name`: Name of the created volume group.  Default is `vgroot`.
+5. `lv_name`: Name of the created logical volume.  Default is `lvroot`.
+6. `lv_size`: Size of the created logical volume.  Default is 100%, meaning the entire size of the volume group.
 
 ### bcache layout
 
-A bcache layout will create a partition that spans the entire boot disk as the backing device. It uses the smallest block device tagged with 'ssd' as the cache device. The bcache device is formatted with the ext4 filesystem and uses the `/` mount point. If there are no 'ssd' tagged block devices on the machine, then the bcache device will not be created, and the Flat layout will be used instead:
+A bcache layout will create a partition that spans the entire boot disk as the backing device.  It uses the smallest block device tagged with 'ssd' as the cache device.  The bcache device is formatted with the ext4 filesystem and uses the `/` mount point.  If there are no 'ssd' tagged block devices on the machine, then the bcache device will not be created, and the Flat layout will be used instead:
 
 | Name      | Size        | Type | Filesystem | Mount point |
 |:----:|------------:|:----:|:----------:|:------------|
@@ -58,18 +58,18 @@ A bcache layout will create a partition that spans the entire boot disk as the b
 
 The following seven options are supported:
 
-1. `boot_size`: Size of the boot partition on the boot disk. Default is 0, meaning not to create the boot partition. The '/boot' will be placed on the root filesystem.
-2. `root_device`: The block device upon which to place the root partition. The default is the boot disk.
-3. `root_size`: Size of the root partition. Default is 100%, meaning the entire size of the root device.
-4. `cache_device`: The block device to use as the cache device. Default is the smallest block device tagged ssd.
-5. `cache_mode`: The cache mode to which MAAS should set the created bcache device. The default is `writethrough`.
-6. `cache_size`: The size of the partition on the cache device. Default is 100%, meaning the entire size of the cache device.
-7. `cache_no_part`: Whether or not to create a partition on the cache device. Default is false, meaning to create a partition using the given `cache_size`. If set to true, no partition will be created, and the raw cache device will be used as the cache.
+1. `boot_size`: Size of the boot partition on the boot disk.  Default is 0, meaning not to create the boot partition.  The '/boot' will be placed on the root filesystem.
+2. `root_device`: The block device upon which to place the root partition.  The default is the boot disk.
+3. `root_size`: Size of the root partition.  Default is 100%, meaning the entire size of the root device.
+4. `cache_device`: The block device to use as the cache device.  Default is the smallest block device tagged ssd.
+5. `cache_mode`: The cache mode to which MAAS should set the created bcache device.  The default is `writethrough`.
+6. `cache_size`: The size of the partition on the cache device.  Default is 100%, meaning the entire size of the cache device.
+7. `cache_no_part`: Whether or not to create a partition on the cache device.  Default is false, meaning to create a partition using the given `cache_size`.  If set to true, no partition will be created, and the raw cache device will be used as the cache.
 
 vmfs6 storage layout reference
 ### VMFS6 layout
 
-The VMFS6 layout is used for VMware ESXi deployments only. It is required when configuring VMware VMFS Datastores. This layout creates all operating system partitions, in addition to the default datastore. The datastore may be modified. New datastores may be created or extended to include other storage devices. The base operating system partitions may not be modified because VMware ESXi requires them. Once applied another storage layout must be applied to remove the operating system partitions.
+The VMFS6 layout is used for VMware ESXi deployments only.  It is required when configuring VMware VMFS Datastores.  This layout creates all operating system partitions, in addition to the default datastore.  The datastore may be modified.  New datastores may be created or extended to include other storage devices.  The base operating system partitions may not be modified because VMware ESXi requires them.  Once applied another storage layout must be applied to remove the operating system partitions.
 
 | Name | Size      | Type    | Use               |
 |:-----|------------:|:----:|:----------|
@@ -86,22 +86,22 @@ The VMFS6 layout is used for VMware ESXi deployments only. It is required when c
 
 The following options are supported:
 
-- `root_device`: The block device upon which to place the root partition. Default is the boot disk.
+- `root_device`: The block device upon which to place the root partition.  Default is the boot disk.
 
-- `root_size`: Size of the default VMFS Datastore. Default is 100%, meaning the remaining size of the root disk.
+- `root_size`: Size of the default VMFS Datastore.  Default is 100%, meaning the remaining size of the root disk.
 
 ### Blank layout
 
-The blank layout removes all storage configuration from all storage devices. It is useful when needing to apply a custom storage configuration.
+The blank layout removes all storage configuration from all storage devices.  It is useful when needing to apply a custom storage configuration.
 
 
 Machines with the blank layout applied are not deployable; you must first configure storage manually.
 
 ## Custom storage layouts
 
-This section provides examples of commonly-used custom storage layouts for MAAS-deployed machines.  These examples provide custom storage layout configurations that a script could output to the `$MAAS_STORAGE_CONFIG_FILE`. For clarity, this section assumes that the machine has 5 disks (named `sda` to `sde`); be sure to adjust accordingly.
+This section provides examples of commonly used custom storage layouts for MAAS-deployed machines.  These examples provide custom storage layout configurations that a script could output to the `$MAAS_STORAGE_CONFIG_FILE`.  For clarity, this section assumes that the machine has 5 disks (named `sda` to `sde`); be sure to adjust accordingly.
 
-There is no need to add entries for those devices in the `layout` section if the disks are not explicitly partitioned, but just used by other devices (e.g. RAID or LVM).
+There is no need to add entries for those devices in the `layout` section if the disks are not explicitly partitioned, but just used by other devices (e.g.  RAID or LVM).
 
 ### GPT partitioning
 Here is an example of a simple single-disk layout with GPT partitioning.
@@ -155,7 +155,7 @@ Here is an example of a simple single-disk layout with GPT partitioning.
   }
 }
 ```
-In the `mounts` section, options for mount points can be specified. For swap, an entry must be present (with any unique name that doesn't start with a `/`), otherwise the swap will be created but not activated.
+In the `mounts` section, options for mount points can be specified.  For swap, an entry must be present (with any unique name that doesn't start with a `/`), otherwise the swap will be created but not activated.
 
 ### RAID 5 
 This example describes the reference setup for a RAID 5 configuration with spare devices.
@@ -332,4 +332,4 @@ This more complex reference example describes an LVM on top of RAID with bcache 
   }
 }
 ```
-The RAID is created by using 5 bcache devices, each one using a different disk and the same SSD cache device. LVM is created on top of the RAID device and volumes are then created in it, to provide partitions.
+The RAID is created by using 5 bcache devices, each one using a different disk and the same SSD cache device.  LVM is created on top of the RAID device and volumes are then created in it, to provide partitions.

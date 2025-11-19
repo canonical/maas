@@ -1,112 +1,148 @@
-Enter keyword arguments in the form `key=value`.
-
-## Delete a bcache set
+Delete a bcache set
 
 ```bash
-maas $PROFILE bcache-cache-set delete [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE bcache-cache-set delete [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
+
+#### **Command-line options**
+| Option | Effect |
+|---|---|
+| --help, -h | Show this help message and exit. |
+| -d, --debug | Display more information about API responses. |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
 Delete bcache cache set on a machine.
 
-#### Command-line options
-| Option | Effect |
-|-----|-----|
-| --help, -h | Show this help message and exit. |
-| -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
 
-## Read a bcache cache set
+
+
+
+Read a bcache cache set
 
 ```bash
-maas $PROFILE bcache-cache-set read [--help] [-d] [-k] system_id id [data ...]
+maas $PROFILE bcache-cache-set read [--help] [-d] [-k] system_id id
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
-Read bcache cache set on a machine.
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Update a bcache set
+
+#### **Keywords**
+Read bcache cache set on a machine.
+
+
+
+
+
+Update a bcache set
 
 ```bash
 maas $PROFILE bcache-cache-set update [--help] [-d] [-k] system_id id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
-- id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
+| id | The ID of the resource (e.g., `1`, `abc123`) |
 
 
-Update bcache cache set on a machine.
-
-Note: specifying both a cache_device and a cache_partition is not allowed.
-
-#### Keyword "cache_device"
-Optional String. Cache block device to replace current one.
-
-#### Keyword "cache_partition"
-Optional String. Cache partition to replace current one.
-
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## Creates a bcache cache set
+
+#### **Keywords**
+Update bcache cache set on a machine. Note: specifying both a cache_device and a cache_partition is not<br>allowed.
+
+##### Keyword "cache_device"
+Optional String. Cache block device to<br>replace current one.
+##### Keyword "cache_partition"
+Optional String. Cache partition to<br>replace current one.
+
+
+Note: This command accepts JSON.
+
+
+Creates a bcache cache set
 
 ```bash
 maas $PROFILE bcache-cache-sets create [--help] [-d] [-k] system_id [data ...]
+
 ```
 
-#### Positional arguments
-- system_id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
 
 
-Creates a bcache cache set.
-
-Note: specifying both a cache_device and a cache_partition is not allowed.
-
-#### Keyword "cache_device"
-Optional String. Cache block device.
-
-#### Keyword "cache_partition"
-Optional String.  Cache partition.
-
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
 
-## List bcache sets
+
+#### **Keywords**
+Creates a bcache cache set. Note: specifying both a cache_device and a cache_partition is not<br>allowed.
+
+##### Keyword "cache_device"
+Optional String. Cache block device.
+##### Keyword "cache_partition"
+Optional String. Cache partition.
+
+
+Note: This command accepts JSON.
+
+
+List bcache sets
 
 ```bash
-maas $PROFILE bcache-cache-sets read [--help] [-d] [-k] system_id [data ...]
+maas $PROFILE bcache-cache-sets read [--help] [-d] [-k] system_id
+
 ```
 
-#### Positional arguments
-- system_id
+#### **Positional arguments**
+| Argument | Effect |
+|---|---|
+| system_id | The system ID of the machine/device (e.g., `abc123`) |
 
-List all bcache cache sets belonging to a machine.
 
-#### Command-line options
+#### **Command-line options**
 | Option | Effect |
-|-----|-----|
+|---|---|
 | --help, -h | Show this help message and exit. |
 | -d, --debug | Display more information about API responses. |
-| -k, --insecure | Disable SSL certificate check |
+| -k, --insecure | Disable SSL certificate check. |
+
+
+#### **Keywords**
+List all bcache cache sets belonging to a machine.

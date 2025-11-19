@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test generation of commissioning user data."""
@@ -7,7 +7,6 @@ import base64
 import email
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.user_data import (
@@ -17,10 +16,6 @@ from metadataserver.user_data import (
 
 
 class TestGenerateUserData(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_generate_user_data_produces_enlist_script(self):
         # generate_user_data produces a commissioning script which contains
         # both definitions and use of various commands in python.

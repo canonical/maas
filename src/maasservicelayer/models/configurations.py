@@ -271,7 +271,7 @@ class DNSTrustedAclConfig(Config[Optional[str]]):
 
 class AllowOnlyTrustedTransfersConfig(Config[Optional[bool]]):
     name: ClassVar[str] = "allow_only_trusted_transfers"
-    default: ClassVar[bool] = False
+    default: ClassVar[bool] = True
     description: ClassVar[str] = "Allow only trusted zone transfers"
     help_text: ClassVar[Optional[str]] = (
         "A boolean value to allow only zone transfers from trusted sources. If set to false, zone transfers from all sources will be allowed"

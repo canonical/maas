@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
@@ -10,7 +10,6 @@ import yaml
 
 from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
 from maasserver.models import Config, ControllerInfo, NodeKey
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
@@ -45,10 +44,6 @@ from provisioningserver.testing.certificates import get_sample_cert
 
 class TestGetVendorData(MAASServerTestCase):
     """Tests for `get_vendor_data`."""
-
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
 
     def test_returns_dict(self):
         node = factory.make_Node()
@@ -237,10 +232,6 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
 
 
 class TestGenerateRackControllerConfiguration(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_yields_nothing_when_node_is_not_netboot_disabled(self):
         node = factory.make_Node(osystem="ubuntu", install_rackd=True)
         configuration = generate_rack_controller_configuration(
@@ -837,10 +828,6 @@ class TestGetNodeMAASURL(MAASServerTestCase):
 
 
 class TestGetNodeRackURL(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_url_uses_machine_facing_rack_controller(self):
         vlan1 = factory.make_VLAN()
         vlan2 = factory.make_VLAN()

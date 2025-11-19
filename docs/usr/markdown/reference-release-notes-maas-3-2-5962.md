@@ -37,7 +37,7 @@ This point release of MAAS 3.2 provides a number of high-profile bug fixes:
 [2009186](https://bugs.launchpad.net/maas/+bug/2009186): CLI results in connection timed out when behind haproxy and 5240 is blocked
 [2009805](https://bugs.launchpad.net/maas/+bug/2009805): machine deploy install_kvm=True fails
 [2012139](https://bugs.launchpad.net/maas/+bug/2012139): maas commands occasionally fail with NO_CERTIFICATE_OR_CRL_FOUND when TLS is enabled
-[1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow ‘_’ character, results on a interface based domain breaking bind (as it doesn’t allow it for the host part).
+[1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow ‘_’ character, results on a interface based domain breaking bind (as it does not’t allow it for the host part).
 [1979403](https://bugs.launchpad.net/maas/+bug/1979403): commission failed with MAAS 3.1 when BMC has multiple channels but the first channel is disabled
 [1986590](https://bugs.launchpad.net/maas/+bug/1986590): maas-cli from PPA errors out with traceback - ModuleNotFoundError: No module named ‘provisioningserver’
 
@@ -80,7 +80,7 @@ No other changes were made for this point release.
 
 ## MAAS 3.2.5
 
-MAAS 3.2.5 was an attempt to fix a critical issue in 3.2.4. This issue was resolved in MAAS 3.2.6, listed above. 
+MAAS 3.2.5 was an attempt to fix a critical issue in 3.2.4.  This issue was resolved in MAAS 3.2.6, listed above. 
 
 ## MAAS 3.2.4
 
@@ -96,7 +96,7 @@ This release also addresses build issues found in prior point releases.
 
 ## MAAS 3.2.3/3.2.2
 
-MAAS 3.2.2 and MAAS 3.2.3 were successive attempts to fix issues in MAAS. These issues were resolved in MAAS 3.2.4, listed above.
+MAAS 3.2.2 and MAAS 3.2.3 were successive attempts to fix issues in MAAS.  These issues were resolved in MAAS 3.2.4, listed above.
 
 ## MAAS 3.2.1
 
@@ -104,7 +104,7 @@ We are happy to announce that MAAS 3.2.1 has been released.
 
 ### Bug fixes
 
-This point release of MAAS 3.2.1 provides support for Rocky Linux UEFI ([bug number 1955671](https://bugs.launchpad.net/bugs/1955671)), along with fixes for a number of recently-reported bugs:
+This point release of MAAS 3.2.1 provides support for Rocky Linux UEFI ([bug number 1955671](https://bugs.launchpad.net/bugs/1955671)), along with fixes for a number of recently reported bugs:
 
 - #1955671: [support for rocky linux UEFI](https://bugs.launchpad.net/bugs/1955671)
 - #1980436: [MAAS CLI with anonymous access fails when TLS is enabled](https://bugs.launchpad.net/bugs/1980436)
@@ -127,20 +127,20 @@ MAAS 3.2 provides several new features, as well as the usual cadre of bug fixes.
 
 #### Improved performance
 
-As part of the MAAS 3.2 development effort, we have taken steps to improve the performance of machine listings. To date, we have measured the speed of listing a large number (100-1000) of machines via the REST API to be 32% faster, on average. During the next cycle, we will be actively working to improve MAAS performance for other operations (such as search).
+As part of the MAAS 3.2 development effort, we have taken steps to improve the performance of machine listings.  To date, we have measured the speed of listing a large number (100-1000) of machines via the REST API to be 32% faster, on average.  During the next cycle, we will be actively working to improve MAAS performance for other operations (such as search).
 
 #### Better Redfish support
 
-MAAS has previously supported the Redfish protocol for some time, but as an option, preferring IPMI over all others if a choice of protocol was possible. In contrast, MAAS 3.2 supports Redfish as a BMC protocol by preferring Redfish over IPMI, provided that:
+MAAS has previously supported the Redfish protocol for some time, but as an option, preferring IPMI over all others if a choice of protocol was possible.  In contrast, MAAS 3.2 supports Redfish as a BMC protocol by preferring Redfish over IPMI, provided that:
 
 - The BMC has a Redfish Host Interface enabled
 - That host interface can be accessed by the MAAS host
 
 MAAS already supports Redfish, but with MAAS 3.2 we’re trying to auto-detect Redfish and use it if it's available.
 
-You may know that Redfish is an alternative to the IPMI protocol for connecting with machine BMCs. It provides additional features above and beyond those provided by IPMI. Eventually, Redfish should supplant IPMI as the default BMC interface.
+You may know that Redfish is an alternative to the IPMI protocol for connecting with machine BMCs.  It provides additional features above and beyond those provided by IPMI.  Eventually, Redfish should supplant IPMI as the default BMC interface.
 
-If the machine uses either IPMI or Redfish for its BMC, the ephemeral environment will automatically detect it, create a separate user for MAAS and configure the machine, so that MAAS may check and control the machine’s power status. Note that the name of the user that MAAS creates in the BMC is controlled by the `maas_auto_ipmi_user` config setting, both for IPMI and Redfish; nothing has changed in this regard with MAAS 3.2.
+If the machine uses either IPMI or Redfish for its BMC, the ephemeral environment will automatically detect it, create a separate user for MAAS and configure the machine, so that MAAS may check and control the machine’s power status.  Note that the name of the user that MAAS creates in the BMC is controlled by the `maas_auto_ipmi_user` config setting, both for IPMI and Redfish; nothing has changed in this regard with MAAS 3.2.
 
 You can check whether or not a machine can communicate via Redfish, with the command: 
 
@@ -152,23 +152,23 @@ If the machine has been enlisted by MAAS, you can also check the output of the `
 
 #### MAAS native TLS
 
-MAAS 3.2 provides [native TLS](/t/how-to-implement-tls/5116). MAAS now has built-in TLS support for communicating with the UI and API over HTTPS. This eliminates the need to deploy a separate TLS-terminating reverse-proxy solution in front of MAAS to provide secure access to API and UI. Note that you can still set up an HA proxy if you are using multiple controllers.
+MAAS 3.2 provides [native TLS](https://discourse.maas.io/t/how-to-implement-tls/5116).  MAAS now has built-in TLS support for communicating with the UI and API over HTTPS.  This eliminates the need to deploy a separate TLS-terminating reverse-proxy solution in front of MAAS to provide secure access to API and UI.  Note that you can still set up an HA proxy if you are using multiple controllers.
 
 #### Hardware sync for deployed machines
 
-MAAS 3.2 allows you to [sync hardware changes for deployed machines](/t/how-to-customise-machines/5108). You can see real-time updates to storage, etc., for a running machine. This feature requires a special parameter be set prior to deployment. Coupled with the existing ability to commission deployed machines, MAAS 3.2 moves a step closer to real-time reconfiguration of active, deployed, bare-metal.
+MAAS 3.2 allows you to [sync hardware changes for deployed machines](https://discourse.maas.io/t/how-to-customise-machines/5108).  You can see real-time updates to storage, etc., for a running machine.  This feature requires a special parameter be set prior to deployment.  Coupled with the existing ability to commission deployed machines, MAAS 3.2 moves a step closer to real-time reconfiguration of active, deployed, bare-metal.
 
 #### Expanded tagging capability
  
-MAAS 3.2 provides greatly [expanded tagging capability](/t/how-to-manage-tags/5928). You can auto-apply tags to machines that match a custom XPath expression. Setting up an automatic tag lets you recognise special hardware characteristics and settings, e.g., the gpu passthrough.
+MAAS 3.2 provides greatly [expanded tagging capability](https://discourse.maas.io/t/how-to-manage-tags/5928).  You can auto-apply tags to machines that match a custom XPath expression.  Setting up an automatic tag lets you recognise special hardware characteristics and settings, e.g., the gpu passthrough.
 
 #### More new features
 
 MAAS 3.2 rounds out the feature set with a few more items:
 
-- [Support for observability (O11y) in MAAS](/t/how-to-monitor-maas/5204): MAAS now supports integration with FOSS Observability stacks.
+- [Support for observability (O11y) in MAAS](https://canonical.com/maas/docs/how-to-monitor-maas): MAAS now supports integration with FOSS Observability stacks.
 
-- [Ability for user to specify IPMI cipher suite](/t/how-to-set-up-power-drivers/5246): You can explicitly select which cipher suite to use when interacting with a BMC.
+- [Ability for user to specify IPMI cipher suite](https://discourse.maas.io/t/how-to-set-up-power-drivers/5246): You can explicitly select which cipher suite to use when interacting with a BMC.
 
 - Roll-out of our new tabbed Reader Adaptive Documentation (incremental across the release cycle): We've eliminated the top menus; each page now contains information for all versions, select-able by drop-downs above the relevant sections.
 

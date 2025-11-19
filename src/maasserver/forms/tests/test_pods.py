@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -25,7 +25,6 @@ from maasserver.forms.pods import (
     PodForm,
 )
 from maasserver.models import Config, Machine, StaticIPAddress
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -595,10 +594,6 @@ class TestPodForm(MAASTransactionServerTestCase):
 
 
 class TestComposeMachineForm(MAASTransactionServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def make_requested_machine_result(self, pod):
         return RequestedMachine(
             hostname=factory.make_name("hostname"),

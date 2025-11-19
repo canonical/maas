@@ -12,7 +12,7 @@ from maasserver.models.dnsresource import DNSResource, separate_fqdn
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks, reload_object
+from maasserver.utils.orm import reload_object
 
 
 class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
@@ -145,52 +145,36 @@ class TestDNSResource(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
         # Should work without issue
-        with post_commit_hooks:
-            dnsresource.save()
+        dnsresource.save()
 
     def test_allows_atsign(self):
         name = "@"
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
-
+        dnsresource.save()
         ip = factory.make_StaticIPAddress()
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(ip)
-            # Should work without issue
-            dnsresource.save()
+        dnsresource.ip_addresses.add(ip)
+        # Should work without issue
+        dnsresource.save()
 
     def test_allows_wildcard(self):
         name = "*"
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
+        dnsresource.save()
 
         ip = factory.make_StaticIPAddress()
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(ip)
-            # Should work without issue
-            dnsresource.save()
+        dnsresource.ip_addresses.add(ip)
+        # Should work without issue
+        dnsresource.save()
 
     def test_fqdn_returns_correctly_for_atsign(self):
         name = "@"
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
-
+        dnsresource.save()
         sip = factory.make_StaticIPAddress()
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(sip)
-
+        dnsresource.ip_addresses.add(sip)
         self.assertEqual(domain.name, dnsresource.fqdn)
 
     def test_allows_underscores_without_addresses(self):
@@ -198,47 +182,36 @@ class TestDNSResource(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
         # Should work without issue
-        with post_commit_hooks:
-            dnsresource.save()
+        dnsresource.save()
 
     def test_rejects_addresses_if_underscore_in_name(self):
         name = factory.make_name("n_me")
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
-
+        dnsresource.save()
         sip = factory.make_StaticIPAddress()
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(sip)
-            self.assertRaisesRegex(
-                ValidationError,
-                re.escape(f"{{'__all__': ['Invalid dnsresource name: {name}."),
-                dnsresource.save,
-                force_update=True,
-            )
+        dnsresource.ip_addresses.add(sip)
+        self.assertRaisesRegex(
+            ValidationError,
+            re.escape(f"{{'__all__': ['Invalid dnsresource name: {name}."),
+            dnsresource.save,
+            force_update=True,
+        )
 
     def test_rejects_multiple_dnsresource_with_same_name(self):
         name = factory.make_name("name")
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
-
+        dnsresource.save()
         dnsresource2 = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            self.assertRaisesRegex(
-                ValidationError,
-                re.escape(
-                    "{'__all__': ['Labels must be unique within their zone.']"
-                ),
-                dnsresource2.save,
-                force_update=True,
-            )
+        self.assertRaisesRegex(
+            ValidationError,
+            re.escape(
+                "{'__all__': ['Labels must be unique within their zone.']"
+            ),
+            dnsresource2.save,
+            force_update=True,
+        )
 
     def test_invalid_name_raises_exception(self):
         self.assertRaisesRegex(
@@ -263,17 +236,13 @@ class TestDNSResource(MAASServerTestCase):
         )
         ipaddress = factory.make_StaticIPAddress()
         dnsrr = dnsdata.dnsresource
-
-        with post_commit_hooks:
-            dnsrr.ip_addresses.add(ipaddress)
-            self.assertRaisesRegex(
-                ValidationError,
-                re.escape(
-                    "{'__all__': ['Cannot add address: CNAME present.']"
-                ),
-                dnsrr.save,
-                force_update=True,
-            )
+        dnsrr.ip_addresses.add(ipaddress)
+        self.assertRaisesRegex(
+            ValidationError,
+            re.escape("{'__all__': ['Cannot add address: CNAME present.']"),
+            dnsrr.save,
+            force_update=True,
+        )
 
     def test_get_addresses_returns_addresses(self):
         # Verify that the return includes node addresses, and
@@ -281,24 +250,15 @@ class TestDNSResource(MAASServerTestCase):
         name = factory.make_name()
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
-
+        dnsresource.save()
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, hostname=name, domain=domain
         )
         sip1 = factory.make_StaticIPAddress()
-
-        with post_commit_hooks:
-            node.current_config.interface_set.first().ip_addresses.add(sip1)
-
+        node.current_config.interface_set.first().ip_addresses.add(sip1)
         sip2 = factory.make_StaticIPAddress()
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(sip2)
-
+        dnsresource.ip_addresses.add(sip2)
         self.assertCountEqual(
             (sip1.get_ip(), sip2.get_ip()), dnsresource.get_addresses()
         )
@@ -307,9 +267,7 @@ class TestDNSResource(MAASServerTestCase):
         name = factory.make_name()
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
+        dnsresource.save()
 
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -320,11 +278,8 @@ class TestDNSResource(MAASServerTestCase):
         sip2 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED
         )
-
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(sip2)
-            dnsresource.delete()
-
+        dnsresource.ip_addresses.add(sip2)
+        dnsresource.delete()
         assert StaticIPAddress.objects.filter(ip=sip1.get_ip()).exists()
         assert not StaticIPAddress.objects.filter(ip=sip2.get_ip()).exists()
 
@@ -332,19 +287,16 @@ class TestDNSResource(MAASServerTestCase):
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=factory.make_name(), domain=domain)
         dnsresource2 = DNSResource(name=factory.make_name(), domain=domain)
-
-        with post_commit_hooks:
-            dnsresource.save()
-            dnsresource2.save()
+        dnsresource.save()
+        dnsresource2.save()
 
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED
         )
 
-        with post_commit_hooks:
-            dnsresource.ip_addresses.add(sip)
-            dnsresource2.ip_addresses.add(sip)
-            dnsresource.delete()
+        dnsresource.ip_addresses.add(sip)
+        dnsresource2.ip_addresses.add(sip)
+        dnsresource.delete()
 
         assert StaticIPAddress.objects.filter(ip=sip.get_ip()).exists()
         assert DNSResource.objects.filter(id=dnsresource2.id).exists()
@@ -355,19 +307,14 @@ class TestStaticIPAddressSignals(MAASServerTestCase):
 
     def test_deletes_orphaned_record(self):
         dnsrr = factory.make_DNSResource()
-
-        with post_commit_hooks:
-            StaticIPAddress.objects.all().delete()
-
+        StaticIPAddress.objects.all().delete()
         dnsrr = reload_object(dnsrr)
         self.assertIsNone(dnsrr)
 
     def test_non_orphaned_record_not_deleted(self):
         dnsrr = factory.make_DNSResource(ip_addresses=["8.8.8.8", "8.8.4.4"])
         sip = StaticIPAddress.objects.get(ip="8.8.4.4")
-
-        with post_commit_hooks:
-            sip.delete()
+        sip.delete()
         dnsrr = reload_object(dnsrr)
         sip = StaticIPAddress.objects.get(ip="8.8.8.8")
         self.assertIn(sip, dnsrr.ip_addresses.all())

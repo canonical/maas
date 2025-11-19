@@ -11,7 +11,7 @@ You can also account for user activities with audit logs.
 
 ## Firewall logs
 
-Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://help.ubuntu.com/community/IptablesHowTo). To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`. 
+Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://help.ubuntu.com/community/IptablesHowTo).  To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`. 
 
 Find red flags in UFW and iptables logs by looking for key patterns:
 
@@ -46,7 +46,7 @@ Use a log analysis tool, or inspect raw logs stored in paths like `/var/log/http
 
 ## MAAS logs
 
-| Pkg Fmt  | Look for failed logins in...           |
+| Pkg Fmt  | Look for failed logins in…  |
 |----------|-----------------------------------------|
 | Snap     | `/var/snap/maas/common/log/regiond.log` |
 | Packages | `/var/log/maas/regiond.log`             |

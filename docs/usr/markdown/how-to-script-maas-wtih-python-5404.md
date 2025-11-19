@@ -19,9 +19,9 @@ See the [API documentation](https://canonical.com/maas/docs/api) for more info.
 
 Kick-start your journey with these useful external links:
 
-- [Python libmaas on GitHub](https://github.com/maas/python-libmaas)
-- [Python libmaas in the MAAS GitHub pages](http://maas.github.io/python-libmaas/index.html)
+- [Python libmaas on GitHub](https://github.com/canonical/python-libmaas)
+- [Python libmaas in the MAAS GitHub pages](https://canonical.github.io/python-libmaas/)
 
-For hands-on examples to get you up and running, visit the [Python libmaas client guide](https://maas.github.io/python-libmaas/client/index.html).
+For hands-on examples to get you up and running, visit the [Python libmaas client guide](https://canonical.github.io/python-libmaas/client/index.html).
 
-For package details on PyPI, consult [this external link](https://pypi.python.org/pypi/python-libmaas).
+For package details on PyPI, consult [this external link](https://pypi.org/project/python-libmaas/).

@@ -7,7 +7,6 @@ import datetime
 import random
 from unittest.mock import sentinel
 
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
@@ -22,10 +21,6 @@ from maasserver.websockets.handlers.event import (
 
 
 class TestEventHandler(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def dehydrate_event(self, event):
         data = {
             "id": event.id,

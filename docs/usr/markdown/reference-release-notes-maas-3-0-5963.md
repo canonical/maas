@@ -1,4 +1,4 @@
-We are happy to announce the release of MAAS 3.0. This release provides new features, along with critical and high-priority [bug fixes](#heading--maas-3-bug-fixes).
+We are happy to announce the release of MAAS 3.0.  This release provides new features, along with critical and high-priority [bug fixes](#heading--maas-3-bug-fixes).
 
 MAAS 3.0 can be installed fresh (recommended) with:
 
@@ -30,7 +30,7 @@ At this point, you may proceed with a normal installation.
 
 ## Significant changes
 
-With the advent of MAAS 3.0, we are removing support for RSD pods. Registered pods and their machines will be removed by MAAS upon upgrading to MAAS 3.0.
+With the advent of MAAS 3.0, we are removing support for RSD pods.  Registered pods and their machines will be removed by MAAS upon upgrading to MAAS 3.0.
 
 Note that new features are categorised by the level of release at which they became accessible to users.
 
@@ -40,21 +40,21 @@ New features for MAAS 3.0 release candidate 1.
 
 ### Consolidation of logs and events
 
-The logs and events tabs have combined and now live under "Logs". In addition to a number of small improvements, navigating and displaying events has been made easier.
+The logs and events tabs have combined and now live under "Logs".  In addition to a number of small improvements, navigating and displaying events has been made easier.
 
-![image](upload://zvQSdbcenjYrkYsq2mtDx8UCGgS.png)
+The Logs tab now combines machine events and log output in a single view, making it easier to trace changes without switching panes.
 
 #### Downloading logs
 
 A helpful new feature is the ability to download the machine and installation output, and if a machine has failed deployment you can now download a full tar of the curtain logs.
 
-![image](upload://m0CtHR0E4GvNFqRQkcfcFpeSCId.png)
+Download controls in that view let you fetch machine and installation output directly, including a full curtin log bundle when a deployment fails.
 
 ### Disabling boot methods
  
-Individual boot methods may now be disabled. When a boot method is disabled MAAS will configure MAAS controlled isc-dhcpd to not respond to the associated [boot architecture code](https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#processor-architecture). External DHCP servers must be configured manually.
+Individual boot methods may now be disabled.  When a boot method is disabled MAAS will configure MAAS controlled isc-dhcpd to not respond to the associated [boot architecture code](https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#processor-architecture).  External DHCP servers must be configured manually.
 
-To allow different boot methods to be in different states on separate physical networks using the same VLAN ID configuration is done on the subnet in the UI or API. When using the API boot methods to be disabled may be specified using the MAAS internal name or [boot architecture code](https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#processor-architecture) in octet or hex form. For example the following disabled i386/AMD64 PXE, AMD64 UEFI TFTP, and AMD64 UEFI HTTP
+To allow different boot methods to be in different states on separate physical networks using the same VLAN ID configuration is done on the subnet in the UI or API.  When using the API boot methods to be disabled may be specified using the MAAS internal name or [boot architecture code](https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#processor-architecture) in octet or hex form.  For example the following disabled i386/AMD64 PXE, AMD64 UEFI TFTP, and AMD64 UEFI HTTP
 
 ```nohighlight
 maas $PROFILE subnet update $SUBNET disabled_boot_architectures="0x00 uefi_amd64_tftp 00:10"
@@ -66,7 +66,7 @@ maas $PROFILE subnet update $SUBNET disabled_boot_architectures="0x00 uefi_amd64
 - UEFI ARM64 HTTP(00:13) has been enabled.
 - UEFI ARM64 TFTP(00:0B) and UEFI ARM64 HTTP(00:13) will now provide a shim and GRUB signed with the Microsoft boot loader keys.
 - grub.cfg for all UEFI platforms has been updated to replace the deprecated `linuxefi` and `initrdefi` commands with the standard `linux` and `initrd` commands.
-- GRUB debug may now be enabled by enabling [rackd debug logging](https://discourse.maas.io/t/running-installed-maas-in-debug-logging-mode/168).
+- GRUB debug may now be enabled by enabling rackd debug logging.  See the [logging documentation](https://canonical.com/maas/docs/how-to-use-logging) for details.
 
 ## MAAS 3.0 Beta 4
 
@@ -74,7 +74,7 @@ New features for MAAS 3.0 Beta 4.
 
 ### Improvements to MAAS CLI help UX
 
-The MAAS CLI will now give you help in more places, supporting a more exploration-based interaction. Specifically, we now show `help` for cases where the required arguments are not met.
+The MAAS CLI will now give you help in more places, supporting a more exploration-based interaction.  Specifically, we now show `help` for cases where the required arguments are not met.
 
 Say you're trying to find out how to list the details of a machine in MAAS e.g.
 
@@ -82,7 +82,7 @@ Say you're trying to find out how to list the details of a machine in MAAS e.g.
 $ PROFILE=foo
 $ maas login $PROFILE http://$MY_MAAS:5240/MAAS/ $APIKEY
 $ maas $PROFILE
-usage: maas $PROFILE [-h] COMMAND ...
+usage: maas $PROFILE [-h] COMMAND …
 
 Issue commands to the MAAS region controller at http://$MY_MAAS:5240/MAAS/api/2.0/.
 
@@ -104,7 +104,7 @@ drill down:
 
 too few arguments
 $ maas $PROFILE node 
-usage: maas $PROFILE node [-h] COMMAND ...
+usage: maas $PROFILE node [-h] COMMAND …
 
 Manage an individual Node.
 
@@ -124,7 +124,7 @@ The Node is identified by its system_id.
 too few arguments
 
 $ maas $PROFILE node read
-usage: maas $PROFILE node read [--help] [-d] [-k] system_id [data [data ...]]
+usage: maas $PROFILE node read [--help] [-d] [-k] system_id [data [data …]]
 
 Read a node
 
@@ -180,7 +180,7 @@ On the API using the allocate operation on the machines endpoint a machine may a
 
 ### IBM Z DPM partition support
 
-IBM Z14 GA2 (LinuxOne II) and above mainframe partitions are supported in MAAS 3.0. Note that partitions (LPARS) must pre-configured and use qeth-based network devices (use HyperV sockets and properly-defined storage groups like Hipersockets or OSA adaptors) and properly-defined (FCP) storage groups.. IBM Z DPM Partitions can be added as a chassis, which allows you to add all partitions at once.
+IBM Z14 GA2 (LinuxOne II) and above mainframe partitions are supported in MAAS 3.0.  Note that partitions (LPARS) must pre-configured and use qeth-based network devices (use HyperV sockets and properly defined storage groups like Hipersockets or OSA adaptors) and properly defined (FCP) storage groups..  IBM Z DPM Partitions can be added as a chassis, which allows you to add all partitions at once.
 
 ### Proxmox support
 
@@ -198,7 +198,7 @@ Note that proxmox support has also been back-ported to MAAS 2.9
 MAAS 3.0 supports the use of LXD projects:
 
 - LXD VM hosts registered in MAAS are now tied to a specific LXD project which MAAS uses to manage VMs
-- MAAS doesn’t create or manage machines for VMs in other projects
+- MAAS does not’t create or manage machines for VMs in other projects
 - MAAS creates the specified project when the VM host is registered, if it doesn't exist
 - All existing VMs in the specified project are commissioned on registration
 - Resource usage is reported at both project and global levels
@@ -207,34 +207,34 @@ MAAS 3.0 supports the use of LXD projects:
 
 Tables for detected PCI and USB devices have been added to the machine details page for MAAS 3.0:
 
-<a  href="https://discourse.maas.io/uploads/default/original/2X/8/87f42bafe321d45af94d73216f933a9067f01df2.png" target = "_blank"><img src="https://discourse.maas.io/uploads/default/original/2X/8/87f42bafe321d45af94d73216f933a9067f01df2.png"></a>
+The machine details page now includes dedicated tables listing detected PCI and USB devices, so you can inspect hardware at a glance.
 
 These tables include a new skeleton loading state while node devices are being fetched:
 
-![image](https://discourse.maas.io/uploads/default/original/2X/4/4faa1d8cd996a25ee5089ada924b405bc8903aa4.png)
+While the data loads, MAAS shows a skeleton state to indicate that device discovery is still in progress.
 
 The user is prompted to commission the machine if no devices are detected.
 
 ### Workload annotations
 
-Workload annotations have been added to the machine summary page in MAAS 3.0. These allow you to apply `owner_data` to a machine and make it visible while the machine is in allocated or deployed state:
+Workload annotations have been added to the machine summary page in MAAS 3.0.  These allow you to apply `owner_data` to a machine and make it visible while the machine is in allocated or deployed state:
 
-![image](https://discourse.maas.io/uploads/default/original/2X/5/54682ae5f9c7bb449a1ad222679be0156f27d109.png)
+Workload annotations, based on `owner_data`, are now visible on the summary page so operators can identify the purpose of deployed or allocated machines at a glance.
 
-This data is cleared once the machine state changes to something other than "allocated" or "deployed."  The machine list can be filtered by these workload annotations. MAAS will warn you on the release page to remind you that workload annotations will be cleared upon releasing the machine.
+This data is cleared once the machine state changes to something other than "allocated" or "deployed."  The machine list can be filtered by these workload annotations.  MAAS will warn you on the release page to remind you that workload annotations will be cleared upon releasing the machine.
 
 ### Fixed status bar
 
-In MAAS 3.0, a fixed status bar has been added to the bottom of the screen, which will always display the MAAS name and version on the left. The right side of the status bar is intended to show contextual data, depending on the UI panel currently displayed. For now, the only data shown is a “last commissioned” timestamp when the user is on a machine details page:
+In MAAS 3.0, a fixed status bar has been added to the bottom of the screen, which will always display the MAAS name and version on the left.  The right side of the status bar is intended to show contextual data, depending on the UI panel currently displayed.  For now, the only data shown is a “last commissioned” timestamp when the user is on a machine details page:
 
-![image](https://discourse.maas.io/uploads/default/original/2X/3/3a15d7e1d7251f3e928e3054a2aab71f414503bd.png)
+A fixed status bar appears at the bottom of the UI, displaying the MAAS version and contextual information such as the last commissioned timestamp.
 
 
 ## Bug fixes
 
-MAAS 3.0 incorporates a large number of bug fixes, summarised in the sections below. Please feel free to validate these fixes at your convenience and give us feedback if anything doesn't seem to work as presented in the bug request.
+MAAS 3.0 incorporates many bug fixes, summarised in the sections below.  You can validate these fixes at your convenience and give us feedback if anything doesn't seem to work as presented in the bug request.
 
-One particular bug, [#1916860](https://bugs.launchpad.net/maas/+bug/1916860), involves failures in the IPMI cipher suite in MAAS 2.9.2 and up, on the Lenovo x3650 M5 (and others). This particular bug is a not a MAAS bug, but a firmware issue with the subject machines. While the MAAS team can't fix this (hence the assignment of "Won't Fix"), the team did provide a easy [workaround](https://bugs.launchpad.net/maas/+bug/1916860/comments/27) which helps circumvent this issue.
+One particular bug, [#1916860](https://bugs.launchpad.net/maas/+bug/1916860), involves failures in the IPMI cipher suite in MAAS 2.9.2 and up, on the Lenovo x3650 M5 (and others).  This particular bug is a not a MAAS bug, but a firmware issue with the subject machines.  While the MAAS team can't fix this (hence the assignment of "Won't Fix"), the team did provide a easy [workaround](https://bugs.launchpad.net/maas/+bug/1916860/comments/27) which helps circumvent this issue.
 
 ### MAAS 3.0 bug fixes
 
@@ -252,7 +252,7 @@ Here are the bugs that have been 'Fix Released' in MAAS 3.0 RC2:
 | Number | Description | Importance |
 |:-------|:------------|:-----------|
 |[#1929552](https://bugs.launchpad.net/bugs/1929552)|Deb-based controller fails to run machine-resources|Critical|
-|[#1929576](https://bugs.launchpad.net/bugs/1929576)|Machines fail to commission using the 3.0 snap due to possible? DNS issue|Critical|
+|[#1929576](https://bugs.launchpad.net/bugs/1929576)|Machines fail to commission using the 3.0 snap due to possible[?!]  DNS issue|Critical|
 |[#1930227](https://bugs.launchpad.net/bugs/1930227)|Failure to commission when interfaces has a /32 IP |Critical|  
 |[#1930554](https://bugs.launchpad.net/bugs/1930554)|vm-host CLI command is now named vmhosts  |Critical| 
 |[#1930587](https://bugs.launchpad.net/bugs/1930587)|Different disks with same LUN detected as multipath  |Critical|  
@@ -261,7 +261,7 @@ Here are the bugs that have been 'Fix Released' in MAAS 3.0 RC2:
 |[#1835292](https://bugs.launchpad.net/bugs/1835292)|UI should add button to download curtin-logs.tar on deployment failure MAAS |High| 
 |[#1908552](https://bugs.launchpad.net/bugs/1908552)|maas init fails; 'relation "maasserver_routable_pairs" does not exist'  |High|  
 |[#1929086](https://bugs.launchpad.net/bugs/1929086)|LXD VM hosts can't be refreshed if VLANs interfaces aren't named $parent.$vid  |High| 
-|[#1929643](https://bugs.launchpad.net/bugs/1929643)|MAAS often fails and and returns a Pickled object if request header is set to Accept: */*  |Medium|  
+|[#1929643](https://bugs.launchpad.net/bugs/1929643)|MAAS often fails and returns a Pickled object if request header is set to Accept: */*  |Medium|  
 |[#1924820](https://bugs.launchpad.net/bugs/1924820)|Trying to edit a disconnected NIC, then cancelling the edit and connecting the NIC via its drop-down menu, many drop-down menu options then disappear|Undecided| 
 
 ### MAAS 3.0 RC1 bug fixes
@@ -321,11 +321,11 @@ Here are the bugs that have been `Fix Released` in MAAS 3.0 Beta 4:
 |[#1923842](https://bugs.launchpad.net/bugs/1923842)|Can't use action menu on machine details page |High |
 |[#1917667](https://bugs.launchpad.net/bugs/1917669)|Commissioning/testing scripts no longer show ETA or progress |Undecided |
 |[#1917669](https://bugs.launchpad.net/bugs/1917669)|No way to view previous commissioning or testing script results |Undecided |
-|[#1917670](https://bugs.launchpad.net/bugs/1917670)|Storage and interface tests not assoicated with a device |Undecided |
+|[#1917670](https://bugs.launchpad.net/bugs/1917670)|Storage and interface tests not associated with a device |Undecided |
 |[#1917671](https://bugs.launchpad.net/bugs/1917671)|Commissioning/testing scripts not updated after starting commissioning or testing |Undecided |
 |[#1917794](https://bugs.launchpad.net/bugs/1917794)|Unable to view full history of events in UI |Undecided |
 |[#1918964](https://bugs.launchpad.net/bugs/1918964)|UI shows action unavailable after performing action |Undecided |
-|[#1918966](https://bugs.launchpad.net/bugs/1918966)|Tabs aren't always underscorred |Undecided |
+|[#1918966](https://bugs.launchpad.net/bugs/1918966)|Tabs aren't always underscored |Undecided |
 |[#1918971](https://bugs.launchpad.net/bugs/1918971)|UI does not autofill size on storage tab |Undecided |
 |[#1923524](https://bugs.launchpad.net/bugs/1923524)|Unable to delete LXD composed machine on KVM page |Undecided |
 

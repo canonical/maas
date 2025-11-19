@@ -159,6 +159,21 @@ class InsufficientStorageErrorResponse(JSONResponse):
         )
 
 
+class BadGatewayErrorBodyResponse(ErrorBodyResponse):
+    code: int = status.HTTP_502_BAD_GATEWAY
+    message: str = "Bad gateway."
+
+
+class BadGatewayErrorResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(
+                BadGatewayErrorBodyResponse(details=details)
+            ),
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+
+
 class DischargeRequiredErrorResponse(JSONResponse):
     def __init__(self, macaroon: Macaroon):
         content, headers = httpbakery.discharge_required_response(

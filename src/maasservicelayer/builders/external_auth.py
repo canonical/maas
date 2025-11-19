@@ -7,6 +7,7 @@ from typing import Union
 from pydantic import Field
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
+from maasservicelayer.models.external_auth import ProviderMetadata
 
 
 class OAuthProviderBuilder(ResourceBuilder):
@@ -21,6 +22,9 @@ class OAuthProviderBuilder(ResourceBuilder):
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
     issuer_url: Union[str, Unset] = Field(default=UNSET, required=False)
+    metadata: Union[ProviderMetadata, Unset] = Field(
+        default=UNSET, required=False
+    )
     name: Union[str, Unset] = Field(default=UNSET, required=False)
     redirect_uri: Union[str, Unset] = Field(default=UNSET, required=False)
     scopes: Union[str, Unset] = Field(default=UNSET, required=False)

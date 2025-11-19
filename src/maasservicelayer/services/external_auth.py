@@ -7,6 +7,7 @@ from datetime import timedelta
 import os
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from httpx import AsyncClient
 from macaroonbakery import bakery, checkers, httpbakery
 from macaroonbakery.bakery._store import RootKeyStore
 from macaroonbakery.httpbakery.agent import Agent, AuthInfo
@@ -36,6 +37,7 @@ from maasservicelayer.db.repositories.external_auth import (
 )
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
+    BadGatewayException,
     BaseExceptionDetail,
     ConflictException,
     DischargeRequiredException,
@@ -46,8 +48,12 @@ from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     INVALID_TOKEN_VIOLATION_TYPE,
     PRECONDITION_FAILED,
+    PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
 )
-from maasservicelayer.models.external_auth import OAuthProvider
+from maasservicelayer.models.external_auth import (
+    OAuthProvider,
+    ProviderMetadata,
+)
 from maasservicelayer.models.secrets import (
     ExternalAuthSecret,
     MacaroonKeySecret,
@@ -369,6 +375,17 @@ class ExternalAuthService(Service, RootKeyStore):
         return RbacAsyncClient(auth_config.url.rstrip("/auth"), auth_info)
 
 
+class ExternalOAuthServiceCache(ServiceCache):
+    httpx_client: AsyncClient | None = None
+    oauth2_client: OAuth2Client | None = None
+
+    async def close(self) -> None:
+        if self.httpx_client:
+            await self.httpx_client.aclose()
+        if self.oauth2_client:
+            await self.oauth2_client.client.aclose()
+
+
 class ExternalOAuthService(
     BaseService[OAuthProvider, ExternalOAuthRepository, OAuthProviderBuilder]
 ):
@@ -381,9 +398,14 @@ class ExternalOAuthService(
         context: Context,
         external_oauth_repository: ExternalOAuthRepository,
         secrets_service: SecretsService,
+        cache: ExternalOAuthServiceCache | None = None,
     ):
-        super().__init__(context, external_oauth_repository)
+        super().__init__(context, external_oauth_repository, cache)
         self.secrets_service = secrets_service
+
+    @staticmethod
+    def build_cache_object() -> ExternalOAuthServiceCache:
+        return ExternalOAuthServiceCache()
 
     async def pre_create_hook(self, builder) -> None:
         existing_enabled = await self.get_provider()
@@ -396,6 +418,10 @@ class ExternalOAuthService(
                     )
                 ]
             )
+
+        builder.issuer_url = builder.ensure_set(builder.issuer_url).rstrip("/")
+
+        builder.metadata = await self.get_provider_metadata(builder)
 
     async def pre_delete_hook(
         self, resource_to_be_deleted: OAuthProvider
@@ -413,11 +439,47 @@ class ExternalOAuthService(
     async def get_provider(self) -> OAuthProvider | None:
         return await self.repository.get_provider()
 
+    async def get_provider_metadata(
+        self, builder: OAuthProviderBuilder
+    ) -> ProviderMetadata:
+        httpx_client = await self.get_httpx_client()
+        try:
+            response = await httpx_client.get(
+                f"{builder.issuer_url}/.well-known/openid-configuration"
+            )
+        except Exception as e:
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+                        message="A network error occurred while trying to reach the OIDC server.",
+                    ),
+                ]
+            ) from e
+
+        if response.status_code != 200:
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+                        message=f"OIDC server returned an unexpected response with status code: {response.status_code}.",
+                    ),
+                ]
+            )
+
+        metadata = response.json()
+        return ProviderMetadata(**metadata)
+
+    @Service.from_cache_or_execute(attr="oauth2_client")
     async def get_client(self) -> OAuth2Client | None:
         provider = await self.get_provider()
         if not provider:
             return None
         return OAuth2Client(provider)
+
+    @Service.from_cache_or_execute(attr="httpx_client")
+    async def get_httpx_client(self) -> AsyncClient:
+        return AsyncClient()
 
     async def update_provider(
         self, id: int, builder: OAuthProviderBuilder

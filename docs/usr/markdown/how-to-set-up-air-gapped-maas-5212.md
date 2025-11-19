@@ -9,7 +9,7 @@
 
 
 ## Why this matters
-MAAS can run in an air-gapped environment (no internet access), but only if you prepare the right local resources. Without preparation, you’ll run into failed package installs, missing images, and broken updates.
+MAAS can run in an air-gapped environment (no internet access), but only if you prepare the right local resources.  Without preparation, you’ll run into failed package installs, missing images, and broken updates.
 
 This guide shows you how to:
 
@@ -22,7 +22,7 @@ This guide shows you how to:
 
 ## Prepare the Enterprise Store (snaps)
 
-Snaps are central to MAAS. In an offline environment, you need a private Enterprise Store.
+Snaps are central to MAAS.  In an offline environment, you need a private Enterprise Store.
 
 1. Register the Enterprise Store on a machine with internet access.
 2. Secure the deployment with HTTPS.
@@ -33,7 +33,7 @@ For detailed steps, see [Enterprise Store docs](https://documentation.ubuntu.com
 
 ## Host a local package repository
 
-MAAS rack and region controllers still depend on Debian packages. Use `reprepro` to build and manage a local mirror:
+MAAS rack and region controllers still depend on Debian packages.  Use `reprepro` to build and manage a local mirror:
 
 - `reprepro` is actively maintained (unlike `apt-mirror`).
 - No external database required.
@@ -44,7 +44,7 @@ You can also front this with a transparent proxy for easier access.
 
 ## Mirror MAAS images locally
 
-MAAS must download Ubuntu OS images for commissioning and deployment. Without internet, mirror them yourself:
+MAAS must download Ubuntu OS images for commissioning and deployment.  Without internet, mirror them yourself:
 
 1. Install `simplestreams`.
 2. Define environment variables for CLI interaction.

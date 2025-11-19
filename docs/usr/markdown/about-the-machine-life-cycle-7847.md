@@ -1,18 +1,18 @@
-Once MAAS has discovered a machine, it begins a structured life-cycle that reflects the real stages of bringing hardware into service, operating it, and eventually returning it to the pool. Understanding this flow is essential to managing machines effectively.
+Once MAAS has discovered a machine, it begins a structured life-cycle that reflects the real stages of bringing hardware into service, operating it, and eventually returning it to the pool.  Understanding this flow is essential to managing machines effectively.
 
 
 ## Enlistment: when MAAS first meets a machine
 
-When a machine is configured to network boot (PXE/iPXE) on a subnet controlled by MAAS, it will contact MAAS during boot. MAAS responds with a small ephemeral image, boots the machine, and records its basic identity (MAC address, architecture). At this point the machine appears in MAAS with the state:
+When a machine is configured to network boot (PXE/iPXE) on a subnet controlled by MAAS, it will contact MAAS during boot.  MAAS responds with a small ephemeral image, boots the machine, and records its basic identity (MAC address, architecture).  At this point the machine appears in MAAS with the state:
 
 - New - visible to admins, but not yet trusted for workloads.
 
-Admins can also manually add machines. In that case MAAS skips the “new” stage and immediately commissions them.
+Admins can also manually add machines.  In that case MAAS skips the “new” stage and immediately commissions them.
 
 
 ## Commissioning: gathering the details
 
-Commissioning turns a "new" machine into a usable one. MAAS:
+Commissioning turns a "new" machine into a usable one.  MAAS:
 
 - Boots the machine into an ephemeral Ubuntu image.
 - Runs hardware probes to detect CPU, RAM, storage, and network devices.
@@ -23,7 +23,7 @@ Power parameters:
 
 For supported power drivers, MAAS creates a dedicated `maas` user on the
 BMC with a randomly generated password, then uses those credentials for
-power control. MAAS stores the credentials in its database and does not
+power control.  MAAS stores the credentials in its database and does not
 modify existing BMC users unless you explicitly configure it to do so.
 Examples include power drivers using IPMI and Redfish.
 
@@ -44,7 +44,7 @@ At this point MAAS has a complete hardware inventory for scheduling and can depl
 
 To prevent conflicts in multi-user environments, machines must be allocated before they can be deployed:
 
-- Allocated - a "ready" machine has been reserved by a user or project. Other users can’t deploy it until it’s released.
+- Allocated - a "ready" machine has been reserved by a user or project.  Other users can’t deploy it until it’s released.
 
 Allocation does not change the machine’s state on the wire — it still sits idle — but it locks the record in MAAS for one user.
 
@@ -53,9 +53,9 @@ Allocation does not change the machine’s state on the wire — it still sits i
 
 When the user initiates deployment:
 
-1. MAAS powers on the allocated machine.
-2. It boots via PXE and installs the chosen operating system.
-3. MAAS reboots the machine into the new OS, adds user data (via `cloud-init`), and hands control to the user.
+1.  MAAS powers on the allocated machine.
+2.  It boots via PXE and installs the chosen operating system.
+3.  MAAS reboots the machine into the new OS, adds user data (via `cloud-init`), and hands control to the user.
 
 The states:
 
@@ -79,15 +79,15 @@ Disk erasure ensures sensitive data isn’t passed to the next user.
 
 Some states occur outside the normal cycle:
 
-- Rescue mode - boots the machine into an ephemeral environment for troubleshooting. Useful if an OS won’t boot or if you need to repair storage.
+- Rescue mode - boots the machine into an ephemeral environment for troubleshooting.  Useful if an OS won’t boot or if you need to repair storage.
 - Broken - an admin can mark a machine as broken when it has hardware issues; it cannot be deployed until repaired and recommissioned.
-- Failed - an automatic state assigned when commissioning or deployment did not succeed. Machines must be recommissioned before use.
+- Failed - an automatic state assigned when commissioning or deployment did not succeed.  Machines must be recommissioned before use.
 
 
 ## Advanced features
 
 - Cloning configurations (3.1+): admins can copy storage and network layouts from one machine to others, provided their hardware is compatible.
-- Adding live machines (3.1+): MAAS can import machines that are already running workloads. These appear as "deployed" immediately, bypassing the usual commissioning sequence.
+- Adding live machines (3.1+): MAAS can import machines that are already running workloads.  These appear as "deployed" immediately, bypassing the usual commissioning sequence.
 
 
 ## Key takeaway

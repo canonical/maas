@@ -10,6 +10,7 @@ from starlette.responses import Response
 import structlog
 
 from maasapiserver.common.api.models.responses.errors import (
+    BadGatewayErrorResponse,
     BadRequestResponse,
     ConflictResponse,
     DischargeRequiredErrorResponse,
@@ -25,6 +26,7 @@ from maasapiserver.common.api.models.responses.errors import (
 from maascommon.logging.security import AUTHN_AUTH_FAILED, AUTHZ_FAIL, SECURITY
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
+    BadGatewayException,
     BadRequestException,
     BaseExceptionDetail,
     ConflictException,
@@ -102,6 +104,9 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except AlreadyExistsException as e:
             logger.debug(e)
             return ConflictResponse(details=e.details)
+        except BadGatewayException as e:
+            logger.error(e)
+            return BadGatewayErrorResponse(details=e.details)
         except ConflictException as e:
             logger.debug(e)
             return ConflictResponse(details=e.details)

@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DNSData forms."""
@@ -8,7 +8,7 @@ import random
 from maasserver.forms.dnsdata import DNSDataForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks, reload_object
+from maasserver.utils.orm import reload_object
 
 
 class TestDNSDataForm(MAASServerTestCase):
@@ -25,10 +25,7 @@ class TestDNSDataForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-
-        with post_commit_hooks:
-            dnsdata = form.save()
-
+        dnsdata = form.save()
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)
@@ -48,10 +45,7 @@ class TestDNSDataForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-
-        with post_commit_hooks:
-            dnsdata = form.save()
-
+        dnsdata = form.save()
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)
@@ -72,16 +66,10 @@ class TestDNSDataForm(MAASServerTestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-
-        with post_commit_hooks:
-            dnsdata = form.save()
-
+        dnsdata = form.save()
         form = DNSDataForm(instance=dnsdata, data={"ttl": None})
         self.assertTrue(form.is_valid(), form.errors)
-
-        with post_commit_hooks:
-            dnsdata = form.save()
-
+        dnsdata = form.save()
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)
@@ -101,10 +89,7 @@ class TestDNSDataForm(MAASServerTestCase):
             data={"rrtype": rrtype, "rrdata": rrdata, "ttl": new_ttl},
         )
         self.assertTrue(form.is_valid(), form.errors)
-
-        with post_commit_hooks:
-            form.save()
-
+        form.save()
         dnsdata = reload_object(dnsdata)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)

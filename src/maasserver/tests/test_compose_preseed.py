@@ -16,7 +16,6 @@ from maasserver.compose_preseed import (
     get_apt_proxy,
 )
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES, PRESEED_TYPE
-from maasserver.models import dnspublication as dnspublication_module
 from maasserver.models import NodeKey, PackageRepository
 from maasserver.models.config import Config
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
@@ -356,10 +355,6 @@ class TestAptProxy(MAASServerTestCase):
 
 
 class TestComposePreseed(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def assertSystemInfo(self, config):
         main_archive_url = PackageRepository.get_main_archive().url
         ports_archive_url = PackageRepository.get_ports_archive().url
@@ -1189,10 +1184,6 @@ class TestComposePreseed(MAASServerTestCase):
 
 
 class TestBuildMetadataURL(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublication_module, "post_commit_do")
-
     def test_build_metadata_url_uses_original_request(self):
         request = make_HttpRequest()
         route = "/MAAS"
