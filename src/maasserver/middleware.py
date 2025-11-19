@@ -449,14 +449,3 @@ class RBACMiddleware:
         # state of the RBAC connection.
         rbac.clear()
         return result
-
-
-class ServiceLayerMiddleware:
-    """Middleware that ensures the connection in the service layer is usable."""
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        service_layer.ensure_connection()
-        return self.get_response(request)

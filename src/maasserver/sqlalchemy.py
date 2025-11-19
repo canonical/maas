@@ -122,19 +122,28 @@ class ServiceLayerAdapter(threading.local):
     @property
     def services(self) -> ServiceCollectionV3:
         """Provides access to the service collection, ensuring initialization."""
-        self._guard_initialization()
+        self.ensure_connection()
         return self._services
 
     def ensure_connection(self):
-        """Ensures the database connection is active and updates it if necessary."""
-        self._guard_initialization()
-        # If the connection has been closed and our orm.py has reopened it, we have to pick the new one.
-        if self.context.get_connection().connection.dbapi_connection.closed:
+        """
+        Ensures the database connection is active and updates it if necessary.
+        If the connection has been closed and our orm.py has reopened it, we have to pick the new one.
+        """
+        self.ensure_initialized()
+        if not self.context.get_connection().connection.is_valid:
             self.context.set_connection(get_sqlalchemy_django_connection())
+
+    def ensure_initialized(self):
+        """Checks if the adapter has been initialized before allowing access to resources."""
+        if not self.initialized:
+            raise ServiceLayerNotInitialized(
+                "Service layer not initialized in this thread. This is likely to be a programming error and should never happen."
+            )
 
     def exec_async(self, coro: Coroutine[Any, Any, T]) -> T:
         """Executes an asynchronous coroutine synchronously within the event loop."""
-        self._guard_initialization()
+        self.ensure_connection()
         return self.event_loop.run_until_complete(coro)
 
     def close(self):
@@ -143,13 +152,6 @@ class ServiceLayerAdapter(threading.local):
             self.exec_async(self.cache_for_services.close())
             self.event_loop.close()
         self.initialized = False
-
-    def _guard_initialization(self):
-        """Checks if the adapter has been initialized before allowing access to resources."""
-        if not self.initialized:
-            raise ServiceLayerNotInitialized(
-                "Service layer not initialized in this thread. This is likely to be a programming error and should never happen."
-            )
 
     def __enter__(self):
         # Use a context if you need a dedicated instance of the adapter.
@@ -212,6 +214,10 @@ def get_sqlalchemy_django_connection() -> Connection:
     return conn
 
 
+class InvalidConnection(Exception):
+    """Indicates that the connection is invalid"""
+
+
 class SharedConnection(Connection):
     """A connection that shares the dbapi connection with another framework.
 
@@ -220,7 +226,9 @@ class SharedConnection(Connection):
     """
 
     def invalidate(self, exception=None):
-        raise NotImplementedError("Underlying connection is handled by Django")
+        raise InvalidConnection(
+            "Underlying connection is handled by Django, which will handle invalidation."
+        )
 
     def begin(self):
         raise NotImplementedError("Transactions are handled by Django")
@@ -260,7 +268,7 @@ class SharedDBAPIConnection(PoolProxiedConnection):
 
     @property
     def is_valid(self) -> bool:
-        return self.dbapi_connection.closed
+        return not self.dbapi_connection.closed
 
 
 class SharedDjangoPool(Pool):

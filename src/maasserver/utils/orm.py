@@ -61,7 +61,7 @@ from psycopg2.errorcodes import (
 from twisted.internet.defer import Deferred
 
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIForbidden
-from maasserver.sqlalchemy import service_layer
+from maasserver.sqlalchemy import InvalidConnection, service_layer
 from maasserver.utils.asynchronous import DeferredHooks
 from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import exponential_growth, full_jitter
@@ -576,8 +576,10 @@ def retry_on_retryable_failure(func, reset=noop):
                 except RetryTransaction:
                     reset()  # Which may do nothing.
                     sleep(next(intervals))
-                except DatabaseError as error:
-                    if is_retryable_failure(error):
+                except (DatabaseError, InvalidConnection) as error:
+                    if is_retryable_failure(error) or isinstance(
+                        error, InvalidConnection
+                    ):
                         reset()  # Which may do nothing.
                         sleep(next(intervals))
                     else:
@@ -683,6 +685,11 @@ def post_commit_do(func, *args, **kwargs):
         raise AssertionError(f"Not callable: {func!r}")
 
 
+def _ensure_connection():
+    connection.close_if_unusable_or_obsolete()
+    connection.ensure_connection()
+
+
 @contextmanager
 def connected():
     """Context manager that ensures we're connected to the database.
@@ -694,8 +701,7 @@ def connected():
     connection is made.
     """
     if connection.connection is None:
-        connection.close_if_unusable_or_obsolete()
-        connection.ensure_connection()
+        _ensure_connection()
         try:
             yield
         finally:
@@ -706,8 +712,7 @@ def connected():
         # Connection is not usable, so we disconnect and reconnect. Since
         # the connection was previously connected we do not disconnect this
         # new connection.
-        connection.close_if_unusable_or_obsolete()
-        connection.ensure_connection()
+        _ensure_connection()
         yield
 
 
@@ -742,9 +747,24 @@ def transactional(func):
     In addition, if `func` is being invoked from outside of a transaction,
     this will retry if it fails with a retryable failure.
     """
+
+    def _reset():
+        post_commit_hooks.reset()
+        # If we were using only Django, we would not need to call `_ensure_connection()`
+        # when retrying a transaction because Django ensures that a connection is fully
+        # functional every time a cursor is used.
+        #
+        # However, in the service layer, we use the current Django connection directly.
+        # This means that if the very first call in the transaction is made on the
+        # service layer, we might end up using a broken connection.
+        #
+        # To prevent this, we explicitly call `_ensure_connection()` during the reset
+        # process to ensure the connection is valid before proceeding with the transaction.
+        _ensure_connection()
+
     func_within_txn = transaction.atomic(func)  # For savepoints.
     func_outside_txn = retry_on_retryable_failure(
-        func_within_txn, reset=post_commit_hooks.reset
+        func_within_txn, reset=_reset
     )
 
     @wraps(func)
