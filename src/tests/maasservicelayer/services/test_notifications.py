@@ -7,6 +7,7 @@ import pytest
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -168,3 +169,37 @@ class TestNotificationsService:
                 notification_id=1, user=auth_user
             )
         notifications_repo_mock.create_notification_dismissal.assert_not_called()
+
+    async def test_create_or_update__create(
+        self,
+        notifications_repo_mock: Mock,
+        notifications_service: NotificationsService,
+    ) -> None:
+        notifications_repo_mock.get_one.return_value = None
+
+        notifications_repo_mock.create.return_value = TEST_NOTIFICATION
+
+        await notifications_service.create_or_update(
+            query=QuerySpec(), builder=Mock()
+        )
+
+        notifications_repo_mock.get_one.assert_called_once()
+        notifications_repo_mock.create.assert_called_once()
+        notifications_repo_mock.update_by_id.assert_not_called()
+
+    async def test_create_or_update__update(
+        self,
+        notifications_repo_mock: Mock,
+        notifications_service: NotificationsService,
+    ) -> None:
+        notifications_repo_mock.get_one.return_value = TEST_NOTIFICATION
+
+        notifications_repo_mock.update_by_id.return_value = TEST_NOTIFICATION
+
+        await notifications_service.create_or_update(
+            query=QuerySpec(), builder=Mock()
+        )
+
+        notifications_repo_mock.get_one.assert_called_once()
+        notifications_repo_mock.create.assert_not_called()
+        notifications_repo_mock.update_by_id.assert_called_once()

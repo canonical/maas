@@ -15,8 +15,9 @@ from aiohttp.client import TCPConnector
 from maascommon.constants import SYSTEM_CA_FILE
 from maasservicelayer.simplestreams.models import (
     SimpleStreamsIndexList,
-    SimpleStreamsProductList,
+    SimpleStreamsManifest,
     SimpleStreamsProductListFactory,
+    SimpleStreamsProductListType,
 )
 
 INDEX_REGEX = "streams/v1/.*[.](sjson|json)$"
@@ -153,12 +154,14 @@ class SimpleStreamsClient:
         response = await self.http_get(index_url)
         return SimpleStreamsIndexList(**response)
 
-    async def get_product(self, product_path: str) -> SimpleStreamsProductList:
+    async def get_product(
+        self, product_path: str
+    ) -> SimpleStreamsProductListType:
         url = f"{self.url}/{product_path}"
         response = await self.http_get(url)
         return SimpleStreamsProductListFactory.produce(response)
 
-    async def get_all_products(self) -> list[SimpleStreamsProductList]:
+    async def get_all_products(self) -> SimpleStreamsManifest:
         index_list = await self.get_index()
         products = []
         for index in index_list.indexes:

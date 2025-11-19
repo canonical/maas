@@ -678,7 +678,7 @@ patterns += [
         name="boot_resource_handler",
     ),
     re_path(
-        r"^boot-resources/(?P<id>[^/]+)/upload/(?P<file_id>[^/]+)/$",
+        r"^boot-resources/(?P<resource_id>[^/]+)/upload/(?P<id>[^/]+)/$",
         boot_resource_file_upload_handler,
         name="boot_resource_file_upload_handler",
     ),

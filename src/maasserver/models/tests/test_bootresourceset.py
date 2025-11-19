@@ -98,30 +98,6 @@ class TestBootResourceSet(MAASServerTestCase):
             )
         self.assertEqual(total_size, resource_set.total_size)
 
-    def test_size(self):
-        resource = factory.make_BootResource()
-        resource_set = factory.make_BootResourceSet(resource)
-        final_size = 0
-        sizes = [random.randint(512, 1024) for _ in range(3)]
-        total_sizes = [random.randint(1025, 2048) for _ in range(3)]
-        types = [
-            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
-            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
-            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
-        ]
-        for size in sizes:
-            final_size += size
-            filetype = types.pop()
-            content = factory.make_bytes(size=size)
-            factory.make_boot_resource_file_with_content(
-                resource_set,
-                filename=filetype,
-                filetype=filetype,
-                content=content,
-                size=total_sizes.pop(),
-            )
-        self.assertEqual(final_size, resource_set.total_size)
-
     def test_complete_returns_false_for_no_files(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)

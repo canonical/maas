@@ -10,7 +10,6 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
-from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
@@ -24,7 +23,6 @@ from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
-from maasservicelayer.simplestreams.models import BootloaderProduct
 from maasservicelayer.utils.date import utcnow
 from maastesting.factory import factory
 from tests.fixtures.factories.bootresourcefiles import (
@@ -199,14 +197,10 @@ class TestBootResourceService:
             ),
         ]
 
-        await service.delete_all_without_sets()
+        await service.delete_all_without_sets(query=QuerySpec())
 
         mock_repository.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.not_clause(
-                    BootResourceClauseFactory.with_ids({TEST_BOOT_RESOURCE.id})
-                )
-            )
+            query=QuerySpec(where=BootResourceClauseFactory.with_ids(set()))
         )
 
     async def test_delete_all_without_sets_delete_all_boot_resources(
@@ -215,112 +209,18 @@ class TestBootResourceService:
         mock_boot_resource_sets_service: Mock,
         service: BootResourceService,
     ) -> None:
+        mock_repository.get_many.return_value = [TEST_BOOT_RESOURCE]
         mock_boot_resource_sets_service.get_many.return_value = []
 
-        await service.delete_all_without_sets()
+        await service.delete_all_without_sets(query=QuerySpec())
 
         mock_repository.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.not_clause(
-                    BootResourceClauseFactory.with_ids(set())
+                where=BootResourceClauseFactory.with_ids(
+                    {TEST_BOOT_RESOURCE.id}
                 )
             )
         )
-
-    async def test_create_or_update_from_simplestreams_product__create(
-        self,
-        mock_repository: Mock,
-        service: BootResourceService,
-    ) -> None:
-        mock_repository.get_one.return_value = None
-        mock_repository.create.return_value = TEST_BOOT_RESOURCE
-
-        # we have to do it this way because of fields with hyphens
-        product = BootloaderProduct(
-            **{
-                "product_name": "com.ubuntu.maas.stable:1:grub-efi-signed:uefi:amd64",
-                "arch": "amd64",
-                "arches": "amd64",
-                "bootloader-type": "uefi",
-                "label": "stable",
-                "os": "grub-efi-signed",
-                "versions": [],
-            }
-        )
-        builder = BootResourceBuilder.from_simplestreams_product(product)
-        await service.create_or_update_from_simplestreams_product(product)
-
-        mock_repository.get_one.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            builder.ensure_set(builder.rtype)
-                        ),
-                        BootResourceClauseFactory.with_name(
-                            builder.ensure_set(builder.name)
-                        ),
-                        BootResourceClauseFactory.with_architecture(
-                            builder.ensure_set(builder.architecture)
-                        ),
-                        BootResourceClauseFactory.with_alias(
-                            builder.ensure_set(builder.alias)
-                        ),
-                    ]
-                )
-            ),
-        )
-
-        mock_repository.create.assert_awaited_once_with(builder=builder)
-
-    async def test_create_or_update_from_simplestreams_product__update(
-        self,
-        mock_repository: Mock,
-        service: BootResourceService,
-    ) -> None:
-        mock_repository.get_one.return_value = TEST_BOOT_RESOURCE
-        mock_repository.update_by_id.return_value = TEST_BOOT_RESOURCE
-
-        # we have to do it this way because of fields with hyphens
-        product = BootloaderProduct(
-            **{
-                "product_name": "com.ubuntu.maas.stable:1:grub-efi-signed:uefi:amd64",
-                "arch": "amd64",
-                "arches": "amd64",
-                "bootloader-type": "uefi",
-                "label": "stable",
-                "os": "grub-efi-signed",
-                "versions": [],
-            }
-        )
-        builder = BootResourceBuilder.from_simplestreams_product(product)
-        await service.create_or_update_from_simplestreams_product(product)
-
-        mock_repository.get_one.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            builder.ensure_set(builder.rtype)
-                        ),
-                        BootResourceClauseFactory.with_name(
-                            builder.ensure_set(builder.name)
-                        ),
-                        BootResourceClauseFactory.with_architecture(
-                            builder.ensure_set(builder.architecture)
-                        ),
-                        BootResourceClauseFactory.with_alias(
-                            builder.ensure_set(builder.alias)
-                        ),
-                    ]
-                )
-            ),
-        )
-
-        mock_repository.update_by_id.assert_awaited_once_with(
-            id=TEST_BOOT_RESOURCE.id, builder=builder
-        )
-        mock_repository.create.assert_not_awaited()
 
     async def test_get_usable_architectures(
         self,

@@ -26,8 +26,8 @@ from maascommon.constants import (
     IMPORT_RESOURCES_SERVICE_PERIOD,
 )
 from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
-    SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME,
 )
 from maasserver.components import (
     discard_persistent_error,
@@ -49,7 +49,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.workflow import (
     cancel_workflow,
-    cancel_workflows_of_type,
+    execute_workflow,
     start_workflow,
 )
 from maasservicelayer.utils.image_local_files import (
@@ -86,9 +86,6 @@ def stop_import_resources():
     running = is_import_resources_running()
     if running:
         cancel_workflow(workflow_id="master-image-sync")
-        cancel_workflows_of_type(
-            workflow_type=SYNC_REMOTE_BOOTRESOURCES_WORKFLOW_NAME
-        )
 
 
 class ImportResourcesService(TimerService):
@@ -102,6 +99,23 @@ class ImportResourcesService(TimerService):
         super().__init__(interval.total_seconds(), self.maybe_import_resources)
         for p in [get_maas_lock_path(), get_bootresource_store_path()]:
             p.mkdir(parents=True, exist_ok=True)
+        self._initialized = False
+
+    @inlineCallbacks
+    def _fetch_manifest(self):
+        """Fetch the simplestream manifest only the first time the service is started.
+
+        Start a fetch manifest workflow regardless of the schedule. This is
+        needed to ensure that we have fetched the manifest at least once
+        before starting the image sync workflow.
+        """
+        if not self._initialized:
+            yield execute_workflow(
+                workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+                workflow_id=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            )
+            self._initialized = True
 
     def maybe_import_resources(self):
         def determine_auto():
@@ -116,7 +130,8 @@ class ImportResourcesService(TimerService):
             else:
                 return auto
 
-        d = deferToDatabase(transactional(determine_auto))
+        d = retry(self._fetch_manifest, timeout=60)
+        d.addCallback(lambda _: deferToDatabase(transactional(determine_auto)))
         d.addCallback(
             lambda x: retry(self.import_resources_if_configured, x, timeout=60)
         )

@@ -8,14 +8,28 @@ from django.core.validators import MinValueValidator
 from django.db.models import (
     BinaryField,
     BooleanField,
+    CASCADE,
     CharField,
+    ForeignKey,
     IntegerField,
+    JSONField,
     Max,
+    Model,
     URLField,
 )
 
+from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+
+
+class ImageManifest(Model):
+    boot_source = ForeignKey(
+        "maasserver.BootSource",
+        on_delete=CASCADE,
+    )
+
+    manifest = JSONField()
 
 
 class BootSource(CleanSave, TimestampedModel):
@@ -156,11 +170,11 @@ class BootSource(CleanSave, TimestampedModel):
                 {
                     "os": bootloader.os,
                     "release": bootloader.bootloader_type,
-                    "arches": [bootloader.arch],
-                    "subarches": ["*"],
-                    "labels": ["*"],
+                    "arch": [bootloader.arch],
                 }
             )
+        # NOTE: release notifications are not a thing anymore in MAAS from 2.9 (IIRC)
+        # Leaving this here if we'll ever decide to re-use them.
         # Always download all release notifications from the stream.
         for release_notification in self.bootsourcecache_set.filter(
             release="notifications"
@@ -169,9 +183,7 @@ class BootSource(CleanSave, TimestampedModel):
                 {
                     "os": release_notification.os,
                     "release": release_notification.release,
-                    "arches": [release_notification.arch],
-                    "subarches": ["*"],
-                    "labels": ["*"],
+                    "arch": [release_notification.arch],
                 }
             )
         return data
@@ -179,3 +191,12 @@ class BootSource(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        related_selections = BootSourceSelection.objects.filter(
+            boot_source=self
+        )
+        for selection in related_selections:
+            selection.force_delete()
+
+        return super().delete(*args, **kwargs)

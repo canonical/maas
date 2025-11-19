@@ -115,16 +115,17 @@ class BootResourceSetsService(
             return resource_set
         return None
 
-    async def create_or_update_from_simplestreams_product(
+    async def get_or_create_from_simplestreams_product(
         self, product: Product, boot_resource_id: int
     ) -> BootResourceSet:
+        latest_version = product.get_latest_version().version_name
         builder = BootResourceSetBuilder(
             # TODO: user-provided version
-            version=product.get_latest_version().version_name,
+            version=latest_version,
             label=product.label,
             resource_id=boot_resource_id,
         )
-        resource_set, created = await self.get_or_create(
+        resource_set, _ = await self.get_or_create(
             query=QuerySpec(
                 where=BootResourceSetClauseFactory.and_clauses(
                     [
@@ -132,17 +133,15 @@ class BootResourceSetsService(
                             boot_resource_id
                         ),
                         BootResourceSetClauseFactory.with_version(
-                            product.get_latest_version().version_name
+                            latest_version
                         ),
+                        BootResourceSetClauseFactory.with_label(product.label),
                     ]
                 )
             ),
             builder=builder,
         )
-        if created:
-            return resource_set
-
-        return await self._update_resource(resource_set, builder)
+        return resource_set
 
     async def get_sync_progress(self, resource_set_id: int) -> float:
         """Calculate the sync progress for a resource set.

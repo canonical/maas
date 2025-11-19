@@ -12,7 +12,6 @@ __all__ = [
 import http.client
 
 from django.conf import settings
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -22,11 +21,11 @@ from piston3.utils import rc
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.workflows.bootresource import (
-    LocalSyncRequestParam,
-    SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+    short_sha,
+    SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+    SyncRequestParam,
 )
 from maasserver.api.support import admin_method, operation, OperationsHandler
-from maasserver.api.utils import get_optional_param
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -38,36 +37,28 @@ from maasserver.exceptions import (
     MAASAPIForbidden,
     MAASAPIValidationError,
 )
-from maasserver.forms import BootResourceForm, BootResourceNoContentForm
+from maasserver.forms import BootResourceForm
 from maasserver.models import BootResource, BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.node import RegionController
 from maasserver.utils.orm import post_commit_do
 from maasserver.workflow import execute_workflow
 from maasservicelayer.utils.image_local_files import (
-    LocalBootResourceFile,
+    LocalStoreAllocationFail,
+    LocalStoreFileSizeMismatch,
     LocalStoreInvalidHash,
-    LocalStoreWriteBeyondEOF,
+    SyncLocalBootResourceFile,
 )
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
-    SpaceRequirementParam,
 )
 
 TYPE_MAPPING = {
     "synced": BOOT_RESOURCE_TYPE.SYNCED,
     "uploaded": BOOT_RESOURCE_TYPE.UPLOADED,
 }
-
-
-def get_content_parameter(request):
-    """Get the "content" parameter from a POST or PUT."""
-    content = get_optional_param(request.FILES, "content", None)
-    if content is None:
-        return None
-    return content.read()
 
 
 def boot_resource_file_to_dict(rfile: BootResourceFile):
@@ -138,7 +129,7 @@ def json_object(obj, request):
 
 
 def filestore_add_file(rfile: BootResourceFile):
-    param = LocalSyncRequestParam(
+    param = SyncRequestParam(
         resource=ResourceDownloadParam(
             rfile_ids=[rfile.id],
             source_list=[],
@@ -146,11 +137,10 @@ def filestore_add_file(rfile: BootResourceFile):
             filename_on_disk=rfile.filename_on_disk,
             total_size=rfile.size,
         ),
-        space_requirement=SpaceRequirementParam(min_free_space=rfile.size),
     )
     return execute_workflow(
-        SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
-        f"sync-local-bootresource:{rfile.id}",
+        SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+        f"sync-bootresources:{short_sha(rfile.sha256)}",
         param,
         task_queue=REGION_TASK_QUEUE,
         execution_timeout=DOWNLOAD_TIMEOUT,
@@ -209,8 +199,9 @@ class BootResourcesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """@description-title Upload a new boot resource
-        @description Uploads a new boot resource.
+        """@description-title Create a new boot resource
+        @description Creates a new boot resource. The file upload must be done
+        in chunk, see Boot resource file upload.
 
         @param (string) "name" [required=true] Name of the boot resource.
 
@@ -233,10 +224,6 @@ class BootResourcesHandler(OperationsHandler):
         @param (string) "base_image" [required=false] The Base OS image a
         custom image is built on top of. Only required for custom image.
 
-        @param (string) "content" [required=false] Image content. Note: this is
-        not a normal parameter, but an ``application/octet-stream`` file
-        upload.
-
         @success (http-status-code) "server-success" 201
         @success (json) "success-json" A JSON object containing information
         about the uploaded resource.
@@ -251,25 +238,10 @@ class BootResourcesHandler(OperationsHandler):
             data = {}
         if "filetype" not in data:
             data["filetype"] = "tgz"
-        file_content = get_content_parameter(request)
-        if file_content is not None:
-            content = SimpleUploadedFile(
-                content=file_content,
-                name="file",
-                content_type="application/octet-stream",
-            )
-            form = BootResourceForm(data=data, files={"content": content})
-        else:
-            form = BootResourceNoContentForm(data=data)
+        form = BootResourceForm(data=data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
         resource = form.save()
-
-        # If an upload contained the full file, then we can have the clusters
-        # sync a new resource.
-        if file_content is not None:
-            rfile = resource.sets.first().files.first()
-            post_commit_do(filestore_add_file, rfile)
 
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request
@@ -402,16 +374,25 @@ class BootResourceFileUploadHandler(OperationsHandler):
     """Upload a boot resource file."""
 
     api_doc_section_name = "Boot resource file upload"
-
     read = create = delete = None
 
-    hidden = True
-
     @admin_method
-    def update(self, request, id, file_id):
-        """Upload piece of boot resource file."""
-        resource = get_object_or_404(BootResource, id=id)
-        rfile = get_object_or_404(BootResourceFile, id=file_id)
+    def update(self, request, resource_id, id):
+        """@description-title Upload chunk of boot resource file.
+        @description Uploads a chunk of boot resource file
+
+        @param (int) "{resource_id}" [required=true] The boot resource id.
+
+        @param (int) "{id}" [required=true] The boot resource file id.
+
+        @success (http-status-code) "200" 200
+        @error (http-status-code) "400" 400
+        @error (content) "bad-request" Error while uploading the file.
+        @error (http-status-code) "403" 403
+        @error (content) "forbidden" The user tried to upload to a boot resource of wrong type.
+        """
+        resource = get_object_or_404(BootResource, id=resource_id)
+        rfile = get_object_or_404(BootResourceFile, id=id)
         size = int(request.headers.get("content-length", "0"))
         data = request.body
         if size == 0:
@@ -427,38 +408,41 @@ class BootResourceFileUploadHandler(OperationsHandler):
         sync_status, _ = rfile.bootresourcefilesync_set.get_or_create(
             region=RegionController.objects.get_running_controller()
         )
-        lfile = LocalBootResourceFile(
+        lfile = SyncLocalBootResourceFile(
             sha256=rfile.sha256,
             filename_on_disk=rfile.filename_on_disk,
             total_size=rfile.size,
-            size=sync_status.size,
         )
         if sync_status.size == lfile.total_size:
             raise MAASAPIBadRequest("Cannot upload to a complete file.")
 
         try:
-            with lfile.store() as m:
-                m.write(data)
+            lfile.append_chunk(data)
             sync_status.size += size
             sync_status.save()
             if lfile.complete:
-                post_commit_do(filestore_add_file, rfile)
-        except LocalStoreWriteBeyondEOF:
-            raise MAASAPIBadRequest("Too much data received.")  # noqa: B904
-        except LocalStoreInvalidHash:
-            raise MAASAPIBadRequest(  # noqa: B904
+                if lfile.valid:
+                    post_commit_do(filestore_add_file, rfile)
+                else:
+                    raise LocalStoreInvalidHash()
+        except LocalStoreFileSizeMismatch as e:
+            raise MAASAPIBadRequest("Too much data received.") from e
+        except LocalStoreInvalidHash as e:
+            raise MAASAPIBadRequest(
                 "Saved content does not match given SHA256 value."
-            )
+            ) from e
+        except LocalStoreAllocationFail as e:
+            raise MAASAPIBadRequest("No space left on device") from e
         return rc.ALL_OK
 
     @classmethod
     def resource_uri(cls, resource=None, rfile=None):
         if resource is None:
+            resource_id = "resource_id"
+        else:
+            resource_id = resource.id
+        if rfile is None:
             id = "id"
         else:
-            id = resource.id
-        if rfile is None:
-            file_id = "id"
-        else:
-            file_id = rfile.id
-        return ("boot_resource_file_upload_handler", (id, file_id))
+            id = rfile.id
+        return ("boot_resource_file_upload_handler", (resource_id, id))

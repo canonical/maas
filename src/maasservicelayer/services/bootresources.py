@@ -13,7 +13,6 @@ from maasservicelayer.db.repositories.bootresourcesets import (
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.services.base import BaseService, ServiceCache
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
-from maasservicelayer.simplestreams.models import Product
 from maasservicelayer.utils.date import utcnow
 
 
@@ -54,50 +53,30 @@ class BootResourceService(
             )
         )
 
-    async def create_or_update_from_simplestreams_product(
-        self, product: Product
-    ) -> BootResource:
-        builder = BootResourceBuilder.from_simplestreams_product(product)
-        boot_resource = await self.get_one(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_rtype(
-                            builder.ensure_set(builder.rtype)
-                        ),
-                        BootResourceClauseFactory.with_name(
-                            builder.ensure_set(builder.name)
-                        ),
-                        BootResourceClauseFactory.with_architecture(
-                            builder.ensure_set(builder.architecture)
-                        ),
-                        BootResourceClauseFactory.with_alias(
-                            builder.ensure_set(builder.alias)
-                        ),
-                    ]
-                )
-            ),
-        )
-        if boot_resource:
-            boot_resource = await self._update_resource(boot_resource, builder)
-            return boot_resource
-        boot_resource = await self.create(builder)
-        return boot_resource
-
-    async def delete_all_without_sets(self) -> list[BootResource]:
+    async def delete_all_without_sets(
+        self, query: QuerySpec
+    ) -> list[BootResource]:
         """Delete all the boot resources that don't have an associated resource set."""
+        boot_resources = await self.get_many(query=query)
+        boot_resources_ids = {b.id for b in boot_resources}
         all_resource_sets = await self.boot_resource_sets_service.get_many(
-            query=QuerySpec()
+            query=QuerySpec(
+                where=BootResourceSetClauseFactory.with_resource_ids(
+                    list(boot_resources_ids)
+                )
+            )
         )
         boot_resource_ids_with_sets = {
             rset.resource_id for rset in all_resource_sets
         }
+        boot_resource_ids_without_sets = (
+            boot_resources_ids - boot_resource_ids_with_sets
+        )
+
         return await self.delete_many(
             query=QuerySpec(
-                where=BootResourceClauseFactory.not_clause(
-                    BootResourceClauseFactory.with_ids(
-                        boot_resource_ids_with_sets
-                    )
+                where=BootResourceClauseFactory.with_ids(
+                    boot_resource_ids_without_sets
                 )
             )
         )

@@ -11,7 +11,5 @@ from maasservicelayer.models.base import (
 class BootSourceSelection(MaasTimestampedBaseModel):
     os: str
     release: str
-    arches: list[str] | None = None
-    subarches: list[str] | None = None
-    labels: list[str] | None = None
+    arch: str
     boot_source_id: int

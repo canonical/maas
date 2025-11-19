@@ -3,9 +3,9 @@
 
 import hashlib
 from io import BytesIO
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
+from aiofiles.threadpool.binary import AsyncBufferedIOBase
 from httpx import AsyncClient
 import pytest
 
@@ -20,10 +20,10 @@ from maascommon.enums.boot_resources import (
     BootResourceType,
 )
 from maascommon.workflows.bootresource import (
-    LocalSyncRequestParam,
     ResourceDownloadParam,
-    SpaceRequirementParam,
-    SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+    short_sha,
+    SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+    SyncRequestParam,
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
@@ -37,7 +37,6 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
-    MISSING_FILE_CONTENT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
@@ -56,7 +55,7 @@ from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
-from maasservicelayer.utils.image_local_files import LocalBootResourceFile
+from maasservicelayer.utils.image_local_files import LocalStoreFileSizeMismatch
 from maastesting.factory import factory
 from tests.fixtures import AsyncContextManagerMock
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -167,10 +166,9 @@ class TestBootResourcesApi(ApiCommonTests):
         file_bytes.seek(0)
         return file_bytes
 
-    @patch("maasapiserver.v3.api.public.handlers.boot_resources.aiofiles.os")
     @patch("maasapiserver.v3.api.public.handlers.boot_resources.MAAS_ID")
     @patch(
-        "maasapiserver.v3.api.public.handlers.boot_resources.NamedTemporaryFile"
+        "maasservicelayer.utils.image_local_files.AsyncLocalBootResourceFile"
     )
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
@@ -178,9 +176,8 @@ class TestBootResourcesApi(ApiCommonTests):
     async def test_upload_boot_resource(
         self,
         request_to_builder_mock: MagicMock,
-        named_temp_file_mock: MagicMock,
+        async_local_file_mock: MagicMock,
         maas_id_mock: MagicMock,
-        aiofiles_os_mock: MagicMock,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
@@ -201,15 +198,6 @@ class TestBootResourcesApi(ApiCommonTests):
         resource_file.filename_on_disk = file_name
         resource_file.size = file_size
 
-        local_file_path_mock = Mock(Path)
-        # Set to true to skip mocking the hard link
-        local_file_path_mock.exists.return_value = True
-
-        local_file_mock = Mock(LocalBootResourceFile)
-        local_file_mock.path.return_value = local_file_path_mock
-
-        resource_file.create_local_file.return_value = local_file_mock
-
         request_to_builder_mock.return_value = None
 
         services_mock.boot_resources = Mock(BootResourceService)
@@ -226,8 +214,6 @@ class TestBootResourcesApi(ApiCommonTests):
         services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.create.return_value = resource_file
         services_mock.boot_resource_files.calculate_filename_on_disk.return_value = file_name
-
-        aiofiles_os_mock.rename = AsyncMock(return_value=None)
 
         maas_id_mock.get.return_value = "abc1de"
 
@@ -248,8 +234,8 @@ class TestBootResourcesApi(ApiCommonTests):
         services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.register_or_update_workflow_call.return_value = None
 
-        named_temp_file_mock.return_value = AsyncContextManagerMock(
-            MockTemporaryFile()
+        async_local_file_mock.store.return_value = AsyncContextManagerMock(
+            Mock(AsyncBufferedIOBase)
         )
 
         headers = {
@@ -281,8 +267,8 @@ class TestBootResourcesApi(ApiCommonTests):
         services_mock.boot_resource_file_sync.get_or_create.assert_called_once()
 
         services_mock.temporal.register_or_update_workflow_call.assert_called_once_with(
-            SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
-            LocalSyncRequestParam(
+            SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+            SyncRequestParam(
                 resource=ResourceDownloadParam(
                     rfile_ids=[resource_file.id],
                     source_list=[],
@@ -290,20 +276,13 @@ class TestBootResourcesApi(ApiCommonTests):
                     filename_on_disk=file_name,
                     total_size=file_size,
                 ),
-                space_requirement=SpaceRequirementParam(
-                    total_resources_size=file_size,
-                ),
             ),
-            workflow_id=f"sync-local-bootresource:{resource_file.id}",
+            workflow_id=f"sync-bootresources:{short_sha(resource_file.sha256)}",
             wait=False,
         )
 
-        aiofiles_os_mock.rename.assert_called_once_with(
-            "test-tmp-file.txt", local_file_mock.path
-        )
-
     @patch(
-        "maasapiserver.v3.api.public.handlers.boot_resources.NamedTemporaryFile"
+        "maasservicelayer.utils.image_local_files.AsyncLocalBootResourceFile"
     )
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
@@ -311,7 +290,7 @@ class TestBootResourcesApi(ApiCommonTests):
     async def test_upload_boot_resource_400_sha_does_not_match(
         self,
         request_to_builder_mock: MagicMock,
-        named_temp_file_mock: MagicMock,
+        async_local_file_mock: MagicMock,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
@@ -334,7 +313,10 @@ class TestBootResourcesApi(ApiCommonTests):
             TEST_BOOT_RESOURCE_SET
         )
 
-        named_temp_file_mock.return_value = AsyncContextManagerMock(
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.calculate_filename_on_disk.return_value = file_name
+
+        async_local_file_mock.return_value = AsyncContextManagerMock(
             MockTemporaryFile()
         )
 
@@ -365,7 +347,7 @@ class TestBootResourcesApi(ApiCommonTests):
         assert "SHA256" in error_response.details[0].message  # pyright: ignore[reportOptionalSubscript]
 
     @patch(
-        "maasapiserver.v3.api.public.handlers.boot_resources.NamedTemporaryFile"
+        "maasservicelayer.utils.image_local_files.AsyncLocalBootResourceFile"
     )
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
@@ -373,7 +355,7 @@ class TestBootResourcesApi(ApiCommonTests):
     async def test_upload_boot_resource_400_size_does_not_match(
         self,
         request_to_builder_mock: MagicMock,
-        named_temp_file_mock: MagicMock,
+        async_local_file_mock: MagicMock,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
@@ -396,9 +378,10 @@ class TestBootResourcesApi(ApiCommonTests):
             TEST_BOOT_RESOURCE_SET
         )
 
-        named_temp_file_mock.return_value = AsyncContextManagerMock(
-            MockTemporaryFile()
-        )
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.calculate_filename_on_disk.return_value = file_name
+
+        async_local_file_mock.store.side_effect = LocalStoreFileSizeMismatch()
 
         headers = {
             "name": "my-image",
@@ -425,16 +408,16 @@ class TestBootResourcesApi(ApiCommonTests):
             error_response.details[0].type == INVALID_ARGUMENT_VIOLATION_TYPE  # pyright: ignore[reportOptionalSubscript]
         )
 
-    @patch(
-        "maasapiserver.v3.api.public.handlers.boot_resources.NamedTemporaryFile"
-    )
+        assert "size" in error_response.details[0].message
+
+    @patch("maasservicelayer.utils.image_local_files.aiofiles.os.statvfs")
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
     )
-    async def test_upload_boot_resource_400_no_content(
+    async def test_upload_boot_resource_507_insufficient_disk_space(
         self,
         request_to_builder_mock: MagicMock,
-        named_temp_file_mock: MagicMock,
+        statvfs_mock: MagicMock,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
@@ -451,14 +434,18 @@ class TestBootResourcesApi(ApiCommonTests):
             TEST_BOOT_RESOURCE_SET
         )
 
-        named_temp_file_mock.return_value = AsyncContextManagerMock(
-            MockTemporaryFile()
-        )
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.calculate_filename_on_disk.return_value = "file.bin"
+
+        statvfs_result = Mock()
+        statvfs_result.f_bavail = 0
+        statvfs_result.f_frsize = 4096
+        statvfs_mock.return_value = statvfs_result
 
         headers = {
             "name": "my-image",
             "sha256": factory.make_hex_string(size=16),
-            "size": str(0),
+            "size": str(12345),
             "architecture": "amd64/generic",
             "Content-Type": "application/octet-stream",
         }
@@ -469,16 +456,12 @@ class TestBootResourcesApi(ApiCommonTests):
             content=bytes(),
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 507
 
         error_response = ErrorBodyResponse(**response.json())
 
-        assert error_response.code == 400
+        assert error_response.code == 507
         assert error_response.kind == "Error"
-        assert (
-            error_response.details[0].type  # pyright: ignore[reportOptionalSubscript]
-            == MISSING_FILE_CONTENT_VIOLATION_TYPE
-        )
 
     async def test_list_boot_resources_200_no_other_page(
         self,

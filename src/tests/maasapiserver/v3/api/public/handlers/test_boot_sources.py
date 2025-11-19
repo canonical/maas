@@ -48,7 +48,7 @@ from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
-from maasservicelayer.services.image_sync import ImageSyncService
+from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -83,9 +83,7 @@ TEST_BOOTSOURCESELECTION = BootSourceSelection(
     updated=utcnow(),
     os="ubuntu",
     release="noble",
-    arches=["amd64", "arm64"],
-    subarches=["*"],
-    labels=["*"],
+    arch="amd64",
     boot_source_id=12,
 )
 
@@ -319,8 +317,8 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.image_sync = Mock(ImageSyncService)
-        services_mock.image_sync.fetch_image_metadata.return_value = []
+        services_mock.image_manifests = Mock(ImageManifestsService)
+        services_mock.image_manifests.fetch_image_metadata.return_value = []
 
         request = BootSourceFetchRequest(
             url="https://path/to/images/server",
@@ -333,7 +331,7 @@ class TestBootSourcesApi(ApiCommonTests):
 
         assert response.status_code == 200
 
-        services_mock.image_sync.fetch_image_metadata.assert_called_once_with(
+        services_mock.image_manifests.fetch_image_metadata.assert_called_once_with(
             source_url=request.url,
             keyring_path=request.keyring_path,
             keyring_data=None,
@@ -349,8 +347,8 @@ class TestBootSourcesApi(ApiCommonTests):
 
         expected_bytes = b64decode(keyring_data_str)
 
-        services_mock.image_sync = Mock(ImageSyncService)
-        services_mock.image_sync.fetch_image_metadata.return_value = []
+        services_mock.image_manifests = Mock(ImageManifestsService)
+        services_mock.image_manifests.fetch_image_metadata.return_value = []
 
         request = BootSourceFetchRequest(
             url=images_server_url,
@@ -364,7 +362,7 @@ class TestBootSourcesApi(ApiCommonTests):
 
         assert response.status_code == 200
 
-        services_mock.image_sync.fetch_image_metadata.assert_called_once_with(
+        services_mock.image_manifests.fetch_image_metadata.assert_called_once_with(
             source_url=images_server_url,
             keyring_path=None,
             keyring_data=expected_bytes,
@@ -654,12 +652,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert boot_source_selection_response.id == TEST_BOOTSOURCESELECTION.id
         assert boot_source_selection_response.os == "ubuntu"
         assert boot_source_selection_response.release == "noble"
-        assert sorted(boot_source_selection_response.arches) == [
-            "amd64",
-            "arm64",
-        ]
-        assert boot_source_selection_response.subarches == ["*"]
-        assert boot_source_selection_response.labels == ["*"]
+        assert boot_source_selection_response.arch == "amd64"
         assert boot_source_selection_response.boot_source_id == 12
 
     async def test_get_404(
@@ -696,13 +689,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.create.return_value = (
             TEST_BOOTSOURCESELECTION
         )
-        create_request = {
-            "os": "ubuntu",
-            "release": "noble",
-            "arches": ["amd64", "arm64"],
-            "subarches": ["*"],
-            "labels": ["*"],
-        }
+        create_request = {"os": "ubuntu", "release": "noble", "arch": "amd64"}
         response = await mocked_api_client_admin.post(
             f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections",
             json=jsonable_encoder(create_request),
@@ -711,9 +698,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         response = BootSourceSelectionResponse(**response.json())
         assert response.os == "ubuntu"
         assert response.release == "noble"
-        assert response.arches == ["amd64", "arm64"]
-        assert response.subarches == ["*"]
-        assert response.labels == ["*"]
+        assert response.arch == "amd64"
 
     async def test_put_200(
         self,
@@ -731,18 +716,12 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         )
 
         updated = TEST_BOOTSOURCESELECTION.copy()
-        updated.arches = ["*"]
+        updated.arch = "arm64"
         services_mock.boot_source_selections.update_by_id.return_value = (
             updated
         )
 
-        update_request = {
-            "os": "ubuntu",
-            "release": "noble",
-            "arches": ["*"],
-            "subarches": ["*"],
-            "labels": ["*"],
-        }
+        update_request = {"os": "ubuntu", "release": "noble", "arch": "arm64"}
 
         response = await mocked_api_client_admin.put(
             f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections/{TEST_BOOTSOURCESELECTION.id}",
@@ -759,12 +738,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert (
             updated_boot_source_selection_response.release == updated.release
         )
-        assert updated_boot_source_selection_response.arches == updated.arches
-        assert (
-            updated_boot_source_selection_response.subarches
-            == updated.subarches
-        )
-        assert updated_boot_source_selection_response.labels == updated.labels
+        assert updated_boot_source_selection_response.arch == updated.arch
 
     async def test_put_404(
         self,
@@ -785,13 +759,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             NotFoundException()
         )
 
-        update_request = {
-            "os": "ubuntu",
-            "release": "noble",
-            "arches": ["*"],
-            "subarches": ["*"],
-            "labels": ["*"],
-        }
+        update_request = {"os": "ubuntu", "release": "noble", "arch": "amd64"}
 
         response = await mocked_api_client_admin.put(
             f"{self.BASE_PATH}/{TEST_BOOTSOURCE_1.id}/selections/{TEST_BOOTSOURCESELECTION.id}",

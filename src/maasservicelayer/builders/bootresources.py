@@ -40,6 +40,9 @@ class BootResourceBuilder(ResourceBuilder):
     rtype: Union[BootResourceType, Unset] = Field(
         default=UNSET, required=False
     )
+    selection_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
 
     @classmethod
@@ -54,22 +57,6 @@ class BootResourceBuilder(ResourceBuilder):
             bootloader_type=product.bootloader_type,
             alias=None,
             extra={},
-            rolling=False,
-            base_image="",
-        )
-
-    @classmethod
-    def _from_simplestreams_single_file_product(
-        cls, product: SingleFileProduct
-    ) -> Self:
-        return cls(
-            rtype=BootResourceType.SYNCED,
-            name=f"{product.os}/{product.release}",
-            architecture=f"{product.arch}/{product.subarch}",
-            kflavor=None,
-            bootloader_type=None,
-            alias=f"{product.os}/{product.version}",
-            extra={"subarches": product.subarches},
             rolling=False,
             base_image="",
         )
@@ -95,6 +82,22 @@ class BootResourceBuilder(ResourceBuilder):
             name=f"{product.os}/{product.release}",
             architecture=f"{product.arch}/{subarch}",
             kflavor=product.kflavor,
+            bootloader_type=None,
+            alias=f"{product.os}/{product.version}",
+            extra={"subarches": product.subarches},
+            rolling=False,
+            base_image="",
+        )
+
+    @classmethod
+    def _from_simplestreams_single_file_product(
+        cls, product: SingleFileProduct
+    ) -> Self:
+        return cls(
+            rtype=BootResourceType.SYNCED,
+            name=f"{product.os}/{product.release}",
+            architecture=f"{product.arch}/{product.subarch}",
+            kflavor=None,
             bootloader_type=None,
             alias=f"{product.os}/{product.version}",
             extra={"subarches": product.subarches},

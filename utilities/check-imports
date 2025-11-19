@@ -242,6 +242,7 @@ CommonRule = Rule(
     Allow("distro_info|distro_info.*"),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
+    Allow("maasservicelayer.simplestreams.**"),
     Allow("OpenSSL|OpenSSL.**"),
     Allow("netaddr|netaddr.**"),
     Allow("temporalio.client.**"),

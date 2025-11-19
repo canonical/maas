@@ -240,7 +240,7 @@ class BootSourcesHandler(Handler):
         if request.keyring_data:
             keyring_data_bytes = b64decode(request.keyring_data)
 
-        images = await services.image_sync.fetch_image_metadata(
+        images = await services.image_manifests.fetch_image_metadata(
             source_url=request.url,
             keyring_path=request.keyring_path,
             keyring_data=keyring_data_bytes,

@@ -144,6 +144,21 @@ class ServiceUnavailableErrorResponse(JSONResponse):
         )
 
 
+class InsufficientStorageErrorBodyResponse(ErrorBodyResponse):
+    code: int = status.HTTP_507_INSUFFICIENT_STORAGE
+    message: str = "Can't store the file you are trying to upload. There's no sufficient space on storage."
+
+
+class InsufficientStorageErrorResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(
+                InsufficientStorageErrorBodyResponse(details=details)
+            ),
+            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+        )
+
+
 class BadGatewayErrorBodyResponse(ErrorBodyResponse):
     code: int = status.HTTP_502_BAD_GATEWAY
     message: str = "Bad gateway."

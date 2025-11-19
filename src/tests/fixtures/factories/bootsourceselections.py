@@ -12,8 +12,8 @@ async def create_test_bootsourceselection_entry(
     fixture: Fixture,
     os: str,
     release: str,
+    arch: str,
     boot_source_id: int,
-    **extra_details,
 ) -> BootSourceSelection:
     now = utcnow()
 
@@ -22,13 +22,9 @@ async def create_test_bootsourceselection_entry(
         "updated": now,
         "os": os,
         "release": release,
-        "arches": ["*"],
-        "subarches": ["*"],
-        "labels": ["*"],
+        "arch": arch,
         "boot_source_id": boot_source_id,
     }
-
-    selection.update(extra_details)
 
     [created] = await fixture.create(BootSourceSelectionTable.name, selection)
 

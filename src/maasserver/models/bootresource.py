@@ -8,9 +8,11 @@ from operator import attrgetter
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
+    CASCADE,
     CharField,
     Count,
     DateTimeField,
+    ForeignKey,
     IntegerField,
     JSONField,
     Manager,
@@ -497,6 +499,13 @@ class BootResource(CleanSave, TimestampedModel):
 
     last_deployed = DateTimeField(
         null=True, blank=True, default=None, editable=False
+    )
+
+    boot_source_selection = ForeignKey(
+        "maasserver.BootSourceSelection",
+        null=True,
+        on_delete=CASCADE,
+        db_column="selection_id",
     )
 
     def __str__(self):

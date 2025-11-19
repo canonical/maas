@@ -9,7 +9,6 @@ __all__ = [
     "AdminMachineWithMACAddressesForm",
     "AdminNodeForm",
     "BootResourceForm",
-    "BootResourceNoContentForm",
     "BootSourceForm",
     "BootSourceSelectionForm",
     "BulkNodeSetZoneForm",
@@ -67,10 +66,8 @@ __all__ = [
     "ZoneForm",
 ]
 
-from io import BytesIO
 from itertools import chain
 import json
-import os
 import re
 from typing import Optional
 
@@ -156,7 +153,6 @@ from maasserver.models import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.defaultresource import DefaultResource
-from maasserver.models.node import RegionController
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
 from maasserver.models.sshkey import SSHKey
@@ -185,7 +181,6 @@ from maasserver.utils.osystems import (
     release_a_newer_than_b,
     validate_min_hwe_kernel,
 )
-from maasservicelayer.utils.image_local_files import LocalBootResourceFile
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
@@ -2322,14 +2317,7 @@ class BootSourceSelectionForm(MAASModelForm):
 
     class Meta:
         model = BootSourceSelection
-        fields = ("os", "release", "arches", "subarches", "labels")
-
-    # Use UnconstrainedMultipleChoiceField fields for multiple-choices
-    # fields instead of the default as we want to handle
-    # multiple-values submissions.
-    arches = UnconstrainedMultipleChoiceField(label="Architecture list")
-    subarches = UnconstrainedMultipleChoiceField(label="Subarchitecture list")
-    labels = UnconstrainedMultipleChoiceField(label="Label list")
+        fields = ("os", "release", "arch")
 
     def __init__(self, boot_source=None, **kwargs):
         super().__init__(**kwargs)
@@ -2363,42 +2351,15 @@ class BootSourceSelectionForm(MAASModelForm):
             )
             return cleaned_data
 
-        values = cache.values_list("arch", "subarch", "label")
-        arches, subarches, labels = zip(*values)
+        arches = cache.values_list("arch", flat=True)
 
-        # Validate architectures.
-        required_arches_set = {arch for arch in cleaned_data["arches"]}
-        wildcard_arches = "*" in required_arches_set
-        if not wildcard_arches and not required_arches_set <= set(arches):
+        # Validate arch
+        if cleaned_data["arch"] not in arches:
             set_form_error(
                 self,
-                "arches",
+                "arch",
                 "No available images to download for %s"
-                % cleaned_data["arches"],
-            )
-
-        # Validate subarchitectures.
-        required_subarches_set = {sa for sa in cleaned_data["subarches"]}
-        wildcard_subarches = "*" in required_subarches_set
-        if not wildcard_subarches and not required_subarches_set <= set(
-            subarches
-        ):
-            set_form_error(
-                self,
-                "subarches",
-                "No available images to download for %s"
-                % cleaned_data["subarches"],
-            )
-
-        # Validate labels.
-        required_labels_set = {label for label in cleaned_data["labels"]}
-        wildcard_labels = "*" in required_labels_set
-        if not wildcard_labels and not required_labels_set <= set(labels):
-            set_form_error(
-                self,
-                "labels",
-                "No available images to download for %s"
-                % cleaned_data["labels"],
+                % cleaned_data["arch"],
             )
 
         return cleaned_data
@@ -2543,7 +2504,7 @@ def get_uploaded_filename(filetype):
 
 
 class BootResourceForm(MAASModelForm):
-    """Form for uploading boot resources."""
+    """Form for creating boot resources."""
 
     class Meta:
         model = BootResource
@@ -2552,7 +2513,8 @@ class BootResourceForm(MAASModelForm):
             "title",
             "architecture",
             "filetype",
-            "content",
+            "sha256",
+            "size",
             "base_image",
         )
 
@@ -2565,7 +2527,11 @@ class BootResourceForm(MAASModelForm):
         initial="tgz",
     )
 
-    content = forms.FileField(label="File", allow_empty_file=False)
+    sha256 = forms.CharField(
+        label="SHA256", max_length=64, min_length=64, required=True
+    )
+
+    size = forms.IntegerField(label="Size", required=True)
 
     keep_old = forms.BooleanField(required=False)
 
@@ -2750,39 +2716,31 @@ class BootResourceForm(MAASModelForm):
         }
         return filetypes.get(value)
 
-    def create_resource_file(self, resource_set: BootResourceSet, data):
+    def create_resource_file(self, resource_set, data):
         """Creates a new `BootResourceFile` on the given resource set."""
         filetype = self.get_resource_filetype(data["filetype"])
-        if isinstance(data["content"], bytes):
-            content = BytesIO(data["content"])
-        else:
-            content = data["content"]
-        with LocalBootResourceFile.create_from_content(content) as (
-            tmpname,
-            size,
-            sha256,
+        sha256 = data["sha256"]
+        size = data["size"]
+
+        if (
+            BootResourceFile.objects.filter(sha256=sha256)
+            .exclude(size=size)
+            .exists()
         ):
-            filename_on_disk = (
-                BootResourceFile.objects.calculate_filename_on_disk(sha256)
+            raise ValidationError(
+                "File already exists with sha256 that is of different size."
             )
-            rfile = BootResourceFile.objects.create(
-                resource_set=resource_set,
-                filename=get_uploaded_filename(filetype),
-                filetype=filetype,
-                sha256=sha256,
-                filename_on_disk=filename_on_disk,
-                size=size,
-            )
-            rfile.bootresourcefilesync_set.create(
-                region=RegionController.objects.get_running_controller(),
-                size=size,
-            )
-            localfile = LocalBootResourceFile(sha256, filename_on_disk, size)
 
-            if not localfile.path.exists():
-                os.link(tmpname, localfile.path)
-
-            return rfile
+        return BootResourceFile.objects.create(
+            resource_set=resource_set,
+            filename=get_uploaded_filename(filetype),
+            filetype=filetype,
+            sha256=sha256,
+            filename_on_disk=BootResourceFile.objects.calculate_filename_on_disk(
+                sha256
+            ),
+            size=size,
+        )
 
     def validate_unique(self):
         """Override to allow the same `BootResource` to already exist.
@@ -2821,58 +2779,6 @@ class BootResourceForm(MAASModelForm):
             old_brfs.delete()
 
         return resource
-
-
-class BootResourceNoContentForm(BootResourceForm):
-    """Form for uploading boot resources with no content."""
-
-    class Meta:
-        model = BootResource
-        fields = (
-            "name",
-            "title",
-            "architecture",
-            "filetype",
-            "sha256",
-            "size",
-        )
-
-    sha256 = forms.CharField(
-        label="SHA256", max_length=64, min_length=64, required=True
-    )
-
-    size = forms.IntegerField(label="Size", required=True)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Remove content field, as this form does not use it
-        del self.fields["content"]
-
-    def create_resource_file(self, resource_set, data):
-        """Creates a new `BootResourceFile` on the given resource set."""
-        filetype = self.get_resource_filetype(data["filetype"])
-        sha256 = data["sha256"]
-        size = data["size"]
-
-        if (
-            BootResourceFile.objects.filter(sha256=sha256)
-            .exclude(size=size)
-            .exists()
-        ):
-            raise ValidationError(
-                "File already exists with sha256 that is of different size."
-            )
-
-        return BootResourceFile.objects.create(
-            resource_set=resource_set,
-            filename=get_uploaded_filename(filetype),
-            filetype=filetype,
-            sha256=sha256,
-            filename_on_disk=BootResourceFile.objects.calculate_filename_on_disk(
-                sha256
-            ),
-            size=size,
-        )
 
 
 class ClaimIPForm(Form):

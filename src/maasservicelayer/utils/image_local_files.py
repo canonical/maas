@@ -1,354 +1,137 @@
 # Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Utilities for working with local boot resources.
-
-Moved from src/maasserver/utils/boot_resources.py
-"""
+"""Utilities for working with local boot resources."""
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager, contextmanager
-import fcntl
 import hashlib
-import mmap
+from io import BufferedWriter
 import os
-from pathlib import Path
+import shutil
 import tarfile
-from tempfile import NamedTemporaryFile
-from typing import BinaryIO
+from typing import AsyncGenerator, Generator
 
 import aiofiles
+import aiofiles.os
+from aiofiles.threadpool.binary import AsyncBufferedIOBase
 
-from maascommon.path import get_maas_lock_path
 from maascommon.utils.images import get_bootresource_store_path
 
 CHUNK_SIZE = 4 * (2**20)
 
 
-class LocalStoreWriteBeyondEOF(Exception):
-    """Attempt to write beyond EOF"""
+class LocalStoreException(Exception):
+    """Base class for local store exceptions."""
 
 
-class LocalStoreInvalidHash(Exception):
+class LocalStoreFileSizeMismatch(LocalStoreException):
+    """Data received is greater than or less than expected file size"""
+
+
+class LocalStoreInvalidHash(LocalStoreException):
     """File SHA256 checksum has failed"""
 
 
-class LocalStoreAllocationFail(Exception):
+class LocalStoreAllocationFail(LocalStoreException):
     """Could not allocate space for this file"""
 
 
-class LocalStoreLockException(Exception):
-    """Could not acquire file lock"""
-
-
-class MMapedLocalFile(mmap.mmap):
-    def __new__(cls, lfile: LocalBootResourceFile, fileno: int):
-        obj = super().__new__(cls, fileno=fileno, length=lfile.total_size)
-        obj.lfile = lfile  # pyright: ignore
-        return obj
-
-    def write(self, content: bytes) -> int:  # pyright: ignore
-        self._check_content_size(content)
-        try:
-            wrote = super().write(content)
-            self.lfile._size = self.tell()  # pyright: ignore
-            return wrote
-        except ValueError as e:
-            raise LocalStoreWriteBeyondEOF(e)  # noqa: B904
-
-    def _check_content_size(self, content):
-        """Check if `content` fits in the file
-
-        This works only for "seekable" contents
-
-        Args:
-            content (Buffer): The content to be written
-
-        Raises:
-            LocalStoreWriteBeyondEOF: Content too big
-        """
-        if hasattr(content, "seekable") and content.seekable():
-            to_write = content.seek(0, os.SEEK_END)
-            if self.lfile._size + to_write > self.lfile.total_size:  # pyright: ignore
-                msg = (
-                    "Attempt to write beyond EOF, current "
-                    f"{self.lfile._size}/{self.lfile.total_size}, new {to_write}"  # pyright: ignore
-                )
-                raise LocalStoreWriteBeyondEOF(msg)
-            content.seek(0, os.SEEK_SET)
-
-
-class LocalBootResourceFile:
+class SyncLocalBootResourceFile:
     def __init__(
         self,
         sha256: str,
         filename_on_disk: str,
         total_size: int,
-        size: int = 0,
     ) -> None:
-        """Local boot resource file
+        """Synchronous implementation of a local boot resource file.
 
         Args:
             sha256 (str): the file SHA256 checksum
+            filename_on_disk (str): the name of the file on disk
             total_size (int): the complete file size, in bytes
-            size (int, optional): the current file size, in bytes. Defaults to 0.
         """
         self.sha256 = sha256
         self.filename_on_disk = filename_on_disk
         self.total_size = total_size
-        self._size = size
-        self._base_path = get_bootresource_store_path() / self.filename_on_disk
-        self._lock_fd: int | None = None
+        self.path = get_bootresource_store_path() / self.filename_on_disk
 
     def __repr__(self):
-        return f"<LocalBootResourceFile {self.sha256} {self.filename_on_disk} {self._size}/{self.total_size}>"
-
-    @property
-    def path(self) -> Path:
-        """The file path in the image store
-
-        Returns:
-            Path: Path object
-        """
-        return self._base_path
-
-    @property
-    def partial_file_path(self) -> Path:
-        """The file temporary path
-
-        Returns:
-            Path: Path object
-        """
-        return self._base_path.with_suffix(".incomplete")
-
-    def _get_file_path(self) -> Path | None:
-        for p in [self.path, self.partial_file_path]:
-            if p.exists():
-                return p
-        return None
+        return f"<SyncLocalBootResourceFile {self.sha256} {self.filename_on_disk} {self.size}/{self.total_size}>"
 
     @property
     def size(self) -> int:
-        """The file actual size
-
-        Returns:
-            int: file size in bytes
-        """
-        if self._size == 0 and self.path.exists():
-            self._size = self.total_size
-        return self._size
+        try:
+            return os.stat(self.path).st_size
+        except FileNotFoundError:
+            return 0
 
     @property
-    def complete(self):
-        """`content` has been completely saved."""
+    def complete(self) -> bool:
         return self.size == self.total_size
 
     @property
-    def valid(self):
-        """All content has been written and stored SHA256 value is the same
-        as the calculated SHA256 value stored in the database.
-
-        Note: Depending on the size of the file, this can take some time.
-
-        Returns:
-            bool: Whether the file is valid
-        """
+    def valid(self) -> bool:
         if not self.complete:
             return False
-        if p := self._get_file_path():
-            sha256 = hashlib.sha256()
-            with p.open("rb") as stream:
-                for data in stream:
-                    sha256.update(data)
-            hexdigest = sha256.hexdigest()
-            return hexdigest == self.sha256
-        return False
-
-    async def avalid(self) -> bool:
-        """Async version of `valid` (see above)
-
-        Returns:
-            bool: Whether the file is valid
-        """
-        if not self.complete:
-            return False
-        if p := self._get_file_path():
-            sha256 = hashlib.sha256()
-            async with aiofiles.open(p, "rb") as stream:
-                while data := await stream.read(CHUNK_SIZE):
-                    sha256.update(data)
-            hexdigest = sha256.hexdigest()
-            return hexdigest == self.sha256
-        return False
-
-    def commit(self) -> bool:
-        """Moves the file to the final destination
-
-        Returns:
-            bool: Whether the file was successfully moved
-        """
-        if self.partial_file_path.exists():
-            self.partial_file_path.rename(self.path)
-        return True
-
-    def allocate(self):
-        """Allocates disk space for this file"""
-        if self._size > 0:
-            raise LocalStoreAllocationFail("File already exists")
-        try:
-            with self.partial_file_path.open("wb") as stream:
-                stream.seek(self.total_size - 1, os.SEEK_SET)
-                stream.write(b"\x00")
-                stream.flush()
-        except IOError as e:
-            raise LocalStoreAllocationFail(e)  # noqa: B904
-
-    @contextmanager  # pyright: ignore
-    def store(self, autocommit: bool = True) -> MMapedLocalFile:  # pyright: ignore
-        """Store file in the local disk
-
-        Args:
-            autocommit (bool, optional): whether the file should be validated
-                when complete. Defaults to True.
-
-        Raises:
-            LocalStoreWriteBeyondEOF: content doesn't fit in the file
-            LocalStoreInvalidHash: SHA256 checksum failed
-
-        Returns:
-            bool: Whether the file is complete
-        """
-        if self._size == 0:
-            self.allocate()
-        elif self.complete:
-            raise LocalStoreWriteBeyondEOF()
-
-        with (
-            self.partial_file_path.open("rb+") as stream,
-            MMapedLocalFile(
-                fileno=stream.fileno(),
-                lfile=self,
-            ) as mm,
-        ):
-            mm.seek(self._size, os.SEEK_SET)
-            yield mm  # pyright: ignore
-        if autocommit and self.complete:
-            if self.valid:
-                self.commit()
-            else:
-                raise LocalStoreInvalidHash()
-
-    @asynccontextmanager  # pyright: ignore
-    async def astore(self, autocommit: bool = True) -> MMapedLocalFile:  # pyright: ignore
-        """Store file in the local disk (async)
-
-        Args:
-            autocommit (bool, optional): whether the file should be validated
-                when complete. Defaults to True.
-
-        Raises:
-            LocalStoreWriteBeyondEOF: content doesn't fit in the file
-            LocalStoreInvalidHash: SHA256 checksum failed
-
-        Returns:
-            bool: Whether the file is complete
-        """
-        if self._size == 0:
-            self.allocate()
-        elif self.complete:
-            raise LocalStoreWriteBeyondEOF()
-
-        with (
-            self.partial_file_path.open("rb+") as stream,
-            MMapedLocalFile(
-                fileno=stream.fileno(),
-                lfile=self,
-            ) as mm,
-        ):
-            mm.seek(self._size, os.SEEK_SET)
-            yield mm  # pyright: ignore
-        if autocommit and self.complete:
-            if await self.avalid():
-                self.commit()
-            else:
-                raise LocalStoreInvalidHash()
-
-    def unlink(self):
-        """Removes the file from local disk"""
-        self._size = 0
-        for p in [self.path, self.partial_file_path]:
-            p.unlink(missing_ok=True)
-
-    @property
-    def lock_file(self) -> Path:
-        return (
-            get_maas_lock_path() / f"maas:bootres_{self.filename_on_disk}.lock"
-        )
-
-    def acquire_lock(self, try_lock: bool = False) -> bool:
-        if self._lock_fd is None:
-            self._lock_fd = os.open(
-                self.lock_file, os.O_RDWR | os.O_CREAT | os.O_TRUNC
-            )
-        flags = fcntl.LOCK_EX
-        if try_lock:
-            flags |= fcntl.LOCK_NB
-        try:
-            fcntl.flock(self._lock_fd, flags)
-            return True
-        except (BlockingIOError, PermissionError):
-            return False
-
-    def release_lock(self):
-        if self._lock_fd is None:
-            return
-        fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
-        os.close(self._lock_fd)
-        self._lock_fd = None
-
-    def __del__(self):
-        if self._lock_fd is not None:
-            try:
-                fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
-            finally:
-                os.close(self._lock_fd)
-
-    @contextmanager
-    def lock(self):
-        """File lock context manager"""
-        try:
-            self.acquire_lock()
-            yield
-        finally:
-            self.release_lock()
-
-    @classmethod
-    @contextmanager
-    def create_from_content(
-        cls,
-        content: BinaryIO,
-    ):
-        """Create a local file from content.
-        This method assumes that content was externally validated already
-
-        Args:
-            content (BinaryIO): the content to be written
-
-        Returns:
-            LocalBootResourceFile: the local file object
-        """
-        with NamedTemporaryFile(
-            mode="+wb",
-            dir=get_bootresource_store_path(),
-        ) as tmp:
-            sha256 = hashlib.sha256()
-            for data in content:
+        sha256 = hashlib.sha256()
+        with open(self.path, "rb") as stream:
+            while data := stream.read(CHUNK_SIZE):
                 sha256.update(data)
-                tmp.write(data)
-            size = tmp.tell()
-            hexdigest = sha256.hexdigest()
-            yield tmp.name, size, hexdigest
+        hexdigest = sha256.hexdigest()
+        return hexdigest == self.sha256
+
+    def append_chunk(self, data):
+        """Append chunk of data to the file.
+
+        Args:
+            data: data to be written at the end of file
+        Raises:
+            LocalStoreFileSizeMismatch: if the data would exceed the total file size.
+        """
+        try:
+            with open(self.path, "ab") as f:
+                if f.tell() + len(data) > self.total_size:
+                    self.unlink()
+                    raise LocalStoreFileSizeMismatch()
+                f.write(data)
+        except IOError as e:
+            self.unlink()
+            if e.errno == 28:
+                # We ran out of space
+                raise LocalStoreAllocationFail() from e
+            raise e
+
+    @contextmanager
+    def store(self) -> Generator[BufferedWriter]:
+        """Store file in the local disk.
+
+        Yields a file for writing data. On context manager exit, it checks
+        whether the file is complete and if the SHA matches.
+
+        Raises:
+            LocalStoreInvalidHash: SHA256 checksum failed
+            LocalStoreAllocationFail: no sufficient free disk space
+            LocalStoreFileSizeMismatch: content written doesn't match the expected total size
+        Yields:
+            The file to write data to.
+        """
+        free = shutil.disk_usage(self.path.parent).free
+        if free < self.total_size:
+            raise LocalStoreAllocationFail()
+
+        with open(self.path, "wb") as f:
+            f.truncate(self.total_size)
+            yield f
+            if f.tell() != self.total_size:
+                self.unlink()
+                raise LocalStoreFileSizeMismatch()
+
+        if not self.valid:
+            self.unlink()
+            raise LocalStoreInvalidHash()
 
     def extract_file(self, extract_path: str):
         store = get_bootresource_store_path()
@@ -358,3 +141,113 @@ class LocalBootResourceFile:
             tar.extractall(
                 path=target_dir.absolute(), filter=tarfile.tar_filter
             )
+
+    def unlink(self):
+        try:
+            os.unlink(self.path)
+        except FileNotFoundError:
+            pass
+
+
+class AsyncLocalBootResourceFile:
+    def __init__(
+        self,
+        sha256: str,
+        filename_on_disk: str,
+        total_size: int,
+    ) -> None:
+        """Asynchronous implementation of a local boot resource file.
+
+        Args:
+            sha256 (str): the file SHA256 checksum
+            filename_on_disk (str): the name of the file on disk
+            total_size (int): the complete file size, in bytes
+        """
+        self.sha256 = sha256
+        self.filename_on_disk = filename_on_disk
+        self.total_size = total_size
+        self.path = get_bootresource_store_path() / self.filename_on_disk
+
+    async def size(self) -> int:
+        try:
+            return (await aiofiles.os.stat(self.path)).st_size
+        except FileNotFoundError:
+            return 0
+
+    async def complete(self):
+        """`content` has been completely saved."""
+        return await self.size() == self.total_size
+
+    async def valid(self) -> bool:
+        """Async version of `valid` (see above)
+
+        Returns:
+            bool: Whether the file is valid
+        """
+        if not await self.complete():
+            return False
+
+        def calculate_sha256():
+            sha256 = hashlib.sha256()
+            with open(self.path, "rb") as stream:
+                while data := stream.read(CHUNK_SIZE):
+                    sha256.update(data)
+            return sha256.hexdigest()
+
+        hexdigest = await asyncio.get_running_loop().run_in_executor(
+            None, calculate_sha256
+        )
+        return hexdigest == self.sha256
+
+    @asynccontextmanager
+    async def store(self) -> AsyncGenerator[AsyncBufferedIOBase]:
+        """Store file in the local disk (async)
+
+        Yields a file for writing data. On context manager exit, it checks
+        whether the file is complete and if the SHA matches.
+
+        Raises:
+            LocalStoreInvalidHash: SHA256 checksum failed
+            LocalStoreAllocationFail: no sufficient free disk space
+            LocalStoreFileSizeMismatch: content written doesn't match the expected total size
+        Yields:
+            The file to write data to.
+        """
+        # shutil is synchronous, we calculate the free space as shutil would do
+        # but asynchronously. See shutil.disk_usage.
+        st = await aiofiles.os.statvfs(self.path.parent)
+        free = st.f_bavail * st.f_frsize
+        if free < self.total_size:
+            raise LocalStoreAllocationFail()
+
+        async with aiofiles.open(self.path, "wb") as file:
+            await file.truncate(self.total_size)
+            yield file
+            if await file.tell() != self.total_size:
+                await self.unlink()
+                raise LocalStoreFileSizeMismatch()
+
+        if not await self.valid():
+            await self.unlink()
+            raise LocalStoreInvalidHash()
+
+    async def extract_file(self, extract_path: str):
+        def sync_extract_file():
+            store = get_bootresource_store_path()
+            target_dir = store / extract_path
+            target_dir.mkdir(exist_ok=True, parents=True)
+            with tarfile.open(self.path, mode="r") as tar:
+                tar.extractall(
+                    path=target_dir.absolute(), filter=tarfile.tar_filter
+                )
+
+        return asyncio.get_running_loop().run_in_executor(
+            None, sync_extract_file
+        )
+
+    async def unlink(self):
+        """Removes the file from local disk"""
+        try:
+            await aiofiles.os.unlink(self.path)
+        except FileNotFoundError:
+            pass

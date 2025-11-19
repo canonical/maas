@@ -13,6 +13,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ConflictResponse,
     DischargeRequiredErrorResponse,
     ForbiddenResponse,
+    InsufficientStorageErrorResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     PreconditionFailedResponse,
@@ -29,6 +30,7 @@ from maasservicelayer.exceptions.catalog import (
     ConflictException,
     DischargeRequiredException,
     ForbiddenException,
+    InsufficientStorageException,
     NotFoundException,
     PreconditionFailedException,
     ServiceUnavailableException,
@@ -102,6 +104,10 @@ class TestExceptionMiddleware:
                     details=[BaseExceptionDetail(type="type", message="msg")]
                 ),
                 ServiceUnavailableErrorResponse,
+            ),
+            (
+                InsufficientStorageException(),
+                InsufficientStorageErrorResponse,
             ),
             (Exception("Unexpected error"), InternalServerErrorResponse),
         ],

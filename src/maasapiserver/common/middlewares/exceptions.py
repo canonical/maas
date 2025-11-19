@@ -15,6 +15,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ConflictResponse,
     DischargeRequiredErrorResponse,
     ForbiddenResponse,
+    InsufficientStorageErrorResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     PreconditionFailedResponse,
@@ -31,6 +32,7 @@ from maasservicelayer.exceptions.catalog import (
     ConflictException,
     DischargeRequiredException,
     ForbiddenException,
+    InsufficientStorageException,
     NotFoundException,
     PreconditionFailedException,
     ServiceUnavailableException,
@@ -134,6 +136,9 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except PreconditionFailedException as e:
             logger.debug(e)
             return PreconditionFailedResponse(e.details)
+        except InsufficientStorageException as e:
+            logger.error(e)
+            return InsufficientStorageErrorResponse(e.details)
         except ServiceUnavailableException as e:
             logger.error(e)
             return ServiceUnavailableErrorResponse(e.details)

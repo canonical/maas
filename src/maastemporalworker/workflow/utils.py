@@ -8,6 +8,7 @@ import random
 
 import structlog
 from temporalio import activity, workflow
+from temporalio.exceptions import ApplicationError, TemporalError
 
 from maascommon.tracing import get_or_set_trace_id
 from maasservicelayer.context import Context
@@ -83,3 +84,18 @@ def async_retry(retries=5, backoff_ms=1000):
         return wrapped
 
     return wrapper
+
+
+def get_error_message_from_temporal_exc(e: TemporalError) -> str:
+    """Extract the original error message from Temporal error.
+
+    Navigates through the chain of causes to find the first ApplicationError,
+    which contains the original error message.
+    """
+    cause = e.cause
+    while cause:
+        if isinstance(cause, ApplicationError):
+            return str(cause)
+        # Check if this cause has its own cause
+        cause = getattr(cause, "cause", None)
+    return str(cause) if cause else str(e)

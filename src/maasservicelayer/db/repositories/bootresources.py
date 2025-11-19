@@ -50,6 +50,12 @@ class BootResourceClauseFactory(ClauseFactory):
     def with_ids(cls, ids: set[int]) -> Clause:
         return Clause(condition=BootResourceTable.c.id.in_(ids))
 
+    @classmethod
+    def with_selection_id(cls, selection_id: int) -> Clause:
+        return Clause(
+            condition=eq(BootResourceTable.c.selection_id, selection_id)
+        )
+
 
 class BootResourceOrderByClauses(OrderByClauseFactory):
     @staticmethod

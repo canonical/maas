@@ -3,6 +3,7 @@
 
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -83,3 +84,11 @@ class NotificationsService(
             notification_id=notification_id,
             user_id=user.id,
         )
+
+    async def create_or_update(
+        self, query: QuerySpec, builder: NotificationBuilder
+    ) -> Notification:
+        notification = await self.get_one(query)
+        if notification:
+            return await self._update_resource(notification, builder)
+        return await self.create(builder)

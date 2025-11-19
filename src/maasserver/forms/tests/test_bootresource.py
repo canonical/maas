@@ -5,8 +5,6 @@
 
 import random
 
-from django.core.files.uploadedfile import SimpleUploadedFile
-
 from maascommon.osystem import CustomOS, OperatingSystemRegistry
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.forms import BootResourceForm, get_uploaded_filename
@@ -57,17 +55,16 @@ class TestBootResourceForm(MAASServerTestCase):
         subarch = architecture.split("/")[1]
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": "custom/" + name,
             "title": title,
             "architecture": architecture,
             "filetype": upload_type,
+            "size": size,
+            "sha256": factory.make_string(size=64),
             "base_image": factory.make_base_image_name(),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         resource = BootResource.objects.get(
@@ -77,62 +74,52 @@ class TestBootResourceForm(MAASServerTestCase):
         )
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
-        lfile = rfile.local_file()
         self.assertEqual(title, resource.extra["title"])
         self.assertEqual(subarch, resource.extra["subarches"])
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
         self.assertEqual(size, rfile.size)
-        with open(lfile.path, "rb") as stream:
-            written_content = stream.read()
-        self.assertEqual(content, written_content)
 
     def test_prevents_reserved_name(self):
         bsc = factory.make_BootSourceCache()
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": f"{bsc.os}/{bsc.release}",
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertFalse(form.is_valid())
 
     def test_prevents_reserved_osystem(self):
         bsc = factory.make_BootSourceCache()
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": bsc.os,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertFalse(form.is_valid())
 
     def test_prevents_reserved_release(self):
         bsc = factory.make_BootSourceCache()
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": bsc.release,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertFalse(form.is_valid())
 
     def test_prevents_reversed_osystem_from_driver(self):
@@ -140,33 +127,29 @@ class TestBootResourceForm(MAASServerTestCase):
         OperatingSystemRegistry.register_item(reserved_name, CustomOS())
         self.addCleanup(OperatingSystemRegistry.unregister_item, reserved_name)
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": reserved_name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertFalse(form.is_valid())
 
     def test_prevents_reserved_centos_names(self):
         reserved_name = f"centos{random.randint(0, 99)}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": reserved_name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertFalse(form.is_valid())
 
     def test_prevents_unsupported_osystem(self):
@@ -174,134 +157,118 @@ class TestBootResourceForm(MAASServerTestCase):
             f"{factory.make_name('osystem')}/{factory.make_name('series')}"
         )
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": reserved_name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertFalse(form.is_valid())
 
     def test_windows_does_not_require_base_image(self):
         name = f"windows/{factory.make_name('name')}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid())
 
     def test_esxi_does_not_require_base_image(self):
         name = f"esxi/{factory.make_name('name')}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid())
 
     def test_rhel_does_not_require_base_image(self):
         name = f"rhel/{factory.make_name('name')}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid())
 
     def test_validates_custom_image_base_os(self):
         name = f"custom/{factory.make_name('name')}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
             "base_image": factory.make_base_image_name(),
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid())
 
     def test_validates_custom_image_base_image_no_prefix(self):
         name = factory.make_name("name")
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
             "base_image": factory.make_base_image_name(),
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid())
 
     def test_saved_bootresource_saves_base_image(self):
         name = f"custom/{factory.make_name('name')}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
             "base_image": factory.make_base_image_name(),
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         image = form.save()
         self.assertEqual(image.base_image, data["base_image"])
 
     def test_update_does_not_require_base_image(self):
         name = f"custom/{factory.make_name('name')}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
             "base_image": factory.make_base_image_name(),
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         form.save()
         del form.data["base_image"]
         image = form.save()
@@ -310,18 +277,16 @@ class TestBootResourceForm(MAASServerTestCase):
     def test_uses_commissioning_os_for_nonexistent_custom_image_base_os(self):
         name = f"custom/{factory.make_name('name')}"
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
             "base_image": "",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         form.save()
         cfg = Config.objects.get_configs(
             ["commissioning_osystem", "commissioning_distro_series"]
@@ -334,18 +299,16 @@ class TestBootResourceForm(MAASServerTestCase):
     def test_invalidates_nonexistent_custom_image_base_os_no_prefix(self):
         name = factory.make_name("name")
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
             "base_image": factory.make_name("invalid"),
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertFalse(form.is_valid())
 
     def test_adds_boot_resource_set_to_existing_boot_resource(self):
@@ -359,28 +322,23 @@ class TestBootResourceForm(MAASServerTestCase):
         )
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "architecture": architecture,
             "filetype": upload_type,
             "keep_old": True,
+            "size": size,
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         resource = reload_object(resource)
         resource_set = resource.sets.order_by("id").last()
         rfile = resource_set.files.first()
-        lfile = rfile.local_file()
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
         self.assertEqual(size, rfile.size)
-        with open(lfile.path, "rb") as stream:
-            written_content = stream.read()
-        self.assertEqual(content, written_content)
 
     def test_creates_boot_resoures_with_uploaded_rtype(self):
         os = factory.make_name("os")
@@ -391,16 +349,15 @@ class TestBootResourceForm(MAASServerTestCase):
         architecture = make_usable_architecture(self)
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "architecture": architecture,
             "filetype": upload_type,
             "base_image": "ubuntu/focal",
+            "size": size,
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         resource = BootResource.objects.get(
@@ -410,13 +367,9 @@ class TestBootResourceForm(MAASServerTestCase):
         )
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
-        lfile = rfile.local_file()
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
         self.assertEqual(size, rfile.size)
-        with open(lfile.path, "rb") as stream:
-            written_content = stream.read()
-        self.assertEqual(content, written_content)
 
     def test_adds_boot_resource_set_to_existing_uploaded_boot_resource(self):
         os = factory.make_name("os")
@@ -433,35 +386,30 @@ class TestBootResourceForm(MAASServerTestCase):
         )
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "architecture": architecture,
             "filetype": upload_type,
             "keep_old": True,
+            "size": size,
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         resource = reload_object(resource)
         resource_set = resource.sets.order_by("id").last()
         rfile = resource_set.files.first()
-        lfile = rfile.local_file()
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
         self.assertEqual(size, rfile.size)
-        with open(lfile.path, "rb") as stream:
-            written_content = stream.read()
-        self.assertEqual(content, written_content)
         self.assertEqual(resource.rtype, BOOT_RESOURCE_TYPE.UPLOADED)
 
     def test_requires_fields(self):
         form = BootResourceForm(data={})
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEqual(
-            {"name", "architecture", "filetype", "content"},
+            {"name", "architecture", "filetype", "sha256", "size"},
             form.errors.keys(),
         )
 
@@ -479,17 +427,15 @@ class TestBootResourceForm(MAASServerTestCase):
             architecture=architecture,
         )
         upload_type, _ = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": name,
             "architecture": architecture,
             "filetype": upload_type,
             "base_image": "ubuntu/focal",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         self.assertEqual(
@@ -504,15 +450,14 @@ class TestBootResourceForm(MAASServerTestCase):
     ):
         architecture = make_usable_architecture(self)
         upload_type, _ = self.pick_filetype()
-        content = factory.make_string(1024).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
             "name": f"custom/{factory.make_name()}",
             "architecture": architecture,
             "filetype": upload_type,
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form = BootResourceForm(data=data)
         form.save()
         cfg = Config.objects.get_configs(
             ["commissioning_osystem", "commissioning_distro_series"]

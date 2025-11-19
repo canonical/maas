@@ -6,7 +6,7 @@ from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
 )
-from maasservicelayer.utils.image_local_files import LocalBootResourceFile
+from maasservicelayer.utils.image_local_files import AsyncLocalBootResourceFile
 
 
 @generate_builder()
@@ -20,7 +20,7 @@ class BootResourceFile(MaasTimestampedBaseModel):
     largefile_id: int | None = None
     resource_set_id: int | None = None
 
-    def create_local_file(self) -> LocalBootResourceFile:
-        return LocalBootResourceFile(
+    def create_local_file(self) -> AsyncLocalBootResourceFile:
+        return AsyncLocalBootResourceFile(
             self.sha256, self.filename_on_disk, self.size
         )

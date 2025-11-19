@@ -12,7 +12,8 @@ from typing import Iterable
 from django.urls import reverse
 
 from maascommon.workflows.bootresource import (
-    SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+    short_sha,
+    SYNC_BOOTRESOURCES_WORKFLOW_NAME,
 )
 from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
@@ -50,9 +51,8 @@ class TestHelpers(APITestCase.ForUser):
         self.region = factory.make_RegionController()
 
     def test_boot_resource_file_to_dict(self):
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
+        content = factory.make_bytes(total_size)
         lfile = factory.make_boot_file(content, total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
@@ -78,7 +78,7 @@ class TestHelpers(APITestCase.ForUser):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(random.randint(512, 1023))
+        content = factory.make_bytes(total_size)
         lfile = factory.make_boot_file(content, total_size)
         rfile = factory.make_BootResourceFile(
             resource_set, size=total_size, sha256=lfile.sha256
@@ -140,8 +140,10 @@ class TestHelpers(APITestCase.ForUser):
         filestore_add_file(bootres_file)
         exec_mock.assert_called()
         workflow, wid, params = exec_mock.call_args.args
-        self.assertEqual(workflow, SYNC_LOCAL_BOOTRESOURCES_WORKFLOW_NAME)
-        self.assertEqual(wid, f"sync-local-bootresource:{bootres_file.id}")
+        self.assertEqual(workflow, SYNC_BOOTRESOURCES_WORKFLOW_NAME)
+        self.assertEqual(
+            wid, f"sync-bootresources:{short_sha(bootres_file.sha256)}"
+        )
         self.assertCountEqual(params.resource.rfile_ids, [bootres_file.id])
         self.assertEqual(
             exec_mock.call_args.kwargs["task_queue"], REGION_TASK_QUEUE
@@ -243,7 +245,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         return random.choice(list(filetypes.items()))
 
     def test_POST_creates_boot_resource(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -255,6 +256,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "filetype": upload_type,
             "content": (factory.make_file_upload(content=sample_binary_data)),
             "base_image": "ubuntu/focal",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -268,14 +271,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         self.assertEqual("uploaded", resource_set.label)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
         self.assertEqual(filetype, rfile.filetype)
-        lfile = rfile.local_file()
-        with open(lfile.path, "rb") as stream:
-            written_data = stream.read()
-        self.assertEqual(sample_binary_data, written_data)
-        mock_filestore.assert_called_once()
 
     def test_POST_creates_boot_resource_with_default_filetype(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -285,6 +282,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "architecture": architecture,
             "content": (factory.make_file_upload(content=sample_binary_data)),
             "base_image": "ubuntu/focal",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -294,10 +293,8 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
         self.assertEqual(BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, rfile.filetype)
-        mock_filestore.assert_called_once()
 
     def test_POST_creates_boot_resource_with_already_existing_file(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         lfile = factory.make_boot_file()
@@ -319,7 +316,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         rfile = resource_set.files.first()
         lfile = rfile.local_file()
         self.assertTrue(lfile.path.exists())
-        mock_filestore.assert_not_called()
 
     def test_POST_creates_boot_resource_with_empty_file(self):
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
@@ -376,7 +372,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         mock_filestore.assert_not_called()
 
     def test_POST_returns_full_definition_of_boot_resource(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -384,14 +379,14 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         params = {
             "name": name,
             "architecture": architecture,
-            "content": (factory.make_file_upload(content=sample_binary_data)),
             "base_image": "ubuntu/focal",
+            "size": random.randint(1024, 2048),
+            "sha256": factory.make_string(size=64),
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertIn("sets", parsed_result)
-        mock_filestore.assert_called_once()
 
     def test_POST_validates_boot_resource(self):
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
