@@ -251,8 +251,6 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     # Used for rendering and logging exceptions.
     "maasserver.middleware.ExceptionMiddleware",
-    # Ensure the connection of the service layer is open.
-    "maasserver.middleware.ServiceLayerMiddleware",
     # Used to clear the RBAC thread-local cache.
     "maasserver.middleware.RBACMiddleware",
     # Handle errors that should really be handled in application code:

@@ -30,7 +30,7 @@ from twisted.internet.defer import _failthru, CancelledError, Deferred
 from twisted.python.failure import Failure
 
 from maasserver.models import Node
-from maasserver.sqlalchemy import service_layer
+from maasserver.sqlalchemy import InvalidConnection, service_layer
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -540,6 +540,14 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function.side_effect = orm.make_deadlock_failure()
         function_wrapped = retry_on_retryable_failure(function)
         self.assertRaises(OperationalError, function_wrapped)
+        expected_calls = [call()] * 10
+        function.assert_has_calls(expected_calls)
+
+    def test_retries_on_sqlalchemy_failure(self):
+        function = self.make_mock_function()
+        function.side_effect = InvalidConnection()
+        function_wrapped = retry_on_retryable_failure(function)
+        self.assertRaises(InvalidConnection, function_wrapped)
         expected_calls = [call()] * 10
         function.assert_has_calls(expected_calls)
 

@@ -12,6 +12,7 @@ from sqlalchemy.sql.expression import func
 
 from maasserver.sqlalchemy import (
     get_sqlalchemy_django_connection,
+    InvalidConnection,
     service_layer,
     ServiceLayerAdapter,
     ServiceLayerNotInitialized,
@@ -54,7 +55,7 @@ class TestGetSqlalchemyConnection:
         conn = get_sqlalchemy_django_connection()
         with pytest.raises(NotImplementedError):
             conn.close()
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(InvalidConnection):
             conn.invalidate()
 
     def test_no_pool_connect(self):
