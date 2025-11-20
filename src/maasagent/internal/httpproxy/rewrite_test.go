@@ -57,6 +57,15 @@ func TestRewriteHandler(t *testing.T) {
 			},
 			out: "/boot-resources/hash/ubuntu/amd64/ga-22.04/jammy/stable/boot-kernel",
 		},
+		"custom bootloaders are not modified": {
+			in: in{
+				url: "http://example.com/boot-resources/custom/bootx64.efi",
+				rules: []*RewriteRule{
+					NewRewriteRule(regexp.MustCompile(".*/custom/(.*)"), "/boot-resources/custom/$1"),
+				},
+			},
+			out: "/boot-resources/custom/bootx64.efi",
+		},
 	}
 
 	for name, tc := range testcases {
