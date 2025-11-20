@@ -48,7 +48,7 @@ from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     INVALID_TOKEN_VIOLATION_TYPE,
     PRECONDITION_FAILED,
-    PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+    PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import (
     OAuthProvider,
@@ -379,6 +379,11 @@ class ExternalOAuthServiceCache(ServiceCache):
     httpx_client: AsyncClient | None = None
     oauth2_client: OAuth2Client | None = None
 
+    async def clear_oauth_client(self) -> None:
+        if self.oauth2_client:
+            await self.oauth2_client.client.aclose()
+        self.oauth2_client = None
+
     async def close(self) -> None:
         if self.httpx_client:
             await self.httpx_client.aclose()
@@ -436,6 +441,13 @@ class ExternalOAuthService(
                 ]
             )
 
+    async def post_update_hook(
+        self, old_resource: OAuthProvider, updated_resource: OAuthProvider
+    ) -> None:
+        if old_resource.enabled or updated_resource.enabled:
+            # FIXME: clears only local cache; HA setups will need multi-region invalidation.
+            await self.cache.clear_oauth_client()  # type: ignore
+
     async def get_provider(self) -> OAuthProvider | None:
         return await self.repository.get_provider()
 
@@ -451,7 +463,7 @@ class ExternalOAuthService(
             raise BadGatewayException(
                 details=[
                     BaseExceptionDetail(
-                        type=PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
                         message="A network error occurred while trying to reach the OIDC server.",
                     ),
                 ]
@@ -461,7 +473,7 @@ class ExternalOAuthService(
             raise BadGatewayException(
                 details=[
                     BaseExceptionDetail(
-                        type=PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
                         message=f"OIDC server returned an unexpected response with status code: {response.status_code}.",
                     ),
                 ]

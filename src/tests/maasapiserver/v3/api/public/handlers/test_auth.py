@@ -39,7 +39,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
-    PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+    PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
@@ -560,7 +560,7 @@ class TestAuthApi:
         services_mock.external_oauth.create.side_effect = BadGatewayException(
             details=[
                 BaseExceptionDetail(
-                    type=PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+                    type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
                     message="Failed to fetch provider metadata from OIDC server.",
                 )
             ]

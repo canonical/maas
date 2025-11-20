@@ -40,7 +40,7 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
-    PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE,
+    PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import (
     OAuthProvider,
@@ -1165,7 +1165,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         )
         assert (
             exc_info.value.details[0].type  # type: ignore
-            == PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE
+            == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
         )
 
         mock_client.get = AsyncMock(side_effect=HTTPError("Connection error"))
@@ -1179,7 +1179,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         )
         assert (
             exc_info.value.details[0].type  # type: ignore
-            == PROVIDER_DISCOVERY_FAILED_VIOLATION_TYPE
+            == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
         )
 
     async def test_get_httpx_client(
