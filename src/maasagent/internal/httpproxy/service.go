@@ -39,6 +39,8 @@ const (
 
 var (
 	rewriteRules = []*RewriteRule{
+		// TODO: Remove this rule when we have a better way to handle custom bootloaders.
+		NewRewriteRule(regexp.MustCompile(".*/custom/(.*)"), "boot-resources/custom/$1"),
 		NewRewriteRule(regexp.MustCompile(".*/bootaa64.efi"), "boot-resources/bootloaders/uefi/arm64/bootaa64.efi"),
 		NewRewriteRule(regexp.MustCompile(".*/grubaa64.efi"), "boot-resources/bootloaders/uefi/arm64/grubaa64.efi"),
 		NewRewriteRule(regexp.MustCompile(".*/mmaa64.efi"), "boot-resources/bootloaders/uefi/arm64/mmaa64.efi"),
