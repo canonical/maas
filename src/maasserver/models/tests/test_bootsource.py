@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BootSource`."""
@@ -56,6 +56,16 @@ class TestBootSource(MAASServerTestCase):
             url="http://example.com", keyring_filename="", keyring_data=b""
         )
         self.assertRaises(ValidationError, boot_source.clean)
+
+    def test_keyring_data_and_filename_can_be_unset_if_stream_is_unsigned(
+        self,
+    ):
+        boot_source = BootSource(
+            url="http://example.com/streams/v1/index.json",
+            keyring_filename="",
+            keyring_data=b"",
+        )
+        boot_source.save()
 
     def test_to_dict_returns_dict(self):
         boot_source = factory.make_BootSource(

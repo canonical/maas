@@ -1248,6 +1248,34 @@ class TestBootResourceFetch(MAASServerTestCase):
             keyring_data=expected_source["keyring_data"],
         )
 
+    def test_keyring_data_and_filename_unset_for_unsigned_stream(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+
+        self.patch(
+            service_layer.services, "image_manifests"
+        ).return_value = Mock(ImageManifestsService)
+        mock_download = self.patch(
+            service_layer.services.image_manifests, "fetch_image_metadata"
+        )
+        mock_download.return_value = []
+        url = "http://example.com/stream/v1/index.json"
+        expected_source = {
+            "url": url,
+        }
+        error = self.assertRaises(
+            HandlerError,
+            handler.fetch,
+            {"url": url},
+        )
+        self.assertEqual("Mirror provides no Ubuntu images.", str(error))
+
+        mock_download.assert_called_once_with(
+            source_url=expected_source["url"],
+            keyring_path=None,
+            keyring_data=None,
+        )
+
     def test_raises_error_on_downloading_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)

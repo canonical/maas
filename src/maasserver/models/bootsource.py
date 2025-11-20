@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a source of boot resources."""
@@ -66,8 +66,12 @@ class BootSource(CleanSave, TimestampedModel):
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
 
-        # You have to specify one of {keyring_data, keyring_filename}.
-        if not self.keyring_filename and not self.keyring_data:
+        # You have to specify one of {keyring_data, keyring_filename} unless you are using an unsigned stream.
+        if (
+            not self.skip_keyring_verification
+            and not self.keyring_filename
+            and not self.keyring_data
+        ):
             raise ValidationError(
                 "One of keyring_data or keyring_filename must be specified."
             )

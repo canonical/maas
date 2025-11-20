@@ -28,6 +28,12 @@ class BootSource(MaasTimestampedBaseModel):
     def __hash__(self):
         return hash(self.url)
 
+    def get_base_url(self) -> str:
+        """
+        Returns the base URL of the boot source. The URL might end with `streams/v1/index.json` when an unsigned manifest is used.
+        """
+        return self.url.removesuffix("streams/v1/index.json")
+
 
 class SourceAvailableImage(BaseModel):
     os: str

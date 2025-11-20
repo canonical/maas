@@ -631,12 +631,17 @@ class BootResourceHandler(Handler):
             keyring_data = b""
         elif source_type == "custom":
             url = params["url"]
-            if not url.endswith("/"):
-                url += "/"
+            is_signed_stream = not url.endswith(".json")
             keyring_filename = params.get("keyring_filename", "")
             keyring_data = base64.b64decode(params.get("keyring_data", ""))
-            if keyring_filename == "" and keyring_data == b"":
+            if (
+                is_signed_stream
+                and keyring_filename == ""
+                and keyring_data == b""
+            ):
                 keyring_filename = DEFAULT_KEYRINGS_PATH
+            if is_signed_stream and not url.endswith("/"):
+                url += "/"
         else:
             raise HandlerError("Unknown source_type: %s" % source_type)
 
