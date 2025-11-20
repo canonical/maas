@@ -4,6 +4,10 @@
 from base64 import b64decode
 
 from fastapi import Depends, Header, Response, status
+from fastapi.openapi.models import Header as OpenApiHeader
+from fastapi.openapi.models import Schema
+from fastapi.responses import RedirectResponse
+from temporalio.client import WorkflowExecutionStatus
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -24,6 +28,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
     BootSourceSelectionListResponse,
     BootSourceSelectionResponse,
+    BootSourceSelectionSyncResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceAvailableImageListResponse,
@@ -37,6 +42,10 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.workflows.bootresource import (
+    SYNC_SELECTION_WORKFLOW_NAME,
+    SyncSelectionParam,
+)
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsources import (
@@ -45,7 +54,12 @@ from maasservicelayer.db.repositories.bootsources import (
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ConflictException,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import CONFLICT_VIOLATION_TYPE
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -69,7 +83,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def list_boot_sources(
+    async def list_bootsources(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
@@ -113,7 +127,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def get_boot_source(
+    async def get_bootsource(
         self,
         boot_source_id: int,
         response: Response,
@@ -144,7 +158,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def create_boot_source(
+    async def create_bootsource(
         self,
         boot_source_request: BootSourceRequest,
         response: Response,
@@ -175,7 +189,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def update_boot_source(
+    async def update_bootsource(
         self,
         boot_source_id: int,
         boot_source_request: BootSourceRequest,
@@ -206,7 +220,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def delete_boot_source(
+    async def delete_bootsource(
         self,
         boot_source_id: int,
         etag_if_match: str | None = Header(alias="if-match", default=None),
@@ -230,7 +244,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def fetch_boot_sources_available_images(
+    async def fetch_bootsources_available_images(
         self,
         request: BootSourceFetchRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
@@ -268,7 +282,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def list_boot_source_boot_source_selection(
+    async def list_bootsource_bootsourceselection(
         self,
         boot_source_id: int,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
@@ -322,7 +336,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def get_boot_source_boot_source_selection(
+    async def get_bootsource_bootsourceselection(
         self,
         boot_source_id: int,
         id: int,
@@ -363,7 +377,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def create_boot_source_boot_source_selection(
+    async def create_bootsource_bootsourceselection(
         self,
         boot_source_id: int,
         boot_source_selection_request: BootSourceSelectionRequest,
@@ -404,7 +418,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def update_boot_source_boot_source_selection(
+    async def update_bootsource_bootsourceselection(
         self,
         boot_source_id: int,
         id: int,
@@ -441,7 +455,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def delete_boot_source_boot_source_selection(
+    async def delete_bootsource_bootsourceselection(
         self,
         boot_source_id: int,
         id: int,
@@ -463,6 +477,122 @@ class BootSourcesHandler(Handler):
             etag_if_match=etag_if_match,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{id}:sync",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {
+                "model": BootSourceSelectionSyncResponse,
+            },
+            303: {
+                "headers": {
+                    "Location": OpenApiHeader(
+                        description="URL to monitor the synchronization status",
+                        schema=Schema(type="string", format="uri"),
+                    )
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def sync_bootsource_bootsourceselection(
+        self,
+        boot_source_id: int,
+        id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSelectionSyncResponse:
+        boot_source_selection = await services.boot_source_selections.get_one(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(id),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            boot_source_id
+                        ),
+                    ]
+                )
+            )
+        )
+        if not boot_source_selection:
+            raise NotFoundException()
+
+        monitor_url = f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/{id}:status"
+
+        status = await services.temporal.workflow_status(
+            f"{SYNC_SELECTION_WORKFLOW_NAME}:{boot_source_selection.id}"
+        )
+        if status == WorkflowExecutionStatus.RUNNING:
+            return RedirectResponse(monitor_url, status_code=303)  # pyright: ignore[reportReturnType]
+
+        wf_id = f"{SYNC_SELECTION_WORKFLOW_NAME}:{boot_source_selection.id}"
+        services.temporal.register_workflow_call(
+            workflow_name=SYNC_SELECTION_WORKFLOW_NAME,
+            workflow_id=wf_id,
+            parameter=SyncSelectionParam(boot_source_selection.id),
+            wait=False,
+        )
+        return BootSourceSelectionSyncResponse(monitor_url=monitor_url)
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{id}:stop_sync",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {},
+            400: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def stop_sync_bootsource_bootsourceselection(
+        self,
+        boot_source_id: int,
+        id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        boot_source_selection = await services.boot_source_selections.get_one(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(id),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            boot_source_id
+                        ),
+                    ]
+                )
+            )
+        )
+        if not boot_source_selection:
+            raise NotFoundException()
+
+        status = await services.temporal.workflow_status(
+            f"{SYNC_SELECTION_WORKFLOW_NAME}:{boot_source_selection.id}"
+        )
+        wf_id = f"{SYNC_SELECTION_WORKFLOW_NAME}:{boot_source_selection.id}"
+        if status == WorkflowExecutionStatus.RUNNING:
+            temporal_client = await services.temporal.get_temporal_client()
+            await temporal_client.get_workflow_handle(wf_id).cancel()
+            return Response(status_code=202)
+
+        raise ConflictException(
+            details=[
+                BaseExceptionDetail(
+                    type=CONFLICT_VIOLATION_TYPE,
+                    message="Selection is not being synchronized.",
+                )
+            ]
+        )
 
     @handler(
         path="/available_images",
@@ -516,7 +646,7 @@ class BootSourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def get_boot_source_available_images(
+    async def get_bootsource_available_images(
         self,
         boot_source_id: int,
         pagination_params: PaginationParams = Depends(),  # noqa: B008

@@ -1,6 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from pydantic import BaseModel
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -42,3 +44,8 @@ class BootSourceSelectionListResponse(
     PaginatedResponse[BootSourceSelectionResponse]
 ):
     kind = "BootSourcesList"
+
+
+class BootSourceSelectionSyncResponse(BaseModel):
+    kind = "BootSourceSelectionSync"
+    monitor_url: str

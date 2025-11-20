@@ -7,6 +7,7 @@ from unittest.mock import Mock
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
 import pytest
+from temporalio.client import Client, WorkflowExecutionStatus, WorkflowHandle
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
@@ -23,6 +24,10 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
     UISourceAvailableImageListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.workflows.bootresource import (
+    SYNC_SELECTION_WORKFLOW_NAME,
+    SyncSelectionParam,
+)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
@@ -49,6 +54,7 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
 )
 from maasservicelayer.services.image_manifests import ImageManifestsService
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -830,3 +836,135 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             ),
             etag_if_match=None,
         )
+
+    async def test_sync_selection_starts_workflow(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.workflow_status.return_value = (
+            WorkflowExecutionStatus.TERMINATED
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/selections/1:sync",
+        )
+
+        assert response.status_code == 202
+
+        json_response = response.json()
+        assert json_response["monitor_url"] == (
+            f"{self.BASE_PATH}/1/selections/1:status"
+        )
+
+        services_mock.temporal.workflow_status.assert_called_once_with(
+            f"{SYNC_SELECTION_WORKFLOW_NAME}:1"
+        )
+        services_mock.temporal.register_workflow_call.assert_called_once_with(
+            workflow_name=SYNC_SELECTION_WORKFLOW_NAME,
+            workflow_id=f"{SYNC_SELECTION_WORKFLOW_NAME}:1",
+            parameter=SyncSelectionParam(1),
+            wait=False,
+        )
+
+    async def test_sync_selection_workflow_already_running(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.workflow_status.return_value = (
+            WorkflowExecutionStatus.RUNNING
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/selections/1:sync",
+        )
+
+        assert response.status_code == 303
+        assert response.headers["Location"] == (
+            f"{self.BASE_PATH}/1/selections/1:status"
+        )
+
+        services_mock.temporal.workflow_status.assert_called_once_with(
+            f"{SYNC_SELECTION_WORKFLOW_NAME}:1"
+        )
+        services_mock.temporal.register_workflow_call.assert_not_called()
+
+    async def test_stop_sync_selection_stops_workflow(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        temporal_client = Mock(Client)
+        mock_handle = Mock(WorkflowHandle)
+        temporal_client.get_workflow_handle.return_value = mock_handle
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.workflow_status.return_value = (
+            WorkflowExecutionStatus.RUNNING
+        )
+        services_mock.temporal.get_temporal_client.return_value = (
+            temporal_client
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/selections/1:stop_sync",
+        )
+
+        assert response.status_code == 202
+
+        mock_handle.cancel.assert_awaited_once()
+
+    async def test_stop_sync_selection_workflow_not_running(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        temporal_client = Mock(Client)
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.workflow_status.return_value = (
+            WorkflowExecutionStatus.COMPLETED
+        )
+        services_mock.temporal.get_temporal_client.return_value = (
+            temporal_client
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/selections/1:stop_sync",
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details[0].message == (
+            "Selection is not being synchronized."
+        )
+        services_mock.temporal.get_temporal_client.assert_not_called()

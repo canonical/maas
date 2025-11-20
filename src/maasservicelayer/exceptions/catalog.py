@@ -37,7 +37,7 @@ class AlreadyExistsException(BaseException):
 class ConflictException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__(
-            "There is a conflict with an existing resource.",
+            "There is a conflict with the current state of the resource.",
             details,
         )
 
