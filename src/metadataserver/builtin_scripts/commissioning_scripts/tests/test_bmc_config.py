@@ -305,6 +305,23 @@ EndSection
             # the same consecutive character.
             self.assertFalse(re.search(r"(.)\1", password))
 
+    def test_generate_random_password_with_length_and_special_chars(self):
+        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
+        for attempt in range(0, 100):  # noqa: B007
+            password = self.ipmi._generate_random_password(
+                min_length=13, max_length=20, with_special_chars=True
+            )
+            self.assertTrue(13 <= len(password) <= 20)
+            self.assertTrue(
+                any((c in special_chars) for c in password), password
+            )
+            self.assertIsNotNone(re.match(r".*[a-z].*", password), password)
+            self.assertIsNotNone(re.match(r".*[A-Z].*", password), password)
+            self.assertIsNotNone(re.match(r".*[0-9].*", password), password)
+            # Test password doesn't have two or more occurrences of the
+            # the same consecutive character.
+            self.assertFalse(re.search(r"(.)\1", password))
+
     def test_make_ipmi_user_settings(self):
         username = factory.make_name("username")
         password = factory.make_name("password")
@@ -394,10 +411,14 @@ EndSection
         password = factory.make_name("password")
         stronger_password = factory.make_name("strongpassword")
         password_w_spec_chars = factory.make_name("password_w_spec_chars")
+        stronger_password_w_spec_chars = factory.make_name(
+            "stronger_password_w_spec_chars"
+        )
         self.patch(self.ipmi, "_generate_random_password").side_effect = (
             password,
             stronger_password,
             password_w_spec_chars,
+            stronger_password_w_spec_chars,
         )
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
@@ -441,13 +462,19 @@ EndSection
         password = factory.make_name("password")
         stronger_password = factory.make_name("strongpassword")
         password_w_spec_chars = factory.make_name("password_w_spec_chars")
+        stronger_password_w_spec_chars = factory.make_name(
+            "stronger_password_w_spec_chars"
+        )
         self.patch(self.ipmi, "_generate_random_password").side_effect = (
             password,
             stronger_password,
             password_w_spec_chars,
+            stronger_password_w_spec_chars,
         )
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_bmc_set.side_effect = (
+            None,
+            factory.make_exception(),
             None,
             factory.make_exception(),
             None,
@@ -472,7 +499,7 @@ EndSection
         self.ipmi.add_bmc_user()
 
         self.assertEqual("maas", self.ipmi.username)
-        self.assertEqual(password_w_spec_chars, self.ipmi.password)
+        self.assertEqual(stronger_password_w_spec_chars, self.ipmi.password)
         # Verify bmc_set is only called for values that have changed
         mock_bmc_set.assert_has_calls(
             [
@@ -482,6 +509,8 @@ EndSection
                 call("User2", "Password", stronger_password),
                 call("User2", "Username", "maas"),
                 call("User2", "Password", password_w_spec_chars),
+                call("User2", "Username", "maas"),
+                call("User2", "Password", stronger_password_w_spec_chars),
                 call("User2", "Lan_Privilege_Limit", "Operator"),
             ]
         )
