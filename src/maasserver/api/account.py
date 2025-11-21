@@ -9,6 +9,7 @@ import json
 from django.http import HttpResponse
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.audit import create_audit_event
@@ -59,6 +60,8 @@ class AccountHandler(OperationsHandler):
             request,
             None,
             "Created token.",
+            action=CREATED,
+            id=token.key,
         )
         auth_info = {
             "token_key": token.key,
@@ -92,6 +95,8 @@ class AccountHandler(OperationsHandler):
             request,
             None,
             "Deleted token.",
+            action=DELETED,
+            id=token_key,
         )
         return rc.DELETED
 
@@ -124,6 +129,8 @@ class AccountHandler(OperationsHandler):
             request,
             None,
             "Modified consumer name of token.",
+            action=UPDATED,
+            id=token_key,
         )
         return rc.ACCEPTED
 

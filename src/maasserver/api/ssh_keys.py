@@ -15,6 +15,7 @@ from piston3.handler import typemapper
 from piston3.utils import rc
 from requests.exceptions import RequestException
 
+from maascommon.logging.security import DELETED
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.audit import create_audit_event
@@ -140,6 +141,7 @@ class SSHKeysHandler(OperationsHandler):
                     request,
                     None,
                     description="Imported SSH keys.",
+                    action="imported",
                 )
                 # convert to response
                 return [
@@ -232,6 +234,8 @@ class SSHKeyHandler(OperationsHandler):
             request,
             None,
             description="Deleted SSH key id='%s'." % id,
+            action=DELETED,
+            id=id,
         )
         return rc.DELETED
 

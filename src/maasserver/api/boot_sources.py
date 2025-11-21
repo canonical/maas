@@ -12,6 +12,7 @@ from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -100,6 +101,8 @@ class BootSourceHandler(OperationsHandler):
                 endpoint=ENDPOINT.API,
                 request=request,
                 description=description,
+                action=UPDATED,
+                id=updated_boot_source.pk,
             )
             return updated_boot_source
         else:
@@ -125,6 +128,8 @@ class BootSourceHandler(OperationsHandler):
             endpoint=ENDPOINT.API,
             request=request,
             description=f"Deleted boot source {boot_source.url}",
+            action=DELETED,
+            id=id,
         )
 
         return rc.DELETED
@@ -192,6 +197,8 @@ class BootSourcesHandler(OperationsHandler):
                 endpoint=ENDPOINT.API,
                 request=request,
                 description=f"Created boot source {boot_source.url}",
+                action=CREATED,
+                id=boot_source.pk,
             )
             handler = BootSourceHandler()
             emitter = JSONEmitter(

@@ -5,6 +5,7 @@
 
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT, NODE_STATUS
@@ -91,14 +92,17 @@ class BcacheCacheSetsHandler(OperationsHandler):
             )
         form = CreateCacheSetForm(machine, data=request.data)
         if form.is_valid():
+            bcache_set = form.save()
             create_audit_event(
                 EVENT_TYPES.NODE,
                 ENDPOINT.API,
                 request,
                 system_id,
                 "Created bcache cache set.",
+                action=CREATED,
+                id=bcache_set.id,
             )
-            return form.save()
+            return bcache_set
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -194,6 +198,8 @@ class BcacheCacheSetHandler(OperationsHandler):
                 request,
                 system_id,
                 "Deleted bcache cache set.",
+                action=DELETED,
+                id=id,
             )
             return rc.DELETED
 
@@ -242,6 +248,8 @@ class BcacheCacheSetHandler(OperationsHandler):
                 request,
                 system_id,
                 "Updated bcache cache set.",
+                action=UPDATED,
+                id=id,
             )
             return form.save()
         else:

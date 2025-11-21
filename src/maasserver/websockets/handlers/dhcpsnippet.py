@@ -139,6 +139,8 @@ class DHCPSnippetHandler(TimestampedModelHandler):
                     "Reverted DHCP snippet '%s' to revision '%s'."
                     % (dhcp_snippet.name, revert_to)
                 ),
+                action="reverted",
+                id=dhcp_snippet.id,
             )
         except ValueError as e:
             raise HandlerValidationError(e.args[0])  # noqa: B904

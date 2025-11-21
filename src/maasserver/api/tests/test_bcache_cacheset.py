@@ -8,6 +8,7 @@ from unittest.mock import ANY
 
 from django.urls import reverse
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api import bcache_cacheset as bcache_cacheset_module
 from maasserver.enum import ENDPOINT, FILESYSTEM_GROUP_TYPE, NODE_STATUS
 from maasserver.testing.api import APITestCase
@@ -80,6 +81,8 @@ class TestBcacheCacheSetsAPI(APITestCase.ForUser):
             ANY,
             node.system_id,
             "Created bcache cache set.",
+            action=CREATED,
+            id=parsed_device["id"],
         )
 
     def test_create_403_when_not_admin(self):
@@ -191,6 +194,8 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             ANY,
             node.system_id,
             "Deleted bcache cache set.",
+            action=DELETED,
+            id=str(cache_set.id),
         )
 
     def test_delete_403_when_not_admin(self):
@@ -264,6 +269,8 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             ANY,
             node.system_id,
             "Updated bcache cache set.",
+            action=UPDATED,
+            id=str(parsed_device["id"]),
         )
 
     def test_update_403_when_not_admin(self):

@@ -6,13 +6,23 @@
 from django.contrib.auth.models import AnonymousUser
 
 from maascommon.events import AUDIT
+from maascommon.logging.security import AUTHZ_ADMIN, SECURITY
 from maasserver.models.event import Event
 from maasserver.utils import get_remote_ip
 from provisioningserver.events import EVENT_DETAILS
+from provisioningserver.logger import LegacyLogger
+
+logger = LegacyLogger()
 
 
 def create_audit_event(
-    event_type, endpoint, request=None, system_id=None, description=None
+    event_type,
+    endpoint,
+    request=None,
+    system_id=None,
+    description=None,
+    action=None,
+    id=None,
 ):
     """Helper to register Audit events.
 
@@ -41,3 +51,8 @@ def create_audit_event(
         endpoint=endpoint,
         user_agent=user_agent,
     )
+    if action is not None:
+        logger.info(
+            f"{AUTHZ_ADMIN}:{event_type.title()}:{action}:{id}",
+            type=SECURITY,
+        )

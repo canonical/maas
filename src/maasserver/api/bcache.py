@@ -5,6 +5,7 @@
 
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT, NODE_STATUS
@@ -115,6 +116,7 @@ class BcachesHandler(OperationsHandler):
                 request,
                 system_id,
                 "Created bcache.",
+                action=CREATED,
             )
             return form.save()
         else:
@@ -220,6 +222,8 @@ class BcacheHandler(OperationsHandler):
             request,
             system_id,
             "Deleted bcache.",
+            action=DELETED,
+            id=id,
         )
         return rc.DELETED
 
@@ -280,6 +284,8 @@ class BcacheHandler(OperationsHandler):
                 request,
                 system_id,
                 "Updated bcache.",
+                action=UPDATED,
+                id=id,
             )
             return form.save()
         else:

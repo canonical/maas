@@ -9,6 +9,7 @@ from piston3.handler import BaseHandler
 from piston3.models import Consumer
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED
 from maasserver.api.ssh_keys import SSHKeysHandler
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import extract_bool, get_mandatory_param
@@ -106,6 +107,8 @@ class UsersHandler(OperationsHandler):
                 "Created %s '%s'."
                 % ("admin" if is_superuser else "user", username)
             ),
+            action=CREATED,
+            id=username,
         )
         if is_superuser:
             user = User.objects.create_superuser(
@@ -193,6 +196,8 @@ class UserHandler(OperationsHandler):
                         "Deleted %s '%s'."
                         % ("admin" if user.is_superuser else "user", username)
                     ),
+                    action=DELETED,
+                    id=username,
                 )
             except CannotDeleteUserException as e:
                 raise ValidationError(str(e))  # noqa: B904

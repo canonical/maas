@@ -8,6 +8,7 @@ import argparse
 from django.db import DEFAULT_DB_ALIAS
 
 from maascli.init import prompt_yes_no
+from maascommon.logging.security import UPDATED
 from maasserver.enum import ENDPOINT
 from maasserver.listener import notify
 from maasserver.management.commands.base import BaseCommandWithConnection
@@ -41,6 +42,8 @@ def _update_tls_config(
         EVENT_TYPES.SETTINGS,
         ENDPOINT.CLI,
         description="Updated TLS configuration settings",
+        action=UPDATED,
+        id="tls_config",
     )
     clear_tls_notifications()
     # send a notification about the config change

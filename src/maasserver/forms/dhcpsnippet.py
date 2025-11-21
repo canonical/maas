@@ -5,6 +5,7 @@
 
 from django import forms
 
+from maascommon.logging.security import CREATED, UPDATED
 from maasserver.audit import create_audit_event
 from maasserver.fields import (
     NodeChoiceField,
@@ -142,5 +143,7 @@ class DHCPSnippetForm(MAASModelForm):
                     dhcp_snippet.name,
                 )
             ),
+            action=UPDATED if self.is_update else CREATED,
+            id=dhcp_snippet.pk,
         )
         return dhcp_snippet

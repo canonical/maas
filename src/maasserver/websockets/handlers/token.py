@@ -6,6 +6,7 @@
 from django.http import HttpRequest
 from piston3.models import Token
 
+from maascommon.logging.security import CREATED
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models.user import create_auth_token, get_auth_tokens
@@ -46,6 +47,8 @@ class TokenHandler(Handler):
             request,
             None,
             "Created token.",
+            action=CREATED,
+            id=token.key,
         )
         return self.full_dehydrate(token)
 

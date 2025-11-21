@@ -89,6 +89,7 @@ from formencode.validators import StringBool
 from lxml import etree
 from netaddr import IPNetwork, valid_ipv6
 
+from maascommon.logging.security import CREATED
 from maascommon.osystem import (
     LINUX_OSYSTEMS,
     OperatingSystemRegistry,
@@ -1389,6 +1390,8 @@ class SSHKeyForm(MAASModelForm):
             request,
             None,
             description=description,
+            action=CREATED,
+            id=sshkey.pk,
         )
         return sshkey
 
@@ -1408,6 +1411,8 @@ class SSLKeyForm(KeyForm):
             request,
             None,
             description="Created SSL key.",
+            action=CREATED,
+            id=sslkey.pk,
         )
         return sslkey
 

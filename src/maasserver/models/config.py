@@ -9,6 +9,7 @@ import uuid
 from django.db.models import CharField, JSONField, Manager, Model
 
 from maascommon.enums.dns import DnsUpdateAction
+from maascommon.logging.security import UPDATED
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     ConfigureDHCPParam,
@@ -123,6 +124,8 @@ class ConfigManager(Manager):
                 description=(
                     f"Updated configuration setting '{name}' to '{value}'."
                 ),
+                action=UPDATED,
+                id=name,
             )
 
     def get_network_discovery_config_from_value(self, value):

@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404
 from formencode.validators import Bool, Int, String
 from piston3.utils import rc
 
+from maascommon.logging.security import DELETED, UPDATED
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.audit import create_audit_event
@@ -306,6 +307,8 @@ class NodeScriptHandler(OperationsHandler):
             request,
             None,
             description="Deleted script '%s'." % script.name,
+            action=DELETED,
+            id=script.pk,
         )
         return rc.DELETED
 
@@ -483,6 +486,8 @@ class NodeScriptHandler(OperationsHandler):
                     "Reverted script '%s' to revision '%s'."
                     % (script.name, revert_to)
                 ),
+                action="reverted",
+                id=script.pk,
             )
             return script
         except ValueError as e:
@@ -527,6 +532,8 @@ class NodeScriptHandler(OperationsHandler):
             request,
             None,
             description=(f"Added tag '{tag}' to script '{script.name}'."),
+            action=UPDATED,
+            id=script.pk,
         )
         return script
 
@@ -566,5 +573,7 @@ class NodeScriptHandler(OperationsHandler):
             request,
             None,
             description=(f"Removed tag '{tag}' from script '{script.name}'."),
+            action=UPDATED,
+            id=script.pk,
         )
         return script

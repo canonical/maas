@@ -12,6 +12,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api.nodes import NODES_PREFETCH, NODES_SELECT_RELATED
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import (
@@ -147,6 +148,8 @@ class TagHandler(OperationsHandler):
             request,
             None,
             description=f"Tag '{name}' {action}.",
+            action=UPDATED,
+            id=tag.pk,
         )
         return new_tag
 
@@ -172,6 +175,8 @@ class TagHandler(OperationsHandler):
             request,
             None,
             description=f"Tag '{tag.name}' deleted.",
+            action=DELETED,
+            id=tag.pk,
         )
         return rc.DELETED
 
@@ -462,6 +467,8 @@ class TagsHandler(OperationsHandler):
             request,
             None,
             description=f"Tag '{tag.name}' created.",
+            action=CREATED,
+            id=tag.pk,
         )
         return tag
 

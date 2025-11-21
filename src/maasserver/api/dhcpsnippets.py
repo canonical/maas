@@ -7,6 +7,7 @@ from email.utils import format_datetime
 
 from piston3.utils import rc
 
+from maascommon.logging.security import DELETED
 from maasserver.api.reservedip import ReservedIpHandler, ReservedIpsHandler
 from maasserver.api.support import (
     admin_method,
@@ -162,6 +163,8 @@ class DHCPSnippetHandler(OperationsHandler):
             request,
             None,
             description=("Deleted DHCP snippet '%s'." % dhcp_snippet.name),
+            action=DELETED,
+            id=id,
         )
         return rc.DELETED
 
@@ -216,6 +219,8 @@ class DHCPSnippetHandler(OperationsHandler):
                     "Reverted DHCP snippet '%s' to revision '%s'."
                     % (dhcp_snippet.name, revert_to)
                 ),
+                action="reverted",
+                id=dhcp_snippet.pk,
             )
             return dhcp_snippet
         except ValueError as e:

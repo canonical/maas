@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from django.urls import reverse
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api import bcache as bcache_module
 from maasserver.enum import (
     CACHE_MODE_TYPE,
@@ -151,6 +152,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         self.assertEqual(backing_size, parsed_device["virtual_device"]["size"])
         self.assertEqual("bcache0", parsed_device["name"])
         self.assertEqual(uuid, parsed_device["uuid"])
+
         (
             mock_create_audit_event.assert_called_once_with(
                 EVENT_TYPES.NODE,
@@ -158,6 +160,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
                 ANY,
                 node.system_id,
                 "Created bcache.",
+                action=CREATED,
             ),
         )
 
@@ -308,6 +311,8 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             ANY,
             node.system_id,
             "Deleted bcache.",
+            action=DELETED,
+            id=str(bcache.pk),
         )
 
     def test_delete_403_when_not_admin(self):
@@ -391,6 +396,8 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             ANY,
             node.system_id,
             "Updated bcache.",
+            action=UPDATED,
+            id=str(bcache.pk),
         )
 
     def test_change_bcache_backing(self):
@@ -421,6 +428,8 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             ANY,
             node.system_id,
             "Updated bcache.",
+            action=UPDATED,
+            id=str(bcache.pk),
         )
 
     def test_change_storages_to_partitions_bcache(self):
@@ -453,6 +462,8 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             ANY,
             node.system_id,
             "Updated bcache.",
+            action=UPDATED,
+            id=str(bcache.pk),
         )
 
     def test_invalid_change_fails(self):

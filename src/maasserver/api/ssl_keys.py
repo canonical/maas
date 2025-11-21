@@ -12,6 +12,7 @@ from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
 
+from maascommon.logging.security import DELETED
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -151,6 +152,8 @@ class SSLKeyHandler(OperationsHandler):
             request,
             None,
             description="Deleted SSL key id='%s'." % id,
+            action=DELETED,
+            id=id,
         )
         return rc.DELETED
 

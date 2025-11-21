@@ -4,6 +4,7 @@
 
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -152,6 +153,8 @@ class PackageRepositoryHandler(OperationsHandler):
             description=(
                 "Deleted package repository '%s'." % package_repository.name
             ),
+            action=DELETED,
+            id=id,
         )
         return rc.DELETED
 
@@ -218,6 +221,18 @@ class PackageRepositoriesHandler(OperationsHandler):
         """
         form = PackageRepositoryForm(data=request.data)
         if form.is_valid():
-            return form.save(ENDPOINT.API, request)
+            repository = form.save(ENDPOINT.API, request)
+            create_audit_event(
+                EVENT_TYPES.SETTINGS,
+                ENDPOINT.API,
+                request,
+                None,
+                description=(
+                    "Created package repository '%s'." % repository.name
+                ),
+                action=CREATED,
+                id=repository.pk,
+            )
+            return repository
         else:
             raise MAASAPIValidationError(form.errors)

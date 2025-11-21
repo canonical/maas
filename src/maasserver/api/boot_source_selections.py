@@ -6,6 +6,7 @@
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
+from maascommon.logging.security import CREATED, DELETED
 from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -82,6 +83,8 @@ class BootSourceSelectionHandler(OperationsHandler):
             endpoint=ENDPOINT.API,
             request=request,
             description=f"Deleted boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arch={boot_source_selection.arch}",
+            action=DELETED,
+            id=id,
         )
         return rc.DELETED
 
@@ -170,6 +173,8 @@ class BootSourceSelectionsHandler(OperationsHandler):
                 endpoint=ENDPOINT.API,
                 request=request,
                 description=f"Created boot source selection for {boot_source_selection.os}/{boot_source_selection.release} arch={boot_source_selection.arch}: {boot_source.url}",
+                action=CREATED,
+                id=boot_source_selection.pk,
             )
             return boot_source_selection
         else:

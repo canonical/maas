@@ -11,6 +11,7 @@ from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
+from maascommon.logging.security import CREATED, DELETED
 from maascommon.osystem import OperatingSystemRegistry
 from maasserver.audit import create_audit_event
 from maasserver.bootresources import (
@@ -671,6 +672,8 @@ class BootResourceHandler(Handler):
                     endpoint=ENDPOINT.UI,
                     request=self.request,
                     description=f"Created boot source {url} and deleted all the previous boot sources",
+                    action=CREATED,
+                    id=source.id,
                 )
 
             return source
@@ -746,6 +749,8 @@ class BootResourceHandler(Handler):
                         endpoint=ENDPOINT.UI,
                         request=self.request,
                         description=f"Deleted boot source selection for {selection.os}/{selection.release} arch={selection.arch}",
+                        action=DELETED,
+                        id=selection.pk,
                     )
 
         post_commit_do(import_resources)
@@ -882,6 +887,8 @@ class BootResourceHandler(Handler):
                 endpoint=ENDPOINT.UI,
                 request=self.request,
                 description=f"Deleted boot source selection for {resource.boot_source_selection.os}/{resource.boot_source_selection.release} arch={resource.boot_source_selection.arch}",
+                action=DELETED,
+                id=params["id"],
             )
 
         else:

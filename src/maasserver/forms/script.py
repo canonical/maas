@@ -20,6 +20,7 @@ from django.forms import (
 )
 import yaml
 
+from maascommon.logging.security import UPDATED
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.fields import VersionedTextFileField
@@ -544,6 +545,8 @@ class ScriptForm(ModelForm):
                 request,
                 None,
                 description="Saved script '%s'." % script.name,
+                action=UPDATED,
+                id=script.pk,
             )
         return script
 

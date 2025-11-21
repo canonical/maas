@@ -4,6 +4,7 @@
 from django.db.models import Count, Q, QuerySet
 from django.http import HttpRequest
 
+from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT, NODE_TYPE
 from maasserver.forms import TagForm
@@ -58,11 +59,15 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
         # doesn't come from the DB
         for field in ("machine_count", "device_count", "controller_count"):
             setattr(obj, field, 0)
-        self._create_audit_event(f"Tag '{obj.name}' created.")
+        self._create_audit_event(
+            f"Tag '{obj.name}' created.", action=CREATED, id=obj.pk
+        )
         return obj
 
     def _delete(self, obj):
-        self._create_audit_event(f"Tag '{obj.name}' deleted.")
+        self._create_audit_event(
+            f"Tag '{obj.name}' deleted.", action=DELETED, id=obj.pk
+        )
         return super()._delete(obj)
 
     def _update(self, obj, params):
@@ -71,7 +76,9 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
 
         new_name = params.get("name")
         action = f"renamed to '{new_name}'" if new_name else "updated"
-        self._create_audit_event(f"Tag '{name}' {action}.")
+        self._create_audit_event(
+            f"Tag '{name}' {action}.", action=UPDATED, id=obj.pk
+        )
         return obj
 
     def dehydrate(self, obj, data, for_list=False):
@@ -79,7 +86,7 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
             data[field] = getattr(obj, field)
         return data
 
-    def _create_audit_event(self, description):
+    def _create_audit_event(self, description, action, id):
         request = HttpRequest()
         request.user = self.user
         create_audit_event(
@@ -88,6 +95,8 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
             request,
             None,
             description=description,
+            action=action,
+            id=id,
         )
 
     def _node_filter(self, params):
