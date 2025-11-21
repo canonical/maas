@@ -54,7 +54,7 @@ Reads a boot resource by id
 
 
 
-Upload a new boot resource
+Create a new boot resource
 
 ```bash
 maas $PROFILE boot-resources create [--help] [-d] [-k] [data ...]
@@ -71,7 +71,7 @@ maas $PROFILE boot-resources create [--help] [-d] [-k] [data ...]
 
 
 #### **Keywords**
-Uploads a new boot resource.
+Creates a new boot resource. The file upload must be done<br>in chunk, see Boot resource file upload.
 
 ##### Keyword "name"
 Optional String. Name of the boot resource.
@@ -87,8 +87,6 @@ Optional String. Title for the boot resource.
 Optional String. Filetype for uploaded<br>content. (Default: ``tgz``. Supported: ``tgz``, ``tbz``, ``txz``,<br>``ddtgz``, ``ddtbz``, ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``,<br>``ddxz``, ``ddraw``)
 ##### Keyword "base_image"
 Optional String. The Base OS image a<br>custom image is built on top of. Only required for custom image.
-##### Keyword "content"
-Optional String. Image content. Note: this is<br>not a normal parameter, but an ``application/octet-stream`` file<br>upload.
 
 
 Note: This command accepts JSON.
