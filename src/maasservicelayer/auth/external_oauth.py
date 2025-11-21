@@ -6,7 +6,7 @@ from typing import Any
 
 from authlib.common.security import generate_token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
-from authlib.jose import JsonWebKey, KeySet
+from authlib.jose import JsonWebKey, JWTClaims, KeySet
 from authlib.jose.errors import BadSignatureError
 from httpx import HTTPStatusError
 
@@ -31,6 +31,28 @@ class OAuthInitiateData:
     authorization_url: str
     state: str
     nonce: str
+
+
+@dataclass
+class OAuthTokenData:
+    access_token: OAuthAccessToken | str
+    id_token: OAuthIDToken
+    refresh_token: str
+
+
+@dataclass
+class OAuthUserData:
+    sub: str
+    email: str | None
+    given_name: str | None
+    family_name: str | None
+    name: str | None
+
+
+@dataclass
+class OAuthCallbackData:
+    tokens: OAuthTokenData
+    user_info: OAuthUserData
 
 
 class OAuth2Client:
@@ -64,6 +86,59 @@ class OAuth2Client:
 
     def get_provider_name(self) -> str:
         return self.provider.name
+
+    async def callback(self, code: str, nonce: str) -> OAuthCallbackData:
+        tokens = await self._fetch_and_validate_tokens(code=code, nonce=nonce)
+
+        user_info = await self.get_userinfo(
+            access_token=tokens.access_token,
+            id_token_claims=tokens.id_token.claims,
+        )
+        return OAuthCallbackData(
+            tokens=tokens,
+            user_info=user_info,
+        )
+
+    async def get_userinfo(
+        self, access_token: OAuthAccessToken | str, id_token_claims: JWTClaims
+    ) -> OAuthUserData:
+        allowed_keys = OAuthUserData.__annotations__.keys()
+        if self.provider.metadata.userinfo_endpoint:
+            try:
+                response = await self._request(
+                    url=self.provider.metadata.userinfo_endpoint,
+                    access_token=access_token.encoded
+                    if isinstance(access_token, OAuthAccessToken)
+                    else access_token,
+                )
+            except HTTPStatusError as e:
+                raise BadGatewayException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+                            message="Failed to retrieve user info from OIDC server.",
+                        )
+                    ]
+                ) from e
+            if response["sub"] != id_token_claims["sub"]:
+                raise UnauthorizedException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_TOKEN_VIOLATION_TYPE,
+                            message="Claim 'sub' does not match ID token 'sub'.",
+                        )
+                    ]
+                )
+            response_filtered = {
+                k: v for k, v in response.items() if k in allowed_keys
+            }
+            return OAuthUserData(**response_filtered)
+
+        # Fallback: fetch claims from id_token
+        id_token_claims_filtered = {
+            k: v for k, v in id_token_claims.items() if k in allowed_keys
+        }
+        return OAuthUserData(**id_token_claims_filtered)
 
     async def validate_access_token(
         self, access_token: str
@@ -105,6 +180,51 @@ class OAuth2Client:
             ]
         )
 
+    async def _fetch_and_validate_tokens(
+        self, code: str, nonce: str
+    ) -> OAuthTokenData:
+        try:
+            token = await self.client.fetch_token(
+                url=self.provider.metadata.token_endpoint,
+                code=code,
+                grant_type="authorization_code",
+                redirect_uri=self.provider.redirect_uri,
+            )
+        except HTTPStatusError as e:
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+                        message="Failed to fetch tokens from OIDC server.",
+                    )
+                ]
+            ) from e
+
+        if (
+            not token.get("access_token")
+            or not token.get("id_token")
+            or not token.get("refresh_token")
+        ):
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+                        message="Invalid token response from OIDC server. Please ensure the provider is configured correctly.",
+                    )
+                ]
+            )
+        id_token = await self._validate_id_token(
+            id_token=token["id_token"], nonce=nonce
+        )
+        access_token = await self.validate_access_token(
+            access_token=token["access_token"]
+        )
+        return OAuthTokenData(
+            access_token=access_token,
+            id_token=id_token,
+            refresh_token=token["refresh_token"],
+        )
+
     async def _validate_id_token(
         self, id_token: str, nonce: str
     ) -> OAuthIDToken:
@@ -124,7 +244,9 @@ class OAuth2Client:
                 nonce=nonce,
             )
 
-    async def _introspect_token(self, url: str, access_token: str):
+    async def _introspect_token(
+        self, url: str, access_token: str
+    ) -> dict[str, Any]:
         response = await self.client.introspect_token(
             url=url, token=access_token
         )
@@ -168,7 +290,11 @@ class OAuth2Client:
     async def _request(
         self,
         url: str,
+        access_token: str | None = None,
     ) -> dict[str, Any]:
-        response = await self.client.get(url=url)
+        headers = {}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        response = await self.client.get(url=url, headers=headers)
         response.raise_for_status()
         return response.json()

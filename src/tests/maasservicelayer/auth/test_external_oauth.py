@@ -5,13 +5,22 @@ import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import urllib.parse
 
-from authlib.jose import KeySet
+from authlib.jose import JWTClaims, KeySet
 from authlib.jose.errors import BadSignatureError
 from httpx import HTTPStatusError, Request, Response
 import pytest
 
-from maasservicelayer.auth.external_oauth import OAuth2Client
-from maasservicelayer.exceptions.catalog import BadGatewayException
+from maasservicelayer.auth.external_oauth import (
+    OAuth2Client,
+    OAuthCallbackData,
+    OAuthTokenData,
+    OAuthUserData,
+)
+from maasservicelayer.auth.oidc_jwt import OAuthAccessToken, OAuthIDToken
+from maasservicelayer.exceptions.catalog import (
+    BadGatewayException,
+    UnauthorizedException,
+)
 from maasservicelayer.exceptions.constants import (
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
@@ -152,6 +161,194 @@ class TestOauth2Client:
         client._introspect_token.assert_awaited_once_with(
             url=TEST_PROVIDER.metadata.introspection_endpoint,
             access_token="some_opaque_token",
+        )
+
+    async def test_callback(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client._fetch_and_validate_tokens = AsyncMock(
+            return_value=OAuthTokenData(
+                access_token=OAuthAccessToken(
+                    claims=Mock(),
+                    encoded="access_token_value",
+                    provider=TEST_PROVIDER,
+                ),
+                id_token=OAuthIDToken(
+                    claims=Mock(),
+                    encoded="id_token_value",
+                    provider=TEST_PROVIDER,
+                ),
+                refresh_token="refresh_token_value",
+            )
+        )
+        client.get_userinfo = AsyncMock(
+            return_value=OAuthUserData(
+                sub="user123",
+                email="john.doe@example.com",
+                given_name="John",
+                family_name="Doe",
+                name="John Doe",
+            )
+        )
+
+        response = await client.callback(
+            code="auth_code_value", nonce="testnonce"
+        )
+
+        assert isinstance(response, OAuthCallbackData)
+        assert isinstance(response.tokens, OAuthTokenData)
+        assert isinstance(response.user_info, OAuthUserData)
+        assert response.tokens.access_token.encoded == "access_token_value"  # type: ignore
+        assert response.tokens.id_token.encoded == "id_token_value"
+        assert response.tokens.refresh_token == "refresh_token_value"
+        assert response.user_info.sub == "user123"
+
+    async def get_userinfo_has_endpoint(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client._request = AsyncMock(
+            return_value={
+                "sub": "user123",
+                "email": "john.doe@example.com",
+                "given_name": "John",
+                "family_name": "Doe",
+                "name": "John Doe",
+                "locale": "en-US",
+            }
+        )
+        response = await client.get_userinfo(
+            access_token="access_token_value",
+            id_token_claims=Mock(),
+        )
+
+        assert isinstance(response, OAuthUserData)
+        assert response.sub == "user123"
+        assert response.email == "john.doe@example.com"
+        assert response.given_name == "John"
+        assert response.family_name == "Doe"
+        assert response.name == "John Doe"
+        assert not hasattr(response, "locale")
+
+    async def test_get_userinfo_fallback_to_claims(self) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = None
+        client = OAuth2Client(TEST_PROVIDER)
+        client._request = AsyncMock()
+
+        mock_claims = {
+            "sub": "user123",
+            "email": "john.doe@example.com",
+            "given_name": "John",
+            "family_name": "Doe",
+            "name": "John Doe",
+        }
+
+        response = await client.get_userinfo(
+            access_token="access_token_value",
+            id_token_claims=JWTClaims(header={}, payload=mock_claims),
+        )
+
+        assert isinstance(response, OAuthUserData)
+        assert response.sub == "user123"
+        assert response.email == "john.doe@example.com"
+        assert response.given_name == "John"
+        assert response.family_name == "Doe"
+        assert response.name == "John Doe"
+
+    async def test_get_userinfo_sub_mismatch_raises_exception(self) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = (
+            "https://issuer.com/userinfo"
+        )
+        client = OAuth2Client(TEST_PROVIDER)
+        client._request = AsyncMock(
+            return_value={
+                "sub": "different_user",
+            }
+        )
+        mock_claims = JWTClaims(
+            header={},
+            payload={
+                "sub": "user123",
+            },
+        )
+        with pytest.raises(UnauthorizedException):
+            await client.get_userinfo(
+                access_token="access_token_value",
+                id_token_claims=mock_claims,
+            )
+
+    async def test__fetch_and_validate_tokens_success(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client.client.fetch_token = AsyncMock(
+            return_value={
+                "access_token": "access_token_value",
+                "id_token": "id_token_value",
+                "refresh_token": "refresh_token_value",
+            }
+        )
+        client._validate_id_token = AsyncMock(
+            return_value=OAuthIDToken(
+                claims=Mock(),
+                encoded="id_token_value",
+                provider=TEST_PROVIDER,
+            )
+        )
+        client.validate_access_token = AsyncMock(
+            return_value=OAuthAccessToken(
+                claims=Mock(),
+                encoded="access_token_value",
+                provider=TEST_PROVIDER,
+            )
+        )
+
+        response = await client._fetch_and_validate_tokens(
+            code="auth_code_value", nonce="testnonce"
+        )
+
+        assert isinstance(response, OAuthTokenData)
+        assert response.access_token.encoded == "access_token_value"  # type: ignore
+        assert response.id_token.encoded == "id_token_value"
+        assert response.refresh_token == "refresh_token_value"
+
+    async def test__fetch_and_validate_tokens_http_status_error(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client.client.fetch_token = AsyncMock(
+            side_effect=HTTPStatusError(
+                "Error fetching tokens",
+                request=Request("POST", url="https://issuer.com/token"),
+                response=Response(status_code=400),
+            )
+        )
+
+        with pytest.raises(BadGatewayException) as exc_info:
+            await client._fetch_and_validate_tokens(
+                code="auth_code_value", nonce="testnonce"
+            )
+        assert (
+            exc_info.value.details[0].type  # type: ignore
+            == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
+        )
+        assert (
+            exc_info.value.details[0].message  # type: ignore
+            == "Failed to fetch tokens from OIDC server."
+        )
+
+    async def test__fetch_and_validate_tokens_missing_tokens(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client.client.fetch_token = AsyncMock(
+            return_value={
+                "access_token": "access_token_value",
+                "id_token": "id_token_value",
+            }
+        )
+        with pytest.raises(BadGatewayException) as exc_info:
+            await client._fetch_and_validate_tokens(
+                code="auth_code_value", nonce="testnonce"
+            )
+        assert (
+            exc_info.value.details[0].type  # type: ignore
+            == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
+        )
+        assert (
+            exc_info.value.details[0].message  # type: ignore
+            == "Invalid token response from OIDC server. Please ensure the provider is configured correctly."
         )
 
     async def test__get_provider_jwks_no_cache(self) -> None:
