@@ -1,3 +1,9 @@
+maas (1:3.5.9-0ubuntu1) jammy; urgency=medium
+
+  * New upstream release, MAAS 3.5.9.
+
+ -- Jacopo Rota <jacopo.rota@canonical.com>  Mon, 24 Nov 2025 08:16:52 +0000
+
 maas (1:3.5.8-0ubuntu1) jammy; urgency=medium
 
   * New upstream release, MAAS 3.5.8.
