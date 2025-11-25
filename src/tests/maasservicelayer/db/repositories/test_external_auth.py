@@ -13,7 +13,7 @@ from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
     ExternalOAuthRepository,
 )
-from maasservicelayer.db.tables import RootKeyTable
+from maasservicelayer.db.tables import RootKeyTable, UserProfileTable
 from maasservicelayer.models.external_auth import (
     OAuthProvider,
     ProviderMetadata,
@@ -22,6 +22,10 @@ from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.external_auth import (
     create_provider,
     create_rootkey,
+)
+from tests.fixtures.factories.user import (
+    create_test_user,
+    create_test_user_profile,
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
@@ -212,3 +216,22 @@ class TestExternalOAuthRepository(RepositoryCommonTests[OAuthProvider]):
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> OAuthProvider:
         return await create_provider(fixture)
+
+    async def test_delete_deletes_associated_userprofile(
+        self,
+        fixture: Fixture,
+        created_instance: OAuthProvider,
+        repository_instance: ExternalOAuthRepository,
+    ) -> None:
+        test_user = await create_test_user(fixture)
+        test_user_profile = await create_test_user_profile(
+            fixture, user_id=test_user.id, provider_id=created_instance.id
+        )
+
+        await repository_instance.delete_by_id(created_instance.id)
+
+        user_profiles = await fixture.get(
+            UserProfileTable.name,
+            eq(UserProfileTable.c.id, test_user_profile.id),
+        )
+        assert user_profiles == []
