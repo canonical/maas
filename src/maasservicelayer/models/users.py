@@ -34,6 +34,7 @@ class UserProfile(MaasBaseModel):
     auth_last_check: Optional[datetime]
     is_local: bool
     user_id: int
+    provider_id: Optional[int] = None
 
 
 class UserWithSummary(BaseModel):

@@ -16,7 +16,14 @@ import pytest
 
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import ExternalAuthType
-from maasservicelayer.auth.external_oauth import OAuth2Client
+from maasservicelayer.auth.external_oauth import (
+    OAuth2Client,
+    OAuthAccessToken,
+    OAuthCallbackData,
+    OAuthIDToken,
+    OAuthTokenData,
+    OAuthUserData,
+)
 from maasservicelayer.auth.macaroons.checker import (
     AsyncAuthChecker,
     AsyncChecker,
@@ -40,6 +47,9 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
+    MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+    PRECONDITION_FAILED,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import (
@@ -825,6 +835,7 @@ class TestExternalOAuthService(ServiceCommonTests):
             context=Context(),
             external_oauth_repository=Mock(ExternalOAuthRepository),
             secrets_service=Mock(SecretsService),
+            users_service=Mock(UsersService),
             cache=Mock(ExternalOAuthServiceCache),
         )
 
@@ -902,10 +913,13 @@ class TestExternalOAuthService(ServiceCommonTests):
         service_instance.get_provider = AsyncMock(return_value=test_instance)
         with pytest.raises(ConflictException) as exc_info:
             await service_instance.create(builder=builder_model)
+        details = exc_info.value.details
+        assert details is not None
         assert (
-            exc_info.value.details[0].message
+            details[0].message
             == "An enabled OIDC provider already exists. Please disable it first."
         )
+        assert details[0].type == CONFLICT_VIOLATION_TYPE
 
     async def test_get_provider(
         self,
@@ -994,10 +1008,13 @@ class TestExternalOAuthService(ServiceCommonTests):
 
         with pytest.raises(ConflictException) as exc_info:
             await service_instance.update_provider(id=2, builder=builder_model)
+        details = exc_info.value.details
+        assert details is not None
         assert (
-            exc_info.value.details[0].message
+            details[0].message
             == "An enabled OIDC provider already exists. Please disable it first."
         )
+        assert details[0].type == CONFLICT_VIOLATION_TYPE
 
     async def test_delete_by_id(
         self,
@@ -1014,10 +1031,13 @@ class TestExternalOAuthService(ServiceCommonTests):
     ):
         with pytest.raises(PreconditionFailedException) as exc_info:
             await super().test_delete_by_id(service_instance, test_instance)
+        details = exc_info.value.details
+        assert details is not None
         assert (
-            exc_info.value.details[0].message
+            details[0].message
             == "This OIDC provider is enabled. Please disable it first."
         )
+        assert details[0].type == PRECONDITION_FAILED
 
     async def test_delete_one(self, service_instance, test_instance):
         test_instance.enabled = False
@@ -1196,3 +1216,200 @@ class TestExternalOAuthService(ServiceCommonTests):
         client1 = await service_instance.get_httpx_client()
         client2 = await service_instance.get_httpx_client()
         assert client1 is client2
+
+    async def test_get_callback_raises_exception(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        service_instance.get_client = AsyncMock(return_value=None)
+
+        with pytest.raises(PreconditionFailedException) as exc_info:
+            await service_instance.get_callback(
+                code="auth_code", nonce="nonce_value"
+            )
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].message == "No OIDC provider is configured."
+        assert details[0].type == MISSING_PROVIDER_CONFIG_VIOLATION_TYPE
+
+    async def test_get_callback_user_exists(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = AsyncMock()
+        now = utcnow()
+        mock_client.callback = AsyncMock(
+            return_value=OAuthCallbackData(
+                tokens=OAuthTokenData(
+                    refresh_token="refresh_token_value",
+                    access_token=OAuthAccessToken(
+                        encoded="access_token_value",
+                        provider=test_instance,
+                        claims=Mock(),
+                    ),
+                    id_token=OAuthIDToken(
+                        encoded="id_token_value",
+                        provider=test_instance,
+                        claims=Mock(),
+                    ),
+                ),
+                user_info=OAuthUserData(
+                    sub="user123",
+                    email="user@example.com",
+                    given_name="Test",
+                    family_name="User",
+                    name="Test User",
+                ),
+            )
+        )
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+        service_instance.users_service.get_or_create = AsyncMock(
+            return_value=(
+                User(
+                    id=1,
+                    username="testuser",
+                    password="",
+                    is_superuser=False,
+                    first_name="Test",
+                    last_name="User",
+                    is_staff=False,
+                    is_active=True,
+                    last_login=now,
+                ),
+                False,
+            )
+        )
+        service_instance.users_service.update_profile = AsyncMock()
+
+        with patch(
+            "maasservicelayer.services.external_auth.utcnow"
+        ) as utcnow_mock:
+            utcnow_mock.return_value = now
+            data = await service_instance.get_callback(
+                code="auth_code", nonce="nonce_value"
+            )
+
+        service_instance.get_client.assert_awaited_once()
+        mock_client.callback.assert_awaited_once_with(
+            code="auth_code", nonce="nonce_value"
+        )
+        service_instance.users_service.get_or_create.assert_awaited_once_with(
+            query=QuerySpec(
+                UserClauseFactory.with_username_or_email_like(
+                    "user@example.com"
+                )
+            ),
+            builder=UserBuilder(
+                username="user@example.com",
+                email="user@example.com",
+                first_name="Test",
+                last_name="User",
+                password="",
+                is_active=True,
+                is_staff=False,
+                is_superuser=False,
+                last_login=now,
+            ),
+        )
+        service_instance.users_service.update_profile.assert_not_called()
+        assert isinstance(data, OAuthTokenData)
+        assert data.id_token.encoded == "id_token_value"
+        assert data.access_token.encoded == "access_token_value"  # type: ignore
+        assert data.refresh_token == "refresh_token_value"
+
+    async def test_get_callback_newly_created_user(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        now = utcnow()
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = AsyncMock()
+        mock_client.callback = AsyncMock(
+            return_value=OAuthCallbackData(
+                tokens=OAuthTokenData(
+                    refresh_token="refresh_token_value",
+                    access_token=OAuthAccessToken(
+                        encoded="access_token_value",
+                        provider=test_instance,
+                        claims=Mock(),
+                    ),
+                    id_token=OAuthIDToken(
+                        encoded="id_token_value",
+                        provider=test_instance,
+                        claims=Mock(),
+                    ),
+                ),
+                user_info=OAuthUserData(
+                    sub="user123",
+                    email="user@example.com",
+                    given_name="Test",
+                    family_name="User",
+                    name="Test User",
+                ),
+            )
+        )
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+        service_instance.users_service.get_or_create = AsyncMock(
+            return_value=(
+                User(
+                    id=1,
+                    username="testuser",
+                    password="",
+                    is_superuser=False,
+                    first_name="Test",
+                    last_name="User",
+                    is_staff=False,
+                    is_active=True,
+                    last_login=now,
+                ),
+                True,
+            )
+        )
+        service_instance.users_service.update_profile = AsyncMock()
+        with patch(
+            "maasservicelayer.services.external_auth.utcnow"
+        ) as utcnow_mock:
+            utcnow_mock.return_value = now
+
+            data = await service_instance.get_callback(
+                code="auth_code", nonce="nonce_value"
+            )
+
+        service_instance.get_client.assert_awaited_once()
+        mock_client.callback.assert_awaited_once_with(
+            code="auth_code", nonce="nonce_value"
+        )
+        service_instance.users_service.get_or_create.assert_awaited_once_with(
+            query=QuerySpec(
+                UserClauseFactory.with_username_or_email_like(
+                    "user@example.com"
+                )
+            ),
+            builder=UserBuilder(
+                username="user@example.com",
+                email="user@example.com",
+                first_name="Test",
+                last_name="User",
+                password="",
+                is_active=True,
+                is_staff=False,
+                is_superuser=False,
+                last_login=now,
+            ),
+        )
+        service_instance.users_service.update_profile.assert_awaited_once_with(
+            user_id=1,
+            builder=UserProfileBuilder(
+                is_local=False,
+                provider_id=test_instance.id,
+            ),
+        )
+        assert isinstance(data, OAuthTokenData)
+        assert data.id_token.encoded == "id_token_value"
+        assert data.access_token.encoded == "access_token_value"  # type: ignore
+        assert data.refresh_token == "refresh_token_value"

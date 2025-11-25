@@ -2205,6 +2205,18 @@ UserProfileTable = Table(
         nullable=False,
         unique=True,
     ),
+    Column(
+        "provider_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_oidc_provider.id",
+            ondelete="CASCADE",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+        unique=False,
+    ),
 )
 
 UserTable = Table(

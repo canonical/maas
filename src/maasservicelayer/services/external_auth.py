@@ -19,7 +19,7 @@ from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
-from maasservicelayer.auth.external_oauth import OAuth2Client
+from maasservicelayer.auth.external_oauth import OAuth2Client, OAuthTokenData
 from maasservicelayer.auth.macaroons.checker import AsyncChecker
 from maasservicelayer.auth.macaroons.locator import AsyncThirdPartyLocator
 from maasservicelayer.auth.macaroons.macaroon_client import (
@@ -47,6 +47,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     INVALID_TOKEN_VIOLATION_TYPE,
+    MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PRECONDITION_FAILED,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
@@ -403,10 +404,12 @@ class ExternalOAuthService(
         context: Context,
         external_oauth_repository: ExternalOAuthRepository,
         secrets_service: SecretsService,
+        users_service: UsersService,
         cache: ExternalOAuthServiceCache | None = None,
     ):
         super().__init__(context, external_oauth_repository, cache)
         self.secrets_service = secrets_service
+        self.users_service = users_service
 
     @staticmethod
     def build_cache_object() -> ExternalOAuthServiceCache:
@@ -481,6 +484,47 @@ class ExternalOAuthService(
 
         metadata = response.json()
         return ProviderMetadata(**metadata)
+
+    async def get_callback(self, code: str, nonce: str) -> OAuthTokenData:
+        client = await self.get_client()
+        if not client:
+            raise PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                        message="No OIDC provider is configured.",
+                    )
+                ]
+            )
+
+        data = await client.callback(code=code, nonce=nonce)
+        user, newly_created = await self.users_service.get_or_create(
+            query=QuerySpec(
+                UserClauseFactory.with_username_or_email_like(
+                    data.user_info.email
+                )
+            ),
+            builder=UserBuilder(
+                username=data.user_info.email,
+                email=data.user_info.email,
+                first_name=data.user_info.given_name or "",
+                last_name=data.user_info.family_name or "",
+                password="",
+                is_active=True,
+                is_staff=False,
+                is_superuser=False,
+                last_login=utcnow(),
+            ),
+        )
+        if newly_created:
+            await self.users_service.update_profile(
+                user_id=user.id,
+                builder=UserProfileBuilder(
+                    is_local=False, provider_id=client.provider.id
+                ),
+            )
+
+        return data.tokens
 
     @Service.from_cache_or_execute(attr="oauth2_client")
     async def get_client(self) -> OAuth2Client | None:

@@ -43,7 +43,7 @@ class OAuthTokenData:
 @dataclass
 class OAuthUserData:
     sub: str
-    email: str | None
+    email: str
     given_name: str | None
     family_name: str | None
     name: str | None

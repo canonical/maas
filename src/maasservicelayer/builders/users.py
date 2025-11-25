@@ -49,4 +49,5 @@ class UserProfileBuilder(ResourceBuilder):
     )
     completed_intro: Union[bool, Unset] = Field(default=UNSET, required=False)
     is_local: Union[bool, Unset] = Field(default=UNSET, required=False)
+    provider_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
     user_id: Union[int, Unset] = Field(default=UNSET, required=False)
