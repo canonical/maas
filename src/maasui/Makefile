@@ -6,8 +6,8 @@ NODEJS_BIN := $(NODEJS_DIR)/bin
 
 export PATH := $(NODEJS_BIN):$(PATH)
 
-NODEJS_VERSION := 20.9.0
-YARN_VERSION := 1.22.17
+NODEJS_VERSION := 22.21.1
+YARN_VERSION := 1.22.22
 
 UI_REVISION := $(shell git -C $(SRC_DIR) rev-parse HEAD)
 TARBALL_NAME := maas_ui_$(UI_REVISION).tgz
