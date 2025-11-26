@@ -21,3 +21,6 @@ class NotificationComponent(StrEnum):
     REGION_IMAGE_IMPORT = "Image importer"
     REGION_IMAGE_SYNC = "Image synchronization"
     REGION_IMAGE_DB_EXPORT = "bootresources_export_from_db"
+
+    # v3 only
+    FETCH_IMAGE_MANIFEST = "Image manifest fetcher"

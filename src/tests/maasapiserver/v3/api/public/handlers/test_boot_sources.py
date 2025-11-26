@@ -27,6 +27,7 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
@@ -1535,3 +1536,50 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert error_response.details[0].message == (
             "Image import process is not running."
         )
+
+    async def test_update_manifest(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.workflow_status.return_value = (
+            WorkflowExecutionStatus.COMPLETED
+        )
+        services_mock.temporal.register_workflow_call.return_value = None
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}:update_manifest",
+        )
+
+        assert response.status_code == 202
+
+        services_mock.temporal.workflow_status.assert_called_once_with(
+            FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME
+        )
+        services_mock.temporal.register_workflow_call.assert_called_once_with(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            workflow_id="manual-fetch-manifest-and-update-cache",
+            wait=False,
+        )
+
+    async def test_update_manifest_wf_already_running(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.workflow_status.return_value = (
+            WorkflowExecutionStatus.RUNNING
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}:update_manifest",
+        )
+
+        assert response.status_code == 202
+
+        services_mock.temporal.workflow_status.assert_called_once_with(
+            FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME
+        )
+        services_mock.temporal.register_workflow_call.assert_not_called()

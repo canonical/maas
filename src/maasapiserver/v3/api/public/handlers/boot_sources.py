@@ -48,6 +48,7 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
@@ -888,3 +889,33 @@ class BootSourcesHandler(Handler):
                 )
             ]
         )
+
+    @handler(
+        path="/boot_sources:update_manifest",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {},
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_manifest_bootsources(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        status = await services.temporal.workflow_status(
+            FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME
+        )
+        if status == WorkflowExecutionStatus.RUNNING:
+            return Response(status_code=202)
+
+        services.temporal.register_workflow_call(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            workflow_id="manual-fetch-manifest-and-update-cache",
+            wait=False,
+        )
+        return Response(status_code=202)

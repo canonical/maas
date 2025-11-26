@@ -327,16 +327,34 @@ class BootResourcesActivity(ActivityBase):
             )
 
             for boot_source in boot_sources:
-                image_manifest = (
-                    await services.image_manifests.fetch_and_update(
-                        boot_source
+                try:
+                    image_manifest = (
+                        await services.image_manifests.fetch_and_update(
+                            boot_source
+                        )
                     )
-                )
-                activity.heartbeat("Downloaded images descriptions")
-                await services.boot_source_cache.update_from_image_manifest(
-                    image_manifest
-                )
-
+                    activity.heartbeat("Downloaded images descriptions")
+                    await (
+                        services.boot_source_cache.update_from_image_manifest(
+                            image_manifest
+                        )
+                    )
+                except Exception as ex:
+                    logger.error(
+                        f"Could not fetch manifest for boot source with url {boot_source.url}: {ex}"
+                    )
+                    await services.notifications.create(
+                        NotificationBuilder(
+                            ident=NotificationComponent.FETCH_IMAGE_MANIFEST,
+                            users=True,
+                            admins=True,
+                            message=f"Failed to fetch image manifest for boot source with url {boot_source.url}. Check the logs for more details.",
+                            context={},
+                            user_id=None,
+                            category=NotificationCategoryEnum.ERROR,
+                            dismissable=True,
+                        )
+                    )
             await services.image_sync.sync_boot_source_selections_from_msm(
                 boot_sources
             )

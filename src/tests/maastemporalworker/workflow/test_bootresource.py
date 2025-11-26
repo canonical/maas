@@ -81,6 +81,7 @@ from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.msm import MSMService, MSMStatus
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.temporal import TemporalService
+from maasservicelayer.simplestreams.client import SimpleStreamsClientException
 from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
     SimpleStreamsProductListType,
@@ -687,6 +688,46 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_source_cache.update_from_image_manifest.assert_awaited_once()
         services_mock.image_sync.sync_boot_source_selections_from_msm.assert_awaited_once()
         services_mock.image_sync.check_commissioning_series_selected.assert_awaited_once()
+
+    async def test_creates_notification_if_exception_is_raised(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+        activity_env: ActivityEnvironment,
+    ) -> None:
+        services_mock.image_sync = Mock(ImageSyncService)
+        services_mock.image_sync.check_commissioning_series_selected.return_value = True
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_many.return_value = [
+            BootSource(
+                id=1,
+                url="http://foo.com",
+                keyring_filename="/tmp/foo",
+                keyring_data=None,
+                priority=1,
+                skip_keyring_verification=True,
+            )
+        ]
+        services_mock.image_manifests = Mock(ImageManifestsService)
+        services_mock.image_manifests.fetch_and_update.side_effect = (
+            SimpleStreamsClientException()
+        )
+        services_mock.notifications = Mock(NotificationsService)
+
+        await activity_env.run(boot_activities.fetch_manifest_and_update_cache)
+
+        services_mock.notifications.create.assert_awaited_once_with(
+            NotificationBuilder(
+                ident=NotificationComponent.FETCH_IMAGE_MANIFEST,
+                users=True,
+                admins=True,
+                message="Failed to fetch image manifest for boot source with url http://foo.com. Check the logs for more details.",
+                context={},
+                user_id=None,
+                category=NotificationCategoryEnum.ERROR,
+                dismissable=True,
+            )
+        )
 
 
 @pytest.mark.parametrize("http_proxy", ["http://proxy.com", None])
