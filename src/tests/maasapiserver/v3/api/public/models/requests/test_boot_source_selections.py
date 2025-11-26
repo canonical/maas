@@ -1,6 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import pytest
+
 from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
     BootSourceSelectionFilterParams,
     BootSourceSelectionRequest,
@@ -38,15 +40,72 @@ class TestBootSourceSelectionRequest:
 
 
 class TestBootSourceSelectionFilterParams:
-    def test_to_clause(self):
-        filters = BootSourceSelectionFilterParams(ids=[1, 2, 3])
+    @pytest.mark.parametrize(
+        "ids,selected,expected",
+        [
+            (
+                [1, 2, 3],
+                None,
+                BootSourceSelectionStatusClauseFactory.with_ids([1, 2, 3]),
+            ),
+            (
+                None,
+                True,
+                BootSourceSelectionStatusClauseFactory.with_selected(True),
+            ),
+            (
+                None,
+                False,
+                BootSourceSelectionStatusClauseFactory.with_selected(False),
+            ),
+            (
+                [4, 5],
+                True,
+                BootSourceSelectionStatusClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionStatusClauseFactory.with_ids(
+                            [4, 5]
+                        ),
+                        BootSourceSelectionStatusClauseFactory.with_selected(
+                            True
+                        ),
+                    ]
+                ),
+            ),
+        ],
+    )
+    def test_to_clause(self, ids, selected, expected):
+        filters = BootSourceSelectionFilterParams(ids=ids, selected=selected)
         clause = filters.to_clause()
         assert clause is not None
-        assert clause == BootSourceSelectionStatusClauseFactory.with_ids(
-            [1, 2, 3]
-        )
+        assert clause == expected
 
-    def test_to_href_format(self):
-        filters = BootSourceSelectionFilterParams(ids=[1, 2, 3])
+    @pytest.mark.parametrize(
+        "ids,selected,expected",
+        [
+            (
+                [1, 2, 3],
+                None,
+                "id=1&id=2&id=3",
+            ),
+            (
+                None,
+                True,
+                "selected=true",
+            ),
+            (
+                None,
+                False,
+                "selected=false",
+            ),
+            (
+                [4, 5],
+                True,
+                "id=4&id=5&selected=true",
+            ),
+        ],
+    )
+    def test_to_href_format(self, ids, selected, expected):
+        filters = BootSourceSelectionFilterParams(ids=ids, selected=selected)
         href = filters.to_href_format()
-        assert href == "id=1&id=2&id=3"
+        assert href == expected

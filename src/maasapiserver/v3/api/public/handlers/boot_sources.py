@@ -39,6 +39,7 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceAvailableImageResponse,
     BootSourceResponse,
     BootSourcesListResponse,
+    BootSourceSyncResponse,
     SourceAvailableImageListResponse,
     SourceAvailableImageResponse,
     UISourceAvailableImageListResponse,
@@ -47,6 +48,7 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.workflows.bootresource import (
+    MASTER_IMAGE_SYNC_WORKFLOW_NAME,
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
 )
@@ -692,14 +694,14 @@ class BootSourcesHandler(Handler):
     )
     async def check_statuses_bootsource_bootsourceselection(
         self,
-        ids: BootSourceSelectionFilterParams = Depends(),  # noqa: B008
+        filters: BootSourceSelectionFilterParams = Depends(),  # noqa: B008
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> BootSourceSelectionStatusListResponse:
         statuses = await services.boot_source_selection_status.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=ids.to_clause()),
+            query=QuerySpec(where=filters.to_clause()),
         )
 
         next_link = None
@@ -708,7 +710,7 @@ class BootSourcesHandler(Handler):
                 f"{V3_API_PREFIX}/boot_source_selection_statuses?"
                 f"{pagination_params.to_next_href_format()}"
             )
-            if query_filters := ids.to_href_format():
+            if query_filters := filters.to_href_format():
                 next_link += f"&{query_filters}"
 
         return BootSourceSelectionStatusListResponse(
@@ -804,4 +806,85 @@ class BootSourcesHandler(Handler):
                 else None
             ),
             total=boot_source_available_images.total,
+        )
+
+    @handler(
+        path="/boot_sources:import",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {
+                "model": BootSourceSyncResponse,
+            },
+            303: {
+                "headers": {
+                    "Location": OpenApiHeader(
+                        description="URL to monitor the image import process",
+                        schema=Schema(type="string", format="uri"),
+                    )
+                },
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def import_bootsources(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSyncResponse:
+        monitor_url = (
+            f"{V3_API_PREFIX}/boot_source_selection_statuses?selected=true"
+        )
+        status = await services.temporal.workflow_status(
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME
+        )
+        if status == WorkflowExecutionStatus.RUNNING:
+            return RedirectResponse(monitor_url, status_code=303)  # pyright: ignore[reportReturnType]
+
+        services.temporal.register_workflow_call(
+            workflow_name=MASTER_IMAGE_SYNC_WORKFLOW_NAME,
+            workflow_id="master-image-sync",
+            wait=False,
+        )
+        return BootSourceSyncResponse(monitor_url=monitor_url)
+
+    @handler(
+        path="/boot_sources:stop_import",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {
+                "model": BootSourceSyncResponse,
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def stop_import_bootsources(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        status = await services.temporal.workflow_status(
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME
+        )
+        if status == WorkflowExecutionStatus.RUNNING:
+            temporal_client = await services.temporal.get_temporal_client()
+            await temporal_client.get_workflow_handle(
+                "master-image-sync"
+            ).cancel()
+            return Response(status_code=202)
+
+        raise ConflictException(
+            details=[
+                BaseExceptionDetail(
+                    type=CONFLICT_VIOLATION_TYPE,
+                    message="Image import process is not running.",
+                )
+            ]
         )

@@ -124,3 +124,8 @@ class UISourceAvailableImageResponse(BaseSourceAvailableImageResponse):
 class UISourceAvailableImageListResponse(BaseModel):
     kind = "UISourceAvailableImageList"
     items: list[UISourceAvailableImageResponse]
+
+
+class BootSourceSyncResponse(BaseModel):
+    kind = "BootSourceSync"
+    monitor_url: str

@@ -45,16 +45,41 @@ class BootSourceSelectionFilterParams(BaseModel):
             description="Filter by Boot Source Selection ID",
         )
     )
+    selected: bool | None = Field(
+        Query(
+            default=None,
+            description="Filter by whether the boot source selection is selected",
+        )
+    )
 
     def to_clause(self) -> Clause | None:
+        clauses = []
         if self.ids is not None:
-            return BootSourceSelectionStatusClauseFactory.with_ids(self.ids)
+            clauses.append(
+                BootSourceSelectionStatusClauseFactory.with_ids(self.ids)
+            )
+        if self.selected is not None:
+            clauses.append(
+                BootSourceSelectionStatusClauseFactory.with_selected(
+                    self.selected
+                )
+            )
 
-        return None
+        if not clauses:
+            return None
+        elif len(clauses) == 1:
+            return clauses[0]
+        else:
+            return BootSourceSelectionStatusClauseFactory.and_clauses(clauses)
 
     def to_href_format(self) -> str:
+        tokens = []
         if self.ids is not None:
-            tokens = [f"id={id}" for id in self.ids]
-            return "&".join(tokens)
+            tokens.extend([f"id={id}" for id in self.ids])
 
+        if self.selected is not None:
+            tokens.append(f"selected={str(self.selected).lower()}")
+
+        if tokens:
+            return "&".join(tokens)
         return ""

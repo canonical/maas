@@ -127,6 +127,12 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
 
 class BootSourceSelectionStatusClauseFactory(ClauseFactory):
     @classmethod
+    def with_selected(cls, selected: bool) -> Clause:
+        return Clause(
+            condition=eq(BootSourceSelectionStatusView.c.selected, selected)
+        )
+
+    @classmethod
     def with_ids(cls, ids: List[int]) -> Clause:
         return Clause(condition=BootSourceSelectionStatusView.c.id.in_(ids))
 
