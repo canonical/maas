@@ -24,6 +24,10 @@ class AgentsClauseFactory(ClauseFactory):
     def with_rack_id_in(cls, rack_id_list: list[int]) -> Clause:
         return Clause(condition=AgentTable.c.rack_id.in_(rack_id_list))
 
+    @classmethod
+    def with_uuid(cls, uuid: str) -> Clause:
+        return Clause(condition=eq(AgentTable.c.uuid, uuid))
+
 
 class AgentsRepository(BaseRepository[Agent]):
     def get_repository_table(self) -> Table:

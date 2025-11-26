@@ -31,6 +31,33 @@ class AgentResponse(HalResponse[BaseHal]):
         )
 
 
+class AgentConfigResponse(HalResponse[BaseHal]):
+    kind = "AgentSignedCertificate"
+    maas_url: str
+    rpc_secret: str
+    system_id: str
+    temporal: dict
+
+    @classmethod
+    def from_model(
+        cls,
+        maas_url: str,
+        rpc_secret: str,
+        system_id: str,
+        temporal: dict,
+        self_base_hyperlink: str,
+    ) -> Self:
+        return cls(
+            maas_url=maas_url,
+            rpc_secret=rpc_secret,
+            system_id=system_id,
+            temporal=temporal,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(href=f"{self_base_hyperlink.rstrip('/')}")
+            ),
+        )
+
+
 class AgentSignedCertificateResponse(HalResponse[BaseHal]):
     kind = "AgentSignedCertificate"
     certificate: str

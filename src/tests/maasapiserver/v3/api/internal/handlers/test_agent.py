@@ -14,13 +14,19 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from maasapiserver.v3.constants import V3_INTERNAL_API_PREFIX
-from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasservicelayer.exceptions.constants import (
+    INVALID_TOKEN_VIOLATION_TYPE,
+    PRECONDITION_FAILED,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.models.bootstraptokens import BootstrapToken
+from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.racks import Rack
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
+from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.utils.date import utcnow
@@ -67,7 +73,7 @@ class InjectFakeTLSCN(BaseHTTPMiddleware):
     ) -> Response:
         request.scope.setdefault("extensions", {})
         request.scope["extensions"]["tls"] = {
-            "CN": "01f09d32-f508-6064-bd1c-c025a58dd068"
+            "client_cn": "01f09d32-f508-6064-bd1c-c025a58dd068"
         }
         return await call_next(request)
 
@@ -80,6 +86,141 @@ class TestAgentsApi:
     def internal_api_headers(self) -> dict:
         """Returns headers required for internal API requests"""
         return {"client-cert-cn": "test-client"}
+
+    async def test_agent_config_200_without_system_id(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+        internal_api_headers: dict,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
+        services_mock.agents = Mock(AgentsService)
+        services_mock.agents.get_one.return_value = mock_agent
+        services_mock.secrets = Mock(SecretsService)
+        services_mock.secrets.get_composite_secret.return_value = {
+            "secret": "rpc-secret"
+        }
+        services_mock.configurations = AsyncMock()
+        services_mock.configurations.get.return_value = (
+            "http://maas.example:5240/MAAS"
+        )
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/{UUID}/config",
+            headers=internal_api_headers,
+        )
+
+        assert response.status_code == 200
+        response_json = response.json()
+        assert response_json["maas_url"] == "http://maas.example:5240/MAAS"
+        assert response_json["rpc_secret"] == "rpc-secret"
+        assert response_json["system_id"] == ""
+        assert "temporal" in response_json
+        assert response_json["temporal"]["encryption_key"] == "rpc-secret"
+        assert "ETag" in response.headers
+
+    async def test_agent_config_200_with_system_id(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+        internal_api_headers: dict,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        mock_agent = Agent(id=1, uuid=UUID, rack_id=1, rackcontroller_id=42)
+        services_mock.agents = Mock(AgentsService)
+        services_mock.agents.get_one.return_value = mock_agent
+        mock_node = Mock(Node)
+        mock_node.system_id = "system-id"
+        services_mock.nodes = Mock(NodesService)
+        services_mock.nodes.get_one.return_value = mock_node
+        services_mock.secrets = Mock(SecretsService)
+        services_mock.secrets.get_composite_secret.return_value = {
+            "secret": "rpc-secret"
+        }
+        services_mock.configurations = AsyncMock()
+        services_mock.configurations.get.return_value = (
+            "http://maas.example:5240/MAAS"
+        )
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/{UUID}/config",
+            headers=internal_api_headers,
+        )
+
+        assert response.status_code == 200
+        response_json = response.json()
+        assert response_json["maas_url"] == "http://maas.example:5240/MAAS"
+        assert response_json["rpc_secret"] == "rpc-secret"
+        assert response_json["system_id"] == "system-id"
+        assert "temporal" in response_json
+        assert response_json["temporal"]["encryption_key"] == "rpc-secret"
+        assert "ETag" in response.headers
+        services_mock.nodes.get_one.assert_called_once()
+
+    async def test_agent_config_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+        internal_api_headers: dict,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        services_mock.agents = Mock(AgentsService)
+        services_mock.agents.get_one.return_value = None
+
+        nonexistent_uuid = "no-uuid"
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/{nonexistent_uuid}/config",
+            headers=internal_api_headers,
+        )
+
+        assert response.status_code == 404
+        response_json = response.json()
+        assert "details" in response_json
+        assert (
+            response_json["details"][0]["type"]
+            == UNEXISTING_RESOURCE_VIOLATION_TYPE
+        )
+        assert (
+            response_json["details"][0]["message"]
+            == f"Could not find agent with UUID {nonexistent_uuid}."
+        )
+
+    async def test_agent_config_503(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+        internal_api_headers: dict,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+
+        mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
+        services_mock.agents = Mock(AgentsService)
+        services_mock.agents.get_one.return_value = mock_agent
+        services_mock.configurations = AsyncMock()
+        services_mock.configurations.get.return_value = (
+            "http://maas.example:5240/MAAS"
+        )
+        services_mock.secrets = Mock(SecretsService)
+        services_mock.secrets.get_composite_secret.return_value = None
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/{UUID}/config",
+            headers=internal_api_headers,
+        )
+
+        assert response.status_code == 503
+        response_json = response.json()
+        assert "details" in response_json
+        assert response_json["details"][0]["type"] == PRECONDITION_FAILED
+        assert (
+            response_json["details"][0]["message"]
+            == "RPC secret is not configured. Please ensure MAAS is properly initialized."
+        )
 
     @patch(
         "maasapiserver.v3.api.internal.handlers.agent.sign_certificate_request"
@@ -98,10 +239,8 @@ class TestAgentsApi:
         mock_sign_certificate_request,
         services_mock: ServiceCollectionV3,
         mocked_internal_api_client: AsyncClient,
-        internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
     ) -> None:
-        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
         mock_dump_certificate.side_effect = [
             b"signed_cert_pem_bytes",
             b"ca_cert_pem_bytes",
@@ -147,6 +286,7 @@ class TestAgentsApi:
         response = await mocked_internal_api_client.post(
             f"{self.BASE_PATH}:enroll",
             json=request_data,
+            headers=internal_api_headers,
         )
         assert response.status_code == 201
         response_json = response.json()

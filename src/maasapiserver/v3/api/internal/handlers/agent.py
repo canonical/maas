@@ -8,6 +8,8 @@ from OpenSSL import crypto
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    NotFoundBodyResponse,
+    ServiceUnavailableErrorBodyResponse,
     UnauthorizedBodyResponse,
 )
 from maasapiserver.v3.api import services
@@ -15,6 +17,7 @@ from maasapiserver.v3.api.internal.models.requests.agent import (
     AgentEnrollRequest,
 )
 from maasapiserver.v3.api.internal.models.responses.agent import (
+    AgentConfigResponse,
     AgentSignedCertificateResponse,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
@@ -23,19 +26,27 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.constants import V3_INTERNAL_API_PREFIX
 from maasservicelayer.builders.agents import AgentBuilder
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.db.repositories.bootstraptokens import (
     BootstrapTokensClauseFactory,
 )
+from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.db.repositories.racks import RacksClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
+    NotFoundException,
+    ServiceUnavailableException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
+    PRECONDITION_FAILED,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.secrets import MAASCACertificateSecret
+from maasservicelayer.models.secrets import (
+    MAASCACertificateSecret,
+    RPCSharedSecret,
+)
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.certificates import Certificate, CertificateRequest
@@ -98,6 +109,74 @@ class AgentHandler(Handler):
         )
 
         return tokens
+
+    @handler(
+        path="/agents/{uuid}/config",
+        methods=["GET"],
+        responses={
+            200: {
+                "model": AgentConfigResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+            503: {"model": ServiceUnavailableErrorBodyResponse},
+        },
+        status_code=200,
+    )
+    async def get_agent_config(
+        self,
+        uuid: str,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> AgentConfigResponse:
+        agent = await services.agents.get_one(
+            QuerySpec(where=AgentsClauseFactory.with_uuid(uuid))
+        )
+        if not agent:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Could not find agent with UUID {uuid}.",
+                    )
+                ]
+            )
+
+        maas_url = await services.configurations.get("maas_url")
+
+        rpc_shared_secret_data = await services.secrets.get_composite_secret(
+            RPCSharedSecret(), default=None
+        )
+        if rpc_shared_secret_data and "secret" in rpc_shared_secret_data:
+            rpc_secret = rpc_shared_secret_data["secret"]
+        else:
+            raise ServiceUnavailableException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PRECONDITION_FAILED,
+                        message="RPC secret is not configured. Please ensure MAAS is properly initialized.",
+                    )
+                ]
+            )
+
+        system_id = ""
+        if agent.rackcontroller_id:
+            node = await services.nodes.get_one(
+                QuerySpec(
+                    where=NodeClauseFactory.with_id(agent.rackcontroller_id)
+                )
+            )
+            if node:
+                system_id = node.system_id
+
+        response.headers["ETag"] = agent.etag()
+        return AgentConfigResponse.from_model(
+            maas_url=maas_url,
+            rpc_secret=rpc_secret,
+            system_id=system_id,
+            temporal={"encryption_key": rpc_secret},
+            self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents/{uuid}/config",
+        )
 
     @handler(
         path="/agents:enroll",
