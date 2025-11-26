@@ -490,6 +490,49 @@ class BootSourcesHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
+        path="/selections",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": BootSourceSelectionListResponse},
+        },
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_all_bootsourceselections(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSelectionListResponse:
+        boot_source_selections = await services.boot_source_selections.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+        )
+
+        return BootSourceSelectionListResponse(
+            items=[
+                BootSourceSelectionResponse.from_model(
+                    boot_source_selection=boot_source_selection,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/"
+                    f"{boot_source_selection.boot_source_id}/selections",
+                )
+                for boot_source_selection in boot_source_selections.items
+            ],
+            next=(
+                f"{V3_API_PREFIX}/selections?"
+                f"{pagination_params.to_next_href_format()}"
+                if boot_source_selections.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+            total=boot_source_selections.total,
+        )
+
+    @handler(
         path="/boot_sources/{boot_source_id}/selections/{id}:sync",
         methods=["POST"],
         tags=TAGS,

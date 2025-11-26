@@ -1583,3 +1583,98 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME
         )
         services_mock.temporal.register_workflow_call.assert_not_called()
+
+
+class TestSelectionsApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/selections"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_all_selections_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.list.return_value = ListResult[
+            BootSourceSelection
+        ](items=[TEST_BOOTSOURCESELECTION], total=1)
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?page=1&size=1"
+        )
+        assert response.status_code == 200
+        boot_source_selections_response = BootSourceSelectionListResponse(
+            **response.json()
+        )
+        assert len(boot_source_selections_response.items) == 1
+        assert boot_source_selections_response.total == 1
+        assert boot_source_selections_response.next is None
+
+    async def test_list_all_selections_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        selection_2 = TEST_BOOTSOURCESELECTION.copy()
+        selection_2.id = 2
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.list.return_value = ListResult[
+            BootSourceSelection
+        ](items=[TEST_BOOTSOURCESELECTION, selection_2], total=2)
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?page=1&size=1"
+        )
+        assert response.status_code == 200
+        boot_source_selections_response = BootSourceSelectionListResponse(
+            **response.json()
+        )
+        assert len(boot_source_selections_response.items) == 2
+        assert boot_source_selections_response.total == 2
+        assert (
+            boot_source_selections_response.next
+            == f"{self.BASE_PATH}?page=2&size=1"
+        )
+
+        selection = boot_source_selections_response.items[0]
+        assert selection.hal_links.self.href == (
+            f"{V3_API_PREFIX}/boot_sources/{TEST_BOOTSOURCESELECTION.boot_source_id}"
+            f"/selections/{TEST_BOOTSOURCESELECTION.id}"
+        )
+
+    async def test_list_all_selections_empty(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.list.return_value = ListResult[
+            BootSourceSelection
+        ](items=[], total=0)
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?size=10"
+        )
+        assert response.status_code == 200
+        boot_source_selections_response = BootSourceSelectionListResponse(
+            **response.json()
+        )
+        assert len(boot_source_selections_response.items) == 0
+        assert boot_source_selections_response.total == 0
+        assert boot_source_selections_response.next is None
